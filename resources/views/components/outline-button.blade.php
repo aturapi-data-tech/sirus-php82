@@ -5,9 +5,9 @@
         'text-sm font-semibold',
         'transition',
     
-        'text-white bg-red-600',
-        'hover:bg-red-700',
-        'focus:outline-none focus:ring-2 focus:ring-red-200',
+        'text-brand-green border border-brand-green/30',
+        'hover:bg-brand-green/10',
+        'focus:outline-none focus:ring-2 focus:ring-brand-lime',
     ]) }}>
     {{ $slot }}
 </button>
