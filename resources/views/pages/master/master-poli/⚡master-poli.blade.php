@@ -9,6 +9,24 @@ use Illuminate\Support\Facades\DB;
 new class extends Component {
     use WithPagination;
 
+    public array $formEntryProduct = [];
+
+    #[On('lov.selected')]
+    public function onLovSelected(string $target, array $payload): void
+    {
+        if ($target !== 'formEntryProduct') {
+            return;
+        }
+
+        $this->formEntryProduct['productId'] = $payload['product_id'] ?? '';
+        $this->formEntryProduct['productName'] = $payload['product_name'] ?? '';
+        $this->formEntryProduct['productPrice'] = $payload['sales_price'] ?? 0;
+
+        if (empty($this->formEntryProduct['productQty'])) {
+            $this->formEntryProduct['productQty'] = 1;
+        }
+    }
+
     /* -------------------------
      | Filter & Pagination state
      * ------------------------- */
@@ -106,6 +124,10 @@ new class extends Component {
 
 
 <div>
+
+    <livewire:lov.product.lov-product target="formEntryProduct" label="Cari Obat" placeholder="Ketik nama/kode obat..." />
+
+
     <header class="bg-white shadow dark:bg-gray-800">
         <div class="w-full px-4 py-2 sm:px-6 lg:px-8">
             <h2 class="text-2xl font-bold leading-tight text-gray-900 dark:text-gray-100">
