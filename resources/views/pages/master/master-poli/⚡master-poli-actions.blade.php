@@ -36,6 +36,7 @@ new class extends Component {
         $this->formMode = 'edit';
         $this->fillFormFromRow($row);
         $this->resetValidation();
+
         $this->dispatch('open-modal', name: 'master-poli-actions');
     }
 
@@ -62,17 +63,13 @@ new class extends Component {
 
     protected function rules(): array
     {
-        $rules = [
-            'poliId' => ['required', 'numeric'],
+        return [
+            'poliId' => ['required', 'numeric', $this->formMode === 'create' ? Rule::unique('rsmst_polis', 'poli_id') : Rule::unique('rsmst_polis', 'poli_id')->ignore($this->poliId, 'poli_id')],
             'poliName' => ['required', 'string', 'max:255'],
             'bpjsPoliCode' => ['nullable', 'string', 'max:50'],
             'poliUuid' => ['nullable', 'string', 'max:100'],
             'isSpecialist' => ['required', Rule::in(['0', '1'])],
         ];
-
-        $rules['poliId'][] = $this->formMode === 'create' ? Rule::unique('rsmst_polis', 'poli_id') : Rule::unique('rsmst_polis', 'poli_id')->ignore($this->poliId, 'poli_id');
-
-        return $rules;
     }
 
     protected function messages(): array
@@ -94,6 +91,7 @@ new class extends Component {
         ];
     }
 
+    // paling aman pakai method Laravel standar
     protected function validationAttributes(): array
     {
         return [
@@ -129,7 +127,6 @@ new class extends Component {
 
         $this->closeModal();
 
-        // notify parent
         $this->dispatch('master.poli.saved');
     }
 };
@@ -137,11 +134,8 @@ new class extends Component {
 
 <div>
     <x-modal name="master-poli-actions" size="full" height="full" focusable>
-        {{-- WRAPPER: bikin full-height & footer nempel bawah --}}
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]"
-            wire:key="master-poli-actions-{{ $formMode }}-{{ $poliId ?? 'new' }}">
-
-            {{-- HEADER: gradient + pattern halus --}}
+        <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="master-poli-actions">
+            {{-- HEADER --}}
             <div class="relative px-6 py-5 border-b border-gray-200 dark:border-gray-700">
                 <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
                     style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
@@ -152,16 +146,11 @@ new class extends Component {
                         <div class="flex items-center gap-3">
                             <div
                                 class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
-
-                                {{-- Light mode --}}
                                 <img src="{{ asset('images/Logogram black solid.png') }}" alt="RSI Madinah"
                                     class="block w-6 h-6 dark:hidden" />
-
-                                {{-- Dark mode --}}
                                 <img src="{{ asset('images/Logogram white solid.png') }}" alt="RSI Madinah"
                                     class="hidden w-6 h-6 dark:block" />
                             </div>
-
 
                             <div>
                                 <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
@@ -173,7 +162,6 @@ new class extends Component {
                             </div>
                         </div>
 
-                        {{-- Badge mode --}}
                         <div class="mt-3">
                             <x-badge :variant="$formMode === 'edit' ? 'warning' : 'success'">
                                 {{ $formMode === 'edit' ? 'Mode: Edit' : 'Mode: Tambah' }}
@@ -192,23 +180,26 @@ new class extends Component {
                 </div>
             </div>
 
-            {{-- BODY: flex-1 biar ngisi sisa ruang --}}
+            {{-- BODY --}}
             <div class="flex-1 px-4 py-4 bg-gray-50/70 dark:bg-gray-950/20">
                 <div class="max-w-4xl">
-                    {{-- CARD FORM --}}
                     <div
                         class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                         <div class="p-5 space-y-5">
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                {{-- Poli ID --}}
                                 <div>
                                     <x-input-label value="Poli ID" />
-                                    <x-text-input wire:model.defer="poliId" :disabled="$formMode === 'edit'" class="w-full mt-1" />
+                                    <x-text-input wire:model.defer="poliId" :disabled="$formMode === 'edit'" :error="$errors->has('poliId')"
+                                        class="w-full mt-1" />
                                     <x-input-error :messages="$errors->get('poliId')" class="mt-1" />
                                 </div>
 
+                                {{-- Status --}}
                                 <div>
                                     <x-input-label value="Status" />
-                                    <x-select-input wire:model.defer="isSpecialist" class="w-full mt-1">
+                                    <x-select-input wire:model.defer="isSpecialist" :error="$errors->has('isSpecialist')"
+                                        class="w-full mt-1">
                                         <option value="0">Non Spesialis</option>
                                         <option value="1">Spesialis</option>
                                     </x-select-input>
@@ -216,25 +207,29 @@ new class extends Component {
                                 </div>
                             </div>
 
+                            {{-- Nama Poli --}}
                             <div>
                                 <x-input-label value="Nama Poli" />
-                                <x-text-input wire:model.defer="poliName" class="w-full mt-1" />
+                                <x-text-input wire:model.defer="poliName" :error="$errors->has('poliName')" class="w-full mt-1" />
                                 <x-input-error :messages="$errors->get('poliName')" class="mt-1" />
                             </div>
 
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                {{-- Kode BPJS --}}
                                 <div>
                                     <x-input-label value="Kode Poli BPJS" />
-                                    <x-text-input wire:model.defer="bpjsPoliCode" class="w-full mt-1" />
+                                    <x-text-input wire:model.defer="bpjsPoliCode" :error="$errors->has('bpjsPoliCode')"
+                                        class="w-full mt-1" />
                                     <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
                                         Opsional — isi jika poli terhubung ke referensi BPJS.
                                     </p>
                                     <x-input-error :messages="$errors->get('bpjsPoliCode')" class="mt-1" />
                                 </div>
 
+                                {{-- UUID --}}
                                 <div>
                                     <x-input-label value="UUID" />
-                                    <x-text-input wire:model.defer="poliUuid" class="w-full mt-1" />
+                                    <x-text-input wire:model.defer="poliUuid" :error="$errors->has('poliUuid')" class="w-full mt-1" />
                                     <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
                                         Opsional — untuk sinkronisasi sistem.
                                     </p>
@@ -242,12 +237,11 @@ new class extends Component {
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
 
-            {{-- FOOTER: "di bawah sendiri" walau konten pendek --}}
+            {{-- FOOTER --}}
             <div
                 class="sticky bottom-0 z-10 px-6 py-4 mt-auto bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex items-center justify-between gap-3">
@@ -267,8 +261,6 @@ new class extends Component {
                     </div>
                 </div>
             </div>
-
         </div>
     </x-modal>
-
 </div>
