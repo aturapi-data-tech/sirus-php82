@@ -75,6 +75,36 @@ new class extends Component {
         return $rules;
     }
 
+    protected function messages(): array
+    {
+        return [
+            'poliId.required' => ':attribute wajib diisi.',
+            'poliId.numeric' => ':attribute harus berupa angka.',
+            'poliId.unique' => ':attribute sudah digunakan, silakan pilih ID lain.',
+
+            'poliName.required' => ':attribute wajib diisi.',
+            'poliName.max' => ':attribute maksimal :max karakter.',
+
+            'bpjsPoliCode.max' => ':attribute maksimal :max karakter.',
+
+            'poliUuid.max' => ':attribute maksimal :max karakter.',
+
+            'isSpecialist.required' => ':attribute wajib dipilih.',
+            'isSpecialist.in' => ':attribute tidak valid.',
+        ];
+    }
+
+    protected function validationAttributes(): array
+    {
+        return [
+            'poliId' => 'ID Poli',
+            'poliName' => 'Nama Poli',
+            'bpjsPoliCode' => 'Kode Poli BPJS',
+            'poliUuid' => 'UUID Poli',
+            'isSpecialist' => 'Status Poli',
+        ];
+    }
+
     public function save(): void
     {
         $data = $this->validate();
