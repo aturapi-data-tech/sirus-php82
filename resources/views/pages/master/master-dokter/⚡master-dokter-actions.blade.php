@@ -123,7 +123,7 @@ new class extends Component {
 
             'contributionStatus' => ['required', Rule::in(['0', '1'])],
             'activeStatus' => ['required', Rule::in(['0', '1'])],
-            'rsAdmin' => ['required', Rule::in(['0', '1'])],
+            'rsAdmin' => ['required', 'numeric'],
 
             'kdDrBpjs' => ['nullable', 'string', 'max:50'],
             'drUuid' => ['nullable', 'string', 'max:100'],
@@ -273,7 +273,11 @@ new class extends Component {
 
                     <x-secondary-button type="button" wire:click="closeModal" class="!p-2">
                         <span class="sr-only">Close</span>
-                        ✕
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                clip-rule="evenodd" />
+                        </svg>
                     </x-secondary-button>
                 </div>
             </div>
@@ -374,10 +378,7 @@ new class extends Component {
                                 {{-- RS Admin --}}
                                 <div>
                                     <x-input-label value="RS Admin" />
-                                    <x-select-input wire:model.defer="rsAdmin" :error="$errors->has('rsAdmin')" class="w-full mt-1">
-                                        <option value="1">RS Admin</option>
-                                        <option value="0">Non Admin</option>
-                                    </x-select-input>
+                                    <x-text-input wire:model.defer="rsAdmin" :error="$errors->has('rsAdmin')" class="w-full mt-1" />
                                     <x-input-error :messages="$errors->get('rsAdmin')" class="mt-1" />
                                 </div>
 
