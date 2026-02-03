@@ -19,6 +19,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::livewire('/master/poli', 'pages::master.master-poli.master-poli')
         ->name('master.poli');
+
+    Route::livewire('/master/dokter', 'pages::master.master-dokter.master-dokter')
+        ->name('master.dokter');
 });
 
 

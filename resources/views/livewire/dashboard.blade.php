@@ -25,6 +25,13 @@ new class extends Component {
                 'roles' => ['admin'], // ✅ wajib lowercase
                 'badge' => 'Master',
             ],
+            [
+                'title' => 'Master Dokter',
+                'desc' => 'Kelola data dokter & ruangan',
+                'href' => route('master.dokter'),
+                'roles' => ['admin'], // ✅ wajib lowercase
+                'badge' => 'Master',
+            ],
             // tambahkan menu lain di sini...
         ];
     }
