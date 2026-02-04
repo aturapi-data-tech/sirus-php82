@@ -106,52 +106,73 @@ new class extends Component {
     /* -------------------------
      | Validation
      * ------------------------- */
-    protected function rules(): array
-    {
-        return [
-            'drId' => ['required', 'string', 'max:50', $this->formMode === 'create' ? Rule::unique('rsmst_doctors', 'dr_id') : Rule::unique('rsmst_doctors', 'dr_id')->ignore($this->drId, 'dr_id')],
-            'drName' => ['required', 'string', 'max:255'],
-            'drPhone' => ['nullable', 'string', 'max:100'],
-            'drAddress' => ['nullable', 'string', 'max:255'],
-            'poliId' => ['nullable', 'string', 'max:50'],
+  protected function rules(): array
+{
+    return [
+        'drId' => [
+            'required',
+            'string',
+            'max:50',
+            $this->formMode === 'create'
+                ? Rule::unique('rsmst_doctors', 'dr_id')
+                : Rule::unique('rsmst_doctors', 'dr_id')->ignore($this->drId, 'dr_id')
+        ],
+        'drName' => ['required', 'string', 'max:255'],
+        'drPhone' => ['nullable', 'string', 'max:100'],
+        'drAddress' => ['nullable', 'string', 'max:255'],
+        'poliId' => 'nullable|string|max:250|exists:rsmst_polis,poli_id',
 
-            'basicSalary' => ['nullable', 'numeric'],
-            'poliPrice' => ['nullable', 'numeric'],
-            'ugdPrice' => ['nullable', 'numeric'],
-            'poliPriceBpjs' => ['nullable', 'numeric'],
-            'ugdPriceBpjs' => ['nullable', 'numeric'],
+        'basicSalary' => ['nullable', 'numeric'],
+        'poliPrice' => ['nullable', 'numeric'],
+        'ugdPrice' => ['nullable', 'numeric'],
+        'poliPriceBpjs' => ['nullable', 'numeric'],
+        'ugdPriceBpjs' => ['nullable', 'numeric'],
 
-            'contributionStatus' => ['required', Rule::in(['0', '1'])],
-            'activeStatus' => ['required', Rule::in(['0', '1'])],
-            'rsAdmin' => ['required', 'numeric'],
+        'contributionStatus' => ['required', Rule::in(['0', '1'])],
+        'activeStatus' => ['required', Rule::in(['0', '1'])],
+        'rsAdmin' => ['required', 'numeric'],
 
-            'kdDrBpjs' => ['nullable', 'string', 'max:50'],
-            'drUuid' => ['nullable', 'string', 'max:100'],
-            'drNik' => ['nullable', 'string', 'max:50'],
-        ];
-    }
+        'kdDrBpjs' => ['nullable', 'string', 'max:50'],
+        'drUuid' => ['nullable', 'string', 'max:100'],
+        'drNik' => ['nullable', 'string', 'max:50'],
+    ];
+}
 
-    protected function validationAttributes(): array
-    {
-        return [
-            'drId' => 'ID Dokter',
-            'drName' => 'Nama Dokter',
-            'drPhone' => 'Telepon',
-            'drAddress' => 'Alamat',
-            'poliId' => 'Poli ID',
-            'basicSalary' => 'Gaji Pokok',
-            'poliPrice' => 'Tarif Poli',
-            'ugdPrice' => 'Tarif UGD',
-            'poliPriceBpjs' => 'Tarif Poli BPJS',
-            'ugdPriceBpjs' => 'Tarif UGD BPJS',
-            'contributionStatus' => 'Status Kontribusi',
-            'activeStatus' => 'Status Aktif',
-            'rsAdmin' => 'RS Admin',
-            'kdDrBpjs' => 'Kode Dokter BPJS',
-            'drUuid' => 'UUID',
-            'drNik' => 'NIK',
-        ];
-    }
+protected function messages(): array
+{
+    return [
+        '*.required' => ':attribute wajib diisi.',
+        '*.string' => ':attribute harus berupa teks.',
+        '*.numeric' => ':attribute harus berupa angka.',
+        '*.max' => ':attribute maksimal :max karakter.',
+        '*.unique' => ':attribute sudah digunakan.',
+        '*.in' => ':attribute tidak valid.',
+        '*.exists' => ':attribute tidak ditemukan di database.',
+            ];
+}
+
+protected function validationAttributes(): array
+{
+    return [
+        'drId' => 'ID Dokter',
+        'drName' => 'Nama Dokter',
+        'drPhone' => 'Telepon',
+        'drAddress' => 'Alamat',
+        'poliId' => 'Poli ID',
+        'basicSalary' => 'Gaji Pokok',
+        'poliPrice' => 'Tarif Poli',
+        'ugdPrice' => 'Tarif UGD',
+        'poliPriceBpjs' => 'Tarif Poli BPJS',
+        'ugdPriceBpjs' => 'Tarif UGD BPJS',
+        'contributionStatus' => 'Status Kontribusi',
+        'activeStatus' => 'Status Aktif',
+        'rsAdmin' => 'RS Admin',
+        'kdDrBpjs' => 'Kode Dokter BPJS',
+        'drUuid' => 'UUID',
+        'drNik' => 'NIK',
+    ];
+}
+
 
     /* -------------------------
      | Save
@@ -293,36 +314,40 @@ new class extends Component {
                                 {{-- ID --}}
                                 <div>
                                     <x-input-label value="ID Dokter" />
-                                    <x-text-input wire:model.defer="drId" :disabled="$formMode === 'edit'" :error="$errors->has('drId')"
-                                        class="w-full mt-1" />
+                                    <x-text-input wire:model.defer="drId" :disabled="$formMode === 'edit'"
+                                        :error="$errors->has('drId')" class="w-full mt-1" />
                                     <x-input-error :messages="$errors->get('drId')" class="mt-1" />
                                 </div>
 
                                 {{-- Nama --}}
                                 <div>
                                     <x-input-label value="Nama Dokter" />
-                                    <x-text-input wire:model.defer="drName" :error="$errors->has('drName')" class="w-full mt-1" />
+                                    <x-text-input wire:model.defer="drName" :error="$errors->has('drName')"
+                                        class="w-full mt-1" />
                                     <x-input-error :messages="$errors->get('drName')" class="mt-1" />
                                 </div>
 
                                 {{-- Poli ID --}}
                                 <div>
                                     <x-input-label value="Poli ID" />
-                                    <x-text-input wire:model.defer="poliId" :error="$errors->has('poliId')" class="w-full mt-1" />
+                                    <x-text-input wire:model.defer="poliId" :error="$errors->has('poliId')"
+                                        class="w-full mt-1" />
                                     <x-input-error :messages="$errors->get('poliId')" class="mt-1" />
                                 </div>
 
                                 {{-- Telepon --}}
                                 <div>
                                     <x-input-label value="Telepon" />
-                                    <x-text-input wire:model.defer="drPhone" :error="$errors->has('drPhone')" class="w-full mt-1" />
+                                    <x-text-input wire:model.defer="drPhone" :error="$errors->has('drPhone')"
+                                        class="w-full mt-1" />
                                     <x-input-error :messages="$errors->get('drPhone')" class="mt-1" />
                                 </div>
 
                                 {{-- Alamat --}}
                                 <div class="sm:col-span-2">
                                     <x-input-label value="Alamat" />
-                                    <x-text-input wire:model.defer="drAddress" :error="$errors->has('drAddress')" class="w-full mt-1" />
+                                    <x-text-input wire:model.defer="drAddress" :error="$errors->has('drAddress')"
+                                        class="w-full mt-1" />
                                     <x-input-error :messages="$errors->get('drAddress')" class="mt-1" />
                                 </div>
 
@@ -337,22 +362,24 @@ new class extends Component {
                                 {{-- Tarif Poli --}}
                                 <div>
                                     <x-input-label value="Tarif Poli" />
-                                    <x-text-input wire:model.defer="poliPrice" :error="$errors->has('poliPrice')" class="w-full mt-1" />
+                                    <x-text-input wire:model.defer="poliPrice" :error="$errors->has('poliPrice')"
+                                        class="w-full mt-1" />
                                     <x-input-error :messages="$errors->get('poliPrice')" class="mt-1" />
                                 </div>
 
                                 {{-- Tarif UGD --}}
                                 <div>
                                     <x-input-label value="Tarif UGD" />
-                                    <x-text-input wire:model.defer="ugdPrice" :error="$errors->has('ugdPrice')" class="w-full mt-1" />
+                                    <x-text-input wire:model.defer="ugdPrice" :error="$errors->has('ugdPrice')"
+                                        class="w-full mt-1" />
                                     <x-input-error :messages="$errors->get('ugdPrice')" class="mt-1" />
                                 </div>
 
                                 {{-- Tarif Poli BPJS --}}
                                 <div>
                                     <x-input-label value="Tarif Poli BPJS" />
-                                    <x-text-input wire:model.defer="poliPriceBpjs" :error="$errors->has('poliPriceBpjs')"
-                                        class="w-full mt-1" />
+                                    <x-text-input wire:model.defer="poliPriceBpjs"
+                                        :error="$errors->has('poliPriceBpjs')" class="w-full mt-1" />
                                     <x-input-error :messages="$errors->get('poliPriceBpjs')" class="mt-1" />
                                 </div>
 
@@ -367,8 +394,8 @@ new class extends Component {
                                 {{-- Status Aktif --}}
                                 <div>
                                     <x-input-label value="Status" />
-                                    <x-select-input wire:model.defer="activeStatus" :error="$errors->has('activeStatus')"
-                                        class="w-full mt-1">
+                                    <x-select-input wire:model.defer="activeStatus"
+                                        :error="$errors->has('activeStatus')" class="w-full mt-1">
                                         <option value="1">Aktif</option>
                                         <option value="0">Nonaktif</option>
                                     </x-select-input>
@@ -378,28 +405,32 @@ new class extends Component {
                                 {{-- RS Admin --}}
                                 <div>
                                     <x-input-label value="RS Admin" />
-                                    <x-text-input wire:model.defer="rsAdmin" :error="$errors->has('rsAdmin')" class="w-full mt-1" />
+                                    <x-text-input wire:model.defer="rsAdmin" :error="$errors->has('rsAdmin')"
+                                        class="w-full mt-1" />
                                     <x-input-error :messages="$errors->get('rsAdmin')" class="mt-1" />
                                 </div>
 
                                 {{-- Kode BPJS --}}
                                 <div>
                                     <x-input-label value="Kode Dokter BPJS" />
-                                    <x-text-input wire:model.defer="kdDrBpjs" :error="$errors->has('kdDrBpjs')" class="w-full mt-1" />
+                                    <x-text-input wire:model.defer="kdDrBpjs" :error="$errors->has('kdDrBpjs')"
+                                        class="w-full mt-1" />
                                     <x-input-error :messages="$errors->get('kdDrBpjs')" class="mt-1" />
                                 </div>
 
                                 {{-- UUID --}}
                                 <div>
                                     <x-input-label value="UUID" />
-                                    <x-text-input wire:model.defer="drUuid" :error="$errors->has('drUuid')" class="w-full mt-1" />
+                                    <x-text-input wire:model.defer="drUuid" :error="$errors->has('drUuid')"
+                                        class="w-full mt-1" />
                                     <x-input-error :messages="$errors->get('drUuid')" class="mt-1" />
                                 </div>
 
                                 {{-- NIK --}}
                                 <div class="sm:col-span-2">
                                     <x-input-label value="NIK" />
-                                    <x-text-input wire:model.defer="drNik" :error="$errors->has('drNik')" class="w-full mt-1" />
+                                    <x-text-input wire:model.defer="drNik" :error="$errors->has('drNik')"
+                                        class="w-full mt-1" />
                                     <x-input-error :messages="$errors->get('drNik')" class="mt-1" />
                                 </div>
 
