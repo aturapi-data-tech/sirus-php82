@@ -26,6 +26,12 @@ new class extends Component {
      */
     public ?string $initialPoliId = null;
 
+    /**
+     * Mode readonly: jika true, tombol "Ubah" akan hilang saat selected.
+     * Berguna untuk form yang sudah selesai/tidak boleh diedit.
+     */
+    public bool $readonly = false;
+
     public function mount(): void
     {
         if (!$this->initialPoliId) {
@@ -140,6 +146,11 @@ new class extends Component {
 
     public function clearSelected(): void
     {
+        // Jika readonly, tidak bisa clear selected
+        if ($this->readonly) {
+            return;
+        }
+
         $this->selected = null;
         $this->resetLov();
     }
@@ -237,22 +248,29 @@ new class extends Component {
     <div class="relative mt-1">
         @if ($selected === null)
             {{-- Mode cari --}}
-            <x-text-input type="text" class="block w-full" :placeholder="$placeholder" wire:model.live.debounce.250ms="search"
-                wire:keydown.escape.prevent="resetLov" wire:keydown.arrow-down.prevent="selectNext"
-                wire:keydown.arrow-up.prevent="selectPrevious" wire:keydown.enter.prevent="chooseHighlighted" />
+            @if (!$readonly)
+                <x-text-input type="text" class="block w-full" :placeholder="$placeholder" wire:model.live.debounce.250ms="search"
+                    wire:keydown.escape.prevent="resetLov" wire:keydown.arrow-down.prevent="selectNext"
+                    wire:keydown.arrow-up.prevent="selectPrevious" wire:keydown.enter.prevent="chooseHighlighted" />
+            @else
+                <x-text-input type="text" class="block w-full bg-gray-100 cursor-not-allowed dark:bg-gray-800"
+                    :placeholder="$placeholder" disabled />
+            @endif
         @else
             {{-- Mode selected --}}
-            <div class="space-y-2">
-                <x-text-input type="text" class="block w-full" :value="$selected['poli_desc'] ?? ''" disabled />
+            <div class="flex items-center gap-2">
+                <x-text-input type="text" class="flex-1 block w-full" :value="$selected['poli_desc'] ?? ''" disabled />
 
-                <x-secondary-button type="button" wire:click="clearSelected">
-                    Ubah
-                </x-secondary-button>
+                @if (!$readonly)
+                    <x-secondary-button type="button" wire:click="clearSelected" class="px-4 whitespace-nowrap">
+                        Ubah
+                    </x-secondary-button>
+                @endif
             </div>
         @endif
 
-        {{-- dropdown hanya saat mode cari --}}
-        @if ($isOpen && $selected === null)
+        {{-- dropdown hanya saat mode cari dan tidak readonly --}}
+        @if ($isOpen && $selected === null && !$readonly)
             <div
                 class="absolute z-50 w-full mt-2 overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
                 <ul class="overflow-y-auto divide-y divide-gray-100 max-h-72 dark:divide-gray-800">
@@ -264,34 +282,22 @@ new class extends Component {
                                     {{ $option['label'] ?? '-' }}
                                 </div>
 
-        {{-- dropdown hanya saat mode cari --}}
-        @if ($isOpen && $selected === null)
-        <div
-            class="absolute z-50 w-full mt-2 overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
-            <ul class="overflow-y-auto divide-y divide-gray-100 max-h-72 dark:divide-gray-800">
-                @foreach ($options as $index => $option)
-                <li wire:key="lov-poli-{{ $option['poli_id'] ?? $index }}-{{ $index }}" x-ref="lovItem{{ $index }}">
-                    <x-lov.item wire:click="choose({{ $index }})" :active="$index === $selectedIndex">
-                        <div class="font-semibold text-gray-900 dark:text-gray-100">
-                            {{ $option['label'] ?? '-' }}
-                        </div>
+                                @if (!empty($option['hint']))
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                                        {{ $option['hint'] }}
+                                    </div>
+                                @endif
+                            </x-lov.item>
+                        </li>
+                    @endforeach
+                </ul>
 
-                        @if (!empty($option['hint']))
-                        <div class="text-xs text-gray-500 dark:text-gray-400">
-                            {{ $option['hint'] }}
-                        </div>
-                        @endif
-                    </x-lov.item>
-                </li>
-                @endforeach
-            </ul>
-
-            @if (mb_strlen(trim($search)) >= 2 && count($options) === 0)
-            <div class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                Data tidak ditemukan.
+                @if (mb_strlen(trim($search)) >= 2 && count($options) === 0)
+                    <div class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                        Data tidak ditemukan.
+                    </div>
+                @endif
             </div>
-            @endif
-        </div>
         @endif
     </div>
 </x-lov.dropdown>
