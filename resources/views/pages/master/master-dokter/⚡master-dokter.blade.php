@@ -65,8 +65,20 @@ new class extends Component {
         $searchKeyword = trim($this->searchKeyword);
 
         // pilih kolom supaya konsisten & ringan
-        $queryBuilder = DB::table('rsmst_doctors')->select('dr_id', 'dr_name', 'poli_id', 'dr_phone', 'dr_address', 'basic_salary', 'active_status')->orderBy('dr_name', 'asc');
-
+         $queryBuilder = DB::table('rsmst_doctors as a')
+        ->join('rsmst_polis as b', 'a.poli_id', '=', 'b.poli_id')
+        ->select(
+            'a.dr_id',
+            'a.dr_name',
+            'a.poli_id',
+            'b.poli_desc', // TAMBAH INI - ambil dari tabel poli
+            'a.dr_phone',
+            'a.dr_address',
+            'a.basic_salary',
+            'a.active_status'
+        )
+        ->orderBy('a.dr_name', 'asc');
+        
         if ($searchKeyword !== '') {
             $uppercaseKeyword = mb_strtoupper($searchKeyword);
 
@@ -171,7 +183,7 @@ new class extends Component {
                                 class="hover:bg-gray-50 dark:hover:bg-gray-800/60">
                                 <td class="px-4 py-3">{{ $row->dr_id }}</td>
                                 <td class="px-4 py-3 font-semibold">{{ $row->dr_name }}</td>
-                                <td class="px-4 py-3">{{ $row->poli_id }}</td>
+                                <td class="px-4 py-3">{{ $row->poli_desc }}</td>
                                 <td class="px-4 py-3">{{ $row->dr_phone }}</td>
                                 <td class="px-4 py-3">{{ number_format((float) $row->basic_salary) }}</td>
 
