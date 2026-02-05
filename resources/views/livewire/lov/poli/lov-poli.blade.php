@@ -264,22 +264,34 @@ new class extends Component {
                                     {{ $option['label'] ?? '-' }}
                                 </div>
 
-                                @if (!empty($option['hint']))
-                                    <div class="text-xs text-gray-500 dark:text-gray-400">
-                                        {{ $option['hint'] }}
-                                    </div>
-                                @endif
-                            </x-lov.item>
-                        </li>
-                    @endforeach
-                </ul>
+        {{-- dropdown hanya saat mode cari --}}
+        @if ($isOpen && $selected === null)
+        <div
+            class="absolute z-50 w-full mt-2 overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
+            <ul class="overflow-y-auto divide-y divide-gray-100 max-h-72 dark:divide-gray-800">
+                @foreach ($options as $index => $option)
+                <li wire:key="lov-poli-{{ $option['poli_id'] ?? $index }}-{{ $index }}" x-ref="lovItem{{ $index }}">
+                    <x-lov.item wire:click="choose({{ $index }})" :active="$index === $selectedIndex">
+                        <div class="font-semibold text-gray-900 dark:text-gray-100">
+                            {{ $option['label'] ?? '-' }}
+                        </div>
 
-                @if (mb_strlen(trim($search)) >= 2 && count($options) === 0)
-                    <div class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                        Data tidak ditemukan.
-                    </div>
-                @endif
+                        @if (!empty($option['hint']))
+                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                            {{ $option['hint'] }}
+                        </div>
+                        @endif
+                    </x-lov.item>
+                </li>
+                @endforeach
+            </ul>
+
+            @if (mb_strlen(trim($search)) >= 2 && count($options) === 0)
+            <div class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                Data tidak ditemukan.
             </div>
+            @endif
+        </div>
         @endif
     </div>
 </x-lov.dropdown>
