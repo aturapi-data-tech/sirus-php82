@@ -1,13 +1,16 @@
 <?php
 
+namespace App\Http\Livewire\Pages\Master\MasterPasien;
+
 use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
+use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 
 new class extends Component {
-    use WithPagination;
+    use WithPagination, MasterPasienTrait;
 
     /* -------------------------
      | Filter & Pagination state
@@ -52,7 +55,7 @@ new class extends Component {
     #[On('master.pasien.saved')]
     public function refreshAfterSaved(): void
     {
-        $this->dispatch('$refresh')->self();
+        $this->resetPage();
     }
 
     /* -------------------------
@@ -72,7 +75,7 @@ new class extends Component {
 
             $queryBuilder->where(function ($subQuery) use ($uppercaseKeyword, $searchKeyword) {
                 if (ctype_digit($searchKeyword)) {
-                    $subQuery->orWhere('reg_no', $searchKeyword)->orWhere('reg_no', $searchKeyword)->orWhere('nik_bpjs', $searchKeyword);
+                    $subQuery->orWhere('reg_no', $searchKeyword)->orWhere('nik_bpjs', $searchKeyword);
                 }
 
                 $subQuery
@@ -247,4 +250,5 @@ new class extends Component {
 
             </div>
         </div>
+    </div>
     </div>
