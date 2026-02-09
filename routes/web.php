@@ -22,6 +22,12 @@ Route::middleware(['auth'])->group(function () {
 
     Route::livewire('/master/dokter', 'pages::master.master-dokter.master-dokter')
         ->name('master.dokter');
+
+    Route::livewire('/master/pasien', 'pages::master.master-pasien.master-pasien')
+        ->name('master.pasien');
+
+    Route::livewire('/master/obat', 'pages::master.master-obat.master-obat')
+        ->name('master.obat');
 });
 
 

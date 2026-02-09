@@ -9,6 +9,9 @@ class MakeLov extends Command
 {
     protected $signature = 'make:lov
         {path : Contoh: product/lov-product}
+        {--table= : Nama tabel database}
+        {--id= : Nama kolom ID (default: id)}
+        {--name= : Nama kolom untuk display (default: name)}
         {--force : Overwrite jika file sudah ada}';
 
     protected $description = 'Create a Livewire 4 SFC LOV component under resources/views/livewire/lov/*';
@@ -37,165 +40,358 @@ class MakeLov extends Command
             return self::FAILURE;
         }
 
-        File::put($fullPath, $this->stubTemplate());
+        // Ambil parameter
+        $tableName = $this->option('table') ?: '';
+        $idColumn = $this->option('id') ?: 'id';
+        $nameColumn = $this->option('name') ?: 'name';
 
-        $this->info("Created: {$fullPath}");
-        $this->line("Use it as: <livewire:lov." . str_replace('/', '.', $path) . " />");
+        // Generate stub berdasarkan input
+        $stub = $this->generateStub($fileName, $tableName, $idColumn, $nameColumn);
+
+        File::put($fullPath, $stub);
+
+        $this->info("✅ LOV created: {$fullPath}");
+        $this->line("📦 Use it as: <livewire:lov." . str_replace('/', '.', $path) . " />");
+
+        $this->line("🔧 Parameters:");
+        $this->line("  - target='formName' (wajib, untuk identifikasi)");
+        $this->line("  - :initialId='value' (opsional, untuk mode edit)");
+        $this->line("  - :readonly='true' (opsional, untuk nonaktifkan tombol Ubah)");
+
+        if ($tableName) {
+            $this->line("⚙️  Table: {$tableName}, ID: {$idColumn}, Name: {$nameColumn}");
+        } else {
+            $this->line("ℹ️  Jangan lupa konfigurasi query database di component!");
+        }
 
         return self::SUCCESS;
     }
 
-    protected function stubTemplate(): string
+    protected function generateStub(string $fileName, string $tableName, string $idColumn, string $nameColumn): string
     {
-        return <<<'BLADE'
+        // Normalize nama untuk placeholder
+        $displayName = str_replace(['lov-', 'lov_', '-', '_'], ' ', $fileName);
+        $displayName = ucwords($displayName);
+        $lowerName = strtolower($displayName);
+
+        // Jika ada table name, generate query otomatis
+        $hasTable = !empty($tableName);
+
+        // Query untuk mode edit
+        $editQuery = '';
+        if ($hasTable) {
+            $editQuery = <<<PHP
+        \$row = DB::table('{$tableName}')
+            ->select(['{$idColumn}', '{$nameColumn}'])
+            ->where('{$idColumn}', \$this->initialId)
+            ->first();
+
+        if (\$row) {
+            \$this->selected = [
+                '{$idColumn}' => (string) \$row->{$idColumn},
+                '{$nameColumn}' => (string) (\$row->{$nameColumn} ?? ''),
+            ];
+        }
+PHP;
+        } else {
+            $editQuery = "// TODO: Load data dari database berdasarkan initialId\n        // \$this->selected = ['{$idColumn}' => 'value', '{$nameColumn}' => 'value'];";
+        }
+
+        // Query untuk search
+        $searchQuery = '';
+        if ($hasTable) {
+            $searchQuery = <<<PHP
+        // ===== 1) exact match by {$idColumn} =====
+        if (ctype_digit(\$keyword)) {
+            \$exactRow = DB::table('{$tableName}')
+                ->select(['{$idColumn}', '{$nameColumn}'])
+                ->where('{$idColumn}', \$keyword)
+                ->first();
+
+            if (\$exactRow) {
+                \$this->dispatchSelected([
+                    '{$idColumn}' => (string) \$exactRow->{$idColumn},
+                    '{$nameColumn}' => (string) (\$exactRow->{$nameColumn} ?? ''),
+                ]);
+                return;
+            }
+        }
+
+        // ===== 2) search by {$nameColumn} partial =====
+        \$upperKeyword = mb_strtoupper(\$keyword);
+
+        \$rows = DB::table('{$tableName}')
+            ->select(['{$idColumn}', '{$nameColumn}'])
+            ->where(function (\$q) use (\$keyword, \$upperKeyword) {
+                if (ctype_digit(\$keyword)) {
+                    \$q->orWhere('{$idColumn}', 'like', "%{\$keyword}%");
+                }
+                \$q->orWhereRaw('UPPER({$nameColumn}) LIKE ?', ["%{\$upperKeyword}%"]);
+            })
+            ->orderBy('{$nameColumn}')
+            ->limit(50)
+            ->get();
+PHP;
+        } else {
+            $searchQuery = "// TODO: Ganti dengan query database sesuai kebutuhan\n        // \$rows = DB::table('nama_tabel')->where(...)->get();";
+        }
+
+        // Mapping untuk options
+        $optionsMapping = '';
+        if ($hasTable) {
+            $optionsMapping = <<<PHP
+        \$this->options = \$rows
+            ->map(function (\$row) {
+                \$id = (string) \$row->{$idColumn};
+                \$name = (string) (\$row->{$nameColumn} ?? '');
+
+                return [
+                    // payload (sesuaikan dengan kebutuhan)
+                    '{$idColumn}' => \$id,
+                    '{$nameColumn}' => \$name,
+
+                    // UI
+                    'label' => \$name ?: '-',
+                    'hint' => \$id ? "ID {\$id}" : '',
+                ];
+            })
+            ->toArray();
+PHP;
+        } else {
+            $optionsMapping = "// TODO: Map hasil query ke format options\n        // \$this->options = [];";
+        }
+
+        // Dispatch payload
+        $dispatchPayload = '';
+        if ($hasTable) {
+            $dispatchPayload = <<<PHP
+        \$payload = [
+            '{$idColumn}' => \$this->options[\$index]['{$idColumn}'] ?? '',
+            '{$nameColumn}' => \$this->options[\$index]['{$nameColumn}'] ?? '',
+        ];
+PHP;
+        } else {
+            $dispatchPayload = "// TODO: Sesuaikan payload dengan kebutuhan\n        \$payload = \$this->options[\$index];";
+        }
+
+        return <<<BLADE
 <?php
 
 use Livewire\Component;
+use Illuminate\Support\Facades\DB;
 
-/**
- * LOV Base (SFC - Livewire 4)
- * - Reusable
- * - Keyboard navigation (wire:keydown.*)
- * - Scroll mengikuti highlight (lov-scroll)
- * - Emits selected item to parent (dispatch: lov.selected)
- *
- * Use:
- * <livewire:lov.product.lov-product target="formEntryProduct" />
- *
- * Parent:
- * #[On('lov.selected')]
- * public function handleLovSelected(string $target, array $payload) {}
- */
-new class extends Component
-{
-    /** Target untuk membedakan LOV dipakai di form mana */
-    public string $target = 'default';
+new class extends Component {
+    /** target untuk membedakan LOV ini dipakai di form mana */
+    public string \$target = 'default';
 
     /** UI */
-    public string $label = 'Cari';
-    public string $placeholder = 'Ketik untuk mencari...';
+    public string \$label = 'Cari {$displayName}';
+    public string \$placeholder = 'Ketik {$lowerName}...';
 
-    /** State */
-    public string $search = '';
-    public array $options = [];
-    public bool $isOpen = false;
-    public int $selectedIndex = 0;
+    /** state */
+    public string \$search = '';
+    public array \$options = [];
+    public bool \$isOpen = false;
+    public int \$selectedIndex = 0;
 
-    public function updatedSearch(): void
+    /** selected state (buat mode selected + edit) */
+    public ?array \$selected = null;
+
+    /**
+     * Mode edit: parent bisa kirim initialId yang sudah tersimpan.
+     */
+    public ?string \$initialId = null;
+
+    /**
+     * Mode readonly: jika true, tombol "Ubah" akan hilang saat selected.
+     * Berguna untuk form yang sudah selesai/tidak boleh diedit.
+     */
+    public bool \$readonly = false;
+
+    public function mount(): void
     {
-        $keyword = trim($this->search);
-
-        if (mb_strlen($keyword) < 2) {
-            $this->closeAndResetList();
+        if (!\$this->initialId) {
             return;
         }
 
-        /**
-         * TODO: Ganti query sesuai LOV masing-masing.
-         * options harus array seperti:
-         * [
-         *   ['label' => 'Nama', 'hint' => 'Kode • Harga', ...payload...],
-         *   ...
-         * ]
-         */
-        $this->options = [];
+{$editQuery}
+    }
 
-        $this->isOpen = count($this->options) > 0;
-        $this->selectedIndex = 0;
-
-        if ($this->isOpen) {
-            $this->emitScroll();
+    public function updatedSearch(): void
+    {
+        // kalau sudah selected, jangan cari lagi
+        if (\$this->selected !== null) {
+            return;
         }
+
+        \$keyword = trim(\$this->search);
+
+        // minimal 2 char
+        if (mb_strlen(\$keyword) < 2) {
+            \$this->closeAndResetList();
+            return;
+        }
+
+{$searchQuery}
+
+{$optionsMapping}
+
+        \$this->isOpen = count(\$this->options) > 0;
+        \$this->selectedIndex = 0;
+
+        if (\$this->isOpen) {
+            \$this->emitScroll();
+        }
+    }
+
+    public function clearSelected(): void
+    {
+        // Jika readonly, tidak bisa clear selected
+        if (\$this->readonly) {
+            return;
+        }
+
+        \$this->selected = null;
+        \$this->resetLov();
     }
 
     public function close(): void
     {
-        $this->isOpen = false;
+        \$this->isOpen = false;
     }
 
     public function resetLov(): void
     {
-        $this->reset(['search', 'options', 'isOpen', 'selectedIndex']);
+        \$this->reset(['search', 'options', 'isOpen', 'selectedIndex']);
     }
 
     public function selectNext(): void
     {
-        if (!$this->isOpen || count($this->options) === 0) return;
+        if (!\$this->isOpen || count(\$this->options) === 0) {
+            return;
+        }
 
-        $this->selectedIndex = ($this->selectedIndex + 1) % count($this->options);
-        $this->emitScroll();
+        \$this->selectedIndex = (\$this->selectedIndex + 1) % count(\$this->options);
+        \$this->emitScroll();
     }
 
     public function selectPrevious(): void
     {
-        if (!$this->isOpen || count($this->options) === 0) return;
+        if (!\$this->isOpen || count(\$this->options) === 0) {
+            return;
+        }
 
-        $this->selectedIndex--;
-        if ($this->selectedIndex < 0) $this->selectedIndex = count($this->options) - 1;
+        \$this->selectedIndex--;
+        if (\$this->selectedIndex < 0) {
+            \$this->selectedIndex = count(\$this->options) - 1;
+        }
 
-        $this->emitScroll();
+        \$this->emitScroll();
     }
 
-    public function choose(int $index): void
+    public function choose(int \$index): void
     {
-        if (!isset($this->options[$index])) return;
+        if (!isset(\$this->options[\$index])) {
+            return;
+        }
 
-        $payload = $this->options[$index];
+{$dispatchPayload}
 
-        // event standar untuk semua LOV
-        $this->dispatch('lov.selected', target: $this->target, payload: $payload);
-
-        $this->resetLov();
+        \$this->dispatchSelected(\$payload);
     }
 
     public function chooseHighlighted(): void
     {
-        $this->choose($this->selectedIndex);
+        \$this->choose(\$this->selectedIndex);
     }
+
+    /* helpers */
 
     protected function closeAndResetList(): void
     {
-        $this->options = [];
-        $this->isOpen = false;
-        $this->selectedIndex = 0;
+        \$this->options = [];
+        \$this->isOpen = false;
+        \$this->selectedIndex = 0;
+    }
+
+    protected function dispatchSelected(array \$payload): void
+    {
+        // set selected -> UI berubah jadi nama + tombol ubah
+        \$this->selected = \$payload;
+
+        // bersihkan mode search
+        \$this->search = '';
+        \$this->options = [];
+        \$this->isOpen = false;
+        \$this->selectedIndex = 0;
+
+        // emit ke parent
+        \$this->dispatch('lov.selected', target: \$this->target, payload: \$payload);
     }
 
     protected function emitScroll(): void
     {
-        // id komponen unik agar event tidak nyasar kalau ada banyak LOV di halaman
-        $this->dispatch('lov-scroll', id: $this->getId(), index: $this->selectedIndex);
+        \$this->dispatch('lov-scroll', id: \$this->getId(), index: \$this->selectedIndex);
     }
 };
 ?>
 
-<x-lov.dropdown :id="$this->getId()" :isOpen="$isOpen" :selectedIndex="$selectedIndex" close="close">
-    <x-input-label :value="$label" />
+<x-lov.dropdown :id="\$this->getId()" :isOpen="\$isOpen" :selectedIndex="\$selectedIndex" close="close">
+    <x-input-label :value="\$label" />
 
     <div class="relative mt-1">
-        <x-text-input
-            type="text"
-            class="block w-full"
-            :placeholder="$placeholder"
-            wire:model.live.debounce.250ms="search"
-            wire:keydown.escape.prevent="resetLov"
-            wire:keydown.arrow-down.prevent="selectNext"
-            wire:keydown.arrow-up.prevent="selectPrevious"
-            wire:keydown.enter.prevent="chooseHighlighted"
-        />
+        @if (\$selected === null)
+            {{-- Mode cari --}}
+            @if (!\$readonly)
+                <x-text-input type="text" class="block w-full" :placeholder="\$placeholder" wire:model.live.debounce.250ms="search"
+                    wire:keydown.escape.prevent="resetLov" wire:keydown.arrow-down.prevent="selectNext"
+                    wire:keydown.arrow-up.prevent="selectPrevious" wire:keydown.enter.prevent="chooseHighlighted" />
+            @else
+                <x-text-input
+                    type="text"
+                    class="block w-full bg-gray-100 cursor-not-allowed dark:bg-gray-800"
+                    :placeholder="\$placeholder"
+                    disabled
+                />
+            @endif
+        @else
+            {{-- Mode selected --}}
+            <div class="flex items-center gap-2">
+                <x-text-input
+                    type="text"
+                    class="flex-1 block w-full"
+                    :value="\$selected['{$nameColumn}'] ?? ''"
+                    disabled
+                />
 
-        @if ($isOpen)
-            <div class="absolute z-50 w-full mt-2 overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
+                @if (!\$readonly)
+                    <x-secondary-button
+                        type="button"
+                        wire:click="clearSelected"
+                        class="px-4 whitespace-nowrap"
+                    >
+                        Ubah
+                    </x-secondary-button>
+                @endif
+            </div>
+        @endif
+
+        {{-- dropdown hanya saat mode cari dan tidak readonly --}}
+        @if (\$isOpen && \$selected === null && !\$readonly)
+            <div
+                class="absolute z-50 w-full mt-2 overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
                 <ul class="overflow-y-auto divide-y divide-gray-100 max-h-72 dark:divide-gray-800">
-                    @foreach ($options as $index => $option)
-                        <li wire:key="lov-option-{{ $index }}" x-ref="lovItem{{ $index }}">
-                            <x-lov.item wire:click="choose({{ $index }})" :active="$index === $selectedIndex">
+                    @foreach (\$options as \$index => \$option)
+                        <li wire:key="lov-{{ \$option['{$idColumn}'] ?? \$index }}-{{ \$index }}"
+                            x-ref="lovItem{{ \$index }}">
+                            <x-lov.item wire:click="choose({{ \$index }})" :active="\$index === \$selectedIndex">
                                 <div class="font-semibold text-gray-900 dark:text-gray-100">
-                                    {{ $option['label'] ?? 'Item' }}
+                                    {{ \$option['label'] ?? '-' }}
                                 </div>
 
-                                @if (!empty($option['hint']))
+                                @if (!empty(\$option['hint']))
                                     <div class="text-xs text-gray-500 dark:text-gray-400">
-                                        {{ $option['hint'] }}
+                                        {{ \$option['hint'] }}
                                     </div>
                                 @endif
                             </x-lov.item>
@@ -203,7 +399,7 @@ new class extends Component
                     @endforeach
                 </ul>
 
-                @if (mb_strlen(trim($search)) >= 2 && count($options) === 0)
+                @if (mb_strlen(trim(\$search)) >= 2 && count(\$options) === 0)
                     <div class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                         Data tidak ditemukan.
                     </div>

@@ -8,8 +8,8 @@ new class extends Component {
     public string $target = 'default';
 
     /** UI */
-    public string $label = 'Cari Obat';
-    public string $placeholder = 'Ketik nama/kode/kandungan obat...';
+    public string $label = 'Cari Poli';
+    public string $placeholder = 'Ketik nama/kode poli...';
 
     /** state */
     public string $search = '';
@@ -21,9 +21,10 @@ new class extends Component {
     public ?array $selected = null;
 
     /**
-     * Mode edit: parent bisa kirim product_id yang sudah tersimpan.
+     * Mode edit: parent bisa kirim poli_id yang sudah tersimpan.
+     * Cukup kirim initialPoliId, sisanya akan di-load dari DB.
      */
-    public ?string $initialProductId = null;
+    public ?string $initialPoliId = null;
 
     /**
      * Mode readonly: jika true, tombol "Ubah" akan hilang saat selected.
@@ -33,21 +34,22 @@ new class extends Component {
 
     public function mount(): void
     {
-        if (!$this->initialProductId) {
+        if (!$this->initialPoliId) {
             return;
         }
 
-        $row = DB::table('immst_products')
-            ->select(['product_id', 'product_name', 'sales_price'])
-            ->where('product_id', $this->initialProductId)
-            ->where('active_status', '1')
+        $row = DB::table('rsmst_polis')
+            ->select(['poli_id', 'poli_desc', 'kd_poli_bpjs', 'poli_uuid', 'spesialis_status'])
+            ->where('poli_id', $this->initialPoliId)
             ->first();
 
         if ($row) {
             $this->selected = [
-                'product_id' => (string) $row->product_id,
-                'product_name' => (string) ($row->product_name ?? ''),
-                'sales_price' => (int) ($row->sales_price ?? 0),
+                'poli_id' => (string) $row->poli_id,
+                'poli_desc' => (string) ($row->poli_desc ?? ''),
+                'kd_poli_bpjs' => (string) ($row->kd_poli_bpjs ?? ''),
+                'poli_uuid' => (string) ($row->poli_uuid ?? ''),
+                'spesialis_status' => (string) ($row->spesialis_status ?? ''),
             ];
         }
     }
@@ -67,82 +69,72 @@ new class extends Component {
             return;
         }
 
-        // ===== 1) exact match by product_id =====
-        if (ctype_digit($keyword)) {
-            $exactRow = DB::table('immst_products')
-                ->select(['product_id', 'product_name', 'sales_price'])
-                ->where('active_status', '1')
-                ->where('product_id', $keyword)
-                ->first();
+        // ===== 1) exact match by poli_id / poli_uuid / kd_poli_bpjs =====
+        $exactQuery = DB::table('rsmst_polis')
+            ->select(['poli_id', 'poli_desc', 'kd_poli_bpjs', 'poli_uuid', 'spesialis_status'])
+            ->where(function ($q) use ($keyword) {
+                if (ctype_digit($keyword)) {
+                    $q->orWhere('poli_id', $keyword);
+                }
+                $q->orWhere('poli_uuid', $keyword);
+                $q->orWhere('kd_poli_bpjs', $keyword);
+            });
 
-            if ($exactRow) {
-                $this->dispatchSelected([
-                    'product_id' => (string) $exactRow->product_id,
-                    'product_name' => (string) ($exactRow->product_name ?? ''),
-                    'sales_price' => (int) ($exactRow->sales_price ?? 0),
-                ]);
-                return;
-            }
+        $exactRow = $exactQuery->first();
+
+        if ($exactRow) {
+            $this->dispatchSelected([
+                'poli_id' => (string) $exactRow->poli_id,
+                'poli_desc' => (string) ($exactRow->poli_desc ?? ''),
+                'kd_poli_bpjs' => (string) ($exactRow->kd_poli_bpjs ?? ''),
+                'poli_uuid' => (string) ($exactRow->poli_uuid ?? ''),
+                'spesialis_status' => (string) ($exactRow->spesialis_status ?? ''),
+            ]);
+            return;
         }
 
-        // ===== 2) search by name / content / id partial =====
+        // ===== 2) search by desc / kode / id partial =====
         $upperKeyword = mb_strtoupper($keyword);
 
-        $rows = DB::select(
-            "
-            SELECT * FROM (
-                SELECT
-                    a.product_id,
-                    a.product_name,
-                    a.sales_price,
-                    (
-                        SELECT REPLACE(STRING_AGG(x.cont_desc), ',', '') || a.product_name
-                        FROM immst_productcontents z
-                        INNER JOIN immst_contents x ON z.cont_id = x.cont_id
-                        WHERE z.product_id = a.product_id
-                    ) as elasticsearch,
-                    (
-                        SELECT STRING_AGG(x.cont_desc)
-                        FROM immst_productcontents z
-                        INNER JOIN immst_contents x ON z.cont_id = x.cont_id
-                        WHERE z.product_id = a.product_id
-                    ) as product_content
-                FROM immst_products a
-                WHERE a.active_status = '1'
-                GROUP BY a.product_id, a.product_name, a.sales_price
-                ORDER BY a.product_name
-            ) subquery
-            WHERE UPPER(elasticsearch) LIKE '%' || ? || '%'
-            LIMIT 50
-        ",
-            [$upperKeyword],
-        );
+        $rows = DB::table('rsmst_polis')
+            ->select(['poli_id', 'poli_desc', 'kd_poli_bpjs', 'poli_uuid', 'spesialis_status'])
+            ->where(function ($q) use ($keyword, $upperKeyword) {
+                if (ctype_digit($keyword)) {
+                    $q->orWhere('poli_id', 'like', "%{$keyword}%");
+                }
 
-        $this->options = array_map(function ($row) {
-            $productId = (string) $row->product_id;
-            $productName = (string) ($row->product_name ?? '');
-            $salesPrice = (int) ($row->sales_price ?? 0);
-            $productContent = (string) ($row->product_content ?? '');
+                $q->orWhere('kd_poli_bpjs', 'like', "%{$keyword}%");
+                $q->orWhereRaw('UPPER(poli_desc) LIKE ?', ["%{$upperKeyword}%"]);
+            })
+            ->orderBy('poli_desc')
+            ->limit(50)
+            ->get();
 
-            // Format harga
-            $formattedPrice = number_format($salesPrice, 0, ',', '.');
+        $this->options = $rows
+            ->map(function ($row) {
+                $poliId = (string) $row->poli_id;
+                $desc = (string) ($row->poli_desc ?? '');
+                $bpjs = (string) ($row->kd_poli_bpjs ?? '');
+                $uuid = (string) ($row->poli_uuid ?? '');
+                $spes = (string) ($row->spesialis_status ?? '');
 
-            // Potong product_content jika terlalu panjang
-            $contentShort = $productContent ? (strlen($productContent) > 50 ? substr($productContent, 0, 50) . '...' : $productContent) : '';
+                $uuidShort = $uuid ? substr($uuid, 0, 8) . '…' : '';
+                $parts = array_filter([$poliId ? "ID {$poliId}" : null, $bpjs ? "BPJS {$bpjs}" : null, $uuidShort ? "UUID {$uuidShort}" : null]);
 
-            return [
-                // payload
-                'product_id' => $productId,
-                'product_name' => $productName,
-                'sales_price' => $salesPrice,
-                'product_content' => $productContent,
+                return [
+                    // payload
+                    'poli_id' => $poliId,
+                    'poli_desc' => $desc,
+                    'kd_poli_bpjs' => $bpjs,
+                    'poli_uuid' => $uuid,
+                    'spesialis_status' => $spes,
 
-                // UI
-                'label' => $productName ?: '-',
-                'hint' => "ID: {$productId} • Harga: Rp {$formattedPrice}",
-                'content' => $contentShort,
-            ];
-        }, $rows);
+                    // UI
+                    'label' => $desc ?: '-',
+                    'hint' => implode(' • ', $parts),
+                ];
+            })
+            ->toArray();
 
         $this->isOpen = count($this->options) > 0;
         $this->selectedIndex = 0;
@@ -204,10 +196,11 @@ new class extends Component {
         }
 
         $payload = [
-            'product_id' => $this->options[$index]['product_id'] ?? '',
-            'product_name' => $this->options[$index]['product_name'] ?? '',
-            'sales_price' => (int) ($this->options[$index]['sales_price'] ?? 0),
-            'product_content' => $this->options[$index]['product_content'] ?? '',
+            'poli_id' => $this->options[$index]['poli_id'] ?? '',
+            'poli_desc' => $this->options[$index]['poli_desc'] ?? '',
+            'kd_poli_bpjs' => $this->options[$index]['kd_poli_bpjs'] ?? '',
+            'poli_uuid' => $this->options[$index]['poli_uuid'] ?? '',
+            'spesialis_status' => $this->options[$index]['spesialis_status'] ?? '',
         ];
 
         $this->dispatchSelected($payload);
@@ -266,7 +259,7 @@ new class extends Component {
         @else
             {{-- Mode selected --}}
             <div class="flex items-center gap-2">
-                <x-text-input type="text" class="flex-1 block w-full" :value="$selected['product_name'] ?? ''" disabled />
+                <x-text-input type="text" class="flex-1 block w-full" :value="$selected['poli_desc'] ?? ''" disabled />
 
                 @if (!$readonly)
                     <x-secondary-button type="button" wire:click="clearSelected" class="px-4 whitespace-nowrap">
@@ -282,26 +275,18 @@ new class extends Component {
                 class="absolute z-50 w-full mt-2 overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
                 <ul class="overflow-y-auto divide-y divide-gray-100 max-h-72 dark:divide-gray-800">
                     @foreach ($options as $index => $option)
-                        <li wire:key="lov-product-{{ $option['product_id'] ?? $index }}-{{ $index }}"
+                        <li wire:key="lov-poli-{{ $option['poli_id'] ?? $index }}-{{ $index }}"
                             x-ref="lovItem{{ $index }}">
                             <x-lov.item wire:click="choose({{ $index }})" :active="$index === $selectedIndex">
-                                <div class="flex flex-col">
-                                    <div class="font-semibold text-gray-900 dark:text-gray-100">
-                                        {{ $option['label'] ?? '-' }}
-                                    </div>
-
-                                    @if (!empty($option['hint']))
-                                        <div class="text-xs text-gray-500 dark:text-gray-400">
-                                            {{ $option['hint'] }}
-                                        </div>
-                                    @endif
-
-                                    @if (!empty($option['content']))
-                                        <div class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                                            <span class="font-medium">Kandungan:</span> {{ $option['content'] }}
-                                        </div>
-                                    @endif
+                                <div class="font-semibold text-gray-900 dark:text-gray-100">
+                                    {{ $option['label'] ?? '-' }}
                                 </div>
+
+                                @if (!empty($option['hint']))
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                                        {{ $option['hint'] }}
+                                    </div>
+                                @endif
                             </x-lov.item>
                         </li>
                     @endforeach
