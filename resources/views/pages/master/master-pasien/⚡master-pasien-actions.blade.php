@@ -8,321 +8,102 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Http\Traits\SATUSEHAT\PatientTrait;
 
 new class extends Component {
-    use MasterPasienTrait;
+    use MasterPasienTrait, PatientTrait;
 
     public string $formMode = 'create'; // create|edit
-    public string $isOpenMode = 'insert'; // insert|update|tampil
-    public bool $disabledProperty = false;
+    public string $regNo = '';
 
-    // Data utama sesuai struktur dari contoh
-    public array $dataPasien = [
-        'pasien' => [
-            'pasientidakdikenal' => [],
-            'regNo' => '',
-            'gelarDepan' => '',
-            'regName' => '',
-            'gelarBelakang' => '',
-            'namaPanggilan' => '',
-            'tempatLahir' => '',
-            'tglLahir' => '',
-            'thn' => '',
-            'bln' => '',
-            'hari' => '',
-            'jenisKelamin' => [
-                'jenisKelaminId' => 1,
-                'jenisKelaminDesc' => 'Laki-laki',
-                'jenisKelaminOptions' => [['jenisKelaminId' => 0, 'jenisKelaminDesc' => 'Tidak diketaui'], ['jenisKelaminId' => 1, 'jenisKelaminDesc' => 'Laki-laki'], ['jenisKelaminId' => 2, 'jenisKelaminDesc' => 'Perempuan'], ['jenisKelaminId' => 3, 'jenisKelaminDesc' => 'Tidak dapat di tentukan'], ['jenisKelaminId' => 4, 'jenisKelaminDesc' => 'Tidak Mengisi']],
-            ],
-            'agama' => [
-                'agamaId' => '1',
-                'agamaDesc' => 'Islam',
-                'agamaOptions' => [['agamaId' => 1, 'agamaDesc' => 'Islam'], ['agamaId' => 2, 'agamaDesc' => 'Kristen (Protestan)'], ['agamaId' => 3, 'agamaDesc' => 'Katolik'], ['agamaId' => 4, 'agamaDesc' => 'Hindu'], ['agamaId' => 5, 'agamaDesc' => 'Budha'], ['agamaId' => 6, 'agamaDesc' => 'Konghucu'], ['agamaId' => 7, 'agamaDesc' => 'Penghayat'], ['agamaId' => 8, 'agamaDesc' => 'Lain-lain']],
-            ],
-            'statusPerkawinan' => [
-                'statusPerkawinanId' => '1',
-                'statusPerkawinanDesc' => 'Belum Kawin',
-                'statusPerkawinanOptions' => [['statusPerkawinanId' => 1, 'statusPerkawinanDesc' => 'Belum Kawin'], ['statusPerkawinanId' => 2, 'statusPerkawinanDesc' => 'Kawin'], ['statusPerkawinanId' => 3, 'statusPerkawinanDesc' => 'Cerai Hidup'], ['statusPerkawinanId' => 4, 'statusPerkawinanDesc' => 'Cerai Mati']],
-            ],
-            'pendidikan' => [
-                'pendidikanId' => '3',
-                'pendidikanDesc' => 'SLTA Sederajat',
-                'pendidikanOptions' => [['pendidikanId' => 0, 'pendidikanDesc' => 'Tidak Sekolah'], ['pendidikanId' => 1, 'pendidikanDesc' => 'SD'], ['pendidikanId' => 2, 'pendidikanDesc' => 'SLTP Sederajat'], ['pendidikanId' => 3, 'pendidikanDesc' => 'SLTA Sederajat'], ['pendidikanId' => 4, 'pendidikanDesc' => 'D1-D3'], ['pendidikanId' => 5, 'pendidikanDesc' => 'D4'], ['pendidikanId' => 6, 'pendidikanDesc' => 'S1'], ['pendidikanId' => 7, 'pendidikanDesc' => 'S2'], ['pendidikanId' => 8, 'pendidikanDesc' => 'S3']],
-            ],
-            'pekerjaan' => [
-                'pekerjaanId' => '4',
-                'pekerjaanDesc' => 'Pegawai Swasta/ Wiraswasta',
-                'pekerjaanOptions' => [['pekerjaanId' => 0, 'pekerjaanDesc' => 'Tidak Bekerja'], ['pekerjaanId' => 1, 'pekerjaanDesc' => 'PNS'], ['pekerjaanId' => 2, 'pekerjaanDesc' => 'TNI/POLRI'], ['pekerjaanId' => 3, 'pekerjaanDesc' => 'BUMN'], ['pekerjaanId' => 4, 'pekerjaanDesc' => 'Pegawai Swasta/ Wiraswasta'], ['pekerjaanId' => 5, 'pekerjaanDesc' => 'Lain-Lain']],
-            ],
-            'golonganDarah' => [
-                'golonganDarahId' => '13',
-                'golonganDarahDesc' => 'Tidak Tahu',
-                'golonganDarahOptions' => [['golonganDarahId' => 1, 'golonganDarahDesc' => 'A'], ['golonganDarahId' => 2, 'golonganDarahDesc' => 'B'], ['golonganDarahId' => 3, 'golonganDarahDesc' => 'AB'], ['golonganDarahId' => 4, 'golonganDarahDesc' => 'O'], ['golonganDarahId' => 5, 'golonganDarahDesc' => 'A+'], ['golonganDarahId' => 6, 'golonganDarahDesc' => 'A-'], ['golonganDarahId' => 7, 'golonganDarahDesc' => 'B+'], ['golonganDarahId' => 8, 'golonganDarahDesc' => 'B-'], ['golonganDarahId' => 9, 'golonganDarahDesc' => 'AB+'], ['golonganDarahId' => 10, 'golonganDarahDesc' => 'AB-'], ['golonganDarahId' => 11, 'golonganDarahDesc' => 'O+'], ['golonganDarahId' => 12, 'golonganDarahDesc' => 'O-'], ['golonganDarahId' => 13, 'golonganDarahDesc' => 'Tidak Tahu'], ['golonganDarahId' => 14, 'golonganDarahDesc' => 'O Rhesus'], ['golonganDarahId' => 15, 'golonganDarahDesc' => '#']],
-            ],
-            'kewarganegaraan' => 'INDONESIA',
-            'suku' => 'Jawa',
-            'bahasa' => 'Indonesia / Jawa',
-            'status' => [
-                'statusId' => '1',
-                'statusDesc' => 'Aktif / Hidup',
-                'statusOptions' => [['statusId' => 0, 'statusDesc' => 'Tidak Aktif / Batal'], ['statusId' => 1, 'statusDesc' => 'Aktif / Hidup'], ['statusId' => 2, 'statusDesc' => 'Meninggal']],
-            ],
-            'domisil' => [
-                'samadgnidentitas' => [],
-                'alamat' => '',
-                'rt' => '',
-                'rw' => '',
-                'kodepos' => '',
-                'desaId' => '',
-                'kecamatanId' => '',
-                'kotaId' => '3504',
-                'propinsiId' => '35',
-                'desaName' => '',
-                'kecamatanName' => '',
-                'kotaName' => 'TULUNGAGUNG',
-                'propinsiName' => 'JAWA TIMUR',
-            ],
-            'identitas' => [
-                'nik' => '',
-                'idbpjs' => '',
-                'patientUuid' => '',
-                'pasport' => '',
-                'alamat' => '',
-                'rt' => '',
-                'rw' => '',
-                'kodepos' => '',
-                'desaId' => '',
-                'kecamatanId' => '',
-                'kotaId' => '3504',
-                'propinsiId' => '35',
-                'desaName' => '',
-                'kecamatanName' => '',
-                'kotaName' => 'TULUNGAGUNG',
-                'propinsiName' => 'JAWA TIMUR',
-                'negara' => 'ID',
-            ],
-            'kontak' => [
-                'kodenegara' => '62',
-                'nomerTelponSelulerPasien' => '',
-                'nomerTelponLain' => '',
-            ],
-            'hubungan' => [
-                'namaAyah' => '',
-                'kodenegaraAyah' => '62',
-                'nomerTelponSelulerAyah' => '',
-                'namaIbu' => '',
-                'kodenegaraIbu' => '62',
-                'nomerTelponSelulerIbu' => '',
-                'namaPenanggungJawab' => '',
-                'kodenegaraPenanggungJawab' => '62',
-                'nomerTelponSelulerPenanggungJawab' => '',
-                'hubunganDgnPasien' => [
-                    'hubunganDgnPasienId' => 5,
-                    'hubunganDgnPasienDesc' => 'Kerabat / Saudara',
-                    'hubunganDgnPasienOptions' => [['hubunganDgnPasienId' => 1, 'hubunganDgnPasienDesc' => 'Diri Sendiri'], ['hubunganDgnPasienId' => 2, 'hubunganDgnPasienDesc' => 'Orang Tua'], ['hubunganDgnPasienId' => 3, 'hubunganDgnPasienDesc' => 'Anak'], ['hubunganDgnPasienId' => 4, 'hubunganDgnPasienDesc' => 'Suami / Istri'], ['hubunganDgnPasienId' => 5, 'hubunganDgnPasienDesc' => 'Kerabaat / Saudara'], ['hubunganDgnPasienId' => 6, 'hubunganDgnPasienDesc' => 'Lain-lain']],
-                ],
-            ],
-        ],
-    ];
+    // Data utama pasien
+    public array $dataPasien = [];
 
-    // Variabel untuk LOV
-    public array $jenisKelaminLov = [];
-    public bool $jenisKelaminLovStatus = false;
-    public string $jenisKelaminLovSearch = '';
+    // Data LOV
+    public array $jenisKelaminOptions = [];
+    public array $agamaOptions = [];
+    public array $statusPerkawinanOptions = [];
+    public array $pendidikanOptions = [];
+    public array $pekerjaanOptions = [];
+    public array $golonganDarahOptions = [];
+    public array $hubunganDgnPasienOptions = [];
+    public array $statusOptions = [];
 
-    public array $agamaLov = [];
-    public bool $agamaLovStatus = false;
-    public string $agamaLovSearch = '';
+    public int $domisilSyncTick = 0;
 
-    public array $statusPerkawinanLov = [];
-    public bool $statusPerkawinanLovStatus = false;
-    public string $statusPerkawinanLovSearch = '';
+    // Variabel untuk field tambahan di blade
+    public string $bpjspasienCode = '';
+    public string $pasienUuid = '';
 
-    public array $pendidikanLov = [];
-    public bool $pendidikanLovStatus = false;
-    public string $pendidikanLovSearch = '';
+    public function mount(): void
+    {
+        $this->initializeLOVOptions();
+    }
 
-    public array $pekerjaanLov = [];
-    public bool $pekerjaanLovStatus = false;
-    public string $pekerjaanLovSearch = '';
+    protected function initializeLOVOptions(): void
+    {
+        $this->jenisKelaminOptions = [['id' => 0, 'desc' => 'Tidak diketahui'], ['id' => 1, 'desc' => 'Laki-laki'], ['id' => 2, 'desc' => 'Perempuan'], ['id' => 3, 'desc' => 'Tidak dapat ditentukan'], ['id' => 4, 'desc' => 'Tidak Mengisi']];
 
-    public array $golonganDarahLov = [];
-    public bool $golonganDarahLovStatus = false;
-    public string $golonganDarahLovSearch = '';
+        $this->agamaOptions = [['id' => 1, 'desc' => 'Islam'], ['id' => 2, 'desc' => 'Kristen (Protestan)'], ['id' => 3, 'desc' => 'Katolik'], ['id' => 4, 'desc' => 'Hindu'], ['id' => 5, 'desc' => 'Budha'], ['id' => 6, 'desc' => 'Konghucu'], ['id' => 7, 'desc' => 'Penghayat'], ['id' => 8, 'desc' => 'Lain-lain']];
 
-    public array $hubunganDgnPasienLov = [];
-    public bool $hubunganDgnPasienLovStatus = false;
-    public string $hubunganDgnPasienLovSearch = '';
+        $this->statusPerkawinanOptions = [['id' => 1, 'desc' => 'Belum Kawin'], ['id' => 2, 'desc' => 'Kawin'], ['id' => 3, 'desc' => 'Cerai Hidup'], ['id' => 4, 'desc' => 'Cerai Mati']];
 
-    /* -------------------------
-     | Open modal handlers
-     * ------------------------- */
+        $this->pendidikanOptions = [['id' => 0, 'desc' => 'Tidak Sekolah'], ['id' => 1, 'desc' => 'SD'], ['id' => 2, 'desc' => 'SLTP Sederajat'], ['id' => 3, 'desc' => 'SLTA Sederajat'], ['id' => 4, 'desc' => 'D1-D3'], ['id' => 5, 'desc' => 'D4'], ['id' => 6, 'desc' => 'S1'], ['id' => 7, 'desc' => 'S2'], ['id' => 8, 'desc' => 'S3']];
+
+        $this->pekerjaanOptions = [['id' => 0, 'desc' => 'Tidak Bekerja'], ['id' => 1, 'desc' => 'PNS'], ['id' => 2, 'desc' => 'TNI/POLRI'], ['id' => 3, 'desc' => 'BUMN'], ['id' => 4, 'desc' => 'Pegawai Swasta/ Wiraswasta'], ['id' => 5, 'desc' => 'Lain-Lain']];
+
+        $this->golonganDarahOptions = [['id' => 1, 'desc' => 'A'], ['id' => 2, 'desc' => 'B'], ['id' => 3, 'desc' => 'AB'], ['id' => 4, 'desc' => 'O'], ['id' => 13, 'desc' => 'Tidak Tahu']];
+
+        $this->hubunganDgnPasienOptions = [['id' => 1, 'desc' => 'Diri Sendiri'], ['id' => 2, 'desc' => 'Orang Tua'], ['id' => 3, 'desc' => 'Anak'], ['id' => 4, 'desc' => 'Suami / Istri'], ['id' => 5, 'desc' => 'Kerabat / Saudara'], ['id' => 6, 'desc' => 'Lain-lain']];
+
+        $this->statusOptions = [['id' => 0, 'desc' => 'Tidak Aktif / Batal'], ['id' => 1, 'desc' => 'Aktif / Hidup'], ['id' => 2, 'desc' => 'Meninggal']];
+    }
+
     #[On('master.pasien.openCreate')]
     public function openCreate(): void
     {
-        $this->resetFormFields();
+        $this->resetForm();
         $this->formMode = 'create';
-        $this->isOpenMode = 'insert';
-        $this->disabledProperty = false;
-        $this->dataPasien['pasien']['regDate'] = date('d/m/Y H:i:s');
 
+        // Isi data default dari template trait
+        $this->dataPasien = $this->getDefaultPasienTemplate();
         // Generate regNo baru
-        $jmlpasien = DB::table('rsmst_pasiens')->count();
-        $this->dataPasien['pasien']['regNo'] = sprintf('%07s', $jmlpasien + 1) . 'Z';
-
+        $jmlPasien = DB::table('rsmst_pasiens')->count();
+        $this->dataPasien['pasien']['regNo'] = sprintf('%07s', $jmlPasien + 1) . 'Z';
+        $this->regNo = $this->dataPasien['pasien']['regNo'];
         $this->dispatch('open-modal', name: 'master-pasien-actions');
     }
 
     #[On('master.pasien.openEdit')]
     public function openEdit(string $regNo): void
     {
-        // Menggunakan trait untuk mendapatkan data pasien
-        $pasienData = $this->findDataMasterPasien($regNo);
-
-        if (isset($pasienData['errorMessages'])) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal memuat data pasien: ' . $pasienData['errorMessages']);
-            return;
-        }
-
-        $this->resetFormFields();
+        $this->resetForm();
         $this->formMode = 'edit';
-        $this->isOpenMode = 'update';
-        $this->disabledProperty = false;
-        $this->dataPasien = $pasienData;
+        $this->regNo = $regNo;
 
+        // Menggunakan trait untuk mendapatkan data pasien
+        $this->dataPasien = $this->findDataMasterPasien($regNo);
         $this->dispatch('open-modal', name: 'master-pasien-actions');
     }
 
     public function closeModal(): void
     {
-        $this->resetValidation();
+        $this->resetForm();
         $this->dispatch('close-modal', name: 'master-pasien-actions');
     }
 
-    /* -------------------------
-     | Helpers
-     * ------------------------- */
-    protected function resetFormFields(): void
+    protected function resetForm(): void
     {
-        $this->reset(['dataPasien', 'jenisKelaminLov', 'jenisKelaminLovStatus', 'jenisKelaminLovSearch', 'agamaLov', 'agamaLovStatus', 'agamaLovSearch', 'statusPerkawinanLov', 'statusPerkawinanLovStatus', 'statusPerkawinanLovSearch', 'pendidikanLov', 'pendidikanLovStatus', 'pendidikanLovSearch', 'pekerjaanLov', 'pekerjaanLovStatus', 'pekerjaanLovSearch', 'golonganDarahLov', 'golonganDarahLovStatus', 'golonganDarahLovSearch', 'hubunganDgnPasienLov', 'hubunganDgnPasienLovStatus', 'hubunganDgnPasienLovSearch']);
+        $this->reset(['dataPasien', 'regNo', 'bpjspasienCode', 'pasienUuid']);
+
         $this->resetValidation();
     }
 
-    protected function fillFormFromRow(object $row): void
-    {
-        // Fungsi ini diisi oleh trait MasterPasienTrait melalui findDataMasterPasien
-    }
-
-    /* -------------------------
-     | LOV Handlers
-     * ------------------------- */
-    public function clickJeniskelaminlov(): void
-    {
-        $this->jenisKelaminLovStatus = true;
-        $this->jenisKelaminLov = $this->dataPasien['pasien']['jenisKelamin']['jenisKelaminOptions'];
-    }
-
-    public function clickagamalov(): void
-    {
-        $this->agamaLovStatus = true;
-        $this->agamaLov = $this->dataPasien['pasien']['agama']['agamaOptions'];
-    }
-
-    public function clickstatusPerkawinanlov(): void
-    {
-        $this->statusPerkawinanLovStatus = true;
-        $this->statusPerkawinanLov = $this->dataPasien['pasien']['statusPerkawinan']['statusPerkawinanOptions'];
-    }
-
-    public function clickpendidikanlov(): void
-    {
-        $this->pendidikanLovStatus = true;
-        $this->pendidikanLov = $this->dataPasien['pasien']['pendidikan']['pendidikanOptions'];
-    }
-
-    public function clickpekerjaanlov(): void
-    {
-        $this->pekerjaanLovStatus = true;
-        $this->pekerjaanLov = $this->dataPasien['pasien']['pekerjaan']['pekerjaanOptions'];
-    }
-
-    public function clickgolonganDarahlov(): void
-    {
-        $this->golonganDarahLovStatus = true;
-        $this->golonganDarahLov = $this->dataPasien['pasien']['golonganDarah']['golonganDarahOptions'];
-    }
-
-    public function clickhubunganDgnPasienlov(): void
-    {
-        $this->hubunganDgnPasienLovStatus = true;
-        $this->hubunganDgnPasienLov = $this->dataPasien['pasien']['hubungan']['hubunganDgnPasien']['hubunganDgnPasienOptions'];
-    }
-
-    // LOV selection methods
-    public function setMyjenisKelaminLov($id, $name): void
-    {
-        $this->dataPasien['pasien']['jenisKelamin']['jenisKelaminId'] = $id;
-        $this->dataPasien['pasien']['jenisKelamin']['jenisKelaminDesc'] = $name;
-        $this->jenisKelaminLovStatus = false;
-        $this->jenisKelaminLovSearch = '';
-    }
-
-    public function setMyagamaLov($id, $name): void
-    {
-        $this->dataPasien['pasien']['agama']['agamaId'] = $id;
-        $this->dataPasien['pasien']['agama']['agamaDesc'] = $name;
-        $this->agamaLovStatus = false;
-        $this->agamaLovSearch = '';
-    }
-
-    public function setMystatusPerkawinanLov($id, $name): void
-    {
-        $this->dataPasien['pasien']['statusPerkawinan']['statusPerkawinanId'] = $id;
-        $this->dataPasien['pasien']['statusPerkawinan']['statusPerkawinanDesc'] = $name;
-        $this->statusPerkawinanLovStatus = false;
-        $this->statusPerkawinanLovSearch = '';
-    }
-
-    public function setMypendidikanLov($id, $name): void
-    {
-        $this->dataPasien['pasien']['pendidikan']['pendidikanId'] = $id;
-        $this->dataPasien['pasien']['pendidikan']['pendidikanDesc'] = $name;
-        $this->pendidikanLovStatus = false;
-        $this->pendidikanLovSearch = '';
-    }
-
-    public function setMypekerjaanLov($id, $name): void
-    {
-        $this->dataPasien['pasien']['pekerjaan']['pekerjaanId'] = $id;
-        $this->dataPasien['pasien']['pekerjaan']['pekerjaanDesc'] = $name;
-        $this->pekerjaanLovStatus = false;
-        $this->pekerjaanLovSearch = '';
-    }
-
-    public function setMygolonganDarahLov($id, $name): void
-    {
-        $this->dataPasien['pasien']['golonganDarah']['golonganDarahId'] = $id;
-        $this->dataPasien['pasien']['golonganDarah']['golonganDarahDesc'] = $name;
-        $this->golonganDarahLovStatus = false;
-        $this->golonganDarahLovSearch = '';
-    }
-
-    public function setMyhubunganDgnPasienLov($id, $name): void
-    {
-        $this->dataPasien['pasien']['hubungan']['hubunganDgnPasien']['hubunganDgnPasienId'] = $id;
-        $this->dataPasien['pasien']['hubungan']['hubunganDgnPasien']['hubunganDgnPasienDesc'] = $name;
-        $this->hubunganDgnPasienLovStatus = false;
-        $this->hubunganDgnPasienLovSearch = '';
-    }
-
-    /* -------------------------
-     | Validation
-     * ------------------------- */
+    // Validation Rules - SUDAH BENAR
     protected function rules(): array
     {
         return [
-            'dataPasien.pasien.regNo' => ['required', 'string', 'max:50', $this->formMode === 'create' ? Rule::unique('rsmst_pasiens', 'reg_no') : Rule::unique('rsmst_pasiens', 'reg_no')->ignore($this->dataPasien['pasien']['regNo'] ?? null, 'reg_no')],
+            'dataPasien.pasien.regNo' => ['required', 'string', 'max:50', $this->formMode === 'create' ? Rule::unique('rsmst_pasiens', 'reg_no') : Rule::unique('rsmst_pasiens', 'reg_no')->ignore($this->dataPasien['pasien']['regNo'] ?? '', 'reg_no')],
             'dataPasien.pasien.regName' => ['required', 'string', 'min:3', 'max:200'],
             'dataPasien.pasien.tempatLahir' => ['required', 'string', 'max:100'],
             'dataPasien.pasien.tglLahir' => ['required', 'date_format:d/m/Y'],
@@ -338,92 +119,163 @@ new class extends Component {
             'dataPasien.pasien.kontak.nomerTelponSelulerPasien' => ['required', 'digits_between:6,15'],
             'dataPasien.pasien.hubungan.namaPenanggungJawab' => ['required', 'string', 'min:3', 'max:200'],
             'dataPasien.pasien.hubungan.nomerTelponSelulerPenanggungJawab' => ['required', 'digits_between:6,15'],
+            'dataPasien.pasien.hubungan.namaAyah' => ['required', 'string', 'min:3', 'max:200'],
+            'dataPasien.pasien.hubungan.nomerTelponSelulerAyah' => ['required', 'digits_between:6,15'],
+            'dataPasien.pasien.hubungan.namaIbu' => ['required', 'string', 'min:3', 'max:200'],
+            'dataPasien.pasien.hubungan.nomerTelponSelulerIbu' => ['required', 'digits_between:6,15'],
         ];
     }
 
     protected function messages(): array
     {
         return [
-            '*.required' => ':attribute wajib diisi.',
-            '*.unique' => ':attribute sudah digunakan.',
-            '*.max' => ':attribute maksimal :max karakter.',
-            '*.min' => ':attribute minimal :min karakter.',
-            '*.numeric' => ':attribute harus berupa angka.',
-            '*.digits' => ':attribute harus :digits digit.',
-            '*.digits_between' => ':attribute harus antara :min sampai :max digit.',
-            '*.date_format' => ':attribute harus dalam format :format.',
+            // RegNo
+            'dataPasien.pasien.regNo.required' => 'ID Pasien wajib diisi.',
+            'dataPasien.pasien.regNo.unique' => 'ID Pasien sudah digunakan, silakan gunakan ID lain.',
+            'dataPasien.pasien.regNo.max' => 'ID Pasien maksimal :max karakter.',
+
+            // RegName
+            'dataPasien.pasien.regName.required' => 'Nama Pasien wajib diisi.',
+            'dataPasien.pasien.regName.min' => 'Nama Pasien minimal :min karakter.',
+            'dataPasien.pasien.regName.max' => 'Nama Pasien maksimal :max karakter.',
+
+            // Tempat Lahir
+            'dataPasien.pasien.tempatLahir.required' => 'Tempat Lahir wajib diisi.',
+            'dataPasien.pasien.tempatLahir.max' => 'Tempat Lahir maksimal :max karakter.',
+
+            // Tanggal Lahir
+            'dataPasien.pasien.tglLahir.required' => 'Tanggal Lahir wajib diisi.',
+            'dataPasien.pasien.tglLahir.date_format' => 'Format Tanggal Lahir harus dd/mm/yyyy.',
+
+            // Jenis Kelamin
+            'dataPasien.pasien.jenisKelamin.jenisKelaminId.required' => 'Jenis Kelamin wajib dipilih.',
+            'dataPasien.pasien.jenisKelamin.jenisKelaminId.numeric' => 'Jenis Kelamin harus berupa angka.',
+
+            // Agama
+            'dataPasien.pasien.agama.agamaId.required' => 'Agama wajib dipilih.',
+            'dataPasien.pasien.agama.agamaId.numeric' => 'Agama harus berupa angka.',
+
+            // Status Perkawinan
+            'dataPasien.pasien.statusPerkawinan.statusPerkawinanId.required' => 'Status Perkawinan wajib dipilih.',
+            'dataPasien.pasien.statusPerkawinan.statusPerkawinanId.numeric' => 'Status Perkawinan harus berupa angka.',
+
+            // Pendidikan
+            'dataPasien.pasien.pendidikan.pendidikanId.required' => 'Pendidikan wajib dipilih.',
+            'dataPasien.pasien.pendidikan.pendidikanId.numeric' => 'Pendidikan harus berupa angka.',
+
+            // Pekerjaan
+            'dataPasien.pasien.pekerjaan.pekerjaanId.required' => 'Pekerjaan wajib dipilih.',
+            'dataPasien.pasien.pekerjaan.pekerjaanId.numeric' => 'Pekerjaan harus berupa angka.',
+
+            // Identitas - NIK
+            'dataPasien.pasien.identitas.nik.required' => 'NIK wajib diisi.',
+            'dataPasien.pasien.identitas.nik.digits' => 'NIK harus 16 digit.',
+
+            // Identitas - Alamat
+            'dataPasien.pasien.identitas.alamat.required' => 'Alamat wajib diisi.',
+            'dataPasien.pasien.identitas.alamat.max' => 'Alamat maksimal :max karakter.',
+
+            // Identitas - RT
+            'dataPasien.pasien.identitas.rt.required' => 'RT wajib diisi.',
+            'dataPasien.pasien.identitas.rt.max' => 'RT maksimal :max karakter.',
+
+            // Identitas - RW
+            'dataPasien.pasien.identitas.rw.required' => 'RW wajib diisi.',
+            'dataPasien.pasien.identitas.rw.max' => 'RW maksimal :max karakter.',
+
+            // Kontak - No HP Pasien
+            'dataPasien.pasien.kontak.nomerTelponSelulerPasien.required' => 'No. HP Pasien wajib diisi.',
+            'dataPasien.pasien.kontak.nomerTelponSelulerPasien.digits_between' => 'No. HP Pasien harus antara :min sampai :max digit.',
+
+            // Hubungan - Nama Penanggung Jawab
+            'dataPasien.pasien.hubungan.namaPenanggungJawab.required' => 'Nama Penanggung Jawab wajib diisi.',
+            'dataPasien.pasien.hubungan.namaPenanggungJawab.min' => 'Nama Penanggung Jawab minimal :min karakter.',
+            'dataPasien.pasien.hubungan.namaPenanggungJawab.max' => 'Nama Penanggung Jawab maksimal :max karakter.',
+
+            // Hubungan - No HP Penanggung Jawab
+            'dataPasien.pasien.hubungan.nomerTelponSelulerPenanggungJawab.required' => 'No. HP Penanggung Jawab wajib diisi.',
+            'dataPasien.pasien.hubungan.nomerTelponSelulerPenanggungJawab.digits_between' => 'No. HP Penanggung Jawab harus antara :min sampai :max digit.',
+
+            // Hubungan - Nama Ayah
+            'dataPasien.pasien.hubungan.namaAyah.required' => 'Nama Ayah wajib diisi.',
+            'dataPasien.pasien.hubungan.namaAyah.min' => 'Nama Ayah minimal :min karakter.',
+            'dataPasien.pasien.hubungan.namaAyah.max' => 'Nama Ayah maksimal :max karakter.',
+
+            // Hubungan - No HP Ayah
+            'dataPasien.pasien.hubungan.nomerTelponSelulerAyah.required' => 'No. HP Ayah wajib diisi.',
+            'dataPasien.pasien.hubungan.nomerTelponSelulerAyah.digits_between' => 'No. HP Ayah harus antara :min sampai :max digit.',
+
+            // Hubungan - Nama Ibu
+            'dataPasien.pasien.hubungan.namaIbu.required' => 'Nama Ibu wajib diisi.',
+            'dataPasien.pasien.hubungan.namaIbu.min' => 'Nama Ibu minimal :min karakter.',
+            'dataPasien.pasien.hubungan.namaIbu.max' => 'Nama Ibu maksimal :max karakter.',
+
+            // Hubungan - No HP Ibu
+            'dataPasien.pasien.hubungan.nomerTelponSelulerIbu.required' => 'No. HP Ibu wajib diisi.',
+            'dataPasien.pasien.hubungan.nomerTelponSelulerIbu.digits_between' => 'No. HP Ibu harus antara :min sampai :max digit.',
         ];
     }
 
-    protected function validationAttributes(): array
-    {
-        return [
-            'dataPasien.pasien.regNo' => 'ID Pasien',
-            'dataPasien.pasien.regName' => 'Nama Pasien',
-            'dataPasien.pasien.tempatLahir' => 'Tempat Lahir',
-            'dataPasien.pasien.tglLahir' => 'Tanggal Lahir',
-            'dataPasien.pasien.jenisKelamin.jenisKelaminId' => 'Jenis Kelamin',
-            'dataPasien.pasien.agama.agamaId' => 'Agama',
-            'dataPasien.pasien.statusPerkawinan.statusPerkawinanId' => 'Status Perkawinan',
-            'dataPasien.pasien.pendidikan.pendidikanId' => 'Pendidikan',
-            'dataPasien.pasien.pekerjaan.pekerjaanId' => 'Pekerjaan',
-            'dataPasien.pasien.identitas.nik' => 'NIK',
-            'dataPasien.pasien.identitas.alamat' => 'Alamat',
-            'dataPasien.pasien.identitas.rt' => 'RT',
-            'dataPasien.pasien.identitas.rw' => 'RW',
-            'dataPasien.pasien.kontak.nomerTelponSelulerPasien' => 'No. HP Pasien',
-            'dataPasien.pasien.hubungan.namaPenanggungJawab' => 'Nama Penanggung Jawab',
-            'dataPasien.pasien.hubungan.nomerTelponSelulerPenanggungJawab' => 'No. HP Penanggung Jawab',
-        ];
-    }
-
-    /* -------------------------
-     | Save
-     * ------------------------- */
+    // Save Data - SUDAH DIPERBAIKI
     public function save(): void
     {
         $this->validate();
-
         try {
-            // Konversi data untuk disimpan ke database
+            // Prepare data for database - SUDAH DIPERBAIKI
             $saveData = [
                 'reg_no' => $this->dataPasien['pasien']['regNo'],
                 'reg_name' => strtoupper($this->dataPasien['pasien']['regName']),
-                'sex' => $this->dataPasien['pasien']['jenisKelamin']['jenisKelaminId'] == 1 ? 'L' : 'P',
-                'birth_date' => DB::raw("to_date('" . $this->dataPasien['pasien']['tglLahir'] . "','dd/mm/yyyy')"),
-                'birth_place' => strtoupper($this->dataPasien['pasien']['tempatLahir']),
-                'nik_bpjs' => $this->dataPasien['pasien']['identitas']['nik'],
+                'sex' => ($this->dataPasien['pasien']['jenisKelamin']['jenisKelaminId'] ?? 0) == 1 ? 'L' : 'P',
+                'birth_date' => DB::raw("to_date('" . ($this->dataPasien['pasien']['tglLahir'] ?? '') . "','dd/mm/yyyy')"),
+                'birth_place' => strtoupper($this->dataPasien['pasien']['tempatLahir'] ?? ''),
+                'nik_bpjs' => $this->dataPasien['pasien']['identitas']['nik'] ?? '',
                 'nokartu_bpjs' => $this->dataPasien['pasien']['identitas']['idbpjs'] ?? null,
                 'blood' => $this->dataPasien['pasien']['golonganDarah']['golonganDarahId'] ?? null,
-                'marital_status' => $this->dataPasien['pasien']['statusPerkawinan']['statusPerkawinanId'] ?? '1',
+                'marital_status' => ($this->dataPasien['pasien']['statusPerkawinan']['statusPerkawinanId'] ?? 1) == 1 ? 'S' : (($this->dataPasien['pasien']['statusPerkawinan']['statusPerkawinanId'] ?? 1) == 2 ? 'M' : (($this->dataPasien['pasien']['statusPerkawinan']['statusPerkawinanId'] ?? 1) == 3 ? 'D' : 'W')),
                 'rel_id' => $this->dataPasien['pasien']['agama']['agamaId'] ?? '1',
                 'edu_id' => $this->dataPasien['pasien']['pendidikan']['pendidikanId'] ?? '3',
                 'job_id' => $this->dataPasien['pasien']['pekerjaan']['pekerjaanId'] ?? '4',
-                'kk' => strtoupper($this->dataPasien['pasien']['hubungan']['namaPenanggungJawab']),
+                'kk' => strtoupper($this->dataPasien['pasien']['hubungan']['namaPenanggungJawab'] ?? ''),
                 'nyonya' => strtoupper($this->dataPasien['pasien']['hubungan']['namaIbu'] ?? ''),
-                'address' => $this->dataPasien['pasien']['identitas']['alamat'],
-                'phone' => $this->dataPasien['pasien']['kontak']['nomerTelponSelulerPasien'],
-                'rt' => $this->dataPasien['pasien']['identitas']['rt'],
-                'rw' => $this->dataPasien['pasien']['identitas']['rw'],
-                'des_id' => $this->dataPasien['pasien']['identitas']['desaId'] ?? null,
-                'kec_id' => $this->dataPasien['pasien']['identitas']['kecamatanId'] ?? null,
+                'address' => $this->dataPasien['pasien']['identitas']['alamat'] ?? '',
+                'phone' => $this->dataPasien['pasien']['kontak']['nomerTelponSelulerPasien'] ?? '',
+                'rt' => $this->dataPasien['pasien']['identitas']['rt'] ?? '',
+                'rw' => $this->dataPasien['pasien']['identitas']['rw'] ?? '',
                 'kab_id' => $this->dataPasien['pasien']['identitas']['kotaId'] ?? '3504',
                 'prop_id' => $this->dataPasien['pasien']['identitas']['propinsiId'] ?? '35',
-                'meta_data_pasien_json' => json_encode($this->dataPasien, true),
             ];
 
-            // Tambah tanggal registrasi jika mode create
-            if ($this->isOpenMode === 'insert') {
-                $saveData['reg_date'] = DB::raw("to_date('" . ($this->dataPasien['pasien']['regDate'] ?? date('d/m/Y H:i:s')) . "','dd/mm/yyyy hh24:mi:ss')");
+            // Tambahkan field tambahan jika ada
+            if (!empty($this->bpjspasienCode)) {
+                $saveData['bpjspasien_code'] = $this->bpjspasienCode;
             }
 
-            if ($this->isOpenMode === 'insert') {
+            if (!empty($this->pasienUuid)) {
+                $saveData['pasien_uuid'] = $this->pasienUuid;
+            }
+
+            if ($this->formMode === 'create') {
+                $saveData['reg_date'] = DB::raw('SYSDATE');
                 DB::table('rsmst_pasiens')->insert($saveData);
+
+                // Langsung auto-save JSON menggunakan trait
+                $pasienData = $this->findDataMasterPasien($this->dataPasien['pasien']['regNo']);
+                if (!isset($pasienData['errorMessages'])) {
+                    $this->autoSaveToJson($this->dataPasien['pasien']['regNo'], $pasienData);
+                }
+
                 $this->dispatch('toast', type: 'success', message: 'Data pasien berhasil disimpan.');
             } else {
                 DB::table('rsmst_pasiens')
                     ->where('reg_no', $this->dataPasien['pasien']['regNo'])
                     ->update($saveData);
+
+                // Langsung update JSON menggunakan trait
+                $pasienData = $this->findDataMasterPasien($this->dataPasien['pasien']['regNo']);
+                if (!isset($pasienData['errorMessages'])) {
+                    $this->updateJsonMasterPasien($this->dataPasien['pasien']['regNo'], $pasienData);
+                }
+
                 $this->dispatch('toast', type: 'success', message: 'Data pasien berhasil diupdate.');
             }
 
@@ -431,12 +283,11 @@ new class extends Component {
             $this->dispatch('master.pasien.saved');
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan data: ' . $e->getMessage());
+            \Log::error('Error saving pasien: ' . $e->getMessage());
         }
     }
 
-    /* -------------------------
-     | Delete
-     * ------------------------- */
+    // Delete Handler
     #[On('master.pasien.requestDelete')]
     public function deleteFromGrid(string $regNo): void
     {
@@ -467,13 +318,262 @@ new class extends Component {
             throw $e;
         }
     }
+
+    public function updated($name, $value)
+    {
+        if ($name !== 'dataPasien.pasien.domisil.samadgnidentitas') {
+            return;
+        }
+
+        $checked = !empty($value) && in_array('1', $value);
+
+        if ($checked) {
+            $this->dataPasien['pasien']['domisil']['alamat'] = $this->dataPasien['pasien']['identitas']['alamat'] ?? '';
+            $this->dataPasien['pasien']['domisil']['rt'] = $this->dataPasien['pasien']['identitas']['rt'] ?? '';
+            $this->dataPasien['pasien']['domisil']['rw'] = $this->dataPasien['pasien']['identitas']['rw'] ?? '';
+            $this->dataPasien['pasien']['domisil']['kodepos'] = $this->dataPasien['pasien']['identitas']['kodepos'] ?? '';
+
+            // penting: kota dulu, baru desa (biar nggak ke-reset)
+            $this->dataPasien['pasien']['domisil']['kotaId'] = $this->dataPasien['pasien']['identitas']['kotaId'] ?? '';
+            $this->dataPasien['pasien']['domisil']['kotaName'] = $this->dataPasien['pasien']['identitas']['kotaName'] ?? '';
+            $this->dataPasien['pasien']['domisil']['propinsiId'] = $this->dataPasien['pasien']['identitas']['propinsiId'] ?? '';
+            $this->dataPasien['pasien']['domisil']['propinsiName'] = $this->dataPasien['pasien']['identitas']['propinsiName'] ?? '';
+
+            $this->dataPasien['pasien']['domisil']['desaId'] = $this->dataPasien['pasien']['identitas']['desaId'] ?? '';
+            $this->dataPasien['pasien']['domisil']['desaName'] = $this->dataPasien['pasien']['identitas']['desaName'] ?? '';
+            $this->dataPasien['pasien']['domisil']['kecamatanid'] = $this->dataPasien['pasien']['identitas']['kecamatanid'] ?? '';
+            $this->dataPasien['pasien']['domisil']['kecamatanName'] = $this->dataPasien['pasien']['identitas']['kecamatanName'] ?? '';
+
+            $this->dataPasien['pasien']['domisil']['negara'] = $this->dataPasien['pasien']['identitas']['negara'] ?? '';
+        } else {
+            $this->dataPasien['pasien']['domisil']['alamat'] = '';
+            $this->dataPasien['pasien']['domisil']['rt'] = '';
+            $this->dataPasien['pasien']['domisil']['rw'] = '';
+            $this->dataPasien['pasien']['domisil']['kodepos'] = '';
+            $this->dataPasien['pasien']['domisil']['desaId'] = '';
+            $this->dataPasien['pasien']['domisil']['desaName'] = '';
+            $this->dataPasien['pasien']['domisil']['kecamatanid'] = '';
+            $this->dataPasien['pasien']['domisil']['kecamatanName'] = '';
+            $this->dataPasien['pasien']['domisil']['kotaId'] = '';
+            $this->dataPasien['pasien']['domisil']['kotaName'] = '';
+            $this->dataPasien['pasien']['domisil']['propinsiId'] = '';
+            $this->dataPasien['pasien']['domisil']['propinsiName'] = '';
+            $this->dataPasien['pasien']['domisil']['negara'] = '';
+        }
+
+        $this->domisilSyncTick++;
+    }
+
+    #[On('lov.selected')]
+    public function handleLovSelected(string $target, array $payload): void
+    {
+        // Handle DESA IDENTITAS
+        if ($target === 'desa_identitas') {
+            $this->dataPasien['pasien']['identitas']['desaId'] = $payload['des_id'] ?? '';
+            $this->dataPasien['pasien']['identitas']['desaName'] = $payload['des_name'] ?? '';
+            $this->dataPasien['pasien']['identitas']['kecamatanId'] = $payload['kec_id'] ?? '';
+            $this->dataPasien['pasien']['identitas']['kecamatanName'] = $payload['kec_name'] ?? '';
+            return;
+        }
+
+        // Handle DESA DOMISILI
+        if ($target === 'desa_domisil') {
+            $this->dataPasien['pasien']['domisil']['desaId'] = $payload['des_id'] ?? '';
+            $this->dataPasien['pasien']['domisil']['desaName'] = $payload['des_name'] ?? '';
+            $this->dataPasien['pasien']['domisil']['kecamatanId'] = $payload['kec_id'] ?? '';
+            $this->dataPasien['pasien']['domisil']['kecamatanName'] = $payload['kec_name'] ?? '';
+            return;
+        }
+    }
+
+    /**
+     * Update atau generate UUID Pasien dari SATUSEHAT berdasarkan NIK
+     */
+    public function UpdatepatientUuid(string $nik = ''): void
+    {
+        // Validasi NIK
+        if (empty($nik)) {
+            $this->dispatch('toast', type: 'warning', message: 'NIK pasien wajib diisi terlebih dahulu.');
+            return;
+        }
+
+        if (strlen($nik) !== 16) {
+            $this->dispatch('toast', type: 'warning', message: 'NIK harus 16 digit.');
+            return;
+        }
+
+        try {
+            // 1. Inisialisasi koneksi SATUSEHAT
+            $this->initializeSatuSehat();
+
+            // 2. Cari Patient berdasarkan NIK
+            $searchResult = $this->searchPatient(['nik' => $nik]);
+            $entries = collect($searchResult['entry'] ?? []);
+
+            // 3. Jika tidak ada, buat pasien baru
+            if ($entries->isEmpty()) {
+                $this->dispatch('toast', type: 'warning', message: "Tidak ada pasien ditemukan dengan NIK: {$nik}. Persiapan create pasien baru.");
+
+                // Siapkan data untuk create patient
+                $patientData = [
+                    'name' => $this->dataPasien['pasien']['regName'] ?? '',
+                    'given_name' => $this->dataPasien['pasien']['regName'] ?? '',
+                    'family_name' => '',
+                    'birth_date' => $this->formatDateToYmd($this->dataPasien['pasien']['tglLahir'] ?? ''),
+                    'gender' => $this->mapGenderToSatusehat($this->dataPasien['pasien']['jenisKelamin']['jenisKelaminId'] ?? 0),
+                    'phone' => $this->dataPasien['pasien']['kontak']['nomerTelponSelulerPasien'] ?? '',
+                    'nik' => $nik,
+                    'bpjs_number' => $this->dataPasien['pasien']['identitas']['idbpjs'] ?? null,
+                    'marital_status' => $this->mapMaritalStatusToSatusehat($this->dataPasien['pasien']['statusPerkawinan']['statusPerkawinanId'] ?? 1),
+                    'address' => $this->buildAddressPayload($this->dataPasien['pasien']['identitas'] ?? []),
+                ];
+
+                // Create patient ke SATUSEHAT
+                $result = $this->createPatient($patientData);
+                $createdUuid = $result['id'] ?? null;
+
+                if ($createdUuid) {
+                    // Simpan UUID ke data pasien
+                    $this->dataPasien['pasien']['identitas']['patientUuid'] = $createdUuid;
+                    $this->pasienUuid = $createdUuid;
+
+                    $this->dispatch('toast', type: 'success', message: "Pasien baru berhasil dibuat di SATUSEHAT (UUID: {$createdUuid})");
+                } else {
+                    $this->dispatch('toast', type: 'error', message: 'Gagal membuat pasien baru di SATUSEHAT.');
+                }
+
+                return;
+            }
+
+            // 4. Ambil UUID Patient pertama dari hasil pencarian
+            $newUuid = $entries->pluck('resource.id')->first();
+            $currentUuid = $this->dataPasien['pasien']['identitas']['patientUuid'] ?? null;
+
+            // 5. Jika belum ada UUID tersimpan, set dan notify
+            if (empty($currentUuid)) {
+                $this->dataPasien['pasien']['identitas']['patientUuid'] = $newUuid;
+                $this->pasienUuid = $newUuid;
+
+                $this->dispatch('toast', type: 'success', message: "patientUuid di-set ke {$newUuid}");
+                return;
+            }
+
+            // 6. Jika UUID sudah sama, beri info
+            if ($currentUuid === $newUuid) {
+                $this->dispatch('toast', type: 'info', message: 'patientUuid sudah sesuai dengan data terbaru');
+                return;
+            }
+
+            // 7. Jika berbeda, cek apakah UUID lama masih ada dalam hasil pencarian
+            $oldStillExists = $entries->pluck('resource.id')->contains($currentUuid);
+
+            if ($oldStillExists) {
+                $this->dispatch('toast', type: 'success', message: "patientUuid lama ({$currentUuid}) masih ditemukan");
+            } else {
+                $this->dispatch('toast', type: 'warning', message: "patientUuid lama ({$currentUuid}) tidak ada di hasil terbaru, disarankan update ke UUID baru: {$newUuid}");
+
+                // Optional: Auto update ke UUID baru
+                // $this->dataPasien['pasien']['identitas']['patientUuid'] = $newUuid;
+                // $this->pasienUuid = $newUuid;
+            }
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Error saat memproses UUID: ' . $e->getMessage());
+            \Log::error('Error UpdatepatientUuid: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Format tanggal dari dd/mm/yyyy ke yyyy-mm-dd
+     */
+    private function formatDateToYmd(?string $date): ?string
+    {
+        if (empty($date)) {
+            return null;
+        }
+
+        try {
+            $parts = explode('/', $date);
+            if (count($parts) === 3) {
+                return $parts[2] . '-' . $parts[1] . '-' . $parts[0];
+            }
+        } catch (\Exception $e) {
+            return null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Map gender ID ke kode SATUSEHAT
+     */
+    private function mapGenderToSatusehat(int $genderId): string
+    {
+        return match ($genderId) {
+            1 => 'male',
+            2 => 'female',
+            default => 'unknown',
+        };
+    }
+
+    /**
+     * Map status perkawinan ID ke kode SATUSEHAT
+     */
+    private function mapMaritalStatusToSatusehat(int $statusId): string
+    {
+        return match ($statusId) {
+            1 => 'S', // Belum Kawin -> Never Married
+            2 => 'M', // Kawin -> Married
+            3 => 'D', // Cerai Hidup -> Divorced
+            4 => 'W', // Cerai Mati -> Widowed
+            default => 'U', // Unknown
+        };
+    }
+
+    /**
+     * Build address payload untuk SATUSEHAT
+     */
+    private function buildAddressPayload(array $identitas): array
+    {
+        $address = [];
+
+        if (!empty($identitas['alamat'])) {
+            $address['line'] = [$identitas['alamat']];
+        }
+
+        if (!empty($identitas['desaName'])) {
+            $address['city'] = $identitas['desaName'];
+        }
+
+        if (!empty($identitas['kecamatanName'])) {
+            $address['district'] = $identitas['kecamatanName'];
+        }
+
+        if (!empty($identitas['kotaName'])) {
+            $address['city'] = $identitas['kotaName'];
+        }
+
+        if (!empty($identitas['propinsiName'])) {
+            $address['state'] = $identitas['propinsiName'];
+        }
+
+        if (!empty($identitas['kodepos'])) {
+            $address['postalCode'] = $identitas['kodepos'];
+        }
+
+        $address['country'] = 'ID';
+        $address['use'] = 'home';
+
+        return $address;
+    }
 };
+
 ?>
+
 
 <div>
     <x-modal name="master-pasien-actions" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
-            wire:key="master-pasien-actions-{{ $formMode }}-{{ $dataPasien['pasien']['regNo'] ?? 'new' }}">
+            wire:key="master-pasien-actions-{{ $formMode }}-{{ $regNo ?? 'new' }}">
 
             {{-- HEADER --}}
             <div class="relative px-6 py-5 border-b border-gray-200 dark:border-gray-700">
@@ -482,32 +582,36 @@ new class extends Component {
                 </div>
 
                 <div class="relative flex items-start justify-between gap-4">
-                    <div class="flex items-start gap-3">
-                        <div
-                            class="flex items-center justify-center flex-shrink-0 w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
-                            <img src="{{ asset('images/Logogram black solid.png') }}" alt="RSI Madinah"
-                                class="block w-6 h-6 dark:hidden" />
-                            <img src="{{ asset('images/Logogram white solid.png') }}" alt="RSI Madinah"
-                                class="hidden w-6 h-6 dark:block" />
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
+                                <img src="{{ asset('images/Logogram black solid.png') }}" alt="RSI Madinah"
+                                    class="block w-6 h-6 dark:hidden" />
+                                <img src="{{ asset('images/Logogram white solid.png') }}" alt="RSI Madinah"
+                                    class="hidden w-6 h-6 dark:block" />
+                            </div>
+
+                            <div>
+                                <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                                    {{ $formMode === 'edit' ? 'Ubah Data pasien' : 'Tambah Data pasien' }}
+                                </h2>
+                                <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                                    Lengkapi informasi pasien untuk kebutuhan
+                                    aplikasi.{{ $this->dataPasien['pasien']['regNo'] ?? '' }}
+                                </p>
+                            </div>
                         </div>
 
-                        <div>
-                            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                                {{ $isOpenMode === 'update' ? 'Ubah Data Pasien' : 'Tambah Data Pasien' }}
-                            </h2>
-                            <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-                                Lengkapi informasi pasien untuk kebutuhan aplikasi.
-                            </p>
-
-                            <div class="mt-3">
-                                <x-badge :variant="$isOpenMode === 'update' ? 'warning' : 'success'" class="inline-flex">
-                                    {{ $isOpenMode === 'update' ? 'Mode: Edit' : 'Mode: Tambah' }}
-                                </x-badge>
-                            </div>
+                        <div class="mt-3">
+                            <x-badge :variant="$formMode === 'edit' ? 'warning' : 'success'">
+                                {{ $formMode === 'edit' ? 'Mode: Edit' : 'Mode: Tambah' }}
+                            </x-badge>
                         </div>
                     </div>
 
-                    <x-secondary-button type="button" wire:click="closeModal" class="!p-2" aria-label="Tutup modal">
+                    <x-secondary-button type="button" wire:click="closeModal" class="!p-2">
+                        <span class="sr-only">Close</span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd"
                                 d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
@@ -519,462 +623,836 @@ new class extends Component {
 
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 bg-gray-50/70 dark:bg-gray-950/20">
-                <form wire:submit.prevent="store" id="form-pasien">
-                    <div class="max-w-full mx-auto">
-                        <div
-                            class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                            <div class="p-5 space-y-5">
-                                {{-- Data Diri Pasien --}}
-                                <x-border-form :title="__('Data Diri Pasien')" :align="__('start')" :bgcolor="__('bg-gray-50')">
-                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                        {{-- ID Pasien --}}
-                                        <div>
-                                            <x-input-label for="regNo" :value="__('ID Pasien')" :required="true" />
-                                            <x-text-input id="regNo" placeholder="ID Pasien"
-                                                class="w-full mt-1 uppercase" :errorshas="$errors->has('dataPasien.pasien.regNo')" :disabled="$disabledProperty || $isOpenMode === 'update'"
-                                                wire:model.live="dataPasien.pasien.regNo" />
-                                            <x-input-error :messages="$errors->get('dataPasien.pasien.regNo')" class="mt-1" />
-                                        </div>
+                <div class="w-full">
+                    <div
+                        class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                        <div class="p-5 space-y-5">
 
-                                        {{-- Nama Pasien --}}
-                                        <div class="sm:col-span-2">
-                                            <x-input-label for="regName" :value="__('Nama Pasien')" :required="true" />
-                                            <x-text-input id="regName" placeholder="Nama Lengkap"
-                                                class="w-full mt-1 uppercase" :errorshas="$errors->has('dataPasien.pasien.regName')" :disabled="$disabledProperty"
-                                                wire:model.live="dataPasien.pasien.regName" />
-                                            <x-input-error :messages="$errors->get('dataPasien.pasien.regName')" class="mt-1" />
-                                        </div>
+                            {{-- CONTENT AREA --}}
+                            <div class="flex-1 overflow-y-auto">
+                                <div class="px-4 py-4 bg-gray-50/70 dark:bg-gray-950/20">
+                                    <div class="w-full mx-auto space-y-4">
 
-                                        {{-- Tempat Lahir --}}
-                                        <div>
-                                            <x-input-label for="tempatLahir" :value="__('Tempat Lahir')" :required="true" />
-                                            <x-text-input id="tempatLahir" placeholder="Tempat Lahir"
-                                                class="w-full mt-1 uppercase" :errorshas="$errors->has('dataPasien.pasien.tempatLahir')" :disabled="$disabledProperty"
-                                                wire:model.live="dataPasien.pasien.tempatLahir" />
-                                            <x-input-error :messages="$errors->get('dataPasien.pasien.tempatLahir')" class="mt-1" />
-                                        </div>
-
-                                        {{-- Tanggal Lahir --}}
-                                        <div>
-                                            <x-input-label for="tglLahir" :value="__('Tanggal Lahir')" :required="true" />
-                                            <x-text-input id="tglLahir" type="text" placeholder="DD/MM/YYYY"
-                                                class="w-full mt-1 date-input" :errorshas="$errors->has('dataPasien.pasien.tglLahir')" :disabled="$disabledProperty"
-                                                wire:model.live="dataPasien.pasien.tglLahir" x-mask="99/99/9999" />
-                                            <x-input-error :messages="$errors->get('dataPasien.pasien.tglLahir')" class="mt-1" />
-                                        </div>
-
-                                        {{-- Jenis Kelamin --}}
-                                        <div>
-                                            <x-input-label for="jenisKelamin" :value="__('Jenis Kelamin')" :required="true" />
-                                            <div class="mt-1">
-                                                <div class="flex">
-                                                    <x-text-input id="jenisKelamin"
-                                                        class="flex-1 sm:rounded-none sm:rounded-l-lg"
-                                                        :errorshas="$errors->has(
-                                                            'dataPasien.pasien.jenisKelamin.jenisKelaminId',
-                                                        )" :disabled="true" :value="$dataPasien['pasien']['jenisKelamin'][
-                                                            'jenisKelaminId'
-                                                        ] .
-                                                            '. ' .
-                                                            $dataPasien['pasien']['jenisKelamin']['jenisKelaminDesc']"
-                                                        aria-describedby="jenisKelamin-desc" />
-                                                    <x-primary-button type="button" :disabled="$disabledProperty"
-                                                        class="sm:rounded-none sm:rounded-r-lg !py-2 px-3"
-                                                        wire:click.prevent="clickJeniskelaminlov()"
-                                                        aria-label="Pilih jenis kelamin">
-                                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"
-                                                            aria-hidden="true">
-                                                            <path clip-rule="evenodd" fill-rule="evenodd"
-                                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                                                        </svg>
-                                                    </x-primary-button>
-                                                </div>
-                                                @error('dataPasien.pasien.jenisKelamin.jenisKelaminId')
-                                                    <x-input-error :messages="$message" class="mt-1" />
-                                                @enderror
+                                        {{-- SECTION: TIDAK DIKENAL CHECKBOX --}}
+                                        @if (isset($dataPasien['pasien']['pasientidakdikenal']))
+                                            <div class="flex justify-end mb-4">
+                                                <x-check-box value='1' :label="__('Pasien Tidak Dikenal')"
+                                                    wire:model.live="dataPasien.pasien.pasientidakdikenal" />
                                             </div>
-                                        </div>
+                                        @endif
 
-                                        {{-- Agama --}}
-                                        <div>
-                                            <x-input-label for="agama" :value="__('Agama')" :required="true" />
-                                            <div class="mt-1">
-                                                <div class="flex">
-                                                    <x-text-input id="agama"
-                                                        class="flex-1 sm:rounded-none sm:rounded-l-lg"
-                                                        :errorshas="$errors->has('dataPasien.pasien.agama.agamaId')" :disabled="true" :value="$dataPasien['pasien']['agama']['agamaId'] .
-                                                            '. ' .
-                                                            $dataPasien['pasien']['agama']['agamaDesc']" />
-                                                    <x-primary-button type="button" :disabled="$disabledProperty"
-                                                        class="sm:rounded-none sm:rounded-r-lg !py-2 px-3"
-                                                        wire:click.prevent="clickagamalov()" aria-label="Pilih agama">
-                                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"
-                                                            aria-hidden="true">
-                                                            <path clip-rule="evenodd" fill-rule="evenodd"
-                                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                                                        </svg>
-                                                    </x-primary-button>
-                                                </div>
-                                                @error('dataPasien.pasien.agama.agamaId')
-                                                    <x-input-error :messages="$message" class="mt-1" />
-                                                @enderror
-                                            </div>
-                                        </div>
-
-                                        {{-- Status Perkawinan --}}
-                                        <div>
-                                            <x-input-label for="statusPerkawinan" :value="__('Status Perkawinan')"
-                                                :required="true" />
-                                            <div class="mt-1">
-                                                <div class="flex">
-                                                    <x-text-input id="statusPerkawinan"
-                                                        class="flex-1 sm:rounded-none sm:rounded-l-lg"
-                                                        :errorshas="$errors->has(
-                                                            'dataPasien.pasien.statusPerkawinan.statusPerkawinanId',
-                                                        )" :disabled="true" :value="$dataPasien['pasien']['statusPerkawinan'][
-                                                            'statusPerkawinanId'
-                                                        ] .
-                                                            '. ' .
-                                                            $dataPasien['pasien']['statusPerkawinan'][
-                                                                'statusPerkawinanDesc'
-                                                            ]" />
-                                                    <x-primary-button type="button" :disabled="$disabledProperty"
-                                                        class="sm:rounded-none sm:rounded-r-lg !py-2 px-3"
-                                                        wire:click.prevent="clickstatusPerkawinanlov()"
-                                                        aria-label="Pilih status perkawinan">
-                                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"
-                                                            aria-hidden="true">
-                                                            <path clip-rule="evenodd" fill-rule="evenodd"
-                                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                                                        </svg>
-                                                    </x-primary-button>
-                                                </div>
-                                                @error('dataPasien.pasien.statusPerkawinan.statusPerkawinanId')
-                                                    <x-input-error :messages="$message" class="mt-1" />
-                                                @enderror
-                                            </div>
-                                        </div>
-
-                                        {{-- Pendidikan --}}
-                                        <div>
-                                            <x-input-label for="pendidikan" :value="__('Pendidikan')" :required="true" />
-                                            <div class="mt-1">
-                                                <div class="flex">
-                                                    <x-text-input id="pendidikan"
-                                                        class="flex-1 sm:rounded-none sm:rounded-l-lg"
-                                                        :errorshas="$errors->has(
-                                                            'dataPasien.pasien.pendidikan.pendidikanId',
-                                                        )" :disabled="true" :value="$dataPasien['pasien']['pendidikan']['pendidikanId'] .
-                                                            '. ' .
-                                                            $dataPasien['pasien']['pendidikan']['pendidikanDesc']" />
-                                                    <x-primary-button type="button" :disabled="$disabledProperty"
-                                                        class="sm:rounded-none sm:rounded-r-lg !py-2 px-3"
-                                                        wire:click.prevent="clickpendidikanlov()"
-                                                        aria-label="Pilih pendidikan">
-                                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"
-                                                            aria-hidden="true">
-                                                            <path clip-rule="evenodd" fill-rule="evenodd"
-                                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                                                        </svg>
-                                                    </x-primary-button>
-                                                </div>
-                                                @error('dataPasien.pasien.pendidikan.pendidikanId')
-                                                    <x-input-error :messages="$message" class="mt-1" />
-                                                @enderror
-                                            </div>
-                                        </div>
-
-                                        {{-- Pekerjaan --}}
-                                        <div>
-                                            <x-input-label for="pekerjaan" :value="__('Pekerjaan')" :required="true" />
-                                            <div class="mt-1">
-                                                <div class="flex">
-                                                    <x-text-input id="pekerjaan"
-                                                        class="flex-1 sm:rounded-none sm:rounded-l-lg"
-                                                        :errorshas="$errors->has(
-                                                            'dataPasien.pasien.pekerjaan.pekerjaanId',
-                                                        )" :disabled="true" :value="$dataPasien['pasien']['pekerjaan']['pekerjaanId'] .
-                                                            '. ' .
-                                                            $dataPasien['pasien']['pekerjaan']['pekerjaanDesc']" />
-                                                    <x-primary-button type="button" :disabled="$disabledProperty"
-                                                        class="sm:rounded-none sm:rounded-r-lg !py-2 px-3"
-                                                        wire:click.prevent="clickpekerjaanlov()"
-                                                        aria-label="Pilih pekerjaan">
-                                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"
-                                                            aria-hidden="true">
-                                                            <path clip-rule="evenodd" fill-rule="evenodd"
-                                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                                                        </svg>
-                                                    </x-primary-button>
-                                                </div>
-                                                @error('dataPasien.pasien.pekerjaan.pekerjaanId')
-                                                    <x-input-error :messages="$message" class="mt-1" />
-                                                @enderror
-                                            </div>
-                                        </div>
-
-                                        {{-- Golongan Darah --}}
-                                        <div>
-                                            <x-input-label for="golonganDarah" :value="__('Golongan Darah')" />
-                                            <div class="mt-1">
-                                                <div class="flex">
-                                                    <x-text-input id="golonganDarah"
-                                                        class="flex-1 sm:rounded-none sm:rounded-l-lg"
-                                                        :errorshas="$errors->has(
-                                                            'dataPasien.pasien.golonganDarah.golonganDarahId',
-                                                        )" :disabled="true" :value="$dataPasien['pasien']['golonganDarah'][
-                                                            'golonganDarahId'
-                                                        ] .
-                                                            '. ' .
-                                                            $dataPasien['pasien']['golonganDarah']['golonganDarahDesc']" />
-                                                    <x-primary-button type="button" :disabled="$disabledProperty"
-                                                        class="sm:rounded-none sm:rounded-r-lg !py-2 px-3"
-                                                        wire:click.prevent="clickgolonganDarahlov()"
-                                                        aria-label="Pilih golongan darah">
-                                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"
-                                                            aria-hidden="true">
-                                                            <path clip-rule="evenodd" fill-rule="evenodd"
-                                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                                                        </svg>
-                                                    </x-primary-button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </x-border-form>
-
-                                {{-- Data Identitas --}}
-                                <x-border-form :title="__('Data Identitas')" :align="__('start')" :bgcolor="__('bg-gray-50')">
-                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                        {{-- NIK --}}
-                                        <div>
-                                            <x-input-label for="nik" :value="__('NIK')" :required="true" />
-                                            <x-text-input id="nik" placeholder="16 Digit NIK"
-                                                class="w-full mt-1" :errorshas="$errors->has('dataPasien.pasien.identitas.nik')" :disabled="$disabledProperty"
-                                                wire:model.live="dataPasien.pasien.identitas.nik"
-                                                x-mask="9999999999999999" />
-                                            <x-input-error :messages="$errors->get('dataPasien.pasien.identitas.nik')" class="mt-1" />
-                                        </div>
-
-                                        {{-- No BPJS --}}
-                                        <div>
-                                            <x-input-label for="idbpjs" :value="__('No BPJS')" />
-                                            <x-text-input id="idbpjs" placeholder="13 Digit No BPJS"
-                                                class="w-full mt-1" :errorshas="$errors->has('dataPasien.pasien.identitas.idbpjs')" :disabled="$disabledProperty"
-                                                wire:model.live="dataPasien.pasien.identitas.idbpjs"
-                                                x-mask="9999999999999" />
-                                            <x-input-error :messages="$errors->get('dataPasien.pasien.identitas.idbpjs')" class="mt-1" />
-                                        </div>
-
-                                        {{-- Alamat --}}
-                                        <div class="lg:col-span-2">
-                                            <x-input-label for="alamat" :value="__('Alamat')" :required="true" />
-                                            <x-text-input id="alamat" placeholder="Alamat Lengkap"
-                                                class="w-full mt-1" :errorshas="$errors->has('dataPasien.pasien.identitas.alamat')" :disabled="$disabledProperty"
-                                                wire:model.live="dataPasien.pasien.identitas.alamat" />
-                                            <x-input-error :messages="$errors->get('dataPasien.pasien.identitas.alamat')" class="mt-1" />
-                                        </div>
-
-                                        {{-- RT --}}
-                                        <div>
-                                            <x-input-label for="rt" :value="__('RT')" :required="true" />
-                                            <x-text-input id="rt" placeholder="RT" class="w-full mt-1"
-                                                :errorshas="$errors->has('dataPasien.pasien.identitas.rt')" :disabled="$disabledProperty"
-                                                wire:model.live="dataPasien.pasien.identitas.rt" x-mask="999" />
-                                            <x-input-error :messages="$errors->get('dataPasien.pasien.identitas.rt')" class="mt-1" />
-                                        </div>
-
-                                        {{-- RW --}}
-                                        <div>
-                                            <x-input-label for="rw" :value="__('RW')" :required="true" />
-                                            <x-text-input id="rw" placeholder="RW" class="w-full mt-1"
-                                                :errorshas="$errors->has('dataPasien.pasien.identitas.rw')" :disabled="$disabledProperty"
-                                                wire:model.live="dataPasien.pasien.identitas.rw" x-mask="999" />
-                                            <x-input-error :messages="$errors->get('dataPasien.pasien.identitas.rw')" class="mt-1" />
-                                        </div>
-                                    </div>
-                                </x-border-form>
-
-                                {{-- Kontak --}}
-                                <x-border-form :title="__('Kontak')" :align="__('start')" :bgcolor="__('bg-gray-50')">
-                                    <div class="space-y-4">
-                                        <div>
-                                            <x-input-label for="nohpPasien" :value="__('No HP Pasien')" :required="true" />
-                                            <div class="flex gap-2 mt-1">
-                                                <x-text-input placeholder="+62" class="w-20" :disabled="$disabledProperty"
-                                                    wire:model.live="dataPasien.pasien.kontak.kodenegara" />
-                                                <x-text-input id="nohpPasien" placeholder="81234567890"
-                                                    class="flex-1" :errorshas="$errors->has(
-                                                        'dataPasien.pasien.kontak.nomerTelponSelulerPasien',
-                                                    )" :disabled="$disabledProperty"
-                                                    wire:model.live="dataPasien.pasien.kontak.nomerTelponSelulerPasien"
-                                                    x-mask="999999999999999" />
-                                            </div>
-                                            @error('dataPasien.pasien.kontak.nomerTelponSelulerPasien')
-                                                <x-input-error :messages="$message" class="mt-1" />
-                                            @enderror
-                                        </div>
-
-                                        <div>
-                                            <x-input-label for="nohpTelponLain" :value="__('No Lain')" />
-                                            <div class="flex gap-2 mt-1">
-                                                <x-text-input placeholder="+62" class="w-20" :disabled="$disabledProperty"
-                                                    wire:model.live="dataPasien.pasien.kontak.kodenegara" />
-                                                <x-text-input id="nohpTelponLain" placeholder="81234567890"
-                                                    class="flex-1" :errorshas="$errors->has('dataPasien.pasien.kontak.nomerTelponLain')" :disabled="$disabledProperty"
-                                                    wire:model.live="dataPasien.pasien.kontak.nomerTelponLain"
-                                                    x-mask="999999999999999" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </x-border-form>
-
-                                {{-- Hubungan --}}
-                                <x-border-form :title="__('Hubungan')" :align="__('start')" :bgcolor="__('bg-gray-50')">
-                                    <div class="space-y-4">
-                                        {{-- Penanggung Jawab --}}
-                                        <x-border-form :title="__('Penanggung Jawab')" :align="__('start')" :bgcolor="__('bg-yellow-100')">
-                                            <div class="space-y-3">
-                                                <div>
-                                                    <x-input-label for="namaPenanggungJawab" :value="__('Nama Penanggung Jawab')"
-                                                        :required="true" />
-                                                    <x-text-input id="namaPenanggungJawab"
-                                                        placeholder="Nama Penanggung Jawab"
-                                                        class="w-full mt-1 uppercase" :errorshas="$errors->has(
-                                                            'dataPasien.pasien.hubungan.namaPenanggungJawab',
-                                                        )"
-                                                        :disabled="$disabledProperty"
-                                                        wire:model.live="dataPasien.pasien.hubungan.namaPenanggungJawab" />
-                                                    @error('dataPasien.pasien.hubungan.namaPenanggungJawab')
-                                                        <x-input-error :messages="$message" class="mt-1" />
-                                                    @enderror
-                                                </div>
-
-                                                <div>
-                                                    <x-input-label for="nomerTelponSelulerPenanggungJawab"
-                                                        :value="__('No HP Penanggung Jawab')" />
-                                                    <div class="flex gap-2 mt-1">
-                                                        <x-text-input placeholder="+62" class="w-20"
-                                                            :disabled="$disabledProperty"
-                                                            wire:model.live="dataPasien.pasien.hubungan.kodenegaraPenanggungJawab" />
-                                                        <x-text-input id="nomerTelponSelulerPenanggungJawab"
-                                                            placeholder="81234567890" class="flex-1"
-                                                            :errorshas="$errors->has(
-                                                                'dataPasien.pasien.hubungan.nomerTelponSelulerPenanggungJawab',
-                                                            )" :disabled="$disabledProperty"
-                                                            wire:model.live="dataPasien.pasien.hubungan.nomerTelponSelulerPenanggungJawab"
-                                                            x-mask="999999999999999" />
+                                        {{-- SECTION: DATA DASAR --}}
+                                        <x-border-form :title="__('Data Dasar Pasien')" :align="__('start')" :bgcolor="__('bg-white')">
+                                            <div class="space-y-5">
+                                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                    {{-- Reg No --}}
+                                                    <div>
+                                                        <x-input-label value="Reg No Pasien" :required="true" />
+                                                        <x-text-input wire:model.live="dataPasien.pasien.regNo"
+                                                            :disabled="$formMode === 'edit'" :error="$errors->has('dataPasien.pasien.regNo')" class="w-full mt-1" />
+                                                        <x-input-error :messages="$errors->get('dataPasien.pasien.regNo')" class="mt-1" />
                                                     </div>
-                                                    @error('dataPasien.pasien.hubungan.nomerTelponSelulerPenanggungJawab')
-                                                        <x-input-error :messages="$message" class="mt-1" />
-                                                    @enderror
+
+                                                    {{-- Gelar Depan + Nama + Gelar Belakang + Nama Panggilan --}}
+                                                    <div class="col-span-1 sm:col-span-2">
+                                                        <x-input-label value="Nama Pasien" :required="true" />
+                                                        <div class="grid grid-cols-1 gap-2 mt-1 sm:grid-cols-4">
+                                                            <x-text-input placeholder="Gelar depan"
+                                                                wire:model.live="dataPasien.pasien.gelarDepan"
+                                                                :error="$errors->has('dataPasien.pasien.gelarDepan')" class="w-full" />
+                                                            <x-text-input placeholder="Nama"
+                                                                wire:model.live="dataPasien.pasien.regName"
+                                                                :error="$errors->has('dataPasien.pasien.regName')" class="w-full sm:col-span-2"
+                                                                style="text-transform:uppercase" />
+                                                            <x-text-input placeholder="Gelar Belakang"
+                                                                wire:model.live="dataPasien.pasien.gelarBelakang"
+                                                                :error="$errors->has(
+                                                                    'dataPasien.pasien.gelarBelakang',
+                                                                )" class="w-full" />
+                                                        </div>
+                                                        <div class="flex items-center gap-2 mt-2">
+                                                            <span class="text-gray-500">{{ ' / ' }}</span>
+                                                            <x-text-input placeholder="Nama Panggilan"
+                                                                wire:model.live="dataPasien.pasien.namaPanggilan"
+                                                                :error="$errors->has(
+                                                                    'dataPasien.pasien.namaPanggilan',
+                                                                )" class="w-full" />
+                                                        </div>
+                                                        <x-input-error :messages="$errors->get('dataPasien.pasien.regName')" class="mt-1" />
+                                                    </div>
                                                 </div>
 
-                                                <div>
-                                                    <x-input-label for="hubunganDgnPasien" :value="__('Hubungan dgn Pasien')"
-                                                        :required="true" />
-                                                    <div class="mt-1">
-                                                        <div class="flex">
-                                                            <x-text-input id="hubunganDgnPasien"
-                                                                class="flex-1 sm:rounded-none sm:rounded-l-lg"
-                                                                :errorshas="$errors->has(
-                                                                    'dataPasien.pasien.hubungan.hubunganDgnPasien.hubunganDgnPasienId',
-                                                                )" :disabled="true"
-                                                                :value="$dataPasien['pasien']['hubungan'][
-                                                                    'hubunganDgnPasien'
-                                                                ]['hubunganDgnPasienId'] .
-                                                                    '. ' .
-                                                                    $dataPasien['pasien']['hubungan'][
-                                                                        'hubunganDgnPasien'
-                                                                    ]['hubunganDgnPasienDesc']" />
-                                                            <x-primary-button type="button" :disabled="$disabledProperty"
-                                                                class="sm:rounded-none sm:rounded-r-lg !py-2 px-3"
-                                                                wire:click.prevent="clickhubunganDgnPasienlov()"
-                                                                aria-label="Pilih hubungan dengan pasien">
-                                                                <svg class="w-5 h-5" fill="currentColor"
-                                                                    viewBox="0 0 20 20" aria-hidden="true">
-                                                                    <path clip-rule="evenodd" fill-rule="evenodd"
-                                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                                                                </svg>
-                                                            </x-primary-button>
+                                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                    {{-- Tempat Lahir --}}
+                                                    <div>
+                                                        <x-input-label value="Tempat Lahir" :required="true" />
+                                                        <x-text-input wire:model.live="dataPasien.pasien.tempatLahir"
+                                                            :error="$errors->has('dataPasien.pasien.tempatLahir')" class="w-full mt-1"
+                                                            style="text-transform:uppercase" />
+                                                        <x-input-error :messages="$errors->get('dataPasien.pasien.tempatLahir')" class="mt-1" />
+                                                    </div>
+
+                                                    {{-- Tanggal Lahir + Umur --}}
+                                                    <div>
+                                                        <x-input-label value="Tanggal Lahir & Umur"
+                                                            :required="true" />
+                                                        <div class="grid grid-cols-1 gap-2 mt-1 sm:grid-cols-5">
+                                                            <x-text-input wire:model.live="dataPasien.pasien.tglLahir"
+                                                                placeholder="dd/mm/yyyy" :error="$errors->has('dataPasien.pasien.tglLahir')"
+                                                                class="w-full sm:col-span-2" />
+                                                            <x-text-input wire:model.live="dataPasien.pasien.thn"
+                                                                placeholder="Thn" :error="$errors->has('dataPasien.pasien.thn')" class="w-full" />
+                                                            <x-text-input wire:model.live="dataPasien.pasien.bln"
+                                                                placeholder="Bln" :error="$errors->has('dataPasien.pasien.bln')" class="w-full" />
+                                                            <x-text-input wire:model.live="dataPasien.pasien.hari"
+                                                                placeholder="Hari" :error="$errors->has('dataPasien.pasien.hari')" class="w-full" />
                                                         </div>
-                                                        @error('dataPasien.pasien.hubungan.hubunganDgnPasien.hubunganDgnPasienId')
-                                                            <x-input-error :messages="$message" class="mt-1" />
-                                                        @enderror
+                                                        <x-input-error :messages="$errors->get('dataPasien.pasien.tglLahir')" class="mt-1" />
                                                     </div>
                                                 </div>
                                             </div>
                                         </x-border-form>
 
-                                        {{-- Data Ayah --}}
-                                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                            <div>
-                                                <x-input-label for="namaAyah" :value="__('Nama Ayah')" />
-                                                <x-text-input id="namaAyah" placeholder="Nama Ayah"
-                                                    class="w-full mt-1 uppercase" :errorshas="$errors->has('dataPasien.pasien.hubungan.namaAyah')"
-                                                    :disabled="$disabledProperty"
-                                                    wire:model.live="dataPasien.pasien.hubungan.namaAyah" />
-                                            </div>
-                                            <div>
-                                                <x-input-label for="nomerTelponSelulerAyah" :value="__('No HP Ayah')" />
-                                                <div class="flex gap-2 mt-1">
-                                                    <x-text-input placeholder="+62" class="w-20" :disabled="$disabledProperty"
-                                                        wire:model.live="dataPasien.pasien.hubungan.kodenegaraAyah" />
-                                                    <x-text-input id="nomerTelponSelulerAyah"
-                                                        placeholder="81234567890" class="flex-1" :errorshas="$errors->has(
-                                                            'dataPasien.pasien.hubungan.nomerTelponSelulerAyah',
-                                                        )"
-                                                        :disabled="$disabledProperty"
-                                                        wire:model.live="dataPasien.pasien.hubungan.nomerTelponSelulerAyah"
-                                                        x-mask="999999999999999" />
+                                        {{-- SECTION: DATA SOSIAL --}}
+                                        <x-border-form :title="__('Data Sosial')" :align="__('start')" :bgcolor="__('bg-white')">
+                                            <div class="space-y-5">
+                                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-5">
+                                                    {{-- Jenis Kelamin --}}
+                                                    <div>
+                                                        <x-input-label value="Jenis Kelamin" :required="true" />
+                                                        <x-select-input
+                                                            wire:model.live="dataPasien.pasien.jenisKelamin.jenisKelaminId"
+                                                            :error="$errors->has(
+                                                                'dataPasien.pasien.jenisKelamin.jenisKelaminId',
+                                                            )">
+                                                            <option value="">-- Pilih Jenis Kelamin --</option>
+                                                            @foreach ($jenisKelaminOptions as $option)
+                                                                <option value="{{ $option['id'] }}"
+                                                                    {{ ($dataPasien['pasien']['jenisKelamin']['jenisKelaminId'] ?? '') == $option['id'] ? 'selected' : '' }}>
+                                                                    {{ $option['id'] }}. {{ $option['desc'] }}
+                                                                </option>
+                                                            @endforeach
+                                                        </x-select-input>
+                                                        <x-input-error :messages="$errors->get(
+                                                            'dataPasien.pasien.jenisKelamin.jenisKelaminId',
+                                                        )" class="mt-1" />
+                                                    </div>
+
+                                                    {{-- Agama --}}
+                                                    <div>
+                                                        <x-input-label value="Agama" :required="true" />
+                                                        <x-select-input
+                                                            wire:model.live="dataPasien.pasien.agama.agamaId"
+                                                            :error="$errors->has('dataPasien.pasien.agama.agamaId')">
+                                                            <option value="">-- Pilih Agama --</option>
+                                                            @foreach ($agamaOptions as $option)
+                                                                <option value="{{ $option['id'] }}"
+                                                                    {{ ($dataPasien['pasien']['agama']['agamaId'] ?? '') == $option['id'] ? 'selected' : '' }}>
+                                                                    {{ $option['id'] }}. {{ $option['desc'] }}
+                                                                </option>
+                                                            @endforeach
+                                                        </x-select-input>
+                                                        <x-input-error :messages="$errors->get('dataPasien.pasien.agama.agamaId')" class="mt-1" />
+                                                    </div>
+
+                                                    {{-- Status Perkawinan --}}
+                                                    <div>
+                                                        <x-input-label value="Status Perkawinan" :required="true" />
+                                                        <x-select-input
+                                                            wire:model.live="dataPasien.pasien.statusPerkawinan.statusPerkawinanId"
+                                                            :error="$errors->has(
+                                                                'dataPasien.pasien.statusPerkawinan.statusPerkawinanId',
+                                                            )">
+                                                            <option value="">-- Pilih Status Perkawinan --
+                                                            </option>
+                                                            @foreach ($statusPerkawinanOptions as $option)
+                                                                <option value="{{ $option['id'] }}"
+                                                                    {{ ($dataPasien['pasien']['statusPerkawinan'][
+                                                                        '
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            statusPerkawinanId'
+                                                                    ] ??
+                                                                        '') ==
+                                                                    $option['id']
+                                                                        ? 'selected'
+                                                                        : '' }}>
+                                                                    {{ $option['id'] }}. {{ $option['desc'] }}
+                                                                </option>
+                                                            @endforeach
+                                                        </x-select-input>
+                                                        <x-input-error :messages="$errors->get(
+                                                            'dataPasien.pasien.statusPerkawinan.statusPerkawinanId',
+                                                        )" class="mt-1" />
+                                                    </div>
+
+                                                    {{-- Pendidikan --}}
+                                                    <div>
+                                                        <x-input-label value="Pendidikan" :required="true" />
+                                                        <x-select-input
+                                                            wire:model.live="dataPasien.pasien.pendidikan.pendidikanId"
+                                                            :error="$errors->has(
+                                                                'dataPasien.pasien.pendidikan.pendidikanId',
+                                                            )">
+                                                            <option value="">-- Pilih Pendidikan --</option>
+                                                            @foreach ($pendidikanOptions as $option)
+                                                                <option value="{{ $option['id'] }}"
+                                                                    {{ ($dataPasien['pasien']['pendidikan']['pendidikanId'] ?? '') == $option['id'] ? 'selected' : '' }}>
+                                                                    {{ $option['id'] }}. {{ $option['desc'] }}
+                                                                </option>
+                                                            @endforeach
+                                                        </x-select-input>
+                                                        <x-input-error :messages="$errors->get(
+                                                            'dataPasien.pasien.pendidikan.pendidikanId',
+                                                        )" class="mt-1" />
+                                                    </div>
+
+                                                    {{-- Pekerjaan --}}
+                                                    <div>
+                                                        <x-input-label value="Pekerjaan" :required="true" />
+                                                        <x-select-input
+                                                            wire:model.live="dataPasien.pasien.pekerjaan.pekerjaanId"
+                                                            :error="$errors->has(
+                                                                'dataPasien.pasien.pekerjaan.pekerjaanId',
+                                                            )">
+                                                            <option value="">-- Pilih Pekerjaan --</option>
+                                                            @foreach ($pekerjaanOptions as $option)
+                                                                <option value="{{ $option['id'] }}"
+                                                                    {{ ($dataPasien['pasien']['pekerjaan']['pekerjaanId'] ?? '') == $option['id'] ? 'selected' : '' }}>
+                                                                    {{ $option['id'] }}. {{ $option['desc'] }}
+                                                                </option>
+                                                            @endforeach
+                                                        </x-select-input>
+                                                        <x-input-error :messages="$errors->get(
+                                                            'dataPasien.pasien.pekerjaan.pekerjaanId',
+                                                        )" class="mt-1" />
+                                                    </div>
+
+
                                                 </div>
                                             </div>
+                                        </x-border-form>
+
+                                        {{-- SECTION: DATA BUDAYA --}}
+                                        <x-border-form :title="__('Data Budaya')" :align="__('start')" :bgcolor="__('bg-white')">
+                                            <div class="space-y-5">
+                                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-5">
+                                                    {{-- Golongan Darah --}}
+                                                    <div>
+                                                        <x-input-label value="Golongan Darah" />
+                                                        <x-select-input
+                                                            wire:model.live="dataPasien.pasien.golonganDarah.golonganDarahId"
+                                                            :error="$errors->has(
+                                                                'dataPasien.pasien.golonganDarah.golonganDarahId',
+                                                            )">
+                                                            <option value="">-- Pilih Golongan Darah --</option>
+                                                            @foreach ($golonganDarahOptions as $option)
+                                                                <option value="{{ $option['id'] }}"
+                                                                    {{ ($dataPasien['pasien']['golonganDarah']['golonganDarahId'] ?? '') == $option['id'] ? 'selected' : '' }}>
+                                                                    {{ $option['id'] }}. {{ $option['desc'] }}
+                                                                </option>
+                                                            @endforeach
+                                                        </x-select-input>
+                                                        <x-input-error :messages="$errors->get(
+                                                            'dataPasien.pasien.golonganDarah.golonganDarahId',
+                                                        )" class="mt-1" />
+                                                    </div>
+
+                                                    {{-- Kewarganegaraan --}}
+                                                    <div>
+                                                        <x-input-label value="Kewarganegaraan" />
+                                                        <x-text-input
+                                                            wire:model.live="dataPasien.pasien.kewarganegaraan"
+                                                            :error="$errors->has(
+                                                                'dataPasien.pasien.kewarganegaraan',
+                                                            )" class="w-full mt-1" />
+                                                        <x-input-error :messages="$errors->get('dataPasien.pasien.kewarganegaraan')" class="mt-1" />
+                                                    </div>
+
+                                                    {{-- Suku --}}
+                                                    <div>
+                                                        <x-input-label value="Suku" />
+                                                        <x-text-input wire:model.live="dataPasien.pasien.suku"
+                                                            :error="$errors->has('dataPasien.pasien.suku')" class="w-full mt-1" />
+                                                        <x-input-error :messages="$errors->get('dataPasien.pasien.suku')" class="mt-1" />
+                                                    </div>
+
+                                                    {{-- Bahasa --}}
+                                                    <div>
+                                                        <x-input-label value="Bahasa" />
+                                                        <x-text-input wire:model.live="dataPasien.pasien.bahasa"
+                                                            :error="$errors->has('dataPasien.pasien.bahasa')" placeholder="Bahasa yang digunakan"
+                                                            class="w-full mt-1" />
+                                                        <x-input-error :messages="$errors->get('dataPasien.pasien.bahasa')" class="mt-1" />
+                                                    </div>
+
+                                                    {{-- Status --}}
+                                                    <div>
+                                                        <x-input-label value="Status" />
+                                                        <x-select-input
+                                                            wire:model.live="dataPasien.pasien.status.statusId"
+                                                            :error="$errors->has(
+                                                                'dataPasien.pasien.status.statusId',
+                                                            )">
+                                                            <option value="">-- Pilih Status --</option>
+                                                            @foreach ($statusOptions as $option)
+                                                                <option value="{{ $option['id'] }}"
+                                                                    {{ ($dataPasien['pasien']['status']['statusId'] ?? '') == $option['id'] ? 'selected' : '' }}>
+                                                                    {{ $option['id'] }}. {{ $option['desc'] }}
+                                                                </option>
+                                                            @endforeach
+                                                        </x-select-input>
+                                                        <x-input-error :messages="$errors->get('dataPasien.pasien.status.statusId')" class="mt-1" />
+                                                    </div>
+
+                                                </div>
+                                            </div>
+                                        </x-border-form>
+
+                                        <div class="grid grid-cols-1 gap-2 ">
+                                            {{-- SECTION: IDENTITAS --}}
+                                            <x-border-form :title="__('Identitas')" :align="__('start')" :bgcolor="__('bg-white')">
+                                                <div class="space-y-5">
+                                                    {{-- Patient UUID --}}
+                                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                                                        <div class="sm:col-span-3">
+                                                            <x-input-label value="Patient UUID" :required="true" />
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.identitas.patientUuid"
+                                                                :error="$errors->has(
+                                                                    'dataPasien.pasien.identitas.patientUuid',
+                                                                )" class="w-full mt-1" />
+                                                            <x-input-error :messages="$errors->get(
+                                                                'dataPasien.pasien.identitas.patientUuid',
+                                                            )" class="mt-1" />
+                                                        </div>
+                                                        <div class="flex items-end">
+                                                            <x-primary-button
+                                                                wire:click.prevent="UpdatepatientUuid('{{ $dataPasien['pasien']['identitas']['nik'] ?? '' }}')"
+                                                                type="button" wire:loading.remove class="w-full">
+                                                                UUID Pasien
+                                                            </x-primary-button>
+                                                            <div wire:loading wire:target="UpdatepatientUuid">
+                                                                <x-loading />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                        {{-- NIK --}}
+                                                        <div>
+                                                            <x-input-label value="NIK" :required="true" />
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.identitas.nik"
+                                                                :error="$errors->has(
+                                                                    'dataPasien.pasien.identitas.nik',
+                                                                )" class="w-full mt-1" />
+                                                            <x-input-error :messages="$errors->get('dataPasien.pasien.identitas.nik')" class="mt-1" />
+                                                        </div>
+
+                                                        {{-- ID BPJS --}}
+                                                        <div>
+                                                            <x-input-label value="ID BPJS" />
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.identitas.idbpjs"
+                                                                placeholder="13 digit" class="w-full mt-1" />
+                                                        </div>
+
+                                                        {{-- Paspor --}}
+                                                        <div>
+                                                            <x-input-label value="Paspor" />
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.identitas.pasport"
+                                                                placeholder="untuk WNA / WNI" class="w-full mt-1" />
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- Catatan --}}
+                                                    <div class="p-3 rounded-lg bg-yellow-50">
+                                                        <p class="text-sm text-gray-600">
+                                                            <strong>Catatan:</strong><br>
+                                                            1. Jika Pasien (Tidak dikenal) NIK diisi Kosong<br>
+                                                            2. Isi alamat sesuai dengan ditemukannya pasien<br>
+                                                            3. Untuk Pasien Bayi Baru lahir:<br>
+                                                            &nbsp;&nbsp;&nbsp;- Isi NIK dengan "NIK Ibu bayi"<br>
+                                                            &nbsp;&nbsp;&nbsp;- Nama bayi dengan format "Bayi Ny(Nama
+                                                            Ibu)"
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </x-border-form>
                                         </div>
 
-                                        {{-- Data Ibu --}}
-                                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                            <div>
-                                                <x-input-label for="namaIbu" :value="__('Nama Ibu')" />
-                                                <x-text-input id="namaIbu" placeholder="Nama Ibu"
-                                                    class="w-full mt-1 uppercase" :errorshas="$errors->has('dataPasien.pasien.hubungan.namaIbu')"
-                                                    :disabled="$disabledProperty"
-                                                    wire:model.live="dataPasien.pasien.hubungan.namaIbu" />
-                                            </div>
-                                            <div>
-                                                <x-input-label for="nomerTelponSelulerIbu" :value="__('No HP Ibu')" />
-                                                <div class="flex gap-2 mt-1">
-                                                    <x-text-input placeholder="+62" class="w-20" :disabled="$disabledProperty"
-                                                        wire:model.live="dataPasien.pasien.hubungan.kodenegaraIbu" />
-                                                    <x-text-input id="nomerTelponSelulerIbu" placeholder="81234567890"
-                                                        class="flex-1" :errorshas="$errors->has(
-                                                            'dataPasien.pasien.hubungan.nomerTelponSelulerIbu',
-                                                        )" :disabled="$disabledProperty"
-                                                        wire:model.live="dataPasien.pasien.hubungan.nomerTelponSelulerIbu"
-                                                        x-mask="999999999999999" />
+                                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+
+
+                                            {{-- SECTION: ALAMAT  --}}
+                                            <x-border-form :title="__('Alamat ')" :align="__('start')" :bgcolor="__('bg-white')">
+                                                <div class="mt-16 space-y-5">
+                                                    {{-- Alamat --}}
+                                                    <div>
+                                                        <x-input-label value="Alamat" :required="true" />
+                                                        <x-textarea
+                                                            wire:model.live="dataPasien.pasien.identitas.alamat"
+                                                            :error="$errors->has(
+                                                                'dataPasien.pasien.identitas.alamat',
+                                                            )" class="w-full mt-1" rows="2" />
+                                                        <x-input-error :messages="$errors->get('dataPasien.pasien.identitas.alamat')" class="mt-1" />
+                                                    </div>
+
+                                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                                        {{-- RT --}}
+                                                        <div>
+                                                            <x-input-label value="RT" :required="true" />
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.identitas.rt"
+                                                                placeholder="3 digit" :error="$errors->has(
+                                                                    'dataPasien.pasien.identitas.rt',
+                                                                )"
+                                                                class="w-full mt-1" />
+                                                            <x-input-error :messages="$errors->get('dataPasien.pasien.identitas.rt')" class="mt-1" />
+                                                        </div>
+
+                                                        {{-- RW --}}
+                                                        <div>
+                                                            <x-input-label value="RW" :required="true" />
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.identitas.rw"
+                                                                placeholder="3 digit" :error="$errors->has(
+                                                                    'dataPasien.pasien.identitas.rw',
+                                                                )"
+                                                                class="w-full mt-1" />
+                                                            <x-input-error :messages="$errors->get('dataPasien.pasien.identitas.rw')" class="mt-1" />
+                                                        </div>
+
+                                                        {{-- Kode Pos --}}
+                                                        <div>
+                                                            <x-input-label value="Kode Pos" />
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.identitas.kodepos"
+                                                                class="w-full mt-1" />
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- Alamat Lengkap --}}
+                                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-1">
+                                                        {{-- Desa --}}
+                                                        <div>
+                                                            @if ($formMode == 'create')
+                                                                <livewire:lov.desa.lov-desa target="desa_identitas"
+                                                                    :propinsiId="$dataPasien['pasien']['identitas'][
+                                                                        'propinsiId'
+                                                                    ] ?? null" :kotaId="$dataPasien['pasien']['identitas'][
+                                                                        'kotaId'
+                                                                    ] ?? null" />
+                                                            @else
+                                                                <livewire:lov.desa.lov-desa target="desa_identitas"
+                                                                    :propinsiId="$dataPasien['pasien']['identitas'][
+                                                                        'propinsiId'
+                                                                    ] ?? null" :kotaId="$dataPasien['pasien']['identitas'][
+                                                                        'kotaId'
+                                                                    ] ?? null"
+                                                                    :initialDesaId="$dataPasien['pasien']['identitas'][
+                                                                        'desaId'
+                                                                    ] ?? null" />
+                                                            @endif
+                                                            <x-input-error :messages="$errors->get(
+                                                                'dataPasien.pasien.identitas.desaId',
+                                                            )" class="mt-1" />
+                                                        </div>
+
+                                                        {{-- Kota --}}
+                                                        <div>
+                                                            @if ($formMode == 'create')
+                                                                <livewire:lov.kabupaten.lov-kabupaten
+                                                                    target="kota_identitas" :propinsiId="$dataPasien['pasien']['identitas'][
+                                                                        'propinsiId'
+                                                                    ] ?? null"
+                                                                    :initialKabId="$dataPasien['pasien']['identitas'][
+                                                                        'kotaId'
+                                                                    ] ?? null" {{-- Akan terisi 3504 --}}
+                                                                    :showAsInput="true" />
+                                                            @else
+                                                                <livewire:lov.kabupaten.lov-kabupaten
+                                                                    target="kota_identitas" :propinsiId="$dataPasien['pasien']['identitas'][
+                                                                        'propinsiId'
+                                                                    ] ?? null"
+                                                                    :initialKabId="$dataPasien['pasien']['identitas'][
+                                                                        'kotaId'
+                                                                    ] ?? null" :showAsInput="true" />
+                                                            @endif
+
+                                                            <x-input-error :messages="$errors->get(
+                                                                'dataPasien.pasien.identitas.kotaId',
+                                                            )" class="mt-1" />
+                                                        </div>
+
+
+
+                                                        {{-- Negara --}}
+                                                        <div>
+                                                            <x-input-label value="Negara" />
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.identitas.negara"
+                                                                placeholder="isi dengan ID" class="w-full mt-1" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </x-border-form>
+
+                                            {{-- SECTION: ALAMAT DOMISILI --}}
+                                            <x-border-form :title="__('Alamat Domisili')" :align="__('start')" :bgcolor="__('bg-white')">
+                                                <div class="space-y-5">
+
+                                                    {{-- Checkbox Sama dengan Identitas --}}
+                                                    <div class="flex justify-end">
+                                                        <x-check-box value='1' :label="__('Sama dengan Identitas')"
+                                                            wire:model.live="dataPasien.pasien.domisil.samadgnidentitas" />
+                                                    </div>
+
+                                                    {{-- Alamat Domisili --}}
+                                                    <div>
+                                                        <x-input-label value="Alamat Domisili" :required="true" />
+
+                                                        <x-textarea wire:key="domisil-alamat-{{ $domisilSyncTick }}"
+                                                            wire:model.live="dataPasien.pasien.domisil.alamat"
+                                                            :error="$errors->has('dataPasien.pasien.domisil.alamat')" class="w-full mt-1" rows="2" />
+
+                                                        <x-input-error :messages="$errors->get('dataPasien.pasien.domisil.alamat')" class="mt-1" />
+                                                    </div>
+
+                                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+
+                                                        {{-- RT Domisili --}}
+                                                        <div wire:key="domisil-rt-{{ $domisilSyncTick }}">
+                                                            <x-input-label value="RT Domisili" :required="true" />
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.domisil.rt"
+                                                                placeholder="3 digit" :error="$errors->has('dataPasien.pasien.domisil.rt')"
+                                                                class="w-full mt-1" />
+                                                            <x-input-error :messages="$errors->get('dataPasien.pasien.domisil.rt')" class="mt-1" />
+                                                        </div>
+
+                                                        {{-- RW Domisili --}}
+                                                        <div wire:key="domisil-rw-{{ $domisilSyncTick }}">
+                                                            <x-input-label value="RW Domisili" :required="true" />
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.domisil.rw"
+                                                                placeholder="3 digit" :error="$errors->has('dataPasien.pasien.domisil.rw')"
+                                                                class="w-full mt-1" />
+                                                            <x-input-error :messages="$errors->get('dataPasien.pasien.domisil.rw')" class="mt-1" />
+                                                        </div>
+
+                                                        {{-- Kode Pos Domisili --}}
+                                                        <div wire:key="domisil-kodepos-{{ $domisilSyncTick }}">
+                                                            <x-input-label value="Kode Pos Domisili" />
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.domisil.kodepos"
+                                                                class="w-full mt-1" />
+                                                        </div>
+
+                                                    </div>
+
+
+                                                    {{-- Alamat Lengkap Domisili --}}
+                                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-1">
+                                                        {{-- Desa Domisili --}}
+                                                        <div>
+                                                            @if ($formMode == 'create')
+                                                                <livewire:lov.desa.lov-desa target="desa_domisil"
+                                                                    :propinsiId="$dataPasien['pasien']['domisil'][
+                                                                        'propinsiId'
+                                                                    ] ?? null" :kotaId="$dataPasien['pasien']['domisil'][
+                                                                        'kotaId'
+                                                                    ] ?? null" />
+                                                            @else
+                                                                <livewire:lov.desa.lov-desa target="desa_domisil"
+                                                                    :propinsiId="$dataPasien['pasien']['domisil'][
+                                                                        'propinsiId'
+                                                                    ] ?? null" :kotaId="$dataPasien['pasien']['domisil'][
+                                                                        'kotaId'
+                                                                    ] ?? null"
+                                                                    :initialDesaId="$dataPasien['pasien']['domisil'][
+                                                                        'desaId'
+                                                                    ] ?? null" />
+                                                            @endif
+                                                            <x-input-error :messages="$errors->get('dataPasien.pasien.domisil.desaId')" class="mt-1" />
+                                                        </div>
+
+
+
+                                                        {{-- Kota Domisili --}}
+                                                        <div>
+                                                            {{-- Mode CREATE --}}
+                                                            @if ($formMode == 'create')
+                                                                <livewire:lov.kabupaten.lov-kabupaten
+                                                                    target="kota_domisil" target="kota_domisil"
+                                                                    :propinsiId="$dataPasien['pasien']['domisil'][
+                                                                        'propinsiId'
+                                                                    ] ?? null" :initialKabId="$dataPasien['pasien']['domisil'][
+                                                                        'kotaId'
+                                                                    ] ?? null"
+                                                                    :showAsInput="true" />
+                                                            @else
+                                                                <livewire:lov.kabupaten.lov-kabupaten
+                                                                    target="kota_domisil" :propinsiId="$dataPasien['pasien']['domisil'][
+                                                                        'propinsiId'
+                                                                    ] ?? null"
+                                                                    :initialKabId="$dataPasien['pasien']['domisil'][
+                                                                        'kotaId'
+                                                                    ] ?? null" :showAsInput="true" />
+                                                            @endif
+
+                                                            <x-input-error :messages="$errors->get('dataPasien.pasien.domisil.kotaId')" class="mt-1" />
+                                                        </div>
+
+
+                                                        {{-- Negara Domisili --}}
+                                                        <div>
+                                                            <x-input-label value="Negara Domisili" />
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.domisil.negara"
+                                                                placeholder="isi dengan ID" class="w-full mt-1" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </x-border-form>
+                                        </div>
+
+                                        {{-- SECTION: KONTAK --}}
+                                        <x-border-form :title="__('Kontak')" :align="__('start')" :bgcolor="__('bg-white')">
+                                            <div class="space-y-5">
+                                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                    {{-- No HP Pasien --}}
+                                                    <div>
+                                                        <x-input-label value="No HP Pasien" :required="true" />
+                                                        <div class="flex gap-2 mt-1">
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.kontak.kodenegara"
+                                                                placeholder="Kode" class="w-20" />
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.kontak.nomerTelponSelulerPasien"
+                                                                :error="$errors->has(
+                                                                    'dataPasien.pasien.kontak.nomerTelponSelulerPasien',
+                                                                )" class="flex-1" />
+                                                        </div>
+                                                        <x-input-error :messages="$errors->get(
+                                                            'dataPasien.pasien.kontak.nomerTelponSelulerPasien',
+                                                        )" class="mt-1" />
+
+
+
+
+                                                    </div>
+
+                                                    {{-- No HP Lain --}}
+                                                    <div>
+                                                        <x-input-label value="No HP Lain" />
+                                                        <div class="flex gap-2 mt-1">
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.kontak.kodenegara"
+                                                                placeholder="Kode" class="w-20" />
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.kontak.nomerTelponLain"
+                                                                class="flex-1" />
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </x-border-form>
+
+                                        {{-- SECTION: HUBUNGAN KELUARGA --}}
+                                        <x-border-form :title="__('Hubungan Keluarga')" :align="__('start')" :bgcolor="__('bg-white')">
+                                            <div class="space-y-5">
+                                                {{-- Subsection: Penanggung Jawab --}}
+                                                <div class="p-4 rounded-lg bg-yellow-50">
+                                                    <h4 class="mb-3 font-semibold text-yellow-800">Penanggung Jawab
+                                                    </h4>
+
+                                                    <div class="grid grid-cols-1 gap-4">
+                                                        {{-- Nama Penanggung Jawab + No HP --}}
+                                                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                                            <div class="sm:col-span-2">
+                                                                <x-input-label value="Nama Penanggung Jawab"
+                                                                    :required="true" />
+                                                                <x-text-input
+                                                                    wire:model.live="dataPasien.pasien.hubungan.namaPenanggungJawab"
+                                                                    :error="$errors->has(
+                                                                        'dataPasien.pasien.hubungan.namaPenanggungJawab',
+                                                                    )" class="w-full mt-1"
+                                                                    style="text-transform:uppercase" />
+                                                                <x-input-error :messages="$errors->get(
+                                                                    'dataPasien.pasien.hubungan.namaPenanggungJawab',
+                                                                )" class="mt-1" />
+                                                            </div>
+                                                            <div class="grid grid-cols-2 gap-2">
+                                                                <div>
+                                                                    <x-input-label value="Kode Negara" />
+                                                                    <x-text-input
+                                                                        wire:model.live="dataPasien.pasien.hubungan.kodenegaraPenanggungJawab"
+                                                                        class="w-full mt-1" />
+                                                                </div>
+                                                                <div>
+                                                                    <x-input-label value="No HP"
+                                                                        :required="true" />
+                                                                    <x-text-input
+                                                                        wire:model.live="dataPasien.pasien.hubungan.nomerTelponSelulerPenanggungJawab"
+                                                                        :error="$errors->has(
+                                                                            'dataPasien.pasien.hubungan.nomerTelponSelulerPenanggungJawab',
+                                                                        )" class="w-full mt-1" />
+                                                                    <x-input-error :messages="$errors->get(
+                                                                        'dataPasien.pasien.hubungan.nomerTelponSelulerPenanggungJawab',
+                                                                    )"
+                                                                        class="mt-1" />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {{-- Hubungan dengan Pasien --}}
+                                                        <div class="sm:w-1/2">
+                                                            <x-input-label value="Hubungan dengan Pasien"
+                                                                :required="true" />
+                                                            <x-select-input
+                                                                wire:model.live="dataPasien.pasien.hubungan.hubunganDgnPasien.hubunganDgnPasienId"
+                                                                :error="$errors->has(
+                                                                    'dataPasien.pasien.hubungan.hubunganDgnPasien.hubunganDgnPasienId',
+                                                                )">
+                                                                <option value="">-- Pilih Hubungan --</option>
+                                                                @foreach ($hubunganDgnPasienOptions as $option)
+                                                                    <option value="{{ $option['id'] }}"
+                                                                        {{ ($dataPasien['pasien']['hubungan']['hubunganDgnPasien']['hubunganDgnPasienId'] ?? '') == $option['id'] ? 'selected' : '' }}>
+                                                                        {{ $option['id'] }}. {{ $option['desc'] }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </x-select-input>
+                                                            <x-input-error :messages="$errors->get(
+                                                                'dataPasien.pasien.hubungan.hubunganDgnPasien.hubunganDgnPasienId',
+                                                            )" class="mt-1" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {{-- Subsection: Ayah --}}
+                                                <div>
+                                                    <h4 class="mb-3 font-semibold text-gray-700">Data Ayah</h4>
+                                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                                        <div class="sm:col-span-2">
+                                                            <x-input-label value="Nama Ayah" :required="true" />
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.hubungan.namaAyah"
+                                                                :error="$errors->has(
+                                                                    'dataPasien.pasien.hubungan.namaAyah',
+                                                                )" class="w-full mt-1"
+                                                                style="text-transform:uppercase" />
+                                                            <x-input-error :messages="$errors->get(
+                                                                'dataPasien.pasien.hubungan.namaAyah',
+                                                            )" class="mt-1" />
+                                                        </div>
+                                                        <div class="grid grid-cols-2 gap-2">
+                                                            <div>
+                                                                <x-input-label value="Kode Negara" />
+                                                                <x-text-input
+                                                                    wire:model.live="dataPasien.pasien.hubungan.kodenegaraAyah"
+                                                                    class="w-full mt-1" />
+                                                            </div>
+                                                            <div>
+                                                                <x-input-label value="No HP Ayah"
+                                                                    :required="true" />
+                                                                <x-text-input
+                                                                    wire:model.live="dataPasien.pasien.hubungan.nomerTelponSelulerAyah"
+                                                                    :error="$errors->has(
+                                                                        'dataPasien.pasien.hubungan.nomerTelponSelulerAyah',
+                                                                    )" class="w-full mt-1" />
+                                                                <x-input-error :messages="$errors->get(
+                                                                    'dataPasien.pasien.hubungan.nomerTelponSelulerAyah',
+                                                                )" class="mt-1" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {{-- Subsection: Ibu --}}
+                                                <div>
+                                                    <h4 class="mb-3 font-semibold text-gray-700">Data Ibu</h4>
+                                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                                        <div class="sm:col-span-2">
+                                                            <x-input-label value="Nama Ibu" :required="true" />
+                                                            <x-text-input
+                                                                wire:model.live="dataPasien.pasien.hubungan.namaIbu"
+                                                                :error="$errors->has(
+                                                                    'dataPasien.pasien.hubungan.namaIbu',
+                                                                )" class="w-full mt-1"
+                                                                style="text-transform:uppercase" />
+                                                            <x-input-error :messages="$errors->get(
+                                                                'dataPasien.pasien.hubungan.namaIbu',
+                                                            )" class="mt-1" />
+                                                        </div>
+                                                        <div class="grid grid-cols-2 gap-2">
+                                                            <div>
+                                                                <x-input-label value="Kode Negara" />
+                                                                <x-text-input
+                                                                    wire:model.live="dataPasien.pasien.hubungan.kodenegaraIbu"
+                                                                    class="w-full mt-1" />
+                                                            </div>
+                                                            <div>
+                                                                <x-input-label value="No HP Ibu" :required="true" />
+                                                                <x-text-input
+                                                                    wire:model.live="dataPasien.pasien.hubungan.nomerTelponSelulerIbu"
+                                                                    :error="$errors->has(
+                                                                        'dataPasien.pasien.hubungan.nomerTelponSelulerIbu',
+                                                                    )" class="w-full mt-1" />
+                                                                <x-input-error :messages="$errors->get(
+                                                                    'dataPasien.pasien.hubungan.nomerTelponSelulerIbu',
+                                                                )" class="mt-1" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </x-border-form>
+
                                     </div>
-                                </x-border-form>
+                                </div>
                             </div>
+
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    {{-- FOOTER --}}
-                    <div
-                        class="sticky bottom-0 px-4 py-3 bg-gray-50/80 backdrop-blur-sm sm:px-6 sm:flex sm:flex-row-reverse sm:gap-3">
-                        @if ($isOpenMode !== 'tampil')
-                            <x-primary-button :disabled="$disabledProperty" type="submit" form="form-pasien"
-                                class="sm:w-auto">
-                                Simpan
-                            </x-primary-button>
+
+            {{-- FOOTER --}}
+            <div
+                class="sticky bottom-0 z-10 px-6 py-4 mt-auto bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                        @if ($formMode === 'create')
+                            Pastikan semua data diisi dengan benar sebelum menyimpan.
+                        @else
+                            Periksa perubahan data sebelum menyimpan.
                         @endif
+                    </div>
+
+                    <div class="flex justify-end gap-2">
                         <x-secondary-button type="button" wire:click="closeModal">
                             Batal
                         </x-secondary-button>
+
+                        <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
+                            <span wire:loading.remove>Simpan</span>
+                            <span wire:loading>
+                                <svg class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10"
+                                        stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                    </path>
+                                </svg>
+                                Menyimpan...
+                            </span>
+                        </x-primary-button>
                     </div>
-                </form>
+                </div>
             </div>
+
         </div>
     </x-modal>
 </div>
