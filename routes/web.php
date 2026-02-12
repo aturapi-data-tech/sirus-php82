@@ -28,6 +28,12 @@ Route::middleware(['auth'])->group(function () {
 
     Route::livewire('/master/obat', 'pages::master.master-obat.master-obat')
         ->name('master.obat');
+
+    // ===========================================
+    // RAWAT JALAN (RJ) - DAFTAR RAWAT JALAN
+    // ===========================================
+    Route::livewire('/rawat-jalan/daftar', 'pages::transaksi.rj.daftar-rj.daftar-rj')
+        ->name('rawat-jalan.daftar');
 });
 
 
