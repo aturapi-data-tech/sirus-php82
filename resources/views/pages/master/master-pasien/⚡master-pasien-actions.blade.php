@@ -289,24 +289,50 @@ new class extends Component {
                         DB::table('rsmst_pasiens')->where('reg_no', $regNo)->update($saveData);
                     }
 
-                    // JSON selalu dibuat dari data fresh (source-of-truth)
                     $pasienData = $this->findDataMasterPasien($regNo);
 
                     if (!isset($pasienData['errorMessages'])) {
-                        // ✅ overwrite SELURUH pasien dari form (last write wins)
-                        $pasienData['pasien'] = $this->dataPasien['pasien'] ?? $pasienData['pasien'];
+                        // ✅ incoming dari form tapi buang null/empty biar tidak hapus data lama
+                        $incomingPasien = $this->dataPasien['pasien'] ?? [];
 
-                        // Pastikan regNo tidak melenceng
+                        // ✅ (recommended) whitelist field master pasien saja
+                        $allowed = [
+                            'regName',
+                            'gelarDepan',
+                            'gelarBelakang',
+                            'namaPanggilan',
+                            'tempatLahir',
+                            'tglLahir',
+                            'thn',
+                            'bln',
+                            'hari',
+                            'jenisKelamin',
+                            'agama',
+                            'statusPerkawinan',
+                            'pendidikan',
+                            'pekerjaan',
+                            'golonganDarah',
+                            'kewarganegaraan',
+                            'suku',
+                            'bahasa',
+                            'status',
+                            'domisil',
+                            'identitas',
+                            'kontak',
+                            'hubungan',
+                            'regDate',
+                            'pasientidakdikenal', // ✅ tambah ini
+                        ];
+
+                        $incomingPasien = array_intersect_key($incomingPasien, array_flip($allowed));
+
+                        // ✅ patch/merge (bukan overwrite total)
+                        $pasienData['pasien'] = array_replace_recursive($pasienData['pasien'] ?? [], $incomingPasien);
+
+                        // safety
                         $pasienData['pasien']['regNo'] = $regNo;
 
-                        // kalau mau jaga regDate juga
-                        $pasienData['pasien']['regDate'] = $this->dataPasien['pasien']['regDate'] ?? ($pasienData['pasien']['regDate'] ?? '');
-
-                        if ($this->formMode === 'create') {
-                            $this->autoSaveToJson($regNo, $pasienData);
-                        } else {
-                            $this->updateJsonMasterPasien($regNo, $pasienData);
-                        }
+                        $this->updateJsonMasterPasien($regNo, $pasienData);
                     }
                 });
             });
@@ -399,6 +425,42 @@ new class extends Component {
 
         $this->domisilSyncTick++;
     }
+
+    // public function updatedDataPasienPasienTglLahir($value): void
+    // {
+    //     if (empty($value)) {
+    //         $this->dataPasien['pasien']['thn'] = '';
+    //         $this->dataPasien['pasien']['bln'] = '';
+    //         $this->dataPasien['pasien']['hari'] = '';
+    //         return;
+    //     }
+
+    //     try {
+    //         // input format: dd/mm/yyyy
+    //         $dob = Carbon::createFromFormat('d/m/Y', $value)->startOfDay();
+    //         $now = Carbon::now()->startOfDay();
+
+    //         // kalau tanggal lahir > hari ini, anggap invalid
+    //         if ($dob->gt($now)) {
+    //             $this->dataPasien['pasien']['thn'] = '';
+    //             $this->dataPasien['pasien']['bln'] = '';
+    //             $this->dataPasien['pasien']['hari'] = '';
+    //             return;
+    //         }
+
+    //         // hitung selisih detail (tahun/bulan/hari)
+    //         $diff = $dob->diff($now);
+
+    //         $this->dataPasien['pasien']['thn'] = (string) $diff->y;
+    //         $this->dataPasien['pasien']['bln'] = (string) $diff->m;
+    //         $this->dataPasien['pasien']['hari'] = (string) $diff->d;
+    //     } catch (\Throwable $e) {
+    //         // kalau format salah
+    //         $this->dataPasien['pasien']['thn'] = '';
+    //         $this->dataPasien['pasien']['bln'] = '';
+    //         $this->dataPasien['pasien']['hari'] = '';
+    //     }
+    // }
 
     #[On('lov.selected')]
     public function handleLovSelected(string $target, array $payload): void
