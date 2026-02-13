@@ -11,6 +11,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\SATUSEHAT\PatientTrait;
+use Carbon\Carbon;
 
 new class extends Component {
     use MasterPasienTrait, PatientTrait;
@@ -383,6 +384,12 @@ new class extends Component {
 
     public function updated($name, $value)
     {
+        if ($name === 'dataPasien.pasien.tglLahir') {
+            $this->syncUmurFromTglLahir($value);
+        }
+
+        $this->domisilSyncTick++;
+
         if ($name !== 'dataPasien.pasien.domisil.samadgnidentitas') {
             return;
         }
@@ -422,45 +429,45 @@ new class extends Component {
             $this->dataPasien['pasien']['domisil']['propinsiName'] = '';
             $this->dataPasien['pasien']['domisil']['negara'] = '';
         }
-
-        $this->domisilSyncTick++;
     }
 
-    // public function updatedDataPasienPasienTglLahir($value): void
-    // {
-    //     if (empty($value)) {
-    //         $this->dataPasien['pasien']['thn'] = '';
-    //         $this->dataPasien['pasien']['bln'] = '';
-    //         $this->dataPasien['pasien']['hari'] = '';
-    //         return;
-    //     }
+    private function syncUmurFromTglLahir($value): void
+    {
+        if (blank($value)) {
+            $this->resetUmur();
+            $this->dataPasien = $this->dataPasien;
+            return;
+        }
 
-    //     try {
-    //         // input format: dd/mm/yyyy
-    //         $dob = Carbon::createFromFormat('d/m/Y', $value)->startOfDay();
-    //         $now = Carbon::now()->startOfDay();
+        try {
+            $dob = Carbon::createFromFormat('d/m/Y', $value)->startOfDay();
 
-    //         // kalau tanggal lahir > hari ini, anggap invalid
-    //         if ($dob->gt($now)) {
-    //             $this->dataPasien['pasien']['thn'] = '';
-    //             $this->dataPasien['pasien']['bln'] = '';
-    //             $this->dataPasien['pasien']['hari'] = '';
-    //             return;
-    //         }
+            if ($dob->isFuture()) {
+                $this->resetUmur();
+                $this->dataPasien = $this->dataPasien;
+                return;
+            }
 
-    //         // hitung selisih detail (tahun/bulan/hari)
-    //         $diff = $dob->diff($now);
+            $diff = $dob->diff(Carbon::today());
 
-    //         $this->dataPasien['pasien']['thn'] = (string) $diff->y;
-    //         $this->dataPasien['pasien']['bln'] = (string) $diff->m;
-    //         $this->dataPasien['pasien']['hari'] = (string) $diff->d;
-    //     } catch (\Throwable $e) {
-    //         // kalau format salah
-    //         $this->dataPasien['pasien']['thn'] = '';
-    //         $this->dataPasien['pasien']['bln'] = '';
-    //         $this->dataPasien['pasien']['hari'] = '';
-    //     }
-    // }
+            $this->dataPasien['pasien']['thn'] = (string) $diff->y;
+            $this->dataPasien['pasien']['bln'] = (string) $diff->m;
+            $this->dataPasien['pasien']['hari'] = (string) $diff->d;
+
+            // ✅ penting
+            $this->dataPasien = $this->dataPasien;
+        } catch (\Throwable $e) {
+            $this->resetUmur();
+            $this->dataPasien = $this->dataPasien;
+        }
+    }
+
+    private function resetUmur(): void
+    {
+        $this->dataPasien['pasien']['thn'] = '';
+        $this->dataPasien['pasien']['bln'] = '';
+        $this->dataPasien['pasien']['hari'] = '';
+    }
 
     #[On('lov.selected')]
     public function handleLovSelected(string $target, array $payload): void
@@ -737,24 +744,53 @@ new class extends Component {
                                             <div class="flex justify-between mb-4">
                                                 <div class="w-4/5 p-4 ">
 
-                                                    <div class="grid grid-cols-1 gap-2 text-center">
+                                                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+
+                                                        {{-- LEFT --}}
+                                                        <div>
+                                                            {{-- NAMA --}}
+                                                            <div
+                                                                class="text-3xl font-bold tracking-wide text-gray-900 dark:text-white">
+                                                                {{ strtoupper($dataPasien['pasien']['regName'] ?? '-') }}
+                                                            </div>
+
+                                                            {{-- ALAMAT --}}
+                                                            <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                                                {{ $dataPasien['pasien']['identitas']['alamat'] ?? '-' }}
+                                                            </div>
+                                                        </div>
+
+                                                        {{-- RIGHT --}}
                                                         <div
-                                                            class="font-bold tracking-wide text-black text-start whitespace-nowrap">
+                                                            class="flex items-center text-sm text-left sm:text-base sm:text-right">
+                                                            <div class="font-medium text-gray-700 dark:text-gray-300">
 
-                                                            <span class="text-3xl">
-                                                                {{ strtoupper($this->dataPasien['pasien']['regName'] ?? '-') }}
-                                                            </span>
+                                                                <span>
+                                                                    <span class="font-semibold">Tgl Lahir:</span>
+                                                                    {{ $dataPasien['pasien']['tglLahir'] ?? '-' }}
+                                                                </span>
 
-                                                            <span class="ml-3 text-lg font-semibold">
-                                                                | Tgl Lahir :
-                                                                {{ $this->dataPasien['pasien']['tglLahir'] ?? '-' }}
-                                                            </span>
+                                                                <span
+                                                                    class="mx-2 text-gray-700 dark:text-gray-300">|</span>
 
-                                                            <span class="ml-3 text-lg font-semibold">
-                                                                | No. RM :
-                                                                {{ $this->dataPasien['pasien']['regNo'] ?? '-' }}
-                                                            </span>
+                                                                @if (isset($dataPasien['pasien']['thn']))
+                                                                    <span
+                                                                        class="font-semibold text-gray-700 dark:text-gray-300">
+                                                                        {{ $dataPasien['pasien']['thn'] ?? 0 }} th
+                                                                        {{ $dataPasien['pasien']['bln'] ?? 0 }} bln
+                                                                        {{ $dataPasien['pasien']['hari'] ?? 0 }} hr
+                                                                    </span>
 
+                                                                    <span
+                                                                        class="mx-2 text-brand-green/60 dark:text-brand-lime/70">|</span>
+                                                                @endif
+
+                                                                <span>
+                                                                    <span class="font-semibold">No. RM:</span>
+                                                                    {{ $dataPasien['pasien']['regNo'] ?? '-' }}
+                                                                </span>
+
+                                                            </div>
                                                         </div>
 
 
