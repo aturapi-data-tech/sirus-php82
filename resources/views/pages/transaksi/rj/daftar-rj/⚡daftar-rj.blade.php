@@ -112,10 +112,12 @@ new class extends Component {
             ->join('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
             ->leftJoin('rsmst_polis as po', 'po.poli_id', '=', 'h.poli_id')
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
+            ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
             ->leftJoinSub($labSub, 'lab', fn($j) => $j->on('lab.ref_no', '=', 'h.rj_no'))
             ->leftJoinSub($radSub, 'rad', fn($j) => $j->on('rad.rj_no', '=', 'h.rj_no'))
-            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.poli_id', 'po.poli_desc', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.vno_sep', DB::raw('COALESCE(lab.lab_status, 0) as lab_status'), DB::raw('COALESCE(rad.rad_status, 0) as rad_status')])
+            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.poli_id', 'po.poli_desc', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.vno_sep', DB::raw('COALESCE(lab.lab_status, 0) as lab_status'), DB::raw('COALESCE(rad.rad_status, 0) as rad_status'), 'h.datadaftarpolirj_json', 'k.klaim_desc', 'k.klaim_status'])
             ->whereBetween('h.rj_date', [$start, $end])
+            ->orderBy('d.dr_name', 'desc')
             ->orderBy('h.rj_date', 'desc')
             ->orderBy('h.no_antrian', 'asc');
 
@@ -147,14 +149,154 @@ new class extends Component {
 
     private function dateRange(): array
     {
-        $d = Carbon::createFromFormat('d/m/Y', $this->filterTanggal)->startOfDay();
+        try {
+            $d = Carbon::createFromFormat('d/m/Y', trim($this->filterTanggal))->startOfDay();
+        } catch (\Exception $e) {
+            $d = now()->startOfDay();
+        }
+
         return [$d, (clone $d)->endOfDay()];
     }
 
     #[Computed]
     public function rows()
     {
-        return $this->baseQuery()->paginate($this->itemsPerPage);
+        $paginator = $this->baseQuery()->paginate($this->itemsPerPage);
+
+        $paginator->getCollection()->transform(function ($row) {
+            $json = json_decode($row->datadaftarpolirj_json ?? '{}', true);
+
+            /* =======================
+        | EMR
+        ======================= */
+            $fields = ['anamnesa', 'pemeriksaan', 'penilaian', 'procedure', 'diagnosis', 'perencanaan'];
+            $filled = 0;
+
+            foreach ($fields as $f) {
+                if (isset($json[$f])) {
+                    $filled++;
+                }
+            }
+
+            $row->emr_percent = round(($filled / 6) * 100);
+
+            /* =======================
+        | E-RESEP
+        ======================= */
+            $hasEresep = isset($json['eresep']) || isset($json['eresepRacikan']);
+            $row->eresep_percent = $hasEresep ? 100 : 0;
+
+            /* =======================
+        | TASK ID
+        ======================= */
+            $row->task_id3 = $json['taskIdPelayanan']['taskId3'] ?? null;
+            $row->task_id4 = $json['taskIdPelayanan']['taskId4'] ?? null;
+            $row->task_id5 = $json['taskIdPelayanan']['taskId5'] ?? null;
+
+            /* =======================
+        | NO REFERENSI
+        ======================= */
+            $row->no_referensi = $json['noReferensi'] ?? null;
+
+            /* =======================
+        | MASA RUJUKAN
+        ======================= */
+            if (isset($json['sep']['reqSep']['request']['t_sep']['rujukan']['tglRujukan'])) {
+                $tglRujukan = Carbon::parse($json['sep']['reqSep']['request']['t_sep']['rujukan']['tglRujukan']);
+                $batas = $tglRujukan->copy()->addMonths(3);
+                $sisaHari = (int) now()->diffInDays($batas, false);
+
+                $row->masa_rujukan = 'Masa berlaku Rujukan <br>' . $tglRujukan->format('d/m/Y') . ' s/d ' . $batas->format('d/m/Y') . '<br>Sisa : ' . $sisaHari . ' hari';
+            } else {
+                $row->masa_rujukan = null;
+            }
+
+            /* =======================
+        | ADMINISTRASI
+        ======================= */
+            $row->admin_user = isset($json['AdministrasiRj']) ? $json['AdministrasiRj']['userLog'] ?? '✔' : '-';
+            $row->administrasi_detail = $json['AdministrasiRj'] ?? null;
+
+            /* =======================
+        | TINDAK LANJUT & KONTROL
+        ======================= */
+            $row->tindak_lanjut = $json['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '-';
+            $row->tindak_lanjut_detail = $json['perencanaan']['tindakLanjut'] ?? null;
+            $row->tgl_kontrol = $json['kontrol']['tglKontrol'] ?? '-';
+            $row->no_skdp_bpjs = $json['kontrol']['noSKDPBPJS'] ?? '-';
+            $row->kontrol_detail = $json['kontrol'] ?? null;
+
+            /* =======================
+        | DIAGNOSIS & PROCEDURE
+        ======================= */
+            // Diagnosis array ICD
+            $row->diagnosis = isset($json['diagnosis']) && is_array($json['diagnosis']) ? implode('# ', array_column($json['diagnosis'], 'icdX')) : '-';
+            $row->diagnosis_free_text = $json['diagnosisFreeText'] ?? '-';
+            $row->diagnosis_detail = $json['diagnosis'] ?? null;
+
+            // Procedure array
+            $row->procedure = isset($json['procedure']) && is_array($json['procedure']) ? implode('# ', array_column($json['procedure'], 'procedureId')) : '-';
+            $row->procedure_free_text = $json['procedureFreeText'] ?? '-';
+            $row->procedure_detail = $json['procedure'] ?? null;
+
+            /* =======================
+        | STATUS RESEP
+        ======================= */
+            $row->status_resep = $json['statusResep']['status'] ?? null;
+            $row->status_resep_label = $row->status_resep === 'DITUNGGU' ? 'Ditunggu' : ($row->status_resep === 'DITINGGAL' ? 'Ditinggal' : '-');
+            $row->status_resep_color = $row->status_resep === 'DITUNGGU' ? 'green' : ($row->status_resep === 'DITINGGAL' ? 'yellow' : 'gray');
+
+            /* =======================
+        | INFORMASI TAMBAHAN
+        ======================= */
+            $row->no_booking = $json['noBooking'] ?? ($row->nobooking ?? '-');
+
+            /* =======================
+        | VALIDASI DATA
+        ======================= */
+            $row->rj_no_json = $json['rjNo'] ?? '-';
+            $row->is_json_valid = $row->rj_no === $row->rj_no_json;
+            $row->bg_check_json = $row->is_json_valid ? 'bg-green-100' : 'bg-red-100';
+
+            /* =======================
+        | UMUR
+        ======================= */
+            if (!empty($row->birth_date)) {
+                try {
+                    $tglLahir = Carbon::createFromFormat('d/m/Y', $row->birth_date);
+                    $diff = $tglLahir->diff(now());
+
+                    $row->umur_format = "{$row->birth_date} ({$diff->y} Thn {$diff->m} Bln {$diff->d} Hr)";
+                } catch (\Exception $e) {
+                    $row->umur_format = '-';
+                }
+            } else {
+                $row->umur_format = '-';
+            }
+
+            /* =======================
+        | STATUS TEXT
+        ======================= */
+            $statusMap = [
+                'A' => 'Antrian',
+                'L' => 'Selesai',
+                'F' => 'Batal',
+                'I' => 'Inap/Rujuk',
+            ];
+            $statusVariant = [
+                'A' => 'warning', // kuning
+                'L' => 'success', // hijau
+                'F' => 'danger', // merah
+                'I' => 'brand', // emerald
+            ];
+
+            $row->status_text = $statusMap[$row->rj_status] ?? 'Pelayanan';
+            $row->status_variant = $statusVariant[$row->rj_status] ?? 'gray';
+
+            return $row;
+        });
+
+        return $paginator;
     }
 
     /* -------------------------
@@ -214,46 +356,6 @@ new class extends Component {
     {
         return DB::table('rsmst_klaims')->select('klaim_id', 'klaim_name')->where('active_status', '1')->orderBy('klaim_name')->get();
     }
-
-    /* -------------------------
-     | Helper methods for UI
-     * ------------------------- */
-    public function getStatusBadge(string $status): string
-    {
-        return match ($status) {
-            '0' => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300', // Batal
-            '1' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200', // Daftar
-            '2' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200', // Antrian
-            '3' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', // Dilayani
-            '4' => 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200', // Selesai
-            '5' => 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', // Tidak Hadir
-            default => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-        };
-    }
-
-    public function getStatusText(string $status): string
-    {
-        return match ($status) {
-            '0' => 'Batal',
-            '1' => 'DAFTAR',
-            '2' => 'ANTRIAN',
-            '3' => 'DILAYANI',
-            '4' => 'SELESAI',
-            '5' => 'TIDAK HADIR',
-            default => 'Unknown',
-        };
-    }
-
-    public function getShiftBadge(string $shift): string
-    {
-        return match ($shift) {
-            'PAGI' => 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
-            'SIANG' => 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-            'SORE' => 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
-            'MALAM' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-            default => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-        };
-    }
 };
 ?>
 
@@ -264,7 +366,7 @@ new class extends Component {
             <h2 class="text-2xl font-bold leading-tight text-gray-900 dark:text-gray-100">
                 Daftar Rawat Jalan
             </h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-sm text-gray-500 dark:text-gray-700">
                 Kelola pendaftaran pasien rawat jalan
             </p>
         </div>
@@ -391,126 +493,259 @@ new class extends Component {
 
                 {{-- TABLE SCROLL AREA --}}
                 <div class="overflow-x-auto overflow-y-auto max-h-[calc(100dvh-320px)] rounded-t-2xl">
-                    <table class="min-w-full text-sm">
+                    <table class="min-w-full text-sm border-separate border-spacing-y-3">
+
                         {{-- TABLE HEAD --}}
-                        <thead class="sticky top-0 z-10 text-gray-600 bg-gray-50 dark:bg-gray-800 dark:text-gray-200">
-                            <tr class="text-left">
-                                <th class="px-4 py-3 font-semibold">No. RJ</th>
-                                <th class="px-4 py-3 font-semibold">Waktu</th>
-                                <th class="px-4 py-3 font-semibold">No. RM / Nama</th>
-                                <th class="px-4 py-3 font-semibold">Poli / Dokter</th>
-                                <th class="px-4 py-3 font-semibold">Antrian</th>
-                                <th class="px-4 py-3 font-semibold">Shift</th>
-                                <th class="px-4 py-3 font-semibold">Status</th>
-                                <th class="px-4 py-3 font-semibold">SEP</th>
-                                <th class="px-4 py-3 font-semibold">AKSI</th>
+                        <thead class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">
+                            <tr
+                                class="text-sm font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300">
+                                <th class="px-6 py-3">Pasien</th>
+                                <th class="px-6 py-3">Poli</th>
+                                <th class="px-6 py-3">Status Layanan</th>
+                                <th class="px-6 py-3">Tindak Lanjut</th>
+                                <th class="px-6 py-3 text-center">Action</th>
                             </tr>
                         </thead>
 
-                        <tbody class="text-gray-700 divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-200">
+                        <tbody>
                             @forelse($this->rows as $row)
-                                <tr wire:key="rj-row-{{ $row->rj_no }}"
-                                    class="hover:bg-gray-50 dark:hover:bg-gray-800/60">
-                                    <td class="px-4 py-3 font-mono font-medium">{{ $row->rj_no }}</td>
-                                    <td class="px-4 py-3 text-xs whitespace-nowrap">{{ $row->rj_date_display }}</td>
-                                    <td class="px-4 py-3">
-                                        <div class="font-medium">{{ $row->reg_name }}</div>
-                                        <div class="text-xs text-gray-500 dark:text-gray-400">
-                                            {{ $row->reg_no }}
-                                            @if ($row->sex || $row->birth_date)
-                                                | {{ $row->sex ?? '' }} / {{ $row->birth_date ?? '' }}
-                                            @endif
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <div class="font-medium">{{ $row->poli_desc }}</div>
-                                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ $row->dr_name }}
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-3 font-mono font-bold text-center">
-                                        #{{ str_pad($row->no_antrian, 3, '0', STR_PAD_LEFT) }}
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <span
-                                            class="px-2 py-1 text-xs font-medium rounded-full {{ $this->getShiftBadge($row->shift) }}">
-                                            {{ $row->shift }}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <div class="flex flex-col gap-1">
-                                            <span
-                                                class="px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap {{ $this->getStatusBadge($row->rj_status) }}">
-                                                {{ $this->getStatusText($row->rj_status) }}
-                                            </span>
-                                            <div class="flex gap-1">
-                                                @if ($row->lab_status > 0)
-                                                    <span
-                                                        class="px-1.5 py-0.5 text-[10px] font-medium bg-purple-100 text-purple-800 rounded-full dark:bg-purple-900 dark:text-purple-200">
-                                                        Lab: {{ $row->lab_status }}
-                                                    </span>
-                                                @endif
-                                                @if ($row->rad_status > 0)
-                                                    <span
-                                                        class="px-1.5 py-0.5 text-[10px] font-medium bg-indigo-100 text-indigo-800 rounded-full dark:bg-indigo-900 dark:text-indigo-200">
-                                                        Rad: {{ $row->rad_status }}
-                                                    </span>
-                                                @endif
+                                <tr
+                                    class="transition bg-white dark:bg-gray-900 hover:shadow-lg dark:hover:bg-gray-800 rounded-2xl">
+
+                                    {{-- PASIEN --}}
+                                    <td class="px-6 py-6 space-y-3 align-top">
+
+                                        <div class="flex items-start gap-4">
+
+                                            <div class="text-5xl font-bold text-gray-700 dark:text-gray-200">
+                                                {{ $row->no_antrian ?? '-' }}
+                                            </div>
+
+                                            <div class="space-y-1">
+
+                                                <div class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                    {{ $row->reg_no ?? '-' }}
+                                                </div>
+
+                                                <div class="text-lg font-semibold text-brand dark:text-white">
+                                                    {{ $row->reg_name ?? '-' }}
+                                                    /
+                                                    ({{ $row->sex === 'L' ? 'Laki-Laki' : ($row->sex === 'P' ? 'Perempuan' : '-') }})
+                                                </div>
+
+                                                <div class="text-sm text-gray-500 dark:text-gray-400">
+                                                    {{ $row->umur_format ?? '-' }}
+                                                </div>
+
+                                                <div class="text-sm text-gray-600 dark:text-gray-400">
+                                                    {{ $row->address ?? '-' }}
+                                                </div>
+
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="px-4 py-3 font-mono text-xs">
-                                        {{ $row->vno_sep ?: '-' }}
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <div class="flex flex-wrap gap-2">
-                                            <x-outline-button type="button"
-                                                wire:click="openEdit('{{ $row->rj_no }}')"
-                                                class="whitespace-nowrap">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
-                                                Edit
-                                            </x-outline-button>
 
-                                            <x-confirm-button variant="danger" :action="'requestDelete(\'' . $row->rj_no . '\')'"
-                                                title="Hapus Pendaftaran"
-                                                message="Yakin ingin menghapus pendaftaran RJ No {{ $row->rj_no }}? Data yang sudah memiliki pemeriksaan lab/rad/farmasi tidak dapat dihapus."
-                                                confirmText="Ya, hapus" cancelText="Batal">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                                Hapus
-                                            </x-confirm-button>
+                                    {{-- POLI --}}
+                                    <td class="px-6 py-6 space-y-2 align-top">
+                                        <div class="font-semibold text-brand dark:text-emerald-400">
+                                            {{ $row->poli_desc ?? '-' }}
+                                        </div>
+
+                                        <div class="text-sm text-gray-600 dark:text-gray-400">
+                                            {{ $row->dr_name ?? '-' }} /
+                                            {{ $row->klaim_desc ?? '-' }}
+                                        </div>
+
+                                        <div class="font-mono text-sm text-gray-700 dark:text-gray-300">
+                                            {{ $row->vno_sep ?? '-' }}
+                                        </div>
+
+                                        {{-- No Booking - TAMBAHKAN DISINI --}}
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                                            No Booking: {{ $row->no_booking ?? '-' }}
+                                        </div>
+
+                                        <div class="flex flex-wrap gap-2">
+                                            @if ($row->lab_status)
+                                                <x-badge variant="alternative">
+                                                    Laborat
+                                                </x-badge>
+                                            @endif
+
+                                            @if ($row->rad_status)
+                                                <x-badge variant="brand">
+                                                    Radiologi
+                                                </x-badge>
+                                            @endif
                                         </div>
                                     </td>
+
+                                    {{-- STATUS LAYANAN --}}
+                                    <td class="px-6 py-6 space-y-2 align-top">
+
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                                            {{ $row->rj_date_display ?? '-' }} |
+                                            Shift : {{ $row->shift ?? '-' }}
+                                        </div>
+
+                                        <x-badge :variant="$row->status_variant">
+                                            {{ $row->status_text }}
+                                        </x-badge>
+
+
+                                        {{-- EMR --}}
+                                        <div class="w-full h-1.5 bg-gray-200 rounded-full dark:bg-gray-700">
+                                            <div class="h-1.5 rounded-full transition-all duration-500
+                                            {{ $row->emr_percent >= 80
+                                                ? 'bg-emerald-500/80 dark:bg-emerald-400'
+                                                : ($row->emr_percent >= 50
+                                                    ? 'bg-amber-400/80 dark:bg-amber-400'
+                                                    : 'bg-rose-400/80 dark:bg-rose-400') }}"
+                                                style="width: {{ $row->emr_percent ?? 0 }}%">
+                                            </div>
+                                        </div>
+
+
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div class="text-sm text-gray-700 dark:text-gray-400">
+                                                EMR : {{ $row->emr_percent ?? 0 }}%
+                                            </div>
+                                            <div class="text-sm text-gray-700 dark:text-gray-400">
+                                                E-Resep : {{ $row->eresep_percent ?? 0 }}%
+                                            </div>
+                                        </div>
+
+                                        {{-- STATUS RESEP - TAMBAHKAN DISINI --}}
+                                        @if ($row->status_resep)
+                                            <div>
+                                                <x-badge :variant="$row->status_resep_color">
+                                                    Status Resep: {{ $row->status_resep_label }}
+                                                </x-badge>
+                                            </div>
+                                        @endif
+
+                                        {{-- DIAGNOSIS - TAMBAHKAN DISINI --}}
+                                        <div class="text-xs text-gray-600 dark:text-gray-400">
+                                            <span class="font-semibold">Diagnosa:</span><br>
+                                            {{ $row->diagnosis }} / {{ $row->diagnosis_free_text }}
+                                        </div>
+
+                                        {{-- PROCEDURE - TAMBAHKAN DISINI --}}
+                                        <div class="text-xs text-gray-600 dark:text-gray-400">
+                                            <span class="font-semibold">Procedure:</span><br>
+                                            {{ $row->procedure }} / {{ $row->procedure_free_text }}
+                                        </div>
+
+                                        @if (!empty($row->no_referensi))
+                                            <div class="text-sm text-gray-500 dark:text-gray-400">
+                                                No Ref : {{ $row->no_referensi }}
+                                            </div>
+                                        @endif
+
+                                        @if (!empty($row->masa_rujukan))
+                                            <div
+                                                class="px-2 py-1 text-sm text-yellow-700 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 dark:text-yellow-300">
+                                                {!! $row->masa_rujukan !!}
+                                            </div>
+                                        @endif
+
+                                        {{-- VALIDASI JSON - TAMBAHKAN DISINI --}}
+                                        <div class="text-xs p-1 rounded {{ $row->bg_check_json }} dark:bg-opacity-20">
+                                            <span class="font-semibold">Validasi Data:</span><br>
+                                            RJ No: {{ $row->rj_no }} / {{ $row->rj_no_json }}
+                                            @if (!$row->is_json_valid)
+                                                <span class="text-red-600 dark:text-red-400">(Tidak Sinkron)</span>
+                                            @endif
+                                        </div>
+                                    </td>
+
+                                    {{-- TINDAK LANJUT --}}
+                                    <td class="px-6 py-6 space-y-2 align-top">
+
+                                        <div class="text-sm text-gray-600 dark:text-gray-400">
+                                            Administrasi :
+                                            <span class="font-semibold text-gray-800 dark:text-gray-200">
+                                                {{ $row->admin_user ?? '-' }}
+                                            </span>
+                                        </div>
+
+                                        {{-- DETAIL ADMINISTRASI - TAMBAHKAN DISINI --}}
+                                        @if ($row->administrasi_detail)
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                Waktu: {{ $row->administrasi_detail['waktu'] ?? '-' }}<br>
+                                                Log: {{ $row->administrasi_detail['userLog'] ?? '-' }}
+                                            </div>
+                                        @endif
+
+                                        <div class="grid grid-cols-1 space-y-1">
+                                            @if ($row->task_id3)
+                                                <x-badge variant="success">
+                                                    TaskId3 {{ $row->task_id3 }}
+                                                </x-badge>
+                                            @endif
+                                            @if ($row->task_id4)
+                                                <x-badge variant="brand">
+                                                    TaskId4 {{ $row->task_id4 }}
+                                                </x-badge>
+                                            @endif
+                                            @if ($row->task_id5)
+                                                <x-badge variant="warning">
+                                                    TaskId5 {{ $row->task_id5 }}
+                                                </x-badge>
+                                            @endif
+                                        </div>
+
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                                            Tindak Lanjut : {{ $row->tindak_lanjut ?? '-' }}
+                                        </div>
+
+                                        {{-- DETAIL TINDAK LANJUT - TAMBAHKAN DISINI --}}
+                                        @if ($row->tindak_lanjut_detail && $row->tindak_lanjut_detail['tindakLanjut'] ?? null)
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                Dokter: {{ $row->tindak_lanjut_detail['drPemeriksa'] ?? '-' }}
+                                            </div>
+                                        @endif
+
+                                        <div class="text-sm text-gray-700 dark:text-gray-300">
+                                            Tanggal Kontrol : {{ $row->tgl_kontrol ?? '-' }}
+                                        </div>
+
+                                        {{-- NO SKDP BPJS - TAMBAHKAN DISINI --}}
+                                        @if ($row->no_skdp_bpjs && $row->no_skdp_bpjs != '-')
+                                            <div class="text-xs text-gray-600 dark:text-gray-400">
+                                                No SKDP BPJS: {{ $row->no_skdp_bpjs }}
+                                            </div>
+                                        @endif
+
+                                        {{-- DETAIL KONTROL - TAMBAHKAN DISINI --}}
+                                        @if ($row->kontrol_detail)
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                Poli Kontrol: {{ $row->kontrol_detail['poliKontrol'] ?? '-' }}<br>
+                                                Dokter Kontrol: {{ $row->kontrol_detail['dokterKontrol'] ?? '-' }}
+                                            </div>
+                                        @endif
+                                    </td>
+
+                                    {{-- ACTION --}}
+                                    <td class="px-6 py-6 text-center align-top">
+                                        <x-primary-button type="button" class="px-4 py-2 text-sm rounded-lg">
+                                            Etiket
+                                        </x-primary-button>
+                                    </td>
+
                                 </tr>
+
                             @empty
                                 <tr>
-                                    <td colspan="9"
-                                        class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
-                                        <svg class="w-16 h-16 mx-auto mb-3 text-gray-300 dark:text-gray-600"
-                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                        </svg>
-                                        <p class="mb-1 text-lg font-medium">Belum ada data Rawat Jalan</p>
-                                        <p class="text-sm text-gray-400 dark:text-gray-500">
-                                            {{ empty($filterTanggal) ? 'Silakan pilih tanggal' : 'Belum ada pendaftaran untuk tanggal ' . $filterTanggal }}
-                                        </p>
-                                        <x-primary-button type="button" wire:click="openCreate" class="mt-4">
-                                            + Daftar Pasien Baru
-                                        </x-primary-button>
+                                    <td colspan="5"
+                                        class="px-6 py-16 text-center text-gray-700 dark:text-gray-400">
+                                        Belum ada data
                                     </td>
                                 </tr>
                             @endforelse
                         </tbody>
                     </table>
+
                 </div>
 
                 {{-- PAGINATION --}}
@@ -521,7 +756,9 @@ new class extends Component {
             </div>
 
             {{-- Child actions component (modal CRUD) --}}
-            {{-- <livewire:pages.transaksi.rj.daftar-rj.daftar-rj-actions> --}}
+            <livewire:pages::transaksi.rj.daftar-rj.daftar-rj-actions />
+
+
         </div>
     </div>
 </div>
