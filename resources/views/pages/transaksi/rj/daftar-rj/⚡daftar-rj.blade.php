@@ -255,7 +255,7 @@ new class extends Component {
         | VALIDASI DATA
         ======================= */
             $row->rj_no_json = $json['rjNo'] ?? '-';
-            $row->is_json_valid = $row->rj_no === $row->rj_no_json;
+            $row->is_json_valid = $row->rj_no == $row->rj_no_json;
             $row->bg_check_json = $row->is_json_valid ? 'bg-green-100' : 'bg-red-100';
 
             /* =======================

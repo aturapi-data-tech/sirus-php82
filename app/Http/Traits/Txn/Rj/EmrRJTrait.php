@@ -194,6 +194,7 @@ trait EmrRJTrait
             "poliId" => "",
             "poliDesc" => "",
             "klaimId" => "UM",
+            "klaimStatus" => "UMUM",
             'kunjunganId' => '1',
 
             "rjDate" => "",
@@ -264,7 +265,7 @@ trait EmrRJTrait
     {
         DB::transaction(function () use ($rjNo, $payload) {
             // Validate payload has correct rjNo
-            if (!isset($payload['rjNo']) || $payload['rjNo'] !== $rjNo) {
+            if (!isset($payload['rjNo']) || $payload['rjNo'] != $rjNo) {
                 throw new \RuntimeException("rjNo dalam payload tidak sesuai dengan parameter");
             }
 
