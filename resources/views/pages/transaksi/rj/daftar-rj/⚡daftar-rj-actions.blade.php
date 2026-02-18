@@ -175,6 +175,26 @@ new class extends Component {
                         </div>
                     </div>
 
+                    <div class="flex gap-4">
+                        {{-- Tanggal RJ --}}
+                        <div class="flex-1">
+                            <x-input-label value="Tanggal RJ" />
+                            <x-text-input wire:model.live="dataDaftarPoliRJ.rjDate"
+                                wire:key="rjDate-{{ $dataDaftarPoliRJ['rjDate'] ?? 'new' }}" class="block w-full" />
+                        </div>
+                        {{-- Shift --}}
+                        <div class="w-36">
+                            <x-input-label value="Shift" />
+                            <x-select-input wire:model.live="dataDaftarPoliRJ.shift" class="w-full mt-1 sm:w-36"
+                                wire:key="shift-{{ $dataDaftarPoliRJ['shift'] ?? 'new' }}">
+                                <option value="">-- Pilih Shift --</option>
+                                <option value="1">Shift 1</option>
+                                <option value="2">Shift 2</option>
+                                <option value="3">Shift 3</option>
+                            </x-select-input>
+                        </div>
+                    </div>
+
                     {{-- Close button --}}
                     <x-secondary-button type="button" wire:click="closeModal" class="!p-2">
                         <span class="sr-only">Close</span>
@@ -210,27 +230,7 @@ new class extends Component {
                             <div
                                 class="p-6 space-y-6 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
-                                <div class="flex gap-4">
-                                    {{-- Tanggal RJ --}}
-                                    <div class="flex-1">
-                                        <x-input-label value="Tanggal RJ" />
-                                        <x-text-input wire:model.live="dataDaftarPoliRJ.rjDate"
-                                            wire:key="rjDate-{{ $dataDaftarPoliRJ['rjDate'] ?? 'new' }}"
-                                            class="block w-full" />
-                                    </div>
-                                    {{-- Shift --}}
-                                    <div class="w-36">
-                                        <x-input-label value="Shift" />
-                                        <x-select-input wire:model.live="dataDaftarPoliRJ.shift"
-                                            class="w-full mt-1 sm:w-36"
-                                            wire:key="shift-{{ $dataDaftarPoliRJ['shift'] ?? 'new' }}">
-                                            <option value="">-- Pilih Shift --</option>
-                                            <option value="1">Shift 1</option>
-                                            <option value="2">Shift 2</option>
-                                            <option value="3">Shift 3</option>
-                                        </x-select-input>
-                                    </div>
-                                </div>
+
 
                                 {{-- LOV Pasien --}}
                                 <livewire:lov.pasien.lov-pasien target="rjFormPasien" :initialRegNo="$dataDaftarPoliRJ['regNo'] ?? ''"
