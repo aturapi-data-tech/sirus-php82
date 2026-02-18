@@ -29,6 +29,15 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/master/obat', 'pages::master.master-obat.master-obat')
         ->name('master.obat');
 
+    Route::livewire('/master/diagnosa', 'pages::master.master-diagnosa.master-diagnosa')
+        ->name('master.diagnosa');
+
+    Route::livewire('/master/others', 'pages::master.master-others.master-others')
+        ->name('master.others');
+
+    Route::livewire('/master/radiologis', 'pages::master.master-radiologis.master-radiologis')
+        ->name('master.radiologis');
+
     // ===========================================
     // RAWAT JALAN (RJ) - DAFTAR RAWAT JALAN
     // ===========================================
