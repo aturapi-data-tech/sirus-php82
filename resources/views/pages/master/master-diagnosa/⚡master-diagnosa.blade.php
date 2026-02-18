@@ -30,30 +30,29 @@ new class extends Component {
      * ------------------------- */
     public function openCreate(): void
     {
-        $this->dispatch('master.dokter.openCreate');
+        $this->dispatch('master.diagnosa.openCreate');
     }
 
-    public function openEdit(string $drId): void
+    public function openEdit(string $diagId): void
     {
-        $this->dispatch('master.dokter.openEdit', drId: $drId);
+        $this->dispatch('master.diagnosa.openEdit', diagId: $diagId);
     }
 
     /* -------------------------
-     | Request Delete (delegate ke actions)
-     * ------------------------- */
-    public function requestDelete(string $drId): void
+    | Request Delete (delegate ke actions)
+    * ------------------------- */
+    public function requestDelete(string $diagId): void
     {
-        $this->dispatch('master.dokter.requestDelete', drId: $drId);
+        $this->dispatch('master.diagnosa.requestDelete', diagId: $diagId);
     }
 
     /* -------------------------
      | Refresh after child save
      * ------------------------- */
-    #[On('master.dokter.saved')]
+    #[On('master.diagnosa.saved')]
     public function refreshAfterSaved(): void
     {
-        // lebih aman biar nggak "nyasar" ke komponen lain
-        $this->dispatch('$refresh')->self();
+        $this->dispatch('$refresh');
     }
 
     /* -------------------------
@@ -64,34 +63,21 @@ new class extends Component {
     {
         $searchKeyword = trim($this->searchKeyword);
 
-        // pilih kolom supaya konsisten & ringan
-         $queryBuilder = DB::table('rsmst_doctors as a')
-        ->join('rsmst_polis as b', 'a.poli_id', '=', 'b.poli_id')
-        ->select(
-            'a.dr_id',
-            'a.dr_name',
-            'a.poli_id',
-            'b.poli_desc', // TAMBAH INI - ambil dari tabel poli
-            'a.dr_phone',
-            'a.dr_address',
-            'a.basic_salary',
-            'a.active_status'
-        )
-        ->orderBy('a.dr_name', 'asc');
-        
+        $queryBuilder = DB::table('rsmst_mstdiags')
+            ->select('diag_id', 'diag_desc', 'icdx')
+            ->orderBy('diag_desc', 'asc');
+
         if ($searchKeyword !== '') {
             $uppercaseKeyword = mb_strtoupper($searchKeyword);
 
             $queryBuilder->where(function ($subQuery) use ($uppercaseKeyword, $searchKeyword) {
                 if (ctype_digit($searchKeyword)) {
-                    $subQuery->orWhere('dr_id', $searchKeyword);
+                    $subQuery->orWhere('diag_id', $searchKeyword);
                 }
 
                 $subQuery
-                    ->orWhereRaw('UPPER(dr_name) LIKE ?', ["%{$uppercaseKeyword}%"])
-                    ->orWhereRaw('UPPER(dr_phone) LIKE ?', ["%{$uppercaseKeyword}%"])
-                    ->orWhereRaw('UPPER(dr_address) LIKE ?', ["%{$uppercaseKeyword}%"])
-                    ->orWhereRaw('UPPER(a.poli_id) LIKE ?', ["%{$uppercaseKeyword}%"]);
+                    ->orWhereRaw('UPPER(diag_desc) LIKE ?', ["%{$uppercaseKeyword}%"])
+                    ->orWhereRaw('UPPER(icdx) LIKE ?', ["%{$uppercaseKeyword}%"]);
             });
         }
 
@@ -111,10 +97,10 @@ new class extends Component {
     <header class="bg-white shadow dark:bg-gray-800">
         <div class="w-full px-4 py-2 sm:px-6 lg:px-8">
             <h2 class="text-2xl font-bold leading-tight text-gray-900 dark:text-gray-100">
-                Master Dokter
+                Master Diagnosa
             </h2>
             <p class="text-sm text-gray-500 dark:text-gray-400">
-                Kelola data dokter untuk aplikasi
+                Kelola data diagnosa (ICD-10) untuk aplikasi
             </p>
         </div>
     </header>
@@ -125,13 +111,14 @@ new class extends Component {
             {{-- TOOLBAR: Search + Filter + Action --}}
             <div
                 class="sticky z-30 px-4 py-3 bg-white border-b border-gray-200 top-20 dark:bg-gray-900 dark:border-gray-700">
-                <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
 
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     {{-- SEARCH --}}
                     <div class="w-full lg:max-w-md">
-                        <x-input-label for="searchKeyword" value="Cari Dokter" class="sr-only" />
+                        <x-input-label for="searchKeyword" value="Cari Diagnosa" class="sr-only" />
                         <x-text-input id="searchKeyword" type="text" wire:model.live.debounce.300ms="searchKeyword"
-                            placeholder="Cari dokter..." class="block w-full" />
+                            placeholder="Cari diagnosa (ID, nama, kode ICD)..." class="block w-full"
+                            wire:key="search-input-{{ now() }}" />
                     </div>
 
                     {{-- RIGHT ACTIONS --}}
@@ -149,7 +136,7 @@ new class extends Component {
                         </div>
 
                         <x-primary-button type="button" wire:click="openCreate">
-                            + Tambah Dokter
+                            + Tambah Diagnosa
                         </x-primary-button>
                     </div>
                 </div>
@@ -159,48 +146,40 @@ new class extends Component {
             <div
                 class="mt-4 bg-white border border-gray-200 shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
 
-                {{-- TABLE SCROLL AREA (yang boleh scroll) --}}
+                {{-- TABLE SCROLL AREA --}}
                 <div class="overflow-x-auto overflow-y-auto max-h-[calc(100dvh-320px)] rounded-t-2xl">
                     <table class="min-w-full text-sm">
-                        {{-- TABLE HEAD (optional sticky) --}}
+                        {{-- TABLE HEAD --}}
                         <thead class="sticky top-0 z-10 text-gray-600 bg-gray-50 dark:bg-gray-800 dark:text-gray-200">
                             <tr class="text-left">
                                 <th class="px-4 py-3 font-semibold">ID</th>
-                                <th class="px-4 py-3 font-semibold">NAMA</th>
-                                <th class="px-4 py-3 font-semibold">POLI</th>
-                                <th class="px-4 py-3 font-semibold">TELEPON</th>
-                                <th class="px-4 py-3 font-semibold">GAJI</th>
-                                <th class="px-4 py-3 font-semibold">STATUS</th>
+                                <th class="px-4 py-3 font-semibold">KODE ICD X</th>
+                                <th class="px-4 py-3 font-semibold">NAMA DIAGNOSA</th>
                                 <th class="px-4 py-3 font-semibold">AKSI</th>
                             </tr>
                         </thead>
 
                         <tbody class="text-gray-700 divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-200">
                             @forelse($this->rows as $row)
-                            <tr wire:key="dokter-row-{{ $row->dr_id }}"
+                            <tr wire:key="diagnosa-row-{{ $row->diag_id }}"
                                 class="hover:bg-gray-50 dark:hover:bg-gray-800/60">
-                                <td class="px-4 py-3">{{ $row->dr_id }}</td>
-                                <td class="px-4 py-3 font-semibold">{{ $row->dr_name }}</td>
-                                <td class="px-4 py-3">{{ $row->poli_desc }}</td>
-                                <td class="px-4 py-3">{{ $row->dr_phone }}</td>
-                                <td class="px-4 py-3">{{ number_format((float) $row->basic_salary) }}</td>
-
+                                <td class="px-4 py-3">{{ $row->diag_id }}</td>
                                 <td class="px-4 py-3">
-                                    <x-badge :variant="(string) $row->active_status === '1' ? 'success' : 'gray'">
-                                        {{ (string) $row->active_status === '1' ? 'Aktif' : 'Nonaktif' }}
+                                    <x-badge variant="info" class="font-mono">
+                                        {{ $row->icdx }}
                                     </x-badge>
                                 </td>
-
+                                <td class="px-4 py-3 font-semibold">{{ $row->diag_desc }}</td>
                                 <td class="px-4 py-3">
                                     <div class="flex flex-wrap gap-2">
-                                        <x-outline-button type="button" wire:click="openEdit('{{ $row->dr_id }}')">
+                                        <x-outline-button type="button" wire:click="openEdit('{{ $row->diag_id }}')">
                                             Edit
                                         </x-outline-button>
 
                                         <x-confirm-button variant="danger"
-                                            :action="'requestDelete(\'' . $row->dr_id . '\')'" title="Hapus Dokter"
-                                            message="Yakin hapus dokter {{ $row->dr_name }}?" confirmText="Ya, hapus"
-                                            cancelText="Batal">
+                                            :action="'requestDelete(\'' . $row->diag_id . '\')'" title="Hapus Diagnosa"
+                                            message="Yakin hapus data diagnosa {{ $row->diag_desc }}?"
+                                            confirmText="Ya, hapus" cancelText="Batal">
                                             Hapus
                                         </x-confirm-button>
                                     </div>
@@ -208,7 +187,7 @@ new class extends Component {
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="7" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
+                                <td colspan="4" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
                                     Data belum ada.
                                 </td>
                             </tr>
@@ -217,16 +196,15 @@ new class extends Component {
                     </table>
                 </div>
 
-                {{-- PAGINATION STICKY di bawah card --}}
+                {{-- PAGINATION --}}
                 <div
                     class="sticky bottom-0 z-10 px-4 py-3 bg-white border-t border-gray-200 rounded-b-2xl dark:bg-gray-900 dark:border-gray-700">
                     {{ $this->rows->links() }}
                 </div>
             </div>
 
-            {{-- Child actions component (modal CRUD) --}}
-            <livewire:pages::master.master-dokter.master-dokter-actions :wire:key="'master-dokter-actions'" />
-
+            {{-- Child actions component --}}
+            <livewire:pages::master.master-diagnosa.master-diagnosa-actions />
         </div>
     </div>
 </div>
