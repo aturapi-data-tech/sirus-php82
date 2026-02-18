@@ -4,14 +4,23 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
+use Carbon\Carbon;
+use App\Http\Traits\Txn\Rj\EmrRJTrait;
 
 new class extends Component {
+    use EmrRJTrait;
+
     public string $formMode = 'create'; // create|edit
     public ?string $rjNo = null;
+    public $disabledPropertyRjStatus = false;
+    public ?string $kronisNotice = null;
+    public array $dataDaftarPoliRJ = [];
 
-    public ?string $keterangan = null;
-    public ?string $tindakLanjut = null;
-    public ?string $tglKontrol = null;
+    public string $klaimId = 'UM';
+    public array $klaimOptions = [['klaimId' => 'UM', 'klaimDesc' => 'UMUM'], ['klaimId' => 'JM', 'klaimDesc' => 'BPJS'], ['klaimId' => 'JR', 'klaimDesc' => 'JASA RAHARJA'], ['klaimId' => 'JML', 'klaimDesc' => 'Asuransi Lain'], ['klaimId' => 'KR', 'klaimDesc' => 'Kronis']];
+
+    public string $kunjunganId = '1';
+    public array $kunjunganOptions = [['kunjunganId' => '1', 'kunjunganDesc' => 'Rujukan FKTP'], ['kunjunganId' => '2', 'kunjunganDesc' => 'Rujukan Internal'], ['kunjunganId' => '3', 'kunjunganDesc' => 'Kontrol'], ['kunjunganId' => '4', 'kunjunganDesc' => 'Rujukan Antar RS']];
 
     /* ===============================
      | OPEN CREATE
@@ -23,42 +32,45 @@ new class extends Component {
         $this->formMode = 'create';
         $this->resetValidation();
 
+        $this->dataDaftarPoliRJ = $this->getDefaultRJTemplate();
+
+        // ===============================
+        // Set Tanggal RJ (hari ini)
+        // ===============================
+        $now = Carbon::now(config('app.timezone'));
+        $this->dataDaftarPoliRJ['rjDate'] = $now->format('d/m/Y H:i:s');
+
+        // ===============================
+        // Set Shift berdasarkan jam sekarang
+        // ===============================
+        $nowTime = $now->format('H:i:s');
+
+        $findShift = DB::table('rstxn_shiftctls')
+            ->select('shift')
+            ->whereRaw('? BETWEEN shift_start AND shift_end', [$nowTime])
+            ->first();
+
+        $this->dataDaftarPoliRJ['shift'] = $findShift->shift ?? 3;
+
         $this->dispatch('open-modal', name: 'rj-actions');
     }
 
     /* ===============================
      | OPEN EDIT
      =============================== */
-    #[On('daftar-rj.openEdit')]
-    public function openEdit(string $rjNo): void
-    {
-        $row = DB::table('rstxn_rjhdrs')->where('rj_no', $rjNo)->first();
-
-        if (!$row) {
-            return;
-        }
-
-        $this->resetForm();
-        $this->formMode = 'edit';
-        $this->rjNo = $row->rj_no;
-        $this->keterangan = $row->keterangan ?? null;
-        $this->tindakLanjut = $row->tindak_lanjut ?? null;
-        $this->tglKontrol = $row->tgl_kontrol ?? null;
-
-        $this->resetValidation();
-
-        $this->dispatch('open-modal', name: 'rj-actions');
-    }
 
     public function closeModal(): void
     {
         $this->resetValidation();
+        $this->resetForm();
         $this->dispatch('close-modal', name: 'rj-actions');
     }
 
     protected function resetForm(): void
     {
-        $this->reset(['rjNo', 'keterangan', 'tindakLanjut', 'tglKontrol']);
+        $this->reset(['rjNo', 'dataDaftarPoliRJ']);
+
+        $this->formMode = 'create';
     }
 
     protected function rules(): array
@@ -73,44 +85,47 @@ new class extends Component {
     /* ===============================
      | SAVE
      =============================== */
-    public function save(): void
-    {
-        $data = $this->validate();
-
-        if ($this->formMode === 'edit' && $this->rjNo) {
-            DB::table('rstxn_rjhdrs')
-                ->where('rj_no', $this->rjNo)
-                ->update([
-                    'tindak_lanjut' => $data['tindakLanjut'],
-                    'tgl_kontrol' => $data['tglKontrol'],
-                    'keterangan' => $data['keterangan'],
-                ]);
-        }
-
-        $this->dispatch('toast', type: 'success', message: 'Data Rawat Jalan berhasil disimpan.');
-        $this->closeModal();
-
-        $this->dispatch('daftar-rj.saved');
-    }
 
     /* ===============================
      | DELETE
      =============================== */
-    #[On('daftar-rj.requestDelete')]
-    public function deleteFromGrid(string $rjNo): void
+
+    #[On('lov.selected')]
+    public function handleLovSelected(string $target, array $payload): void
     {
-        try {
-            $deleted = DB::table('rstxn_rjhdrs')->where('rj_no', $rjNo)->delete();
+        if ($target === 'rjFormPasien') {
+            $this->dataDaftarPoliRJ['regNo'] = $payload['regNo'] ?? '';
+            $this->dataDaftarPoliRJ['regName'] = $payload['regName'] ?? '';
+            $this->dispatch('focus-after-lov');
+        }
 
-            if ($deleted === 0) {
-                $this->dispatch('toast', type: 'error', message: 'Data tidak ditemukan.');
-                return;
-            }
+        if ($target === 'rjFormDokter') {
+            $this->dataDaftarPoliRJ['drId'] = $payload['dr_id'] ?? '';
+            $this->dataDaftarPoliRJ['drDesc'] = $payload['dr_name'] ?? '';
+            $this->dataDaftarPoliRJ['poliId'] = $payload['poli_id'] ?? '';
+            $this->dataDaftarPoliRJ['poliDesc'] = $payload['poli_desc'] ?? '';
+        }
+    }
 
-            $this->dispatch('toast', type: 'success', message: 'Data berhasil dihapus.');
-            $this->dispatch('daftar-rj.saved');
-        } catch (QueryException $e) {
-            throw $e;
+    public function updatedKlaimId($value)
+    {
+        $this->dataDaftarPoliRJ['klaimId'] = $value;
+    }
+
+    public function updatedKunjunganId($value)
+    {
+        $this->dataDaftarPoliRJ['kunjunganId'] = $value;
+    }
+
+    private function syncFromDataDaftarPoliRJ(): void
+    {
+        // mode edit: sync from dataDaftarPoliRJ
+        if (!empty($this->dataDaftarPoliRJ['klaimId'])) {
+            $this->klaimId = $this->dataDaftarPoliRJ['klaimId'];
+        }
+
+        if (!empty($this->dataDaftarPoliRJ['kunjunganId'])) {
+            $this->kunjunganId = $this->dataDaftarPoliRJ['kunjunganId'];
         }
     }
 };
@@ -122,8 +137,9 @@ new class extends Component {
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
             wire:key="rj-actions-{{ $formMode }}-{{ $rjNo ?? 'new' }}">
 
-            {{-- HEADER dengan background pattern --}}
+            {{-- HEADER --}}
             <div class="relative px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                {{-- Background pattern --}}
                 <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
                     style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
                 </div>
@@ -131,6 +147,7 @@ new class extends Component {
                 <div class="relative flex items-start justify-between gap-4">
                     <div>
                         <div class="flex items-center gap-3">
+                            {{-- Icon --}}
                             <div
                                 class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
                                 <img src="{{ asset('images/Logogram black solid.png') }}" alt="RSI Madinah"
@@ -139,6 +156,7 @@ new class extends Component {
                                     class="hidden w-6 h-6 dark:block" />
                             </div>
 
+                            {{-- Title & subtitle --}}
                             <div>
                                 <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
                                     {{ $formMode === 'edit' ? 'Ubah Data Rawat Jalan' : 'Tambah Data Rawat Jalan' }}
@@ -149,19 +167,15 @@ new class extends Component {
                             </div>
                         </div>
 
-                        <div class="flex flex-wrap items-center gap-2 mt-3">
+                        {{-- Badge mode --}}
+                        <div class="mt-3">
                             <x-badge :variant="$formMode === 'edit' ? 'warning' : 'success'">
                                 {{ $formMode === 'edit' ? 'Mode: Edit' : 'Mode: Tambah' }}
                             </x-badge>
-
-                            @if ($rjNo)
-                                <x-badge variant="brand">
-                                    No RJ: {{ $rjNo }}
-                                </x-badge>
-                            @endif
                         </div>
                     </div>
 
+                    {{-- Close button --}}
                     <x-secondary-button type="button" wire:click="closeModal" class="!p-2">
                         <span class="sr-only">Close</span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
@@ -173,220 +187,162 @@ new class extends Component {
                 </div>
             </div>
 
-            {{-- BODY dengan layout grid 2 kolom --}}
+            {{-- BODY --}}
             <div class="flex-1 px-4 py-4 bg-gray-50/70 dark:bg-gray-950/20">
-                <div class="grid grid-cols-2 gap-4">
 
-                    {{-- KOLOM KIRI: Data Pasien & Pendaftaran --}}
-                    <div class="space-y-4">
-                        {{-- Informasi Pasien (jika dalam mode edit) --}}
-                        @if ($formMode === 'edit' && $pasienInfo)
+                <div class="max-w-full mx-auto">
+                    <div class="p-1 space-y-1" x-data
+                        @keydown.enter.prevent="
+                            let f = [...$el.querySelectorAll('input,select,textarea')]
+                                .filter(e => !e.disabled && e.type !== 'hidden');
+
+                            let i = f.indexOf($event.target);
+
+                            if(i > -1 && i < f.length - 1){
+                                f[i+1].focus();
+                            }
+                        ">
+                        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+
+                            {{-- ========================= --}}
+                            {{-- KOLOM KIRI --}}
+                            {{-- ========================= --}}
                             <div
-                                class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                                <div class="p-5">
-                                    <h3 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                                        Informasi Pasien
-                                    </h3>
-                                    <div class="grid grid-cols-2 gap-3 text-sm">
-                                        <div>
-                                            <span class="text-gray-500">No RM:</span>
-                                            <span class="ml-2 font-medium text-gray-900 dark:text-white">
-                                                {{ $pasienInfo['reg_no'] ?? '-' }}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <span class="text-gray-500">Nama:</span>
-                                            <span class="ml-2 font-medium text-gray-900 dark:text-white">
-                                                {{ $pasienInfo['reg_name'] ?? '-' }}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <span class="text-gray-500">Poli:</span>
-                                            <span class="ml-2 font-medium text-gray-900 dark:text-white">
-                                                {{ $pasienInfo['poli_desc'] ?? '-' }}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <span class="text-gray-500">Dokter:</span>
-                                            <span class="ml-2 font-medium text-gray-900 dark:text-white">
-                                                {{ $pasienInfo['dr_name'] ?? '-' }}
-                                            </span>
-                                        </div>
+                                class="p-6 space-y-6 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+
+                                <div class="flex gap-4">
+                                    {{-- Tanggal RJ --}}
+                                    <div class="flex-1">
+                                        <x-input-label value="Tanggal RJ" />
+                                        <x-text-input wire:model.live="dataDaftarPoliRJ.rjDate"
+                                            wire:key="rjDate-{{ $dataDaftarPoliRJ['rjDate'] ?? 'new' }}"
+                                            class="block w-full" />
                                     </div>
-                                </div>
-                            </div>
-                        @endif
-
-                        {{-- PLACEHOLDER: Form Pencarian Pasien --}}
-                        <div
-                            class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                            <div class="p-5">
-                                {{-- Pasien --}}
-                                <div>
-                                    @if ($this->formMode === 'create')
-                                        <livewire:lov.pasien.lov-pasien target="rjFormPasien" />
-                                    @else
-                                        <livewire:lov.pasien.lov-pasien target="rjFormPasien" :initialRegNo="$regNo" />
-                                    @endif
-
-                                    <x-input-error :messages="$errors->get('regNo')" class="mt-1" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- PLACEHOLDER: Data Pasien --}}
-                        <div
-                            class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                            <div class="p-5">
-                                <div
-                                    class="flex items-center justify-center h-48 border-2 border-gray-200 border-dashed rounded-xl dark:border-gray-700">
-                                    <p class="text-sm text-gray-400 dark:text-gray-500">
-                                        👤 Data Pasien (Coming Soon)
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- KOLOM KANAN: Data Transaksi & Layanan --}}
-                    <div class="space-y-4">
-                        {{-- PLACEHOLDER: Jenis Klaim & Kunjungan --}}
-                        <div
-                            class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                            <div class="p-5">
-                                <div
-                                    class="flex items-center justify-center h-24 border-2 border-gray-200 border-dashed rounded-xl dark:border-gray-700">
-                                    <p class="text-sm text-gray-400 dark:text-gray-500">
-                                        💰 Jenis Klaim & Kunjungan (Coming Soon)
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- PLACEHOLDER: No Referensi & SEP --}}
-                        <div
-                            class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                            <div class="p-5">
-                                <div
-                                    class="flex items-center justify-center h-24 border-2 border-gray-200 border-dashed rounded-xl dark:border-gray-700">
-                                    <p class="text-sm text-gray-400 dark:text-gray-500">
-                                        📋 No Referensi & SEP (Coming Soon)
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- PLACEHOLDER: Dokter & Poli --}}
-                        <div
-                            class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                            <div class="p-5">
-                                <div
-                                    class="flex items-center justify-center h-24 border-2 border-gray-200 border-dashed rounded-xl dark:border-gray-700">
-                                    <p class="text-sm text-gray-400 dark:text-gray-500">
-                                        👨‍⚕️ Dokter & Poli (Coming Soon)
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- PLACEHOLDER: Tindak Lanjut (yang sudah ada) --}}
-                        <div
-                            class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                            <div class="p-5 space-y-4">
-                                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                                    Tindak Lanjut
-                                </h3>
-
-                                {{-- Form Fields yang sudah ada --}}
-                                <div class="space-y-4">
-                                    {{-- Tindak Lanjut --}}
-                                    <div>
-                                        <x-input-label value="Tindak Lanjut" />
-                                        <x-select-input wire:model.defer="tindakLanjut" :error="$errors->has('tindakLanjut')"
-                                            class="w-full mt-1">
-                                            <option value="">Pilih Tindak Lanjut</option>
-                                            <option value="Kontrol Ulang">Kontrol Ulang</option>
-                                            <option value="Rujuk ke Spesialis">Rujuk ke Spesialis</option>
-                                            <option value="Rawat Inap">Rawat Inap</option>
-                                            <option value="Selesai">Selesai</option>
+                                    {{-- Shift --}}
+                                    <div class="w-36">
+                                        <x-input-label value="Shift" />
+                                        <x-select-input wire:model.live="dataDaftarPoliRJ.shift"
+                                            class="w-full mt-1 sm:w-36"
+                                            wire:key="shift-{{ $dataDaftarPoliRJ['shift'] ?? 'new' }}">
+                                            <option value="">-- Pilih Shift --</option>
+                                            <option value="1">Shift 1</option>
+                                            <option value="2">Shift 2</option>
+                                            <option value="3">Shift 3</option>
                                         </x-select-input>
-                                        <x-input-error :messages="$errors->get('tindakLanjut')" class="mt-1" />
-                                    </div>
-
-                                    {{-- Tanggal Kontrol --}}
-                                    <div>
-                                        <x-input-label value="Tanggal Kontrol" />
-                                        <x-text-input type="date" wire:model.defer="tglKontrol" :error="$errors->has('tglKontrol')"
-                                            class="w-full mt-1" />
-                                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                                            Tanggal kontrol berikutnya (jika ada).
-                                        </p>
-                                        <x-input-error :messages="$errors->get('tglKontrol')" class="mt-1" />
-                                    </div>
-
-                                    {{-- Keterangan --}}
-                                    <div>
-                                        <x-input-label value="Keterangan" />
-                                        <textarea wire:model.defer="keterangan"
-                                            class="w-full mt-1 border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
-                                            rows="4" :error="$errors->has('keterangan')"></textarea>
-                                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                                            Catatan tambahan untuk tindak lanjut pasien.
-                                        </p>
-                                        <x-input-error :messages="$errors->get('keterangan')" class="mt-1" />
                                     </div>
                                 </div>
 
-                                {{-- Informasi Tambahan --}}
-                                <div class="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
-                                    <div class="text-xs text-gray-500 dark:text-gray-400">
-                                        <p class="flex items-center gap-1">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            Data tindak lanjut akan tersimpan di JSON pasien.
-                                        </p>
+                                {{-- LOV Pasien --}}
+                                <livewire:lov.pasien.lov-pasien target="rjFormPasien" :initialRegNo="$dataDaftarPoliRJ['regNo'] ?? ''"
+                                    wire:key="'lov-pasien-' . ($dataDaftarPoliRJ['regNo'] ?? 'new')" />
+
+                                {{-- Jenis Klaim --}}
+                                <div>
+                                    <x-input-label value="Jenis Klaim" />
+                                    <div class="grid grid-cols-5 gap-2 mt-2">
+                                        @foreach ($klaimOptions ?? [] as $index => $klaim)
+                                            <x-radio-button :label="$klaim['klaimDesc']" :value="(string) $klaim['klaimId']"
+                                                name="dataDaftarPoliRJ.klaimId" wire:model.live="klaimId"
+                                                wire:key="klaim-{{ $klaim['klaimId'] }}-{{ $index }}" />
+                                        @endforeach
                                     </div>
                                 </div>
+
+
+
                             </div>
+
+                            {{-- ========================= --}}
+                            {{-- KOLOM KANAN --}}
+                            {{-- ========================= --}}
+                            <div
+                                class="p-6 space-y-6 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+
+                                {{-- Jenis Kunjungan --}}
+                                <div>
+                                    <x-input-label value="Jenis Kunjungan" />
+                                    <div class="grid grid-cols-4 gap-2 mt-2">
+                                        @foreach ($kunjunganOptions ?? [] as $index => $kunjungan)
+                                            <x-radio-button :label="$kunjungan['kunjunganDesc']" :value="$kunjungan['kunjunganId']"
+                                                name="dataDaftarPoliRJ.kunjunganId" wire:model.live="kunjunganId"
+                                                wire:key="kunjungan-{{ $kunjungan['kunjunganId'] }}-{{ $index }}" />
+                                        @endforeach
+                                    </div>
+
+                                    {{-- LOGIC POST INAP & KONTROL 1/2 --}}
+                                    <div class="mt-4">
+                                        @if (($dataDaftarPoliRJ['kunjunganId'] ?? '') === '3')
+                                            <x-check-box value="1" :label="__('Post Inap')"
+                                                wire:model="dataDaftarPoliRJ.postInap" />
+                                        @endif
+
+                                        <div class="grid grid-cols-2 gap-2 mt-2">
+                                            @if (in_array($dataDaftarPoliRJ['kunjunganId'] ?? '', ['2', '3']))
+                                                @foreach ($dataDaftarPoliRJ['kontrol12Options'] ?? [] as $kontrol12)
+                                                    <x-radio-button :label="__($kontrol12['kontrol12Desc'])"
+                                                        value="{{ $kontrol12['kontrol12'] }}"
+                                                        wire:model="dataDaftarPoliRJ.kontrol12" />
+                                                @endforeach
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                                {{-- No Referensi --}}
+                                <div class="pt-4 space-y-3 border-t">
+                                    <div class="grid">
+                                        <x-input-label value="No Referensi" />
+                                        <x-text-input wire:model.live="dataDaftarPoliRJ.noReferensi" />
+                                    </div>
+                                    <div class="flex justify-between gap-2">
+                                        <x-primary-button wire:click.prevent="clickrujukanPeserta()">
+                                            Cek Referensi
+                                        </x-primary-button>
+                                        <x-primary-button wire:click.prevent="callRJskdp()">
+                                            Buat SKDP
+                                        </x-primary-button>
+                                    </div>
+                                </div>
+
+                                {{-- Dokter & Poli --}}
+                                <div class="pt-4 space-y-4 border-t">
+                                    <x-input-label value="Dokter & Poli" />
+
+                                    {{-- Display Selected --}}
+                                    {{-- <x-text-input class="w-full mt-1" :disabled="true"
+                                        value="{{ ($dataDaftarPoliRJ['drId'] ?? '') .
+                                            (isset($dataDaftarPoliRJ['drDesc']) ? ' - ' . $dataDaftarPoliRJ['drDesc'] : '') .
+                                            (isset($dataDaftarPoliRJ['poliDesc']) ? ' | Poli: ' . $dataDaftarPoliRJ['poliDesc'] : '') }}" /> --}}
+
+                                    {{-- LOV Dokter --}}
+                                    <div class="mt-2">
+                                        <livewire:lov.dokter.lov-dokter target="rjFormDokter" :initialDrId="$dataDaftarPoliRJ['drId'] ?? null"
+                                            :key="'lov-dokter-rj-' . ($dataDaftarPoliRJ['drId'] ?? 'new')" />
+                                    </div>
+                                </div>
+
+                            </div>
+
                         </div>
                     </div>
                 </div>
+
             </div>
 
-            {{-- FOOTER dengan tombol aksi --}}
+            {{-- FOOTER --}}
             <div
-                class="sticky bottom-0 z-10 px-6 py-4 mt-auto bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700">
-                <div class="flex items-center justify-between gap-3">
-                    <div class="text-xs text-gray-500 dark:text-gray-400">
-                        <span class="flex items-center gap-1">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            Pastikan data sudah benar sebelum menyimpan.
-                        </span>
-                    </div>
-
-                    <div class="flex justify-end gap-2">
-                        <x-secondary-button type="button" wire:click="closeModal">
+                class="sticky bottom-0 z-10 px-6 py-4 bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700">
+                <div class="flex justify-between gap-3">
+                    <x-primary-button wire:click.prevent="callFormPasien()">
+                        Master Pasien
+                    </x-primary-button>
+                    <div class="flex justify-between gap-3">
+                        <x-secondary-button wire:click="closeModal">
                             Batal
                         </x-secondary-button>
-
-                        <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
-                            <span wire:loading.remove>Simpan</span>
-                            <span wire:loading>
-                                <svg class="inline w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10"
-                                        stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor"
-                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                    </path>
-                                </svg>
-                                Menyimpan...
-                            </span>
+                        <x-primary-button wire:click.prevent="store()" class="min-w-[120px]">
+                            Simpan
                         </x-primary-button>
                     </div>
                 </div>
