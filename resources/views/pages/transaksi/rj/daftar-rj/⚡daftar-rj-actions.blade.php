@@ -8,14 +8,17 @@ use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
+use App\Http\Traits\Lov\WithLovVersioning;
 new class extends Component {
-    use EmrRJTrait;
+    use EmrRJTrait, WithLovVersioning;
 
     public string $formMode = 'create'; // create|edit
     public ?string $rjNo = null;
     public $disabledPropertyRjStatus = false;
     public ?string $kronisNotice = null;
-    public array $dataDaftarPoliRJ = [];
+    public array $dataDaftarPoliRJ = ['passStatus' => 'O'];
+
+    public array $lovList = ['pasien', 'dokter'];
 
     public string $klaimId = 'UM';
     public array $klaimOptions = [['klaimId' => 'UM', 'klaimDesc' => 'UMUM'], ['klaimId' => 'JM', 'klaimDesc' => 'BPJS'], ['klaimId' => 'JR', 'klaimDesc' => 'JASA RAHARJA'], ['klaimId' => 'JML', 'klaimDesc' => 'Asuransi Lain'], ['klaimId' => 'KR', 'klaimDesc' => 'Kronis']];
@@ -30,6 +33,12 @@ new class extends Component {
     // Internal 1/2 (untuk kunjungan Internal)
     public string $internal12 = '1';
     public array $internal12Options = [['internal12' => '1', 'internal12Desc' => 'Faskes Tingkat 1'], ['internal12' => '2', 'internal12Desc' => 'Faskes Tingkat 2 RS']];
+
+    public function mount()
+    {
+        // Cara 2: Register manual
+        $this->registerLovs(['pasien', 'dokter']);
+    }
 
     /* ===============================
      | OPEN CREATE
@@ -66,6 +75,30 @@ new class extends Component {
     /* ===============================
      | OPEN EDIT
      =============================== */
+    #[On('daftar-rj.openEdit')]
+    public function openEdit(string $rjNo): void
+    {
+        // Reset state dulu
+        $this->resetForm();
+        $this->formMode = 'edit';
+        $this->resetValidation();
+
+        // Ambil data JSON dari DB
+        $data = $this->findDataRJ($rjNo);
+        if (!$data) {
+            $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
+            return;
+        }
+
+        // Merge dengan template default supaya struktur tetap konsisten
+        $this->dataDaftarPoliRJ = array_replace_recursive($this->getDefaultRJTemplate(), $data);
+
+        // Sync property turunan agar radio/toggle tetap aktif
+        $this->syncFromDataDaftarPoliRJ();
+
+        // Buka modal
+        $this->dispatch('open-modal', name: 'rj-actions');
+    }
 
     public function closeModal(): void
     {
@@ -74,6 +107,9 @@ new class extends Component {
         $this->dispatch('close-modal', name: 'rj-actions');
     }
 
+    /* ===============================
+     | SAVE
+     =============================== */
     public function save(): void
     {
         // Set data primer (RJno, NoBooking, NoAntrian, dll)
@@ -140,7 +176,7 @@ new class extends Component {
 
                     // Reset form & tutup modal
                     // $this->resetForm();
-                    // $this->resetValidation();
+                    $this->resetValidation();
                     // $this->closeModal();
 
                     // Toast sukses
@@ -169,46 +205,72 @@ new class extends Component {
 
     private function setDataPrimer(): void
     {
-        // 1. Set Klaim & Kunjungan dari form yang dipilih user
-        // $this->dataDaftarPoliRJ['klaimId'] = $this->JenisKlaim['JenisKlaimId'];
-        // $this->dataDaftarPoliRJ['kunjunganId'] = $this->JenisKunjungan['JenisKunjunganId'];
+        // Shortcut biar lebih rapi
+        $data = &$this->dataDaftarPoliRJ;
 
-        // 2. Set status kunjungan internal jika jenis kunjungan = Internal (2)
-        if ($this->dataDaftarPoliRJ['kunjunganId'] == 2) {
-            $this->dataDaftarPoliRJ['kunjunganInternalStatus'] = '1';
+        /*
+    |--------------------------------------------------------------------------
+    | 1. Status Kunjungan Internal
+    |--------------------------------------------------------------------------
+    */
+        if (!empty($data['kunjunganId']) && $data['kunjunganId'] == 2) {
+            $data['kunjunganInternalStatus'] = '1';
         }
 
-        // 3. Generate No Booking jika belum ada
-        if (!$this->dataDaftarPoliRJ['noBooking']) {
-            $this->dataDaftarPoliRJ['noBooking'] = Carbon::now(config('app.timezone'))->format('YmdHis') . 'RSIM';
+        /*
+    |--------------------------------------------------------------------------
+    | 2. Generate No Booking
+    |--------------------------------------------------------------------------
+    */
+        if (empty($data['noBooking'])) {
+            $data['noBooking'] = Carbon::now(config('app.timezone'))->format('YmdHis') . 'RSIM';
         }
 
-        // 4. Generate No RJ (nomor transaksi) jika belum ada
-        if (!$this->dataDaftarPoliRJ['rjNo']) {
+        /*
+    |--------------------------------------------------------------------------
+    | 3. Generate No RJ
+    |--------------------------------------------------------------------------
+    */
+        if (empty($data['rjNo'])) {
             $maxRjNo = DB::table('rstxn_rjhdrs')->max('rj_no');
-            $this->dataDaftarPoliRJ['rjNo'] = $maxRjNo ? $maxRjNo + 1 : 1;
+            $data['rjNo'] = $maxRjNo ? $maxRjNo + 1 : 1;
         }
 
-        // 5. Generate No Antrian jika belum ada
-        if (!$this->dataDaftarPoliRJ['noAntrian']) {
-            if ($this->dataDaftarPoliRJ['klaimId'] != 'KR') {
-                // Hitung jumlah antrian existing untuk dokter & tanggal yang sama (non-Kronis)
-                $tglAntrian = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate'], config('app.timezone'))->format('dmY');
+        /*
+    |--------------------------------------------------------------------------
+    | 4. Generate No Antrian
+    |--------------------------------------------------------------------------
+    */
+        if (empty($data['noAntrian'])) {
+            if (!empty($data['klaimId']) && $data['klaimId'] !== 'KR') {
+                if (!empty($data['rjDate']) && !empty($data['drId'])) {
+                    $tglAntrian = Carbon::createFromFormat('d/m/Y H:i:s', $data['rjDate'], config('app.timezone'))->format('dmY');
 
-                $noUrutAntrian = DB::table('rstxn_rjhdrs')
-                    ->where('dr_id', $this->dataDaftarPoliRJ['drId'])
-                    ->where('klaim_id', '!=', 'KR')
-                    ->whereRaw("to_char(rj_date, 'ddmmyyyy') = ?", [$tglAntrian])
-                    ->count();
+                    $noUrutAntrian = DB::table('rstxn_rjhdrs')
+                        ->where('dr_id', $data['drId'])
+                        ->where('klaim_id', '!=', 'KR')
+                        ->whereRaw("to_char(rj_date, 'ddmmyyyy') = ?", [$tglAntrian])
+                        ->count();
 
-                // Untuk pasien non-Kronis, nomor antrian = urutan + 1
-                $noAntrian = $noUrutAntrian + 1;
+                    $data['noAntrian'] = $noUrutAntrian + 1;
+                }
             } else {
-                // Pasien Kronis mendapat nomor antrian khusus 999
-                $noAntrian = 999;
+                // Pasien Kronis
+                $data['noAntrian'] = 999;
             }
+        }
 
-            $this->dataDaftarPoliRJ['noAntrian'] = $noAntrian;
+        /*
+    |--------------------------------------------------------------------------
+    | 5. Task ID Pelayanan (Fix Bug)
+    |--------------------------------------------------------------------------
+    */
+        if (empty($data['taskIdPelayanan'])) {
+            $data['taskIdPelayanan'] = [];
+        }
+
+        if (empty($data['taskIdPelayanan']['taskId3']) && !empty($data['rjDate'])) {
+            $data['taskIdPelayanan']['taskId3'] = $data['rjDate'];
         }
     }
 
@@ -340,6 +402,8 @@ new class extends Component {
     protected function resetForm(): void
     {
         $this->reset(['rjNo', 'dataDaftarPoliRJ']);
+        // Reset semua LOV ke versi 0
+        $this->resetLovVersion();
 
         // Reset default pilihan
         $this->klaimId = 'UM';
@@ -369,10 +433,6 @@ new class extends Component {
     }
 
     /* ===============================
-     | SAVE
-     =============================== */
-
-    /* ===============================
      | DELETE
      =============================== */
 
@@ -394,6 +454,15 @@ new class extends Component {
 
     public function updated($name, $value)
     {
+        // Increment LOV saat field tertentu berubah
+        if ($name === 'dataDaftarPoliRJ.regNo') {
+            $this->incrementLovVersion('pasien');
+        }
+
+        if ($name === 'dataDaftarPoliRJ.drId') {
+            $this->incrementLovVersion('dokter');
+        }
+
         // Klaim
         if ($name === 'klaimId') {
             $this->klaimId = $value;
@@ -448,14 +517,25 @@ new class extends Component {
 
     private function syncFromDataDaftarPoliRJ(): void
     {
-        // mode edit: sync from dataDaftarPoliRJ
-        if (!empty($this->dataDaftarPoliRJ['klaimId'])) {
-            $this->klaimId = $this->dataDaftarPoliRJ['klaimId'];
-        }
+        // Klaim
+        $this->klaimId = $this->dataDaftarPoliRJ['klaimId'] ?? 'UM';
 
-        if (!empty($this->dataDaftarPoliRJ['kunjunganId'])) {
-            $this->kunjunganId = $this->dataDaftarPoliRJ['kunjunganId'];
-        }
+        // Kunjungan
+        $this->kunjunganId = $this->dataDaftarPoliRJ['kunjunganId'] ?? '1';
+
+        // Pass Status (toggle pasien baru/lama)
+        $this->passStatus = $this->dataDaftarPoliRJ['passStatus'] ?? 'O';
+
+        // Kontrol 1/2
+        $this->kontrol12 = $this->dataDaftarPoliRJ['kontrol12'] ?? '1';
+
+        // Internal 1/2
+        $this->internal12 = $this->dataDaftarPoliRJ['internal12'] ?? '1';
+
+        // Optional: pastikan desc ikut terisi kalau ada
+        $this->dataDaftarPoliRJ['kontrol12Desc'] = collect($this->kontrol12Options)->first(fn($o) => $o['kontrol12'] === $this->kontrol12)['kontrol12Desc'] ?? '-';
+
+        $this->dataDaftarPoliRJ['internal12Desc'] = collect($this->internal12Options)->first(fn($o) => $o['internal12'] === $this->internal12)['internal12Desc'] ?? '-';
     }
 };
 ?>
@@ -576,8 +656,11 @@ new class extends Component {
                                 </div>
 
                                 {{-- LOV Pasien --}}
-                                <livewire:lov.pasien.lov-pasien target="rjFormPasien" :initialRegNo="$dataDaftarPoliRJ['regNo'] ?? ''"
-                                    wire:key="'lov-pasien-' . ($dataDaftarPoliRJ['regNo'] ?? 'new')" />
+                                <div class="mt-2" x-init="setTimeout(() => $el.querySelector('input')?.focus(), 200)">
+                                    <livewire:lov.pasien.lov-pasien target="rjFormPasien" :initialRegNo="$dataDaftarPoliRJ['regNo'] ?? ''"
+                                        wire:key="{{ $this->lovKey('pasien', [$formMode, $rjNo ?? 'new', 'inner']) }}" />
+                                </div>
+
 
                                 <x-input-error :messages="$errors->get('dataDaftarPoliRJ.regNo')" class="mt-1" />
                                 {{-- Jenis Klaim --}}
@@ -677,7 +760,7 @@ new class extends Component {
                                     <div class="mt-2">
                                         <livewire:lov.dokter.lov-dokter label="Cari Dokter - Poli" target="rjFormDokter"
                                             :initialDrId="$dataDaftarPoliRJ['drId'] ?? null"
-                                            wire:key="'lov-dokter-rj-' . ($dataDaftarPoliRJ['drId'] ?? 'new')" />
+                                            wire:key="{{ $this->lovKey('dokter', [$formMode, $rjNo]) }}" />
 
                                         {{-- Error untuk Dokter --}}
                                         <x-input-error :messages="$errors->get('dataDaftarPoliRJ.drId')" class="mt-1" />

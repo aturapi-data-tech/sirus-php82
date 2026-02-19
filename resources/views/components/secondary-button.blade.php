@@ -7,8 +7,8 @@
         'transition ease-in-out duration-150',
     
         // light mode
-        'text-slate-700 bg-slate-100',
-        'hover:bg-slate-200 hover:text-slate-900',
+        'text-slate-700 bg-slate-200',
+        'hover:bg-slate-300 hover:text-slate-900',
         'focus:outline-none focus:ring-2 focus:ring-slate-300',
         'focus:ring-offset-2 focus:ring-offset-white',
     

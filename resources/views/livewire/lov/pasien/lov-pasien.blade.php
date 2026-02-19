@@ -2,6 +2,7 @@
 
 use Livewire\Component;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Reactive;
 
 new class extends Component {
     /** target untuk membedakan LOV ini dipakai di form mana */
@@ -23,6 +24,8 @@ new class extends Component {
     /**
      * Mode edit: parent bisa kirim reg_no yang sudah tersimpan.
      */
+
+    #[Reactive]
     public ?string $initialRegNo = null;
 
     /**
@@ -250,12 +253,35 @@ new class extends Component {
     {
         $this->dispatch('lov-scroll', id: $this->getId(), index: $this->selectedIndex);
     }
+
+    public function updatedInitialRegNo($value): void
+    {
+        // Reset state dulu
+        $this->selected = null;
+        $this->search = '';
+        $this->options = [];
+        $this->isOpen = false;
+
+        // Jika nilai kosong, stop di sini
+        if (empty($value)) {
+            return;
+        }
+
+        // ✅ PAKAI $value (parameter), BUKAN $this->initialRegNo
+        $row = DB::table('rsmst_pasiens')
+            ->select(['reg_no', 'reg_name', 'sex', DB::raw("TO_CHAR(birth_date, 'dd/mm/yyyy') as birth_date_formatted"), 'birth_place', 'address', 'rt', 'rw', 'phone', 'kk', 'no_kk', 'no_jkn', 'nokartu_bpjs', 'nik_bpjs', 'thn', 'bln', 'hari'])
+            ->where('reg_no', $value) // ✅ Pakai $value
+            ->first();
+
+        if ($row) {
+            $this->selected = $this->formatPayload($row);
+        }
+    }
 };
 ?>
 
 <x-lov.dropdown :id="$this->getId()" :isOpen="$isOpen" :selectedIndex="$selectedIndex" close="close">
     <x-input-label :value="$label" class="text-sm font-medium text-gray-700 dark:text-gray-300" />
-
     <div class="relative mt-1.5">
         @if ($selected === null)
             {{-- Mode cari --}}

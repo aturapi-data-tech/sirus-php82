@@ -366,7 +366,7 @@ new class extends Component {
             <h2 class="text-2xl font-bold leading-tight text-gray-900 dark:text-gray-100">
                 Daftar Rawat Jalan
             </h2>
-            <p class="text-sm text-gray-500 dark:text-gray-700">
+            <p class="text-base text-gray-700 dark:text-gray-700">
                 Kelola pendaftaran pasien rawat jalan
             </p>
         </div>
@@ -386,7 +386,7 @@ new class extends Component {
                         <x-input-label value="Pencarian" class="sr-only" />
                         <div class="relative mt-1">
                             <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor"
+                                <svg class="w-4 h-4 text-gray-700" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -402,7 +402,7 @@ new class extends Component {
                         <x-input-label value="Tanggal" />
                         <div class="relative mt-1">
                             <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor"
+                                <svg class="w-4 h-4 text-gray-700" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -493,12 +493,12 @@ new class extends Component {
 
                 {{-- TABLE SCROLL AREA --}}
                 <div class="overflow-x-auto overflow-y-auto max-h-[calc(100dvh-320px)] rounded-t-2xl">
-                    <table class="min-w-full text-sm border-separate border-spacing-y-3">
+                    <table class="min-w-full text-base border-separate border-spacing-y-3">
 
                         {{-- TABLE HEAD --}}
                         <thead class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">
                             <tr
-                                class="text-sm font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300">
+                                class="text-base font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300">
                                 <th class="px-6 py-3">Pasien</th>
                                 <th class="px-6 py-3">Poli</th>
                                 <th class="px-6 py-3">Status Layanan</th>
@@ -510,7 +510,7 @@ new class extends Component {
                         <tbody>
                             @forelse($this->rows as $row)
                                 <tr
-                                    class="transition bg-white dark:bg-gray-900 hover:shadow-lg dark:hover:bg-gray-800 rounded-2xl">
+                                    class="transition bg-white dark:bg-gray-900 hover:shadow-lg hover:bg-green-50 dark:hover:bg-gray-800 rounded-2xl">
 
                                     {{-- PASIEN --}}
                                     <td class="px-6 py-6 space-y-3 align-top">
@@ -523,7 +523,7 @@ new class extends Component {
 
                                             <div class="space-y-1">
 
-                                                <div class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                <div class="text-base font-medium text-gray-700 dark:text-gray-300">
                                                     {{ $row->reg_no ?? '-' }}
                                                 </div>
 
@@ -533,11 +533,11 @@ new class extends Component {
                                                     ({{ $row->sex === 'L' ? 'Laki-Laki' : ($row->sex === 'P' ? 'Perempuan' : '-') }})
                                                 </div>
 
-                                                <div class="text-sm text-gray-500 dark:text-gray-400">
+                                                <div class="text-base text-gray-700 dark:text-gray-400">
                                                     {{ $row->umur_format ?? '-' }}
                                                 </div>
 
-                                                <div class="text-sm text-gray-600 dark:text-gray-400">
+                                                <div class="text-base text-gray-600 dark:text-gray-400">
                                                     {{ $row->address ?? '-' }}
                                                 </div>
 
@@ -551,17 +551,17 @@ new class extends Component {
                                             {{ $row->poli_desc ?? '-' }}
                                         </div>
 
-                                        <div class="text-sm text-gray-600 dark:text-gray-400">
+                                        <div class="text-base text-gray-600 dark:text-gray-400">
                                             {{ $row->dr_name ?? '-' }} /
                                             {{ $row->klaim_desc ?? '-' }}
                                         </div>
 
-                                        <div class="font-mono text-sm text-gray-700 dark:text-gray-300">
+                                        <div class="font-mono text-base text-gray-700 dark:text-gray-300">
                                             {{ $row->vno_sep ?? '-' }}
                                         </div>
 
                                         {{-- No Booking - TAMBAHKAN DISINI --}}
-                                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                                        <div class="text-xs text-gray-700 dark:text-gray-400">
                                             No Booking: {{ $row->no_booking ?? '-' }}
                                         </div>
 
@@ -583,7 +583,7 @@ new class extends Component {
                                     {{-- STATUS LAYANAN --}}
                                     <td class="px-6 py-6 space-y-2 align-top">
 
-                                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                                        <div class="text-sm text-gray-700 dark:text-gray-400">
                                             {{ $row->rj_date_display ?? '-' }} |
                                             Shift : {{ $row->shift ?? '-' }}
                                         </div>
@@ -607,10 +607,10 @@ new class extends Component {
 
 
                                         <div class="grid grid-cols-2 gap-2">
-                                            <div class="text-sm text-gray-700 dark:text-gray-400">
+                                            <div class="text-base text-gray-700 dark:text-gray-400">
                                                 EMR : {{ $row->emr_percent ?? 0 }}%
                                             </div>
-                                            <div class="text-sm text-gray-700 dark:text-gray-400">
+                                            <div class="text-base text-gray-700 dark:text-gray-400">
                                                 E-Resep : {{ $row->eresep_percent ?? 0 }}%
                                             </div>
                                         </div>
@@ -637,14 +637,14 @@ new class extends Component {
                                         </div>
 
                                         @if (!empty($row->no_referensi))
-                                            <div class="text-sm text-gray-500 dark:text-gray-400">
+                                            <div class="text-base text-gray-700 dark:text-gray-400">
                                                 No Ref : {{ $row->no_referensi }}
                                             </div>
                                         @endif
 
                                         @if (!empty($row->masa_rujukan))
                                             <div
-                                                class="px-2 py-1 text-sm text-yellow-700 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 dark:text-yellow-300">
+                                                class="px-2 py-1 text-base text-yellow-700 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 dark:text-yellow-300">
                                                 {!! $row->masa_rujukan !!}
                                             </div>
                                         @endif
@@ -671,7 +671,7 @@ new class extends Component {
 
                                         {{-- DETAIL ADMINISTRASI - TAMBAHKAN DISINI --}}
                                         @if ($row->administrasi_detail)
-                                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                                            <div class="text-xs text-gray-700 dark:text-gray-400">
                                                 Waktu: {{ $row->administrasi_detail['waktu'] ?? '-' }}<br>
                                                 Log: {{ $row->administrasi_detail['userLog'] ?? '-' }}
                                             </div>
@@ -695,13 +695,13 @@ new class extends Component {
                                             @endif
                                         </div>
 
-                                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                                        <div class="text-sm text-gray-700 dark:text-gray-400">
                                             Tindak Lanjut : {{ $row->tindak_lanjut ?? '-' }}
                                         </div>
 
                                         {{-- DETAIL TINDAK LANJUT - TAMBAHKAN DISINI --}}
                                         @if ($row->tindak_lanjut_detail && $row->tindak_lanjut_detail['tindakLanjut'] ?? null)
-                                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                                            <div class="text-xs text-gray-700 dark:text-gray-400">
                                                 Dokter: {{ $row->tindak_lanjut_detail['drPemeriksa'] ?? '-' }}
                                             </div>
                                         @endif
@@ -719,7 +719,7 @@ new class extends Component {
 
                                         {{-- DETAIL KONTROL - TAMBAHKAN DISINI --}}
                                         @if ($row->kontrol_detail)
-                                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                                            <div class="text-xs text-gray-700 dark:text-gray-400">
                                                 Poli Kontrol: {{ $row->kontrol_detail['poliKontrol'] ?? '-' }}<br>
                                                 Dokter Kontrol: {{ $row->kontrol_detail['dokterKontrol'] ?? '-' }}
                                             </div>
@@ -727,10 +727,88 @@ new class extends Component {
                                     </td>
 
                                     {{-- ACTION --}}
-                                    <td class="px-6 py-6 text-center align-top">
-                                        <x-primary-button type="button" class="px-4 py-2 text-sm rounded-lg">
-                                            Etiket
-                                        </x-primary-button>
+                                    <td class="px-6 py-6 align-top">
+                                        <div class="flex items-center justify-center gap-2">
+
+                                            {{-- Tombol Etiket --}}
+                                            <x-primary-button type="button" class="px-4 py-2 text-base rounded-lg"
+                                                wire:click="cetakEtiket('{{ $row->rj_no }}')">
+                                                Etiket
+                                            </x-primary-button>
+
+                                            {{-- Dropdown Action --}}
+                                            <x-dropdown position="left" width="w-56">
+
+
+
+                                                {{-- Trigger --}}
+                                                <x-slot name="trigger">
+                                                    <x-secondary-button type="button" class="p-2">
+                                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path
+                                                                d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
+                                                        </svg>
+                                                    </x-secondary-button>
+                                                </x-slot>
+
+
+                                                {{-- Content --}}
+                                                <x-slot name="content">
+
+                                                    <div class="py-1 space-y-0.5">
+
+                                                        {{-- Ubah --}}
+                                                        <x-dropdown-link href="#"
+                                                            wire:click.prevent="openEdit('{{ $row->rj_no }}')"
+                                                            class="px-3 py-1.5 text-md mb-10">
+
+                                                            <div class="flex items-start gap-2">
+                                                                <svg class="w-6 h-6 mt-0.5" fill="none"
+                                                                    stroke="currentColor" viewBox="0 0 24 24"
+                                                                    stroke-width="2">
+                                                                    <path stroke-linecap="round"
+                                                                        stroke-linejoin="round"
+                                                                        d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2.5 2.5 0 113.536 3.536L12.536 16.536a4 4 0 01-1.414.95L7 19l1.514-4.122A4 4 0 019 13z" />
+                                                                </svg>
+
+                                                                <span>
+                                                                    Ubah <br>
+                                                                    <span class="font-semibold">
+                                                                        {{ $row->reg_name }}
+                                                                    </span>
+                                                                </span>
+                                                            </div>
+
+                                                        </x-dropdown-link>
+
+                                                        {{-- Hapus --}}
+                                                        <x-dropdown-link href="#"
+                                                            wire:click.prevent="requestDelete('{{ $row->rj_no }}')"
+                                                            class="px-3 py-1.5 font-semibold text-md text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50">
+                                                            <div class="flex items-center gap-2">
+                                                                <svg class="w-6 h-6" fill="none"
+                                                                    stroke="currentColor" viewBox="0 0 24 24"
+                                                                    stroke-width="2">
+                                                                    <path stroke-linecap="round"
+                                                                        stroke-linejoin="round"
+                                                                        d="M6 7h12M9 7V5a3 3 0 016 0v2m-9 0l1 12h8l1-12" />
+                                                                </svg>
+
+                                                                <span>Hapus</span>
+                                                            </div>
+
+                                                        </x-dropdown-link>
+
+                                                    </div>
+
+                                                </x-slot>
+
+
+
+
+                                            </x-dropdown>
+
+                                        </div>
                                     </td>
 
                                 </tr>

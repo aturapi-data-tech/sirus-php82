@@ -2,6 +2,7 @@
 
 use Livewire\Component;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Reactive;
 
 new class extends Component {
     /** target untuk membedakan LOV ini dipakai di form mana */
@@ -24,12 +25,14 @@ new class extends Component {
      * Mode edit: parent bisa kirim dr_id yang sudah tersimpan.
      * Cukup kirim initialDrId, sisanya akan di-load dari DB.
      */
+    #[Reactive]
     public ?string $initialDrId = null;
 
     /**
      * Filter berdasarkan poli_id jika diperlukan
      * Berguna untuk form yang hanya ingin menampilkan dokter dari poli tertentu
      */
+    #[Reactive]
     public ?string $filterPoliId = null;
 
     /**
@@ -261,6 +264,34 @@ new class extends Component {
     protected function emitScroll(): void
     {
         $this->dispatch('lov-scroll', id: $this->getId(), index: $this->selectedIndex);
+    }
+
+    public function updatedInitialDrId($value): void
+    {
+        // Reset state
+        $this->selected = null;
+        $this->search = '';
+        $this->options = [];
+        $this->isOpen = false;
+
+        if (empty($value)) {
+            return;
+        }
+
+        $row = DB::table('rsmst_doctors as a')->join('rsmst_polis as b', 'a.poli_id', '=', 'b.poli_id')->select('a.dr_id', 'a.dr_name', 'a.poli_id', 'b.poli_desc', 'a.dr_phone', 'a.dr_address', 'a.basic_salary', 'a.active_status')->where('a.dr_id', $value)->first();
+
+        if ($row) {
+            $this->selected = [
+                'dr_id' => (string) $row->dr_id,
+                'dr_name' => (string) ($row->dr_name ?? ''),
+                'poli_id' => (string) ($row->poli_id ?? ''),
+                'poli_desc' => (string) ($row->poli_desc ?? ''),
+                'dr_phone' => (string) ($row->dr_phone ?? ''),
+                'dr_address' => (string) ($row->dr_address ?? ''),
+                'basic_salary' => (string) ($row->basic_salary ?? ''),
+                'active_status' => (string) ($row->active_status ?? ''),
+            ];
+        }
     }
 };
 ?>
