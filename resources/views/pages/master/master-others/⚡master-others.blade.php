@@ -173,7 +173,7 @@ new class extends Component {
                                 <td class="px-4 py-3">{{ $row->other_id }}</td>
                                 <td class="px-4 py-3 font-semibold">{{ $row->other_desc }}</td>
                                 <td class="px-4 py-3">
-                                    <span class="font-mono text-green-600 dark:text-green-400">
+                                    <span class="font-mono text-gray-600 dark:text-green-400">
                                         {{ $this->formatRupiah($row->other_price) }}
                                     </span>
                                 </td>
