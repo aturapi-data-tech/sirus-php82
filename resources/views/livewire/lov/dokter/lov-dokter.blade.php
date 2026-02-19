@@ -323,15 +323,6 @@ new class extends Component {
                     </x-secondary-button>
                 @endif
             </div>
-
-            {{-- Info tambahan jika diperlukan --}}
-            @if ($selected && ($selected['dr_phone'] || $selected['dr_address']))
-                <div class="mt-1 text-xs text-gray-500">
-                    @if ($selected['dr_phone'])
-                        <span class="mr-3">📞 {{ $selected['dr_phone'] }}</span>
-                    @endif
-                </div>
-            @endif
         @endif
 
         {{-- dropdown hanya saat mode cari dan tidak disabled --}}

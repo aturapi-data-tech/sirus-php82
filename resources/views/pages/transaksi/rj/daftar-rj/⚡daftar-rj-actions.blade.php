@@ -123,9 +123,6 @@ new class extends Component {
         // Validasi data Rawat Jalan
         $this->validateDataRJ();
 
-        // Push data ke BPJS (Antrian dan Task ID)
-        // $this->pushDataAntrian();
-
         $rjNo = $this->dataDaftarPoliRJ['rjNo'] ?? null;
         if (!$rjNo) {
             $this->dispatch('toast', type: 'error', message: 'RJ No kosong.');
@@ -137,6 +134,9 @@ new class extends Component {
         try {
             Cache::lock($lockKey, 15)->block(5, function () use ($rjNo) {
                 DB::transaction(function () use ($rjNo) {
+                    // ============================================
+                    // PREPARE PAYLOAD
+                    // ============================================
                     $payload = [
                         'rj_no' => $rjNo,
                         'rj_date' => DB::raw("to_date('" . $this->dataDaftarPoliRJ['rjDate'] . "','dd/mm/yyyy hh24:mi:ss')"),
@@ -150,14 +150,17 @@ new class extends Component {
                         'txn_status' => $this->dataDaftarPoliRJ['txnStatus'],
                         'rj_status' => $this->dataDaftarPoliRJ['rjStatus'],
                         'erm_status' => $this->dataDaftarPoliRJ['ermStatus'],
-                        'pass_status' => $this->dataDaftarPoliRJ['passStatus'] === 'N' ? 'N' : 'O',
+                        'pass_status' => $this->dataDaftarPoliRJ['passStatus'],
                         'cek_lab' => $this->dataDaftarPoliRJ['cekLab'],
                         'sl_codefrom' => $this->dataDaftarPoliRJ['slCodeFrom'],
                         'kunjungan_internal_status' => $this->dataDaftarPoliRJ['kunjunganInternalStatus'],
                         'waktu_masuk_pelayanan' => DB::raw("to_date('" . $this->dataDaftarPoliRJ['rjDate'] . "','dd/mm/yyyy hh24:mi:ss')"),
                         'vno_sep' => $this->dataDaftarPoliRJ['sep']['noSep'] ?? '',
                     ];
-                    // Insert atau Update header RJ
+
+                    // ============================================
+                    // INSERT/UPDATE TABLE
+                    // ============================================
                     if ($this->formMode === 'create') {
                         DB::table('rstxn_rjhdrs')->insert($payload);
                         $message = 'Data Rawat Jalan berhasil disimpan.';
@@ -165,14 +168,27 @@ new class extends Component {
                         DB::table('rstxn_rjhdrs')->where('rj_no', $rjNo)->update($payload);
                         $message = 'Data Rawat Jalan berhasil diperbarui.';
                     }
-                    // 🔹 Merge JSON: ambil dari DB dulu
-                    $oldData = $this->findDataRJ($rjNo);
-                    // ✅ whitelist patch field supaya tidak sembarangan overwrite
-                    $allowed = ['rjNo', 'regNo', 'regName', 'drId', 'drDesc', 'poliId', 'poliDesc', 'klaimId', 'klaimStatus', 'kunjunganId', 'rjDate', 'shift', 'noAntrian', 'noBooking', 'slCodeFrom', 'passStatus', 'rjStatus', 'txnStatus', 'ermStatus', 'cekLab', 'kunjunganInternalStatus', 'noReferensi', 'postInap', 'internal12', 'internal12Desc', 'internal12Options', 'kontrol12', 'kontrol12Desc', 'kontrol12Options', 'taskIdPelayanan', 'sep'];
-                    $incomingRJ = array_intersect_key($this->dataDaftarPoliRJ, array_flip($allowed));
 
-                    // Merge lama + incoming
-                    $mergedRJ = array_replace_recursive($oldData, $incomingRJ);
+                    // ============================================
+                    // UPDATE JSON DENGAN DATA TERBARU
+                    // ============================================
+                    // Untuk CREATE: langsung pakai data form
+                    // Untuk EDIT: merge data form + data fresh dari database
+
+                    if ($this->formMode === 'create') {
+                        // Data baru, langsung pakai dari form
+                        $mergedRJ = $this->dataDaftarPoliRJ;
+                    } else {
+                        $updatedData = $this->findDataRJ($rjNo);
+                        // Whitelist field dari form
+                        $allowed = ['rjNo', 'regNo', 'regName', 'drId', 'drDesc', 'poliId', 'poliDesc', 'klaimId', 'klaimStatus', 'kunjunganId', 'rjDate', 'shift', 'noAntrian', 'noBooking', 'slCodeFrom', 'passStatus', 'rjStatus', 'txnStatus', 'ermStatus', 'cekLab', 'kunjunganInternalStatus', 'noReferensi', 'postInap', 'internal12', 'internal12Desc', 'internal12Options', 'kontrol12', 'kontrol12Desc', 'kontrol12Options', 'taskIdPelayanan', 'sep'];
+
+                        // Ambil field dari form yang diizinkan
+                        $formData = array_intersect_key($this->dataDaftarPoliRJ, array_flip($allowed));
+
+                        // Merge: prioritas data dari database, tapi timpa dengan form untuk field tertentu
+                        $mergedRJ = array_replace_recursive($updatedData, $formData);
+                    }
 
                     // Safety: pastikan rjNo tetap sama
                     $mergedRJ['rjNo'] = $rjNo;
@@ -180,33 +196,28 @@ new class extends Component {
                     // Simpan JSON
                     $this->updateJsonRJ($rjNo, $mergedRJ);
 
-                    // Reset form & tutup modal
-                    // $this->resetForm();
+                    // Reset & notifikasi
                     $this->resetValidation();
-                    // $this->closeModal();
-
-                    // Toast sukses
                     $this->dispatch('toast', type: 'success', message: $message);
-
-                    // Trigger event refresh
                     $this->dispatch('master.daftar-rj.saved');
-                });
-            });
+                }); // End transaction
+            }); // End cache lock
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan data: ' . $e->getMessage());
         }
+    }
 
-        // Siapkan payload data untuk disimpan
-
-        // Bersihkan notifikasi kronis
-        // $this->clearKronisNotice();
-
-        // Kirim notifikasi sukses
-
-        $this->dispatch('toast', type: 'success', message: $message ?? 'Data Rawat Jalan berhasil disimpan.');
-
-        // Trigger event untuk refresh data
-        $this->dispatch('master.daftar-rj.saved');
+    /**
+     * Helper untuk mendapatkan label status
+     */
+    private function getStatusLabel(string $status): string
+    {
+        return match ($status) {
+            'L' => 'selesai',
+            'F' => 'dibatalkan',
+            'I' => 'transfer',
+            default => 'tidak aktif',
+        };
     }
 
     private function setDataPrimer(): void
@@ -529,9 +540,6 @@ new class extends Component {
         // Kunjungan
         $this->kunjunganId = $this->dataDaftarPoliRJ['kunjunganId'] ?? '1';
 
-        // Pass Status (toggle pasien baru/lama)
-        $this->passStatus = $this->dataDaftarPoliRJ['passStatus'] ?? 'O';
-
         // Kontrol 1/2
         $this->kontrol12 = $this->dataDaftarPoliRJ['kontrol12'] ?? '1';
 
@@ -600,8 +608,8 @@ new class extends Component {
                         <div class="flex-1">
                             <x-input-label value="Tanggal RJ" />
                             <x-text-input wire:model.live="dataDaftarPoliRJ.rjDate"
-                                wire:key="rjDate-{{ $dataDaftarPoliRJ['rjDate'] ?? 'new' }}" class="block w-full"
-                                :error="$errors->has('dataDaftarPoliRJ.rjDate')" :disabled="$isFormLocked" />
+                                wire:key="rjDate-{{ $formMode ?? 'new' }}" class="block w-full" :error="$errors->has('dataDaftarPoliRJ.rjDate')"
+                                :disabled="$isFormLocked" />
                             <x-input-error :messages="$errors->get('dataDaftarPoliRJ.rjDate')" class="mt-1" />
                         </div>
                         {{-- Shift --}}
@@ -711,11 +719,11 @@ new class extends Component {
                                         {{-- LOGIC POST INAP & KONTROL 1/2 --}}
                                         <div class="mt-2">
                                             @if (($dataDaftarPoliRJ['kunjunganId'] ?? '') === '3')
-                                                <x-check-box value="1" :label="__('Post Inap')"
-                                                    wire:model="dataDaftarPoliRJ.postInap" :disabled="$isFormLocked" />
+                                                <x-toggle wire:model.live="dataDaftarPoliRJ.postInap" trueValue="1"
+                                                    falseValue="0" label="Post Inap" :disabled="$isFormLocked" />
                                             @endif
 
-                                            <div class="grid grid-cols-2 gap-2">
+                                            <div class="grid grid-cols-2 gap-2 mt-2">
                                                 {{-- Internal 1/2: tampil saat kunjungan Rujukan Internal --}}
                                                 @if ($kunjunganId === '2')
                                                     @foreach ($internal12Options ?? [] as $index => $internal)
