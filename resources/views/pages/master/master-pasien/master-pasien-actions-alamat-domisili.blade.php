@@ -1,10 +1,11 @@
  {{-- SECTION: ALAMAT DOMISILI --}}
  <x-border-form :title="__('Alamat Domisili')" :align="__('start')" :bgcolor="__('bg-white')">
      <div class="space-y-5">
-
-         {{-- Checkbox Sama dengan Identitas --}}
+         {{-- Toggle Sama dengan Identitas --}}
          <div class="flex justify-end">
-             <x-check-box value='1' :label="__('Sama dengan Identitas')" wire:model.live="dataPasien.pasien.domisil.samadgnidentitas" />
+             <x-toggle wire:model.live="dataPasien.pasien.domisil.samadgnidentitas" trueValue="Y" falseValue="N">
+                 Sama dengan Identitas
+             </x-toggle>
          </div>
 
          {{-- Alamat Domisili --}}

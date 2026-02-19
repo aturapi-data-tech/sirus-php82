@@ -297,42 +297,18 @@ new class extends Component {
                         $incomingPasien = $this->dataPasien['pasien'] ?? [];
 
                         // ✅ (recommended) whitelist field master pasien saja
-                        $allowed = [
-                            'regName',
-                            'gelarDepan',
-                            'gelarBelakang',
-                            'namaPanggilan',
-                            'tempatLahir',
-                            'tglLahir',
-                            'thn',
-                            'bln',
-                            'hari',
-                            'jenisKelamin',
-                            'agama',
-                            'statusPerkawinan',
-                            'pendidikan',
-                            'pekerjaan',
-                            'golonganDarah',
-                            'kewarganegaraan',
-                            'suku',
-                            'bahasa',
-                            'status',
-                            'domisil',
-                            'identitas',
-                            'kontak',
-                            'hubungan',
-                            'regDate',
-                            'pasientidakdikenal', // ✅ tambah ini
-                        ];
+                        $allowed = ['regName', 'gelarDepan', 'gelarBelakang', 'namaPanggilan', 'tempatLahir', 'tglLahir', 'thn', 'bln', 'hari', 'jenisKelamin', 'agama', 'statusPerkawinan', 'pendidikan', 'pekerjaan', 'golonganDarah', 'kewarganegaraan', 'suku', 'bahasa', 'status', 'domisil', 'identitas', 'kontak', 'hubungan', 'regDate', 'pasientidakdikenal'];
 
                         $incomingPasien = array_intersect_key($incomingPasien, array_flip($allowed));
-
+                        //khusus array [] checkbox
+                        if (isset($incomingPasien['domisil']['samadgnidentitas'])) {
+                            $pasienData['pasien']['domisil']['samadgnidentitas'] = $incomingPasien['domisil']['samadgnidentitas'];
+                        }
                         // ✅ patch/merge (bukan overwrite total)
                         $pasienData['pasien'] = array_replace_recursive($pasienData['pasien'] ?? [], $incomingPasien);
 
                         // safety
                         $pasienData['pasien']['regNo'] = $regNo;
-
                         $this->updateJsonMasterPasien($regNo, $pasienData);
                     }
                 });
@@ -390,44 +366,43 @@ new class extends Component {
 
         $this->domisilSyncTick++;
 
-        if ($name !== 'dataPasien.pasien.domisil.samadgnidentitas') {
-            return;
-        }
+        if ($name === 'dataPasien.pasien.domisil.samadgnidentitas') {
+            $checked = $value;
+            $this->dataPasien['pasien']['domisil']['samadgnidentitas'] = $checked;
 
-        $checked = !empty($value) && in_array('1', $value);
+            if ($checked === 'Y') {
+                $this->dataPasien['pasien']['domisil']['alamat'] = $this->dataPasien['pasien']['identitas']['alamat'] ?? '';
+                $this->dataPasien['pasien']['domisil']['rt'] = $this->dataPasien['pasien']['identitas']['rt'] ?? '';
+                $this->dataPasien['pasien']['domisil']['rw'] = $this->dataPasien['pasien']['identitas']['rw'] ?? '';
+                $this->dataPasien['pasien']['domisil']['kodepos'] = $this->dataPasien['pasien']['identitas']['kodepos'] ?? '';
 
-        if ($checked) {
-            $this->dataPasien['pasien']['domisil']['alamat'] = $this->dataPasien['pasien']['identitas']['alamat'] ?? '';
-            $this->dataPasien['pasien']['domisil']['rt'] = $this->dataPasien['pasien']['identitas']['rt'] ?? '';
-            $this->dataPasien['pasien']['domisil']['rw'] = $this->dataPasien['pasien']['identitas']['rw'] ?? '';
-            $this->dataPasien['pasien']['domisil']['kodepos'] = $this->dataPasien['pasien']['identitas']['kodepos'] ?? '';
+                // penting: kota dulu, baru desa (biar nggak ke-reset)
+                $this->dataPasien['pasien']['domisil']['kotaId'] = $this->dataPasien['pasien']['identitas']['kotaId'] ?? '';
+                $this->dataPasien['pasien']['domisil']['kotaName'] = $this->dataPasien['pasien']['identitas']['kotaName'] ?? '';
+                $this->dataPasien['pasien']['domisil']['propinsiId'] = $this->dataPasien['pasien']['identitas']['propinsiId'] ?? '';
+                $this->dataPasien['pasien']['domisil']['propinsiName'] = $this->dataPasien['pasien']['identitas']['propinsiName'] ?? '';
 
-            // penting: kota dulu, baru desa (biar nggak ke-reset)
-            $this->dataPasien['pasien']['domisil']['kotaId'] = $this->dataPasien['pasien']['identitas']['kotaId'] ?? '';
-            $this->dataPasien['pasien']['domisil']['kotaName'] = $this->dataPasien['pasien']['identitas']['kotaName'] ?? '';
-            $this->dataPasien['pasien']['domisil']['propinsiId'] = $this->dataPasien['pasien']['identitas']['propinsiId'] ?? '';
-            $this->dataPasien['pasien']['domisil']['propinsiName'] = $this->dataPasien['pasien']['identitas']['propinsiName'] ?? '';
+                $this->dataPasien['pasien']['domisil']['desaId'] = $this->dataPasien['pasien']['identitas']['desaId'] ?? '';
+                $this->dataPasien['pasien']['domisil']['desaName'] = $this->dataPasien['pasien']['identitas']['desaName'] ?? '';
+                $this->dataPasien['pasien']['domisil']['kecamatanid'] = $this->dataPasien['pasien']['identitas']['kecamatanid'] ?? '';
+                $this->dataPasien['pasien']['domisil']['kecamatanName'] = $this->dataPasien['pasien']['identitas']['kecamatanName'] ?? '';
 
-            $this->dataPasien['pasien']['domisil']['desaId'] = $this->dataPasien['pasien']['identitas']['desaId'] ?? '';
-            $this->dataPasien['pasien']['domisil']['desaName'] = $this->dataPasien['pasien']['identitas']['desaName'] ?? '';
-            $this->dataPasien['pasien']['domisil']['kecamatanid'] = $this->dataPasien['pasien']['identitas']['kecamatanid'] ?? '';
-            $this->dataPasien['pasien']['domisil']['kecamatanName'] = $this->dataPasien['pasien']['identitas']['kecamatanName'] ?? '';
-
-            $this->dataPasien['pasien']['domisil']['negara'] = $this->dataPasien['pasien']['identitas']['negara'] ?? '';
-        } else {
-            $this->dataPasien['pasien']['domisil']['alamat'] = '';
-            $this->dataPasien['pasien']['domisil']['rt'] = '';
-            $this->dataPasien['pasien']['domisil']['rw'] = '';
-            $this->dataPasien['pasien']['domisil']['kodepos'] = '';
-            $this->dataPasien['pasien']['domisil']['desaId'] = '';
-            $this->dataPasien['pasien']['domisil']['desaName'] = '';
-            $this->dataPasien['pasien']['domisil']['kecamatanid'] = '';
-            $this->dataPasien['pasien']['domisil']['kecamatanName'] = '';
-            $this->dataPasien['pasien']['domisil']['kotaId'] = '';
-            $this->dataPasien['pasien']['domisil']['kotaName'] = '';
-            $this->dataPasien['pasien']['domisil']['propinsiId'] = '';
-            $this->dataPasien['pasien']['domisil']['propinsiName'] = '';
-            $this->dataPasien['pasien']['domisil']['negara'] = '';
+                $this->dataPasien['pasien']['domisil']['negara'] = $this->dataPasien['pasien']['identitas']['negara'] ?? '';
+            } else {
+                $this->dataPasien['pasien']['domisil']['alamat'] = '';
+                $this->dataPasien['pasien']['domisil']['rt'] = '';
+                $this->dataPasien['pasien']['domisil']['rw'] = '';
+                $this->dataPasien['pasien']['domisil']['kodepos'] = '';
+                $this->dataPasien['pasien']['domisil']['desaId'] = '';
+                $this->dataPasien['pasien']['domisil']['desaName'] = '';
+                $this->dataPasien['pasien']['domisil']['kecamatanid'] = '';
+                $this->dataPasien['pasien']['domisil']['kecamatanName'] = '';
+                $this->dataPasien['pasien']['domisil']['kotaId'] = '';
+                $this->dataPasien['pasien']['domisil']['kotaName'] = '';
+                $this->dataPasien['pasien']['domisil']['propinsiId'] = '';
+                $this->dataPasien['pasien']['domisil']['propinsiName'] = '';
+                $this->dataPasien['pasien']['domisil']['negara'] = '';
+            }
         }
     }
 
