@@ -29,10 +29,10 @@ new class extends Component {
     public ?string $initialRegNo = null;
 
     /**
-     * Mode readonly: jika true, tombol "Ubah" akan hilang saat selected.
+     * Mode disabled: jika true, tombol "Ubah" akan hilang saat selected.
      * Berguna untuk form yang sudah selesai/tidak boleh diedit.
      */
-    public bool $readonly = false;
+    public bool $disabled = false;
 
     public function mount(): void
     {
@@ -114,7 +114,7 @@ new class extends Component {
 
     public function clearSelected(): void
     {
-        if ($this->readonly) {
+        if ($this->disabled) {
             return;
         }
 
@@ -285,7 +285,7 @@ new class extends Component {
     <div class="relative mt-1.5">
         @if ($selected === null)
             {{-- Mode cari --}}
-            @if (!$readonly)
+            @if (!$disabled)
                 <x-text-input type="text" class="block w-full text-sm" :placeholder="$placeholder"
                     wire:model.live.debounce.300ms="search" wire:keydown.escape.prevent="resetLov"
                     wire:keydown.arrow-down.prevent="selectNext" wire:keydown.arrow-up.prevent="selectPrevious"
@@ -371,7 +371,7 @@ new class extends Component {
                     </div>
                 </div>
 
-                @if (!$readonly)
+                @if (!$disabled)
                     <x-secondary-button type="button" wire:click="clearSelected"
                         class="px-4 py-3 text-sm whitespace-nowrap">
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -384,8 +384,8 @@ new class extends Component {
             </div>
         @endif
 
-        {{-- dropdown hanya saat mode cari dan tidak readonly --}}
-        @if ($isOpen && $selected === null && !$readonly)
+        {{-- dropdown hanya saat mode cari dan tidak disabled --}}
+        @if ($isOpen && $selected === null && !$disabled)
             <div
                 class="absolute z-50 w-full mt-2 overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
                 <ul class="overflow-y-auto divide-y divide-gray-100 max-h-96 dark:divide-gray-800">

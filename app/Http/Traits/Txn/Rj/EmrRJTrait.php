@@ -32,7 +32,6 @@ trait EmrRJTrait
 
             // 3. Jika JSON tidak ada/invalid, coba build dari DB
             $builtData = $this->buildRJDataFromDatabase($rjNo, json_decode($json, true));
-
             // 4. Jika build dari DB gagal (return default), kembalikan default
             return $builtData;
         } catch (\Throwable $e) {
@@ -78,16 +77,6 @@ trait EmrRJTrait
         if (!$rjHeader) {
             return $this->buildDefaultRJData($rjNo, "Data header RJ tidak ditemukan");
         }
-        // Get poli & dokter data
-        $poliDokter = DB::table('rstxn_rjhdrs as h')
-            ->select(
-                'po.poli_desc',
-                'd.dr_name'
-            )
-            ->leftJoin('rsmst_polis as po', 'po.poli_id', '=', 'h.poli_id')
-            ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
-            ->where('h.rj_no', $rjNo)
-            ->first();
 
         // Populate basic data from RJ header
         $dataDaftarRJ['rjNo'] = $rjHeader->rj_no;
@@ -95,6 +84,7 @@ trait EmrRJTrait
         $dataDaftarRJ['poliId'] = $rjHeader->poli_id ?? '';
         $dataDaftarRJ['drId'] = $rjHeader->dr_id ?? '';
         $dataDaftarRJ['klaimId'] = $rjHeader->klaim_id ?? '';
+        $dataDaftarRJ['klaimStatus'] = DB::table('rsmst_klaimtypes')->where('klaim_id', $dataDaftarRJ['klaimId'])->value('klaim_status') ?? 'UMUM';
         $dataDaftarRJ['shift'] = $rjHeader->shift ?? '';
         $dataDaftarRJ['noAntrian'] = $rjHeader->no_antrian ?? '';
         $dataDaftarRJ['noBooking'] = $rjHeader->nobooking ?? '';
@@ -105,16 +95,12 @@ trait EmrRJTrait
 
 
 
-        // Populate poli & dokter descriptions
-        $dataDaftarRJ['poliDesc'] = $poliDokter->poli_desc ?? '';
-        $dataDaftarRJ['drDesc'] = $poliDokter->dr_name ?? '';
 
         // Set task IDs
         $dataDaftarRJ['taskIdPelayanan']['taskId3'] = $rjHeader->rj_date ?? '';
 
         // Set SEP data
         $dataDaftarRJ['sep']['noSep'] = $rjHeader->vno_sep ?? '';
-
         // Auto-save to JSON for next requests
         $this->autoSaveRJToJson($rjNo, $dataDaftarRJ);
 

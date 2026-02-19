@@ -644,7 +644,7 @@ new class extends Component {
 
                                         @if (!empty($row->masa_rujukan))
                                             <div
-                                                class="px-2 py-1 text-base text-yellow-700 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 dark:text-yellow-300">
+                                                class="px-2 py-1 text-sm text-yellow-700 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 dark:text-yellow-300">
                                                 {!! $row->masa_rujukan !!}
                                             </div>
                                         @endif

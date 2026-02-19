@@ -13,6 +13,8 @@ new class extends Component {
     use EmrRJTrait, WithLovVersioning;
 
     public string $formMode = 'create'; // create|edit
+    public bool $isFormLocked = false;
+
     public ?string $rjNo = null;
     public $disabledPropertyRjStatus = false;
     public ?string $kronisNotice = null;
@@ -88,6 +90,10 @@ new class extends Component {
         if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
             return;
+        }
+        if ($this->checkRJStatus($rjNo)) {
+            $this->isFormLocked = true;
+            $this->dispatch('toast', type: 'warning', message: 'Data Rawat Jalan ini sudah selesai dan tidak bisa diubah.');
         }
 
         // Merge dengan template default supaya struktur tetap konsisten
@@ -577,10 +583,15 @@ new class extends Component {
                         </div>
 
                         {{-- Badge mode --}}
-                        <div class="mt-3">
+                        <div class="flex gap-2 mt-3">
                             <x-badge :variant="$formMode === 'edit' ? 'warning' : 'success'">
                                 {{ $formMode === 'edit' ? 'Mode: Edit' : 'Mode: Tambah' }}
                             </x-badge>
+                            @if ($isFormLocked)
+                                <x-badge variant="danger">
+                                    Read Only
+                                </x-badge>
+                            @endif
                         </div>
                     </div>
 
@@ -590,14 +601,15 @@ new class extends Component {
                             <x-input-label value="Tanggal RJ" />
                             <x-text-input wire:model.live="dataDaftarPoliRJ.rjDate"
                                 wire:key="rjDate-{{ $dataDaftarPoliRJ['rjDate'] ?? 'new' }}" class="block w-full"
-                                :error="$errors->has('dataDaftarPoliRJ.rjDate')" />
+                                :error="$errors->has('dataDaftarPoliRJ.rjDate')" :disabled="$isFormLocked" />
                             <x-input-error :messages="$errors->get('dataDaftarPoliRJ.rjDate')" class="mt-1" />
                         </div>
                         {{-- Shift --}}
                         <div class="w-36">
                             <x-input-label value="Shift" />
                             <x-select-input wire:model.live="dataDaftarPoliRJ.shift" class="w-full mt-1 sm:w-36"
-                                wire:key="shift-{{ $dataDaftarPoliRJ['shift'] ?? 'new' }}" :error="$errors->has('dataDaftarPoliRJ.shift')">
+                                wire:key="shift-{{ $dataDaftarPoliRJ['shift'] ?? 'new' }}" :error="$errors->has('dataDaftarPoliRJ.shift')"
+                                :disabled="$isFormLocked">
                                 <option value="">-- Pilih Shift --</option>
                                 <option value="1">Shift 1</option>
                                 <option value="2">Shift 2</option>
@@ -625,13 +637,15 @@ new class extends Component {
                 <div class="max-w-full mx-auto">
                     <div class="p-1 space-y-1" x-data
                         @keydown.enter.prevent="
-                            let f = [...$el.querySelectorAll('input,select')]
-                                .filter(e => !e.disabled && e.type !== 'hidden');
+                            if(!$wire.isFormLocked) {
+                                let f = [...$el.querySelectorAll('input,select')]
+                                    .filter(e => !e.disabled && e.type !== 'hidden');
 
-                            let i = f.indexOf($event.target);
+                                let i = f.indexOf($event.target);
 
-                            if(i > -1 && i < f.length - 1){
-                                f[i+1].focus();
+                                if(i > -1 && i < f.length - 1){
+                                    f[i+1].focus();
+                                }
                             }
                         ">
                         <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -646,8 +660,7 @@ new class extends Component {
                                 <div>
                                     <div class="mt-2">
                                         <x-toggle wire:model.live="dataDaftarPoliRJ.passStatus" trueValue="N"
-                                            falseValue="O" label="Pasien Baru" />
-
+                                            falseValue="O" label="Pasien Baru" :disabled="$isFormLocked" />
                                     </div>
                                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                         Jika tidak dicentang maka dianggap Pasien Lama.
@@ -658,23 +671,23 @@ new class extends Component {
                                 {{-- LOV Pasien --}}
                                 <div class="mt-2" x-init="setTimeout(() => $el.querySelector('input')?.focus(), 200)">
                                     <livewire:lov.pasien.lov-pasien target="rjFormPasien" :initialRegNo="$dataDaftarPoliRJ['regNo'] ?? ''"
+                                        :disabled="$isFormLocked"
                                         wire:key="{{ $this->lovKey('pasien', [$formMode, $rjNo ?? 'new', 'inner']) }}" />
                                 </div>
 
-
                                 <x-input-error :messages="$errors->get('dataDaftarPoliRJ.regNo')" class="mt-1" />
+
                                 {{-- Jenis Klaim --}}
                                 <div>
                                     <x-input-label value="Jenis Klaim" />
                                     <div class="grid grid-cols-5 gap-2 mt-2">
                                         @foreach ($klaimOptions ?? [] as $index => $klaim)
                                             <x-radio-button :label="$klaim['klaimDesc']" :value="(string) $klaim['klaimId']" name="klaimId"
-                                                wire:model.live="klaimId" />
+                                                wire:model.live="klaimId" :disabled="$isFormLocked" />
                                         @endforeach
                                     </div>
                                 </div>
                                 <x-input-error :messages="$errors->get('dataDaftarPoliRJ.klaimId')" class="mt-1" />
-
 
                             </div>
 
@@ -685,30 +698,30 @@ new class extends Component {
                                 class="p-6 space-y-6 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
                                 {{-- Jenis Kunjungan --}}
-                                @if (($dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS')
+                                @if (($dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($dataDaftarPoliRJ['klaimId'] ?? '') === 'JM')
                                     <div>
                                         <x-input-label value="Jenis Kunjungan" />
-                                        <div class="grid grid-cols-4 gap-2 mt-2">
+                                        <div class="grid grid-cols-4 gap-2">
                                             @foreach ($kunjunganOptions ?? [] as $index => $kunjungan)
                                                 <x-radio-button :label="$kunjungan['kunjunganDesc']" :value="$kunjungan['kunjunganId']" name="kunjunganId"
-                                                    wire:model.live="kunjunganId" />
+                                                    wire:model.live="kunjunganId" :disabled="$isFormLocked" />
                                             @endforeach
                                         </div>
 
                                         {{-- LOGIC POST INAP & KONTROL 1/2 --}}
-                                        <div class="mt-4">
+                                        <div class="mt-2">
                                             @if (($dataDaftarPoliRJ['kunjunganId'] ?? '') === '3')
                                                 <x-check-box value="1" :label="__('Post Inap')"
-                                                    wire:model="dataDaftarPoliRJ.postInap" />
+                                                    wire:model="dataDaftarPoliRJ.postInap" :disabled="$isFormLocked" />
                                             @endif
 
-                                            <div class="grid grid-cols-2 gap-2 mt-2">
+                                            <div class="grid grid-cols-2 gap-2">
                                                 {{-- Internal 1/2: tampil saat kunjungan Rujukan Internal --}}
                                                 @if ($kunjunganId === '2')
                                                     @foreach ($internal12Options ?? [] as $index => $internal)
                                                         <x-radio-button :label="__($internal['internal12Desc'])"
                                                             value="{{ $internal['internal12'] }}" name="internal12"
-                                                            wire:model.live="internal12" />
+                                                            wire:model.live="internal12" :disabled="$isFormLocked" />
                                                     @endforeach
                                                 @endif
 
@@ -717,49 +730,45 @@ new class extends Component {
                                                     @foreach ($kontrol12Options ?? [] as $index => $kontrol)
                                                         <x-radio-button :label="__($kontrol['kontrol12Desc'])"
                                                             value="{{ $kontrol['kontrol12'] }}" name="kontrol12"
-                                                            wire:model.live="kontrol12" />
+                                                            wire:model.live="kontrol12" :disabled="$isFormLocked" />
                                                     @endforeach
                                                 @endif
-
                                             </div>
-
                                         </div>
                                     </div>
 
-
                                     {{-- No Referensi --}}
-                                    <div class="pt-4 space-y-3 border-t">
+                                    <div class="space-y-3 ">
                                         <div class="grid">
                                             <x-input-label value="No Referensi" />
-                                            <x-text-input wire:model.live="dataDaftarPoliRJ.noReferensi" />
-                                            <x-input-error :messages="$errors->get('dataDaftarPoliRJ.noReferensi')" class="mt-1" />
+                                            <x-text-input wire:model.live="dataDaftarPoliRJ.noReferensi"
+                                                :disabled="$isFormLocked" />
+                                            <x-input-error :messages="$errors->get('dataDaftarPoliRJ.noReferensi')" />
                                         </div>
                                         <div class="flex justify-between gap-2">
-                                            <x-primary-button wire:click.prevent="clickrujukanPeserta()">
+                                            <x-primary-button wire:click.prevent="clickrujukanPeserta()"
+                                                :disabled="$isFormLocked">
                                                 Cek Referensi
                                             </x-primary-button>
-                                            <x-primary-button wire:click.prevent="callRJskdp()">
+                                            <x-primary-button wire:click.prevent="callRJskdp()" :disabled="$isFormLocked">
                                                 Buat SKDP
                                             </x-primary-button>
+                                        </div>
+                                        <div class="grid">
+                                            <x-input-label value="No SEP" />
+                                            <x-text-input wire:model.live="dataDaftarPoliRJ.sep.noSep"
+                                                :disabled="$isFormLocked" />
+                                            <x-input-error :messages="$errors->get('dataDaftarPoliRJ.sep.noSep')" class="mt-1" />
                                         </div>
                                     </div>
                                 @endif
 
-
                                 {{-- Dokter & Poli --}}
-                                <div class="pt-4 space-y-4">
-                                    {{-- <x-input-label value="Dokter & Poli" /> --}}
-
-                                    {{-- Display Selected --}}
-                                    {{-- <x-text-input class="w-full mt-1" :disabled="true"
-                                        value="{{ ($dataDaftarPoliRJ['drId'] ?? '') .
-                                            (isset($dataDaftarPoliRJ['drDesc']) ? ' - ' . $dataDaftarPoliRJ['drDesc'] : '') .
-                                            (isset($dataDaftarPoliRJ['poliDesc']) ? ' | Poli: ' . $dataDaftarPoliRJ['poliDesc'] : '') }}" /> --}}
-
+                                <div class="space-y-4">
                                     {{-- LOV Dokter --}}
-                                    <div class="mt-2">
-                                        <livewire:lov.dokter.lov-dokter label="Cari Dokter - Poli" target="rjFormDokter"
-                                            :initialDrId="$dataDaftarPoliRJ['drId'] ?? null"
+                                    <div class="">
+                                        <livewire:lov.dokter.lov-dokter label="Cari Dokter - Poli"
+                                            target="rjFormDokter" :initialDrId="$dataDaftarPoliRJ['drId'] ?? null" :disabled="$isFormLocked"
                                             wire:key="{{ $this->lovKey('dokter', [$formMode, $rjNo]) }}" />
 
                                         {{-- Error untuk Dokter --}}
@@ -784,15 +793,15 @@ new class extends Component {
             <div
                 class="sticky bottom-0 z-10 px-6 py-4 bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-between gap-3">
-                    <x-primary-button wire:click.prevent="callFormPasien()">
+                    <x-primary-button wire:click.prevent="callFormPasien()" :disabled="$isFormLocked">
                         Master Pasien
                     </x-primary-button>
                     <div class="flex justify-between gap-3">
                         <x-secondary-button wire:click="closeModal">
                             Batal
                         </x-secondary-button>
-                        <x-primary-button wire:click.prevent="save()" class="min-w-[120px]">
-                            Simpan
+                        <x-primary-button wire:click.prevent="save()" class="min-w-[120px]" :disabled="$isFormLocked">
+                            {{ $isFormLocked ? 'Read Only' : 'Simpan' }}
                         </x-primary-button>
                     </div>
                 </div>
