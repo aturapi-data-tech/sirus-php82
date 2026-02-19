@@ -4,7 +4,6 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 
@@ -109,7 +108,7 @@ new class extends Component {
                         'txn_status' => $this->dataDaftarPoliRJ['txnStatus'],
                         'rj_status' => $this->dataDaftarPoliRJ['rjStatus'],
                         'erm_status' => $this->dataDaftarPoliRJ['ermStatus'],
-                        'pass_status' => $this->dataDaftarPoliRJ['passStatus'] == 'N' ? 'N' : 'O',
+                        'pass_status' => $this->dataDaftarPoliRJ['passStatus'] === 'N' ? 'N' : 'O',
                         'cek_lab' => $this->dataDaftarPoliRJ['cekLab'],
                         'sl_codefrom' => $this->dataDaftarPoliRJ['slCodeFrom'],
                         'kunjungan_internal_status' => $this->dataDaftarPoliRJ['kunjunganInternalStatus'],
@@ -215,8 +214,11 @@ new class extends Component {
 
     private function validateDataRJ(): array
     {
-        // Attributes untuk nama field yang lebih user-friendly
+        // ===========================
+        // Attributes (nama field user-friendly)
+        // ===========================
         $attributes = [
+            // Data Rawat Jalan
             'dataDaftarPoliRJ.regNo' => 'Nomor Registrasi Pasien',
             'dataDaftarPoliRJ.drId' => 'ID Dokter',
             'dataDaftarPoliRJ.drDesc' => 'Nama Dokter',
@@ -238,13 +240,15 @@ new class extends Component {
             'dataDaftarPoliRJ.kunjunganInternalStatus' => 'Status Kunjungan Internal',
             'dataDaftarPoliRJ.noReferensi' => 'Nomor Referensi',
             'dataDaftarPoliRJ.klaimId' => 'ID Klaim',
-            'dataPasien.pasien.identitas.idbpjs' => 'Nomor BPJS',
-            'dataPasien.pasien.identitas.nik' => 'NIK',
+
+            // Data Pasien
         ];
 
-        // Custom messages spesifik
+        // ===========================
+        // Custom Messages
+        // ===========================
         $customMessages = [
-            // Required messages
+            // ---- Data Rawat Jalan ----
             'dataDaftarPoliRJ.regNo.required' => ':attribute wajib diisi.',
             'dataDaftarPoliRJ.regNo.exists' => ':attribute tidak ditemukan dalam database pasien.',
             'dataDaftarPoliRJ.drId.required' => 'Dokter wajib dipilih.',
@@ -253,64 +257,48 @@ new class extends Component {
             'dataDaftarPoliRJ.poliId.required' => 'Poli wajib dipilih.',
             'dataDaftarPoliRJ.poliId.exists' => 'Poli yang dipilih tidak valid.',
             'dataDaftarPoliRJ.poliDesc.required' => 'Nama Poli wajib diisi.',
-            'dataDaftarPoliRJ.rjDate.required' => ':attribute wajib diisi.',
-            'dataDaftarPoliRJ.rjNo.required' => ':attribute wajib diisi.',
-            'dataDaftarPoliRJ.shift.required' => ':attribute wajib diisi.',
-            'dataDaftarPoliRJ.noAntrian.required' => ':attribute wajib diisi.',
-            'dataDaftarPoliRJ.noBooking.required' => ':attribute wajib diisi.',
-            'dataDaftarPoliRJ.slCodeFrom.required' => ':attribute wajib diisi.',
-            'dataDaftarPoliRJ.rjStatus.required' => ':attribute wajib diisi.',
-            'dataDaftarPoliRJ.txnStatus.required' => ':attribute wajib diisi.',
-            'dataDaftarPoliRJ.ermStatus.required' => ':attribute wajib diisi.',
-            'dataDaftarPoliRJ.cekLab.required' => ':attribute wajib diisi.',
-            'dataDaftarPoliRJ.kunjunganInternalStatus.required' => ':attribute wajib diisi.',
-
-            // Format validation
-            'dataDaftarPoliRJ.rjDate.date_format' => ':attribute harus dalam format: dd/mm/yyyy HH:ii:ss (contoh: 25/12/2024 13:30:00).',
-
-            // Numeric validation
-            'dataDaftarPoliRJ.rjNo.numeric' => ':attribute harus berupa angka.',
-            'dataDaftarPoliRJ.noAntrian.numeric' => ':attribute harus berupa angka.',
-
-            // Min/Max validation
-            'dataDaftarPoliRJ.noAntrian.min' => ':attribute minimal :min.',
-            'dataDaftarPoliRJ.noAntrian.max' => ':attribute maksimal :max.',
-            'dataDaftarPoliRJ.noReferensi.min' => ':attribute minimal :min karakter.',
-            'dataDaftarPoliRJ.noReferensi.max' => ':attribute maksimal :max karakter.',
-
-            // In validation (enum)
-            'dataDaftarPoliRJ.shift.in' => ':attribute harus salah satu dari: 1, 2, atau 3.',
-            'dataDaftarPoliRJ.slCodeFrom.in' => ':attribute harus salah satu dari: 01 atau 02.',
-            'dataDaftarPoliRJ.passStatus.in' => ':attribute harus salah satu dari: N (Baru) atau O (Lama).',
-            'dataDaftarPoliRJ.rjStatus.in' => ':attribute harus salah satu dari: A (Antrian), L (Selesai), I (Transfer), atau F (Batal).',
-            'dataDaftarPoliRJ.txnStatus.in' => ':attribute harus salah satu dari: A (Aktif), P (Proses), atau C (Selesai).',
-            'dataDaftarPoliRJ.ermStatus.in' => ':attribute harus salah satu dari: A (Aktif), P (Proses), atau C (Selesai).',
-            'dataDaftarPoliRJ.cekLab.in' => ':attribute harus salah satu dari: 0 (Tidak) atau 1 (Ya).',
-            'dataDaftarPoliRJ.kunjunganInternalStatus.in' => ':attribute harus salah satu dari: 0 (Tidak) atau 1 (Ya).',
-
-            'dataDaftarPoliRJ.klaimId.required' => ':attribute wajib diisi.',
-            'dataDaftarPoliRJ.klaimId.exists' => ':attribute tidak ditemukan dalam database klaim.',
-
-            // String validation
             'dataDaftarPoliRJ.kddrbpjs.string' => ':attribute harus berupa teks.',
             'dataDaftarPoliRJ.kdpolibpjs.string' => ':attribute harus berupa teks.',
-            'dataDaftarPoliRJ.noBooking.string' => ':attribute harus berupa teks.',
-            'dataDaftarPoliRJ.noReferensi.string' => ':attribute harus berupa teks.',
-
-            // BPJS specific messages
-            'dataPasien.pasien.identitas.idbpjs.required' => ':attribute wajib diisi untuk pasien BPJS.',
-            'dataPasien.pasien.identitas.idbpjs.min' => ':attribute minimal :min digit.',
-            'dataPasien.pasien.identitas.idbpjs.max' => ':attribute maksimal :max digit.',
-            'dataPasien.pasien.identitas.nik.required' => ':attribute wajib diisi untuk pasien BPJS.',
-            'dataPasien.pasien.identitas.nik.size' => ':attribute harus :size digit.',
-
-            // KRONIS specific messages
+            'dataDaftarPoliRJ.rjDate.required' => ':attribute wajib diisi.',
+            'dataDaftarPoliRJ.rjDate.date_format' => ':attribute harus dalam format: dd/mm/yyyy HH:ii:ss (contoh: 25/12/2024 13:30:00).',
+            'dataDaftarPoliRJ.rjNo.required' => ':attribute wajib diisi.',
+            'dataDaftarPoliRJ.rjNo.numeric' => ':attribute harus berupa angka.',
+            'dataDaftarPoliRJ.shift.required' => ':attribute wajib diisi.',
+            'dataDaftarPoliRJ.shift.in' => ':attribute harus salah satu dari: 1, 2, atau 3.',
+            'dataDaftarPoliRJ.noAntrian.required' => ':attribute wajib diisi.',
+            'dataDaftarPoliRJ.noAntrian.numeric' => ':attribute harus berupa angka.',
+            'dataDaftarPoliRJ.noAntrian.min' => ':attribute minimal :min.',
+            'dataDaftarPoliRJ.noAntrian.max' => ':attribute maksimal :max.',
             'dataDaftarPoliRJ.noAntrian.in' => ':attribute untuk pasien KRONIS harus 999.',
+            'dataDaftarPoliRJ.noBooking.required' => ':attribute wajib diisi.',
+            'dataDaftarPoliRJ.noBooking.string' => ':attribute harus berupa teks.',
+            'dataDaftarPoliRJ.slCodeFrom.required' => ':attribute wajib diisi.',
+            'dataDaftarPoliRJ.slCodeFrom.in' => ':attribute harus salah satu dari: 01 atau 02.',
+            'dataDaftarPoliRJ.passStatus.in' => ':attribute harus salah satu dari: N (Baru) atau O (Lama).',
+            'dataDaftarPoliRJ.rjStatus.required' => ':attribute wajib diisi.',
+            'dataDaftarPoliRJ.rjStatus.in' => ':attribute harus salah satu dari: A (Antrian), L (Selesai), I (Transfer), atau F (Batal).',
+            'dataDaftarPoliRJ.txnStatus.required' => ':attribute wajib diisi.',
+            'dataDaftarPoliRJ.txnStatus.in' => ':attribute harus salah satu dari: A (Aktif), P (Proses), atau C (Selesai).',
+            'dataDaftarPoliRJ.ermStatus.required' => ':attribute wajib diisi.',
+            'dataDaftarPoliRJ.ermStatus.in' => ':attribute harus salah satu dari: A (Aktif), P (Proses), atau C (Selesai).',
+            'dataDaftarPoliRJ.cekLab.required' => ':attribute wajib diisi.',
+            'dataDaftarPoliRJ.cekLab.in' => ':attribute harus salah satu dari: 0 (Tidak) atau 1 (Ya).',
+            'dataDaftarPoliRJ.kunjunganInternalStatus.required' => ':attribute wajib diisi.',
+            'dataDaftarPoliRJ.kunjunganInternalStatus.in' => ':attribute harus salah satu dari: 0 (Tidak) atau 1 (Ya).',
+            'dataDaftarPoliRJ.klaimId.required' => ':attribute wajib diisi.',
+            'dataDaftarPoliRJ.klaimId.exists' => ':attribute tidak ditemukan dalam database klaim.',
+            'dataDaftarPoliRJ.noReferensi.required' => ':attribute wajib diisi.',
+            'dataDaftarPoliRJ.noReferensi.string' => ':attribute harus berupa teks.',
+            'dataDaftarPoliRJ.noReferensi.min' => ':attribute minimal :min karakter.',
+            'dataDaftarPoliRJ.noReferensi.max' => ':attribute maksimal :max karakter.',
         ];
 
-        // Rules validasi dasar
+        // ===========================
+        // Rules Validasi
+        // ===========================
         $rules = [
-            'dataDaftarPoliRJ.regNo' => ['bail', 'required', Rule::exists('rsmst_pasiens', 'reg_no')],
+            // Data Rawat Jalan
+            'dataDaftarPoliRJ.regNo' => 'bail|required|exists:rsmst_pasiens,reg_no',
             'dataDaftarPoliRJ.drId' => 'required|exists:rsmst_doctors,dr_id',
             'dataDaftarPoliRJ.drDesc' => 'required|string',
             'dataDaftarPoliRJ.poliId' => 'required|exists:rsmst_polis,poli_id',
@@ -325,8 +313,8 @@ new class extends Component {
             'dataDaftarPoliRJ.slCodeFrom' => 'required|in:01,02',
             'dataDaftarPoliRJ.passStatus' => 'nullable|in:N,O',
             'dataDaftarPoliRJ.rjStatus' => 'required|in:A,L,I,F',
-            'dataDaftarPoliRJ.txnStatus' => 'required|in:A,P,C',
-            'dataDaftarPoliRJ.ermStatus' => 'required|in:A,P,C',
+            'dataDaftarPoliRJ.txnStatus' => 'required|in:A,L,H',
+            'dataDaftarPoliRJ.ermStatus' => 'required|in:A,L',
             'dataDaftarPoliRJ.cekLab' => 'required|in:0,1',
             'dataDaftarPoliRJ.kunjunganInternalStatus' => 'required|in:0,1',
             'dataDaftarPoliRJ.noReferensi' => 'nullable|string|min:3|max:19',
@@ -334,18 +322,18 @@ new class extends Component {
         ];
 
         // Validasi khusus untuk BPJS
-        if ($this->dataDaftarPoliRJ['klaimId'] == 'JM') {
-            $rules['dataDaftarPoliRJ.noReferensi'] = ['bail', 'required', 'string', 'min:3', 'max:19'];
-            $rules['dataPasien.pasien.identitas.idbpjs'] = ['bail', 'required', 'string', 'min:5', 'max:15'];
-            $rules['dataPasien.pasien.identitas.nik'] = ['bail', 'required', 'string', 'size:16'];
+        if ($this->dataDaftarPoliRJ['klaimStatus'] === 'BPJS') {
+            $rules['dataDaftarPoliRJ.noReferensi'] = 'bail|required|string|min:3|max:19';
         }
 
         // Validasi untuk pasien KRONIS
-        if ($this->dataDaftarPoliRJ['klaimId'] == 'KR') {
+        if ($this->dataDaftarPoliRJ['klaimStatus'] === 'KRONIS') {
             $rules['dataDaftarPoliRJ.noAntrian'] = 'required|numeric|in:999';
         }
 
+        // ===========================
         // Proses Validasi
+        // ===========================
         return $this->validate($rules, $customMessages, $attributes);
     }
 
@@ -367,6 +355,8 @@ new class extends Component {
         $this->dataDaftarPoliRJ['drDesc'] = '';
         $this->dataDaftarPoliRJ['poliId'] = null;
         $this->dataDaftarPoliRJ['poliDesc'] = '';
+
+        $this->dataDaftarPoliRJ['passStatus'] = 'O';
     }
 
     protected function rules(): array
@@ -555,7 +545,7 @@ new class extends Component {
                 <div class="max-w-full mx-auto">
                     <div class="p-1 space-y-1" x-data
                         @keydown.enter.prevent="
-                            let f = [...$el.querySelectorAll('input,select,textarea')]
+                            let f = [...$el.querySelectorAll('input,select')]
                                 .filter(e => !e.disabled && e.type !== 'hidden');
 
                             let i = f.indexOf($event.target);
@@ -572,7 +562,18 @@ new class extends Component {
                             <div
                                 class="p-6 space-y-6 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
+                                {{-- Status Pasien --}}
+                                <div>
+                                    <div class="mt-2">
+                                        <x-toggle wire:model.live="dataDaftarPoliRJ.passStatus" trueValue="N"
+                                            falseValue="O" label="Pasien Baru" />
 
+                                    </div>
+                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                        Jika tidak dicentang maka dianggap Pasien Lama.
+                                    </p>
+                                    <x-input-error :messages="$errors->get('dataDaftarPoliRJ.passStatus')" class="mt-1" />
+                                </div>
 
                                 {{-- LOV Pasien --}}
                                 <livewire:lov.pasien.lov-pasien target="rjFormPasien" :initialRegNo="$dataDaftarPoliRJ['regNo'] ?? ''"
@@ -648,6 +649,7 @@ new class extends Component {
                                         <div class="grid">
                                             <x-input-label value="No Referensi" />
                                             <x-text-input wire:model.live="dataDaftarPoliRJ.noReferensi" />
+                                            <x-input-error :messages="$errors->get('dataDaftarPoliRJ.noReferensi')" class="mt-1" />
                                         </div>
                                         <div class="flex justify-between gap-2">
                                             <x-primary-button wire:click.prevent="clickrujukanPeserta()">
