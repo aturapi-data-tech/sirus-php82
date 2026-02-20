@@ -440,15 +440,6 @@ new class extends Component {
         $this->dataDaftarPoliRJ['passStatus'] = 'O';
     }
 
-    protected function rules(): array
-    {
-        return [
-            'tindakLanjut' => ['nullable', 'string', 'max:255'],
-            'tglKontrol' => ['nullable', 'date'],
-            'keterangan' => ['nullable', 'string'],
-        ];
-    }
-
     /* ===============================
      | DELETE
      =============================== */
@@ -551,6 +542,28 @@ new class extends Component {
 
         $this->dataDaftarPoliRJ['internal12Desc'] = collect($this->internal12Options)->first(fn($o) => $o['internal12'] === $this->internal12)['internal12Desc'] ?? '-';
     }
+
+    public function openVclaimModal()
+    {
+        // Validasi data yang diperlukan
+        if (empty($this->dataDaftarPoliRJ['regNo'])) {
+            $this->dispatch('toast', type: 'error', message: 'Silakan pilih pasien terlebih dahulu.');
+            return;
+        }
+
+        if (($dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($dataDaftarPoliRJ['klaimId'] ?? '') === 'JM') {
+            $this->dispatch('toast', type: 'error', message: 'Fitur SEP hanya untuk pasien BPJS (Jenis Klaim JM).');
+            return;
+        }
+
+        if (empty($this->dataDaftarPoliRJ['drId'])) {
+            $this->dispatch('toast', type: 'error', message: 'Silakan pilih dokter/poli terlebih dahulu.');
+            return;
+        }
+
+        // Dispatch event ke komponen Vclaim dengan data lengkap
+        $this->dispatch('open-vclaim-modal', rjNo: $this->rjNo, regNo: $this->dataDaftarPoliRJ['regNo'], drId: $this->dataDaftarPoliRJ['drId'], drDesc: $this->dataDaftarPoliRJ['drDesc'], poliId: $this->dataDaftarPoliRJ['poliId'], poliDesc: $this->dataDaftarPoliRJ['poliDesc'], kdpolibpjs: $this->dataDaftarPoliRJ['kdpolibpjs'] ?? null, kunjunganId: $this->kunjunganId, kontrol12: $this->kontrol12, internal12: $this->internal12, postInap: $this->dataDaftarPoliRJ['postInap'] ?? false, noReferensi: $this->dataDaftarPoliRJ['noReferensi'] ?? null);
+    }
 };
 ?>
 
@@ -608,8 +621,8 @@ new class extends Component {
                         <div class="flex-1">
                             <x-input-label value="Tanggal RJ" />
                             <x-text-input wire:model.live="dataDaftarPoliRJ.rjDate"
-                                wire:key="rjDate-{{ $formMode ?? 'new' }}" class="block w-full" :error="$errors->has('dataDaftarPoliRJ.rjDate')"
-                                :disabled="$isFormLocked" />
+                                wire:key="rjDate-{{ $formMode }}-{{ $dataDaftarPoliRJ['rjNo'] ?? '1' }}"
+                                class="block w-full" :error="$errors->has('dataDaftarPoliRJ.rjDate')" :disabled="$isFormLocked" />
                             <x-input-error :messages="$errors->get('dataDaftarPoliRJ.rjDate')" class="mt-1" />
                         </div>
                         {{-- Shift --}}
@@ -677,13 +690,27 @@ new class extends Component {
                                 </div>
 
                                 {{-- LOV Pasien --}}
-                                <div class="mt-2" x-init="setTimeout(() => $el.querySelector('input')?.focus(), 200)">
+                                <div class="mt-2">
                                     <livewire:lov.pasien.lov-pasien target="rjFormPasien" :initialRegNo="$dataDaftarPoliRJ['regNo'] ?? ''"
                                         :disabled="$isFormLocked"
                                         wire:key="{{ $this->lovKey('pasien', [$formMode, $rjNo ?? 'new', 'inner']) }}" />
+
+                                    <x-input-error :messages="$errors->get('dataDaftarPoliRJ.regNo')" class="mt-1" />
                                 </div>
 
-                                <x-input-error :messages="$errors->get('dataDaftarPoliRJ.regNo')" class="mt-1" />
+                                {{-- LOV Dokter --}}
+                                <div class="mt-2">
+                                    <livewire:lov.dokter.lov-dokter label="Cari Dokter - Poli" target="rjFormDokter"
+                                        :initialDrId="$dataDaftarPoliRJ['drId'] ?? null" :disabled="$isFormLocked"
+                                        wire:key="{{ $this->lovKey('dokter', [$formMode, $rjNo]) }}" />
+                                    {{-- Error untuk Dokter --}}
+                                    <x-input-error :messages="$errors->get('dataDaftarPoliRJ.drId')" class="mt-1" />
+                                    <x-input-error :messages="$errors->get('dataDaftarPoliRJ.drDesc')" class="mt-1" />
+
+                                    {{-- Error untuk Poli --}}
+                                    <x-input-error :messages="$errors->get('dataDaftarPoliRJ.poliId')" class="mt-1" />
+                                    <x-input-error :messages="$errors->get('dataDaftarPoliRJ.poliDesc')" class="mt-1" />
+                                </div>
 
                                 {{-- Jenis Klaim --}}
                                 <div>
@@ -753,15 +780,76 @@ new class extends Component {
                                                 :disabled="$isFormLocked" />
                                             <x-input-error :messages="$errors->get('dataDaftarPoliRJ.noReferensi')" />
                                         </div>
-                                        <div class="flex justify-between gap-2">
-                                            <x-primary-button wire:click.prevent="clickrujukanPeserta()"
-                                                :disabled="$isFormLocked">
-                                                Cek Referensi
-                                            </x-primary-button>
-                                            <x-primary-button wire:click.prevent="callRJskdp()" :disabled="$isFormLocked">
-                                                Buat SKDP
-                                            </x-primary-button>
+
+                                        {{-- TAMBAHKAN INI: Tombol untuk membuka modal Vclaim RJ Actions --}}
+                                        <div class="flex flex-wrap items-center gap-2 mt-2">
+                                            <x-secondary-button type="button" wire:click="openVclaimModal"
+                                                class="gap-2 text-xs">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linecap="round"
+                                                        stroke-width="2"
+                                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                                Kelola SEP BPJS
+                                            </x-secondary-button>
+
+                                            {{-- Tampilkan info SEP jika sudah ada --}}
+                                            @if (!empty($dataDaftarPoliRJ['sep']['noSep']))
+                                                <div
+                                                    class="flex items-center gap-2 px-3 py-1 text-xs text-green-700 bg-green-100 rounded-full dark:bg-green-900/30 dark:text-green-300">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linecap="round"
+                                                            stroke-width="2"
+                                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    SEP: {{ $dataDaftarPoliRJ['sep']['noSep'] }}
+                                                </div>
+
+                                                <x-secondary-button type="button" wire:click="cetakSEP"
+                                                    class="gap-2 text-xs" title="Cetak SEP">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linecap="round"
+                                                            stroke-width="2"
+                                                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                    </svg>
+                                                </x-secondary-button>
+                                            @endif
                                         </div>
+
+                                        {{-- Info SEP ringkas jika sudah ada --}}
+                                        @if (!empty($dataDaftarPoliRJ['sep']['noSep']))
+                                            <div
+                                                class="flex items-center gap-2 px-3 py-2 mt-1 text-sm border border-blue-200 rounded-lg bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
+                                                <svg class="w-5 h-5 text-blue-500" fill="none"
+                                                    stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linecap="round"
+                                                        stroke-width="2"
+                                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <div class="flex-1">
+                                                    <span
+                                                        class="text-xs font-medium text-blue-700 dark:text-blue-300">SEP
+                                                        Aktif:</span>
+                                                    <span
+                                                        class="ml-2 font-mono text-sm font-semibold text-blue-800 dark:text-blue-200">
+                                                        {{ $dataDaftarPoliRJ['sep']['noSep'] }}
+                                                    </span>
+                                                </div>
+                                                <span class="text-xs text-blue-600 dark:text-blue-400">
+                                                    {{ Carbon::parse($dataDaftarPoliRJ['sep']['resSep']['tglSEP'] ?? now())->format('d/m/Y') }}
+                                                </span>
+                                            </div>
+                                        @endif
+
+                                        {{-- Panggil komponen Livewire modal Vclaim --}}
+                                        <livewire:pages::transaksi.rj.daftar-rj.vclaim-rj-actions
+                                            :wire:key="'vclaim-rj-actions-'.($rjNo ?? '1').'-'.uniqid()"
+                                            :initialRjNo="$rjNo ?? null" />
+
+
                                         <div class="grid">
                                             <x-input-label value="No SEP" />
                                             <x-text-input wire:model.live="dataDaftarPoliRJ.sep.noSep"
@@ -771,23 +859,7 @@ new class extends Component {
                                     </div>
                                 @endif
 
-                                {{-- Dokter & Poli --}}
-                                <div class="space-y-4">
-                                    {{-- LOV Dokter --}}
-                                    <div class="">
-                                        <livewire:lov.dokter.lov-dokter label="Cari Dokter - Poli"
-                                            target="rjFormDokter" :initialDrId="$dataDaftarPoliRJ['drId'] ?? null" :disabled="$isFormLocked"
-                                            wire:key="{{ $this->lovKey('dokter', [$formMode, $rjNo]) }}" />
 
-                                        {{-- Error untuk Dokter --}}
-                                        <x-input-error :messages="$errors->get('dataDaftarPoliRJ.drId')" class="mt-1" />
-                                        <x-input-error :messages="$errors->get('dataDaftarPoliRJ.drDesc')" class="mt-1" />
-
-                                        {{-- Error untuk Poli --}}
-                                        <x-input-error :messages="$errors->get('dataDaftarPoliRJ.poliId')" class="mt-1" />
-                                        <x-input-error :messages="$errors->get('dataDaftarPoliRJ.poliDesc')" class="mt-1" />
-                                    </div>
-                                </div>
 
                             </div>
 

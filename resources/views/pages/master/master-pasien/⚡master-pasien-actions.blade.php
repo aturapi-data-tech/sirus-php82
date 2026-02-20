@@ -73,7 +73,7 @@ new class extends Component {
     #[On('master.pasien.openCreate')]
     public function openCreate(): void
     {
-        $this->resetForm();
+        $this->resetFormFields();
         $this->formMode = 'create';
 
         // Isi data default dari template trait
@@ -88,7 +88,7 @@ new class extends Component {
     #[On('master.pasien.openEdit')]
     public function openEdit(string $regNo): void
     {
-        $this->resetForm();
+        $this->resetFormFields();
         $this->formMode = 'edit';
         $this->regNo = $regNo;
 
@@ -99,11 +99,11 @@ new class extends Component {
 
     public function closeModal(): void
     {
-        $this->resetForm();
+        $this->resetFormFields();
         $this->dispatch('close-modal', name: 'master-pasien-actions');
     }
 
-    protected function resetForm(): void
+    protected function resetFormFields(): void
     {
         $this->reset(['dataPasien', 'regNo', 'bpjspasienCode', 'pasienUuid']);
 
