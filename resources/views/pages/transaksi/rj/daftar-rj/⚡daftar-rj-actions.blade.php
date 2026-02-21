@@ -53,7 +53,7 @@ new class extends Component {
         // ===============================
         // Set Tanggal RJ (hari ini)
         // ===============================
-        $now = Carbon::now(config('app.timezone'));
+        $now = Carbon::now();
         $this->dataDaftarPoliRJ['rjDate'] = $now->format('d/m/Y H:i:s');
         // ===============================
         // Set Shift berdasarkan jam sekarang
@@ -236,7 +236,7 @@ new class extends Component {
     |--------------------------------------------------------------------------
     */
         if (empty($data['noBooking'])) {
-            $data['noBooking'] = Carbon::now(config('app.timezone'))->format('YmdHis') . 'RSIM';
+            $data['noBooking'] = Carbon::now()->format('YmdHis') . 'RSIM';
         }
 
         /*
@@ -257,7 +257,7 @@ new class extends Component {
         if (empty($data['noAntrian'])) {
             if (!empty($data['klaimId']) && $data['klaimId'] !== 'KR') {
                 if (!empty($data['rjDate']) && !empty($data['drId'])) {
-                    $tglAntrian = Carbon::createFromFormat('d/m/Y H:i:s', $data['rjDate'], config('app.timezone'))->format('dmY');
+                    $tglAntrian = Carbon::createFromFormat('d/m/Y H:i:s', $data['rjDate'])->format('dmY');
 
                     $noUrutAntrian = DB::table('rstxn_rjhdrs')
                         ->where('dr_id', $data['drId'])
@@ -426,7 +426,7 @@ new class extends Component {
 
         $this->formMode = 'create';
 
-        $this->dataDaftarPoliRJ['rjDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+        $this->dataDaftarPoliRJ['rjDate'] = Carbon::now()->format('d/m/Y H:i:s');
         $this->dataDaftarPoliRJ['regNo'] = '';
         $this->dataDaftarPoliRJ['regName'] = '';
         $this->dataDaftarPoliRJ['drId'] = null;
@@ -594,7 +594,7 @@ new class extends Component {
         // Atau register manual
         $this->registerAreas(['modal', 'pasien', 'dokter']);
 
-        $this->dataDaftarPoliRJ['rjDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+        $this->dataDaftarPoliRJ['rjDate'] = Carbon::now()->format('d/m/Y H:i:s');
     }
 };
 

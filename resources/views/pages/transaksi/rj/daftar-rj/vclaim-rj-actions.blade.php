@@ -309,7 +309,7 @@ new class extends Component {
 
     private function cariDataPeserta($idBpjs)
     {
-        $tglSep = Carbon::now(config('app.timezone'))->format('Y-m-d');
+        $tglSep = Carbon::now()->format('Y-m-d');
         $response = VclaimTrait::peserta_nomorkartu($idBpjs, $tglSep)->getOriginalContent();
 
         if ($response['metadata']['code'] == 200) {
@@ -377,7 +377,7 @@ new class extends Component {
             'noMR' => $peserta['mr']['noMR'] ?? $this->SEPForm['noMR'],
             'rujukan' => [
                 'asalRujukan' => '2',
-                'tglRujukan' => Carbon::now(config('app.timezone'))->format('Y-m-d'),
+                'tglRujukan' => Carbon::now()->format('Y-m-d'),
                 'noRujukan' => '',
                 'ppkRujukan' => '0184R006',
             ],
@@ -537,7 +537,7 @@ new class extends Component {
     private function resetForm()
     {
         $this->reset('SEPForm', 'selectedRujukan', 'showRujukanLov', 'dataRujukan');
-        $this->SEPForm['tglSep'] = Carbon::now(config('app.timezone'))->format('Y-m-d');
+        $this->SEPForm['tglSep'] = Carbon::now()->format('Y-m-d');
         $this->isFormLocked = false;
     }
 
@@ -583,7 +583,7 @@ new class extends Component {
 
     public function mount()
     {
-        $this->SEPForm['tglSep'] = Carbon::now(config('app.timezone'))->format('Y-m-d');
+        $this->SEPForm['tglSep'] = Carbon::now()->format('Y-m-d');
         $this->registerAreas(['modal', 'lov-rujukan', 'form-sep', 'info-pasien']);
     }
 };
