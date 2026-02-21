@@ -27,7 +27,7 @@ trait VclaimTrait
         // Insert webLogStatus
         DB::table('web_log_status')->insert([
             'code' =>  $code,
-            'date_ref' => Carbon::now(env('APP_TIMEZONE')),
+            'date_ref' => Carbon::now(config('app.timezone')),
             'response' => json_encode($response, true),
             'http_req' => $url,
             'requestTransferTime' => $requestTransferTime
@@ -49,7 +49,7 @@ trait VclaimTrait
         // Insert webLogStatus
         DB::table('web_log_status')->insert([
             'code' =>  $code,
-            'date_ref' => Carbon::now(env('APP_TIMEZONE')),
+            'date_ref' => Carbon::now(config('app.timezone')),
             'response' => json_encode($response, true),
             'http_req' => $url,
             'requestTransferTime' => $requestTransferTime
@@ -261,7 +261,7 @@ trait VclaimTrait
         $r = [
             "request" => [
                 "noSEP" => $kontrol['noSEP'],
-                "tglRencanaKontrol" => Carbon::createFromFormat('d/m/Y', $kontrol['tglKontrol'], env('APP_TIMEZONE'))->format('Y-m-d'),
+                "tglRencanaKontrol" => Carbon::createFromFormat('d/m/Y', $kontrol['tglKontrol'], config('app.timezone'))->format('Y-m-d'),
                 "poliKontrol" => $kontrol['poliKontrolBPJS'],
                 "kodeDokter" => $kontrol['drKontrolBPJS'],
                 "user" =>  'Sirus',
@@ -315,7 +315,7 @@ trait VclaimTrait
             "request" => [
                 "request.noSuratKontrol" => $kontrol['noSKDPBPJS'],
                 "noSEP" => $kontrol['noSEP'],
-                "tglRencanaKontrol" => Carbon::createFromFormat('d/m/Y', $kontrol['tglKontrol'], env('APP_TIMEZONE'))->format('Y-m-d'),
+                "tglRencanaKontrol" => Carbon::createFromFormat('d/m/Y', $kontrol['tglKontrol'], config('app.timezone'))->format('Y-m-d'),
                 "poliKontrol" => $kontrol['poliKontrolBPJS'],
                 "kodeDokter" => $kontrol['drKontrolBPJS'],
                 "user" =>  'Sirus',
@@ -371,7 +371,7 @@ trait VclaimTrait
         $r = [
             "request" => [
                 "noKartu" => $kontrol['noKartu'],
-                "tglRencanaKontrol" => Carbon::createFromFormat('d/m/Y', $kontrol['tglKontrol'], env('APP_TIMEZONE'))->format('Y-m-d'),
+                "tglRencanaKontrol" => Carbon::createFromFormat('d/m/Y', $kontrol['tglKontrol'], config('app.timezone'))->format('Y-m-d'),
                 "poliKontrol" => $kontrol['poliKontrolBPJS'],
                 "kodeDokter" => $kontrol['drKontrolBPJS'],
                 "user" =>  'Sirus',
@@ -425,7 +425,7 @@ trait VclaimTrait
             "request" => [
                 "noSPRI" => $kontrol['noSPRIBPJS'],
                 "noKartu" => $kontrol['noKartu'],
-                "tglRencanaKontrol" => Carbon::createFromFormat('d/m/Y', $kontrol['tglKontrol'], env('APP_TIMEZONE'))->format('Y-m-d'),
+                "tglRencanaKontrol" => Carbon::createFromFormat('d/m/Y', $kontrol['tglKontrol'], config('app.timezone'))->format('Y-m-d'),
                 "poliKontrol" => $kontrol['poliKontrolBPJS'],
                 "kodeDokter" => $kontrol['drKontrolBPJS'],
                 "user" =>  'Sirus',

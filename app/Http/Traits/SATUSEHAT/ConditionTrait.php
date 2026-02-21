@@ -182,7 +182,7 @@ trait ConditionTrait
             'encounter'          => [
                 'reference' => 'Encounter/' . $data['encounterId'],
             ],
-            'recordedDate'       => $data['recordedDate'] ?? Carbon::now()->toIso8601String(),
+            'recordedDate'       => $data['recordedDate'] ?? Carbon::now(config('app.timezone'))->toIso8601String(),
         ];
 
         // Optional: onsetDateTime
@@ -272,7 +272,7 @@ trait ConditionTrait
             'encounter'          => [
                 'reference' => 'Encounter/' . $data['encounterId'],
             ],
-            'recordedDate'       => $data['recordedDate'] ?? Carbon::now()->toIso8601String(),
+            'recordedDate'       => $data['recordedDate'] ?? Carbon::now(config('app.timezone'))->toIso8601String(),
         ];
 
         // Optional: onsetDateTime
@@ -331,8 +331,8 @@ trait ConditionTrait
             'code'               => $data['codePayload'],
             'subject'            => ['reference' => 'Patient/' . $data['patientId']],
             'encounter'          => ['reference' => 'Encounter/' . $data['encounterId']],
-            'onsetDateTime'      => $data['onsetDate'] ?? Carbon::now()->toIso8601String(),
-            'recordedDate'       => Carbon::now()->toIso8601String(),
+            'onsetDateTime'      => $data['onsetDate'] ?? Carbon::now(config('app.timezone'))->toIso8601String(),
+            'recordedDate'       => Carbon::now(config('app.timezone'))->toIso8601String(),
             'severity'           => $data['severityPayload'] ?? [],
             'extension'          => [[
                 'url'                => 'http://hl7.org/fhir/StructureDefinition/condition-related',

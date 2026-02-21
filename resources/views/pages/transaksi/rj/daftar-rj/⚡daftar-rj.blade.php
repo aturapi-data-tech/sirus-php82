@@ -22,7 +22,7 @@ new class extends Component {
 
     public function mount(): void
     {
-        $this->filterTanggal = Carbon::now()->format('d/m/Y');
+        $this->filterTanggal = Carbon::now(config('app.timezone'))->format('d/m/Y');
     }
 
     public function updatedSearchKeyword(): void
@@ -62,7 +62,7 @@ new class extends Component {
     {
         $this->reset(['searchKeyword', 'filterStatus', 'filterPoli', 'filterDokter']);
         $this->filterStatus = '1';
-        $this->filterTanggal = Carbon::now()->format('d/m/Y');
+        $this->filterTanggal = Carbon::now(config('app.timezone'))->format('d/m/Y');
         $this->resetPage();
     }
 

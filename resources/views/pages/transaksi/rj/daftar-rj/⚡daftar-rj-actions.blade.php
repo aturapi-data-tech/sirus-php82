@@ -112,96 +112,96 @@ new class extends Component {
     /* ===============================
      | SAVE
      =============================== */
-    public function save(): void
-    {
-        // Set data primer (RJno, NoBooking, NoAntrian, dll)
-        $this->setDataPrimer();
-        // Validasi data Rawat Jalan
-        $this->validateDataRJ();
+    // public function save(): void lama
+    // {
+    //     // Set data primer (RJno, NoBooking, NoAntrian, dll)
+    //     $this->setDataPrimer();
+    //     // Validasi data Rawat Jalan
+    //     $this->validateDataRJ();
 
-        $rjNo = $this->dataDaftarPoliRJ['rjNo'] ?? null;
-        if (!$rjNo) {
-            $this->dispatch('toast', type: 'error', message: 'RJ No kosong.');
-            return;
-        }
+    //     $rjNo = $this->dataDaftarPoliRJ['rjNo'] ?? null;
+    //     if (!$rjNo) {
+    //         $this->dispatch('toast', type: 'error', message: 'RJ No kosong.');
+    //         return;
+    //     }
 
-        $lockKey = "lock:rstxn_rjhdrs:{$rjNo}";
+    //     $lockKey = "lock:rstxn_rjhdrs:{$rjNo}";
 
-        try {
-            Cache::lock($lockKey, 15)->block(5, function () use ($rjNo) {
-                DB::transaction(function () use ($rjNo) {
-                    // ============================================
-                    // PREPARE PAYLOAD
-                    // ============================================
-                    $payload = [
-                        'rj_no' => $rjNo,
-                        'rj_date' => DB::raw("to_date('" . $this->dataDaftarPoliRJ['rjDate'] . "','dd/mm/yyyy hh24:mi:ss')"),
-                        'reg_no' => $this->dataDaftarPoliRJ['regNo'],
-                        'nobooking' => $this->dataDaftarPoliRJ['noBooking'],
-                        'no_antrian' => $this->dataDaftarPoliRJ['noAntrian'],
-                        'klaim_id' => $this->dataDaftarPoliRJ['klaimId'],
-                        'poli_id' => $this->dataDaftarPoliRJ['poliId'],
-                        'dr_id' => $this->dataDaftarPoliRJ['drId'],
-                        'shift' => $this->dataDaftarPoliRJ['shift'],
-                        'txn_status' => $this->dataDaftarPoliRJ['txnStatus'],
-                        'rj_status' => $this->dataDaftarPoliRJ['rjStatus'],
-                        'erm_status' => $this->dataDaftarPoliRJ['ermStatus'],
-                        'pass_status' => $this->dataDaftarPoliRJ['passStatus'],
-                        'cek_lab' => $this->dataDaftarPoliRJ['cekLab'],
-                        'sl_codefrom' => $this->dataDaftarPoliRJ['slCodeFrom'],
-                        'kunjungan_internal_status' => $this->dataDaftarPoliRJ['kunjunganInternalStatus'],
-                        'waktu_masuk_pelayanan' => DB::raw("to_date('" . $this->dataDaftarPoliRJ['rjDate'] . "','dd/mm/yyyy hh24:mi:ss')"),
-                        'vno_sep' => $this->dataDaftarPoliRJ['sep']['noSep'] ?? '',
-                    ];
+    //     try {
+    //         Cache::lock($lockKey, 15)->block(5, function () use ($rjNo) {
+    //             DB::transaction(function () use ($rjNo) {
+    //                 // ============================================
+    //                 // PREPARE PAYLOAD
+    //                 // ============================================
+    //                 $payload = [
+    //                     'rj_no' => $rjNo,
+    //                     'rj_date' => DB::raw("to_date('" . $this->dataDaftarPoliRJ['rjDate'] . "','dd/mm/yyyy hh24:mi:ss')"),
+    //                     'reg_no' => $this->dataDaftarPoliRJ['regNo'],
+    //                     'nobooking' => $this->dataDaftarPoliRJ['noBooking'],
+    //                     'no_antrian' => $this->dataDaftarPoliRJ['noAntrian'],
+    //                     'klaim_id' => $this->dataDaftarPoliRJ['klaimId'],
+    //                     'poli_id' => $this->dataDaftarPoliRJ['poliId'],
+    //                     'dr_id' => $this->dataDaftarPoliRJ['drId'],
+    //                     'shift' => $this->dataDaftarPoliRJ['shift'],
+    //                     'txn_status' => $this->dataDaftarPoliRJ['txnStatus'],
+    //                     'rj_status' => $this->dataDaftarPoliRJ['rjStatus'],
+    //                     'erm_status' => $this->dataDaftarPoliRJ['ermStatus'],
+    //                     'pass_status' => $this->dataDaftarPoliRJ['passStatus'],
+    //                     'cek_lab' => $this->dataDaftarPoliRJ['cekLab'],
+    //                     'sl_codefrom' => $this->dataDaftarPoliRJ['slCodeFrom'],
+    //                     'kunjungan_internal_status' => $this->dataDaftarPoliRJ['kunjunganInternalStatus'],
+    //                     'waktu_masuk_pelayanan' => DB::raw("to_date('" . $this->dataDaftarPoliRJ['rjDate'] . "','dd/mm/yyyy hh24:mi:ss')"),
+    //                     'vno_sep' => $this->dataDaftarPoliRJ['sep']['noSep'] ?? '',
+    //                 ];
 
-                    // ============================================
-                    // INSERT/UPDATE TABLE
-                    // ============================================
-                    if ($this->formMode === 'create') {
-                        DB::table('rstxn_rjhdrs')->insert($payload);
-                        $message = 'Data Rawat Jalan berhasil disimpan.';
-                    } else {
-                        DB::table('rstxn_rjhdrs')->where('rj_no', $rjNo)->update($payload);
-                        $message = 'Data Rawat Jalan berhasil diperbarui.';
-                    }
+    //                 // ============================================
+    //                 // INSERT/UPDATE TABLE
+    //                 // ============================================
+    //                 if ($this->formMode === 'create') {
+    //                     DB::table('rstxn_rjhdrs')->insert($payload);
+    //                     $message = 'Data Rawat Jalan berhasil disimpan.';
+    //                 } else {
+    //                     DB::table('rstxn_rjhdrs')->where('rj_no', $rjNo)->update($payload);
+    //                     $message = 'Data Rawat Jalan berhasil diperbarui.';
+    //                 }
 
-                    // ============================================
-                    // UPDATE JSON DENGAN DATA TERBARU
-                    // ============================================
-                    // Untuk CREATE: langsung pakai data form
-                    // Untuk EDIT: merge data form + data fresh dari database
+    //                 // ============================================
+    //                 // UPDATE JSON DENGAN DATA TERBARU
+    //                 // ============================================
+    //                 // Untuk CREATE: langsung pakai data form
+    //                 // Untuk EDIT: merge data form + data fresh dari database
 
-                    if ($this->formMode === 'create') {
-                        // Data baru, langsung pakai dari form
-                        $mergedRJ = $this->dataDaftarPoliRJ;
-                    } else {
-                        $updatedData = $this->findDataRJ($rjNo);
-                        // Whitelist field dari form
-                        $allowed = ['rjNo', 'regNo', 'regName', 'drId', 'drDesc', 'poliId', 'poliDesc', 'klaimId', 'klaimStatus', 'kunjunganId', 'rjDate', 'shift', 'noAntrian', 'noBooking', 'slCodeFrom', 'passStatus', 'rjStatus', 'txnStatus', 'ermStatus', 'cekLab', 'kunjunganInternalStatus', 'noReferensi', 'postInap', 'internal12', 'internal12Desc', 'internal12Options', 'kontrol12', 'kontrol12Desc', 'kontrol12Options', 'taskIdPelayanan', 'sep'];
+    //                 if ($this->formMode === 'create') {
+    //                     // Data baru, langsung pakai dari form
+    //                     $mergedRJ = $this->dataDaftarPoliRJ;
+    //                 } else {
+    //                     $updatedData = $this->findDataRJ($rjNo);
+    //                     // Whitelist field dari form
+    //                     $allowed = ['rjNo', 'regNo', 'regName', 'drId', 'drDesc', 'poliId', 'poliDesc', 'klaimId', 'klaimStatus', 'kunjunganId', 'rjDate', 'shift', 'noAntrian', 'noBooking', 'slCodeFrom', 'passStatus', 'rjStatus', 'txnStatus', 'ermStatus', 'cekLab', 'kunjunganInternalStatus', 'noReferensi', 'postInap', 'internal12', 'internal12Desc', 'internal12Options', 'kontrol12', 'kontrol12Desc', 'kontrol12Options', 'taskIdPelayanan', 'sep'];
 
-                        // Ambil field dari form yang diizinkan
-                        $formData = array_intersect_key($this->dataDaftarPoliRJ, array_flip($allowed));
+    //                     // Ambil field dari form yang diizinkan
+    //                     $formData = array_intersect_key($this->dataDaftarPoliRJ, array_flip($allowed));
 
-                        // Merge: prioritas data dari database, tapi timpa dengan form untuk field tertentu
-                        $mergedRJ = array_replace_recursive($updatedData, $formData);
-                    }
+    //                     // Merge: prioritas data dari database, tapi timpa dengan form untuk field tertentu
+    //                     $mergedRJ = array_replace_recursive($updatedData, $formData);
+    //                 }
 
-                    // Safety: pastikan rjNo tetap sama
-                    $mergedRJ['rjNo'] = $rjNo;
+    //                 // Safety: pastikan rjNo tetap sama
+    //                 $mergedRJ['rjNo'] = $rjNo;
 
-                    // Simpan JSON
-                    $this->updateJsonRJ($rjNo, $mergedRJ);
+    //                 // Simpan JSON
+    //                 $this->updateJsonRJ($rjNo, $mergedRJ);
 
-                    // Reset & notifikasi
-                    $this->resetValidation();
-                    $this->dispatch('toast', type: 'success', message: $message);
-                    $this->dispatch('master.daftar-rj.saved');
-                }); // End transaction
-            }); // End cache lock
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan data: ' . $e->getMessage());
-        }
-    }
+    //                 // Reset & notifikasi
+    //                 $this->resetValidation();
+    //                 $this->dispatch('toast', type: 'success', message: $message);
+    //                 $this->dispatch('master.daftar-rj.saved');
+    //             }); // End transaction
+    //         }); // End cache lock
+    //     } catch (\Throwable $e) {
+    //         $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan data: ' . $e->getMessage());
+    //     }
+    // }
 
     /**
      * Helper untuk mendapatkan label status
@@ -426,7 +426,7 @@ new class extends Component {
 
         $this->formMode = 'create';
 
-        $this->dataDaftarPoliRJ['rjDate'] = now()->format('d/m/Y H:i:s');
+        $this->dataDaftarPoliRJ['rjDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
         $this->dataDaftarPoliRJ['regNo'] = '';
         $this->dataDaftarPoliRJ['regName'] = '';
         $this->dataDaftarPoliRJ['drId'] = null;
@@ -594,7 +594,7 @@ new class extends Component {
         // Atau register manual
         $this->registerAreas(['modal', 'pasien', 'dokter']);
 
-        $this->dataDaftarPoliRJ['rjDate'] = now()->format('d/m/Y H:i:s');
+        $this->dataDaftarPoliRJ['rjDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
     }
 };
 

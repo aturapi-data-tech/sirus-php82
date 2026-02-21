@@ -309,7 +309,7 @@ new class extends Component {
 
     private function cariDataPeserta($idBpjs)
     {
-        $tglSep = Carbon::now()->format('Y-m-d');
+        $tglSep = Carbon::now(config('app.timezone'))->format('Y-m-d');
         $response = VclaimTrait::peserta_nomorkartu($idBpjs, $tglSep)->getOriginalContent();
 
         if ($response['metadata']['code'] == 200) {
@@ -377,7 +377,7 @@ new class extends Component {
             'noMR' => $peserta['mr']['noMR'] ?? $this->SEPForm['noMR'],
             'rujukan' => [
                 'asalRujukan' => '2',
-                'tglRujukan' => Carbon::now()->format('Y-m-d'),
+                'tglRujukan' => Carbon::now(config('app.timezone'))->format('Y-m-d'),
                 'noRujukan' => '',
                 'ppkRujukan' => '0184R006',
             ],
@@ -537,7 +537,7 @@ new class extends Component {
     private function resetForm()
     {
         $this->reset('SEPForm', 'selectedRujukan', 'showRujukanLov', 'dataRujukan');
-        $this->SEPForm['tglSep'] = Carbon::now()->format('Y-m-d');
+        $this->SEPForm['tglSep'] = Carbon::now(config('app.timezone'))->format('Y-m-d');
         $this->isFormLocked = false;
     }
 
@@ -551,20 +551,39 @@ new class extends Component {
         $this->resetForm();
         $this->resetVersion();
     }
+
+    /**
+     * Handle event dari LOV Dokter
+     * Update data dokter dan poli yang dipilih
+     */
     #[On('lov.selected.rjFormDokterVclaim')]
     public function rjFormDokterVclaim(string $target, array $payload): void
     {
-        // Untuk LOV Dokter DPJP di form SEP
-        // Update drId dan drDesc (property di component ini)
+        // Update data dokter
         $this->drId = $payload['dr_id'] ?? null;
         $this->drDesc = $payload['dr_name'] ?? '';
         $this->SEPForm['dpjpLayan'] = $payload['kd_dr_bpjs'] ?? '';
+
+        // Update data poli dari dokter yang dipilih
+        $this->poliId = $payload['poli_id'] ?? null;
+        $this->poliDesc = $payload['poli_desc'] ?? '';
+        $this->SEPForm['poli']['tujuan'] = $payload['kd_poli_bpjs'] ?? ($this->kdpolibpjs ?? '');
+
+        // Update informasi tambahan untuk SKDP jika diperlukan (kontrol)
+        if ($this->kunjunganId == '3' && !$this->postInap) {
+            $this->SEPForm['skdp']['kodeDPJP'] = $payload['kd_dr_bpjs'] ?? '';
+        } else {
+            $this->SEPForm['skdp']['kodeDPJP'] = '';
+        }
+
+        // Trigger render ulang
         $this->incrementVersion('modal');
+        $this->incrementVersion('form-sep');
     }
 
     public function mount()
     {
-        $this->SEPForm['tglSep'] = Carbon::now()->format('Y-m-d');
+        $this->SEPForm['tglSep'] = Carbon::now(config('app.timezone'))->format('Y-m-d');
         $this->registerAreas(['modal', 'lov-rujukan', 'form-sep', 'info-pasien']);
     }
 };
@@ -848,10 +867,7 @@ new class extends Component {
                                         <div class="flex gap-2">
                                             <x-text-input wire:model="SEPForm.diagAwal" class="flex-1"
                                                 placeholder="Kode ICD 10" :error="$errors->has('SEPForm.diagAwal')" :disabled="$isFormLocked" />
-                                            <x-secondary-button type="button" wire:click="cariDiagnosa"
-                                                class="whitespace-nowrap" :disabled="$isFormLocked">
-                                                Cari
-                                            </x-secondary-button>
+
                                         </div>
                                         <x-input-error :messages="$errors->get('SEPForm.diagAwal')" class="mt-1" />
                                     </div>
@@ -862,10 +878,7 @@ new class extends Component {
                                         <div class="flex gap-2">
                                             <x-text-input wire:model="SEPForm.poli.tujuan" class="flex-1"
                                                 placeholder="Kode Poli" :error="$errors->has('SEPForm.poli.tujuan')" :disabled="$isFormLocked" />
-                                            <x-secondary-button type="button" wire:click="cariPoli"
-                                                class="whitespace-nowrap" :disabled="$isFormLocked">
-                                                Cari
-                                            </x-secondary-button>
+
                                         </div>
                                         <x-input-error :messages="$errors->get('SEPForm.poli.tujuan')" class="mt-1" />
                                     </div>
@@ -876,10 +889,7 @@ new class extends Component {
                                         <div class="flex gap-2">
                                             <x-text-input wire:model="SEPForm.dpjpLayan" class="flex-1"
                                                 placeholder="Kode DPJP" :error="$errors->has('SEPForm.dpjpLayan')" :disabled="$isFormLocked" />
-                                            <x-secondary-button type="button" wire:click="cariDPJP"
-                                                class="whitespace-nowrap" :disabled="$isFormLocked">
-                                                Cari
-                                            </x-secondary-button>
+
                                         </div>
                                         <x-input-error :messages="$errors->get('SEPForm.dpjpLayan')" class="mt-1" />
                                     </div>

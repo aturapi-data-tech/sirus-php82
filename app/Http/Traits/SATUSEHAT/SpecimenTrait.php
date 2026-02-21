@@ -48,7 +48,7 @@ trait SpecimenTrait
                 ]]
             ],
             'collection'   => [
-                'collectedDateTime' => $data['collection']['collectedDateTime'] ?? Carbon::now()->toIso8601String(),
+                'collectedDateTime' => $data['collection']['collectedDateTime'] ?? Carbon::now(config('app.timezone'))->toIso8601String(),
                 'method' => [
                     'coding' => [[
                         'system'  => $data['collection']['method']['system'],
@@ -57,7 +57,7 @@ trait SpecimenTrait
                     ]]
                 ],
             ],
-            'receivedTime' => $data['receivedTime'] ?? Carbon::now()->toIso8601String(),
+            'receivedTime' => $data['receivedTime'] ?? Carbon::now(config('app.timezone'))->toIso8601String(),
             'request'      => array_map(function ($ref) {
                 return ['reference' => $ref];
             }, $data['request'] ?? []),
