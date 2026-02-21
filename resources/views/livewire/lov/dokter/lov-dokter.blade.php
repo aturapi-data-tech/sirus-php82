@@ -47,18 +47,27 @@ new class extends Component {
             return;
         }
 
-        $row = DB::table('rsmst_doctors as a')->join('rsmst_polis as b', 'a.poli_id', '=', 'b.poli_id')->select('a.dr_id', 'a.dr_name', 'a.poli_id', 'b.poli_desc', 'a.dr_phone', 'a.dr_address', 'a.basic_salary', 'a.active_status')->where('a.dr_id', $this->initialDrId)->first();
+        $row = DB::table('rsmst_doctors as a')->join('rsmst_polis as b', 'a.poli_id', '=', 'b.poli_id')->select('a.dr_id', 'a.dr_address', 'a.dr_phone', 'a.dr_name', 'a.poli_id', 'a.poli_price', 'a.ugd_price', 'a.basic_salary', 'a.contribution_status', 'a.active_status', 'a.rs_admin', 'a.kd_dr_bpjs', 'a.dr_uuid', 'a.dr_nik', 'a.poli_price_bpjs', 'a.ugd_price_bpjs', 'b.poli_desc')->where('a.dr_id', $this->initialDrId)->first();
 
         if ($row) {
             $this->selected = [
                 'dr_id' => (string) $row->dr_id,
+                'dr_address' => (string) ($row->dr_address ?? ''),
+                'dr_phone' => (string) ($row->dr_phone ?? ''),
                 'dr_name' => (string) ($row->dr_name ?? ''),
                 'poli_id' => (string) ($row->poli_id ?? ''),
                 'poli_desc' => (string) ($row->poli_desc ?? ''),
-                'dr_phone' => (string) ($row->dr_phone ?? ''),
-                'dr_address' => (string) ($row->dr_address ?? ''),
+                'poli_price' => (string) ($row->poli_price ?? ''),
+                'ugd_price' => (string) ($row->ugd_price ?? ''),
                 'basic_salary' => (string) ($row->basic_salary ?? ''),
+                'contribution_status' => (string) ($row->contribution_status ?? ''),
                 'active_status' => (string) ($row->active_status ?? ''),
+                'rs_admin' => (string) ($row->rs_admin ?? ''),
+                'kd_dr_bpjs' => (string) ($row->kd_dr_bpjs ?? ''),
+                'dr_uuid' => (string) ($row->dr_uuid ?? ''),
+                'dr_nik' => (string) ($row->dr_nik ?? ''),
+                'poli_price_bpjs' => (string) ($row->poli_price_bpjs ?? ''),
+                'ugd_price_bpjs' => (string) ($row->ugd_price_bpjs ?? ''),
             ];
         }
     }
@@ -80,7 +89,7 @@ new class extends Component {
 
         // ===== 1) exact match by dr_id =====
         if (ctype_digit($keyword)) {
-            $exactQuery = DB::table('rsmst_doctors as a')->join('rsmst_polis as b', 'a.poli_id', '=', 'b.poli_id')->select('a.dr_id', 'a.dr_name', 'a.poli_id', 'b.poli_desc', 'a.dr_phone', 'a.dr_address', 'a.basic_salary', 'a.active_status')->where('a.dr_id', $keyword);
+            $exactQuery = DB::table('rsmst_doctors as a')->join('rsmst_polis as b', 'a.poli_id', '=', 'b.poli_id')->select('a.dr_id', 'a.dr_address', 'a.dr_phone', 'a.dr_name', 'a.poli_id', 'a.poli_price', 'a.ugd_price', 'a.basic_salary', 'a.contribution_status', 'a.active_status', 'a.rs_admin', 'a.kd_dr_bpjs', 'a.dr_uuid', 'a.dr_nik', 'a.poli_price_bpjs', 'a.ugd_price_bpjs', 'b.poli_desc')->where('a.dr_id', $keyword);
 
             // Tambah filter poli jika ada
             if ($this->filterPoliId) {
@@ -92,13 +101,22 @@ new class extends Component {
             if ($exactRow) {
                 $this->dispatchSelected([
                     'dr_id' => (string) $exactRow->dr_id,
+                    'dr_address' => (string) ($exactRow->dr_address ?? ''),
+                    'dr_phone' => (string) ($exactRow->dr_phone ?? ''),
                     'dr_name' => (string) ($exactRow->dr_name ?? ''),
                     'poli_id' => (string) ($exactRow->poli_id ?? ''),
                     'poli_desc' => (string) ($exactRow->poli_desc ?? ''),
-                    'dr_phone' => (string) ($exactRow->dr_phone ?? ''),
-                    'dr_address' => (string) ($exactRow->dr_address ?? ''),
+                    'poli_price' => (string) ($exactRow->poli_price ?? ''),
+                    'ugd_price' => (string) ($exactRow->ugd_price ?? ''),
                     'basic_salary' => (string) ($exactRow->basic_salary ?? ''),
+                    'contribution_status' => (string) ($exactRow->contribution_status ?? ''),
                     'active_status' => (string) ($exactRow->active_status ?? ''),
+                    'rs_admin' => (string) ($exactRow->rs_admin ?? ''),
+                    'kd_dr_bpjs' => (string) ($exactRow->kd_dr_bpjs ?? ''),
+                    'dr_uuid' => (string) ($exactRow->dr_uuid ?? ''),
+                    'dr_nik' => (string) ($exactRow->dr_nik ?? ''),
+                    'poli_price_bpjs' => (string) ($exactRow->poli_price_bpjs ?? ''),
+                    'ugd_price_bpjs' => (string) ($exactRow->ugd_price_bpjs ?? ''),
                 ]);
                 return;
             }
@@ -109,7 +127,7 @@ new class extends Component {
 
         $query = DB::table('rsmst_doctors as a')
             ->join('rsmst_polis as b', 'a.poli_id', '=', 'b.poli_id')
-            ->select('a.dr_id', 'a.dr_name', 'a.poli_id', 'b.poli_desc', 'a.dr_phone', 'a.dr_address', 'a.basic_salary', 'a.active_status')
+            ->select('a.dr_id', 'a.dr_address', 'a.dr_phone', 'a.dr_name', 'a.poli_id', 'a.poli_price', 'a.ugd_price', 'a.basic_salary', 'a.contribution_status', 'a.active_status', 'a.rs_admin', 'a.kd_dr_bpjs', 'a.dr_uuid', 'a.dr_nik', 'a.poli_price_bpjs', 'a.ugd_price_bpjs', 'b.poli_desc')
             ->where(function ($q) use ($keyword, $upperKeyword) {
                 if (ctype_digit($keyword)) {
                     $q->orWhere('a.dr_id', 'like', "%{$keyword}%");
@@ -133,28 +151,44 @@ new class extends Component {
                 $drName = (string) ($row->dr_name ?? '');
                 $poliDesc = (string) ($row->poli_desc ?? '');
                 $activeStatus = (string) ($row->active_status ?? '');
+                $contributionStatus = (string) ($row->contribution_status ?? '');
+                $drNik = (string) ($row->dr_nik ?? '');
 
                 $statusLabel = $activeStatus === '1' ? 'Aktif' : 'Tidak Aktif';
                 $statusClass = $activeStatus === '1' ? 'text-green-600' : 'text-red-600';
 
-                $parts = array_filter([$drId ? "ID {$drId}" : null, $poliDesc ? "Poli {$poliDesc}" : null]);
+                $contributionLabel = $contributionStatus === '1' ? 'Kontribusi' : 'Non Kontribusi';
+                $contributionClass = $contributionStatus === '1' ? 'text-blue-600' : 'text-gray-500';
+
+                $parts = array_filter([$drId ? "ID {$drId}" : null, $drNik ? "NIK: {$drNik}" : null, $poliDesc ? "Poli {$poliDesc}" : null]);
 
                 return [
                     // payload
                     'dr_id' => $drId,
+                    'dr_address' => (string) ($row->dr_address ?? ''),
+                    'dr_phone' => (string) ($row->dr_phone ?? ''),
                     'dr_name' => $drName,
                     'poli_id' => (string) ($row->poli_id ?? ''),
                     'poli_desc' => $poliDesc,
-                    'dr_phone' => (string) ($row->dr_phone ?? ''),
-                    'dr_address' => (string) ($row->dr_address ?? ''),
+                    'poli_price' => (string) ($row->poli_price ?? ''),
+                    'ugd_price' => (string) ($row->ugd_price ?? ''),
                     'basic_salary' => (string) ($row->basic_salary ?? ''),
+                    'contribution_status' => $contributionStatus,
                     'active_status' => $activeStatus,
+                    'rs_admin' => (string) ($row->rs_admin ?? ''),
+                    'kd_dr_bpjs' => (string) ($row->kd_dr_bpjs ?? ''),
+                    'dr_uuid' => (string) ($row->dr_uuid ?? ''),
+                    'dr_nik' => $drNik,
+                    'poli_price_bpjs' => (string) ($row->poli_price_bpjs ?? ''),
+                    'ugd_price_bpjs' => (string) ($row->ugd_price_bpjs ?? ''),
 
                     // UI
                     'label' => $drName ?: '-',
                     'hint' => implode(' • ', $parts),
                     'status' => $statusLabel,
                     'status_class' => $statusClass,
+                    'contribution' => $contributionLabel,
+                    'contribution_class' => $contributionClass,
                 ];
             })
             ->toArray();
@@ -220,13 +254,22 @@ new class extends Component {
 
         $payload = [
             'dr_id' => $this->options[$index]['dr_id'] ?? '',
+            'dr_address' => $this->options[$index]['dr_address'] ?? '',
+            'dr_phone' => $this->options[$index]['dr_phone'] ?? '',
             'dr_name' => $this->options[$index]['dr_name'] ?? '',
             'poli_id' => $this->options[$index]['poli_id'] ?? '',
             'poli_desc' => $this->options[$index]['poli_desc'] ?? '',
-            'dr_phone' => $this->options[$index]['dr_phone'] ?? '',
-            'dr_address' => $this->options[$index]['dr_address'] ?? '',
+            'poli_price' => $this->options[$index]['poli_price'] ?? '',
+            'ugd_price' => $this->options[$index]['ugd_price'] ?? '',
             'basic_salary' => $this->options[$index]['basic_salary'] ?? '',
+            'contribution_status' => $this->options[$index]['contribution_status'] ?? '',
             'active_status' => $this->options[$index]['active_status'] ?? '',
+            'rs_admin' => $this->options[$index]['rs_admin'] ?? '',
+            'kd_dr_bpjs' => $this->options[$index]['kd_dr_bpjs'] ?? '',
+            'dr_uuid' => $this->options[$index]['dr_uuid'] ?? '',
+            'dr_nik' => $this->options[$index]['dr_nik'] ?? '',
+            'poli_price_bpjs' => $this->options[$index]['poli_price_bpjs'] ?? '',
+            'ugd_price_bpjs' => $this->options[$index]['ugd_price_bpjs'] ?? '',
         ];
 
         $this->dispatchSelected($payload);
@@ -258,7 +301,8 @@ new class extends Component {
         $this->selectedIndex = 0;
 
         // emit ke parent
-        $this->dispatch('lov.selected', target: $this->target, payload: $payload);
+        $eventName = 'lov.selected.' . $this->target;
+        $this->dispatch($eventName, target: $this->target, payload: $payload);
     }
 
     protected function emitScroll(): void
@@ -278,18 +322,27 @@ new class extends Component {
             return;
         }
 
-        $row = DB::table('rsmst_doctors as a')->join('rsmst_polis as b', 'a.poli_id', '=', 'b.poli_id')->select('a.dr_id', 'a.dr_name', 'a.poli_id', 'b.poli_desc', 'a.dr_phone', 'a.dr_address', 'a.basic_salary', 'a.active_status')->where('a.dr_id', $value)->first();
+        $row = DB::table('rsmst_doctors as a')->join('rsmst_polis as b', 'a.poli_id', '=', 'b.poli_id')->select('a.dr_id', 'a.dr_address', 'a.dr_phone', 'a.dr_name', 'a.poli_id', 'a.poli_price', 'a.ugd_price', 'a.basic_salary', 'a.contribution_status', 'a.active_status', 'a.rs_admin', 'a.kd_dr_bpjs', 'a.dr_uuid', 'a.dr_nik', 'a.poli_price_bpjs', 'a.ugd_price_bpjs', 'b.poli_desc')->where('a.dr_id', $value)->first();
 
         if ($row) {
             $this->selected = [
                 'dr_id' => (string) $row->dr_id,
+                'dr_address' => (string) ($row->dr_address ?? ''),
+                'dr_phone' => (string) ($row->dr_phone ?? ''),
                 'dr_name' => (string) ($row->dr_name ?? ''),
                 'poli_id' => (string) ($row->poli_id ?? ''),
                 'poli_desc' => (string) ($row->poli_desc ?? ''),
-                'dr_phone' => (string) ($row->dr_phone ?? ''),
-                'dr_address' => (string) ($row->dr_address ?? ''),
+                'poli_price' => (string) ($row->poli_price ?? ''),
+                'ugd_price' => (string) ($row->ugd_price ?? ''),
                 'basic_salary' => (string) ($row->basic_salary ?? ''),
+                'contribution_status' => (string) ($row->contribution_status ?? ''),
                 'active_status' => (string) ($row->active_status ?? ''),
+                'rs_admin' => (string) ($row->rs_admin ?? ''),
+                'kd_dr_bpjs' => (string) ($row->kd_dr_bpjs ?? ''),
+                'dr_uuid' => (string) ($row->dr_uuid ?? ''),
+                'dr_nik' => (string) ($row->dr_nik ?? ''),
+                'poli_price_bpjs' => (string) ($row->poli_price_bpjs ?? ''),
+                'ugd_price_bpjs' => (string) ($row->ugd_price_bpjs ?? ''),
             ];
         }
     }
@@ -323,6 +376,39 @@ new class extends Component {
                     </x-secondary-button>
                 @endif
             </div>
+
+            {{-- Informasi tambahan dokter yang dipilih (opsional) --}}
+            @if ($selected['dr_phone'] || $selected['poli_price'] || $selected['basic_salary'])
+                <div class="grid grid-cols-2 gap-2 p-2 mt-2 text-xs rounded-lg bg-gray-50 dark:bg-gray-800">
+                    @if ($selected['dr_phone'])
+                        <div><span class="font-medium">Telp:</span> {{ $selected['dr_phone'] }}</div>
+                    @endif
+                    {{-- @if ($selected['poli_price'])
+                        <div><span class="font-medium">Harga Poli:</span> Rp
+                            {{ number_format($selected['poli_price'], 0, ',', '.') }}</div>
+                    @endif
+                    @if ($selected['ugd_price'])
+                        <div><span class="font-medium">Harga UGD:</span> Rp
+                            {{ number_format($selected['ugd_price'], 0, ',', '.') }}</div>
+                    @endif
+                    @if ($selected['basic_salary'])
+                        <div><span class="font-medium">Gaji Pokok:</span> Rp
+                            {{ number_format($selected['basic_salary'], 0, ',', '.') }}</div>
+                    @endif --}}
+                    {{-- @if ($selected['contribution_status'] !== '')
+                        <div><span class="font-medium">Status Kontribusi:</span>
+                            <span
+                                class="{{ $selected['contribution_status'] === '1' ? 'text-blue-600' : 'text-gray-500' }}">
+                                {{ $selected['contribution_status'] === '1' ? 'Ya' : 'Tidak' }}
+                            </span>
+                        </div>
+                    @endif
+                    @if ($selected['rs_admin'] !== '')
+                        <div><span class="font-medium">RS Admin:</span>
+                            {{ $selected['rs_admin'] === '1' ? 'Ya' : 'Tidak' }}</div>
+                    @endif --}}
+                </div>
+            @endif
         @endif
 
         {{-- dropdown hanya saat mode cari dan tidak disabled --}}
@@ -338,8 +424,13 @@ new class extends Component {
                                     <div class="font-semibold text-gray-900 dark:text-gray-100">
                                         {{ $option['label'] ?? '-' }}
                                     </div>
-                                    <div class="text-xs {{ $option['status_class'] ?? 'text-gray-500' }}">
-                                        {{ $option['status'] ?? '' }}
+                                    <div class="flex items-center gap-2">
+                                        <div class="text-xs {{ $option['contribution_class'] ?? 'text-gray-500' }}">
+                                            {{ $option['contribution'] ?? '' }}
+                                        </div>
+                                        <div class="text-xs {{ $option['status_class'] ?? 'text-gray-500' }}">
+                                            {{ $option['status'] ?? '' }}
+                                        </div>
                                     </div>
                                 </div>
 
@@ -348,6 +439,20 @@ new class extends Component {
                                         {{ $option['hint'] }}
                                     </div>
                                 @endif
+
+                                {{-- Tampilkan info harga jika ada --}}
+                                {{-- <div class="flex flex-wrap gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    @if (!empty($option['poli_price']) && $option['poli_price'] > 0)
+                                        <span>Poli: Rp {{ number_format($option['poli_price'], 0, ',', '.') }}</span>
+                                    @endif
+                                    @if (!empty($option['ugd_price']) && $option['ugd_price'] > 0)
+                                        <span>UGD: Rp {{ number_format($option['ugd_price'], 0, ',', '.') }}</span>
+                                    @endif
+                                    @if (!empty($option['poli_price_bpjs']) && $option['poli_price_bpjs'] > 0)
+                                        <span>BPJS Poli: Rp
+                                            {{ number_format($option['poli_price_bpjs'], 0, ',', '.') }}</span>
+                                    @endif
+                                </div> --}}
                             </x-lov.item>
                         </li>
                     @endforeach

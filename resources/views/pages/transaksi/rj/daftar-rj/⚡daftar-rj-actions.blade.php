@@ -8,9 +8,9 @@ use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
-use App\Http\Traits\Lov\WithLovVersioning;
+use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 new class extends Component {
-    use EmrRJTrait, WithLovVersioning;
+    use EmrRJTrait, WithRenderVersioningTrait;
 
     public string $formMode = 'create'; // create|edit
     public bool $isFormLocked = false;
@@ -20,7 +20,9 @@ new class extends Component {
     public ?string $kronisNotice = null;
     public array $dataDaftarPoliRJ = ['passStatus' => 'O'];
 
-    public array $lovList = ['pasien', 'dokter'];
+    // renderVersions
+    public array $renderVersions = [];
+    protected array $renderAreas = ['modal', 'pasien', 'dokter'];
 
     public string $klaimId = 'UM';
     public array $klaimOptions = [['klaimId' => 'UM', 'klaimDesc' => 'UMUM'], ['klaimId' => 'JM', 'klaimDesc' => 'BPJS'], ['klaimId' => 'JR', 'klaimDesc' => 'JASA RAHARJA'], ['klaimId' => 'JML', 'klaimDesc' => 'Asuransi Lain'], ['klaimId' => 'KR', 'klaimDesc' => 'Kronis']];
@@ -35,12 +37,6 @@ new class extends Component {
     // Internal 1/2 (untuk kunjungan Internal)
     public string $internal12 = '1';
     public array $internal12Options = [['internal12' => '1', 'internal12Desc' => 'Faskes Tingkat 1'], ['internal12' => '2', 'internal12Desc' => 'Faskes Tingkat 2 RS']];
-
-    public function mount()
-    {
-        // Cara 2: Register manual
-        $this->registerLovs(['pasien', 'dokter']);
-    }
 
     /* ===============================
      | OPEN CREATE
@@ -87,6 +83,7 @@ new class extends Component {
 
         // Ambil data JSON dari DB
         $data = $this->findDataRJ($rjNo);
+
         if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
             return;
@@ -95,9 +92,8 @@ new class extends Component {
             $this->isFormLocked = true;
             $this->dispatch('toast', type: 'warning', message: 'Data Rawat Jalan ini sudah selesai dan tidak bisa diubah.');
         }
-
         // Merge dengan template default supaya struktur tetap konsisten
-        $this->dataDaftarPoliRJ = array_replace_recursive($this->getDefaultRJTemplate(), $data);
+        $this->dataDaftarPoliRJ = $data;
 
         // Sync property turunan agar radio/toggle tetap aktif
         $this->syncFromDataDaftarPoliRJ();
@@ -420,7 +416,7 @@ new class extends Component {
     {
         $this->reset(['rjNo', 'dataDaftarPoliRJ']);
         // Reset semua LOV ke versi 0
-        $this->resetLovVersion();
+        $this->resetVersion();
 
         // Reset default pilihan
         $this->klaimId = 'UM';
@@ -430,6 +426,7 @@ new class extends Component {
 
         $this->formMode = 'create';
 
+        $this->dataDaftarPoliRJ['rjDate'] = now()->format('d/m/Y H:i:s');
         $this->dataDaftarPoliRJ['regNo'] = '';
         $this->dataDaftarPoliRJ['regName'] = '';
         $this->dataDaftarPoliRJ['drId'] = null;
@@ -440,35 +437,41 @@ new class extends Component {
         $this->dataDaftarPoliRJ['passStatus'] = 'O';
     }
 
-    /* ===============================
-     | DELETE
-     =============================== */
-
-    #[On('lov.selected')]
-    public function handleLovSelected(string $target, array $payload): void
+    #[On('lov.selected.rjFormPasien')]
+    public function rjFormPasien(string $target, array $payload): void
     {
-        if ($target === 'rjFormPasien') {
-            $this->dataDaftarPoliRJ['regNo'] = $payload['reg_no'] ?? '';
-            $this->dataDaftarPoliRJ['regName'] = $payload['reg_name'] ?? '';
-        }
+        $this->dataDaftarPoliRJ['regNo'] = $payload['reg_no'] ?? '';
+        $this->dataDaftarPoliRJ['regName'] = $payload['reg_name'] ?? '';
+        $this->incrementVersion('pasien');
+        $this->incrementVersion('modal');
+    }
 
-        if ($target === 'rjFormDokter') {
-            $this->dataDaftarPoliRJ['drId'] = $payload['dr_id'] ?? '';
-            $this->dataDaftarPoliRJ['drDesc'] = $payload['dr_name'] ?? '';
-            $this->dataDaftarPoliRJ['poliId'] = $payload['poli_id'] ?? '';
-            $this->dataDaftarPoliRJ['poliDesc'] = $payload['poli_desc'] ?? '';
-        }
+    #[On('lov.selected.rjFormDokter')]
+    public function rjFormDokter(string $target, array $payload): void
+    {
+        $this->dataDaftarPoliRJ['drId'] = $payload['dr_id'] ?? '';
+        $this->dataDaftarPoliRJ['drDesc'] = $payload['dr_name'] ?? '';
+        $this->dataDaftarPoliRJ['poliId'] = $payload['poli_id'] ?? '';
+        $this->dataDaftarPoliRJ['poliDesc'] = $payload['poli_desc'] ?? '';
+        $this->incrementVersion('dokter');
+        $this->incrementVersion('modal');
     }
 
     public function updated($name, $value)
     {
         // Increment LOV saat field tertentu berubah
         if ($name === 'dataDaftarPoliRJ.regNo') {
-            $this->incrementLovVersion('pasien');
+            $this->incrementVersion('pasien');
+            $this->incrementVersion('modal');
         }
 
         if ($name === 'dataDaftarPoliRJ.drId') {
-            $this->incrementLovVersion('dokter');
+            $this->incrementVersion('dokter');
+            $this->incrementVersion('modal');
+        }
+
+        if (in_array($name, ['klaimId', 'kunjunganId', 'kontrol12', 'internal12'])) {
+            $this->incrementVersion('modal');
         }
 
         // Klaim
@@ -551,7 +554,10 @@ new class extends Component {
             return;
         }
 
-        if (($dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($dataDaftarPoliRJ['klaimId'] ?? '') === 'JM') {
+        // Check if patient is BPJS
+        $isBpjs = ($this->dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($this->dataDaftarPoliRJ['klaimId'] ?? '') === 'JM';
+
+        if (!$isBpjs) {
             $this->dispatch('toast', type: 'error', message: 'Fitur SEP hanya untuk pasien BPJS (Jenis Klaim JM).');
             return;
         }
@@ -561,17 +567,45 @@ new class extends Component {
             return;
         }
 
-        // Dispatch event ke komponen Vclaim dengan data lengkap
-        $this->dispatch('open-vclaim-modal', rjNo: $this->rjNo, regNo: $this->dataDaftarPoliRJ['regNo'], drId: $this->dataDaftarPoliRJ['drId'], drDesc: $this->dataDaftarPoliRJ['drDesc'], poliId: $this->dataDaftarPoliRJ['poliId'], poliDesc: $this->dataDaftarPoliRJ['poliDesc'], kdpolibpjs: $this->dataDaftarPoliRJ['kdpolibpjs'] ?? null, kunjunganId: $this->kunjunganId, kontrol12: $this->kontrol12, internal12: $this->internal12, postInap: $this->dataDaftarPoliRJ['postInap'] ?? false, noReferensi: $this->dataDaftarPoliRJ['noReferensi'] ?? null);
+        // Ambil data SEP dari dataDaftarPoliRJ jika ada
+        $sepData = $this->dataDaftarPoliRJ['sep'] ?? [];
+        // Dispatch event ke komponen Vclaim dengan data lengkap termasuk SEP
+        $this->dispatch('open-vclaim-modal', rjNo: $this->rjNo, regNo: $this->dataDaftarPoliRJ['regNo'], drId: $this->dataDaftarPoliRJ['drId'], drDesc: $this->dataDaftarPoliRJ['drDesc'], poliId: $this->dataDaftarPoliRJ['poliId'], poliDesc: $this->dataDaftarPoliRJ['poliDesc'], kdpolibpjs: $this->dataDaftarPoliRJ['kdpolibpjs'] ?? null, kunjunganId: $this->kunjunganId, kontrol12: $this->kontrol12, internal12: $this->internal12, postInap: $this->dataDaftarPoliRJ['postInap'] ?? false, noReferensi: $this->dataDaftarPoliRJ['noReferensi'] ?? null, sepData: $sepData);
+    }
+
+    #[On('sep-generated')]
+    public function handleSepGenerated($reqSep)
+    {
+        // Simpan reqSep ke dalam struktur sep
+        $this->dataDaftarPoliRJ['sep']['reqSep'] = $reqSep;
+
+        // Set noReferensi dari data rujukan
+        $this->dataDaftarPoliRJ['noReferensi'] = $reqSep['request']['t_sep']['rujukan']['noRujukan'] ?? ($this->dataDaftarPoliRJ['noReferensi'] ?? null);
+
+        $this->incrementVersion('modal');
+        $this->dispatch('toast', [
+            'type' => 'success',
+            'message' => 'Request SEP berhasil diterima',
+        ]);
+    }
+
+    public function mount()
+    {
+        // Atau register manual
+        $this->registerAreas(['modal', 'pasien', 'dokter']);
+
+        $this->dataDaftarPoliRJ['rjDate'] = now()->format('d/m/Y H:i:s');
     }
 };
+
 ?>
 
 
 <div>
     <x-modal name="rj-actions" size="full" height="full" focusable>
+        {{-- CONTAINER UTAMA - SATU-SATUNYA WIRE:KEY --}}
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
-            wire:key="rj-actions-{{ $formMode }}-{{ $rjNo ?? 'new' }}">
+            wire:key="{{ $this->renderKey('modal', [$formMode, $rjNo ?? 'new']) }}">
 
             {{-- HEADER --}}
             <div class="relative px-6 py-5 border-b border-gray-200 dark:border-gray-700">
@@ -620,17 +654,15 @@ new class extends Component {
                         {{-- Tanggal RJ --}}
                         <div class="flex-1">
                             <x-input-label value="Tanggal RJ" />
-                            <x-text-input wire:model.live="dataDaftarPoliRJ.rjDate"
-                                wire:key="rjDate-{{ $formMode }}-{{ $dataDaftarPoliRJ['rjNo'] ?? '1' }}"
-                                class="block w-full" :error="$errors->has('dataDaftarPoliRJ.rjDate')" :disabled="$isFormLocked" />
+                            <x-text-input wire:model.live="dataDaftarPoliRJ.rjDate" class="block w-full"
+                                :error="$errors->has('dataDaftarPoliRJ.rjDate')" :disabled="$isFormLocked" />
                             <x-input-error :messages="$errors->get('dataDaftarPoliRJ.rjDate')" class="mt-1" />
                         </div>
                         {{-- Shift --}}
                         <div class="w-36">
                             <x-input-label value="Shift" />
                             <x-select-input wire:model.live="dataDaftarPoliRJ.shift" class="w-full mt-1 sm:w-36"
-                                wire:key="shift-{{ $dataDaftarPoliRJ['shift'] ?? 'new' }}" :error="$errors->has('dataDaftarPoliRJ.shift')"
-                                :disabled="$isFormLocked">
+                                :error="$errors->has('dataDaftarPoliRJ.shift')" :disabled="$isFormLocked">
                                 <option value="">-- Pilih Shift --</option>
                                 <option value="1">Shift 1</option>
                                 <option value="2">Shift 2</option>
@@ -692,17 +724,14 @@ new class extends Component {
                                 {{-- LOV Pasien --}}
                                 <div class="mt-2">
                                     <livewire:lov.pasien.lov-pasien target="rjFormPasien" :initialRegNo="$dataDaftarPoliRJ['regNo'] ?? ''"
-                                        :disabled="$isFormLocked"
-                                        wire:key="{{ $this->lovKey('pasien', [$formMode, $rjNo ?? 'new', 'inner']) }}" />
-
+                                        :disabled="$isFormLocked" />
                                     <x-input-error :messages="$errors->get('dataDaftarPoliRJ.regNo')" class="mt-1" />
                                 </div>
 
                                 {{-- LOV Dokter --}}
                                 <div class="mt-2">
                                     <livewire:lov.dokter.lov-dokter label="Cari Dokter - Poli" target="rjFormDokter"
-                                        :initialDrId="$dataDaftarPoliRJ['drId'] ?? null" :disabled="$isFormLocked"
-                                        wire:key="{{ $this->lovKey('dokter', [$formMode, $rjNo]) }}" />
+                                        :initialDrId="$dataDaftarPoliRJ['drId'] ?? null" :disabled="$isFormLocked" />
                                     {{-- Error untuk Dokter --}}
                                     <x-input-error :messages="$errors->get('dataDaftarPoliRJ.drId')" class="mt-1" />
                                     <x-input-error :messages="$errors->get('dataDaftarPoliRJ.drDesc')" class="mt-1" />
@@ -779,9 +808,13 @@ new class extends Component {
                                             <x-text-input wire:model.live="dataDaftarPoliRJ.noReferensi"
                                                 :disabled="$isFormLocked" />
                                             <x-input-error :messages="$errors->get('dataDaftarPoliRJ.noReferensi')" />
+                                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                                di isi dgn : (No Rujukan untun FKTP /FKTL) (SKDP untuk Kontrol / Rujukan
+                                                Internal)
+                                            </p>
                                         </div>
 
-                                        {{-- TAMBAHKAN INI: Tombol untuk membuka modal Vclaim RJ Actions --}}
+                                        {{-- Tombol untuk membuka modal Vclaim RJ Actions --}}
                                         <div class="flex flex-wrap items-center gap-2 mt-2">
                                             <x-secondary-button type="button" wire:click="openVclaimModal"
                                                 class="gap-2 text-xs">
@@ -845,10 +878,7 @@ new class extends Component {
                                         @endif
 
                                         {{-- Panggil komponen Livewire modal Vclaim --}}
-                                        <livewire:pages::transaksi.rj.daftar-rj.vclaim-rj-actions
-                                            :wire:key="'vclaim-rj-actions-'.($rjNo ?? '1').'-'.uniqid()"
-                                            :initialRjNo="$rjNo ?? null" />
-
+                                        <livewire:pages::transaksi.rj.daftar-rj.vclaim-rj-actions :initialRjNo="$rjNo ?? null" />
 
                                         <div class="grid">
                                             <x-input-label value="No SEP" />
@@ -858,9 +888,6 @@ new class extends Component {
                                         </div>
                                     </div>
                                 @endif
-
-
-
                             </div>
 
                         </div>
