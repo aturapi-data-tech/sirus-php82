@@ -3,7 +3,6 @@
 namespace App\Http\Traits\BPJS;
 
 use Carbon\Carbon;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 
@@ -120,22 +119,33 @@ trait VclaimTrait
     // PESERTA
     public static function peserta_nomorkartu($nomorKartu, $tanggal)
     {
-        // customErrorMessages
-        // $messages = customErrorMessagesTrait::messages();
-        $messages = [];
+        // 1. Custom error messages
+        $messages = [
+            'required' => ':attribute wajib diisi.',
+            'digits' => ':attribute harus terdiri dari :digits digit.',
+            'date' => ':attribute harus berupa tanggal yang valid.',
+        ];
 
-        // Masukkan Nilai dari parameter
+        // 2. Attributes (nama field yang user-friendly)
+        $attributes = [
+            'nomorKartu' => 'Nomor Kartu',
+            'tanggal' => 'Tanggal',
+        ];
 
+        // 3. Data yang akan divalidasi
         $r = [
             'nomorKartu' => $nomorKartu,
             "tanggal" => $tanggal,
-
         ];
 
-        $validator = Validator::make($r, [
+        // 4. Rules validasi
+        $rules = [
             "nomorKartu" => "required|digits:13",
             "tanggal" => "required|date",
-        ], $messages);
+        ];
+
+        // 5. Validator
+        $validator = Validator::make($r, $rules, $messages, $attributes);
 
 
         if ($validator->fails()) {
@@ -165,19 +175,33 @@ trait VclaimTrait
 
     public static function peserta_nik($nik, $tanggal)
     {
-        // customErrorMessages
-        $messages = customErrorMessagesTrait::messages();
+        // 1. Custom error messages
+        $messages = [
+            'required' => ':attribute wajib diisi.',
+            'digits' => ':attribute harus terdiri dari :digits digit.',
+            'date' => ':attribute harus berupa tanggal yang valid.',
+        ];
 
-        // Masukkan Nilai dari parameter
+        // 2. Attributes (nama field yang user-friendly)
+        $attributes = [
+            'nik' => 'NIK',
+            'tanggal' => 'Tanggal',
+        ];
+
+        // 3. Data yang akan divalidasi
         $r = [
             'nik' => $nik,
             'tanggal' => $tanggal,
         ];
-        // lakukan validasis
-        $validator = Validator::make($r, [
+
+        // 4. Rules validasi
+        $rules = [
             "nik" => "required|digits:16",
             "tanggal" => "required|date",
-        ], $messages);
+        ];
+
+        // 5. Validator
+        $validator = Validator::make($r, $rules, $messages, $attributes);
 
         if ($validator->fails()) {
             return self::sendError($validator->errors()->first(), $validator->errors(), 201, null, null);
@@ -207,26 +231,33 @@ trait VclaimTrait
 
 
     // REFERENSI
-    public static function ref_diagnosa(Request $request)
-    {
-        $validator = Validator::make(request()->all(), [
-            "diagnosa" => "required",
-        ]);
-        if ($validator->fails()) {
-            return self::sendError($validator->errors()->first(), null, 201, null, null);
-        }
-        $url = env('VCLAIM_URL') . "referensi/diagnosa/" . $request->diagnosa;
-        $signature = self::signature();
-        $response = Http::withHeaders($signature)->get($url);
-        return self::response_decrypt($response, $signature, null, null);
-    }
 
     public static function ref_poliklinik($poliklinik)
     {
 
-        $messages = customErrorMessagesTrait::messages();
-        $r = ['poliklinik' => $poliklinik];
-        $validator = Validator::make($r, ["poliklinik" => "required"], $messages);
+        // 1. Custom error messages
+        $messages = [
+            'required' => ':attribute wajib diisi.',
+        ];
+
+        // 2. Attributes (nama field yang user-friendly)
+        $attributes = [
+            'poliklinik' => 'Poli Klinik',
+        ];
+
+        // 3. Data yang akan divalidasi
+        $r = [
+            'poliklinik' => $poliklinik,
+        ];
+
+        // 4. Rules validasi
+        $rules = [
+            "poliklinik" => "required",
+        ];
+
+        // 5. Validator
+        $validator = Validator::make($r, $rules, $messages, $attributes);
+
 
         if ($validator->fails()) {
             return self::sendError($validator->errors()->first(), $validator->errors(), 201, null, null);
@@ -254,27 +285,43 @@ trait VclaimTrait
     public static function suratkontrol_insert($kontrol)
     {
 
-        // customErrorMessages
-        // $messages = customErrorMessagesTrait::messages();
-        $messages = [];
-        // Masukkan Nilai dari parameter
+        // 1. Custom error messages
+        $messages = [
+            'required' => ':attribute wajib diisi.',
+            'date' => ':attribute harus berupa tanggal yang valid.',
+        ];
+
+        // 2. Attributes (nama field yang user-friendly)
+        $attributes = [
+            'request.noSEP' => 'Nomor SEP',
+            'request.tglRencanaKontrol' => 'Tanggal Rencana Kontrol',
+            'request.poliKontrol' => 'Poli Kontrol',
+            'request.kodeDokter' => 'Kode Dokter',
+            'request.user' => 'User',
+        ];
+
+        // 3. Data yang akan divalidasi
         $r = [
             "request" => [
                 "noSEP" => $kontrol['noSEP'],
-                "tglRencanaKontrol" => Carbon::createFromFormat('d/m/Y', $kontrol['tglKontrol'],)->format('Y-m-d'),
+                "tglRencanaKontrol" => Carbon::createFromFormat('d/m/Y', $kontrol['tglKontrol'])->format('Y-m-d'),
                 "poliKontrol" => $kontrol['poliKontrolBPJS'],
                 "kodeDokter" => $kontrol['drKontrolBPJS'],
-                "user" =>  'Sirus',
+                "user" => 'Sirus',
             ]
         ];
-        // lakukan validasis
-        $validator = Validator::make($r, [
+
+        // 4. Rules validasi
+        $rules = [
             "request.noSEP" => "required",
             "request.tglRencanaKontrol" => "required|date",
             "request.kodeDokter" => "required",
             "request.poliKontrol" => "required",
             "request.user" => "required",
-        ], $messages);
+        ];
+
+        // 5. Validator
+        $validator = Validator::make($r, $rules, $messages, $attributes);
 
         if ($validator->fails()) {
             return self::sendError($validator->errors()->first(), $validator->errors(), 201, null, null);
@@ -307,30 +354,46 @@ trait VclaimTrait
     public static function suratkontrol_update($kontrol)
     {
 
-        // customErrorMessages
-        // $messages = customErrorMessagesTrait::messages();
-        $messages = [];
-        // Masukkan Nilai dari parameter
+        // 1. Custom error messages
+        $messages = [
+            'required' => ':attribute wajib diisi.',
+            'date' => ':attribute harus berupa tanggal yang valid.',
+        ];
+
+        // 2. Attributes (nama field yang user-friendly)
+        $attributes = [
+            'request.noSuratKontrol' => 'Nomor Surat Kontrol',
+            'request.noSEP' => 'Nomor SEP',
+            'request.tglRencanaKontrol' => 'Tanggal Rencana Kontrol',
+            'request.poliKontrol' => 'Poli Kontrol',
+            'request.kodeDokter' => 'Kode Dokter',
+            'request.user' => 'User',
+        ];
+
+        // 3. Data yang akan divalidasi (struktur diperbaiki)
         $r = [
             "request" => [
-                "request.noSuratKontrol" => $kontrol['noSKDPBPJS'],
+                "noSuratKontrol" => $kontrol['noSKDPBPJS'],      // ← perbaikan: hapus "request."
                 "noSEP" => $kontrol['noSEP'],
-                "tglRencanaKontrol" => Carbon::createFromFormat('d/m/Y', $kontrol['tglKontrol'],)->format('Y-m-d'),
+                "tglRencanaKontrol" => Carbon::createFromFormat('d/m/Y', $kontrol['tglKontrol'])->format('Y-m-d'),
                 "poliKontrol" => $kontrol['poliKontrolBPJS'],
                 "kodeDokter" => $kontrol['drKontrolBPJS'],
-                "user" =>  'Sirus',
+                "user" => 'Sirus',
             ]
         ];
 
-        // lakukan validasis
-        $validator = Validator::make($r, [
+        // 4. Rules validasi
+        $rules = [
             "request.noSuratKontrol" => "required",
             "request.noSEP" => "required",
             "request.tglRencanaKontrol" => "required|date",
             "request.kodeDokter" => "required",
             "request.poliKontrol" => "required",
             "request.user" => "required",
-        ], $messages);
+        ];
+
+        // 5. Validator
+        $validator = Validator::make($r, $rules, $messages, $attributes);
 
         if ($validator->fails()) {
             return self::sendError($validator->errors()->first(), $validator->errors(), 201, null, null);
@@ -364,27 +427,43 @@ trait VclaimTrait
     public static function spri_insert($kontrol)
     {
 
-        // customErrorMessages
-        // $messages = customErrorMessagesTrait::messages();
-        $messages = [];
-        // Masukkan Nilai dari parameter
+        // 1. Custom error messages
+        $messages = [
+            'required' => ':attribute wajib diisi.',
+            'date' => ':attribute harus berupa tanggal yang valid.',
+        ];
+
+        // 2. Attributes (nama field yang user-friendly)
+        $attributes = [
+            'request.noKartu' => 'Nomor Kartu',
+            'request.tglRencanaKontrol' => 'Tanggal Rencana Kontrol',
+            'request.poliKontrol' => 'Poli Kontrol',
+            'request.kodeDokter' => 'Kode Dokter',
+            'request.user' => 'User',
+        ];
+
+        // 3. Data yang akan divalidasi
         $r = [
             "request" => [
                 "noKartu" => $kontrol['noKartu'],
-                "tglRencanaKontrol" => Carbon::createFromFormat('d/m/Y', $kontrol['tglKontrol'],)->format('Y-m-d'),
+                "tglRencanaKontrol" => Carbon::createFromFormat('d/m/Y', $kontrol['tglKontrol'])->format('Y-m-d'),
                 "poliKontrol" => $kontrol['poliKontrolBPJS'],
                 "kodeDokter" => $kontrol['drKontrolBPJS'],
-                "user" =>  'Sirus',
+                "user" => 'Sirus',
             ]
         ];
-        // lakukan validasis
-        $validator = Validator::make($r, [
+
+        // 4. Rules validasi
+        $rules = [
             "request.noKartu" => "required",
             "request.tglRencanaKontrol" => "required|date",
             "request.kodeDokter" => "required",
             "request.poliKontrol" => "required",
             "request.user" => "required",
-        ], $messages);
+        ];
+
+        // 5. Validator
+        $validator = Validator::make($r, $rules, $messages, $attributes);
 
         if ($validator->fails()) {
             return self::sendError($validator->errors()->first(), $validator->errors(), 201, null, null);
@@ -417,30 +496,46 @@ trait VclaimTrait
     public static function spri_update($kontrol)
     {
 
-        // customErrorMessages
-        // $messages = customErrorMessagesTrait::messages();
-        $messages = [];
-        // Masukkan Nilai dari parameter
+        // 1. Custom error messages
+        $messages = [
+            'required' => ':attribute wajib diisi.',
+            'date' => ':attribute harus berupa tanggal yang valid.',
+        ];
+
+        // 2. Attributes (nama field yang user-friendly)
+        $attributes = [
+            'request.noSPRI' => 'Nomor SPRI',
+            'request.noKartu' => 'Nomor Kartu',
+            'request.tglRencanaKontrol' => 'Tanggal Rencana Kontrol',
+            'request.poliKontrol' => 'Poli Kontrol',
+            'request.kodeDokter' => 'Kode Dokter',
+            'request.user' => 'User',
+        ];
+
+        // 3. Data yang akan divalidasi
         $r = [
             "request" => [
                 "noSPRI" => $kontrol['noSPRIBPJS'],
                 "noKartu" => $kontrol['noKartu'],
-                "tglRencanaKontrol" => Carbon::createFromFormat('d/m/Y', $kontrol['tglKontrol'],)->format('Y-m-d'),
+                "tglRencanaKontrol" => Carbon::createFromFormat('d/m/Y', $kontrol['tglKontrol'])->format('Y-m-d'),
                 "poliKontrol" => $kontrol['poliKontrolBPJS'],
                 "kodeDokter" => $kontrol['drKontrolBPJS'],
-                "user" =>  'Sirus',
+                "user" => 'Sirus',
             ]
         ];
 
-        // lakukan validasis
-        $validator = Validator::make($r, [
+        // 4. Rules validasi
+        $rules = [
             "request.noSPRI" => "required",
             "request.noKartu" => "required",
             "request.tglRencanaKontrol" => "required|date",
             "request.kodeDokter" => "required",
             "request.poliKontrol" => "required",
             "request.user" => "required",
-        ], $messages);
+        ];
+
+        // 5. Validator
+        $validator = Validator::make($r, $rules, $messages, $attributes);
 
         if ($validator->fails()) {
             return self::sendError($validator->errors()->first(), $validator->errors(), 201, null, null);
@@ -472,9 +567,28 @@ trait VclaimTrait
 
     public static function suratkontrol_nomor($noSPRI)
     {
-        $messages = customErrorMessagesTrait::messages();
-        $r = ['noSuratKontrol' => $noSPRI];
-        $validator = Validator::make($r, ["noSuratKontrol" => "required"], $messages);
+        // 1. Custom error messages
+        $messages = [
+            'required' => ':attribute wajib diisi.',
+        ];
+
+        // 2. Attributes (nama field yang user-friendly)
+        $attributes = [
+            'noSuratKontrol' => 'Nomor Surat Kontrol',
+        ];
+
+        // 3. Data yang akan divalidasi
+        $r = [
+            'noSuratKontrol' => $noSPRI,
+        ];
+
+        // 4. Rules validasi
+        $rules = [
+            "noSuratKontrol" => "required",
+        ];
+
+        // 5. Validator
+        $validator = Validator::make($r, $rules, $messages, $attributes);
 
         if ($validator->fails()) {
             return self::sendError($validator->errors()->first(), $validator->errors(), 201, null, null);
@@ -555,17 +669,29 @@ trait VclaimTrait
 
     public static function rujukan_rs_peserta($nomorKartu) //fktl dari
     {
-        // customErrorMessages
-        $messages = customErrorMessagesTrait::messages();
+        // 1. Custom error messages spesifik per field
+        $messages = [
+            'nomorKartu.required' => 'Nomor Kartu wajib diisi.',
+            'nomorKartu.digits' => 'Nomor Kartu harus 13 digit angka.',
+        ];
 
-        // Masukkan Nilai dari parameter
+        // 2. Attributes (opsional jika sudah spesifik)
+        $attributes = [
+            'nomorKartu' => 'Nomor Kartu',
+        ];
+
+        // 3. Data yang akan divalidasi
         $r = [
             'nomorKartu' => $nomorKartu,
         ];
-        // lakukan validasis
-        $validator = Validator::make($r, [
+
+        // 4. Rules validasi
+        $rules = [
             "nomorKartu" => "required|digits:13",
-        ], $messages);
+        ];
+
+        // 5. Validator
+        $validator = Validator::make($r, $rules, $messages, $attributes);
 
         if ($validator->fails()) {
             return self::sendError($validator->errors()->first(), $validator->errors(), 201, null, null);
@@ -827,18 +953,29 @@ trait VclaimTrait
     public static function sep_nomor($noSep)
     {
 
-        // customErrorMessages
-        // $messages = customErrorMessagesTrait::messages();
-        $messages = [];
-        // Masukkan Nilai dari parameter
+        // 1. Custom error messages
+        $messages = [
+            'required' => ':attribute wajib diisi.',
+        ];
+
+        // 2. Attributes (nama field yang user-friendly)
+        $attributes = [
+            'noSep' => 'Nomor SEP',
+        ];
+
+        // 3. Data yang akan divalidasi
         $r = [
             "noSep" => $noSep,
         ];
 
-        // lakukan validasis
-        $validator = Validator::make($r, [
+        // 4. Rules validasi
+        $rules = [
             "noSep" => "required",
-        ], $messages);
+        ];
+
+        // 5. Validator
+        $validator = Validator::make($r, $rules, $messages, $attributes);
+
 
         if ($validator->fails()) {
             return self::sendError($validator->errors()->first(), $validator->errors(), 201, null, null);

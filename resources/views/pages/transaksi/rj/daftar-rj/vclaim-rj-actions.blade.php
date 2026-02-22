@@ -836,8 +836,8 @@ new class extends Component {
                                     {{-- Tgl SEP --}}
                                     <div>
                                         <x-input-label value="Tanggal SEP" required />
-                                        <x-text-input type="date" wire:model="SEPForm.tglSep" class="w-full"
-                                            :error="$errors->has('SEPForm.tglSep')" :disabled="$isFormLocked" />
+                                        <x-text-input wire:model="SEPForm.tglSep" class="w-full" :error="$errors->has('SEPForm.tglSep')"
+                                            :disabled="$isFormLocked" />
                                         <x-input-error :messages="$errors->get('SEPForm.tglSep')" class="mt-1" />
                                     </div>
 
