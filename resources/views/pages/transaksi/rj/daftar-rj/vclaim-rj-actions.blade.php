@@ -134,7 +134,6 @@ new class extends Component {
 
         // Set form mode
         $this->formMode = $rjNo ? 'edit' : 'create';
-
         // LOAD DATA PASIEN (default)
         $this->loadDataPasien($regNo);
 
@@ -151,6 +150,10 @@ new class extends Component {
             // SIMPLE: Timpa SEPForm dengan data dari reqSep jika ada
             if (!empty($sepData['reqSep']['request']['t_sep'])) {
                 $this->SEPForm = array_replace_recursive($this->SEPForm, $sepData['reqSep']['request']['t_sep']);
+            }
+
+            if (!empty($sepData['reqSep']['request']['t_sep']['tglSep'])) {
+                $this->SEPForm['tglSep'] = Carbon::parse($sepData['reqSep']['request']['t_sep']['tglSep'])->format('d/m/Y');
             }
 
             // Load selected rujukan jika ada
@@ -417,7 +420,7 @@ new class extends Component {
         $this->validateSEPForm();
         // Build request dari form
         $request = $this->buildSEPRequest();
-
+        dd($request);
         // KIRIM LANGSUNG reqSep KE PARENT (bukan sepData)
         $this->dispatch('sep-generated', reqSep: $request);
 
@@ -439,7 +442,7 @@ new class extends Component {
     {
         $rules = [
             'SEPForm.noKartu' => 'required',
-            'SEPForm.tglSep' => 'required|date',
+            'SEPForm.tglSep' => 'required|date_format:d/m/Y',
             'SEPForm.noMR' => 'required',
             'SEPForm.diagAwal' => 'required',
             'SEPForm.poli.tujuan' => 'required',
@@ -453,7 +456,8 @@ new class extends Component {
 
         $messages = [
             'SEPForm.noKartu.required' => 'Nomor Kartu BPJS harus diisi',
-            'SEPForm.tglSep.required' => 'Tanggal SEP harus diisi',
+            'SEPForm.tglSep.required' => 'Tanggal SEP wajib diisi.',
+            'SEPForm.tglSep.date_format' => 'Format Tanggal SEP harus DD/MM/YYYY (contoh: 31/01/2024).',
             'SEPForm.diagAwal.required' => 'Diagnosa awal harus diisi',
             'SEPForm.poli.tujuan.required' => 'Poli tujuan harus diisi',
             'SEPForm.dpjpLayan.required' => 'DPJP harus diisi',
@@ -471,7 +475,7 @@ new class extends Component {
             'request' => [
                 't_sep' => [
                     'noKartu' => $this->SEPForm['noKartu'],
-                    'tglSep' => $this->SEPForm['tglSep'],
+                    'tglSep' => Carbon::createFromFormat('d/m/Y', $this->SEPForm['tglSep'])->format('Y-m-d'),
                     'ppkPelayanan' => $this->SEPForm['ppkPelayanan'],
                     'jnsPelayanan' => $this->SEPForm['jnsPelayanan'],
                     'klsRawat' => [
@@ -537,7 +541,7 @@ new class extends Component {
     private function resetForm()
     {
         $this->reset('SEPForm', 'selectedRujukan', 'showRujukanLov', 'dataRujukan');
-        $this->SEPForm['tglSep'] = Carbon::now()->format('Y-m-d');
+        $this->SEPForm['tglSep'] = Carbon::now()->format('d/m/Y');
         $this->isFormLocked = false;
     }
 
@@ -583,7 +587,7 @@ new class extends Component {
 
     public function mount()
     {
-        $this->SEPForm['tglSep'] = Carbon::now()->format('Y-m-d');
+        $this->SEPForm['tglSep'] = Carbon::now()->format('d/m/Y');
         $this->registerAreas(['modal', 'lov-rujukan', 'form-sep', 'info-pasien']);
     }
 };

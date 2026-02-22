@@ -90,6 +90,7 @@ trait VclaimTrait
     }
     public static function response_decrypt($response, $signature, $url, $requestTransferTime)
     {
+
         if ($response->failed()) {
             return self::sendError($response->reason(),  $response->json('response'), $response->status(), $url, $requestTransferTime);
         } else {
@@ -724,10 +725,33 @@ trait VclaimTrait
     public static function sep_insert($SEPJsonReq)
     {
 
-        // customErrorMessages
-        // $messages = customErrorMessagesTrait::messages();
-        $messages = [];
-        // Masukkan Nilai dari parameter
+        // 1. Custom error messages
+        $messages = [
+            'required' => ':attribute wajib diisi.',
+        ];
+
+        // 2. Attributes (nama field yang user-friendly)
+        $attributes = [
+            'noKartu' => 'Nomor Kartu',
+            'tglSep' => 'Tanggal SEP',
+            'ppkPelayanan' => 'PPK Pelayanan',
+            'jnsPelayanan' => 'Jenis Pelayanan',
+            'klsRawatHak' => 'Kelas Rawat Hak',
+            'asalRujukan' => 'Asal Rujukan',
+            'tglRujukan' => 'Tanggal Rujukan',
+            'noRujukan' => 'Nomor Rujukan',
+            'ppkRujukan' => 'PPK Rujukan',
+            'catatan' => 'Catatan',
+            'diagAwal' => 'Diagnosa Awal',
+            'tujuan' => 'Tujuan Poli',
+            'eksekutif' => 'Eksekutif',
+            'tujuanKunj' => 'Tujuan Kunjungan',
+            'dpjpLayan' => 'DPJP Layan',
+            'noTelp' => 'Nomor Telepon',
+            'user' => 'User',
+        ];
+
+        // 3. Data yang akan divalidasi
         $r = [
             "noKartu" => $SEPJsonReq['request']['t_sep']['noKartu'],
             "tglSep" => $SEPJsonReq['request']['t_sep']['tglSep'],
@@ -743,18 +767,12 @@ trait VclaimTrait
             "tujuan" => $SEPJsonReq['request']['t_sep']['poli']['tujuan'] ?? '',
             "eksekutif" => $SEPJsonReq['request']['t_sep']['poli']['eksekutif'] ?? '',
             "tujuanKunj" => $SEPJsonReq['request']['t_sep']['tujuanKunj'],
-            // "flagProcedure" => $SEPJsonReq['request']['t_sep']['flagProcedure'],
-            // "kdPenunjang" => $SEPJsonReq['request']['t_sep']['kdPenunjang'],
-            // "assesmentPel" => $SEPJsonReq['request']['t_sep']['assesmentPel'],
-            // "noSurat" => $SEPJsonReq['request']['t_sep']['noSurat'],
-            // "kodeDPJP" => $SEPJsonReq['request']['t_sep']['kodeDPJP'],
             "dpjpLayan" => $SEPJsonReq['request']['t_sep']['dpjpLayan'],
             "noTelp" => $SEPJsonReq['request']['t_sep']['noTelp'],
             "user" => $SEPJsonReq['request']['t_sep']['user'],
         ];
-
-        // lakukan validasis
-        $validator = Validator::make($r, [
+        // 4. Rules validasi (sesuai dengan yang aktif/tidak dikomentari)
+        $rules = [
             "noKartu" => "required",
             "tglSep" => "required",
             "ppkPelayanan" => "required",
@@ -762,22 +780,20 @@ trait VclaimTrait
             "klsRawatHak" => "required",
             "asalRujukan" => "required",
             "tglRujukan" => "required",
-            // "noRujukan" => "required",
-            // "ppkRujukan" => "required",
+            // "noRujukan" => "required", // dikomentari
+            // "ppkRujukan" => "required", // dikomentari
             "catatan" => "required",
             "diagAwal" => "required",
-            // "tujuan" => "required",
-            // "eksekutif" => "required",
+            // "tujuan" => "required", // dikomentari
+            // "eksekutif" => "required", // dikomentari
             "tujuanKunj" => "required",
-            // "flagProcedure" => "required",
-            // "kdPenunjang" => "required",
-            // "assesmentPel" => "required",
-            // "noSurat" => "required",
-            // "kodeDPJP" => "required",
-            // "dpjpLayan" => "required",
+            // "dpjpLayan" => "required", // dikomentari
             "noTelp" => "required",
             "user" => "required",
-        ], $messages);
+        ];
+
+        // 5. Validator
+        $validator = Validator::make($r, $rules, $messages, $attributes);
 
         if ($validator->fails()) {
             return self::sendError($validator->errors()->first(), $validator->errors(), 201, null, null);
@@ -1013,7 +1029,7 @@ trait VclaimTrait
          *    Contoh: baca tgl SEP & info lain dari DB SEP (table sep_master).
          */
         $tglSep = $SEPJsonReq['request']['t_sep']['tglSep'];                         // yyyy-MM-dd (string)
-        $today  = now('Asia/Jakarta')->toDateString();     // “hari ini” versi WIB
+        $today  = Carbon::now()->toDateString();     // “hari ini” versi WIB
 
         $isKLL              = (int) $SEPJsonReq['request']['t_sep']['isKLL'] == 1; // atau field Anda sendiri
         $isAlreadyReferred  = (bool) $SEPJsonReq['request']['t_sep']['statusPulang']; //true/false   // contoh: sudah “Dirujuk”

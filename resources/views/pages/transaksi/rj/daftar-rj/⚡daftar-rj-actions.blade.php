@@ -11,9 +11,10 @@ use Carbon\Carbon;
 use App\Http\Traits\BPJS\VclaimTrait;
 
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
+use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 new class extends Component {
-    use EmrRJTrait, WithRenderVersioningTrait;
+    use EmrRJTrait, MasterPasienTrait, WithRenderVersioningTrait;
 
     public string $formMode = 'create'; // create|edit
     public bool $isFormLocked = false;
@@ -22,6 +23,7 @@ new class extends Component {
     public $disabledPropertyRjStatus = false;
     public ?string $kronisNotice = null;
     public array $dataDaftarPoliRJ = ['passStatus' => 'O'];
+    public array $dataPasien = [];
 
     // renderVersions
     public array $renderVersions = [];
@@ -97,6 +99,8 @@ new class extends Component {
         }
         // Merge dengan template default supaya struktur tetap konsisten
         $this->dataDaftarPoliRJ = $data;
+        // Cari data pasien
+        $this->dataPasien = $this->findDataMasterPasien($this->dataDaftarPoliRJ['regNo'] ?? '');
 
         // Sync property turunan agar radio/toggle tetap aktif
         $this->syncFromDataDaftarPoliRJ();
@@ -153,7 +157,16 @@ new class extends Component {
 
                     $isBpjs = ($this->dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($this->dataDaftarPoliRJ['klaimId'] ?? '') === 'JM';
 
-                    if (!$isBpjs) {
+                    if ($isBpjs) {
+                        // Hanya bisa buat sep setelah tambah antrian
+                        $statusTambahPendaftaran = $this->dataDaftarPoliRJ['taskIdPelayanan']['tambahPendaftaran'] ?? '';
+                        // Cek apakah statusnya sukses (200 atau 208)
+                        $isSuccess = $statusTambahPendaftaran == 200 || $statusTambahPendaftaran == 208;
+                        // if (!$isSuccess) {
+                        //     $this->dispatch('toast', type: 'error', message: 'Harap lakukan tambah antrian terlebih dahulu sebelum membuat SEP.');
+                        //     return;
+                        // }
+
                         $this->handleSepCreation();
                     }
 
@@ -446,9 +459,6 @@ new class extends Component {
             $this->syncFromDataDaftarPoliRJ();
         }
 
-        // Clear notifikasi kronis
-        $this->clearKronisNotice();
-
         // Dispatch event
         $this->dispatch('toast', type: 'success', message: $message);
         $this->dispatch('master.daftar-rj.saved', rjNo: $this->dataDaftarPoliRJ['rjNo']);
@@ -558,14 +568,16 @@ new class extends Component {
             // 1. SIAPKAN DATA ANTRIAN
             // ============================================
             $dataAntrian = $this->prepareDataAntrian();
-
             // ============================================
             // 2. KIRIM KE BPJS
             // ============================================
             $response = AntrianTrait::tambah_antrean($dataAntrian)->getOriginalContent();
+            $code = $response['metadata']['code'] ?? '';
+            $message = $response['metadata']['message'] ?? '';
 
             // 3. UPDATE STATUS TAMBAH PENDAFTARAN
             $this->dataDaftarPoliRJ['taskIdPelayanan']['tambahPendaftaran'] = $response['metadata']['code'] ?? '';
+            $this->dispatch('toast', type: $code == 200 ? 'success' : 'error', message: 'Tambah Pendaftaran: ' . $message, title: $code == 200 ? 'Berhasil' : 'Gagal', position: 'top-right', duration: 5000);
 
             // Update Task ID 1 & 2 jika perlu (pasien baru registrasi hari ini)
             $this->updateTaskId1And2();
@@ -764,11 +776,11 @@ new class extends Component {
         if (!$isBpjs) {
             return;
         }
-
         // Cek apakah sudah ada SEP
         $sudahAdaSEP = !empty($this->dataDaftarPoliRJ['sep']['noSep']);
 
         if (!$sudahAdaSEP && !empty($this->dataDaftarPoliRJ['sep']['reqSep'])) {
+            dd($this->dataDaftarPoliRJ['sep']['reqSep']);
             // Buat SEP baru
             $this->pushInsertSEP($this->dataDaftarPoliRJ['sep']['reqSep']);
         } elseif ($sudahAdaSEP && !empty($this->dataDaftarPoliRJ['sep']['reqSep'])) {
@@ -810,6 +822,29 @@ new class extends Component {
         }
     }
 
+    private function pushDataTaskId($noBooking, $taskId, $time): void
+    {
+        //////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////
+        // Update Task Id $kodebooking, $taskid, $waktu, $jenisresep
+
+        $waktu = $time;
+        $response = AntrianTrait::update_antrean($noBooking, $taskId, $waktu, '')->getOriginalContent();
+
+        if ($response['metadata']['code'] == 200) {
+            // Buat variabel untuk message
+            $message = 'Task Id ' . $taskId . ' ' . $response['metadata']['code'] . ' ' . $response['metadata']['message'];
+
+            // Dispatch toast dengan variabel message
+            $this->dispatch('toast', type: 'success', message: $message, title: 'Berhasil');
+        } else {
+            // Dispatch toast warning
+            $message = 'Task Id ' . $taskId . ' ' . $response['metadata']['code'] . ' ' . $response['metadata']['message'];
+
+            $this->dispatch('toast', type: 'error', message: $message, title: 'Gagal');
+        }
+    }
+
     /**
      * Handle error saat push antrian
      */
@@ -832,14 +867,13 @@ new class extends Component {
         }
 
         try {
+            dd(json_encode($reqSep, true));
             // ============================================
             // KIRIM REQUEST INSERT SEP KE BPJS
             // ============================================
             $response = VclaimTrait::sep_insert($reqSep)->getOriginalContent();
-
             $code = $response['metadata']['code'] ?? 500;
             // $message = $response['metadata']['message'] ?? 'Unknown error';
-
             // ============================================
             // HANDLE RESPONSE
             // ============================================
@@ -1089,6 +1123,7 @@ new class extends Component {
     {
         $this->dataDaftarPoliRJ['regNo'] = $payload['reg_no'] ?? '';
         $this->dataDaftarPoliRJ['regName'] = $payload['reg_name'] ?? '';
+        $this->dataPasien = $this->findDataMasterPasien($this->dataDaftarPoliRJ['regNo'] ?? '');
         $this->incrementVersion('pasien');
         $this->incrementVersion('modal');
     }
@@ -1228,7 +1263,6 @@ new class extends Component {
 
         // Set noReferensi dari data rujukan
         $this->dataDaftarPoliRJ['noReferensi'] = $reqSep['request']['t_sep']['rujukan']['noRujukan'] ?? ($this->dataDaftarPoliRJ['noReferensi'] ?? null);
-
         $this->incrementVersion('modal');
         $this->dispatch('toast', [
             'type' => 'success',

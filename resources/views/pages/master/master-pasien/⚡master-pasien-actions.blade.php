@@ -232,6 +232,11 @@ new class extends Component {
     {
         $this->validate();
 
+        // update regDateStore -- akhir admisi
+        if (empty($this->dataPasien['pasien']['regDateStore'])) {
+            $this->dataPasien['pasien']['regDateStore'] = Carbon::now()->format('d/m/Y H:i:s');
+        }
+
         $pasien = $this->dataPasien['pasien'] ?? [];
         $identitas = $pasien['identitas'] ?? [];
         $kontak = $pasien['kontak'] ?? [];
@@ -297,7 +302,7 @@ new class extends Component {
                         $incomingPasien = $this->dataPasien['pasien'] ?? [];
 
                         // ✅ (recommended) whitelist field master pasien saja
-                        $allowed = ['regName', 'gelarDepan', 'gelarBelakang', 'namaPanggilan', 'tempatLahir', 'tglLahir', 'thn', 'bln', 'hari', 'jenisKelamin', 'agama', 'statusPerkawinan', 'pendidikan', 'pekerjaan', 'golonganDarah', 'kewarganegaraan', 'suku', 'bahasa', 'status', 'domisil', 'identitas', 'kontak', 'hubungan', 'regDate', 'pasientidakdikenal'];
+                        $allowed = ['regName', 'gelarDepan', 'gelarBelakang', 'namaPanggilan', 'tempatLahir', 'tglLahir', 'thn', 'bln', 'hari', 'jenisKelamin', 'agama', 'statusPerkawinan', 'pendidikan', 'pekerjaan', 'golonganDarah', 'kewarganegaraan', 'suku', 'bahasa', 'status', 'domisil', 'identitas', 'kontak', 'hubungan', 'regDate', 'pasientidakdikenal', 'regDateStore'];
 
                         $incomingPasien = array_intersect_key($incomingPasien, array_flip($allowed));
                         //khusus array [] checkbox
