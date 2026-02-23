@@ -780,7 +780,6 @@ new class extends Component {
         $sudahAdaSEP = !empty($this->dataDaftarPoliRJ['sep']['noSep']);
 
         if (!$sudahAdaSEP && !empty($this->dataDaftarPoliRJ['sep']['reqSep'])) {
-            dd($this->dataDaftarPoliRJ['sep']['reqSep']);
             // Buat SEP baru
             $this->pushInsertSEP($this->dataDaftarPoliRJ['sep']['reqSep']);
         } elseif ($sudahAdaSEP && !empty($this->dataDaftarPoliRJ['sep']['reqSep'])) {
@@ -867,7 +866,6 @@ new class extends Component {
         }
 
         try {
-            dd(json_encode($reqSep, true));
             // ============================================
             // KIRIM REQUEST INSERT SEP KE BPJS
             // ============================================
