@@ -37,7 +37,7 @@
 
     {{-- menu --}}
     <nav class="p-4 space-y-3 overflow-y-auto h-[calc(100vh-5rem-4rem)]">
-        @php
+        {{-- @php
             $menus = [
                 'Rawat Jalan' => ['Poli', 'Dokter', 'Pendaftaran'],
                 'IGD' => ['Triase', 'Tindakan'],
@@ -47,9 +47,9 @@
                 'Laporan' => ['Harian', 'Bulanan'],
                 'Master' => ['Pasien', 'Dokter', 'Poli'],
             ];
-        @endphp
+        @endphp --}}
 
-        @foreach ($menus as $label => $subs)
+        @foreach ($menus ?? [] as $label => $subs)
             @php $key = Str::slug($label); @endphp
 
             <div
@@ -130,12 +130,6 @@
                 </div>
             </div>
         @endforeach
-        <a href="{{ route('master.poli') }}"
-            class="block px-3 py-1.5 text-md rounded-md
-                        text-gray-700 transition-colors duration-200
-                        hover:bg-brand-green/10 hover:text-brand-green
-                        dark:text-gray-300
-                        dark:hover:bg-brand-lime/15 dark:hover:text-brand-lime">Master
-            Poli</a>
+
     </nav>
 </aside>
