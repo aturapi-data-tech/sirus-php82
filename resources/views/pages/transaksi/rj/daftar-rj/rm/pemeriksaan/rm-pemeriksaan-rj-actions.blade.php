@@ -4,11 +4,10 @@ use Livewire\Component;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use Illuminate\Support\Facades\DB;
-use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use Livewire\Attributes\On;
 
 new class extends Component {
-    use EmrRJTrait, MasterPasienTrait, WithRenderVersioningTrait;
+    use EmrRJTrait, WithRenderVersioningTrait;
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
@@ -43,20 +42,6 @@ new class extends Component {
         // Initialize pemeriksaan data if not exists
         if (!isset($this->dataDaftarPoliRJ['pemeriksaan'])) {
             $this->dataDaftarPoliRJ['pemeriksaan'] = $this->getDefaultPemeriksaan();
-        }
-
-        // ✅ Ambil data pasien dari master pasien (untuk alergi & riwayat penyakit)
-        $pasienData = $this->findDataMasterPasien($dataDaftarPoliRJ['regNo']);
-
-        // ✅ Isi alergi jika ada di data pasien
-        if (isset($pasienData['pasien']['alergi'])) {
-            // Masukkan ke struktur pemeriksaan
-            $this->dataDaftarPoliRJ['pemeriksaan']['alergi']['alergi'] = $pasienData['pasien']['alergi'];
-        }
-
-        // ✅ Isi riwayat penyakit dahulu jika ada
-        if (isset($pasienData['pasien']['riwayatPenyakitDahulu'])) {
-            $this->dataDaftarPoliRJ['pemeriksaan']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] = $pasienData['pasien']['riwayatPenyakitDahulu'];
         }
 
         // 🔥 INCREMENT: Refresh seluruh modal pemeriksaan
@@ -322,21 +307,94 @@ new class extends Component {
 
     protected function rules(): array
     {
-        $rules['dataDaftarPoliRJ.pemeriksaan.tandaVital.waktuPemeriksaan'] = 'date_format:d/m/Y H:i:s';
-        return $rules;
+        return [
+            // TANDA VITAL
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.waktuPemeriksaan' => 'date_format:d/m/Y H:i:s',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.sistolik' => 'nullable|numeric',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.distolik' => 'nullable|numeric',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.frekuensiNadi' => 'required|numeric',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.frekuensiNafas' => 'required|numeric',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.suhu' => 'required|numeric',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.spo2' => 'nullable|numeric|min:0|max:100',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.gda' => 'nullable|numeric|min:0',
+
+            // NUTRISI
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.bb' => 'required|numeric|min:0|max:300',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.tb' => 'required|numeric|min:0|max:300',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.imt' => 'required|numeric|min:0|max:100',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.lk' => 'nullable|numeric|min:0|max:100',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.lila' => 'nullable|numeric|min:0|max:100',
+        ];
     }
 
     protected function messages(): array
     {
         return [
+            // TANDA VITAL
             'dataDaftarPoliRJ.pemeriksaan.tandaVital.waktuPemeriksaan.date_format' => ':attribute harus dalam format dd/mm/yyyy hh:mi:ss',
+
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.frekuensiNadi.required' => ':attribute wajib diisi',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.frekuensiNadi.numeric' => ':attribute harus berupa angka',
+
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.frekuensiNafas.required' => ':attribute wajib diisi',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.frekuensiNafas.numeric' => ':attribute harus berupa angka',
+
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.suhu.required' => ':attribute wajib diisi',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.suhu.numeric' => ':attribute harus berupa angka',
+
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.sistolik.numeric' => ':attribute harus berupa angka',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.distolik.numeric' => ':attribute harus berupa angka',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.spo2.numeric' => ':attribute harus berupa angka',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.spo2.min' => ':attribute tidak boleh kurang dari 0',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.spo2.max' => ':attribute tidak boleh lebih dari 100',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.gda.numeric' => ':attribute harus berupa angka',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.gda.min' => ':attribute tidak boleh kurang dari 0',
+
+            // NUTRISI
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.bb.required' => ':attribute wajib diisi',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.bb.numeric' => ':attribute harus berupa angka',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.bb.min' => ':attribute tidak boleh kurang dari 0 kg',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.bb.max' => ':attribute tidak boleh lebih dari 300 kg',
+
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.tb.required' => ':attribute wajib diisi',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.tb.numeric' => ':attribute harus berupa angka',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.tb.min' => ':attribute tidak boleh kurang dari 0 cm',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.tb.max' => ':attribute tidak boleh lebih dari 300 cm',
+
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.imt.required' => ':attribute wajib diisi',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.imt.numeric' => ':attribute harus berupa angka',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.imt.min' => ':attribute tidak boleh kurang dari 0',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.imt.max' => ':attribute tidak boleh lebih dari 100',
+
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.lk.numeric' => ':attribute harus berupa angka',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.lk.min' => ':attribute tidak boleh kurang dari 0 cm',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.lk.max' => ':attribute tidak boleh lebih dari 100 cm',
+
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.lila.numeric' => ':attribute harus berupa angka',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.lila.min' => ':attribute tidak boleh kurang dari 0 cm',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.lila.max' => ':attribute tidak boleh lebih dari 100 cm',
         ];
     }
 
     protected function validationAttributes(): array
     {
         return [
+            // TANDA VITAL
             'dataDaftarPoliRJ.pemeriksaan.tandaVital.waktuPemeriksaan' => 'Waktu Pemeriksaan',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.sistolik' => 'Sistolik',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.distolik' => 'Distolik',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.frekuensiNadi' => 'Frekuensi Nadi',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.frekuensiNafas' => 'Frekuensi Nafas',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.suhu' => 'Suhu',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.spo2' => 'SpO2',
+            'dataDaftarPoliRJ.pemeriksaan.tandaVital.gda' => 'GDA',
+
+            // NUTRISI
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.bb' => 'Berat Badan',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.tb' => 'Tinggi Badan',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.imt' => 'Indeks Massa Tubuh',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.lk' => 'Lingkar Kepala',
+            'dataDaftarPoliRJ.pemeriksaan.nutrisi.lila' => 'Lingkar Lengan Atas',
         ];
     }
 
@@ -352,7 +410,6 @@ new class extends Component {
         }
 
         $this->validate();
-
         try {
             DB::transaction(function () {
                 // Whitelist field pemeriksaan yang boleh diupdate
@@ -369,42 +426,11 @@ new class extends Component {
 
                 // Update RJ with merged data
                 $this->updateJsonRJ($this->rjNo, $mergedData);
-
-                // Update pasien riwayat medis pasien data if needed
-                $this->updateRiwayatMedisPasien();
             });
 
             $this->afterSave('Pemeriksaan berhasil disimpan.');
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan: ' . $e->getMessage());
-        }
-    }
-
-    private function updateRiwayatMedisPasien(): void
-    {
-        $regNo = $this->dataDaftarPoliRJ['regNo'];
-
-        // Ambil data pasien
-        $pasienData = $this->findDataMasterPasien($regNo);
-
-        $updated = false;
-
-        // ✅ Update Alergi (text) - jika masih ada di struktur pemeriksaan
-        if (isset($this->dataDaftarPoliRJ['pemeriksaan']['alergi']['alergi']) && !empty($this->dataDaftarPoliRJ['pemeriksaan']['alergi']['alergi'])) {
-            $pasienData['pasien']['alergi'] = $this->dataDaftarPoliRJ['pemeriksaan']['alergi']['alergi'];
-            $updated = true;
-        }
-
-        // ✅ Update Riwayat Penyakit Dahulu (text) - jika masih ada di struktur pemeriksaan
-        if (isset($this->dataDaftarPoliRJ['pemeriksaan']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu']) && !empty($this->dataDaftarPoliRJ['pemeriksaan']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'])) {
-            $pasienData['pasien']['riwayatPenyakitDahulu'] = $this->dataDaftarPoliRJ['pemeriksaan']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'];
-            $updated = true;
-        }
-
-        // ✅ Update jika ada perubahan
-        if ($updated) {
-            $pasienData['pasien']['regNo'] = $regNo;
-            $this->updateJsonMasterPasien($regNo, $pasienData);
         }
     }
 
@@ -443,7 +469,7 @@ new class extends Component {
     /* ===============================
      | HITUNG IMT (Indeks Massa Tubuh)
      =============================== */
-    public function hitungIMT(): void
+    private function hitungIMT(): void
     {
         $bb = $this->dataDaftarPoliRJ['pemeriksaan']['nutrisi']['bb'] ?? 0;
         $tb = $this->dataDaftarPoliRJ['pemeriksaan']['nutrisi']['tb'] ?? 0;
@@ -452,6 +478,14 @@ new class extends Component {
             $tbInMeter = $tb / 100;
             $imt = $bb / ($tbInMeter * $tbInMeter);
             $this->dataDaftarPoliRJ['pemeriksaan']['nutrisi']['imt'] = round($imt, 2);
+        }
+    }
+
+    public function updated($propertyName, $value)
+    {
+        // Cek apakah property yang di-update adalah BB atau TB
+        if (str_contains($propertyName, 'pemeriksaan.nutrisi.bb') || str_contains($propertyName, 'pemeriksaan.nutrisi.tb')) {
+            $this->hitungIMT();
         }
     }
 
@@ -481,6 +515,26 @@ new class extends Component {
 ?>
 
 <div>
+
+    {{-- TAMPILKAN SEMUA ERROR --}}
+    @if ($errors->any())
+        <div class="p-4 mb-4 text-red-800 bg-red-100 border-l-4 border-red-500 rounded-r-lg dark:bg-red-900 dark:text-red-300"
+            role="alert">
+            <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                        clip-rule="evenodd" />
+                </svg>
+                <span class="font-medium">Terdapat {{ $errors->count() }} kesalahan pada form:</span>
+            </div>
+            <ul class="mt-2 ml-6 list-disc list-inside">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
     {{-- CONTAINER UTAMA --}}
     <div class="flex flex-col w-full" wire:key="{{ $this->renderKey('modal-pemeriksaan-rj', [$rjNo ?? 'new']) }}">
 

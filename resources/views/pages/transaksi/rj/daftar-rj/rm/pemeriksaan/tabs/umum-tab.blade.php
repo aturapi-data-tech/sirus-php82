@@ -138,9 +138,21 @@
 
             <div class="mb-2">
                 <x-input-label for="dataDaftarPoliRJ.pemeriksaan.nutrisi.imt" :value="__('Index Masa Tubuh')" :required="__(false)" />
-                <x-text-input-mou id="dataDaftarPoliRJ.pemeriksaan.nutrisi.imt" placeholder="Index Masa Tubuh"
-                    class="mt-1 ml-2" :error="$errors->has('dataDaftarPoliRJ.pemeriksaan.nutrisi.imt')" :disabled="$isFormLocked"
-                    wire:model.live="dataDaftarPoliRJ.pemeriksaan.nutrisi.imt" :mou_label="__('Kg/M2')" />
+                <div class="flex mt-1 ml-2">
+                    {{-- Bagian nilai IMT (seperti input kiri) --}}
+                    <div
+                        class="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-l-lg dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
+                        <span class="text-gray-900 dark:text-gray-100">
+                            {{ $dataDaftarPoliRJ['pemeriksaan']['nutrisi']['imt'] ?? '-' }}
+                        </span>
+                    </div>
+
+                    {{-- Bagian label MOU (seperti input kanan) --}}
+                    <div
+                        class="px-2 py-2 text-sm font-semibold text-center text-gray-500 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg w-28 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
+                        Kg/M2
+                    </div>
+                </div>
                 <x-input-error :messages="$errors->get('dataDaftarPoliRJ.pemeriksaan.nutrisi.imt')" class="mt-1" />
             </div>
         </div>

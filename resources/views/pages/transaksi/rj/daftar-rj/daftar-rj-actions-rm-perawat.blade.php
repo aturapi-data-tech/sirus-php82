@@ -71,6 +71,7 @@ new class extends Component {
     public function save()
     {
         $this->dispatch('save-rm-anamnesa-rj');
+        $this->dispatch('save-rm-pemeriksaan-rj');
     }
 };
 
