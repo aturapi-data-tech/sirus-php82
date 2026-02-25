@@ -424,7 +424,7 @@ new class extends Component {
     /**
      * Update JSON data dengan merge yang aman
      */
-    private function updateJsonData(string $rjNo): void
+    private function updateJsonData($rjNo): void
     {
         // Whitelist field yang boleh diupdate dari form
         $allowedFields = ['regNo', 'drId', 'drDesc', 'poliId', 'poliDesc', 'kddrbpjs', 'kdpolibpjs', 'klaimId', 'kunjunganId', 'rjDate', 'shift', 'noAntrian', 'noBooking', 'slCodeFrom', 'passStatus', 'rjStatus', 'txnStatus', 'ermStatus', 'cekLab', 'kunjunganInternalStatus', 'noReferensi', 'postInap', 'internal12', 'internal12Desc', 'kontrol12', 'kontrol12Desc', 'taskIdPelayanan', 'sep', 'klaimStatus'];
@@ -441,8 +441,6 @@ new class extends Component {
             $mergedRJ = array_replace_recursive($existingData, $formData);
         }
 
-        // Safety: pastikan field kritis tetap sama
-        $mergedRJ['rjNo'] = $rjNo;
         // Simpan JSON
         $this->updateJsonRJ($rjNo, $mergedRJ);
     }
@@ -456,8 +454,6 @@ new class extends Component {
         if ($this->formMode === 'edit') {
             $this->syncFromDataDaftarPoliRJ();
         }
-        // Dispatch event ke parent
-        $this->dispatch('daftar-rj.saved');
 
         // Dispatch event
         $this->dispatch('toast', type: 'success', message: $message);
@@ -466,13 +462,13 @@ new class extends Component {
         $this->closeModal();
 
         // Refresh halaman utama
-        $this->dispatch('refresh-datatable');
+        $this->dispatch('refresh-after-rj.saved');
     }
 
     /**
      * Handle database error dengan user-friendly message
      */
-    private function handleDatabaseError(\Illuminate\Database\QueryException $e): void
+    private function handleDatabaseError(QueryException $e): void
     {
         $errorCode = $e->errorInfo[1] ?? 0;
         $message = 'Terjadi kesalahan database.';

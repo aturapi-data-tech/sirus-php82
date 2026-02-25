@@ -8,7 +8,7 @@ use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 new class extends Component {
     use EmrRJTrait, WithRenderVersioningTrait;
     public bool $isFormLocked = false;
-    public ?string $rjNo = null;
+    public ?int $rjNo = null;
     public array $dataDaftarPoliRJ = [];
 
     // renderVersions
@@ -19,7 +19,7 @@ new class extends Component {
      | OPEN REKAM MEDIS PERAWAT
      =============================== */
     #[On('daftar-rj.rekam-medis.openPerawat')]
-    public function openRekamMedisPerawat(string $rjNo): void
+    public function openRekamMedisPerawat(int $rjNo): void
     {
         $this->resetForm();
         $this->rjNo = $rjNo;
@@ -56,40 +56,6 @@ new class extends Component {
         $this->dispatch('close-modal', name: 'rm-perawat-actions');
     }
 
-    /* ===============================
-     | SAVE REKAM MEDIS PERAWAT
-     =============================== */
-    // public function save(): void
-    // {
-    //     if ($this->isFormLocked) {
-    //         $this->dispatch('toast', type: 'error', message: 'Form dalam mode read-only, tidak dapat menyimpan data.');
-    //         return;
-    //     }
-
-    //     $this->validate();
-
-    //     try {
-    //         DB::transaction(function () {
-    //             // Simpan data rekam medis perawat
-    //             $this->simpanRekamMedis();
-
-    //             // Update status EMR jika perlu
-    //             $this->updateEmrStatus();
-    //         });
-
-    //         $this->afterSave('Rekam Medis Perawat berhasil disimpan.');
-    //     } catch (\Exception $e) {
-    //         $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan: ' . $e->getMessage());
-    //     }
-    // }
-
-    // private function afterSave(string $message): void
-    // {
-    //     $this->dispatch('toast', type: 'success', message: $message);
-    //     $this->dispatch('refresh-datatable');
-    //     $this->closeModal();
-    // }
-
     protected function resetForm(): void
     {
         $this->reset(['rjNo', 'dataDaftarPoliRJ']);
@@ -100,6 +66,11 @@ new class extends Component {
     public function mount()
     {
         $this->registerAreas(['modal']);
+    }
+
+    public function save()
+    {
+        $this->dispatch('save-rm-anamnesa-rj');
     }
 };
 
@@ -172,13 +143,28 @@ new class extends Component {
                     <div
                         class="p-4 space-y-6 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
-                        <div class="w-1/3 mt-2">
+
+                        <div class="grid grid-cols-1 gap-2">
                             <livewire:lov.pasien.lov-pasien target="rjFormPasienRMPerawat" :initialRegNo="$dataDaftarPoliRJ['regNo'] ?? ''"
                                 :disabled="true" :label="'Data Pasien'" />
-                            <x-input-error :messages="$errors->get('dataDaftarPoliRJ.regNo')" class="mt-1" />
                         </div>
-                        {{-- ANAMNESA COMPONENT --}}
-                        <livewire:pages::transaksi.rj.daftar-rj.rm.anamnesa.rm-anamnesa-rj-actions :rjNo="$rjNo" />
+                        {{-- Data Pasien --}}
+
+                        <div class="grid grid-cols-2 gap-2">
+
+                            {{-- ANAMNESA COMPONENT --}}
+                            <livewire:pages::transaksi.rj.daftar-rj.rm.anamnesa.rm-anamnesa-rj-actions
+                                :rjNo="$rjNo" />
+
+                            {{-- PEMERIKSAAN COMPONENT --}}
+                            <livewire:pages::transaksi.rj.daftar-rj.rm.pemeriksaan.rm-pemeriksaan-rj-actions
+                                :rjNo="$rjNo" />
+                        </div>
+
+
+                        <div class="grid grid-cols-3 gap-2">
+
+                        </div>
 
                     </div>
                 </div>

@@ -101,7 +101,7 @@ new class extends Component {
     /* -------------------------
      | Refresh after child save
      * ------------------------- */
-    #[On('daftar-rj.saved')]
+    #[On('refresh-after-rj.saved')]
     public function refreshAfterSaved(): void
     {
         $this->dispatch('$refresh');
@@ -931,10 +931,6 @@ new class extends Component {
 
             {{-- Untuk Perawat --}}
             <livewire:pages::transaksi.rj.daftar-rj.daftar-rj-actions-rm-perawat />
-
-            {{-- Untuk Dokter --}}
-            <livewire:pages::transaksi.rj.daftar-rj.daftar-rj-actions-rm-dokter />
-
 
 
         </div>

@@ -128,7 +128,7 @@ new class extends Component {
             }
 
             $this->dispatch('toast', type: 'success', message: "Berhasil masuk apotek pada {$waktuSekarang}", title: 'Berhasil');
-            $this->dispatch('daftar-rj.saved');
+            $this->dispatch('refresh-after-rj.saved');
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Terjadi kesalahan: ' . $e->getMessage(), title: 'Error');
         } finally {

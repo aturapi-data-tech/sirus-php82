@@ -1,7 +1,7 @@
 <div class="w-full mb-1">
     <div>
         <x-input-label for="dataDaftarPoliRJ.anamnesa.riwayatPenyakitSekarangUmum.riwayatPenyakitSekarangUmum"
-            :value="__('Riwayat Penyakit Sekarang')" :required="__(true)" class="pt-2 sm:text-xl" />
+            :value="__('Riwayat Penyakit Sekarang')" :required="__(true)" class="pt-2 " />
 
         <div class="mb-2">
             <x-textarea id="dataDaftarPoliRJ.anamnesa.riwayatPenyakitSekarangUmum.riwayatPenyakitSekarangUmum"
@@ -10,8 +10,7 @@
                 )" :disabled="$isFormLocked" :rows="3"
                 wire:model.live="dataDaftarPoliRJ.anamnesa.riwayatPenyakitSekarangUmum.riwayatPenyakitSekarangUmum" />
         </div>
-        @error('dataDaftarPoliRJ.anamnesa.riwayatPenyakitSekarangUmum.riwayatPenyakitSekarangUmum')
-            <x-input-error :messages="$message" />
-        @enderror
+
+        <x-input-error :messages="$errors->get('dataDaftarPoliRJ.anamnesa.riwayatPenyakitSekarangUmum.riwayatPenyakitSekarangUmum')" class="mt-1" />
     </div>
 </div>

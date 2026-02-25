@@ -98,7 +98,7 @@ new class extends Component {
                 $this->dispatch('toast', type: $isSuccess ? 'success' : 'error', message: "TaskId 99: {$message}", title: $isSuccess ? 'Berhasil' : 'Gagal');
             }
 
-            $this->dispatch('daftar-rj.saved');
+            $this->dispatch('refresh-after-rj.saved');
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Terjadi kesalahan: ' . $e->getMessage(), title: 'Error');
         } finally {
