@@ -930,8 +930,7 @@ new class extends Component {
             <livewire:pages::transaksi.rj.daftar-rj.daftar-rj-actions wire:key="daftar-rj-actions" />
 
             {{-- Untuk Perawat --}}
-            <livewire:pages::transaksi.rj.daftar-rj.daftar-rj-actions-rm-perawat
-                wire:key="daftar-rj-actions-perawat" />
+            <livewire:pages::transaksi.rj.daftar-rj.rm-perawat-rj-actions wire:key="rm-perawat-rj-actions" />
 
 
         </div>

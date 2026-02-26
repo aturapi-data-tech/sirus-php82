@@ -45,7 +45,9 @@ new class extends Component {
 
         $this->dispatch('open-modal', name: 'rm-perawat-actions');
         $this->dispatch('open-rm-anamnesa-rj', $rjNo);
-        $this->dispatch('open-rm-pemeriksan-rj', $rjNo);
+        $this->dispatch('open-rm-pemeriksaan-rj', $rjNo);
+        $this->dispatch('open-rm-diagnosa-rj', $rjNo);
+        $this->dispatch('open-rm-perencanaan-rj', $rjNo);
     }
 
     /* ===============================
@@ -74,6 +76,8 @@ new class extends Component {
     {
         $this->dispatch('save-rm-anamnesa-rj');
         $this->dispatch('save-rm-pemeriksaan-rj');
+        $this->dispatch('save-rm-diagnosa-rj');
+        $this->dispatch('save-rm-perencanaan-rj');
     }
 };
 
@@ -166,7 +170,17 @@ new class extends Component {
 
 
                         <div class="grid grid-cols-3 gap-2">
+                            {{-- DIAGNOSA COMPONENT --}}
+                            <livewire:pages::transaksi.rj.daftar-rj.rm.diagnosa.rm-diagnosa-rj-actions :rjNo="$rjNo"
+                                wire:key="diagnosa-rj-{{ $rjNo }}" />
 
+                            {{-- PERENCANAAN COMPONENT --}}
+                            <livewire:pages::transaksi.rj.daftar-rj.rm.perencanaan.rm-perencanaan-rj-actions
+                                :rjNo="$rjNo" wire:key="perencanaan-rj-{{ $rjNo }}" />
+
+                            {{-- REKAM MEDIS --}}
+                            <livewire:pages::.components.rekam-medis.rekam-medis-display :regNo="$dataDaftarPoliRJ['regNo'] ?? ''"
+                                wire:key="rekam-medis-display-rj-{{ $rjNo }}" />
                         </div>
 
                     </div>

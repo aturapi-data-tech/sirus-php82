@@ -23,7 +23,7 @@ new class extends Component {
     /* ===============================
      | OPEN REKAM MEDIS PERAWAT - PEMERIKSAAN
      =============================== */
-    #[On('open-rm-pemeriksan-rj')]
+    #[On('open-rm-pemeriksaan-rj')]
     public function openPemeriksaan($rjNo): void
     {
         if (empty($rjNo)) {
