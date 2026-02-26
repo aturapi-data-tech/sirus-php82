@@ -77,6 +77,7 @@ new class extends Component {
                 $subQuery
                     ->orWhereRaw('UPPER(reg_no) LIKE ?', ["%{$uppercaseKeyword}%"])
                     ->orWhereRaw('UPPER(nik_bpjs) LIKE ?', ["%{$uppercaseKeyword}%"])
+                    ->orWhereRaw('UPPER(nokartu_bpjs) LIKE ?', ["%{$uppercaseKeyword}%"])
                     ->orWhereRaw('UPPER(reg_name) LIKE ?', ["%{$uppercaseKeyword}%"])
                     ->orWhereRaw('UPPER(address) LIKE ?', ["%{$uppercaseKeyword}%"])
                     ->orWhereRaw('UPPER(phone) LIKE ?', ["%{$uppercaseKeyword}%"]);
