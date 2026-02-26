@@ -61,7 +61,7 @@ trait EmrRJTrait
 
             return $dataDaftarRJ;
         }
-        $builtData = $this->getDefaultPasienTemplate();
+        $builtData = $this->getDefaultRJTemplate();
         // 3. Jika JSON tidak ada/invalid, coba build dari DB
         if ($row) {
             $this->populateFromDatabaseEmrRJ($builtData, $row);
