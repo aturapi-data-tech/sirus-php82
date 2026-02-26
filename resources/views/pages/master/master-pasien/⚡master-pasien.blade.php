@@ -74,11 +74,9 @@ new class extends Component {
             $uppercaseKeyword = mb_strtoupper($searchKeyword);
 
             $queryBuilder->where(function ($subQuery) use ($uppercaseKeyword, $searchKeyword) {
-                if (ctype_digit($searchKeyword)) {
-                    $subQuery->orWhere('reg_no', $searchKeyword)->orWhere('nik_bpjs', $searchKeyword);
-                }
-
                 $subQuery
+                    ->orWhereRaw('UPPER(reg_no) LIKE ?', ["%{$uppercaseKeyword}%"])
+                    ->orWhereRaw('UPPER(nik_bpjs) LIKE ?', ["%{$uppercaseKeyword}%"])
                     ->orWhereRaw('UPPER(reg_name) LIKE ?', ["%{$uppercaseKeyword}%"])
                     ->orWhereRaw('UPPER(address) LIKE ?', ["%{$uppercaseKeyword}%"])
                     ->orWhereRaw('UPPER(phone) LIKE ?', ["%{$uppercaseKeyword}%"]);

@@ -131,11 +131,10 @@ new class extends Component {
 
         // Set data primer (RJno, NoBooking, NoAntrian, dll)
         $this->setDataPrimer();
-
         // Validasi data Rawat Jalan
         $this->validateDataRJ();
-
         $rjNo = $this->dataDaftarPoliRJ['rjNo'] ?? null;
+
         if (!$rjNo) {
             $this->dispatch('toast', type: 'error', message: 'Nomor RJ tidak valid.');
             return;
@@ -155,7 +154,6 @@ new class extends Component {
                     if ($this->dataDaftarPoliRJ['klaimId'] != 'KR') {
                         $this->pushDataAntrian();
                     }
-
                     $isBpjs = ($this->dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($this->dataDaftarPoliRJ['klaimId'] ?? '') === 'JM';
 
                     if ($isBpjs) {
@@ -354,7 +352,6 @@ new class extends Component {
             'dataDaftarPoliRJ.noAntrian.numeric' => ':attribute harus berupa angka.',
             'dataDaftarPoliRJ.noAntrian.min' => ':attribute minimal :min.',
             'dataDaftarPoliRJ.noAntrian.max' => ':attribute maksimal :max.',
-            'dataDaftarPoliRJ.noAntrian.in' => ':attribute untuk pasien KRONIS harus 999.',
             'dataDaftarPoliRJ.noBooking.required' => ':attribute wajib diisi.',
             'dataDaftarPoliRJ.noBooking.string' => ':attribute harus berupa teks.',
             'dataDaftarPoliRJ.slCodeFrom.required' => ':attribute wajib diisi.',
@@ -414,7 +411,7 @@ new class extends Component {
 
         // Validasi untuk pasien KRONIS
         if ($this->dataDaftarPoliRJ['klaimStatus'] === 'KRONIS') {
-            $rules['dataDaftarPoliRJ.noAntrian'] = 'required|numeric|in:999';
+            $rules['dataDaftarPoliRJ.noAntrian'] = 'required|numeric';
         }
 
         // ===========================
