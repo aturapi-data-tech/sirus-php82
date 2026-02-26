@@ -19,7 +19,7 @@ new class extends Component {
     public string $searchKeyword = '';
     public string $filterTahun = '';
     public string $filterLayanan = '';
-    public int $itemsPerPage = 5;
+    public int $itemsPerPage = 3;
 
     // i-Care
     public bool $isOpenRekamMedisicare = false;
@@ -279,71 +279,34 @@ new class extends Component {
 ?>
 
 <div>
-    <div class="w-full mb-1">
-        <div class="grid grid-cols-1">
-            <div id="TransaksiRawatJalan" class="px-2">
-
-                {{-- Toolbar --}}
-                <div
-                    class="flex flex-wrap items-center justify-between gap-3 p-3 mb-3 bg-white border border-gray-200 rounded-lg dark:bg-gray-800 dark:border-gray-700">
-                    <div class="flex items-center space-x-3">
-                        <div class="flex items-center space-x-2">
-                            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                            <span class="text-sm font-medium">No. RM: <span
-                                    class="font-semibold text-primary">{{ $regNo ?: '-' }}</span></span>
-                        </div>
-
-                        @if ($regNo)
-                            <div class="flex space-x-2">
-                                <span
-                                    class="px-2 py-1 text-xs bg-blue-100 rounded-full text-primary">{{ $this->statsKunjungan['total'] }}
-                                    Total</span>
-                                <span class="px-2 py-1 text-xs text-green-700 bg-green-100 rounded-full">RJ:
-                                    {{ $this->statsKunjungan['rj'] }}</span>
-                                <span class="px-2 py-1 text-xs text-red-700 bg-red-100 rounded-full">UGD:
-                                    {{ $this->statsKunjungan['ugd'] }}</span>
-                                <span class="px-2 py-1 text-xs text-purple-700 bg-purple-100 rounded-full">RI:
-                                    {{ $this->statsKunjungan['ri'] }}</span>
-                            </div>
-                        @endif
-                    </div>
-
-                    <div class="flex items-center space-x-2">
-
-
-                        @if ($regNo)
-                            <button wire:click="resetFilters"
-                                class="px-3 py-1 text-xs text-gray-600 transition-colors bg-gray-100 rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300">
-                                Reset Filter
-                            </button>
-                        @endif
-                    </div>
-                </div>
+    {{-- CONTAINER UTAMA - SATU-SATUNYA WIRE:KEY --}}
+    <div class="flex flex-col w-full">
+        {{-- BODY --}}
+        <div class="w-full mx-auto">
+            <div
+                class="w-full p-4 space-y-6 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
                 {{-- Filters --}}
-                @if ($regNo)
+                {{-- @if ($regNo)
                     <div class="grid grid-cols-1 gap-2 mb-4 md:grid-cols-6">
                         <div class="col-span-3">
-                            <x-input-label value="Cari" class="text-xs" />
+                            <x-input-label value="Cari" class="text-sm" />
                             <x-text-input wire:model.live.debounce.300ms="searchKeyword" class="w-full"
                                 placeholder="Kunjungan / Poli / Dr ..." />
                         </div>
 
-                        {{-- <div>
-                            <x-input-label value="Tahun" class="text-xs" />
+                        <div>
+                            <x-input-label value="Tahun" class="text-sm" />
                             <x-select-input wire:model.live="filterTahun" class="w-full">
                                 <option value="">Semua Tahun</option>
                                 @foreach ($this->tahunList as $tahun)
                                     <option value="{{ $tahun }}">{{ $tahun }}</option>
                                 @endforeach
                             </x-select-input>
-                        </div> --}}
+                        </div>
 
                         <div class="col-span-2">
-                            <x-input-label value="Jenis Layanan" class="text-xs" />
+                            <x-input-label value="Jenis Layanan" class="text-sm" />
                             <x-select-input wire:model.live="filterLayanan" class="w-full">
                                 <option value="">Semua</option>
                                 <option value="RJ">Rawat Jalan</option>
@@ -353,8 +316,9 @@ new class extends Component {
                         </div>
 
                         <div>
-                            <x-input-label value="Tampil" class="text-xs" />
+                            <x-input-label value="Tampil" class="text-sm" />
                             <x-select-input wire:model.live="itemsPerPage" class="w-full">
+                                <option value="3">3</option>
                                 <option value="5">5</option>
                                 <option value="10">10</option>
                                 <option value="20">20</option>
@@ -362,7 +326,12 @@ new class extends Component {
                             </x-select-input>
                         </div>
                     </div>
-                @endif
+                    @if ($regNo)
+                        <x-secondary-button wire:click="resetFilters">
+                            Reset Filter
+                        </x-secondary-button>
+                    @endif
+                @endif --}}
 
                 <!-- Table Resume Medis -->
                 <div class="flex flex-col my-2">
@@ -371,14 +340,14 @@ new class extends Component {
                             <div class="mb-2 overflow-hidden shadow sm:rounded-lg">
                                 <table class="w-full text-sm text-left text-gray-500 table-auto dark:text-gray-400">
                                     <thead
-                                        class="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700 dark:text-gray-400">
+                                        class="text-sm text-gray-700 uppercase bg-gray-100 dark:bg-gray-700 dark:text-gray-400">
                                         <tr>
                                             <th scope="col" class="px-4 py-3">
                                                 <div class="flex items-center space-x-2">
                                                     <span>Resume Medis Pasien</span>
                                                     @if ($regNo && $this->rows->total() > 0)
                                                         <span
-                                                            class="px-2 py-0.5 text-xs bg-blue-100 rounded-full text-primary">
+                                                            class="px-2 py-0.5 text-sm bg-blue-100 rounded-full text-brand">
                                                             {{ $this->rows->total() }} Kunjungan
                                                         </span>
                                                     @endif
@@ -435,18 +404,18 @@ new class extends Component {
 
                                                                     @if (!empty($datadaftar_json['statusPRB']['penanggungJawab']['statusPRB']))
                                                                         <span
-                                                                            class="px-2 py-0.5 text-xs font-bold text-white bg-gray-800 rounded-full">PRB</span>
+                                                                            class="px-2 py-0.5 text-sm font-bold text-white bg-gray-800 rounded-full">PRB</span>
                                                                     @endif
 
                                                                     @if (($datadaftar_json['ermStatus'] ?? '') == 'L')
                                                                         <span
-                                                                            class="px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded-full">Selesai</span>
+                                                                            class="px-2 py-0.5 text-sm font-medium text-green-700 bg-green-100 rounded-full">Selesai</span>
                                                                     @endif
                                                                 </div>
 
                                                             </div>
                                                         </div>
-                                                        <div class="text-xs text-right text-gray-500">
+                                                        <div class="text-sm text-right text-gray-500">
                                                             <div>{{ $myQData->txn_date }}</div>
                                                         </div>
                                                     </div>
@@ -467,7 +436,7 @@ new class extends Component {
                                                     </div>
 
                                                     {{-- Diagnosis & Terapi --}}
-                                                    <div class="grid grid-cols-1 gap-3 mt-3 md:grid-cols-3">
+                                                    <div class="grid grid-cols-1 gap-3 mt-3">
                                                         {{-- ICD10 --}}
                                                         <div class="p-2 rounded bg-gray-50">
                                                             <div class="flex items-center mb-1 space-x-1">
@@ -477,9 +446,9 @@ new class extends Component {
                                                                         stroke-width="2"
                                                                         d="M9 12h6m-6 4h6m2-10h-6a2 2 0 00-2 2v14a2 2 0 002 2h6a2 2 0 002-2V6a2 2 0 00-2-2z" />
                                                                 </svg>
-                                                                <span class="text-xs font-semibold">ICD10:</span>
+                                                                <span class="text-sm font-semibold">ICD10:</span>
                                                             </div>
-                                                            <div class="text-xs">
+                                                            <div class="text-sm">
                                                                 @if (!empty($datadaftar_json['diagnosis']))
                                                                     @foreach (collect($datadaftar_json['diagnosis'])->take(2) as $diag)
                                                                         <div>{{ $diag['diagId'] ?? '' }} -
@@ -502,14 +471,14 @@ new class extends Component {
                                                             <div class="flex items-center mb-1 space-x-1">
                                                                 <svg class="w-3 h-3 text-green-600" fill="none"
                                                                     stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round"
-                                                                        stroke-linejoin="round" stroke-width="2"
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        stroke-width="2"
                                                                         d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                                                 </svg>
-                                                                <span class="text-xs font-semibold">Dx Dokter:</span>
+                                                                <span class="text-sm font-semibold">Dx Dokter:</span>
                                                             </div>
-                                                            <div class="text-xs">
-                                                                <div class="text-xs whitespace-pre-line">
+                                                            <div class="text-sm">
+                                                                <div class="text-sm whitespace-pre-line">
                                                                     @if (!empty($datadaftar_json['diagnosisFreeText']))
                                                                         {{ $datadaftar_json['diagnosisFreeText'] }}
                                                                     @else
@@ -524,13 +493,13 @@ new class extends Component {
                                                             <div class="flex items-center mb-1 space-x-1">
                                                                 <svg class="w-3 h-3 text-purple-600" fill="none"
                                                                     stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round"
-                                                                        stroke-linejoin="round" stroke-width="2"
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        stroke-width="2"
                                                                         d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                                                                 </svg>
-                                                                <span class="text-xs font-semibold">Terapi:</span>
+                                                                <span class="text-sm font-semibold">Terapi:</span>
                                                             </div>
-                                                            <div class="text-xs">
+                                                            <div class="text-sm">
                                                                 @php
                                                                     $terapi = data_get(
                                                                         $datadaftar_json,
@@ -539,7 +508,7 @@ new class extends Component {
                                                                     );
                                                                 @endphp
 
-                                                                <div class="text-xs break-words whitespace-pre-line">
+                                                                <div class="text-sm break-words whitespace-pre-line">
                                                                     {{ $terapi }}
                                                                 </div>
                                                             </div>
@@ -548,12 +517,12 @@ new class extends Component {
 
                                                     {{-- Actions --}}
                                                     @role(['Dokter', 'Admin', 'Perawat'])
-                                                        <div class="flex items-center justify-between mt-3">
-                                                            <div class="flex space-x-2">
+                                                        <div class="grid grid-cols-2 gap-2 mt-3">
+                                                            <div class="grid grid-cols-1 gap-2">
                                                                 @if ($isRJ)
                                                                     <x-primary-button type="button"
                                                                         wire:click="copyResep('{{ $myQData->txn_no }}','{{ $myQData->layanan_status }}')"
-                                                                        class="text-xs px-3 py-1.5">
+                                                                        class="text-sm px-3 py-1.5">
                                                                         <svg class="w-4 h-4 mr-1" fill="none"
                                                                             stroke="currentColor" viewBox="0 0 24 24">
                                                                             <path stroke-linecap="round"
@@ -567,7 +536,7 @@ new class extends Component {
                                                                 @if (!empty($datadaftar_json['sep']['noSep']))
                                                                     <x-primary-button type="button"
                                                                         wire:click="myiCare('{{ $myQData->nokartu_bpjs }}','{{ $datadaftar_json['sep']['noSep'] }}')"
-                                                                        class="text-xs px-3 py-1.5" variant="info">
+                                                                        class="text-sm px-3 py-1.5" variant="info">
                                                                         <svg class="w-4 h-4 mr-1" fill="none"
                                                                             stroke="currentColor" viewBox="0 0 24 24">
                                                                             <path stroke-linecap="round"
@@ -582,7 +551,7 @@ new class extends Component {
                                                             </div>
 
                                                             @if (!empty($datadaftar_json['sep']['noSep']))
-                                                                <span class="text-xs text-gray-500">
+                                                                <span class="text-sm text-right text-gray-500">
                                                                     SEP: {{ $datadaftar_json['sep']['noSep'] }}
                                                                 </span>
                                                             @endif
@@ -619,6 +588,36 @@ new class extends Component {
                                 </div>
                             @endif
                         </div>
+                    </div>
+                </div>
+
+                {{-- Toolbar --}}
+                <div
+                    class="flex flex-wrap items-center justify-between gap-3 p-3 mb-3 bg-white border border-gray-200 rounded-lg dark:bg-gray-800 dark:border-gray-700">
+                    <div class="flex items-center space-x-3">
+                        <div class="flex items-center space-x-2">
+                            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span class="text-sm font-medium">No. RM: <span
+                                    class="font-semibold text-brand">{{ $regNo ?: '-' }}</span></span>
+                        </div>
+
+                        @if ($regNo)
+                            <div class="flex space-x-2">
+                                <span
+                                    class="px-2 py-1 text-sm bg-blue-100 rounded-full text-brand">{{ $this->statsKunjungan['total'] }}
+                                    Total</span>
+                                <span class="px-2 py-1 text-sm text-green-700 bg-green-100 rounded-full">RJ:
+                                    {{ $this->statsKunjungan['rj'] }}</span>
+                                <span class="px-2 py-1 text-sm text-red-700 bg-red-100 rounded-full">UGD:
+                                    {{ $this->statsKunjungan['ugd'] }}</span>
+                                <span class="px-2 py-1 text-sm text-purple-700 bg-purple-100 rounded-full">RI:
+                                    {{ $this->statsKunjungan['ri'] }}</span>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>

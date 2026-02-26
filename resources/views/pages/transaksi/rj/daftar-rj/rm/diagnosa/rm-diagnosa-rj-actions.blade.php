@@ -317,17 +317,17 @@ new class extends Component {
 
             {{-- DIAGNOSIS SECTION --}}
             <div class="w-full">
-                <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Diagnosa (ICD-10)</h3>
+                <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Diagnosis (ICD-10)</h3>
 
                 {{-- LOV DIAGNOSA --}}
                 <div class="mb-4">
-                    <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosa" target="rjFormDiagnosaRm" :initialDiagnosaId="$diagnosaId ?? null"
+                    <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosis" target="rjFormDiagnosaRm" :initialDiagnosaId="$diagnosaId ?? null"
                         :disabled="$isFormLocked" wire:key="lov-diagnosa-{{ $this->renderKey('modal-diagnosis-rj') }}" />
                 </div>
 
                 {{-- FREE TEXT DIAGNOSA --}}
                 <div class="mb-4">
-                    <x-input-label for="diagnosis_freetext" :value="__('Free Text Diagnosa')" class="mb-2" />
+                    <x-input-label for="diagnosis_freetext" :value="__('Free Text Diagnosis')" class="mb-2" />
                     <x-textarea id="diagnosis_freetext"
                         wire:key="diagnosis-freetext-{{ $this->renderKey('modal-diagnosis-rj') }}"
                         wire:model.live="dataDaftarPoliRJ.diagnosisFreeText" :error="$errors->has('dataDaftarPoliRJ.diagnosisFreeText')" class="w-full mt-1"
@@ -341,10 +341,7 @@ new class extends Component {
                             <thead
                                 class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3">Kode</th>
-                                    <th scope="col" class="px-6 py-3">Deskripsi</th>
-                                    <th scope="col" class="px-6 py-3">Kategori</th>
-                                    <th scope="col" class="px-6 py-3">Keterangan</th>
+                                    <th scope="col" class="px-6 py-3">Diagnosis</th>
                                     <th scope="col" class="px-6 py-3">Aksi</th>
                                 </tr>
                             </thead>
@@ -354,21 +351,17 @@ new class extends Component {
                                         class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                                         <td
                                             class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                                            {{ $diagnosa['diagId'] ?? ($diagnosa['icdX'] ?? '') }}
-                                        </td>
-                                        <td class="px-6 py-4">{{ $diagnosa['diagDesc'] ?? '' }}</td>
-                                        <td class="px-6 py-4">
-                                            <span
-                                                class="px-2 py-1 text-xs font-medium rounded-full {{ ($diagnosa['kategoriDiagnosa'] ?? 'Secondary') == 'Primary' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                                            <div>{{ $diagnosa['diagId'] ?? ($diagnosa['icdX'] ?? '') }}
+                                                {{ $diagnosa['diagDesc'] ?? '' }}</div>
+                                            <x-badge
+                                                variant="{{ ($diagnosa['kategoriDiagnosa'] ?? 'Secondary') == 'Primary' ? 'success' : 'warning' }}">
                                                 {{ $diagnosa['kategoriDiagnosa'] ?? 'Secondary' }}
-                                            </span>
+                                            </x-badge>
                                         </td>
-                                        <td class="px-6 py-4">
-                                            <input type="text"
-                                                wire:model.live="dataDaftarPoliRJ.diagnosis.{{ $index }}.ketdiagnosa"
-                                                class="block w-full p-1 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-primary focus:border-primary dark:bg-gray-700 dark:border-gray-600"
-                                                placeholder="Keterangan" @disabled($isFormLocked) />
+
+
                                         </td>
+
                                         <td class="px-6 py-4">
                                             @if (!$isFormLocked)
                                                 <button type="button"
@@ -427,9 +420,7 @@ new class extends Component {
                             <thead
                                 class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3">Kode</th>
-                                    <th scope="col" class="px-6 py-3">Deskripsi</th>
-                                    <th scope="col" class="px-6 py-3">Keterangan</th>
+                                    <th scope="col" class="px-6 py-3">Procedure</th>
                                     <th scope="col" class="px-6 py-3">Aksi</th>
                                 </tr>
                             </thead>
@@ -439,14 +430,8 @@ new class extends Component {
                                         class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                                         <td
                                             class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                                            {{ $procedure['procedureId'] ?? '' }}
-                                        </td>
-                                        <td class="px-6 py-4">{{ $procedure['procedureDesc'] ?? '' }}</td>
-                                        <td class="px-6 py-4">
-                                            <input type="text"
-                                                wire:model.live="dataDaftarPoliRJ.procedure.{{ $index }}.ketProcedure"
-                                                class="block w-full p-1 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-primary focus:border-primary dark:bg-gray-700 dark:border-gray-600"
-                                                placeholder="Keterangan" @disabled($isFormLocked) />
+                                            <div>{{ $procedure['procedureId'] ?? '' }}
+                                                {{ $procedure['procedureDesc'] ?? '' }}</div>
                                         </td>
                                         <td class="px-6 py-4">
                                             @if (!$isFormLocked)
