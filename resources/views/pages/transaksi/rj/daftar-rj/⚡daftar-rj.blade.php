@@ -74,14 +74,14 @@ new class extends Component {
         $this->dispatch('daftar-rj.openEdit', rjNo: $rjNo);
     }
 
-    public function openRekamMedisDokter(string $rjNo): void
-    {
-        $this->dispatch('emr-rj.rekam-medis.openDokter', rjNo: $rjNo);
-    }
-
-    public function openRekamMedisPerawat(string $rjNo): void
+    public function openRekamMedis(string $rjNo): void
     {
         $this->dispatch('emr-rj.rekam-medis.open', rjNo: $rjNo);
+    }
+
+    public function openAdministrasiPasien(string $rjNo): void
+    {
+        $this->dispatch('emr-rj.administrasi.open', rjNo: $rjNo);
     }
 
     /* -------------------------
@@ -682,7 +682,7 @@ new class extends Component {
                                     {{-- ACTION --}}
                                     <td class="px-6 py-6 align-top">
                                         <div class="flex items-center justify-center gap-2">
-                                            <x-dropdown position="left" width="w-56">
+                                            <x-dropdown position="left" width="w-[500px]">
                                                 <x-slot name="trigger">
                                                     <x-secondary-button type="button" class="p-2">
                                                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -693,7 +693,7 @@ new class extends Component {
                                                 </x-slot>
 
                                                 <x-slot name="content">
-                                                    <div class="py-1 space-y-0.5">
+                                                    <div class="p-2 space-y-2">
 
                                                         @if ($row->lab_status || $row->rad_status)
                                                             <div class="flex space-x-1">
@@ -706,79 +706,84 @@ new class extends Component {
                                                             </div>
                                                         @endif
 
-                                                        {{-- Ubah --}}
-                                                        <x-dropdown-link href="#"
-                                                            wire:click.prevent="openEdit('{{ $row->rj_no }}')"
-                                                            class="px-3 py-1.5 text-md">
-                                                            <div class="flex items-start gap-2">
-                                                                <svg class="w-6 h-6 mt-0.5" fill="none"
-                                                                    stroke="currentColor" viewBox="0 0 24 24"
-                                                                    stroke-width="2">
-                                                                    <path stroke-linecap="round"
-                                                                        stroke-linejoin="round"
-                                                                        d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2.5 2.5 0 113.536 3.536L12.536 16.536a4 4 0 01-1.414.95L7 19l1.514-4.122A4 4 0 019 13z" />
-                                                                </svg>
-                                                                <span>
-                                                                    Pendaftaran Ubah <br>
-                                                                    <span
-                                                                        class="font-semibold">{{ $row->reg_name }}</span>
-                                                                </span>
-                                                            </div>
-                                                        </x-dropdown-link>
+                                                        {{-- GRID 2 KOLOM --}}
+                                                        <div class="grid grid-cols-2 gap-1">
 
-                                                        {{-- RM Perawat --}}
-                                                        <x-dropdown-link href="#"
-                                                            wire:click.prevent="openRekamMedisPerawat('{{ $row->rj_no }}')"
-                                                            class="px-3 py-1.5 text-md">
-                                                            <div class="flex items-start gap-2">
-                                                                <svg class="w-6 h-6 mt-0.5" fill="none"
-                                                                    stroke="currentColor" viewBox="0 0 24 24"
-                                                                    stroke-width="2">
-                                                                    <path stroke-linecap="round"
-                                                                        stroke-linejoin="round"
-                                                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                                    <path stroke-linecap="round"
-                                                                        stroke-linejoin="round"
-                                                                        d="M19 10l2 2-2 2M5 10l-2 2 2 2" />
-                                                                </svg>
-                                                                <span>
-                                                                    RM Perawat <br>
-                                                                    <span class="font-semibold">Asuhan
-                                                                        Keperawatan</span>
-                                                                </span>
-                                                            </div>
-                                                        </x-dropdown-link>
+                                                            {{-- Ubah --}}
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openEdit('{{ $row->rj_no }}')"
+                                                                class="px-3 py-2 text-sm rounded-lg">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0"
+                                                                        fill="none" stroke="currentColor"
+                                                                        viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round"
+                                                                            stroke-linejoin="round"
+                                                                            d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2.5 2.5 0 113.536 3.536L12.536 16.536a4 4 0 01-1.414.95L7 19l1.514-4.122A4 4 0 019 13z" />
+                                                                    </svg>
+                                                                    <span>
+                                                                        Pendaftaran Ubah <br>
+                                                                        <span
+                                                                            class="font-semibold">{{ $row->reg_name }}</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
 
-                                                        {{-- RM Dokter --}}
-                                                        <x-dropdown-link href="#"
-                                                            wire:click.prevent="openRekamMedisDokter('{{ $row->rj_no }}')"
-                                                            class="px-3 py-1.5 text-md">
-                                                            <div class="flex items-start gap-2">
-                                                                <svg class="w-6 h-6 mt-0.5" fill="none"
-                                                                    stroke="currentColor" viewBox="0 0 24 24"
-                                                                    stroke-width="2">
-                                                                    <path stroke-linecap="round"
-                                                                        stroke-linejoin="round"
-                                                                        d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                    <path stroke-linecap="round"
-                                                                        stroke-linejoin="round"
-                                                                        d="M9 12h6m-6 4h6m2-10v16M7 6h10" />
-                                                                </svg>
-                                                                <span>
-                                                                    RM Dokter <br>
-                                                                    <span class="font-semibold">Asuhan Medis</span>
-                                                                </span>
-                                                            </div>
-                                                        </x-dropdown-link>
+                                                            {{-- RM Perawat --}}
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openRekamMedis('{{ $row->rj_no }}')"
+                                                                class="px-3 py-2 text-sm rounded-lg">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0"
+                                                                        fill="none" stroke="currentColor"
+                                                                        viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round"
+                                                                            stroke-linejoin="round"
+                                                                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                                        <path stroke-linecap="round"
+                                                                            stroke-linejoin="round"
+                                                                            d="M19 10l2 2-2 2M5 10l-2 2 2 2" />
+                                                                    </svg>
+                                                                    <span>
+                                                                        Rekam Medis <br>
+                                                                        <span class="font-semibold">Pasien</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
 
-                                                        <div class="py-4 space-y-2"></div>
+                                                            {{-- Administrasi --}}
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openAdministrasiPasien('{{ $row->rj_no }}')"
+                                                                class="px-3 py-2 text-sm rounded-lg">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0"
+                                                                        fill="none" stroke="currentColor"
+                                                                        viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round"
+                                                                            stroke-linejoin="round"
+                                                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                    </svg>
+                                                                    <span>
+                                                                        Administrasi <br>
+                                                                        <span
+                                                                            class="font-semibold">{{ $row->reg_name }}</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
 
-                                                        {{-- Hapus --}}
+                                                        </div>
+
+                                                        {{-- DIVIDER --}}
+                                                        <div
+                                                            class="my-1 border-t border-gray-200 dark:border-gray-700">
+                                                        </div>
+
+                                                        {{-- Hapus — FULL WIDTH --}}
                                                         <x-dropdown-link href="#"
                                                             wire:click.prevent="requestDelete('{{ $row->rj_no }}')"
-                                                            class="px-3 py-1.5 font-semibold text-md text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 mb-10">
-                                                            <div class="flex items-center gap-2">
-                                                                <svg class="w-6 h-6" fill="none"
+                                                            class="w-full px-3 py-2 text-sm font-semibold text-red-600 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50">
+                                                            <div class="flex items-center justify-center gap-2">
+                                                                <svg class="w-5 h-5" fill="none"
                                                                     stroke="currentColor" viewBox="0 0 24 24"
                                                                     stroke-width="2">
                                                                     <path stroke-linecap="round"
@@ -820,6 +825,8 @@ new class extends Component {
             {{-- Child components --}}
             <livewire:pages::transaksi.rj.daftar-rj.daftar-rj-actions wire:key="daftar-rj-actions" />
             <livewire:pages::transaksi.rj.emr-rj.erm-rj wire:key="rm-perawat-rj-actions" />
+            <livewire:pages::transaksi.rj.administrasi-rj.administrasi-rj wire:key="administrasi-rj-actions" />
+
 
         </div>
     </div>
