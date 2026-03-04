@@ -309,20 +309,19 @@ new class extends Component {
 
         try {
             DB::transaction(function () {
-                // Whitelist field anamnesa yang boleh diupdate
-                $allowedAnamnesaFields = ['anamnesa'];
+                // ✅ Ambil existing data dari DB
+                $data = $this->findDataRJ($this->rjNo) ?? [];
 
-                // Untuk update, ambil data existing dari database
-                $existingData = $this->findDataRJ($this->rjNo);
+                // ✅ Guard: jika data kosong, batalkan — hindari overwrite JSON dengan array kosong
+                if (empty($data)) {
+                    $this->dispatch('toast', type: 'error', message: 'Data RJ tidak ditemukan, simpan dibatalkan.');
+                    return;
+                }
 
-                // Ambil hanya field anamnesa yang diizinkan dari form
-                $formAnamnesa = array_intersect_key($this->dataDaftarPoliRJ ?? [], array_flip($allowedAnamnesaFields));
+                // ✅ Set hanya key 'anamnesa', key lain tidak tersentuh
+                $data['anamnesa'] = $this->dataDaftarPoliRJ['anamnesa'] ?? [];
 
-                // Merge anamnesa data: existing diupdate dengan form data
-                $mergedData = array_replace_recursive($existingData ?? [], $formAnamnesa);
-
-                // Update RJ with merged data
-                $this->updateJsonRJ($this->rjNo, $mergedData);
+                $this->updateJsonRJ($this->rjNo, $data);
 
                 // Update pasien riwayat medis pasien data if needed (fixed typo in comment)
                 $this->updateRiwayatMedisPasien();

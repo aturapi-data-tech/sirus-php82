@@ -31,6 +31,16 @@
                     </x-primary-button>
                 </div>
             @endif
+
+            {{-- SKDP — tampil hanya jika Tindak Lanjut = Kontrol --}}
+            @if (($dataDaftarPoliRJ['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '') === 'Kontrol')
+                <div class="mt-4">
+                    <livewire:pages::transaksi.rj.emr-rj.skdp.rm-skdp-rj-actions :rjNo="$rjNo"
+                        wire:key="rm-skdp-rj-{{ $rjNo }}" />
+                </div>
+            @endif
+
+
         </div>
     </div>
 </div>

@@ -438,6 +438,11 @@ new class extends Component {
         } else {
             // Untuk update, ambil data existing dari database
             $existingData = $this->findDataRJ($rjNo);
+
+            if (empty($existingData)) {
+                $this->dispatch('toast', type: 'error', message: 'Data RJ tidak ditemukan, simpan dibatalkan.');
+                return;
+            }
             // Ambil field dari form yang diizinkan
             $formData = array_intersect_key($this->dataDaftarPoliRJ, array_flip($allowedFields));
             // Merge: prioritas data dari database, timpa dengan form untuk field tertentu

@@ -228,19 +228,19 @@ new class extends Component {
 
         try {
             DB::transaction(function () {
-                // Whitelist field perencanaan yang boleh diupdate
-                $allowedPerencanaanFields = ['perencanaan'];
+                // ✅ Ambil existing data dari DB
+                $data = $this->findDataRJ($this->rjNo) ?? [];
 
-                // Untuk update, ambil data existing dari database
-                $existingData = $this->findDataRJ($this->rjNo);
+                // ✅ Guard: jika data kosong, batalkan — hindari overwrite JSON dengan array kosong
+                if (empty($data)) {
+                    $this->dispatch('toast', type: 'error', message: 'Data RJ tidak ditemukan, simpan dibatalkan.');
+                    return;
+                }
 
-                // Ambil hanya field perencanaan yang diizinkan dari form
-                $formPerencanaan = array_intersect_key($this->dataDaftarPoliRJ ?? [], array_flip($allowedPerencanaanFields));
+                // ✅ Set hanya key 'perencanaan', key lain tidak tersentuh
+                $data['perencanaan'] = $this->dataDaftarPoliRJ['perencanaan'] ?? [];
 
-                // Merge perencanaan data: existing diupdate dengan form data
-                $mergedData = array_replace_recursive($existingData ?? [], $formPerencanaan);
-                // Update RJ with merged data
-                $this->updateJsonRJ($this->rjNo, $mergedData);
+                $this->updateJsonRJ($this->rjNo, $data);
             });
 
             $this->afterSave('Perencanaan berhasil disimpan.');

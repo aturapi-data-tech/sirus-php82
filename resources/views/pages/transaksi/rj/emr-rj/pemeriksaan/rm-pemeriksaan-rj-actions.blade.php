@@ -421,17 +421,19 @@ new class extends Component {
         $this->validate();
         try {
             DB::transaction(function () {
-                // Whitelist field pemeriksaan yang boleh diupdate
-                $allowedPemeriksaanFields = ['pemeriksaan'];
+                // ✅ Ambil existing data dari DB
+                $data = $this->findDataRJ($this->rjNo) ?? [];
 
-                // Untuk update, ambil data existing dari database
-                $existingData = $this->findDataRJ($this->rjNo);
-                // Ambil hanya field pemeriksaan yang diizinkan dari form
-                $formPemeriksaan = array_intersect_key($this->dataDaftarPoliRJ ?? [], array_flip($allowedPemeriksaanFields));
-                // Merge pemeriksaan data: existing diupdate dengan form data
-                $mergedData = array_replace_recursive($existingData ?? [], $formPemeriksaan);
-                // Update RJ with merged data
-                $this->updateJsonRJ($this->rjNo, $mergedData);
+                // ✅ Guard: jika data kosong, batalkan — hindari overwrite JSON dengan array kosong
+                if (empty($data)) {
+                    $this->dispatch('toast', type: 'error', message: 'Data RJ tidak ditemukan, simpan dibatalkan.');
+                    return;
+                }
+
+                // ✅ Set hanya key 'pemeriksaan', key lain tidak tersentuh
+                $data['pemeriksaan'] = $this->dataDaftarPoliRJ['pemeriksaan'] ?? [];
+
+                $this->updateJsonRJ($this->rjNo, $data);
             });
 
             $this->afterSave('Pemeriksaan berhasil disimpan.');

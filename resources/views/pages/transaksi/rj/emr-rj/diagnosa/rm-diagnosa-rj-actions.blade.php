@@ -277,28 +277,22 @@ new class extends Component {
 
         try {
             DB::transaction(function () {
-                // Whitelist field yang boleh diupdate
-                $allowedFields = ['diagnosis', 'procedure', 'diagnosisFreeText', 'procedureFreeText'];
+                // ✅ Ambil existing data dari DB
+                $data = $this->findDataRJ($this->rjNo) ?? [];
 
-                // Ambil data existing dari database
-                $existingData = $this->findDataRJ($this->rjNo) ?? [];
+                // ✅ Guard: jika data kosong, batalkan — hindari overwrite JSON dengan array kosong
+                if (empty($data)) {
+                    $this->dispatch('toast', type: 'error', message: 'Data RJ tidak ditemukan, simpan dibatalkan.');
+                    return;
+                }
 
-                // Ambil hanya field yang diizinkan dari form
-                $formData = array_intersect_key($this->dataDaftarPoliRJ ?? [], array_flip($allowedFields));
+                // ✅ Set hanya key yang diperlukan, key lain tidak tersentuh
+                $data['diagnosis'] = $this->dataDaftarPoliRJ['diagnosis'] ?? [];
+                $data['procedure'] = $this->dataDaftarPoliRJ['procedure'] ?? [];
+                $data['diagnosisFreeText'] = $this->dataDaftarPoliRJ['diagnosisFreeText'] ?? '';
+                $data['procedureFreeText'] = $this->dataDaftarPoliRJ['procedureFreeText'] ?? '';
 
-                // Merge field associative pakai array_replace_recursive
-                $mergedData = array_replace_recursive($existingData, $formData);
-
-                // ✅ Overwrite langsung field array list agar tambah/hapus/kosong aman
-                $mergedData['diagnosis'] = $formData['diagnosis'] ?? [];
-                $mergedData['procedure'] = $formData['procedure'] ?? [];
-
-                // ✅ Free text langsung dari form (string, bukan list)
-                $mergedData['diagnosisFreeText'] = $formData['diagnosisFreeText'] ?? '';
-                $mergedData['procedureFreeText'] = $formData['procedureFreeText'] ?? '';
-
-                // Update RJ with merged data
-                $this->updateJsonRJ($this->rjNo, $mergedData);
+                $this->updateJsonRJ($this->rjNo, $data);
             });
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan: ' . $e->getMessage());
