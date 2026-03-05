@@ -369,6 +369,11 @@ new class extends Component {
     {
         return DB::table('rsmst_klaims')->select('klaim_id', 'klaim_name')->where('active_status', '1')->orderBy('klaim_name')->get();
     }
+
+    public function cetakEtiket(string $regNo): void
+    {
+        $this->dispatch('cetak-etiket.open', regNo: $regNo);
+    }
 };
 ?>
 
@@ -686,7 +691,28 @@ new class extends Component {
 
                                     {{-- ACTION --}}
                                     <td class="px-6 py-6 align-top">
-                                        <div class="flex items-center justify-center gap-2">
+                                        <div class="flex items-center gap-4">
+
+                                            {{-- Cetak Etiket --}}
+                                            <x-secondary-button wire:click="cetakEtiket('{{ $row->reg_no }}')"
+                                                wire:loading.attr="disabled" wire:target="cetakEtiket">
+                                                <span wire:loading.remove wire:target="cetakEtiket"
+                                                    class="flex items-center gap-1">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                    </svg>
+                                                    Etiket
+                                                </span>
+                                                <span wire:loading wire:target="cetakEtiket"
+                                                    class="flex items-center gap-1">
+                                                    <x-loading />
+                                                    Mencetak...
+                                                </span>
+                                            </x-secondary-button>
+
+                                            {{-- Dropdown Aksi --}}
                                             <x-dropdown position="left" width="w-[500px]">
                                                 <x-slot name="trigger">
                                                     <x-secondary-button type="button" class="p-2">
@@ -781,7 +807,6 @@ new class extends Component {
                                                                 wire:click.prevent="openAdministrasiPasien('{{ $row->rj_no }}')"
                                                                 class="px-3 py-2 text-sm rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40">
                                                                 <div class="flex items-start gap-2">
-                                                                    {{-- Cash / Banknote icon --}}
                                                                     <svg class="w-5 h-5 mt-0.5 shrink-0"
                                                                         fill="none" stroke="currentColor"
                                                                         viewBox="0 0 24 24" stroke-width="2">
@@ -823,6 +848,7 @@ new class extends Component {
                                                     </div>
                                                 </x-slot>
                                             </x-dropdown>
+
                                         </div>
                                     </td>
 
@@ -855,6 +881,9 @@ new class extends Component {
 
             {{-- Modul Dokumen RJ --}}
             <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.modul-dokumen-rj wire:key="modul-dokumen-rj" />
+
+            {{-- Cetak Etiket --}}
+            <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-pasien" />
 
 
         </div>
