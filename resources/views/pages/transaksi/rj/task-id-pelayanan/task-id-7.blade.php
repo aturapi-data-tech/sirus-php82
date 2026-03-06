@@ -1,5 +1,4 @@
 <?php
-
 use Livewire\Component;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -12,17 +11,11 @@ new class extends Component {
     public ?int $rjNo = null;
     public bool $isLoading = false;
 
-    /**
-     * Cek apakah poli spesialis
-     */
     private function isPoliSpesialis($poliId): bool
     {
         return DB::table('rsmst_polis')->where('poli_id', $poliId)->where('spesialis_status', '1')->exists();
     }
 
-    /**
-     * Proses TaskId 7 - Keluar Apotek
-     */
     public function prosesTaskId7()
     {
         if (empty($this->rjNo)) {
@@ -31,7 +24,7 @@ new class extends Component {
         }
 
         $this->isLoading = true;
-        $needUpdate = false; // Flag untuk menandakan perlu update
+        $needUpdate = false;
 
         try {
             $data = $this->findDataRJ($this->rjNo);
@@ -40,18 +33,16 @@ new class extends Component {
                 return;
             }
 
-            // Cek apakah TaskId6 sudah ada
             if (empty($data['taskIdPelayanan']['taskId6'] ?? null)) {
                 $this->dispatch('toast', type: 'error', message: 'TaskId6 (Masuk Apotek) harus dilakukan terlebih dahulu', title: 'Gagal');
                 return;
             }
 
-            // Cek apakah sudah tercatat
             if (!empty($data['taskIdPelayanan']['taskId7'])) {
                 $this->dispatch('toast', type: 'warning', message: "TaskId7 sudah tercatat: {$data['taskIdPelayanan']['taskId7']}", title: 'Info');
             }
 
-            $waktuSekarang = Carbon::now()->format('d/m/Y H:i:s');
+            $waktuSekarang = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
             $noBooking = $data['noBooking'] ?? null;
 
             if (empty($noBooking)) {
@@ -59,14 +50,12 @@ new class extends Component {
                 return;
             }
 
-            // UPDATE: waktu_selesai_pelayanan di tabel rstxn_rjhdrs (ini bukan JSON, tetap perlu dijalankan)
             DB::table('rstxn_rjhdrs')
                 ->where('rj_no', $this->rjNo)
                 ->update([
                     'waktu_selesai_pelayanan' => DB::raw("to_date('" . $waktuSekarang . "','dd/mm/yyyy hh24:mi:ss')"),
                 ]);
 
-            // UPDATE taskId7 di data (hanya jika belum ada)
             if (!isset($data['taskIdPelayanan'])) {
                 $data['taskIdPelayanan'] = [];
                 $needUpdate = true;
@@ -77,12 +66,10 @@ new class extends Component {
                 $needUpdate = true;
             }
 
-            // KIRIM TaskId7 ke BPJS jika poli spesialis
             if ($this->isPoliSpesialis($data['poliId'] ?? '')) {
-                // Cek sudah dikirim atau belum (200 atau 208)
                 $status = $data['taskIdPelayanan']['taskId7Status'] ?? '';
                 if (empty($status) || ($status != 200 && $status != 208)) {
-                    $waktuTimestamp = Carbon::createFromFormat('d/m/Y H:i:s', $data['taskIdPelayanan']['taskId7'])->timestamp * 1000;
+                    $waktuTimestamp = Carbon::createFromFormat('d/m/Y H:i:s', $data['taskIdPelayanan']['taskId7'], config('app.timezone'))->timestamp * 1000;
                     $response = AntrianTrait::update_antrean($noBooking, 7, $waktuTimestamp, '')->getOriginalContent();
 
                     $code = $response['metadata']['code'] ?? '';
@@ -98,9 +85,12 @@ new class extends Component {
                 }
             }
 
-            // SATU KALI UPDATE: Simpan semua perubahan ke JSON jika ada yang berubah
             if ($needUpdate) {
-                $this->updateJsonData($this->rjNo, $data);
+                $existingData = $this->findDataRJ($this->rjNo);
+                if (!empty($existingData)) {
+                    $existingData['taskIdPelayanan'] = $data['taskIdPelayanan'];
+                    $this->updateJsonRJ($this->rjNo, $existingData);
+                }
             }
 
             $this->dispatch('toast', type: 'success', message: "Berhasil keluar apotek pada {$waktuSekarang}", title: 'Berhasil');
@@ -111,41 +101,9 @@ new class extends Component {
             $this->isLoading = false;
         }
     }
-
-    /**
-     * Update JSON ke database dengan pattern merge yang aman
-     * HANYA DIPANGGIL 1 KALI di akhir proses
-     */
-    private function updateJsonData($rjNo, $dataDaftarPoliRJ): void
-    {
-        if (empty($rjNo) || empty($dataDaftarPoliRJ)) {
-            return;
-        }
-
-        // Whitelist field yang boleh diupdate
-        $allowedFields = ['taskIdPelayanan', 'noAntrianApotek'];
-
-        // Ambil data existing dari database
-        $existingData = $this->findDataRJ($rjNo);
-
-        if (empty($existingData)) {
-            return;
-        }
-
-        // Ambil field yang diizinkan dari data baru
-        $formData = array_intersect_key($dataDaftarPoliRJ, array_flip($allowedFields));
-
-        // Merge dengan data existing
-        $mergedRJ = array_replace_recursive($existingData, $formData);
-        $mergedRJ['rjNo'] = $rjNo;
-
-        // Simpan JSON
-        $this->updateJsonRJ($rjNo, $mergedRJ);
-    }
 };
 ?>
 
-<!-- Button untuk TaskId7 -->
 <div class="inline-block">
     <x-primary-button wire:click="prosesTaskId7" wire:loading.attr="disabled" wire:target="prosesTaskId7"
         class="!px-2 !py-1 text-xs" title="Klik untuk mencatat TaskId7 (Keluar Apotek)">

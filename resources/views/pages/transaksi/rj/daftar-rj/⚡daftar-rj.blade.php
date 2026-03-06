@@ -6,9 +6,13 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 
 new class extends Component {
-    use WithPagination;
+    use WithPagination, WithRenderVersioningTrait;
+
+    public array $renderVersions = [];
+    protected array $renderAreas = ['daftar-rj-toolbar'];
 
     /* -------------------------
      | Filter & Pagination state
@@ -22,31 +26,43 @@ new class extends Component {
 
     public function mount(): void
     {
+        $this->registerAreas($this->renderAreas);
         $this->filterTanggal = Carbon::now()->format('d/m/Y');
     }
 
     public function updatedSearchKeyword(): void
     {
+        $this->incrementVersion('daftar-rj-toolbar');
         $this->resetPage();
     }
+
     public function updatedFilterTanggal(): void
     {
+        $this->incrementVersion('daftar-rj-toolbar');
         $this->resetPage();
     }
+
     public function updatedFilterStatus(): void
     {
+        $this->incrementVersion('daftar-rj-toolbar');
         $this->resetPage();
     }
+
     public function updatedFilterPoli(): void
     {
+        $this->incrementVersion('daftar-rj-toolbar');
         $this->resetPage();
     }
+
     public function updatedFilterDokter(): void
     {
+        $this->incrementVersion('daftar-rj-toolbar');
         $this->resetPage();
     }
+
     public function updatedItemsPerPage(): void
     {
+        $this->incrementVersion('daftar-rj-toolbar');
         $this->resetPage();
     }
 
@@ -58,6 +74,7 @@ new class extends Component {
         $this->reset(['searchKeyword', 'filterStatus', 'filterPoli', 'filterDokter']);
         $this->filterStatus = 'A';
         $this->filterTanggal = Carbon::now()->format('d/m/Y');
+        $this->incrementVersion('daftar-rj-toolbar');
         $this->resetPage();
     }
 
@@ -103,6 +120,7 @@ new class extends Component {
     #[On('refresh-after-rj.saved')]
     public function refreshAfterSaved(): void
     {
+        $this->incrementVersion('daftar-rj-toolbar');
         $this->dispatch('$refresh');
     }
 
@@ -124,7 +142,6 @@ new class extends Component {
     {
         [$start, $end] = $this->dateRange();
 
-        // ← Tentukan kolom status berdasarkan role
         $statusColumn = $this->isDokterOrPerawat() ? DB::raw("NVL(h.erm_status, 'A')") : DB::raw("NVL(h.rj_status, 'A')");
 
         $labSub = DB::table('lbtxn_checkuphdrs')->select('ref_no', DB::raw('COUNT(*) as lab_status'))->where('status_rjri', 'RJ')->where('checkup_status', '!=', 'B')->groupBy('ref_no');
@@ -138,36 +155,12 @@ new class extends Component {
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
             ->leftJoinSub($labSub, 'lab', fn($j) => $j->on('lab.ref_no', '=', 'h.rj_no'))
             ->leftJoinSub($radSub, 'rad', fn($j) => $j->on('rad.rj_no', '=', 'h.rj_no'))
-            ->select([
-                'h.rj_no',
-                DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"),
-                'h.reg_no',
-                'p.reg_name',
-                'p.sex',
-                'p.address',
-                DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"),
-                'h.no_antrian',
-                'h.poli_id',
-                'po.poli_desc',
-                'h.dr_id',
-                'd.dr_name',
-                'h.klaim_id',
-                'h.shift',
-                'h.rj_status',
-                'h.erm_status', // ← ikut di-select agar bisa dipakai di blade
-                'h.vno_sep',
-                DB::raw('COALESCE(lab.lab_status, 0) as lab_status'),
-                DB::raw('COALESCE(rad.rad_status, 0) as rad_status'),
-                'h.datadaftarpolirj_json',
-                'k.klaim_desc',
-                'k.klaim_status',
-            ])
+            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.poli_id', 'po.poli_desc', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.erm_status', 'h.vno_sep', DB::raw('COALESCE(lab.lab_status, 0) as lab_status'), DB::raw('COALESCE(rad.rad_status, 0) as rad_status'), 'h.datadaftarpolirj_json', 'k.klaim_desc', 'k.klaim_status'])
             ->whereBetween('h.rj_date', [$start, $end])
             ->orderBy('d.dr_name', 'desc')
             ->orderBy('h.rj_date', 'desc')
             ->orderBy('h.no_antrian', 'asc');
 
-        // ← Filter status pakai kolom sesuai role
         if ($this->filterStatus !== '') {
             $query->where($statusColumn, $this->filterStatus);
         }
@@ -297,31 +290,13 @@ new class extends Component {
                 ->hasAnyRole(['Dokter', 'Perawat']);
 
             if ($isDokterOrPerawat) {
-                // Pakai erm_status
-                $statusMap = [
-                    'A' => 'Belum Dilayani',
-                    'L' => 'Selesai',
-                ];
-                $statusVariant = [
-                    'A' => 'warning',
-                    'L' => 'success',
-                ];
+                $statusMap = ['A' => 'Belum Dilayani', 'L' => 'Selesai'];
+                $statusVariant = ['A' => 'warning', 'L' => 'success'];
                 $row->status_text = $statusMap[$row->erm_status] ?? 'Pelayanan';
                 $row->status_variant = $statusVariant[$row->erm_status] ?? 'gray';
             } else {
-                // Pakai rj_status
-                $statusMap = [
-                    'A' => 'Antrian',
-                    'L' => 'Selesai',
-                    'F' => 'Batal',
-                    'I' => 'Inap/Rujuk',
-                ];
-                $statusVariant = [
-                    'A' => 'warning',
-                    'L' => 'success',
-                    'F' => 'danger',
-                    'I' => 'brand',
-                ];
+                $statusMap = ['A' => 'Antrian', 'L' => 'Selesai', 'F' => 'Batal', 'I' => 'Inap/Rujuk'];
+                $statusVariant = ['A' => 'warning', 'L' => 'success', 'F' => 'danger', 'I' => 'brand'];
                 $row->status_text = $statusMap[$row->rj_status] ?? 'Pelayanan';
                 $row->status_variant = $statusVariant[$row->rj_status] ?? 'gray';
             }
@@ -344,24 +319,22 @@ new class extends Component {
     #[Computed]
     public function dokterList()
     {
-        return cache()->remember("dokterList:{$this->filterTanggal}:{$this->filterStatus}:{$this->searchKeyword}", 60, function () {
-            $query = DB::table('rstxn_rjhdrs')->select('rstxn_rjhdrs.dr_id', DB::raw('MAX(rsmst_doctors.dr_name) as dr_name'), 'rstxn_rjhdrs.poli_id', DB::raw('MAX(rsmst_polis.poli_desc) as poli_desc'), DB::raw('COUNT(DISTINCT rstxn_rjhdrs.rj_no) as total_pasien'))->join('rsmst_doctors', 'rsmst_doctors.dr_id', '=', 'rstxn_rjhdrs.dr_id')->join('rsmst_polis', 'rsmst_polis.poli_id', '=', 'rstxn_rjhdrs.poli_id')->where(DB::raw("to_char(rstxn_rjhdrs.rj_date, 'dd/mm/yyyy')"), '=', $this->filterTanggal);
+        // ✅ Tanpa cache()->remember() — langsung query agar selalu fresh saat filter berubah
+        $query = DB::table('rstxn_rjhdrs')->select('rstxn_rjhdrs.dr_id', DB::raw('MAX(rsmst_doctors.dr_name) as dr_name'), 'rstxn_rjhdrs.poli_id', DB::raw('MAX(rsmst_polis.poli_desc) as poli_desc'), DB::raw('COUNT(DISTINCT rstxn_rjhdrs.rj_no) as total_pasien'))->join('rsmst_doctors', 'rsmst_doctors.dr_id', '=', 'rstxn_rjhdrs.dr_id')->join('rsmst_polis', 'rsmst_polis.poli_id', '=', 'rstxn_rjhdrs.poli_id')->where(DB::raw("to_char(rstxn_rjhdrs.rj_date, 'dd/mm/yyyy')"), '=', $this->filterTanggal);
 
-            if (!empty($this->filterStatus)) {
-                // ← dokterList juga ikut role
-                $statusColumn = $this->isDokterOrPerawat() ? 'rstxn_rjhdrs.erm_status' : 'rstxn_rjhdrs.rj_status';
-                $query->where($statusColumn, $this->filterStatus);
-            }
+        if (!empty($this->filterStatus)) {
+            $statusColumn = $this->isDokterOrPerawat() ? 'rstxn_rjhdrs.erm_status' : 'rstxn_rjhdrs.rj_status';
+            $query->where($statusColumn, $this->filterStatus);
+        }
 
-            if (!empty($this->searchKeyword) && strlen($this->searchKeyword) >= 2) {
-                $keyword = strtoupper($this->searchKeyword);
-                $query->where(function ($q) use ($keyword) {
-                    $q->where(DB::raw('UPPER(rsmst_doctors.dr_name)'), 'LIKE', "%{$keyword}%")->orWhere(DB::raw('UPPER(rsmst_polis.poli_desc)'), 'LIKE', "%{$keyword}%");
-                });
-            }
+        if (!empty($this->searchKeyword) && strlen($this->searchKeyword) >= 2) {
+            $keyword = strtoupper($this->searchKeyword);
+            $query->where(function ($q) use ($keyword) {
+                $q->where(DB::raw('UPPER(rsmst_doctors.dr_name)'), 'LIKE', "%{$keyword}%")->orWhere(DB::raw('UPPER(rsmst_polis.poli_desc)'), 'LIKE', "%{$keyword}%");
+            });
+        }
 
-            return $query->groupBy('rstxn_rjhdrs.dr_id', 'rstxn_rjhdrs.poli_id')->orderBy('poli_desc')->orderBy('dr_name')->get();
-        });
+        return $query->groupBy('rstxn_rjhdrs.dr_id', 'rstxn_rjhdrs.poli_id')->orderBy('poli_desc')->orderBy('dr_name')->get();
     }
 
     #[Computed]
@@ -377,8 +350,9 @@ new class extends Component {
 };
 ?>
 
+{{-- ✅ wire:key di level paling atas — seluruh halaman re-render saat filter berubah --}}
+{{-- Child components aman karena punya static wire:key masing-masing              --}}
 <div>
-
     <header class="bg-white shadow dark:bg-gray-800">
         <div class="w-full px-4 py-2 sm:px-6 lg:px-8">
             <h2 class="text-2xl font-bold leading-tight text-gray-900 dark:text-gray-100">
@@ -396,7 +370,8 @@ new class extends Component {
             {{-- TOOLBAR --}}
             <div
                 class="sticky z-30 px-4 py-3 bg-white border-b border-gray-200 top-20 dark:bg-gray-900 dark:border-gray-700">
-                <div class="flex flex-wrap items-end gap-3">
+                <div class="flex flex-wrap items-end gap-3"
+                    wire:key="{{ $this->renderKey('daftar-rj-toolbar', [$filterTanggal, $filterStatus, $filterDokter, $filterPoli, $searchKeyword, $itemsPerPage]) }}">
 
                     {{-- SEARCH --}}
                     <div class="w-full sm:flex-1">
@@ -874,7 +849,7 @@ new class extends Component {
 
             </div>
 
-            {{-- Child components --}}
+            {{-- Child components — static wire:key agar tidak ikut re-mount saat filter berubah --}}
             <livewire:pages::transaksi.rj.daftar-rj.daftar-rj-actions wire:key="daftar-rj-actions" />
             <livewire:pages::transaksi.rj.emr-rj.erm-rj wire:key="rm-perawat-rj-actions" />
             <livewire:pages::transaksi.rj.administrasi-rj.administrasi-rj wire:key="administrasi-rj-actions" />
@@ -884,7 +859,6 @@ new class extends Component {
 
             {{-- Cetak Etiket --}}
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-pasien" />
-
 
         </div>
     </div>

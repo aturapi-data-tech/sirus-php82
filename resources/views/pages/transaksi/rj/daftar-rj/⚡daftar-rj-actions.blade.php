@@ -760,13 +760,22 @@ new class extends Component {
      */
     private function updateTaskId3(): void
     {
+        // 1. Set taskId3 jika belum ada
         if (empty($this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3'])) {
             $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3'] = $this->dataDaftarPoliRJ['rjDate'];
         }
 
-        $waktu = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3'])->timestamp * 1000;
+        // 2. Cek status — skip jika sudah sukses (sama seperti komponen TaskId3)
+        $status = $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3Status'] ?? '';
+        if ($status == 200 || $status == 208) {
+            $this->dispatch('toast', type: 'info', message: 'TaskId 3 sudah pernah dikirim ke BPJS.');
+            return;
+        }
 
-        $this->pushDataTaskId($this->dataDaftarPoliRJ['noBooking'], 3, $waktu);
+        // 3. Kirim ke BPJS
+        $waktu = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3'], config('app.timezone'))->timestamp * 1000;
+        $code3 = $this->pushDataTaskId($this->dataDaftarPoliRJ['noBooking'], 3, $waktu);
+        $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3Status'] = $code3;
     }
 
     /**
@@ -807,16 +816,18 @@ new class extends Component {
 
             // Jika registrasi dan kunjungan di hari yang sama
             if ($rjFormatted === $regFormatted) {
-                // Task ID 1 (Pendaftaran)
+                // Task ID 1
                 $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId1'] = $this->dataPasien['pasien']['regDate'];
-                $waktu1 = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId1'])->timestamp * 1000;
-                $this->pushDataTaskId($this->dataDaftarPoliRJ['noBooking'], 1, $waktu1);
+                $waktu1 = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId1'], config('app.timezone'))->timestamp * 1000;
+                $code1 = $this->pushDataTaskId($this->dataDaftarPoliRJ['noBooking'], 1, $waktu1);
+                $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId1Status'] = $code1;
 
-                // Task ID 2 (Entry data administrasi)
+                // Task ID 2
                 if (!empty($this->dataPasien['pasien']['regDateStore'])) {
                     $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId2'] = $this->dataPasien['pasien']['regDateStore'];
-                    $waktu2 = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId2'])->timestamp * 1000;
-                    $this->pushDataTaskId($this->dataDaftarPoliRJ['noBooking'], 2, $waktu2);
+                    $waktu2 = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId2'], config('app.timezone'))->timestamp * 1000;
+                    $code2 = $this->pushDataTaskId($this->dataDaftarPoliRJ['noBooking'], 2, $waktu2);
+                    $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId2Status'] = $code2;
                 }
             }
         } catch (\Exception $e) {
@@ -824,7 +835,7 @@ new class extends Component {
         }
     }
 
-    private function pushDataTaskId($noBooking, $taskId, $time): void
+    private function pushDataTaskId($noBooking, $taskId, $time): int|string
     {
         //////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////
@@ -832,19 +843,13 @@ new class extends Component {
 
         $waktu = $time;
         $response = AntrianTrait::update_antrean($noBooking, $taskId, $waktu, '')->getOriginalContent();
+        $code = $response['metadata']['code'] ?? '';
+        $message = $response['metadata']['message'] ?? '';
 
-        if ($response['metadata']['code'] == 200) {
-            // Buat variabel untuk message
-            $message = 'Task Id ' . $taskId . ' ' . $response['metadata']['code'] . ' ' . $response['metadata']['message'];
+        $isSuccess = $code == 200 || $code == 208;
+        $this->dispatch('toast', type: $isSuccess ? 'success' : 'error', message: "Task Id {$taskId} {$code} {$message}", title: $isSuccess ? 'Berhasil' : 'Gagal');
 
-            // Dispatch toast dengan variabel message
-            $this->dispatch('toast', type: 'success', message: $message, title: 'Berhasil');
-        } else {
-            // Dispatch toast warning
-            $message = 'Task Id ' . $taskId . ' ' . $response['metadata']['code'] . ' ' . $response['metadata']['message'];
-
-            $this->dispatch('toast', type: 'error', message: $message, title: 'Gagal');
-        }
+        return $code;
     }
 
     /**

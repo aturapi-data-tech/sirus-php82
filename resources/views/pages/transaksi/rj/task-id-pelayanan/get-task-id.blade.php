@@ -56,11 +56,11 @@ new class extends Component {
 
                     $code = $response['metadata']['code'] ?? '';
                     $message = $response['metadata']['message'] ?? '';
-
-                    dd($response);
+                    $listTaskId = $response['response']['listTaskId'] ?? [];
 
                     $isSuccess = $code == 200 || $code == 208;
-                    $this->dispatch('toast', type: $isSuccess ? 'success' : 'error', message: "TaskId Antrean: {$message}", title: $isSuccess ? 'Berhasil' : 'Gagal');
+
+                    $this->dispatch('toast', type: $isSuccess ? 'success' : 'error', message: $isSuccess ? 'TaskId tercatat: ' . implode(', ', array_column($listTaskId, 'taskId')) : "TaskId Antrean: {$message}", title: $isSuccess ? 'Berhasil' : 'Gagal');
                 } else {
                     $this->dispatch('toast', type: 'info', message: 'TaskId Antrean sudah pernah diambil dari BPJS', title: 'Info');
                 }
@@ -72,38 +72,6 @@ new class extends Component {
         } finally {
             $this->isLoading = false;
         }
-    }
-
-    /**
-     * Update JSON ke database dengan pattern merge yang aman
-     * HANYA DIPANGGIL 1 KALI di akhir proses
-     */
-    private function updateJsonData($rjNo, $dataDaftarPoliRJ): void
-    {
-        if (empty($rjNo) || empty($dataDaftarPoliRJ)) {
-            return;
-        }
-
-        // Whitelist field yang boleh diupdate
-        $allowedFields = ['taskIdPelayanan'];
-
-        // Ambil data existing dari database
-        $existingData = $this->findDataRJ($rjNo);
-
-        if (empty($existingData)) {
-            return;
-        }
-
-        // Ambil field yang diizinkan dari data baru
-        $formData = array_intersect_key($dataDaftarPoliRJ, array_flip($allowedFields));
-
-        // Merge dengan data existing
-        $mergedRJ = array_replace_recursive($existingData, $formData);
-        // Pastikan rjNo tetap sama
-        $mergedRJ['rjNo'] = $rjNo;
-
-        // Simpan JSON
-        $this->updateJsonRJ($rjNo, $mergedRJ);
     }
 };
 ?>
