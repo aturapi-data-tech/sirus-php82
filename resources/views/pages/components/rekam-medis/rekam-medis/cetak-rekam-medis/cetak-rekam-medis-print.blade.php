@@ -54,16 +54,6 @@
                     {{ $full }}
                 </td>
             </tr>
-            {{-- <tr>
-                <td class="py-0.5 text-[11px] text-gray-500 whitespace-nowrap">NIK</td>
-                <td class="py-0.5 text-[11px] px-1">:</td>
-                <td class="py-0.5 text-[11px]">{{ $data['identitas']['nik'] ?? '-' }}</td>
-            </tr>
-            <tr>
-                <td class="py-0.5 text-[11px] text-gray-500 whitespace-nowrap">Id BPJS</td>
-                <td class="py-0.5 text-[11px] px-1">:</td>
-                <td class="py-0.5 text-[11px]">{{ $data['identitas']['idbpjs'] ?? '-' }}</td>
-            </tr> --}}
         </table>
     </x-slot>
 
@@ -172,7 +162,26 @@
             {{-- ── PANEL KANAN: Perawat + Tanda Vital + Nutrisi ────────── --}}
             <td class="border border-black px-1.5 py-0.5 align-top w-44">
                 <p class="font-bold mb-0.5">PERAWAT / TERAPIS :</p>
-                <p class="mb-0.5">ttd</p>
+
+                {{-- TTD Perawat --}}
+                @isset($txn['anamnesa']['pengkajianPerawatan']['perawatPenerima'])
+                    @if ($txn['anamnesa']['pengkajianPerawatan']['perawatPenerima'])
+                        @isset($txn['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'])
+                            @if ($txn['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'])
+                                @php
+                                    $ttdPerawat = App\Models\User::where(
+                                        'myuser_code',
+                                        $txn['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'],
+                                    )->value('myuser_ttd_image');
+                                @endphp
+                                @if (!empty($ttdPerawat))
+                                    <img class="h-12 mx-auto" src="{{ 'storage/' . $ttdPerawat }}" alt="">
+                                @endif
+                            @endif
+                        @endisset
+                    @endif
+                @endisset
+
                 <p class="mb-1.5">
                     {{ isset($txn['anamnesa']['pengkajianPerawatan']['perawatPenerima'])
                         ? strtoupper($txn['anamnesa']['pengkajianPerawatan']['perawatPenerima'])
@@ -306,7 +315,6 @@
                 DIAGNOSIS
             </td>
             <td class="border border-black px-1.5 py-0.5 align-top" colspan="2">
-                {{-- <span class="font-bold">Diagnosa</span><br> --}}
                 {!! nl2br(e($txn['diagnosisFreeText'] ?? '-')) !!}
             </td>
         </tr>
@@ -317,7 +325,6 @@
                 PROSEDUR
             </td>
             <td class="border border-black px-1.5 py-0.5 align-top" colspan="2">
-                {{-- <span class="font-bold">Prosedur</span><br> --}}
                 {!! nl2br(e($txn['procedureFreeText'] ?? '-')) !!}
             </td>
         </tr>
@@ -328,7 +335,6 @@
                 TINDAK LANJUT
             </td>
             <td class="border border-black px-1.5 py-0.5 align-middle" colspan="2">
-                {{-- <span class="font-bold">Tindak Lanjut :</span> --}}
                 {{ $txn['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '-' }}
                 @if (!empty($txn['perencanaan']['tindakLanjut']['keteranganTindakLanjut']))
                     / {{ $txn['perencanaan']['tindakLanjut']['keteranganTindakLanjut'] }}
@@ -345,8 +351,29 @@
                 {!! nl2br(e($txn['perencanaan']['terapi']['terapi'] ?? '-')) !!}
             </td>
             <td class="border border-black px-1.5 py-0.5 align-top text-center">
-                Tulungagung, {{ $data['tglCetak'] ?? \Carbon\Carbon::now()->translatedFormat('d F Y') }}
-                <br><br><br><br>
+                Tulungagung, {{ $data['tglCetak'] ?? \Carbon\Carbon::now()->format('d/m/Y') }}
+                <br>
+
+                {{-- TTD Dokter --}}
+                @isset($txn['perencanaan']['pengkajianMedis']['drPemeriksa'])
+                    @if ($txn['perencanaan']['pengkajianMedis']['drPemeriksa'])
+                        @php
+                            $ttdDokter = App\Models\User::where('myuser_code', $txn['drId'] ?? '')->value(
+                                'myuser_ttd_image',
+                            );
+                        @endphp
+                        @if (!empty($ttdDokter))
+                            <img class="h-16 mx-auto" src="{{ 'storage/' . $ttdDokter }}" alt="">
+                        @else
+                            <br><br><br>
+                        @endif
+                    @else
+                        <br><br><br>
+                    @endif
+                @else
+                    <br><br><br>
+                @endisset
+
                 <div class="inline-block min-w-[130px] border-t border-black pt-0.5">
                     <span class="text-[10px]">
                         {{ $data['namaDokter'] ?? 'dr. ............................................' }}
