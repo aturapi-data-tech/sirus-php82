@@ -122,8 +122,18 @@ new class extends Component {
                             placeholder="Cari nama/NRM/NIK..." class="block w-full" />
                     </div>
 
+
+
                     {{-- RIGHT ACTIONS --}}
                     <div class="flex items-center justify-end gap-2">
+                        <div>
+                            <a href="{{ route('rawat-jalan.daftar') }}" wire:navigate>
+                                <x-primary-button type="button">
+                                    Daftar RJ
+                                </x-primary-button>
+                            </a>
+                        </div>
+
                         <div class="w-28">
                             <x-input-label for="itemsPerPage" value="Per halaman" class="sr-only" />
                             <x-select-input id="itemsPerPage" wire:model.live="itemsPerPage">

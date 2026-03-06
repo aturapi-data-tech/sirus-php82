@@ -1595,9 +1595,13 @@ new class extends Component {
             <div
                 class="sticky bottom-0 z-10 px-6 py-4 bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-between gap-3">
-                    <x-primary-button wire:click.prevent="callFormPasien()" :disabled="$isFormLocked">
-                        Master Pasien
-                    </x-primary-button>
+
+                    <a href="{{ route('master.pasien') }}" wire:navigate>
+                        <x-primary-button type="button">
+                            Master Pasien
+                        </x-primary-button>
+                    </a>
+
                     <div class="flex justify-between gap-3">
                         <x-secondary-button wire:click="closeModal">
                             Batal
