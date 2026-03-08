@@ -712,6 +712,7 @@ new class extends Component {
                 </div>
             </div>
 
+
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 bg-gray-50/70 dark:bg-gray-950/20">
                 <div class="w-full">
