@@ -215,7 +215,15 @@ new class extends Component {
 
         DB::transaction(function () use ($bayar, $dspTotalAll) {
             $rjHdr = DB::table('rstxn_rjhdrs')->where('rj_no', $this->rjNo)->first();
-            $empId = auth()->user()->kasir_id ?? auth()->id();
+            $empId = DB::table('smmst_users')
+                ->where('user_code', auth()->user()->user_code)
+                ->value('emp_id');
+
+            if (!$empId) {
+                $this->dispatch('toast', type: 'error', message: 'ID karyawan tidak ditemukan, hubungi administrator.');
+                return;
+            }
+
             $cashRow = [
                 'acc_id' => $this->accId,
                 'rjc_dtl' => DB::raw('rjcdtl_seq.nextval'),

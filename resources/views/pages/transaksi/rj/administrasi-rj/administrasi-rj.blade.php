@@ -350,6 +350,15 @@ new class extends Component {
     {
         $this->registerAreas(['modal']);
     }
+
+    public function cetakKwitansi(): void
+    {
+        if (!$this->rjNo) {
+            return;
+        }
+
+        $this->dispatch('cetak-kwitansi.open', rjNo: $this->rjNo);
+    }
 };
 ?>
 
@@ -640,13 +649,34 @@ new class extends Component {
             {{-- ═══════════ FOOTER ═══════════ --}}
             <div
                 class="sticky bottom-0 z-10 px-6 py-4 bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700">
-                <div class="flex justify-end">
+                <div class="flex items-center justify-end gap-2">
+
+                    {{-- KIRI: Cetak Kwitansi (hanya tampil jika administrasi sudah selesai) --}}
+                    <x-primary-button type="button" wire:click="cetakKwitansi" wire:loading.attr="disabled"
+                        wire:target="cetakKwitansi" class="gap-2">
+                        <span wire:loading.remove wire:target="cetakKwitansi">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                        </span>
+                        <span wire:loading wire:target="cetakKwitansi">
+                            <x-loading class="w-4 h-4" />
+                        </span>
+                        Cetak Kwitansi
+                    </x-primary-button>
+
+                    {{-- KANAN: Tutup --}}
                     <x-secondary-button wire:click="closeModal" type="button">
                         Tutup
                     </x-secondary-button>
+
                 </div>
             </div>
 
         </div>
     </x-modal>
+
+    {{-- di parent/modal — daftar sekali --}}
+    <livewire:pages::components.modul-dokumen.r-j.kwitansi.cetak-kwitansi-rj wire:key="cetak-kwitansi-rj" />
 </div>
