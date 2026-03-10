@@ -73,16 +73,16 @@ new class extends Component {
 
     /* =======================
      | Semua Items — flat dari semua kunjungan
-                 *
-                 * Struktur array per item (dari datadaftarpolirj_json):
-                 *   pemeriksaan.uploadHasilPenunjang[]:
-                 *     file        → path Storage::disk('local')
-                 *     desc        → keterangan
-                 *     tglUpload   → tanggal upload
-                 *     penanggungJawab:
-                 *       userLog      → nama petugas
-                 *       userLogDate  → tanggal log
-                 *       userLogCode  → kode petugas
+                         *
+                         * Struktur array per item (dari datadaftarpolirj_json):
+                         *   pemeriksaan.uploadHasilPenunjang[]:
+                         *     file        → path Storage::disk('local')
+                         *     desc        → keterangan
+                         *     tglUpload   → tanggal upload
+                         *     penanggungJawab:
+                         *       userLog      → nama petugas
+                         *       userLogDate  → tanggal log
+                         *       userLogCode  → kode petugas
      * ======================= */
     #[Computed]
     public function allItems(): array
@@ -186,14 +186,14 @@ new class extends Component {
             return;
         }
 
-        if (!Storage::disk('local')->exists($file)) {
+        $fullPath = storage_path('/penunjang/upload/' . ltrim($file, '/'));
+
+        if (!file_exists($fullPath)) {
             $this->dispatch('toast', type: 'error', message: 'File tidak ditemukan di server.');
             return;
         }
 
-        // Serve via base64 data URI — tidak perlu route
-        $content = Storage::disk('local')->get($file);
-        $this->viewFilePDF = 'data:application/pdf;base64,' . base64_encode($content);
+        $this->viewFilePDF = 'data:application/pdf;base64,' . base64_encode(file_get_contents($fullPath));
         $this->dispatch('open-modal', name: 'view-upload-penunjang-pdf');
     }
 

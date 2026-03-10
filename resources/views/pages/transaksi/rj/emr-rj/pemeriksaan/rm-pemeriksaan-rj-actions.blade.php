@@ -633,15 +633,14 @@ new class extends Component {
  =============================================================== */
     public function openModalViewPenunjang(string $file): void
     {
-        if (!Storage::disk('local')->exists($file)) {
+        $fullPath = storage_path('/penunjang/upload/' . ltrim($file, '/'));
+
+        if (!file_exists($fullPath)) {
             $this->dispatch('toast', type: 'error', message: 'File tidak ditemukan di server.');
             return;
         }
 
-        // Konversi file ke data URI — tidak perlu route
-        $content = Storage::disk('local')->get($file);
-        $this->viewFilePDF = 'data:application/pdf;base64,' . base64_encode($content);
-
+        $this->viewFilePDF = 'data:application/pdf;base64,' . base64_encode(file_get_contents($fullPath));
         $this->dispatch('open-modal', name: 'view-penunjang-pdf');
     }
 
