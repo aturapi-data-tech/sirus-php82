@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use Illuminate\Support\Facades\DB;
 
 new class extends Component {
     use EmrRJTrait, WithRenderVersioningTrait;
@@ -80,21 +81,60 @@ new class extends Component {
     /**
      * Event listener untuk menyimpan semua data resep (dipanggil dari tombol Simpan di footer)
      */
-    #[On('save-eresepp')]
-    public function saveAll(): void
+    /* =======================
+ | Save All Eresep
+ * ======================= */
+    public function saveAllEreseptoTerapi(): void
     {
-        if ($this->isFormLocked) {
-            $this->dispatch('toast', type: 'error', message: 'Form dalam mode read-only, tidak dapat menyimpan.');
+        if (empty($this->rjNo)) {
+            $this->dispatch('toast', type: 'error', message: 'Transaksi tujuan belum ditentukan.');
             return;
         }
 
-        // Dispatch event ke kedua komponen anak agar mereka menyimpan datanya masing-masing
-        // (komponen anak sudah memiliki listener 'storeAssessmentDokterRJ')
-        $this->dispatch('storeAssessmentDokterRJ')->to('emr-r-j.eresep-r-j.eresep-r-j');
-        $this->dispatch('storeAssessmentDokterRJ')->to('emr-r-j.eresep-r-j.eresep-r-j-racikan');
+        if ($this->checkRjStatus($this->rjNo)) {
+            $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, transaksi terkunci.');
+            return;
+        }
 
-        // Opsional: tampilkan notifikasi sukses (bisa juga dari masing-masing komponen)
-        $this->dispatch('toast', type: 'success', message: 'Eresep berhasil disimpan.');
+        try {
+            DB::transaction(function () {
+                // ✅ Ambil existing data dari DB
+                $data = $this->findDataRJ($this->rjNo) ?? [];
+
+                // ✅ Guard: jika data kosong, batalkan — hindari overwrite JSON dengan array kosong
+                if (empty($data)) {
+                    $this->dispatch('toast', type: 'error', message: 'Data RJ tidak ditemukan, simpan dibatalkan.');
+                    return;
+                }
+
+                // ── BUILD TEKS TERAPI ─────────────────────────────────────────────
+                // Ambil perencanaan dari $data yang sudah ada, tidak perlu dispatch
+                $eresepText = collect($data['eresep'] ?? [])
+                    ->map(function ($item) {
+                        $catatan = $item['catatanKhusus'] ? " ({$item['catatanKhusus']})" : '';
+                        return "R/ {$item['productName']} | No. {$item['qty']} | S {$item['signaX']}dd{$item['signaHari']}{$catatan}";
+                    })
+                    ->implode(PHP_EOL);
+
+                $eresepRacikanText = collect($data['eresepRacikan'] ?? [])
+                    ->filter(fn($item) => isset($item['jenisKeterangan']))
+                    ->map(function ($item) {
+                        $jmlRacikan = $item['qty'] ? "Jml Racikan {$item['qty']} | {$item['catatan']} | S {$item['catatanKhusus']}" . PHP_EOL : '';
+                        return "{$item['noRacikan']}/ {$item['productName']} - " . ($item['dosis'] ?? '') . PHP_EOL . $jmlRacikan;
+                    })
+                    ->implode('');
+                // ✅ Merge ke perencanaan yang sudah ada, tidak overwrite seluruh perencanaan
+                $data['perencanaan']['terapi']['terapi'] = $eresepText . PHP_EOL . $eresepRacikanText;
+                $this->updateJsonRJ($this->rjNo, $data);
+            });
+
+            // Dispatch event ke komponen anak agar mereka menyimpan datanya masing-masing
+            $this->dispatch('toast', type: 'success', message: 'Eresep berhasil disimpan.');
+            $this->dispatch('emr-rj.rekam-medis.open', $this->rjNo);
+            $this->closeModal();
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan eresep: ' . $e->getMessage());
+        }
     }
 
     public function mount()
@@ -207,9 +247,10 @@ new class extends Component {
                                 x-transition:enter="transition ease-out duration-300"
                                 x-transition:enter-start="opacity-0 transform scale-95"
                                 x-transition:enter-end="opacity-100 transform scale-100">
-
+                                {{ $this->renderKey('modal', ['non-racikan', $rjNo ?? 'new']) }}
                                 <livewire:pages::transaksi.rj.eresep-rj.eresep-rj-non-racikan
-                                    :wire:key="'eresep-non-racikan-rj-' . ($rjNo ?? 'new')" :rjNo="$rjNo" />
+                                    wire:key="{{ $this->renderKey('modal', ['non-racikan', $rjNo ?? 'new']) }}"
+                                    :rjNo="$rjNo" />
                             </div>
 
                             {{-- Konten Tab Racikan --}}
@@ -217,17 +258,19 @@ new class extends Component {
                                 x-transition:enter="transition ease-out duration-300"
                                 x-transition:enter-start="opacity-0 transform scale-95"
                                 x-transition:enter-end="opacity-100 transform scale-100">
+
                                 <livewire:pages::transaksi.rj.eresep-rj.eresep-rj-racikan
-                                    :wire:key="'eresep-racikan-rj-' . ($rjNo ?? 'new')" :rjNo="$rjNo" />
+                                    wire:key="{{ $this->renderKey('modal', ['racikan', $rjNo ?? 'new']) }}"
+                                    :rjNo="$rjNo" />
                             </div>
                         </div>
                     </div>
 
                     <div>
-                        {{-- REKAM MEDIS --}}
+                        {{-- REKAM MEDIS — tambah :rjNo --}}
                         <livewire:pages::components.rekam-medis.rekam-medis.rekam-medis-display.rekam-medis-display
-                            :regNo="$dataDaftarPoliRJ['regNo'] ?? ''"
-                            wire:key="emr-rj.eresep-rj-rekam-medis-display-rj-{{ $dataDaftarPoliRJ['regNo'] ?? 'new' }}" />
+                            :regNo="$dataDaftarPoliRJ['regNo'] ?? ''" :rjNo="$rjNo ?? 0"
+                            wire:key="eresep-rj-rekam-medis-display-rj-{{ $dataDaftarPoliRJ['regNo'] ?? 'new' }}" />
                     </div>
                 </div>
             </div>
@@ -241,7 +284,8 @@ new class extends Component {
                     </x-secondary-button>
 
                     @if (!$isFormLocked)
-                        <x-primary-button wire:click="saveAll" class="min-w-[120px]" wire:loading.attr="disabled">
+                        <x-primary-button wire:click="saveAllEreseptoTerapi" class="min-w-[120px]"
+                            wire:loading.attr="disabled">
                             <span wire:loading.remove>
                                 <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">

@@ -1,7 +1,6 @@
 <?php
 
 use Livewire\Component;
-use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;

@@ -13,7 +13,7 @@ new class extends Component {
 
     // renderVersions
     public array $renderVersions = [];
-    protected array $renderAreas = ['modal'];
+    protected array $renderAreas = ['modal-emr-rj'];
 
     /* ===============================
      | OPEN REKAM MEDIS PERAWAT
@@ -69,7 +69,7 @@ new class extends Component {
 
     public function mount()
     {
-        $this->registerAreas(['modal']);
+        $this->registerAreas(['modal-emr-rj']);
     }
 
     public function save()
@@ -86,7 +86,8 @@ new class extends Component {
 <div>
     <x-modal name="rm-perawat-actions" size="full" height="full" focusable>
         {{-- CONTAINER UTAMA --}}
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal', [$rjNo ?? 'new']) }}">
+        <div class="flex flex-col min-h-[calc(100vh-8rem)]"
+            wire:key="{{ $this->renderKey('modal-emr-rj', [$rjNo ?? 'new']) }}">
 
             {{-- HEADER --}}
             <div class="relative px-6 py-5 border-b border-gray-200 dark:border-gray-700">
@@ -180,10 +181,10 @@ new class extends Component {
 
 
 
-                            {{-- REKAM MEDIS --}}
+                            {{-- REKAM MEDIS — tambah :rjNoRefCopyTo --}}
                             <livewire:pages::components.rekam-medis.rekam-medis.rekam-medis-display.rekam-medis-display
-                                :regNo="$dataDaftarPoliRJ['regNo'] ?? ''"
-                                wire:key="rekam-medis-display-rj-{{ $dataDaftarPoliRJ['regNo'] ?? '' }}" />
+                                :regNo="$dataDaftarPoliRJ['regNo'] ?? ''" :rjNoRefCopyTo="$rjNo ?? 0"
+                                wire:key="emr-rj.eresep-rj-rekam-medis-display-rj-{{ $dataDaftarPoliRJ['regNo'] ?? 'new' }}" />
                         </div>
 
                     </div>

@@ -30,9 +30,10 @@ new class extends Component {
     /* =======================
      | Mount
      * ======================= */
-    public function mount($regNo = ''): void
+    public function mount(string $regNo = '', int $rjNoRefCopyTo = 0): void
     {
         $this->regNo = $regNo;
+        $this->rjNoRefCopyTo = $rjNoRefCopyTo;
     }
 
     /* =======================
@@ -91,18 +92,148 @@ new class extends Component {
     }
 
     /* =======================
-     | Copy Resep
-     * ======================= */
-    public function copyResep($txnNo, $layananStatus): void
+ | Properties tambahan untuk Copy Resep
+ * ======================= */
+
+    public string $rjNoRefCopyTo = ''; // No. transaksi RJ yang sedang aktif (tujuan copy)
+
+    /* =======================
+ | Copy Resep
+ * ======================= */
+    public function copyResep(string $txnNo, string $layananStatus): void
     {
         if ($layananStatus !== 'RJ') {
-            $this->dispatch('toast', type: 'error', message: 'Copy resep hanya untuk Rawat Jalan');
+            $this->dispatch('toast', type: 'error', message: 'Copy resep hanya untuk Rawat Jalan.');
+            return;
+        }
+
+        if (empty($this->rjNoRefCopyTo)) {
+            $this->dispatch('toast', type: 'error', message: 'Transaksi tujuan belum ditentukan.');
+            return;
+        }
+
+        if ($txnNo === (string) $this->rjNoRefCopyTo) {
+            $this->dispatch('toast', type: 'error', message: 'Tidak dapat copy ke transaksi yang sama.');
+            return;
+        }
+
+        if ($this->checkRjStatus($this->rjNoRefCopyTo)) {
+            $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, transaksi terkunci.');
             return;
         }
 
         try {
-            // Implementasi copy resep di sini
-            $this->dispatch('toast', type: 'success', message: 'Copy Resep berhasil');
+            DB::transaction(function () use ($txnNo) {
+                $to = $this->findDataRJ($this->rjNoRefCopyTo);
+                $from = $this->findDataRJ($txnNo);
+
+                if (!$to || !$from) {
+                    throw new \Exception('Data kunjungan tidak ditemukan.');
+                }
+
+                $eresepFrom = $from['eresep'] ?? [];
+                $eresepRacikanFrom = $from['eresepRacikan'] ?? [];
+
+                // ── RESEP BIASA ──────────────────────────────────────────────────
+                if (!empty($eresepFrom)) {
+                    DB::table('rstxn_rjobats')->where('rj_no', $this->rjNoRefCopyTo)->delete();
+
+                    $maxDtl = (int) DB::table('rstxn_rjobats')->selectRaw('nvl(max(rjobat_dtl), 0) as max_dtl')->value('max_dtl');
+
+                    $to['eresep'] = $eresepFrom;
+
+                    foreach ($to['eresep'] as $key => $item) {
+                        $maxDtl++;
+
+                        $productPrice = DB::table('immst_products')->where('product_id', $item['productId'])->value('sales_price') ?? 0;
+
+                        DB::table('rstxn_rjobats')->insert([
+                            'rjobat_dtl' => $maxDtl,
+                            'rj_no' => $this->rjNoRefCopyTo,
+                            'product_id' => $item['productId'],
+                            'qty' => $item['qty'],
+                            'price' => $productPrice,
+                            'rj_carapakai' => $item['signaX'],
+                            'rj_kapsul' => $item['signaHari'],
+                            'rj_takar' => 'Tablet',
+                            'catatan_khusus' => $item['catatanKhusus'],
+                            'rj_ket' => $item['catatanKhusus'],
+                            'exp_date' => DB::raw("to_date('{$to['rjDate']}','dd/mm/yyyy hh24:mi:ss')+30"),
+                            'etiket_status' => 1,
+                        ]);
+
+                        $to['eresep'][$key]['rjObatDtl'] = $maxDtl;
+                        $to['eresep'][$key]['productPrice'] = $productPrice;
+                        $to['eresep'][$key]['rjNo'] = $this->rjNoRefCopyTo;
+                    }
+                }
+
+                // ── RESEP RACIKAN ────────────────────────────────────────────────
+                if (!empty($eresepRacikanFrom)) {
+                    DB::table('rstxn_rjobatracikans')->where('rj_no', $this->rjNoRefCopyTo)->delete();
+
+                    $maxDtlRacikan = (int) DB::table('rstxn_rjobatracikans')->selectRaw('nvl(max(rjobat_dtl), 0) as max_dtl')->value('max_dtl');
+
+                    $to['eresepRacikan'] = $eresepRacikanFrom;
+
+                    foreach ($to['eresepRacikan'] as $key => $item) {
+                        if (!isset($item['jenisKeterangan'])) {
+                            continue;
+                        }
+
+                        $maxDtlRacikan++;
+
+                        DB::table('rstxn_rjobatracikans')->insert([
+                            'rjobat_dtl' => $maxDtlRacikan,
+                            'rj_no' => $this->rjNoRefCopyTo,
+                            'product_name' => $item['productName'],
+                            'sedia' => $item['sedia'],
+                            'dosis' => $item['dosis'] ?? '',
+                            'qty' => $item['qty'],
+                            'catatan' => $item['catatan'],
+                            'catatan_khusus' => $item['catatanKhusus'],
+                            'no_racikan' => $item['noRacikan'],
+                            'rj_takar' => 'Tablet',
+                            'exp_date' => DB::raw("to_date('{$to['rjDate']}','dd/mm/yyyy hh24:mi:ss')+30"),
+                            'etiket_status' => 1,
+                        ]);
+
+                        $to['eresepRacikan'][$key]['rjObatDtl'] = $maxDtlRacikan;
+                        $to['eresepRacikan'][$key]['rjNo'] = $this->rjNoRefCopyTo;
+                    }
+                }
+
+                // ── BUILD TEKS TERAPI ─────────────────────────────────────────────
+                // Ambil perencanaan dari $to yang sudah ada, tidak perlu dispatch
+                $eresepText = collect($to['eresep'] ?? [])
+                    ->map(function ($item) {
+                        $catatan = $item['catatanKhusus'] ? " ({$item['catatanKhusus']})" : '';
+                        return "R/ {$item['productName']} | No. {$item['qty']} | S {$item['signaX']}dd{$item['signaHari']}{$catatan}";
+                    })
+                    ->implode(PHP_EOL);
+
+                $eresepRacikanText = collect($to['eresepRacikan'] ?? [])
+                    ->filter(fn($item) => isset($item['jenisKeterangan']))
+                    ->map(function ($item) {
+                        $jmlRacikan = $item['qty'] ? "Jml Racikan {$item['qty']} | {$item['catatan']} | S {$item['catatanKhusus']}" . PHP_EOL : '';
+                        return "{$item['noRacikan']}/ {$item['productName']} - " . ($item['dosis'] ?? '') . PHP_EOL . $jmlRacikan;
+                    })
+                    ->implode('');
+
+                // Merge ke perencanaan yang sudah ada, tidak overwrite seluruh perencanaan
+                $to['perencanaan']['terapi']['terapi'] = $eresepText . PHP_EOL . $eresepRacikanText;
+
+                $this->updateJsonRJ($this->rjNoRefCopyTo, $to);
+            });
+
+            $this->dispatch('toast', type: 'success', message: 'Copy resep berhasil.');
+
+            // ✅ Dispatch SETELAH transaction commit
+            // openEresep() akan incrementVersion('modal')
+            // → wire:key berubah → child remount → findDataRJ() fresh dari DB
+            $this->dispatch('emr-rj.eresep.open', rjNo: $this->rjNoRefCopyTo);
+            $this->dispatch('open-eresep-non-racikan-rj', rjNo: $this->rjNoRefCopyTo);
+            $this->dispatch('open-eresep-racikan-rj', rjNo: $this->rjNoRefCopyTo);
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal copy resep: ' . $e->getMessage());
         }

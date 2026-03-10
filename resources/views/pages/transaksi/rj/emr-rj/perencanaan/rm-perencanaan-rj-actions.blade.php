@@ -484,28 +484,22 @@ new class extends Component {
                             {{-- TAB CONTENTS --}}
                             <div class="w-full p-4">
                                 {{-- PETUGAS MEDIS TAB --}}
-                                @if (isset($dataDaftarPoliRJ['perencanaan']['pengkajianMedisTab']))
-                                    <div class="w-full"
-                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['perencanaan']['pengkajianMedisTab'] ?? 'Petugas Medis' }}'">
-                                        @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.petugas-medis-tab')
-                                    </div>
-                                @endif
+                                <div class="w-full"
+                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['perencanaan']['pengkajianMedisTab'] ?? 'Petugas Medis' }}'">
+                                    @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.petugas-medis-tab')
+                                </div>
 
                                 {{-- TINDAK LANJUT TAB --}}
-                                @if (isset($dataDaftarPoliRJ['perencanaan']['tindakLanjutTab']))
-                                    <div class="w-full"
-                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['perencanaan']['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'">
-                                        @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.tindak-lanjut-tab')
-                                    </div>
-                                @endif
+                                <div class="w-full"
+                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['perencanaan']['tindakLanjutTab'] ?? 'Tindak Lanjut' }}'">
+                                    @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.tindak-lanjut-tab')
+                                </div>
 
                                 {{-- TERAPI TAB --}}
-                                @if (isset($dataDaftarPoliRJ['perencanaan']['terapiTab']))
-                                    <div class="w-full"
-                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['perencanaan']['terapiTab'] ?? 'Terapi' }}'">
-                                        @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.terapi-tab')
-                                    </div>
-                                @endif
+                                <div class="w-full"
+                                    x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['perencanaan']['terapiTab'] ?? 'Terapi' }}'">
+                                    @include('pages.transaksi.rj.emr-rj.perencanaan.tabs.terapi-tab')
+                                </div>
 
                                 {{-- RAWAT INAP TAB --}}
                                 {{-- @if (isset($dataDaftarPoliRJ['perencanaan']['rawatInapTab']))
