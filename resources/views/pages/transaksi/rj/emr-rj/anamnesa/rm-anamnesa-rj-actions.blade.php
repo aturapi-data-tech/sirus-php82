@@ -76,7 +76,7 @@ new class extends Component {
     private function getDefaultAnamnesa(): array
     {
         return [
-            'pengkajianPerawatanTab' => 'Pengkajian Perawatan',
+            'pengkajianPerawatanTab' => 'Pengkajian',
             'pengkajianPerawatan' => [
                 'perawatPenerima' => '',
                 'jamDatang' => '',
@@ -424,7 +424,7 @@ new class extends Component {
                 {{-- jika anamnesa ada --}}
                 @if (isset($dataDaftarPoliRJ['anamnesa']))
                     <div class="w-full">
-                        <div id="TransaksiRawatJalan" x-data="{ activeTab: '{{ $dataDaftarPoliRJ['anamnesa']['pengkajianPerawatanTab'] ?? 'Pengkajian Perawatan' }}' }" class="w-full">
+                        <div id="TransaksiRawatJalan" x-data="{ activeTab: '{{ $dataDaftarPoliRJ['anamnesa']['pengkajianPerawatanTab'] ?? 'Pengkajian' }}' }" class="w-full">
 
                             {{-- TAB NAVIGATION --}}
                             <div class="w-full px-2 mb-2 border-b border-gray-200 dark:border-gray-700">
@@ -435,11 +435,11 @@ new class extends Component {
                                     <li class="mr-2">
                                         <label
                                             class="inline-block px-4 py-2 border-b-2 border-transparent rounded-t-lg cursor-pointer hover:text-gray-600 hover:border-gray-300"
-                                            :class="activeTab === '{{ $dataDaftarPoliRJ['anamnesa']['pengkajianPerawatanTab'] ?? 'Pengkajian Perawatan' }}'
+                                            :class="activeTab === '{{ $dataDaftarPoliRJ['anamnesa']['pengkajianPerawatanTab'] ?? 'Pengkajian' }}'
                                                 ?
                                                 'text-primary border-primary bg-gray-100' : ''"
-                                            @click="activeTab ='{{ $dataDaftarPoliRJ['anamnesa']['pengkajianPerawatanTab'] ?? 'Pengkajian Perawatan' }}'">
-                                            {{ $dataDaftarPoliRJ['anamnesa']['pengkajianPerawatanTab'] ?? 'Pengkajian Perawatan' }}
+                                            @click="activeTab ='{{ $dataDaftarPoliRJ['anamnesa']['pengkajianPerawatanTab'] ?? 'Pengkajian' }}'">
+                                            {{ $dataDaftarPoliRJ['anamnesa']['pengkajianPerawatanTab'] ?? 'Pengkajian' }}
                                         </label>
                                     </li>
 
@@ -474,7 +474,7 @@ new class extends Component {
                                 {{-- PENGKAJIAN PERAWATAN TAB --}}
                                 @if (isset($dataDaftarPoliRJ['anamnesa']['pengkajianPerawatanTab']))
                                     <div class="w-full"
-                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['anamnesa']['pengkajianPerawatanTab'] ?? 'Pengkajian Perawatan' }}'">
+                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarPoliRJ['anamnesa']['pengkajianPerawatanTab'] ?? 'Pengkajian' }}'">
                                         @include('pages.transaksi.rj.emr-rj.anamnesa.tabs.pengkajian-perawatan-tab')
                                     </div>
                                 @endif
