@@ -5,6 +5,7 @@ use Livewire\Attributes\On;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 new class extends Component {
     use EmrRJTrait, WithRenderVersioningTrait;
@@ -125,6 +126,12 @@ new class extends Component {
                     ->implode('');
                 // ✅ Merge ke perencanaan yang sudah ada, tidak overwrite seluruh perencanaan
                 $data['perencanaan']['terapi']['terapi'] = $eresepText . PHP_EOL . $eresepRacikanText;
+
+                // ✅ Auto-isi waktu pemeriksaan saat simpan terapi (hanya jika belum diisi)
+                if (empty($this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['waktuPemeriksaan'])) {
+                    $data['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] = Carbon::now()->format('d/m/Y H:i:s');
+                }
+
                 $this->updateJsonRJ($this->rjNo, $data);
             });
 

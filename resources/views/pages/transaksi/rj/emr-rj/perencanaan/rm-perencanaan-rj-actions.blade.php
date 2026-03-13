@@ -5,6 +5,7 @@ use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
+use Carbon\Carbon;
 
 new class extends Component {
     use EmrRJTrait, WithRenderVersioningTrait;
@@ -298,12 +299,12 @@ new class extends Component {
 
                     // ✅ Auto-isi waktu pemeriksaan jika belum diisi (fallback jika tidak ada resep)
                     if (empty($this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['waktuPemeriksaan'])) {
-                        $this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] = now()->format('d/m/Y H:i:s');
+                        $this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] = Carbon::now()->format('d/m/Y H:i:s');
                     }
 
                     // ✅ Auto-isi selesai pemeriksaan jika belum diisi
                     if (empty($this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['selesaiPemeriksaan'])) {
-                        $this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['selesaiPemeriksaan'] = now()->format('d/m/Y H:i:s');
+                        $this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['selesaiPemeriksaan'] = Carbon::now()->format('d/m/Y H:i:s');
                     }
 
                     // Update status ERM
@@ -350,19 +351,6 @@ new class extends Component {
         }
 
         $this->save();
-    }
-
-    public function simpanTerapi(): void
-    {
-        $this->generateTerapiFromResep();
-
-        // ✅ Auto-isi waktu pemeriksaan saat simpan terapi (hanya jika belum diisi)
-        if (empty($this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['waktuPemeriksaan'])) {
-            $this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] = now()->format('d/m/Y H:i:s');
-        }
-
-        $this->save();
-        $this->closeModalEresepRJ();
     }
 
     /* ===============================
