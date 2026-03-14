@@ -75,7 +75,7 @@ new class extends Component {
                 'title' => 'Daftar Rawat Jalan',
                 'desc' => 'Pendaftaran & manajemen pasien rawat jalan',
                 'href' => route('rawat-jalan.daftar'),
-                'roles' => ['admin', 'mr'],
+                'roles' => ['admin', 'mr', 'perawat', 'dokter'],
                 'badge' => 'RJ',
             ],
             // ===========================================
