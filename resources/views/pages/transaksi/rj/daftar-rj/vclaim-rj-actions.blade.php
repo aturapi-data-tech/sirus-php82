@@ -51,9 +51,11 @@ new class extends Component {
         'noMR' => '',
         'rujukan' => [
             'asalRujukan' => '',
+            'asalRujukanNama' => '', // nama asal rujukan (Faskes Tk 1 / RS)
             'tglRujukan' => '',
             'noRujukan' => '',
             'ppkRujukan' => '',
+            'ppkRujukanNama' => '', // nama faskes perujuk
         ],
         'catatan' => '',
         'diagAwal' => '',
@@ -112,6 +114,7 @@ new class extends Component {
     public array $kdPenunjangOptions = [['id' => '', 'name' => 'Pilih...'], ['id' => '1', 'name' => 'Radioterapi'], ['id' => '2', 'name' => 'Kemoterapi'], ['id' => '3', 'name' => 'Rehabilitasi Medik'], ['id' => '4', 'name' => 'Rehabilitasi Psikososial'], ['id' => '5', 'name' => 'Transfusi Darah'], ['id' => '6', 'name' => 'Pelayanan Gigi'], ['id' => '7', 'name' => 'Laboratorium'], ['id' => '8', 'name' => 'USG'], ['id' => '9', 'name' => 'Farmasi'], ['id' => '10', 'name' => 'Lain-Lain'], ['id' => '11', 'name' => 'MRI'], ['id' => '12', 'name' => 'HEMODIALISA']];
 
     public array $assesmentPelOptions = [['id' => '', 'name' => 'Pilih...'], ['id' => '1', 'name' => 'Poli spesialis tidak tersedia pada hari sebelumnya'], ['id' => '2', 'name' => 'Jam Poli telah berakhir pada hari sebelumnya'], ['id' => '3', 'name' => 'Dokter Spesialis yang dimaksud tidak praktek pada hari sebelumnya'], ['id' => '4', 'name' => 'Atas Instruksi RS'], ['id' => '5', 'name' => 'Tujuan Kontrol']];
+
     /**
      * Handle event dari parent
      */
@@ -134,6 +137,7 @@ new class extends Component {
 
         // Set form mode
         $this->formMode = $rjNo ? 'edit' : 'create';
+
         // LOAD DATA PASIEN (default)
         $this->loadDataPasien($regNo);
 
@@ -141,12 +145,15 @@ new class extends Component {
         if (!empty($sepData)) {
             $this->sepData = $sepData;
             $this->noSep = $sepData['noSep'] ?? null;
+
             // CEK APAKAH noSep SUDAH TERBENTUK
             if (!empty($this->noSep)) {
                 $this->isFormLocked = true;
             }
 
             // SIMPLE: Timpa SEPForm dengan data dari reqSep jika ada
+            // array_replace_recursive otomatis mengisi ppkRujukanNama & asalRujukanNama
+            // dari JSON yang sudah tersimpan
             if (!empty($sepData['reqSep']['request']['t_sep'])) {
                 $this->SEPForm = array_replace_recursive($this->SEPForm, $sepData['reqSep']['request']['t_sep']);
             }
@@ -158,10 +165,12 @@ new class extends Component {
             if (!empty($sepData['reqSep']['request']['t_sep']['diagAwal'])) {
                 $this->diagnosaId = $sepData['reqSep']['request']['t_sep']['diagAwal'] ?? null;
             }
+
             // Load selected rujukan jika ada
             if (!empty($sepData['reqSep']['request']['t_sep']['rujukan']['noRujukan'])) {
                 $this->selectedRujukan = [
                     'noKunjungan' => $sepData['reqSep']['request']['t_sep']['rujukan']['noRujukan'],
+                    // ppkRujukanNama sudah ada di SEPForm['rujukan'] lewat array_replace_recursive di atas
                 ];
             }
         }
@@ -351,9 +360,11 @@ new class extends Component {
             'noMR' => $peserta['mr']['noMR'] ?? $this->SEPForm['noMR'],
             'rujukan' => [
                 'asalRujukan' => $this->getAsalRujukan(),
+                'asalRujukanNama' => $this->getAsalRujukan() == '1' ? 'Faskes Tingkat 1' : 'Faskes Tingkat 2 (RS)',
                 'tglRujukan' => Carbon::parse($rujukan['tglKunjungan'])->format('Y-m-d'),
                 'noRujukan' => $rujukan['noKunjungan'] ?? '',
                 'ppkRujukan' => $rujukan['provPerujuk']['kode'] ?? '',
+                'ppkRujukanNama' => $rujukan['provPerujuk']['nama'] ?? '',
             ],
             'diagAwal' => $rujukan['diagnosa']['kode'] ?? '',
             'poli' => [
@@ -381,10 +392,12 @@ new class extends Component {
             'noKartu' => $peserta['noKartu'] ?? $this->SEPForm['noKartu'],
             'noMR' => $peserta['mr']['noMR'] ?? $this->SEPForm['noMR'],
             'rujukan' => [
-                'asalRujukan' => '2', // Faskes 2 (RS) untuk post inap
+                'asalRujukan' => '2',
+                'asalRujukanNama' => 'Faskes Tingkat 2 (RS)',
                 'tglRujukan' => Carbon::now()->format('Y-m-d'),
                 'noRujukan' => '',
-                'ppkRujukan' => '0184R006', // Kode RS sendiri
+                'ppkRujukan' => '0184R006',
+                'ppkRujukanNama' => 'RSI Madinah',
             ],
             'klsRawat' => [
                 'klsRawatHak' => $peserta['hakKelas']['kode'] ?? '3',
@@ -394,7 +407,6 @@ new class extends Component {
             ],
             'noTelp' => $peserta['mr']['noTelepon'] ?? $this->SEPForm['noTelp'],
             'skdp' => [
-                // Reset skdp untuk post inap
                 'noSurat' => '',
                 'kodeDPJP' => '',
             ],
@@ -432,8 +444,10 @@ new class extends Component {
 
         // Validasi form
         $this->validateSEPForm();
+
         // Build request dari form
         $request = $this->buildSEPRequest();
+
         // KIRIM LANGSUNG reqSep KE PARENT (bukan sepData)
         $this->dispatch('sep-generated', reqSep: $request);
 
@@ -486,7 +500,6 @@ new class extends Component {
     {
         // Validasi tambahan untuk kunjungan kontrol post inap
         if ($this->kunjunganId == '3' && !empty($this->postInap)) {
-            // Untuk post inap, SKDP dikosongkan (tetap dalam struktur)
             $this->SEPForm['skdp'] = [
                 'noSurat' => '',
                 'kodeDPJP' => '',
@@ -496,8 +509,6 @@ new class extends Component {
         // Set flagProcedure dan kdPenunjang berdasarkan tujuanKunj
         $flagProcedure = $this->SEPForm['flagProcedure'] ?? '';
         $kdPenunjang = $this->SEPForm['kdPenunjang'] ?? '';
-
-        // Set assesmentPel berdasarkan tujuanKunj
         $assesmentPel = $this->SEPForm['assesmentPel'] ?? '';
 
         // Untuk kasus post inap, asalRujukan harus '2'
@@ -522,9 +533,11 @@ new class extends Component {
                     'noMR' => $this->SEPForm['noMR'] ?? '',
                     'rujukan' => [
                         'asalRujukan' => $asalRujukan,
+                        'asalRujukanNama' => $this->SEPForm['rujukan']['asalRujukanNama'] ?? '',
                         'tglRujukan' => $this->SEPForm['rujukan']['tglRujukan'] ?? '',
                         'noRujukan' => $this->SEPForm['rujukan']['noRujukan'] ?? '',
                         'ppkRujukan' => $this->SEPForm['rujukan']['ppkRujukan'] ?? '',
+                        'ppkRujukanNama' => $this->SEPForm['rujukan']['ppkRujukanNama'] ?? '',
                     ],
                     'catatan' => $this->SEPForm['catatan'] ?? '' ?: '-',
                     'diagAwal' => $this->SEPForm['diagAwal'] ?? '',
@@ -567,7 +580,7 @@ new class extends Component {
         // SELALU sertakan semua field dalam struktur yang konsisten
         $jaminan = [
             'lakaLantas' => $this->SEPForm['jaminan']['lakaLantas'] ?? '0',
-            'noLP' => $this->SEPForm['jaminan']['noLP'] ?? '', // SELALU sertakan noLP
+            'noLP' => $this->SEPForm['jaminan']['noLP'] ?? '',
         ];
 
         // Struktur penjamin HARUS konsisten, TERMASUK untuk lakaLantas=0
@@ -589,14 +602,13 @@ new class extends Component {
         if (($this->SEPForm['jaminan']['lakaLantas'] ?? '0') != '0') {
             $jaminan['noLP'] = $this->SEPForm['jaminan']['noLP'] ?? '';
 
-            // Isi data penjamin jika ada
             if (isset($this->SEPForm['jaminan']['penjamin'])) {
                 $jaminan['penjamin']['tglKejadian'] = $this->SEPForm['jaminan']['penjamin']['tglKejadian'] ?? '';
                 $jaminan['penjamin']['keterangan'] = $this->SEPForm['jaminan']['penjamin']['keterangan'] ?? '';
 
                 if (isset($this->SEPForm['jaminan']['penjamin']['suplesi'])) {
                     $jaminan['penjamin']['suplesi']['suplesi'] = $this->SEPForm['jaminan']['penjamin']['suplesi']['suplesi'] ?? '0';
-                    $jaminan['penjamin']['suplesi']['noSepSuplesi'] = $this->SEPForm['jaminan']['penjamin']['suplesi']['noSepSuplesi'] ?? '';
+                    $jaminan['penjukan']['suplesi']['noSepSuplesi'] = $this->SEPForm['jaminan']['penjamin']['suplesi']['noSepSuplesi'] ?? '';
 
                     if (isset($this->SEPForm['jaminan']['penjamin']['suplesi']['lokasiLaka'])) {
                         $jaminan['penjamin']['suplesi']['lokasiLaka']['kdPropinsi'] = $this->SEPForm['jaminan']['penjamin']['suplesi']['lokasiLaka']['kdPropinsi'] ?? '';
@@ -633,29 +645,24 @@ new class extends Component {
 
     /**
      * Handle event dari LOV Dokter
-     * Update data dokter dan poli yang dipilih
      */
     #[On('lov.selected.rjFormDokterVclaim')]
     public function rjFormDokterVclaim(string $target, array $payload): void
     {
-        // Update data dokter
         $this->drId = $payload['dr_id'] ?? null;
         $this->drDesc = $payload['dr_name'] ?? '';
         $this->SEPForm['dpjpLayan'] = $payload['kd_dr_bpjs'] ?? '';
 
-        // Update data poli dari dokter yang dipilih
         $this->poliId = $payload['poli_id'] ?? null;
         $this->poliDesc = $payload['poli_desc'] ?? '';
         $this->SEPForm['poli']['tujuan'] = $payload['kd_poli_bpjs'] ?? ($this->kdpolibpjs ?? '');
 
-        // Update informasi tambahan untuk SKDP jika diperlukan (kontrol)
         if ($this->kunjunganId == '3' && !$this->postInap) {
             $this->SEPForm['skdp']['kodeDPJP'] = $payload['kd_dr_bpjs'] ?? '';
         } else {
             $this->SEPForm['skdp']['kodeDPJP'] = '';
         }
 
-        // Trigger render ulang
         $this->incrementVersion('modal');
         $this->incrementVersion('form-sep');
     }
@@ -663,13 +670,9 @@ new class extends Component {
     #[On('lov.selected.rjFormDiagnosaVclaim')]
     public function rjFormDiagnosaVclaim(string $target, array $payload): void
     {
-        // Update data diagnosa
         $this->diagnosaId = $payload['icdx'] ?? null;
-
-        // Update SEPForm dengan data diagnosa
         $this->SEPForm['diagAwal'] = $payload['icdx'] ?? '';
 
-        // Trigger render ulang
         $this->incrementVersion('modal');
         $this->incrementVersion('form-sep');
     }
@@ -691,7 +694,6 @@ new class extends Component {
 
             {{-- HEADER --}}
             <div class="relative px-6 py-5 border-b border-gray-200 dark:border-gray-700">
-                {{-- Background pattern --}}
                 <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
                     style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
                 </div>
@@ -699,7 +701,6 @@ new class extends Component {
                 <div class="relative flex items-start justify-between gap-4">
                     <div>
                         <div class="flex items-center gap-3">
-                            {{-- Icon --}}
                             <div
                                 class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
                                 <img src="{{ asset('images/Logogram black solid.png') }}" alt="RSI Madinah"
@@ -708,7 +709,6 @@ new class extends Component {
                                     class="hidden w-6 h-6 dark:block" />
                             </div>
 
-                            {{-- Title & subtitle --}}
                             <div>
                                 <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
                                     {{ $formMode === 'edit' ? 'Ubah Data SEP' : 'Buat SEP Baru' }}
@@ -719,7 +719,6 @@ new class extends Component {
                             </div>
                         </div>
 
-                        {{-- Badge mode --}}
                         <div class="flex gap-2 mt-3">
                             <x-badge :variant="$formMode === 'edit' ? 'warning' : 'success'">
                                 {{ $formMode === 'edit' ? 'Mode: Edit SEP' : 'Mode: Buat SEP' }}
@@ -732,7 +731,6 @@ new class extends Component {
                         </div>
                     </div>
 
-                    {{-- Close button --}}
                     <x-secondary-button type="button" wire:click="closeModal" class="!p-2">
                         <span class="sr-only">Close</span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
@@ -762,7 +760,7 @@ new class extends Component {
                                 <path stroke-linecap="round" stroke-linecap="round" stroke-width="2"
                                     d="M5 13l4 4L19 7" />
                             </svg>
-                            Rujukan: {{ $selectedRujukan['noKunjungan'] ?? '-' }}
+                            Rujukan: {{ $selectedRujukan['noKunjungan'] ?? ($SEPForm['rujukan']['noRujukan'] ?? '-') }}
                         </x-badge>
                     @endif
                 </div>
@@ -929,7 +927,6 @@ new class extends Component {
                     </div>
 
                     {{-- Form SEP --}}
-                    {{-- Form SEP --}}
                     @if (!empty($selectedRujukan) || (($kunjunganId ?? '1') == '3' && ($postInap ?? false)))
                         <div wire:key="{{ $this->renderKey('form-sep', [$formMode, $selectedRujukan['noKunjungan'] ?? '']) }}"
                             class="space-y-4 lg:col-span-3">
@@ -964,7 +961,7 @@ new class extends Component {
 
                                     {{-- Tgl Rujukan --}}
                                     <div>
-                                        <x-input-label value="Tgl Rujukan" required />
+                                        <x-input-label value="Tgl Rujukan" />
                                         <x-text-input wire:model="SEPForm.rujukan.tglRujukan" class="w-full"
                                             :error="$errors->has('SEPForm.rujukan.tglRujukan')" :disabled="true" placeholder="yyyy-mm-dd" />
                                         <x-input-error :messages="$errors->get('SEPForm.rujukan.tglRujukan')" class="mt-1" />
@@ -972,9 +969,15 @@ new class extends Component {
 
                                     {{-- PPK Rujukan --}}
                                     <div>
-                                        <x-input-label value="PPK Rujukan" required />
+                                        <x-input-label value="PPK Rujukan" />
                                         <x-text-input wire:model="SEPForm.rujukan.ppkRujukan" class="w-full"
                                             :error="$errors->has('SEPForm.rujukan.ppkRujukan')" :disabled="true" placeholder="Kode faskes rujukan" />
+                                        {{-- Nama faskes perujuk --}}
+                                        @if (!empty($SEPForm['rujukan']['ppkRujukanNama']))
+                                            <p class="mt-1 text-xs font-medium text-blue-600 dark:text-blue-400">
+                                                {{ $SEPForm['rujukan']['ppkRujukanNama'] }}
+                                            </p>
+                                        @endif
                                         <x-input-error :messages="$errors->get('SEPForm.rujukan.ppkRujukan')" class="mt-1" />
                                     </div>
 
@@ -986,9 +989,9 @@ new class extends Component {
                                         <x-input-error :messages="$errors->get('SEPForm.tglSep')" class="mt-1" />
                                     </div>
 
-                                    {{-- NO RUJUKAN - Ditambahkan di sini --}}
+                                    {{-- No Rujukan --}}
                                     <div>
-                                        <x-input-label value="No. Rujukan" required />
+                                        <x-input-label value="No. Rujukan" />
                                         <x-text-input wire:model="SEPForm.rujukan.noRujukan" class="w-full"
                                             :error="$errors->has('SEPForm.rujukan.noRujukan')" :disabled="$isFormLocked" placeholder="Nomor rujukan" />
                                         <x-input-error :messages="$errors->get('SEPForm.rujukan.noRujukan')" class="mt-1" />
@@ -996,13 +999,19 @@ new class extends Component {
 
                                     {{-- Asal Rujukan --}}
                                     <div>
-                                        <x-input-label value="Asal Rujukan" required />
+                                        <x-input-label value="Asal Rujukan" />
                                         <x-select-input wire:model="SEPForm.rujukan.asalRujukan" class="w-full"
                                             :disabled="true">
                                             <option value="">Pilih</option>
                                             <option value="1">Faskes Tingkat 1</option>
                                             <option value="2">Faskes Tingkat 2 (RS)</option>
                                         </x-select-input>
+                                        {{-- Nama asal rujukan --}}
+                                        @if (!empty($SEPForm['rujukan']['asalRujukanNama']))
+                                            <p class="mt-1 text-xs font-medium text-blue-600 dark:text-blue-400">
+                                                {{ $SEPForm['rujukan']['asalRujukanNama'] }}
+                                            </p>
+                                        @endif
                                         <x-input-error :messages="$errors->get('SEPForm.rujukan.asalRujukan')" class="mt-1" />
                                     </div>
 
@@ -1060,22 +1069,16 @@ new class extends Component {
                                         {{-- Diagnosa Awal --}}
                                         <div class="lg:col-span-1">
                                             <x-input-label value="Diagnosa Awal (ICD 10)" required />
-                                            <div class="flex gap-2">
-                                                <x-text-input wire:model="SEPForm.diagAwal" class="flex-1"
-                                                    placeholder="Kode ICD 10" :error="$errors->has('SEPForm.diagAwal')" :disabled="true" />
-                                                {{-- Tombol cari diagnosa bisa ditambahkan di sini --}}
-                                            </div>
+                                            <x-text-input wire:model="SEPForm.diagAwal" class="w-full"
+                                                placeholder="Kode ICD 10" :error="$errors->has('SEPForm.diagAwal')" :disabled="true" />
                                             <x-input-error :messages="$errors->get('SEPForm.diagAwal')" class="mt-1" />
                                         </div>
 
                                         {{-- Poli Tujuan --}}
                                         <div class="lg:col-span-1">
                                             <x-input-label value="Poli Tujuan" required />
-                                            <div class="flex gap-2">
-                                                <x-text-input wire:model="SEPForm.poli.tujuan" class="flex-1"
-                                                    placeholder="Kode Poli" :error="$errors->has('SEPForm.poli.tujuan')" :disabled="true" />
-                                                {{-- Tombol cari poli bisa ditambahkan di sini --}}
-                                            </div>
+                                            <x-text-input wire:model="SEPForm.poli.tujuan" class="w-full"
+                                                placeholder="Kode Poli" :error="$errors->has('SEPForm.poli.tujuan')" :disabled="true" />
                                             <x-input-error :messages="$errors->get('SEPForm.poli.tujuan')" class="mt-1" />
                                         </div>
 
@@ -1092,10 +1095,8 @@ new class extends Component {
                                         {{-- DPJP Layan --}}
                                         <div class="lg:col-span-1">
                                             <x-input-label value="DPJP" required />
-                                            <div class="flex gap-2">
-                                                <x-text-input wire:model="SEPForm.dpjpLayan" class="flex-1"
-                                                    placeholder="Kode DPJP" :error="$errors->has('SEPForm.dpjpLayan')" :disabled="true" />
-                                            </div>
+                                            <x-text-input wire:model="SEPForm.dpjpLayan" class="w-full"
+                                                placeholder="Kode DPJP" :error="$errors->has('SEPForm.dpjpLayan')" :disabled="true" />
                                             <x-input-error :messages="$errors->get('SEPForm.dpjpLayan')" class="mt-1" />
                                         </div>
                                     </div>
@@ -1314,23 +1315,34 @@ new class extends Component {
                                     <div class="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
                                         <div>
                                             <span class="text-xs text-blue-600 dark:text-blue-400">No. Rujukan:</span>
-                                            <p class="font-medium">{{ $selectedRujukan['noKunjungan'] ?? '-' }}</p>
-                                        </div>
-                                        <div>
-                                            <span class="text-xs text-blue-600 dark:text-blue-400">Tgl Rujukan:</span>
                                             <p class="font-medium">
-                                                {{ isset($selectedRujukan['tglKunjungan']) ? Carbon::parse($selectedRujukan['tglKunjungan'])->format('d/m/Y') : '-' }}
+                                                {{ $selectedRujukan['noKunjungan'] ?? ($SEPForm['rujukan']['noRujukan'] ?? '-') }}
                                             </p>
                                         </div>
                                         <div>
-                                            <span class="text-xs text-blue-600 dark:text-blue-400">Asal Rujukan:</span>
+                                            <span class="text-xs text-blue-600 dark:text-blue-400">Tgl
+                                                Rujukan:</span>
                                             <p class="font-medium">
-                                                {{ $selectedRujukan['provPerujuk']['nama'] ?? '-' }}</p>
+                                                {{ isset($selectedRujukan['tglKunjungan'])
+                                                    ? Carbon::parse($selectedRujukan['tglKunjungan'])->format('d/m/Y')
+                                                    : (isset($SEPForm['rujukan']['tglRujukan'])
+                                                        ? Carbon::parse($SEPForm['rujukan']['tglRujukan'])->format('d/m/Y')
+                                                        : '-') }}
+                                            </p>
                                         </div>
                                         <div>
-                                            <span class="text-xs text-blue-600 dark:text-blue-400">Poli Tujuan:</span>
+                                            <span class="text-xs text-blue-600 dark:text-blue-400">Asal
+                                                Rujukan:</span>
                                             <p class="font-medium">
-                                                {{ $selectedRujukan['poliRujukan']['nama'] ?? '-' }}</p>
+                                                {{ $selectedRujukan['provPerujuk']['nama'] ?? ($SEPForm['rujukan']['ppkRujukanNama'] ?? '-') }}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <span class="text-xs text-blue-600 dark:text-blue-400">Poli
+                                                Tujuan:</span>
+                                            <p class="font-medium">
+                                                {{ $selectedRujukan['poliRujukan']['nama'] ?? '-' }}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -1353,7 +1365,8 @@ new class extends Component {
                                     </svg>
                                 </div>
                                 <div>
-                                    <span class="text-xs font-medium text-green-700 dark:text-green-300">No. SEP</span>
+                                    <span class="text-xs font-medium text-green-700 dark:text-green-300">No.
+                                        SEP</span>
                                     <p class="text-lg font-semibold text-green-800 dark:text-green-200">
                                         {{ $noSep }}
                                     </p>
