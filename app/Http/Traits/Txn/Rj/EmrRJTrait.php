@@ -294,7 +294,7 @@ trait EmrRJTrait
         if (! $row || empty($row->erm_status)) {
             return false;
         }
-
-        return $row->erm_status !== 'A';
+        return false;
+        // return $row->erm_status !== 'A';
     }
 }
