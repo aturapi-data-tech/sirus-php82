@@ -1,4 +1,4 @@
-{{-- pages/transaksi/ugd/emr-ugd/penilaian/tabs/dekubitus-tab.blade.php --}}
+{{-- pages/transaksi/rj/emr-rj/penilaian/tabs/dekubitus-tab.blade.php --}}
 <div class="space-y-4">
 
     @if (!$isFormLocked)
@@ -29,6 +29,7 @@
                 </div>
 
                 @if (($formEntryDekubitus['dekubitus']['dekubitus'] ?? '') === 'Ya')
+
                     <x-border-form :title="__('Penilaian Skala Braden')" :align="__('start')" :bgcolor="__('bg-white')">
                         <div class="mt-4 space-y-3">
                             <div class="flex flex-wrap items-center gap-2">
@@ -39,7 +40,7 @@
                                     @php $katForm = $formEntryDekubitus['dekubitus']['kategoriResiko']; @endphp
                                     <span
                                         class="px-2 py-0.5 text-xs font-bold rounded-full
-                                    {{ in_array($katForm, ['Sangat Tinggi', 'Tinggi']) ? 'bg-red-100 text-red-700' : ($katForm === 'Sedang' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700') }}">
+                                        {{ in_array($katForm, ['Sangat Tinggi', 'Tinggi']) ? 'bg-red-100 text-red-700' : ($katForm === 'Sedang' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700') }}">
                                         {{ $katForm }}
                                     </span>
                                 @endif
@@ -70,6 +71,7 @@
                         <x-textarea wire:model="formEntryDekubitus.dekubitus.rekomendasi" class="w-full mt-1"
                             rows="2" />
                     </div>
+
                 @endif {{-- /if dekubitus = Ya --}}
 
                 <div class="flex justify-end pt-2">
@@ -83,7 +85,7 @@
         </x-border-form>
     @endif
 
-    @if (!empty($dataDaftarUGD['penilaian']['dekubitus']))
+    @if (!empty($dataDaftarPoliRJ['penilaian']['dekubitus']))
         <x-border-form :title="__('Riwayat Penilaian Dekubitus')" :align="__('start')" :bgcolor="__('bg-white')">
             <div class="mt-4 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
                 <table class="w-full text-xs text-left text-gray-600 dark:text-gray-300">
@@ -101,7 +103,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                        @foreach (array_reverse($dataDaftarUGD['penilaian']['dekubitus'] ?? [], true) as $i => $row)
+                        @foreach (array_reverse($dataDaftarPoliRJ['penilaian']['dekubitus'] ?? [], true) as $i => $row)
                             @php
                                 $kat = $row['dekubitus']['kategoriResiko'] ?? '-';
                                 $rowBg = match (true) {

@@ -88,6 +88,7 @@ new class extends Component {
 
                 $data['penilaian'] = $this->dataDaftarPoliRJ['penilaian'] ?? [];
                 $this->updateJsonRJ($this->rjNo, $data);
+                $this->dataDaftarPoliRJ = $data;
             });
 
             $this->incrementVersion('modal-penilaian-rj');

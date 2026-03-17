@@ -237,6 +237,7 @@ new class extends Component {
                 // ✅ formKontrol → DB, key lain tidak tersentuh
                 $data['kontrol'] = $this->formKontrol;
                 $this->updateJsonRJ($this->rjNo, $data);
+                $this->dataDaftarPoliRJ = $data;
             });
 
             $this->incrementVersion('modal-skdp-rj');

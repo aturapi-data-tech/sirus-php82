@@ -442,6 +442,7 @@ new class extends Component {
                 $data['pemeriksaan'] = $this->dataDaftarPoliRJ['pemeriksaan'] ?? [];
 
                 $this->updateJsonRJ($this->rjNo, $data);
+                $this->dataDaftarPoliRJ = $data;
             });
 
             $this->afterSave('Pemeriksaan berhasil disimpan.');
@@ -575,8 +576,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonRJ($this->rjNo, $data);
-
-                $this->dataDaftarPoliRJ['pemeriksaan']['uploadHasilPenunjang'] = $data['pemeriksaan']['uploadHasilPenunjang'];
+                $this->dataDaftarPoliRJ = $data;
             });
 
             $this->reset(['filePDF', 'descPDF']);
@@ -617,8 +617,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRJ($this->rjNo, $data);
-
-                $this->dataDaftarPoliRJ['pemeriksaan']['uploadHasilPenunjang'] = $data['pemeriksaan']['uploadHasilPenunjang'];
+                $this->dataDaftarPoliRJ = $data;
             });
 
             $this->incrementVersion('modal-pemeriksaan-rj');
@@ -680,10 +679,10 @@ new class extends Component {
                 // ✅ Append ke penunjang yang sudah ada, tidak overwrite key lain
                 $existing = $data['pemeriksaan']['penunjang'] ?? '';
                 $data['pemeriksaan']['penunjang'] = trim(($existing ? $existing . "\n" : '') . $text);
-                $this->updateJsonRJ($this->rjNo, $data);
 
-                // ✅ Sync ke property lokal agar UI ikut update
-                $this->dataDaftarPoliRJ['pemeriksaan']['penunjang'] = $data['pemeriksaan']['penunjang'];
+                $this->updateJsonRJ($this->rjNo, $data);
+                $this->dataDaftarPoliRJ = $data;
+
                 // 🔥 INCREMENT: Refresh seluruh modal pemeriksaan
                 $this->incrementVersion('modal-pemeriksaan-rj');
             });

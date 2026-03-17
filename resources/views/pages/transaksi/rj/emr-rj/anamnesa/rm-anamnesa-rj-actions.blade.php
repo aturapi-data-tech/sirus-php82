@@ -322,6 +322,7 @@ new class extends Component {
                 $data['anamnesa'] = $this->dataDaftarPoliRJ['anamnesa'] ?? [];
 
                 $this->updateJsonRJ($this->rjNo, $data);
+                $this->dataDaftarPoliRJ = $data;
 
                 // Update pasien riwayat medis pasien data if needed (fixed typo in comment)
                 $this->updateRiwayatMedisPasien();

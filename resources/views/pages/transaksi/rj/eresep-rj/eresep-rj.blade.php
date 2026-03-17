@@ -133,6 +133,7 @@ new class extends Component {
                 }
 
                 $this->updateJsonRJ($this->rjNo, $data);
+                $this->dataDaftarPoliRJ = $data;
             });
 
             // Dispatch event ke komponen anak agar mereka menyimpan datanya masing-masing

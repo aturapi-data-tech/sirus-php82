@@ -317,7 +317,7 @@ new class extends Component {
 
                     {{-- Display Pasien --}}
                     <div class="mb-4">
-                        <livewire:pages::transaksi.ugd.emr-ugd.display-pasien-ugd :rjNo="$rjNo"
+                        <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
                             wire:key="display-pasien-ugd-diagnosa-{{ $rjNo }}" />
                     </div>
 

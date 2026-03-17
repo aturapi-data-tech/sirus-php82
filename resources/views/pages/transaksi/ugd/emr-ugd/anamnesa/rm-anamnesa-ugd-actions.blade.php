@@ -526,7 +526,7 @@ new class extends Component {
                 @if (!empty($dataDaftarUGD))
                     {{-- Display Pasien --}}
                     <div class="mb-4">
-                        <livewire:pages::transaksi.ugd.emr-ugd.display-pasien-ugd :rjNo="$rjNo"
+                        <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
                             wire:key="display-pasien-ugd-{{ $rjNo }}" />
                     </div>
 
@@ -628,35 +628,35 @@ new class extends Component {
                              | TAB: PENGKAJIAN PERAWATAN
                              ============================ --}}
                             <div x-show="activeTab === 'pengkajian'" x-transition.opacity.duration.300ms>
-                                @include('pages.transaksi.ugd.emr-ugd.anamnesa.tabs.pengkajian-perawatan-ugd-tab')
+                                @include('pages.transaksi.ugd.emr-ugd.anamnesa.tabs.pengkajian-perawatan-tab')
                             </div>
 
                             {{-- ============================
                              | TAB: KELUHAN & RIWAYAT
                              ============================ --}}
                             <div x-show="activeTab === 'keluhan'" x-transition.opacity.duration.300ms>
-                                @include('pages.transaksi.ugd.emr-ugd.anamnesa.tabs.keluhan-riwayat-ugd-tab')
+                                {{-- @include('pages.transaksi.ugd.emr-ugd.anamnesa.tabs.keluhan-riwayat-tab') --}}
                             </div>
 
                             {{-- ============================
                              | TAB: REKONSILIASI OBAT
                              ============================ --}}
                             <div x-show="activeTab === 'rekonsiliasi'" x-transition.opacity.duration.300ms>
-                                @include('pages.transaksi.ugd.emr-ugd.anamnesa.tabs.rekonsiliasi-obat-ugd-tab')
+                                {{-- @include('pages.transaksi.ugd.emr-ugd.anamnesa.tabs.rekonsiliasi-obat-tab') --}}
                             </div>
 
                             {{-- ============================
                              | TAB: STATUS PSIKOLOGIS & MENTAL
                              ============================ --}}
                             <div x-show="activeTab === 'psikologis'" x-transition.opacity.duration.300ms>
-                                @include('pages.transaksi.ugd.emr-ugd.anamnesa.tabs.status-psikologis-ugd-tab')
+                                @include('pages.transaksi.ugd.emr-ugd.anamnesa.tabs.status-psikologis-tab')
                             </div>
 
                             {{-- ============================
                              | TAB: SCREENING BATUK
                              ============================ --}}
                             <div x-show="activeTab === 'batuk'" x-transition.opacity.duration.300ms>
-                                @include('pages.transaksi.ugd.emr-ugd.anamnesa.tabs.batuk-ugd-tab')
+                                @include('pages.transaksi.ugd.emr-ugd.anamnesa.tabs.batuk-tab')
                             </div>
 
                         </div>

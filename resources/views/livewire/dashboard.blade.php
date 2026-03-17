@@ -13,127 +13,47 @@ new class extends Component {
         return auth()->user()->getRoleNames()->map(fn($r) => strtolower($r))->values()->toArray();
     }
 
-    // ✅ Definisi menu (rapi & konsisten)
     #[Computed]
     public function masterMenus(): array
     {
         return [
-            [
-                'title' => 'Master Poli',
-                'desc' => 'Kelola data poli & ruangan',
-                'href' => route('master.poli'),
-                'roles' => ['admin'], // ✅ wajib lowercase
-                'badge' => 'Master',
-            ],
-            [
-                'title' => 'Master Dokter',
-                'desc' => 'Kelola data dokter & ruangan',
-                'href' => route('master.dokter'),
-                'roles' => ['admin'], // ✅ wajib lowercase
-                'badge' => 'Master',
-            ],
-            [
-                'title' => 'Master Obat',
-                'desc' => 'Kelola data obat & ruangan',
-                'href' => route('master.obat'),
-                'roles' => ['admin'], // ✅ wajib lowercase
-                'badge' => 'Master',
-            ],
-            'desc' => 'Kelola data diagnosa & ruangan',
-            [
-                'title' => 'Master Diagnosa',
-                'desc' => 'Kelola data diagnosa & ruangan',
-                'href' => route('master.diagnosa'),
-                'roles' => ['admin'], // ✅ wajib lowercase
-                'badge' => 'Master',
-            ],
-            [
-                'title' => 'Master Lain-lain',
-                'desc' => 'Kelola data lain-lain',
-                'href' => route('master.others'),
-                'roles' => ['admin'], // ✅ wajib lowercase
-                'badge' => 'Master',
-            ],
-            [
-                'title' => 'Master Radiologi',
-                'desc' => 'Kelola data radiologi',
-                'href' => route('master.radiologis'),
-                'roles' => ['admin'], // ✅ wajib lowercase
-                'badge' => 'Master',
-            ],
-            [
-                'title' => 'Master Pasien',
-                'desc' => 'Kelola data pasien & ruangan',
-                'href' => route('master.pasien'),
-                'roles' => ['admin', 'mr'], // ✅ wajib lowercase
-                'badge' => 'Master',
-            ],
-            // ===========================================
-            // RAWAT JALAN (RJ) - DAFTAR RAWAT JALAN
-            // ===========================================
-            [
-                'title' => 'Daftar Rawat Jalan',
-                'desc' => 'Pendaftaran & manajemen pasien rawat jalan',
-                'href' => route('rawat-jalan.daftar'),
-                'roles' => ['admin', 'mr', 'perawat', 'dokter'],
-                'badge' => 'RJ',
-            ],
-            // ===========================================
-            // RAWAT JALAN (RJ) - ANTRIAN APOTEK
-            // ===========================================
-            [
-                'title' => 'Antrian Apotek',
-                'desc' => 'Telaah resep & pelayanan kefarmasian rawat jalan',
-                'href' => route('transaksi.rj.antrian-apotek-rj'),
-                'roles' => ['admin', 'apotek'],
-                'badge' => 'APT',
-            ],
-            // ===========================================
-            // DATABASE MONITOR - ORACLE SESSION MONITOR
-            // ===========================================
-            [
-                'title' => 'Oracle Session Monitor',
-                'desc' => 'Locks, long-running SQL & kill session',
-                'href' => route('database-monitor.monitoring-dashboard'),
-                'roles' => ['admin'],
-                'badge' => 'DB',
-            ],
-            [
-                'title' => 'Mounting Control',
-                'desc' => 'Mount/unmount share folder jaringan (CIFS/SMB)',
-                'href' => route('database-monitor.monitoring-mount-control'),
-                'roles' => ['admin'],
-                'badge' => 'MNT',
-            ],
+            // ── Master ─────────────────────────────────────────────────
+            ['group' => 'Master', 'groupOrder' => 1, 'order' => 1, 'title' => 'Master Poli', 'desc' => 'Kelola data poli & ruangan', 'href' => route('master.poli'), 'roles' => ['admin'], 'badge' => 'Master'],
+            ['group' => 'Master', 'groupOrder' => 1, 'order' => 2, 'title' => 'Master Dokter', 'desc' => 'Kelola data dokter & spesialis', 'href' => route('master.dokter'), 'roles' => ['admin'], 'badge' => 'Master'],
+            ['group' => 'Master', 'groupOrder' => 1, 'order' => 3, 'title' => 'Master Obat', 'desc' => 'Kelola data obat & farmasi', 'href' => route('master.obat'), 'roles' => ['admin'], 'badge' => 'Master'],
+            ['group' => 'Master', 'groupOrder' => 1, 'order' => 4, 'title' => 'Master Diagnosa', 'desc' => 'Kelola data diagnosa ICD-10', 'href' => route('master.diagnosa'), 'roles' => ['admin'], 'badge' => 'Master'],
+            ['group' => 'Master', 'groupOrder' => 1, 'order' => 5, 'title' => 'Master Lain-lain', 'desc' => 'Kelola data lain-lain', 'href' => route('master.others'), 'roles' => ['admin'], 'badge' => 'Master'],
+            ['group' => 'Master', 'groupOrder' => 1, 'order' => 6, 'title' => 'Master Radiologi', 'desc' => 'Kelola data radiologi', 'href' => route('master.radiologis'), 'roles' => ['admin'], 'badge' => 'Master'],
+            ['group' => 'Master', 'groupOrder' => 1, 'order' => 7, 'title' => 'Master Pasien', 'desc' => 'Kelola data pasien & rekam medis', 'href' => route('master.pasien'), 'roles' => ['admin', 'mr'], 'badge' => 'Master'],
+
+            // ── Rawat Jalan ─────────────────────────────────────────────
+            ['group' => 'Rawat Jalan', 'groupOrder' => 2, 'order' => 1, 'title' => 'Daftar Rawat Jalan', 'desc' => 'Pendaftaran & manajemen pasien rawat jalan', 'href' => route('rawat-jalan.daftar'), 'roles' => ['admin', 'mr', 'perawat', 'dokter'], 'badge' => 'RJ'],
+            ['group' => 'Rawat Jalan', 'groupOrder' => 2, 'order' => 2, 'title' => 'Antrian Apotek', 'desc' => 'Telaah resep & pelayanan kefarmasian rawat jalan', 'href' => route('transaksi.rj.antrian-apotek-rj'), 'roles' => ['admin', 'apotek'], 'badge' => 'APT'],
+
+            // ── UGD ─────────────────────────────────────────────────────
+            ['group' => 'UGD', 'groupOrder' => 3, 'order' => 1, 'title' => 'Daftar UGD', 'desc' => 'Pendaftaran & manajemen pasien UGD', 'href' => route('ugd.daftar'), 'roles' => ['admin', 'mr', 'perawat', 'dokter'], 'badge' => 'UGD'],
+            ['group' => 'UGD', 'groupOrder' => 3, 'order' => 2, 'title' => 'Antrian Apotek UGD', 'desc' => 'Telaah resep & pelayanan kefarmasian UGD', 'href' => route('transaksi.ugd.antrian-apotek-ugd'), 'roles' => ['admin', 'apotek'], 'badge' => 'APT'],
+
+            // ── Database & Infrastruktur ─────────────────────────────────
+            ['group' => 'Sistem', 'groupOrder' => 4, 'order' => 1, 'title' => 'Oracle Session Monitor', 'desc' => 'Locks, long-running SQL & kill session', 'href' => route('database-monitor.monitoring-dashboard'), 'roles' => ['admin'], 'badge' => 'DB'],
+            ['group' => 'Sistem', 'groupOrder' => 4, 'order' => 2, 'title' => 'Mounting Control', 'desc' => 'Mount/unmount share folder jaringan (CIFS/SMB)', 'href' => route('database-monitor.monitoring-mount-control'), 'roles' => ['admin'], 'badge' => 'MNT'],
         ];
     }
 
-    // ✅ Menu yang boleh tampil (role + search)
     #[Computed]
     public function visibleMenus(): array
     {
-        $queryMenu = trim(mb_strtolower($this->search));
-        $userRoles = $this->userRoles();
+        $userRoles = auth()->user()->getRoleNames()->map(fn($r) => strtolower($r))->toArray();
 
-        return array_values(
-            array_filter($this->masterMenus(), function ($m) use ($queryMenu, $userRoles) {
-                $allowed = array_map('strtolower', $m['roles'] ?? []);
+        return collect($this->masterMenus)->filter(fn($m) => !empty(array_intersect($m['roles'], $userRoles)))->values()->toArray();
+    }
 
-                // role check (boleh lihat kalau ada irisan)
-                $roleOk = count(array_intersect($allowed, $userRoles)) > 0;
-                if (!$roleOk) {
-                    return false;
-                }
-
-                // search check
-                if ($queryMenu === '') {
-                    return true;
-                }
-
-                $hay = mb_strtolower(($m['title'] ?? '') . ' ' . ($m['desc'] ?? ''));
-                return str_contains($hay, $queryMenu);
-            }),
-        );
+    #[Computed]
+    public function groupedMenus()
+    {
+        return collect($this->visibleMenus)
+            ->sortBy([['groupOrder', 'asc'], ['order', 'asc']])
+            ->groupBy('group');
     }
 };
 ?>
@@ -175,43 +95,69 @@ new class extends Component {
                 </div>
             </div>
 
-            {{-- GRID MENU --}}
-            <div class="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                @forelse($this->visibleMenus as $m)
-                    <a href="{{ $m['href'] }}" wire:navigate
-                        class="flex items-center justify-between gap-4 p-4 transition-colors duration-200 bg-white border border-gray-200 group rounded-xl hover:bg-brand-green/10 dark:bg-gray-900 dark:border-gray-700 dark:hover:bg-brand-lime/15">
+            {{-- GRID MENU — Accordion --}}
+            <div x-data="{ activeGroup: null }">
 
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2">
-                                <h3 class="font-semibold text-gray-900 truncate dark:text-gray-100">
-                                    {{ $m['title'] }}
-                                </h3>
+                @forelse ($this->groupedMenus as $groupName => $menus)
+                    <div x-data="{ group: '{{ $groupName }}' }">
 
-                                @if (!empty($m['badge']))
-                                    <span
-                                        class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full
-                                                 bg-emerald-50 text-emerald-700
-                                                 dark:bg-emerald-900/30 dark:text-emerald-300">
-                                        {{ $m['badge'] }}
-                                    </span>
-                                @endif
-                            </div>
+                        {{-- GROUP HEADER --}}
+                        <button type="button" @click="activeGroup = (activeGroup === group) ? null : group"
+                            class="flex items-center gap-3 w-full mt-6 mb-3 group/header">
+                            <h2 class="text-xs font-bold tracking-wider uppercase whitespace-nowrap transition-colors
+                    text-gray-400 dark:text-gray-500
+                    group-hover/header:text-gray-600 dark:group-hover/header:text-gray-300"
+                                :class="activeGroup === group ? 'text-gray-700 dark:text-gray-200' : ''">
+                                {{ $groupName }}
+                            </h2>
+                            <div class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+                            <svg class="w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform duration-200"
+                                :class="activeGroup === group ? 'rotate-0' : '-rotate-90'" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
 
-                            <p class="text-xs text-gray-500 truncate dark:text-gray-400">
-                                {{ $m['desc'] }}
-                            </p>
+                        {{-- GRID --}}
+                        <div x-show="activeGroup === group" x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 -translate-y-2"
+                            x-transition:enter-end="opacity-100 translate-y-0"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 translate-y-0"
+                            x-transition:leave-end="opacity-0 -translate-y-2"
+                            class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+
+                            @foreach ($menus as $m)
+                                <a href="{{ $m['href'] }}" wire:navigate
+                                    class="flex flex-col gap-3 p-4 transition-colors duration-200 bg-white border border-gray-200 group rounded-xl hover:bg-brand-green/10 dark:bg-gray-900 dark:border-gray-700 dark:hover:bg-brand-lime/15">
+                                    <div class="grid grid-cols-4 gap-2">
+                                        @if (!empty($m['badge']))
+                                            <span
+                                                class="col-span-1 self-start inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full
+                                    bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                                                {{ $m['badge'] }}
+                                            </span>
+                                        @endif
+                                        <div class="flex-1 min-w-0 col-span-3">
+                                            <h3 class="font-semibold text-gray-900 dark:text-gray-100">
+                                                {{ $m['title'] }}</h3>
+                                            <p class="mt-0.5 text-xs text-gray-500 truncate dark:text-gray-400">
+                                                {{ $m['desc'] }}</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            @endforeach
+
                         </div>
+                    </div>
 
-                        <span
-                            class="pointer-events-none shrink-0 transition-transform duration-200 group-hover:translate-x-0.5">
-                            <x-outline-button type="button">Buka</x-outline-button>
-                        </span>
-                    </a>
                 @empty
-                    <div class="py-10 text-center text-gray-500 col-span-full dark:text-gray-400">
+                    <div class="py-10 text-center text-gray-500 dark:text-gray-400">
                         Menu tidak ditemukan / tidak ada akses.
                     </div>
                 @endforelse
+
             </div>
 
         </div>

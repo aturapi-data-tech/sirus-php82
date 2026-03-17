@@ -288,7 +288,7 @@ new class extends Component {
 
                 $subQuery
                     ->orWhereRaw('UPPER(poli) LIKE ?', ["%{$uppercaseKeyword}%"])
-                    ->orWhereRaw('UPPER(kd_dr_bpjs) LIKE ?', ["%{$uppercaseKeyword}%"])
+                    //->orWhereRaw('UPPER(kd_dr_bpjs) LIKE ?', ["%{$uppercaseKeyword}%"])
                     ->orWhereRaw('UPPER(nokartu_bpjs) LIKE ?', ["%{$uppercaseKeyword}%"]);
             });
         }

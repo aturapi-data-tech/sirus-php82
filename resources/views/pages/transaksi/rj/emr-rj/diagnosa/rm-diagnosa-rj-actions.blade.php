@@ -293,6 +293,7 @@ new class extends Component {
                 $data['procedureFreeText'] = $this->dataDaftarPoliRJ['procedureFreeText'] ?? '';
 
                 $this->updateJsonRJ($this->rjNo, $data);
+                $this->dataDaftarPoliRJ = $data;
             });
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan: ' . $e->getMessage());

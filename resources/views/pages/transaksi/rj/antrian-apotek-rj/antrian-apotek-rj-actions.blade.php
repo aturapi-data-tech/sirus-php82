@@ -102,6 +102,7 @@ new class extends Component {
                 }
                 $data['telaahResep'] = $this->dataDaftarPoliRJ['telaahResep'] ?? [];
                 $this->updateJsonRJ($this->rjNo, $data);
+                $this->dataDaftarPoliRJ = $data;
             });
 
             $this->incrementVersion('modal-telaah-resep-rj');
@@ -139,6 +140,7 @@ new class extends Component {
                 ];
                 $this->dataDaftarPoliRJ['telaahResep'] = $data['telaahResep'];
                 $this->updateJsonRJ($this->rjNo, $data);
+                $this->dataDaftarPoliRJ = $data;
             });
 
             $this->incrementVersion('modal-telaah-resep-rj');
@@ -165,6 +167,7 @@ new class extends Component {
                 }
                 $data['telaahObat'] = $this->dataDaftarPoliRJ['telaahObat'] ?? [];
                 $this->updateJsonRJ($this->rjNo, $data);
+                $this->dataDaftarPoliRJ = $data;
             });
 
             $this->incrementVersion('modal-telaah-obat-rj');
@@ -202,6 +205,7 @@ new class extends Component {
                 ];
                 $this->dataDaftarPoliRJ['telaahObat'] = $data['telaahObat'];
                 $this->updateJsonRJ($this->rjNo, $data);
+                $this->dataDaftarPoliRJ = $data;
             });
 
             $this->incrementVersion('modal-telaah-obat-rj');

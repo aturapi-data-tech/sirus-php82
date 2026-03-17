@@ -211,6 +211,7 @@ new class extends Component {
                 $data['perencanaan'] = $this->dataDaftarPoliRJ['perencanaan'] ?? [];
 
                 $this->updateJsonRJ($this->rjNo, $data);
+                $this->dataDaftarPoliRJ = $data;
             });
 
             $this->afterSave('Perencanaan berhasil disimpan.');

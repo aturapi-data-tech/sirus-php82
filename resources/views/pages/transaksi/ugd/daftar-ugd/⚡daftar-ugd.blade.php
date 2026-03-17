@@ -739,7 +739,7 @@ new class extends Component {
 
             {{-- Child components --}}
             <livewire:pages::transaksi.ugd.daftar-ugd.daftar-ugd-actions wire:key="daftar-ugd-actions" />
-            <livewire:pages::transaksi.ugd.emr-ugd.emr-ugd wire:key="emr-ugd-actions" />
+            <livewire:pages::transaksi.ugd.emr-ugd.erm-ugd wire:key="emr-ugd-actions" />
             <livewire:pages::transaksi.ugd.administrasi-ugd.administrasi-ugd wire:key="administrasi-ugd-actions" />
             <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.modul-dokumen-ugd wire:key="modul-dokumen-ugd" />
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-ugd" />
