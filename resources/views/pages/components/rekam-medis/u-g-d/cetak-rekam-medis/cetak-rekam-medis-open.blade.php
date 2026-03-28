@@ -50,7 +50,7 @@ new class extends Component {
 
         $dokter = DB::table('rsmst_doctors')
             ->where('dr_id', $dataUGD['drId'] ?? '')
-            ->select('dr_name', 'dr_str')
+            ->select('dr_name')
             ->first();
 
         $this->dataDaftarUGD = array_merge($pasien, [

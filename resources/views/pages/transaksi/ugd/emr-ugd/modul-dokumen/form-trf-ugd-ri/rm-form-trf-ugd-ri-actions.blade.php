@@ -5,7 +5,6 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
@@ -75,6 +74,23 @@ new class extends Component {
     }
 
     /* ===============================
+     | LOV ROOM SELECTED
+     =============================== */
+    #[On('lov.selected.room-trf-ugd-ri')]
+    public function onRoomSelected(string $target, array $payload): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form dalam mode read-only.');
+            return;
+        }
+
+        $this->dataDaftarUGD['trfUgd']['pindahKeRuangan'] = $payload['room_name'] ?? '';
+        $this->dataDaftarUGD['trfUgd']['pindahKeRoomId'] = $payload['room_id'] ?? '';
+        $this->dataDaftarUGD['trfUgd']['pindahKeBedNo'] = $payload['bed_no'] ?? '';
+        $this->incrementVersion('modal-trf-ugd-ri');
+    }
+
+    /* ===============================
      | OPEN
      =============================== */
     #[On('open-rm-form-trf-ugd-ri')]
@@ -96,6 +112,9 @@ new class extends Component {
 
         $this->dataDaftarUGD = $data;
         $this->dataDaftarUGD['trfUgd'] ??= $this->getDefaultTrfUgd($data);
+
+        // pindahDariRuangan selalu UGD
+        $this->dataDaftarUGD['trfUgd']['pindahDariRuangan'] = 'UGD';
 
         // Sync top-level variables dari nested data
         $this->kondisiKlinis = (int) ($this->dataDaftarUGD['trfUgd']['kondisiKlinis'] ?? 0);
@@ -454,10 +473,11 @@ new class extends Component {
     public function setTglPindah(): void
     {
         $this->dataDaftarUGD['trfUgd']['tglPindah'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+        $this->incrementVersion('modal-trf-ugd-ri');
     }
 
     /* ===============================
-     | CETAK
+     | CETAK — dispatch ke child component
      =============================== */
     public function cetakTrfPasienUgd(): void
     {
@@ -466,24 +486,7 @@ new class extends Component {
             return;
         }
 
-        try {
-            $identitasRs = DB::table('rsmst_identitases')->select('int_name', 'int_phone1', 'int_phone2', 'int_fax', 'int_address', 'int_city')->first();
-            $dataDaftarUGD = $this->findDataUGD($this->rjNo) ?: [];
-            $regNo = $dataDaftarUGD['regNo'] ?? null;
-            $dataPasien = $regNo ? $this->findDataMasterPasien($regNo) : [];
-
-            set_time_limit(300);
-
-            $pdf = Pdf::loadView('pages.transaksi.ugd.emr-ugd.modul-dokumen.form-trf-ugd-ri.cetak-form-trf-ugd-ri-print', compact('identitasRs', 'dataPasien', 'dataDaftarUGD'))->setPaper('A4');
-
-            $this->dispatch('toast', type: 'success', message: 'Mencetak Form Transfer UGD → RI...');
-
-            response()
-                ->streamDownload(fn() => print $pdf->output(), 'form-trf-ugd-ri-' . $this->rjNo . '.pdf', ['Content-Type' => 'application/pdf'])
-                ->send();
-        } catch (\Exception $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal cetak: ' . $e->getMessage());
-        }
+        $this->dispatch('cetak-form-trf-ugd-ri.open', rjNo: $this->rjNo);
     }
 
     /* ===============================
@@ -504,8 +507,10 @@ new class extends Component {
             'diagnosisFreeText' => $dxFree,
             'terapiUgd' => $terapiUgd,
             'levelingDokter' => $data['trfUgd']['levelingDokter'] ?? [],
-            'pindahDariRuangan' => '',
+            'pindahDariRuangan' => 'UGD',
             'pindahKeRuangan' => '',
+            'pindahKeRoomId' => '',
+            'pindahKeBedNo' => '',
             'tglPindah' => '',
             'kondisiKlinis' => 0,
             'fasilitas' => '',
@@ -569,7 +574,6 @@ new class extends Component {
 
                 {{-- ══ RINGKASAN KLINIS ══ --}}
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-
                     <div
                         class="p-4 border border-gray-200 rounded-2xl dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40">
                         <h3 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">Keluhan Utama &amp;
@@ -620,8 +624,7 @@ new class extends Component {
                             class="p-4 mb-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
                             <div class="grid grid-cols-12 gap-3 items-end">
 
-                                {{-- LOV Dokter —— dua-fase --}}
-                                <div class="col-span-12 md:col-span-4">
+                                <div class="col-span-12 md:col-span-5">
                                     @if (empty($levelingDokter['drId']))
                                         <livewire:lov.dokter.lov-dokter target="dokter-trf-ugd-ri" label="Pilih Dokter"
                                             wire:key="lov-dokter-trf-ugd-ri-{{ $rjNo }}-{{ $renderVersions['modal-trf-ugd-ri'] ?? 0 }}" />
@@ -641,7 +644,6 @@ new class extends Component {
                                     @endif
                                 </div>
 
-                                {{-- Poli --}}
                                 <div class="col-span-12 md:col-span-3">
                                     <x-input-label value="Poli" class="mb-1" />
                                     <x-text-input wire:model="levelingDokter.poliDesc" disabled
@@ -650,8 +652,7 @@ new class extends Component {
                                     <x-input-error :messages="$errors->get('levelingDokter.poliDesc')" class="mt-1" />
                                 </div>
 
-                                {{-- Level Dokter —— x-radio-button --}}
-                                <div class="col-span-12 md:col-span-3">
+                                <div class="col-span-12 md:col-span-2">
                                     <x-input-label value="Level Dokter *" class="mb-1" />
                                     <div class="grid grid-cols-2 gap-2 mt-1">
                                         @foreach ($levelDokterOptions as $opt)
@@ -664,7 +665,6 @@ new class extends Component {
                                     <x-input-error :messages="$errors->get('levelingDokter.tglEntry')" class="mt-1" />
                                 </div>
 
-                                {{-- Aksi --}}
                                 <div class="col-span-12 md:col-span-2 flex gap-2">
                                     <x-primary-button wire:click.prevent="addLevelingDokter"
                                         wire:loading.attr="disabled" wire:target="addLevelingDokter"
@@ -685,7 +685,6 @@ new class extends Component {
                         </div>
                     @endif
 
-                    {{-- Tabel Leveling Dokter --}}
                     @php $levelingList = $dataDaftarUGD['trfUgd']['levelingDokter'] ?? []; @endphp
                     <div class="overflow-hidden border border-gray-200 rounded-xl dark:border-gray-700">
                         <table class="w-full text-sm text-left">
@@ -761,13 +760,28 @@ new class extends Component {
                         <div class="space-y-3">
                             <div>
                                 <x-input-label value="Pindah dari Ruangan" class="mb-1" />
-                                <x-text-input wire:model="dataDaftarUGD.trfUgd.pindahDariRuangan" class="w-full"
-                                    :disabled="$isFormLocked" />
+                                <x-text-input value="UGD" disabled class="w-full bg-gray-100 dark:bg-gray-800" />
                             </div>
                             <div>
-                                <x-input-label value="Pindah ke Ruangan" class="mb-1" />
-                                <x-text-input wire:model="dataDaftarUGD.trfUgd.pindahKeRuangan" class="w-full"
-                                    :disabled="$isFormLocked" />
+                                <x-input-label value="Pindah ke Ruangan *" class="mb-1" />
+                                @if (!$isFormLocked)
+                                    <livewire:lov.room.lov-room target="room-trf-ugd-ri" label=""
+                                        placeholder="Ketik nama ruangan / bed..." :initialRoomId="$dataDaftarUGD['trfUgd']['pindahKeRoomId'] ?? null"
+                                        wire:key="lov-room-trf-ugd-ri-{{ $rjNo }}-{{ $renderVersions['modal-trf-ugd-ri'] ?? 0 }}" />
+                                @else
+                                    <x-text-input :value="($dataDaftarUGD['trfUgd']['pindahKeRuangan'] ?? '') .
+                                        (!empty($dataDaftarUGD['trfUgd']['pindahKeBedNo'])
+                                            ? ' — Bed ' . $dataDaftarUGD['trfUgd']['pindahKeBedNo']
+                                            : '')" disabled class="w-full" />
+                                @endif
+                                @if (!empty($dataDaftarUGD['trfUgd']['pindahKeRoomId']))
+                                    <div class="flex gap-2 mt-1 text-xs text-gray-500">
+                                        <span>ID: {{ $dataDaftarUGD['trfUgd']['pindahKeRoomId'] }}</span>
+                                        @if (!empty($dataDaftarUGD['trfUgd']['pindahKeBedNo']))
+                                            <span>• Bed: {{ $dataDaftarUGD['trfUgd']['pindahKeBedNo'] }}</span>
+                                        @endif
+                                    </div>
+                                @endif
                             </div>
                             <div>
                                 <x-input-label value="Tanggal / Jam Pindah" class="mb-1" />
@@ -798,8 +812,6 @@ new class extends Component {
                         <h3 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">Kondisi &amp; Fasilitas
                         </h3>
                         <div class="space-y-3">
-
-                            {{-- Derajat —— x-radio-button --}}
                             <div>
                                 <x-input-label value="Kondisi Klinis (Derajat 0–3)" class="mb-1" />
                                 <div class="grid grid-cols-4 gap-2 mt-1">
@@ -838,7 +850,6 @@ new class extends Component {
                                     {{ $keteranganDerajat[$derajat]['label'] }}
                                 </div>
                             </div>
-
                             <div>
                                 <x-input-label value="Fasilitas yang Dibutuhkan" class="mb-1" />
                                 <x-textarea wire:model="dataDaftarUGD.trfUgd.fasilitas" rows="2"
@@ -1011,21 +1022,6 @@ new class extends Component {
 
                 {{-- ══ TOMBOL SIMPAN & CETAK ══ --}}
                 <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                    @if (!$isFormLocked)
-                        <x-primary-button wire:click.prevent="save" wire:loading.attr="disabled" wire:target="save"
-                            class="gap-2 min-w-[160px] justify-center">
-                            <span wire:loading.remove wire:target="save">
-                                <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
-                                </svg>
-                                Simpan
-                            </span>
-                            <span wire:loading wire:target="save"><x-loading class="w-4 h-4" /> Menyimpan...</span>
-                        </x-primary-button>
-                    @endif
-
                     <x-secondary-button wire:click.prevent="cetakTrfPasienUgd" wire:loading.attr="disabled"
                         wire:target="cetakTrfPasienUgd" class="gap-2 min-w-[160px] justify-center">
                         <span wire:loading.remove wire:target="cetakTrfPasienUgd">
@@ -1052,4 +1048,8 @@ new class extends Component {
 
         </div>
     </div>
+
+    {{-- Cetak component — dengerin event cetak-form-trf-ugd-ri.open --}}
+    <livewire:pages::components.modul-dokumen.u-g-d.form-trf-ugd-ri.cetak-form-trf-ugd-ri
+        wire:key="cetak-form-trf-ugd-ri-{{ $rjNo ?? 'init' }}" />
 </div>
