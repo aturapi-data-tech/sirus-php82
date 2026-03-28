@@ -36,46 +36,37 @@
             <x-input-label value="Tingkat Kegawatan (Triage)" :required="true" />
             <div class="flex flex-wrap gap-2 mt-1">
                 @foreach ($dataDaftarUGD['anamnesa']['pengkajianPerawatan']['tingkatKegawatanOption'] ?? [] as $opt)
-                    @php
-                        $triage = $opt['tingkatKegawatan'];
-                        $isActive =
-                            ($dataDaftarUGD['anamnesa']['pengkajianPerawatan']['tingkatKegawatan'] ?? '') === $triage;
-                        $activeClass = match ($triage) {
-                            'P1' => 'border-red-500 bg-red-50 text-red-700 dark:bg-red-900/20',
-                            'P2' => 'border-yellow-500 bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20',
-                            'P3' => 'border-green-500 bg-green-50 text-green-700 dark:bg-green-900/20',
-                            'P0' => 'border-gray-700 bg-gray-100 text-gray-700 dark:bg-gray-700',
-                            default => '',
-                        };
-                    @endphp
-                    <label
-                        class="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold border-2 rounded-lg cursor-pointer transition-colors
-                        {{ $isActive ? $activeClass : 'border-gray-200 text-gray-500 hover:border-gray-300 dark:border-gray-700' }}">
-                        <input type="radio"
-                            wire:model.live="dataDaftarUGD.anamnesa.pengkajianPerawatan.tingkatKegawatan"
-                            value="{{ $triage }}" class="sr-only" {{ $isFormLocked ? 'disabled' : '' }} />
-                        {{ $triage }}
-                    </label>
+                    <x-radio-button :label="$opt['tingkatKegawatan']" :value="$opt['tingkatKegawatan']" name="tingkatKegawatan"
+                        wire:model.live="tingkatKegawatan" :disabled="$isFormLocked" />
                 @endforeach
             </div>
-            <p class="mt-1 text-xs text-gray-400">P1=Kritis • P2=Urgent • P3=Minor • P0=Meninggal</p>
+
+            {{-- Indikator warna triage --}}
+            <div class="grid grid-cols-4 gap-2 mt-2">
+                @foreach ([
+        'P1' => ['label' => 'Kritis', 'class' => 'bg-red-500'],
+        'P2' => ['label' => 'Urgent', 'class' => 'bg-yellow-400'],
+        'P3' => ['label' => 'Minor', 'class' => 'bg-green-500'],
+        'P0' => ['label' => 'Meninggal', 'class' => 'bg-gray-700'],
+    ] as $p => $info)
+                    <div
+                        class="flex items-center justify-center gap-1.5 px-2 py-1 rounded-full text-xs text-white font-medium {{ $info['class'] }}
+            {{ $tingkatKegawatan === $p ? 'ring-2 ring-offset-1 ring-current opacity-100' : 'opacity-50' }}">
+                        {{ $info['label'] }}
+                    </div>
+                @endforeach
+            </div>
+
             <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.pengkajianPerawatan.tingkatKegawatan')" class="mt-1" />
         </div>
 
         {{-- Cara Masuk IGD --}}
         <div>
             <x-input-label value="Cara Masuk IGD" :required="true" />
-            <div class="flex flex-wrap gap-2 mt-1">
+            <div class="grid grid-cols-3 gap-2 mt-1">
                 @foreach ($dataDaftarUGD['anamnesa']['pengkajianPerawatan']['caraMasukIgdOption'] ?? [] as $opt)
-                    <label
-                        class="flex items-center gap-1.5 px-3 py-2 text-sm border rounded-lg cursor-pointer transition-colors
-                        {{ ($dataDaftarUGD['anamnesa']['pengkajianPerawatan']['caraMasukIgd'] ?? '') === $opt['caraMasukIgd']
-                            ? 'border-brand bg-brand/10 text-brand font-semibold dark:bg-brand/20'
-                            : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300' }}">
-                        <input type="radio" wire:model.live="dataDaftarUGD.anamnesa.pengkajianPerawatan.caraMasukIgd"
-                            value="{{ $opt['caraMasukIgd'] }}" class="sr-only" {{ $isFormLocked ? 'disabled' : '' }} />
-                        {{ $opt['caraMasukIgd'] }}
-                    </label>
+                    <x-radio-button :label="$opt['caraMasukIgd']" :value="$opt['caraMasukIgd']" name="caraMasukIgd"
+                        wire:model.live="caraMasukIgd" :disabled="$isFormLocked" />
                 @endforeach
             </div>
             <x-input-error :messages="$errors->get('dataDaftarUGD.anamnesa.pengkajianPerawatan.caraMasukIgd')" class="mt-1" />
@@ -86,21 +77,11 @@
             <x-input-label value="Sarana Transportasi" />
             <div class="flex flex-wrap gap-2 mt-1">
                 @foreach ($dataDaftarUGD['anamnesa']['pengkajianPerawatan']['saranaTransportasiOptions'] ?? [] as $opt)
-                    <label
-                        class="flex items-center gap-1.5 px-3 py-2 text-sm border rounded-lg cursor-pointer transition-colors
-                        {{ ($dataDaftarUGD['anamnesa']['pengkajianPerawatan']['saranaTransportasiId'] ?? '') ===
-                        $opt['saranaTransportasiId']
-                            ? 'border-brand bg-brand/10 text-brand font-semibold dark:bg-brand/20'
-                            : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300' }}">
-                        <input type="radio"
-                            wire:model.live="dataDaftarUGD.anamnesa.pengkajianPerawatan.saranaTransportasiId"
-                            value="{{ $opt['saranaTransportasiId'] }}" class="sr-only"
-                            {{ $isFormLocked ? 'disabled' : '' }} />
-                        {{ $opt['saranaTransportasiDesc'] }}
-                    </label>
+                    <x-radio-button :label="$opt['saranaTransportasiDesc']" :value="$opt['saranaTransportasiId']" name="saranaTransportasiId"
+                        wire:model.live="saranaTransportasiId" :disabled="$isFormLocked" />
                 @endforeach
             </div>
-            @if (($dataDaftarUGD['anamnesa']['pengkajianPerawatan']['saranaTransportasiId'] ?? '') === '4')
+            @if ($saranaTransportasiId === '4')
                 <x-text-input wire:model.live="dataDaftarUGD.anamnesa.pengkajianPerawatan.saranaTransportasiKet"
                     placeholder="Sebutkan sarana transportasi..." class="w-full mt-2" :disabled="$isFormLocked" />
             @endif
@@ -109,23 +90,13 @@
         {{-- Anamnesa Diperoleh --}}
         <div>
             <x-input-label value="Anamnesa Diperoleh Dari" />
-            <div class="flex flex-wrap items-center gap-2 mt-1">
-                @foreach ([['key' => 'autoanamnesa', 'label' => 'Auto-anamnesa (Pasien)'], ['key' => 'allonanamnesa', 'label' => 'Allo-anamnesa (Keluarga / Lain)']] as $item)
-                    <label
-                        class="flex items-center gap-1.5 px-3 py-2 text-sm border rounded-lg cursor-pointer transition-colors
-                        {{ !empty($dataDaftarUGD['anamnesa']['anamnesaDiperoleh'][$item['key']] ?? [])
-                            ? 'border-brand bg-brand/10 text-brand font-semibold dark:bg-brand/20'
-                            : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300' }}">
-                        <input type="checkbox"
-                            wire:model.live="dataDaftarUGD.anamnesa.anamnesaDiperoleh.{{ $item['key'] }}"
-                            value="1" class="w-4 h-4 rounded text-brand" {{ $isFormLocked ? 'disabled' : '' }} />
-                        {{ $item['label'] }}
-                    </label>
-                @endforeach
-                <x-text-input wire:model.live="dataDaftarUGD.anamnesa.anamnesaDiperoleh.anamnesaDiperolehDari"
-                    placeholder="Nama pemberi keterangan (jika allo-anamnesa)" class="flex-1 min-w-[200px]"
-                    :disabled="$isFormLocked" />
-            </div>
+            <x-select-input wire:model.live="dataDaftarUGD.anamnesa.anamnesaDiperoleh.anamnesaDiperolehDari"
+                class="w-full" :disabled="$isFormLocked">
+                <option value="">-- Pilih Sumber Anamnesa --</option>
+                <option value="Auto-anamnesa (Pasien)">Auto-anamnesa (Pasien)</option>
+                <option value="Allo-anamnesa (Keluarga)">Allo-anamnesa (Keluarga)</option>
+                <option value="Allo-anamnesa (Lain-lain)">Allo-anamnesa (Lain-lain)</option>
+            </x-select-input>
         </div>
 
         {{-- Keluhan Utama --}}

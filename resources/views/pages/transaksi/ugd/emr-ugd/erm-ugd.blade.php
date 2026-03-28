@@ -178,6 +178,19 @@ new class extends Component {
                                 <x-badge variant="danger">Read Only</x-badge>
                             @endif
 
+                            @role(['Perawat', 'Dokter', 'Admin'])
+                                <x-secondary-button type="button"
+                                    wire:click="$dispatch('open-rm-screening-ugd', { rjNo: {{ $rjNo }} })"
+                                    class="gap-1 text-xs">
+                                    <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                                    </svg>
+                                    Screening
+                                </x-secondary-button>
+                            @endrole
+
                             @role(['Dokter', 'Admin'])
                                 @if (!empty($dataDaftarUGD['sep']['noSep']))
                                     <x-secondary-button type="button"
@@ -221,6 +234,10 @@ new class extends Component {
                                 wire:key="emr-ugd-display-pasien-ugd-{{ $rjNo }}" />
                         </div>
 
+                        {{-- Screening UGD (x-modal, dibuka via tombol / dispatch) --}}
+                        <livewire:pages::transaksi.ugd.emr-ugd.screening.rm-screening-ugd-actions :rjNo="$rjNo"
+                            wire:key="screening-ugd-{{ $rjNo }}" />
+
                         <div class="grid grid-cols-3 gap-2">
 
                             {{-- ANAMNESA --}}
@@ -248,7 +265,7 @@ new class extends Component {
                                 :rjNo="$rjNo" wire:key="perencanaan-ugd-{{ $rjNo }}" />
 
                             {{-- REKAM MEDIS DISPLAY (shared) --}}
-                            <livewire:pages::components.rekam-medis.u-g-d.rekam-medis-display.rekam-medis-display
+                            <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
                                 :regNo="$dataDaftarUGD['regNo'] ?? ''" :rjNoRefCopyTo="$rjNo ?? 0"
                                 wire:key="emr-ugd.rekam-medis-display-ugd-{{ $dataDaftarUGD['regNo'] ?? 'new' }}" />
 

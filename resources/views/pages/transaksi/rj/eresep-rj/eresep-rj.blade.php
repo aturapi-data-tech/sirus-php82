@@ -276,7 +276,7 @@ new class extends Component {
 
                     <div>
                         {{-- REKAM MEDIS — tambah :rjNo --}}
-                        <livewire:pages::components.rekam-medis.r-j.rekam-medis-display.rekam-medis-display
+                        <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
                             :regNo="$dataDaftarPoliRJ['regNo'] ?? ''" :rjNo="$rjNo ?? 0"
                             wire:key="eresep-rj-rekam-medis-display-rj-{{ $dataDaftarPoliRJ['regNo'] ?? 'new' }}" />
                     </div>

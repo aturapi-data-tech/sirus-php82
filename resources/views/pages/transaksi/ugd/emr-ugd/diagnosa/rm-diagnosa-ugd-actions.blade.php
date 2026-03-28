@@ -41,7 +41,6 @@ new class extends Component {
 
         $this->dataDaftarUGD = $data;
 
-        // Init keys jika belum ada
         $this->dataDaftarUGD['diagnosis'] ??= [];
         $this->dataDaftarUGD['procedure'] ??= [];
         $this->dataDaftarUGD['diagnosisFreeText'] ??= '';
@@ -49,17 +48,6 @@ new class extends Component {
 
         $this->isFormLocked = $this->checkEmrUGDStatus($rjNo);
         $this->incrementVersion('modal-diagnosis-ugd');
-        $this->dispatch('open-modal', name: 'rm-diagnosis-ugd-actions');
-    }
-
-    /* ===============================
-     | CLOSE
-     =============================== */
-    public function closeModal(): void
-    {
-        $this->resetValidation();
-        $this->resetForm();
-        $this->dispatch('close-modal', name: 'rm-diagnosis-ugd-actions');
     }
 
     /* ===============================
@@ -181,7 +169,6 @@ new class extends Component {
                     'ketProcedure' => 'Keterangan Procedure',
                     'rjNo' => $this->rjNo,
                 ];
-
                 $this->save();
             });
 
@@ -267,6 +254,7 @@ new class extends Component {
         $this->isFormLocked = false;
         $this->diagnosaId = null;
         $this->procedureId = null;
+        $this->dataDaftarUGD = [];
     }
 
     public function mount(): void
@@ -277,70 +265,29 @@ new class extends Component {
 ?>
 
 <div>
-    <x-modal name="rm-diagnosis-ugd-actions" size="full" height="full" focusable>
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]">
+    <div class="flex flex-col w-full" wire:key="{{ $this->renderKey('modal-diagnosis-ugd', [$rjNo ?? 'new']) }}">
+        <div class="w-full mx-auto">
+            <div
+                class="w-full p-4 space-y-6 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
-            {{-- HEADER --}}
-            <div class="relative px-6 py-5 border-b border-gray-200 dark:border-gray-700">
-                <div class="absolute inset-0 opacity-[0.06]"
-                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
-                </div>
-                <div class="relative flex items-start justify-between gap-4">
-                    <div>
-                        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                            Diagnosis & Procedure UGD
-                        </h2>
-                        <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-                            ICD-10 Diagnosis dan ICD-9-CM Procedure pasien UGD
-                        </p>
-                        <div class="flex gap-2 mt-3">
-                            <x-badge variant="danger">UGD / IGD</x-badge>
-                            @if ($isFormLocked)
-                                <x-badge variant="danger">Read Only — EMR Terkunci</x-badge>
-                            @endif
-                        </div>
-                    </div>
-                    <x-secondary-button type="button" wire:click="closeModal" class="!p-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-secondary-button>
-                </div>
-            </div>
-
-            {{-- BODY --}}
-            <div class="flex-1 px-4 py-4 overflow-y-auto bg-gray-50/70 dark:bg-gray-950/20">
-
-                @if (!empty($dataDaftarUGD))
-
-                    {{-- Display Pasien --}}
-                    <div class="mb-4">
-                        <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
-                            wire:key="display-pasien-ugd-diagnosa-{{ $rjNo }}" />
-                    </div>
-
-                    <div class="space-y-4" wire:key="{{ $this->renderKey('modal-diagnosis-ugd', [$rjNo ?? 'new']) }}">
+                @if (isset($dataDaftarUGD['diagnosis']))
+                    <div class="space-y-4">
 
                         {{-- DIAGNOSIS ICD-10 --}}
                         <x-border-form :title="__('Diagnosis (ICD-10)')" :align="__('start')" :bgcolor="__('bg-gray-50')">
                             <div class="mt-4 space-y-4">
 
-                                {{-- LOV Diagnosa --}}
                                 <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosis" target="ugdFormDiagnosaRm"
                                     :initialDiagnosaId="$diagnosaId ?? null" :disabled="$isFormLocked"
                                     wire:key="lov-diagnosa-ugd-{{ $this->renderKey('modal-diagnosis-ugd') }}" />
 
-                                {{-- Free Text Diagnosa --}}
                                 <div>
                                     <x-input-label value="Free Text Diagnosis" />
-                                    <x-textarea wire:model.live="dataDaftarUGD.diagnosisFreeText" :error="$errors->has('dataDaftarUGD.diagnosisFreeText')"
+                                    <x-textarea wire:model.live="dataDaftarUGD.diagnosisFreeText"
                                         placeholder="Masukkan diagnosa free text..." :disabled="$isFormLocked" rows="2"
                                         class="w-full mt-1" />
                                 </div>
 
-                                {{-- List Diagnosa --}}
                                 @if (!empty($dataDaftarUGD['diagnosis']))
                                     <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
                                         <table class="w-full text-xs text-left text-gray-600 dark:text-gray-300">
@@ -355,7 +302,7 @@ new class extends Component {
                                             </thead>
                                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                                 @foreach ($dataDaftarUGD['diagnosis'] as $index => $diagnosa)
-                                                    <tr wire:key="diagnosa-ugd-{{ $diagnosa['ugdDtlDtl'] ?? $index }}-{{ $this->renderKey('modal-diagnosis-ugd') }}"
+                                                    <tr wire:key="diagnosa-ugd-{{ $diagnosa['ugdDtlDtl'] ?? $index }}"
                                                         class="bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700">
                                                         <td class="px-3 py-2 font-medium text-gray-800 dark:text-white">
                                                             {{ $diagnosa['diagId'] ?? ($diagnosa['icdX'] ?? '') }}
@@ -397,20 +344,17 @@ new class extends Component {
                         <x-border-form :title="__('Procedure (ICD-9-CM)')" :align="__('start')" :bgcolor="__('bg-gray-50')">
                             <div class="mt-4 space-y-4">
 
-                                {{-- LOV Prosedur --}}
                                 <livewire:lov.procedure.lov-procedure label="Cari Prosedur" target="ugdFormProsedurRm"
                                     :initialProcedureId="$procedureId ?? null" :disabled="$isFormLocked"
                                     wire:key="lov-procedure-ugd-{{ $this->renderKey('modal-diagnosis-ugd') }}" />
 
-                                {{-- Free Text Procedure --}}
                                 <div>
                                     <x-input-label value="Free Text Procedure" />
-                                    <x-textarea wire:model.live="dataDaftarUGD.procedureFreeText" :error="$errors->has('dataDaftarUGD.procedureFreeText')"
+                                    <x-textarea wire:model.live="dataDaftarUGD.procedureFreeText"
                                         placeholder="Masukkan procedure free text..." :disabled="$isFormLocked" rows="2"
                                         class="w-full mt-1" />
                                 </div>
 
-                                {{-- List Procedure --}}
                                 @if (!empty($dataDaftarUGD['procedure']))
                                     <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
                                         <table class="w-full text-xs text-left text-gray-600 dark:text-gray-300">
@@ -424,7 +368,7 @@ new class extends Component {
                                             </thead>
                                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                                 @foreach ($dataDaftarUGD['procedure'] as $index => $procedure)
-                                                    <tr wire:key="procedure-ugd-{{ $procedure['procedureId'] }}-{{ $this->renderKey('modal-diagnosis-ugd') }}"
+                                                    <tr wire:key="procedure-ugd-{{ $procedure['procedureId'] }}"
                                                         class="bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700">
                                                         <td class="px-3 py-2 font-medium text-gray-800 dark:text-white">
                                                             {{ $procedure['procedureId'] ?? '' }}
@@ -458,35 +402,34 @@ new class extends Component {
                         </x-border-form>
 
                     </div>
+
+                    {{-- FOOTER ACTIONS --}}
+                    <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        @if (!$isFormLocked)
+                            <x-primary-button wire:click.prevent="save()" wire:loading.attr="disabled">
+                                <span wire:loading.remove>
+                                    <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
+                                    </svg>
+                                    Simpan
+                                </span>
+                                <span wire:loading><x-loading /> Menyimpan...</span>
+                            </x-primary-button>
+                        @endif
+                    </div>
                 @else
                     <div class="flex flex-col items-center justify-center py-24 text-gray-300 dark:text-gray-600">
+                        <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
                         <p class="text-sm font-medium">Data UGD belum dimuat</p>
                     </div>
                 @endif
 
             </div>
-
-            {{-- FOOTER --}}
-            <div
-                class="sticky bottom-0 z-10 px-6 py-4 bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700">
-                <div class="flex justify-end gap-3">
-                    <x-secondary-button wire:click="closeModal">Tutup</x-secondary-button>
-                    @if (!$isFormLocked)
-                        <x-primary-button wire:click.prevent="save()" wire:loading.attr="disabled">
-                            <span wire:loading.remove>
-                                <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
-                                </svg>
-                                Simpan
-                            </span>
-                            <span wire:loading><x-loading /> Menyimpan...</span>
-                        </x-primary-button>
-                    @endif
-                </div>
-            </div>
-
         </div>
-    </x-modal>
+    </div>
 </div>

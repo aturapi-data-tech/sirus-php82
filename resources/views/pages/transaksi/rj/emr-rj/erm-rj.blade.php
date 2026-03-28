@@ -300,7 +300,7 @@ new class extends Component {
 
 
                             {{-- REKAM MEDIS — tambah :rjNoRefCopyTo --}}
-                            <livewire:pages::components.rekam-medis.r-j.rekam-medis-display.rekam-medis-display
+                            <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
                                 :regNo="$dataDaftarPoliRJ['regNo'] ?? ''" :rjNoRefCopyTo="$rjNo ?? 0"
                                 wire:key="emr-rj.eresep-rj-rekam-medis-display-rj-{{ $dataDaftarPoliRJ['regNo'] ?? 'new' }}" />
                         </div>

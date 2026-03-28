@@ -134,33 +134,26 @@ new class extends Component {
                         </div>
                     </div>
 
-                    {{-- BARIS 4: Cara Masuk | Status Lanjutan --}}
+                    {{-- BARIS 4: Cara Masuk | No. Booking --}}
                     <div class="flex items-start justify-between gap-2">
                         <div>
                             <span class="text-gray-500">Cara Masuk:</span>
                             <p class="text-gray-700 dark:text-gray-300">{{ $entryDesc }}</p>
                         </div>
-                        @if (!empty($rj['statusLanjutan']))
-                            <div class="text-right">
-                                <span class="text-gray-500">Lanjutan:</span>
-                                <p class="text-gray-700 dark:text-gray-300">{{ $rj['statusLanjutan'] }}</p>
-                            </div>
-                        @endif
+                        <div class="text-right">
+                            <span class="text-gray-500">No. Booking:</span>
+                            <p class="text-gray-700 dark:text-gray-300 text-xs">{{ $rj['noBooking'] ?? '-' ?: '-' }}</p>
+                        </div>
                     </div>
 
-                    {{-- BARIS 5: No. Booking | No. SEP --}}
-                    <div class="flex items-start justify-between gap-2">
+                    {{-- BARIS 5: No. SEP (jika ada) --}}
+                    @if (!empty($rj['sep']['noSep']))
                         <div>
-                            <span class="text-gray-500">No. Booking:</span>
-                            <p class="text-gray-700 dark:text-gray-300">{{ $rj['noBooking'] ?? '-' ?: '-' }}</p>
+                            <span class="text-gray-500">No. SEP:</span>
+                            <span
+                                class="ml-1 font-mono text-gray-700 dark:text-gray-300">{{ $rj['sep']['noSep'] }}</span>
                         </div>
-                        @if (!empty($rj['sep']['noSep']))
-                            <div class="text-right">
-                                <span class="text-gray-500">No. SEP:</span>
-                                <p class="font-mono text-gray-700 dark:text-gray-300">{{ $rj['sep']['noSep'] }}</p>
-                            </div>
-                        @endif
-                    </div>
+                    @endif
 
                     <div
                         class="inline-block border rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $statusClass }}">
