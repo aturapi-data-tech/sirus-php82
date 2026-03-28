@@ -162,7 +162,7 @@ new class extends Component {
                 $this->lockUGDRow($this->rjNo);
 
                 // 2. Insert ke tabel obat
-                $lastDtl = DB::table('rstxn_ugdobats')->max('rjobat_dtl') + 1;
+                $lastDtl = DB::table('rstxn_ugdobats')->select(DB::raw('nvl(max(rjobat_dtl)+1,1) as rjobat_dtl_max'))->first()->rjobat_dtl_max;
                 $takar = DB::table('immst_products')->where('product_id', $this->formEresep['productId'])->value('takar') ?? 'Tablet';
 
                 DB::table('rstxn_ugdobats')->insert([
@@ -171,11 +171,11 @@ new class extends Component {
                     'product_id' => $this->formEresep['productId'],
                     'qty' => $this->formEresep['qty'],
                     'price' => $this->formEresep['productPrice'],
-                    'rj_carapakai' => $this->formEresep['signaX'],
-                    'rj_kapsul' => $this->formEresep['signaHari'],
-                    'rj_takar' => $takar,
+                    'ugd_carapakai' => $this->formEresep['signaX'],
+                    'ugd_kapsul' => $this->formEresep['signaHari'],
+                    'ugd_takar' => $takar,
                     'catatan_khusus' => $this->formEresep['catatanKhusus'],
-                    'rj_ket' => $this->formEresep['catatanKhusus'],
+                    'ugd_ket' => $this->formEresep['catatanKhusus'],
                     'exp_date' => now()->addDays(30),
                     'etiket_status' => 1,
                 ]);
@@ -240,10 +240,10 @@ new class extends Component {
                     ->where('rjobat_dtl', $rjobatDtl)
                     ->update([
                         'qty' => $qty,
-                        'rj_carapakai' => $signaX,
-                        'rj_kapsul' => $signaHari,
+                        'ugd_carapakai' => $signaX,
+                        'ugd_kapsul' => $signaHari,
                         'catatan_khusus' => $catatanKhusus,
-                        'rj_ket' => $catatanKhusus,
+                        'ugd_ket' => $catatanKhusus,
                     ]);
 
                 // 3. Update array lokal

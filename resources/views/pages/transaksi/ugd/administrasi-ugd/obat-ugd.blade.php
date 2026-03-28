@@ -29,7 +29,7 @@ new class extends Component {
      =============================== */
     private function loadData(int $rjNo): void
     {
-        $rows = DB::table('rstxn_ugdobats')->join('immst_products', 'immst_products.product_id', 'rstxn_ugdobats.product_id')->select('rstxn_ugdobats.rjobat_dtl', 'rstxn_ugdobats.product_id', 'immst_products.product_name', 'rstxn_ugdobats.qty', 'rstxn_ugdobats.price', 'rstxn_ugdobats.rj_carapakai', 'rstxn_ugdobats.rj_kapsul', 'rstxn_ugdobats.rj_takar', 'rstxn_ugdobats.catatan_khusus')->where('rstxn_ugdobats.rj_no', $rjNo)->orderBy('rstxn_ugdobats.rjobat_dtl')->get();
+        $rows = DB::table('rstxn_ugdobats')->join('immst_products', 'immst_products.product_id', 'rstxn_ugdobats.product_id')->select('rstxn_ugdobats.rjobat_dtl', 'rstxn_ugdobats.product_id', 'immst_products.product_name', 'rstxn_ugdobats.qty', 'rstxn_ugdobats.price', 'rstxn_ugdobats.ugd_carapakai', 'rstxn_ugdobats.ugd_kapsul', 'rstxn_ugdobats.ugd_takar', 'rstxn_ugdobats.ugd_ket', 'rstxn_ugdobats.catatan_khusus')->where('rstxn_ugdobats.rj_no', $rjNo)->orderBy('rstxn_ugdobats.rjobat_dtl')->get();
 
         $this->rjObat = $rows
             ->map(
@@ -40,9 +40,10 @@ new class extends Component {
                     'qty' => (int) $r->qty,
                     'price' => (int) $r->price,
                     'total' => (int) $r->qty * (int) $r->price,
-                    'carapakai' => $r->rj_carapakai,
-                    'kapsul' => $r->rj_kapsul,
-                    'takar' => $r->rj_takar,
+                    'carapakai' => $r->ugd_carapakai,
+                    'kapsul' => $r->ugd_kapsul,
+                    'takar' => $r->ugd_takar,
+                    'ket' => $r->ugd_ket,
                     'catatan' => $r->catatan_khusus,
                 ],
             )
@@ -144,6 +145,10 @@ new class extends Component {
                                 {{ $item['productId'] }}</td>
                             <td class="px-4 py-3 text-gray-800 dark:text-gray-200">
                                 <div>{{ $item['productName'] }}</div>
+                                @if ($item['ket'])
+                                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $item['ket'] }}
+                                    </div>
+                                @endif
                                 @if ($item['catatan'] && $item['catatan'] !== '-')
                                     <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ $item['catatan'] }}
                                     </div>

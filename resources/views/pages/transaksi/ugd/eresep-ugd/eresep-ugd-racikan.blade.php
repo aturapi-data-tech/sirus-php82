@@ -4,6 +4,7 @@
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 
@@ -186,8 +187,8 @@ new class extends Component {
                     'catatan' => $this->formEresepRacikan['catatan'] ?: null,
                     'catatan_khusus' => $this->formEresepRacikan['catatanKhusus'] ?: null,
                     'no_racikan' => $this->formEresepRacikan['noRacikan'],
-                    'rj_takar' => $takar,
-                    'exp_date' => now()->addDays(30),
+                    'ugd_takar' => $takar,
+                    'exp_date' => Carbon::now(config('app.timezone'))->addDays(30),
                     'etiket_status' => 1,
                 ]);
 
