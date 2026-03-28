@@ -4,20 +4,43 @@
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 
 new class extends Component {
-    use EmrUGDTrait;
+    use EmrUGDTrait, WithRenderVersioningTrait;
+
+    public array $renderVersions = [];
+    protected array $renderAreas = ['modal-obat-ugd'];
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
     public array $rjObat = [];
+
+    public ?int $editingDtl = null;
+    public array $editRow = [];
+
+    public array $formEntryObat = [
+        'productId' => '',
+        'productName' => '',
+        'price' => '',
+        'qty' => 1,
+        'carapakai' => 1,
+        'kapsul' => 1,
+        'takar' => 'Tablet',
+        'ket' => '',
+        'expDate' => '',
+        'catatanKhusus' => '-',
+        'etiketStatus' => 0,
+    ];
 
     /* ===============================
      | MOUNT
      =============================== */
     public function mount(): void
     {
+        $this->registerAreas($this->renderAreas);
         if ($this->rjNo) {
             $this->loadData($this->rjNo);
             $this->isFormLocked = $this->checkUGDStatus($this->rjNo);
@@ -29,35 +52,226 @@ new class extends Component {
      =============================== */
     private function loadData(int $rjNo): void
     {
-        $rows = DB::table('rstxn_ugdobats')->join('immst_products', 'immst_products.product_id', 'rstxn_ugdobats.product_id')->select('rstxn_ugdobats.rjobat_dtl', 'rstxn_ugdobats.product_id', 'immst_products.product_name', 'rstxn_ugdobats.qty', 'rstxn_ugdobats.price', 'rstxn_ugdobats.ugd_carapakai', 'rstxn_ugdobats.ugd_kapsul', 'rstxn_ugdobats.ugd_takar', 'rstxn_ugdobats.ugd_ket', 'rstxn_ugdobats.catatan_khusus')->where('rstxn_ugdobats.rj_no', $rjNo)->orderBy('rstxn_ugdobats.rjobat_dtl')->get();
-
-        $this->rjObat = $rows
+        $this->rjObat = DB::table('rstxn_ugdobats')
+            ->join('immst_products', 'immst_products.product_id', 'rstxn_ugdobats.product_id')
+            ->select('rstxn_ugdobats.rjobat_dtl', 'rstxn_ugdobats.product_id', 'immst_products.product_name', 'rstxn_ugdobats.qty', 'rstxn_ugdobats.price', 'rstxn_ugdobats.ugd_carapakai', 'rstxn_ugdobats.ugd_kapsul', 'rstxn_ugdobats.ugd_takar', 'rstxn_ugdobats.ugd_ket', 'rstxn_ugdobats.exp_date', 'rstxn_ugdobats.catatan_khusus', 'rstxn_ugdobats.etiket_status')
+            ->where('rstxn_ugdobats.rj_no', $rjNo)
+            ->orderBy('rstxn_ugdobats.rjobat_dtl')
+            ->get()
             ->map(
                 fn($r) => [
                     'rjobatDtl' => (int) $r->rjobat_dtl,
                     'productId' => $r->product_id,
                     'productName' => $r->product_name,
-                    'qty' => (int) $r->qty,
-                    'price' => (int) $r->price,
-                    'total' => (int) $r->qty * (int) $r->price,
+                    'qty' => $r->qty,
+                    'price' => $r->price,
+                    'total' => $r->price * $r->qty,
                     'carapakai' => $r->ugd_carapakai,
                     'kapsul' => $r->ugd_kapsul,
                     'takar' => $r->ugd_takar,
                     'ket' => $r->ugd_ket,
-                    'catatan' => $r->catatan_khusus,
+                    'expDate' => $r->exp_date,
+                    'catatanKhusus' => $r->catatan_khusus,
+                    'etiketStatus' => $r->etiket_status,
                 ],
             )
             ->toArray();
     }
 
     /* ===============================
-     | LISTENER — refresh dari parent
+     | LISTENER
      =============================== */
     #[On('administrasi-obat-ugd.updated')]
     public function onAdministrasiUpdated(): void
     {
         if ($this->rjNo) {
             $this->loadData($this->rjNo);
+        }
+    }
+
+    /* ===============================
+     | LOV SELECTED
+     =============================== */
+    #[On('lov.selected.obat-ugd')]
+    public function onProductSelected(?array $payload): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form dalam mode read-only.');
+            return;
+        }
+        if (!$payload) {
+            $this->formEntryObat['productId'] = $this->formEntryObat['productName'] = $this->formEntryObat['price'] = '';
+            return;
+        }
+        $rjDate = DB::table('rstxn_ugdhdrs')->where('rj_no', $this->rjNo)->value('rj_date');
+        $this->formEntryObat['productId'] = $payload['product_id'];
+        $this->formEntryObat['productName'] = $payload['product_name'];
+        $this->formEntryObat['price'] = $payload['sales_price'];
+        $this->formEntryObat['expDate'] = $rjDate ? Carbon::parse($rjDate)->addDays(30)->format('Y-m-d') : Carbon::now()->addDays(30)->format('Y-m-d');
+        $this->dispatch('focus-input-qty-obat-ugd');
+    }
+
+    /* ===============================
+     | INSERT OBAT
+     =============================== */
+    public function insertObat(): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, transaksi terkunci.');
+            return;
+        }
+        $this->validate(
+            [
+                'formEntryObat.productId' => 'bail|required|exists:immst_products,product_id',
+                'formEntryObat.price' => 'bail|required|numeric|min:0',
+                'formEntryObat.qty' => 'bail|required|numeric|min:1',
+                'formEntryObat.carapakai' => 'bail|required|numeric|min:1',
+                'formEntryObat.kapsul' => 'bail|required|numeric|min:1',
+                'formEntryObat.takar' => 'bail|required|string',
+                'formEntryObat.expDate' => 'bail|required|date',
+                'formEntryObat.catatanKhusus' => 'bail|nullable|string',
+                'formEntryObat.etiketStatus' => 'bail|required|integer',
+            ],
+            [
+                'formEntryObat.productId.required' => 'Obat harus dipilih.',
+                'formEntryObat.productId.exists' => 'Obat tidak valid.',
+                'formEntryObat.price.required' => 'Harga harus diisi.',
+                'formEntryObat.qty.required' => 'Jumlah harus diisi.',
+                'formEntryObat.qty.min' => 'Jumlah minimal 1.',
+                'formEntryObat.carapakai.required' => 'Cara pakai harus diisi.',
+                'formEntryObat.kapsul.required' => 'Jumlah per minum harus diisi.',
+                'formEntryObat.takar.required' => 'Takaran harus diisi.',
+                'formEntryObat.expDate.required' => 'Tanggal kadaluarsa harus diisi.',
+                'formEntryObat.expDate.date' => 'Format tanggal kadaluarsa tidak valid.',
+            ],
+        );
+        try {
+            DB::transaction(function () {
+                $this->lockUGDRow($this->rjNo);
+                $last = DB::table('rstxn_ugdobats')->select(DB::raw('nvl(max(rjobat_dtl)+1,1) as rjobat_dtl_max'))->first();
+                $expDateFormatted = Carbon::parse($this->formEntryObat['expDate'])->format('Y-m-d H:i:s');
+                DB::table('rstxn_ugdobats')->insert([
+                    'rjobat_dtl' => $last->rjobat_dtl_max,
+                    'rj_no' => $this->rjNo,
+                    'product_id' => $this->formEntryObat['productId'],
+                    'qty' => $this->formEntryObat['qty'],
+                    'price' => $this->formEntryObat['price'],
+                    'ugd_carapakai' => $this->formEntryObat['carapakai'],
+                    'ugd_kapsul' => $this->formEntryObat['kapsul'],
+                    'ugd_takar' => $this->formEntryObat['takar'],
+                    'ugd_ket' => $this->formEntryObat['ket'] ?: null,
+                    'catatan_khusus' => $this->formEntryObat['catatanKhusus'] ?: '-',
+                    'exp_date' => DB::raw("to_date('" . $expDateFormatted . "','yyyy-mm-dd hh24:mi:ss')"),
+                    'etiket_status' => $this->formEntryObat['etiketStatus'],
+                ]);
+                $this->rjObat[] = [
+                    'rjobatDtl' => (int) $last->rjobat_dtl_max,
+                    'productId' => $this->formEntryObat['productId'],
+                    'productName' => $this->formEntryObat['productName'],
+                    'qty' => $this->formEntryObat['qty'],
+                    'price' => $this->formEntryObat['price'],
+                    'total' => $this->formEntryObat['price'] * $this->formEntryObat['qty'],
+                    'carapakai' => $this->formEntryObat['carapakai'],
+                    'kapsul' => $this->formEntryObat['kapsul'],
+                    'takar' => $this->formEntryObat['takar'],
+                    'ket' => $this->formEntryObat['ket'],
+                    'expDate' => $this->formEntryObat['expDate'],
+                    'catatanKhusus' => $this->formEntryObat['catatanKhusus'],
+                    'etiketStatus' => $this->formEntryObat['etiketStatus'],
+                ];
+            });
+            $this->resetFormEntry();
+            $this->dispatch('focus-lov-obat-ugd');
+            $this->dispatch('administrasi-ugd.updated');
+            $this->dispatch('toast', type: 'success', message: 'Obat berhasil ditambahkan.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
+     | INLINE EDIT
+     =============================== */
+    public function startEdit(int $rjobatDtl): void
+    {
+        if ($this->isFormLocked) {
+            return;
+        }
+        $row = collect($this->rjObat)->firstWhere('rjobatDtl', $rjobatDtl);
+        if (!$row) {
+            return;
+        }
+        $this->editingDtl = $rjobatDtl;
+        $this->editRow = [
+            'qty' => $row['qty'],
+            'carapakai' => $row['carapakai'],
+            'kapsul' => $row['kapsul'],
+            'takar' => $row['takar'],
+            'ket' => $row['ket'] ?? '',
+            'expDate' => $row['expDate'] ? Carbon::parse($row['expDate'])->format('Y-m-d') : '',
+            'catatanKhusus' => $row['catatanKhusus'] ?? '-',
+        ];
+    }
+
+    public function cancelEdit(): void
+    {
+        $this->editingDtl = null;
+        $this->editRow = [];
+        $this->resetValidation();
+    }
+
+    public function saveEdit(): void
+    {
+        if ($this->isFormLocked || !$this->editingDtl) {
+            return;
+        }
+        $this->validateOnly('editRow.qty', ['editRow.qty' => 'required|numeric|min:1'], ['editRow.qty.required' => 'Qty wajib diisi.', 'editRow.qty.min' => 'Qty minimal 1.']);
+        $this->validateOnly('editRow.carapakai', ['editRow.carapakai' => 'required|numeric|min:1'], ['editRow.carapakai.required' => 'x/Hari wajib diisi.']);
+        $this->validateOnly('editRow.kapsul', ['editRow.kapsul' => 'required|numeric|min:1'], ['editRow.kapsul.required' => 'Per minum wajib diisi.']);
+        $this->validateOnly('editRow.takar', ['editRow.takar' => 'required|string'], ['editRow.takar.required' => 'Takar wajib diisi.']);
+        $this->validateOnly('editRow.expDate', ['editRow.expDate' => 'required|date'], ['editRow.expDate.required' => 'Exp. Date wajib diisi.', 'editRow.expDate.date' => 'Format tidak valid.']);
+        try {
+            DB::transaction(function () {
+                $this->lockUGDRow($this->rjNo);
+                $expDateFormatted = Carbon::parse($this->editRow['expDate'])->format('Y-m-d H:i:s');
+                DB::table('rstxn_ugdobats')
+                    ->where('rjobat_dtl', $this->editingDtl)
+                    ->update([
+                        'qty' => $this->editRow['qty'],
+                        'ugd_carapakai' => $this->editRow['carapakai'],
+                        'ugd_kapsul' => $this->editRow['kapsul'],
+                        'ugd_takar' => $this->editRow['takar'],
+                        'ugd_ket' => $this->editRow['ket'] ?: null,
+                        'catatan_khusus' => $this->editRow['catatanKhusus'] ?: '-',
+                        'exp_date' => DB::raw("to_date('" . $expDateFormatted . "','yyyy-mm-dd hh24:mi:ss')"),
+                    ]);
+                $this->rjObat = collect($this->rjObat)
+                    ->map(
+                        fn($item) => $item['rjobatDtl'] !== $this->editingDtl
+                            ? $item
+                            : array_merge($item, [
+                                'qty' => $this->editRow['qty'],
+                                'total' => $item['price'] * $this->editRow['qty'],
+                                'carapakai' => $this->editRow['carapakai'],
+                                'kapsul' => $this->editRow['kapsul'],
+                                'takar' => $this->editRow['takar'],
+                                'ket' => $this->editRow['ket'],
+                                'expDate' => $this->editRow['expDate'],
+                                'catatanKhusus' => $this->editRow['catatanKhusus'],
+                            ]),
+                    )
+                    ->toArray();
+            });
+            $this->editingDtl = null;
+            $this->editRow = [];
+            $this->dispatch('administrasi-ugd.updated');
+            $this->dispatch('toast', type: 'success', message: 'Obat berhasil diperbarui.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
         }
     }
 
@@ -70,17 +284,15 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, transaksi terkunci.');
             return;
         }
-
         try {
             DB::transaction(function () use ($rjobatDtl) {
                 $this->lockUGDRow($this->rjNo);
-
                 DB::table('rstxn_ugdobats')->where('rjobat_dtl', $rjobatDtl)->delete();
-
                 $this->rjObat = collect($this->rjObat)->where('rjobatDtl', '!=', $rjobatDtl)->values()->toArray();
             });
-
-            // Notify — di luar transaksi
+            if ($this->editingDtl === $rjobatDtl) {
+                $this->cancelEdit();
+            }
             $this->dispatch('administrasi-ugd.updated');
             $this->dispatch('toast', type: 'success', message: 'Obat berhasil dihapus.');
         } catch (\RuntimeException $e) {
@@ -89,10 +301,34 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
         }
     }
+
+    /* ===============================
+     | CETAK ETIKET
+     =============================== */
+    public function cetakEtiketItem(int $rjobatDtl): void
+    {
+        $this->dispatch('cetak-etiket-obat-ugd.open', rjObatNo: $rjobatDtl);
+    }
+
+    /* ===============================
+     | RESET FORM
+     =============================== */
+    public function resetFormEntry(): void
+    {
+        $this->reset(['formEntryObat']);
+        $this->formEntryObat['qty'] = 1;
+        $this->formEntryObat['carapakai'] = 1;
+        $this->formEntryObat['kapsul'] = 1;
+        $this->formEntryObat['takar'] = 'Tablet';
+        $this->formEntryObat['catatanKhusus'] = '-';
+        $this->formEntryObat['etiketStatus'] = 0;
+        $this->resetValidation();
+        $this->incrementVersion('modal-obat-ugd');
+    }
 };
 ?>
 
-<div class="space-y-4">
+<div class="space-y-4" wire:key="{{ $this->renderKey('modal-obat-ugd', [$rjNo ?? 'new']) }}" x-data>
 
     {{-- LOCKED BANNER --}}
     @if ($isFormLocked)
@@ -106,14 +342,119 @@ new class extends Component {
         </div>
     @endif
 
-    {{-- INFO --}}
-    <div
-        class="flex items-center gap-2 px-4 py-2.5 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-xl dark:bg-blue-900/20 dark:border-blue-600 dark:text-blue-300">
-        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        Data obat dikelola melalui E-Resep. Tab ini hanya menampilkan rekapitulasi.
+    {{-- FORM INPUT --}}
+    <div class="p-4 border border-gray-200 rounded-2xl dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40" x-data
+        x-on:focus-lov-obat-ugd.window="$nextTick(() => $refs.lovObatUgd?.querySelector('input')?.focus())"
+        x-on:focus-input-qty-obat-ugd.window="$nextTick(() => { $refs.inputQty?.focus(); $refs.inputQty?.select(); })">
+
+        @if ($isFormLocked)
+            <p class="text-sm italic text-gray-400 dark:text-gray-600">Form input dinonaktifkan.</p>
+        @elseif (empty($formEntryObat['productId']))
+            <div x-ref="lovObatUgd">
+                <livewire:lov.product.lov-product target="obat-ugd" label="Cari Obat"
+                    placeholder="Ketik nama/kode/kandungan obat..."
+                    wire:key="lov-obat-ugd-{{ $rjNo }}-{{ $renderVersions['modal-obat-ugd'] ?? 0 }}" />
+            </div>
+        @else
+            {{-- Baris 1 --}}
+            <div class="flex items-end gap-3 mb-3">
+                <div class="w-28">
+                    <x-input-label value="Kode" class="mb-1" />
+                    <x-text-input wire:model="formEntryObat.productId" disabled class="w-full text-sm" />
+                </div>
+                <div class="flex-1">
+                    <x-input-label value="Nama Obat" class="mb-1" />
+                    <x-text-input wire:model="formEntryObat.productName" disabled class="w-full text-sm" />
+                </div>
+                <div class="w-20">
+                    <x-input-label value="Qty" class="mb-1" />
+                    <x-text-input wire:model="formEntryObat.qty" placeholder="Qty" class="w-full text-sm"
+                        x-ref="inputQty" x-on:keyup.enter="$nextTick(() => $refs.inputHarga?.focus())" />
+                    <x-input-error :messages="$errors->get('formEntryObat.qty')" class="mt-1" />
+                </div>
+                <div class="w-36">
+                    <x-input-label value="Harga" class="mb-1" />
+                    <x-text-input wire:model="formEntryObat.price" placeholder="Harga" class="w-full text-sm"
+                        x-ref="inputHarga" x-on:keyup.enter="$nextTick(() => $refs.inputCarapakai?.focus())" />
+                    <x-input-error :messages="$errors->get('formEntryObat.price')" class="mt-1" />
+                </div>
+            </div>
+
+            {{-- Baris 2 --}}
+            <div class="flex items-end gap-3">
+                <div class="w-20">
+                    <x-input-label value="x/Hari" class="mb-1" />
+                    <x-text-input wire:model="formEntryObat.carapakai" placeholder="1" class="w-full text-sm"
+                        x-ref="inputCarapakai" x-on:keyup.enter="$nextTick(() => $refs.inputKapsul?.focus())" />
+                    <x-input-error :messages="$errors->get('formEntryObat.carapakai')" class="mt-1" />
+                </div>
+                <div class="w-24">
+                    <x-input-label value="Per Minum" class="mb-1" />
+                    <x-text-input wire:model="formEntryObat.kapsul" placeholder="1" class="w-full text-sm"
+                        x-ref="inputKapsul" x-on:keyup.enter="$nextTick(() => $refs.inputTakar?.focus())" />
+                    <x-input-error :messages="$errors->get('formEntryObat.kapsul')" class="mt-1" />
+                </div>
+                <div class="w-32">
+                    <x-input-label value="Takar" class="mb-1" />
+                    <x-select-input wire:model="formEntryObat.takar" x-ref="inputTakar"
+                        class="block w-full text-sm border-gray-300 rounded-lg shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-brand-green focus:border-brand-green">
+                        <option>Tablet</option>
+                        <option>Kapsul</option>
+                        <option>Sirup</option>
+                        <option>Sachet</option>
+                        <option>Tetes</option>
+                        <option>Salep</option>
+                        <option>Injeksi</option>
+                        <option>Lainnya</option>
+                    </x-select-input>
+                </div>
+                <div class="w-32">
+                    <x-input-label value="Keterangan" class="mb-1" />
+                    <x-text-input wire:model="formEntryObat.ket" placeholder="Ket." class="w-full text-sm"
+                        x-ref="inputKet" x-on:keyup.enter="$nextTick(() => $refs.inputExpDate?.focus())" />
+                </div>
+                <div class="w-36">
+                    <x-input-label value="Exp. Date" class="mb-1" />
+                    <x-text-input type="date" wire:model="formEntryObat.expDate" class="w-full text-sm"
+                        x-ref="inputExpDate" x-on:keyup.enter="$nextTick(() => $refs.inputCatatan?.focus())" />
+                    <x-input-error :messages="$errors->get('formEntryObat.expDate')" class="mt-1" />
+                </div>
+                <div class="flex-1">
+                    <x-input-label value="Catatan Khusus" class="mb-1" />
+                    <x-text-input wire:model="formEntryObat.catatanKhusus" placeholder="Catatan..."
+                        class="w-full text-sm" x-ref="inputCatatan" x-on:keyup.enter="$wire.insertObat()" />
+                </div>
+                <div class="w-24">
+                    <x-input-label value="Etiket" class="mb-1" />
+                    <x-select-input wire:model="formEntryObat.etiketStatus"
+                        class="block w-full text-sm border-gray-300 rounded-lg shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-brand-green focus:border-brand-green">
+                        <option value="0">Belum</option>
+                        <option value="1">Sudah</option>
+                    </x-select-input>
+                </div>
+                <div class="flex gap-2 pb-0.5">
+                    <button type="button" wire:click.prevent="insertObat" wire:loading.attr="disabled"
+                        wire:target="insertObat"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-brand-green hover:bg-brand-green/90 disabled:opacity-60 dark:bg-brand-lime dark:text-gray-900 transition shadow-sm">
+                        <span wire:loading.remove wire:target="insertObat"><svg class="w-4 h-4" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4" />
+                            </svg></span>
+                        <span wire:loading wire:target="insertObat"><x-loading class="w-4 h-4" /></span>
+                        Tambah
+                    </button>
+                    <button type="button" wire:click.prevent="resetFormEntry"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Batal
+                    </button>
+                </div>
+            </div>
+        @endif
     </div>
 
     {{-- TABEL DATA --}}
@@ -127,62 +468,180 @@ new class extends Component {
                 <thead
                     class="text-xs font-semibold text-gray-500 uppercase dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50">
                     <tr>
-                        <th class="px-4 py-3">Kode</th>
-                        <th class="px-4 py-3">Nama Obat</th>
-                        <th class="px-4 py-3 text-center">Qty</th>
-                        <th class="px-4 py-3 text-right">Harga Satuan</th>
-                        <th class="px-4 py-3 text-right">Total</th>
+                        <th class="px-3 py-3">Kode</th>
+                        <th class="px-3 py-3">Nama Obat</th>
+                        <th class="px-3 py-3 text-right">Qty</th>
+                        <th class="px-3 py-3 text-center">Signa</th>
+                        <th class="px-3 py-3">Takar</th>
+                        <th class="px-3 py-3">Ket</th>
+                        <th class="px-3 py-3">Exp. Date</th>
+                        <th class="px-3 py-3">Catatan</th>
+                        <th class="px-3 py-3 text-center">Etiket</th>
+                        <th class="px-3 py-3 text-right">Harga</th>
+                        <th class="px-3 py-3 text-right">Total</th>
                         @if (!$isFormLocked)
-                            <th class="w-20 px-4 py-3 text-center">Hapus</th>
+                            <th class="w-24 px-3 py-3 text-center">Aksi</th>
                         @endif
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                     @forelse ($rjObat as $item)
-                        <tr wire:key="obat-row-{{ $item['rjobatDtl'] }}"
-                            class="transition hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                            <td class="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                        @php $isEditing = $editingDtl === $item['rjobatDtl']; @endphp
+                        <tr wire:key="obat-row-{{ $item['rjobatDtl'] }}-{{ $isEditing ? 'edit' : 'view' }}" x-data
+                            class="{{ $isEditing ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40' }} transition">
+
+                            <td class="px-3 py-2 font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                 {{ $item['productId'] }}</td>
-                            <td class="px-4 py-3 text-gray-800 dark:text-gray-200">
-                                <div>{{ $item['productName'] }}</div>
-                                @if ($item['ket'])
-                                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $item['ket'] }}
-                                    </div>
-                                @endif
-                                @if ($item['catatan'] && $item['catatan'] !== '-')
-                                    <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ $item['catatan'] }}
-                                    </div>
-                                @endif
-                            </td>
-                            <td
-                                class="px-4 py-3 text-center font-semibold text-gray-800 dark:text-gray-200 whitespace-nowrap">
-                                {{ $item['qty'] }}
-                                @if ($item['takar'])
-                                    <span class="text-xs font-normal text-gray-400">{{ $item['takar'] }}</span>
+                            <td class="px-3 py-2 text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                                {{ $item['productName'] }}</td>
+
+                            <td class="px-3 py-2 whitespace-nowrap">
+                                @if ($isEditing)
+                                    <x-text-input wire:model="editRow.qty" class="w-16 text-sm text-right"
+                                        x-ref="editQty" x-init="$el.focus();
+                                        $el.select()"
+                                        x-on:keyup.enter="$nextTick(() => $refs.editCarapakai?.focus())" />
+                                    <x-input-error :messages="$errors->get('editRow.qty')" class="mt-0.5 text-xs" />
+                                @else
+                                    <span
+                                        class="block text-right text-gray-700 dark:text-gray-300">{{ number_format($item['qty']) }}</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-right text-gray-700 dark:text-gray-300 whitespace-nowrap">Rp
+
+                            <td class="px-3 py-2 whitespace-nowrap">
+                                @if ($isEditing)
+                                    <div class="flex items-center gap-1">
+                                        <x-text-input wire:model="editRow.carapakai" class="w-12 text-sm text-center"
+                                            x-ref="editCarapakai"
+                                            x-on:keyup.enter="$nextTick(() => $refs.editKapsul?.focus())" />
+                                        <span class="text-xs text-gray-400">x</span>
+                                        <x-text-input wire:model="editRow.kapsul" class="w-12 text-sm text-center"
+                                            x-ref="editKapsul"
+                                            x-on:keyup.enter="$nextTick(() => $refs.editTakar?.focus())" />
+                                    </div>
+                                @else
+                                    <span
+                                        class="block text-center text-gray-700 dark:text-gray-300">{{ $item['carapakai'] }}x{{ $item['kapsul'] }}</span>
+                                @endif
+                            </td>
+
+                            <td class="px-3 py-2 whitespace-nowrap">
+                                @if ($isEditing)
+                                    <x-select-input wire:model="editRow.takar" x-ref="editTakar"
+                                        x-on:change="$nextTick(() => $refs.editKet?.focus())"
+                                        class="text-sm border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-brand-green focus:border-brand-green">
+                                        <option>Tablet</option>
+                                        <option>Kapsul</option>
+                                        <option>Sirup</option>
+                                        <option>Sachet</option>
+                                        <option>Tetes</option>
+                                        <option>Salep</option>
+                                        <option>Injeksi</option>
+                                        <option>Lainnya</option>
+                                    </x-select-input>
+                                @else
+                                    <span class="text-gray-700 dark:text-gray-300">{{ $item['takar'] }}</span>
+                                @endif
+                            </td>
+
+                            <td class="px-3 py-2 whitespace-nowrap">
+                                @if ($isEditing)
+                                    <x-text-input wire:model="editRow.ket" placeholder="Ket." class="text-sm w-28"
+                                        x-ref="editKet"
+                                        x-on:keyup.enter="$nextTick(() => $refs.editExpDate?.focus())" />
+                                @else
+                                    <span
+                                        class="text-xs text-gray-500 dark:text-gray-400">{{ $item['ket'] ?? '-' }}</span>
+                                @endif
+                            </td>
+
+                            <td class="px-3 py-2 whitespace-nowrap">
+                                @if ($isEditing)
+                                    <x-text-input type="date" wire:model="editRow.expDate" class="text-sm w-36"
+                                        x-ref="editExpDate"
+                                        x-on:keyup.enter="$nextTick(() => $refs.editCatatan?.focus())" />
+                                    <x-input-error :messages="$errors->get('editRow.expDate')" class="mt-0.5 text-xs" />
+                                @else
+                                    <span
+                                        class="text-xs text-gray-500 dark:text-gray-400">{{ $item['expDate'] ?? '-' }}</span>
+                                @endif
+                            </td>
+
+                            <td class="px-3 py-2 whitespace-nowrap">
+                                @if ($isEditing)
+                                    <x-text-input wire:model="editRow.catatanKhusus" placeholder="Catatan..."
+                                        class="text-sm w-36" x-ref="editCatatan"
+                                        x-on:keyup.enter="$wire.saveEdit()" />
+                                @else
+                                    <span
+                                        class="text-xs text-gray-500 dark:text-gray-400">{{ $item['catatanKhusus'] ?? '-' }}</span>
+                                @endif
+                            </td>
+
+                            <td class="px-3 py-2 text-center whitespace-nowrap">
+                                <x-ghost-button wire:click="cetakEtiketItem({{ $item['rjobatDtl'] }})"
+                                    wire:loading.attr="disabled"
+                                    wire:target="cetakEtiketItem({{ $item['rjobatDtl'] }})"
+                                    class="!px-2 !py-1 !text-xs">
+                                    <span wire:loading.remove wire:target="cetakEtiketItem({{ $item['rjobatDtl'] }})">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                        </svg>
+                                    </span>
+                                    <span wire:loading
+                                        wire:target="cetakEtiketItem({{ $item['rjobatDtl'] }})"><x-loading
+                                            class="w-3 h-3" /></span>
+                                    Etiket
+                                </x-ghost-button>
+                            </td>
+
+                            <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300 whitespace-nowrap">Rp
                                 {{ number_format($item['price']) }}</td>
                             <td
-                                class="px-4 py-3 font-semibold text-right text-gray-800 dark:text-gray-200 whitespace-nowrap">
-                                Rp {{ number_format($item['total']) }}</td>
+                                class="px-3 py-2 font-semibold text-right text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                                Rp
+                                {{ number_format($isEditing ? $item['price'] * ($editRow['qty'] ?? $item['qty']) : $item['total']) }}
+                            </td>
+
                             @if (!$isFormLocked)
-                                <td class="px-4 py-3 text-center">
-                                    <button type="button" wire:click.prevent="removeObat({{ $item['rjobatDtl'] }})"
-                                        wire:confirm="Hapus obat ini?" wire:loading.attr="disabled"
-                                        wire:target="removeObat({{ $item['rjobatDtl'] }})"
-                                        class="inline-flex items-center justify-center w-8 h-8 text-red-500 transition rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
+                                <td class="px-3 py-2 whitespace-nowrap">
+                                    @if ($isEditing)
+                                        <div class="flex items-center gap-1">
+                                            <x-secondary-button type="button" wire:click="saveEdit"
+                                                wire:loading.attr="disabled" wire:target="saveEdit"
+                                                class="px-3 py-1 text-xs text-green-700 border-green-300 hover:bg-green-50 dark:text-green-400 dark:border-green-600 dark:hover:bg-green-900/20">
+                                                Simpan
+                                            </x-secondary-button>
+                                            <x-secondary-button type="button" wire:click="cancelEdit"
+                                                class="px-3 py-1 text-xs">Batal</x-secondary-button>
+                                        </div>
+                                    @else
+                                        <div class="flex items-center gap-1">
+                                            <x-secondary-button type="button"
+                                                wire:click="startEdit({{ $item['rjobatDtl'] }})"
+                                                class="px-3 py-1 text-xs">Edit</x-secondary-button>
+                                            <button type="button"
+                                                wire:click.prevent="removeObat({{ $item['rjobatDtl'] }})"
+                                                wire:confirm="Hapus obat ini?" wire:loading.attr="disabled"
+                                                wire:target="removeObat({{ $item['rjobatDtl'] }})"
+                                                class="inline-flex items-center justify-center w-8 h-8 text-red-500 transition rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    @endif
                                 </td>
                             @endif
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $isFormLocked ? 5 : 6 }}"
+                            <td colspan="{{ $isFormLocked ? 11 : 12 }}"
                                 class="px-4 py-10 text-sm text-center text-gray-400 dark:text-gray-600">
                                 <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
@@ -197,9 +656,9 @@ new class extends Component {
                 @if (!empty($rjObat))
                     <tfoot class="border-t border-gray-200 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700">
                         <tr>
-                            <td colspan="4" class="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-400">
-                                Total</td>
-                            <td class="px-4 py-3 text-sm font-bold text-right text-gray-900 dark:text-white">
+                            <td colspan="{{ $isFormLocked ? 10 : 11 }}"
+                                class="px-3 py-3 text-sm font-semibold text-gray-600 dark:text-gray-400">Total</td>
+                            <td class="px-3 py-3 text-sm font-bold text-right text-gray-900 dark:text-white">
                                 Rp {{ number_format(collect($rjObat)->sum('total')) }}
                             </td>
                             @if (!$isFormLocked)
@@ -211,5 +670,7 @@ new class extends Component {
             </table>
         </div>
     </div>
+
+    <livewire:pages::components.rekam-medis.u-g-d.etiket-obat.cetak-etiket-obat wire:key="cetak-etiket-obat-ugd" />
 
 </div>

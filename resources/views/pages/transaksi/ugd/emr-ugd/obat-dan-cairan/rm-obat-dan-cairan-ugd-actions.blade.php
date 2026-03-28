@@ -20,6 +20,7 @@ new class extends Component {
 
     // ── Form entry obat dan cairan ──
     public array $obatDanCairan = [
+        'productId' => '',
         'namaObatAtauJenisCairan' => '',
         'jumlah' => '',
         'dosis' => '',
@@ -35,6 +36,28 @@ new class extends Component {
     public function mount(): void
     {
         $this->registerAreas(['modal-obat-cairan-ugd']);
+    }
+
+    /* ===============================
+     | LOV SELECTED — PRODUCT
+     =============================== */
+    #[On('lov.selected.obat-dan-cairan-ugd')]
+    public function onProductSelected(?array $payload): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form dalam mode read-only.');
+            return;
+        }
+
+        if (!$payload) {
+            $this->obatDanCairan['productId'] = '';
+            $this->obatDanCairan['namaObatAtauJenisCairan'] = '';
+            return;
+        }
+
+        $this->obatDanCairan['productId'] = $payload['product_id'];
+        $this->obatDanCairan['namaObatAtauJenisCairan'] = $payload['product_name'];
+        $this->incrementVersion('modal-obat-cairan-ugd');
     }
 
     /* ===============================
@@ -278,75 +301,96 @@ new class extends Component {
                 {{-- FORM INPUT --}}
                 @if (!$isFormLocked)
                     <div
-                        class="grid grid-cols-12 gap-3 p-4 border border-gray-200 rounded-2xl dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40">
+                        class="p-4 border border-gray-200 rounded-2xl dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40">
 
-                        {{-- Nama Obat / Jenis Cairan --}}
-                        <div class="col-span-12 md:col-span-6">
-                            <x-input-label value="Nama Obat / Jenis Cairan *" class="mb-1" />
-                            <x-text-input wire:model="obatDanCairan.namaObatAtauJenisCairan"
-                                placeholder="Nama obat atau jenis cairan..." class="w-full" />
-                            <x-input-error :messages="$errors->get('obatDanCairan.namaObatAtauJenisCairan')" class="mt-1" />
-                        </div>
+                        @if (empty($obatDanCairan['productId']))
+                            {{-- Fase 1: pilih obat via LOV --}}
+                            <livewire:lov.product.lov-product target="obat-dan-cairan-ugd"
+                                label="Nama Obat / Jenis Cairan" placeholder="Ketik nama/kode obat atau cairan..."
+                                wire:key="lov-obat-cairan-ugd-{{ $rjNo }}-{{ $renderVersions['modal-obat-cairan-ugd'] ?? 0 }}" />
+                        @else
+                            {{-- Fase 2: form isian setelah obat dipilih --}}
+                            <div class="grid grid-cols-12 gap-3">
 
-                        {{-- Jumlah --}}
-                        <div class="col-span-6 md:col-span-2">
-                            <x-input-label value="Jumlah *" class="mb-1" />
-                            <x-text-input wire:model="obatDanCairan.jumlah" placeholder="Jumlah" class="w-full" />
-                            <x-input-error :messages="$errors->get('obatDanCairan.jumlah')" class="mt-1" />
-                        </div>
+                                {{-- Nama Obat (disabled) + tombol Ganti --}}
+                                <div class="col-span-12 md:col-span-6">
+                                    <x-input-label value="Nama Obat / Jenis Cairan *" class="mb-1" />
+                                    <div class="flex items-center gap-2">
+                                        <x-text-input wire:model="obatDanCairan.namaObatAtauJenisCairan" disabled
+                                            class="grow text-sm" />
+                                        <x-secondary-button type="button"
+                                            wire:click="$set('obatDanCairan.productId', '')"
+                                            class="text-xs whitespace-nowrap shrink-0">
+                                            Ganti
+                                        </x-secondary-button>
+                                    </div>
+                                    <x-input-error :messages="$errors->get('obatDanCairan.namaObatAtauJenisCairan')" class="mt-1" />
+                                </div>
 
-                        {{-- Dosis --}}
-                        <div class="col-span-6 md:col-span-2">
-                            <x-input-label value="Dosis *" class="mb-1" />
-                            <x-text-input wire:model="obatDanCairan.dosis" placeholder="Dosis" class="w-full" />
-                            <x-input-error :messages="$errors->get('obatDanCairan.dosis')" class="mt-1" />
-                        </div>
+                                {{-- Jumlah --}}
+                                <div class="col-span-6 md:col-span-2">
+                                    <x-input-label value="Jumlah *" class="mb-1" />
+                                    <x-text-input wire:model="obatDanCairan.jumlah" placeholder="Jumlah"
+                                        class="w-full" />
+                                    <x-input-error :messages="$errors->get('obatDanCairan.jumlah')" class="mt-1" />
+                                </div>
 
-                        {{-- Rute --}}
-                        <div class="col-span-6 md:col-span-2">
-                            <x-input-label value="Rute *" class="mb-1" />
-                            <x-text-input wire:model="obatDanCairan.rute" placeholder="IV / PO / SC ..."
-                                class="w-full" />
-                            <x-input-error :messages="$errors->get('obatDanCairan.rute')" class="mt-1" />
-                        </div>
+                                {{-- Dosis --}}
+                                <div class="col-span-6 md:col-span-2">
+                                    <x-input-label value="Dosis *" class="mb-1" />
+                                    <x-text-input wire:model="obatDanCairan.dosis" placeholder="Dosis" class="w-full" />
+                                    <x-input-error :messages="$errors->get('obatDanCairan.dosis')" class="mt-1" />
+                                </div>
 
-                        {{-- Keterangan --}}
-                        <div class="col-span-12 md:col-span-6">
-                            <x-input-label value="Keterangan *" class="mb-1" />
-                            <x-text-input wire:model="obatDanCairan.keterangan" placeholder="Keterangan pemberian..."
-                                class="w-full" />
-                            <x-input-error :messages="$errors->get('obatDanCairan.keterangan')" class="mt-1" />
-                        </div>
+                                {{-- Rute --}}
+                                <div class="col-span-6 md:col-span-2">
+                                    <x-input-label value="Rute *" class="mb-1" />
+                                    <x-text-input wire:model="obatDanCairan.rute" placeholder="IV / PO / SC ..."
+                                        class="w-full" />
+                                    <x-input-error :messages="$errors->get('obatDanCairan.rute')" class="mt-1" />
+                                </div>
 
-                        {{-- Waktu Pemberian --}}
-                        <div class="col-span-12 md:col-span-4">
-                            <x-input-label value="Waktu Pemberian *" class="mb-1" />
-                            <div class="flex items-center gap-2">
-                                <x-text-input wire:model="obatDanCairan.waktuPemberian"
-                                    placeholder="dd/mm/yyyy hh:mm:ss" class="grow" />
-                                <x-secondary-button wire:click.prevent="setWaktuPemberian" type="button"
-                                    class="text-xs whitespace-nowrap">
-                                    Set sekarang
-                                </x-secondary-button>
+                                {{-- Keterangan --}}
+                                <div class="col-span-12 md:col-span-6">
+                                    <x-input-label value="Keterangan *" class="mb-1" />
+                                    <x-text-input wire:model="obatDanCairan.keterangan"
+                                        placeholder="Keterangan pemberian..." class="w-full" />
+                                    <x-input-error :messages="$errors->get('obatDanCairan.keterangan')" class="mt-1" />
+                                </div>
+
+                                {{-- Waktu Pemberian --}}
+                                <div class="col-span-12 md:col-span-4">
+                                    <x-input-label value="Waktu Pemberian *" class="mb-1" />
+                                    <div class="flex items-center gap-2">
+                                        <x-text-input wire:model="obatDanCairan.waktuPemberian"
+                                            placeholder="dd/mm/yyyy hh:mm:ss" class="grow" />
+                                        <x-secondary-button wire:click.prevent="setWaktuPemberian" type="button"
+                                            class="text-xs whitespace-nowrap">
+                                            Set sekarang
+                                        </x-secondary-button>
+                                    </div>
+                                    <x-input-error :messages="$errors->get('obatDanCairan.waktuPemberian')" class="mt-1" />
+                                </div>
+
+                                {{-- Tombol Tambah --}}
+                                <div class="col-span-12 md:col-span-2 flex items-end">
+                                    <x-primary-button wire:click.prevent="addObatDanCairan" wire:loading.attr="disabled"
+                                        wire:target="addObatDanCairan" class="gap-2 w-full justify-center">
+                                        <span wire:loading.remove wire:target="addObatDanCairan">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 4v16m8-8H4" />
+                                            </svg>
+                                        </span>
+                                        <span wire:loading wire:target="addObatDanCairan"><x-loading
+                                                class="w-4 h-4" /></span>
+                                        Tambah
+                                    </x-primary-button>
+                                </div>
+
                             </div>
-                            <x-input-error :messages="$errors->get('obatDanCairan.waktuPemberian')" class="mt-1" />
-                        </div>
-
-                        {{-- Tombol Tambah --}}
-                        <div class="col-span-12 md:col-span-2 flex items-end">
-                            <x-primary-button wire:click.prevent="addObatDanCairan" wire:loading.attr="disabled"
-                                wire:target="addObatDanCairan" class="gap-2 w-full justify-center">
-                                <span wire:loading.remove wire:target="addObatDanCairan">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 4v16m8-8H4" />
-                                    </svg>
-                                </span>
-                                <span wire:loading wire:target="addObatDanCairan"><x-loading class="w-4 h-4" /></span>
-                                Tambah
-                            </x-primary-button>
-                        </div>
-
+                        @endif
                     </div>
                 @endif
 
@@ -371,7 +415,6 @@ new class extends Component {
                             Cairan</h3>
                         <x-badge variant="gray">{{ count($daftarObat) }} item</x-badge>
                     </div>
-
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm text-left">
                             <thead
