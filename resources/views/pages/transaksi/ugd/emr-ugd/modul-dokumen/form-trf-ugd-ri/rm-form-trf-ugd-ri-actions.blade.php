@@ -1035,6 +1035,21 @@ new class extends Component {
                         <span wire:loading wire:target="cetakTrfPasienUgd"><x-loading class="w-4 h-4" />
                             Mencetak...</span>
                     </x-secondary-button>
+
+                    @if (!$isFormLocked)
+                        <x-primary-button wire:click.prevent="save" wire:loading.attr="disabled" wire:target="save"
+                            class="gap-2 min-w-[160px] justify-center">
+                            <span wire:loading.remove wire:target="save">
+                                <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
+                                </svg>
+                                Simpan Form Transfer
+                            </span>
+                            <span wire:loading wire:target="save"><x-loading class="w-4 h-4" /> Menyimpan...</span>
+                        </x-primary-button>
+                    @endif
                 </div>
             @else
                 <div class="flex flex-col items-center justify-center py-16 text-gray-300 dark:text-gray-600">
