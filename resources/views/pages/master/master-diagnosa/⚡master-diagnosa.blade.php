@@ -52,7 +52,7 @@ new class extends Component {
     #[On('master.diagnosa.saved')]
     public function refreshAfterSaved(): void
     {
-        $this->dispatch('$refresh');
+        $this->resetPage();
     }
 
     /* -------------------------

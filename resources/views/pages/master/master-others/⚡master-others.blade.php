@@ -52,7 +52,7 @@ new class extends Component {
     #[On('master.others.saved')]
     public function refreshAfterSaved(): void
     {
-        $this->dispatch('$refresh');
+        $this->resetPage();
     }
 
     /* -------------------------

@@ -103,7 +103,7 @@ new class extends Component {
     public function refreshAfterSaved(): void
     {
         $this->incrementVersion('antrian-apotek-toolbar');
-        $this->dispatch('$refresh');
+        $this->resetPage();
     }
 
     /* -------------------------
@@ -715,7 +715,7 @@ new class extends Component {
                         </tbody>
                     </table>
                     {{-- Di luar loop, sekali saja (sejajar child actions lain) --}}
-                    <livewire:pages::components.r-j.rekam-medis.cetak-eresep.cetak-eresep wire:key="cetak-eresep-rj" />
+                    <livewire:pages::components.rekam-medis.r-j.cetak-eresep.cetak-eresep wire:key="cetak-eresep-rj" />
                 </div>
 
                 {{-- PAGINATION --}}

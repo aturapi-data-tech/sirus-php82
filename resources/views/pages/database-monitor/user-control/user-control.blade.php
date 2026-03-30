@@ -40,7 +40,7 @@ new class extends Component {
     #[On('refresh-after-user-control.saved')]
     public function refreshAfterSaved(): void
     {
-        $this->dispatch('$refresh');
+        $this->resetPage();
     }
 
     #[Computed]

@@ -1,5 +1,5 @@
 <?php
-// resources/views/pages/transaksi/ugd/emr-ugd/rm-observasi-ugd-actions.blade.php
+// resources/views/pages/transaksi/ugd/emr-ugd/observasi/rm-observasi-ugd-actions.blade.php
 
 use Livewire\Component;
 use Livewire\Attributes\On;
@@ -552,7 +552,7 @@ new class extends Component {
                     @php
                         $sortedForChart = collect($tandaVitalData)
                             ->sortBy(
-                                fn($item) => \Carbon\Carbon::createFromFormat(
+                                fn($item) => Carbon::createFromFormat(
                                     'd/m/Y H:i:s',
                                     $item['waktuPemeriksaan'] ?? '01/01/2000 00:00:00',
                                 )->timestamp,
@@ -566,46 +566,46 @@ new class extends Component {
                             ->map(fn($i) => is_numeric($i['frekuensiNadi'] ?? null) ? (int) $i['frekuensiNadi'] : null)
                             ->toArray();
                     @endphp
-                    <div class="p-4 bg-white border border-gray-200 rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-                        <p class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">Grafik Suhu &amp; Nadi
-                        </p>
-                        <div wire:ignore>
-                            <canvas id="observasiChart-{{ $rjNo }}"></canvas>
-                        </div>
-                        <script>
-                            document.addEventListener('DOMContentLoaded', function() {
+                    <div class="p-4 bg-white border border-gray-200 rounded-2xl dark:border-gray-700 dark:bg-gray-900"
+                        x-data="{
+                            chart: null,
+                            initChart() {
                                 const ctx = document.getElementById('observasiChart-{{ $rjNo }}');
-                                if (!ctx) return;
-                                new Chart(ctx, {
+                                if (!ctx || typeof Chart === 'undefined') return;
+                                if (this.chart) {
+                                    this.chart.destroy();
+                                    this.chart = null;
+                                }
+                                this.chart = new Chart(ctx, {
                                     type: 'line',
                                     data: {
-                                        labels: {!! json_encode($chartLabels) !!},
+                                        labels: {{ Js::from($chartLabels) }},
                                         datasets: [{
                                                 label: 'Suhu (°C)',
-                                                data: {!! json_encode($chartSuhu) !!},
+                                                data: {{ Js::from($chartSuhu) }},
                                                 borderColor: 'rgba(54,162,235,1)',
                                                 borderWidth: 2,
                                                 fill: false
                                             },
                                             {
                                                 label: 'Nadi (x/mnt)',
-                                                data: {!! json_encode($chartNadi) !!},
+                                                data: {{ Js::from($chartNadi) }},
                                                 borderColor: 'rgba(255,99,132,1)',
                                                 borderWidth: 2,
                                                 fill: false
                                             }
                                         ]
                                     },
-                                    options: {
-                                        scales: {
-                                            y: {
-                                                beginAtZero: false
-                                            }
-                                        }
-                                    }
+                                    options: { scales: { y: { beginAtZero: false } } }
                                 });
-                            });
-                        </script>
+                            }
+                        }" x-init="$nextTick(() => initChart())"
+                        x-on:livewire:navigated.window="$nextTick(() => initChart())">
+                        <p class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">Grafik Suhu &amp; Nadi
+                        </p>
+                        <div wire:ignore>
+                            <canvas id="observasiChart-{{ $rjNo }}"></canvas>
+                        </div>
                     </div>
                 @endif
             @else

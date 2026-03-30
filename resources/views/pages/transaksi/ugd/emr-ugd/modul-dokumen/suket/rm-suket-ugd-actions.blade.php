@@ -183,6 +183,17 @@ new class extends Component {
             <div
                 class="w-full p-4 space-y-6 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
+                @if ($isFormLocked)
+                    <div
+                        class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-xl dark:bg-amber-900/20 dark:border-amber-600 dark:text-amber-300">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        EMR terkunci — data tidak dapat diubah.
+                    </div>
+                @endif
+
                 @if (isset($dataDaftarUGD['suket']))
                     <div class="w-full">
                         <div x-data="{ activeTab: '{{ $dataDaftarUGD['suket']['suketSehatTab'] ?? 'Suket Sehat' }}' }" class="w-full">
@@ -237,6 +248,25 @@ new class extends Component {
                             </div>
                         </div>
                     </div>
+
+                    {{-- ══ TOMBOL SIMPAN & CETAK ══ --}}
+                    <div class="flex justify-end gap-3 px-4 pb-2">
+                        @if (!$isFormLocked)
+                            <x-primary-button wire:click.prevent="save" wire:loading.attr="disabled" wire:target="save"
+                                class="gap-2 min-w-[140px] justify-center">
+                                <span wire:loading.remove wire:target="save">
+                                    <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
+                                    </svg>
+                                    Simpan Suket
+                                </span>
+                                <span wire:loading wire:target="save"><x-loading class="w-4 h-4" /> Menyimpan...</span>
+                            </x-primary-button>
+                        @endif
+                    </div>
+
                 @endif
 
             </div>

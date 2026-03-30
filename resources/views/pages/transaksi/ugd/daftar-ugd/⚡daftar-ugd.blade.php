@@ -102,7 +102,7 @@ new class extends Component {
     public function refreshAfterSaved(): void
     {
         $this->incrementVersion('daftar-ugd-toolbar');
-        $this->dispatch('$refresh');
+        $this->resetPage();
     }
 
     /* -------------------------
