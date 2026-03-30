@@ -380,33 +380,31 @@ new class extends Component {
                                         class="w-full" x-on:keydown.enter.prevent="$refs.inputKdDrBpjs?.focus()" />
                                     <x-input-error :messages="$errors->get('drAddress')" class="mt-1" />
                                 </div>
-                                <div class="grid grid-cols-3 gap-2">
-                                    {{-- Kode Dokter BPJS --}}
-                                    <div>
-                                        <x-input-label value="Kode Dokter BPJS" class="mb-1" />
-                                        <x-text-input wire:model.live="kdDrBpjs" x-ref="inputKdDrBpjs"
-                                            :error="$errors->has('kdDrBpjs')" class="w-full"
-                                            x-on:keydown.enter.prevent="$refs.inputDrUuid?.focus()" />
-                                        <x-input-error :messages="$errors->get('kdDrBpjs')" class="mt-1" />
-                                    </div>
 
-                                    {{-- UUID --}}
-                                    <div>
-                                        <x-input-label value="UUID" class="mb-1" />
-                                        <x-text-input wire:model.live="drUuid" x-ref="inputDrUuid" :error="$errors->has('drUuid')"
-                                            class="w-full" x-on:keydown.enter.prevent="$refs.inputDrNik?.focus()" />
-                                        <x-input-error :messages="$errors->get('drUuid')" class="mt-1" />
-                                    </div>
-
-                                    {{-- NIK --}}
-                                    <div>
-                                        <x-input-label value="NIK" class="mb-1" />
-                                        <x-text-input wire:model.live="drNik" x-ref="inputDrNik" :error="$errors->has('drNik')"
-                                            class="w-full"
-                                            x-on:keydown.enter.prevent="$refs.inputBasicSalary?.focus()" />
-                                        <x-input-error :messages="$errors->get('drNik')" class="mt-1" />
-                                    </div>
+                                {{-- Kode Dokter BPJS --}}
+                                <div>
+                                    <x-input-label value="Kode Dokter BPJS" class="mb-1" />
+                                    <x-text-input wire:model.live="kdDrBpjs" x-ref="inputKdDrBpjs" :error="$errors->has('kdDrBpjs')"
+                                        class="w-full" x-on:keydown.enter.prevent="$refs.inputDrUuid?.focus()" />
+                                    <x-input-error :messages="$errors->get('kdDrBpjs')" class="mt-1" />
                                 </div>
+
+                                {{-- UUID --}}
+                                <div>
+                                    <x-input-label value="UUID" class="mb-1" />
+                                    <x-text-input wire:model.live="drUuid" x-ref="inputDrUuid" :error="$errors->has('drUuid')"
+                                        class="w-full" x-on:keydown.enter.prevent="$refs.inputDrNik?.focus()" />
+                                    <x-input-error :messages="$errors->get('drUuid')" class="mt-1" />
+                                </div>
+
+                                {{-- NIK --}}
+                                <div>
+                                    <x-input-label value="NIK" class="mb-1" />
+                                    <x-text-input wire:model.live="drNik" x-ref="inputDrNik" :error="$errors->has('drNik')"
+                                        class="w-full" x-on:keydown.enter.prevent="$refs.inputBasicSalary?.focus()" />
+                                    <x-input-error :messages="$errors->get('drNik')" class="mt-1" />
+                                </div>
+
                                 {{-- Status Aktif — toggle --}}
                                 <div class="pt-2 border-t border-gray-100 dark:border-gray-800">
                                     <x-toggle wire:model.live="activeStatus" trueValue="1" falseValue="0"
@@ -426,7 +424,7 @@ new class extends Component {
                                 {{-- Gaji Pokok --}}
                                 <div>
                                     <x-input-label value="Gaji Pokok" class="mb-1" />
-                                    <x-text-input wire:model.live="basicSalary" x-ref="inputBasicSalary"
+                                    <x-text-input-number wire:model="basicSalary" x-ref="inputBasicSalary"
                                         :error="$errors->has('basicSalary')" class="w-full"
                                         x-on:keydown.enter.prevent="$refs.inputRsAdmin?.focus()" />
                                     <x-input-error :messages="$errors->get('basicSalary')" class="mt-1" />
@@ -435,7 +433,7 @@ new class extends Component {
                                 {{-- RS Admin --}}
                                 <div>
                                     <x-input-label value="RS Admin" class="mb-1" />
-                                    <x-text-input wire:model.live="rsAdmin" x-ref="inputRsAdmin" :error="$errors->has('rsAdmin')"
+                                    <x-text-input-number wire:model="rsAdmin" x-ref="inputRsAdmin" :error="$errors->has('rsAdmin')"
                                         class="w-full" x-on:keydown.enter.prevent="$refs.inputPoliPrice?.focus()" />
                                     <x-input-error :messages="$errors->get('rsAdmin')" class="mt-1" />
                                 </div>
@@ -448,14 +446,14 @@ new class extends Component {
                                 <div class="grid grid-cols-2 gap-3">
                                     <div>
                                         <x-input-label value="Tarif Poli" class="mb-1" />
-                                        <x-text-input wire:model.live="poliPrice" x-ref="inputPoliPrice"
+                                        <x-text-input-number wire:model="poliPrice" x-ref="inputPoliPrice"
                                             :error="$errors->has('poliPrice')" class="w-full"
                                             x-on:keydown.enter.prevent="$refs.inputUgdPrice?.focus()" />
                                         <x-input-error :messages="$errors->get('poliPrice')" class="mt-1" />
                                     </div>
                                     <div>
                                         <x-input-label value="Tarif UGD" class="mb-1" />
-                                        <x-text-input wire:model.live="ugdPrice" x-ref="inputUgdPrice"
+                                        <x-text-input-number wire:model="ugdPrice" x-ref="inputUgdPrice"
                                             :error="$errors->has('ugdPrice')" class="w-full"
                                             x-on:keydown.enter.prevent="$refs.inputPoliPriceBpjs?.focus()" />
                                         <x-input-error :messages="$errors->get('ugdPrice')" class="mt-1" />
@@ -469,14 +467,14 @@ new class extends Component {
                                 <div class="grid grid-cols-2 gap-3">
                                     <div>
                                         <x-input-label value="Tarif Poli BPJS" class="mb-1" />
-                                        <x-text-input wire:model.live="poliPriceBpjs" x-ref="inputPoliPriceBpjs"
+                                        <x-text-input-number wire:model="poliPriceBpjs" x-ref="inputPoliPriceBpjs"
                                             :error="$errors->has('poliPriceBpjs')" class="w-full"
                                             x-on:keydown.enter.prevent="$refs.inputUgdPriceBpjs?.focus()" />
                                         <x-input-error :messages="$errors->get('poliPriceBpjs')" class="mt-1" />
                                     </div>
                                     <div>
                                         <x-input-label value="Tarif UGD BPJS" class="mb-1" />
-                                        <x-text-input wire:model.live="ugdPriceBpjs" x-ref="inputUgdPriceBpjs"
+                                        <x-text-input-number wire:model="ugdPriceBpjs" x-ref="inputUgdPriceBpjs"
                                             :error="$errors->has('ugdPriceBpjs')" class="w-full"
                                             x-on:keydown.enter.prevent="$wire.save()" />
                                         <x-input-error :messages="$errors->get('ugdPriceBpjs')" class="mt-1" />
