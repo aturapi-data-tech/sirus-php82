@@ -103,7 +103,7 @@ new class extends Component {
     public function refreshAfterSaved(): void
     {
         $this->incrementVersion('antrian-apotek-toolbar');
-        $this->dispatch('$refresh');
+        $this->resetPage();
     }
 
     /* -------------------------

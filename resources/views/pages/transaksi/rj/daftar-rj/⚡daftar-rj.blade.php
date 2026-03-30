@@ -115,7 +115,7 @@ new class extends Component {
     public function refreshAfterSaved(): void
     {
         $this->incrementVersion('daftar-rj-toolbar');
-        $this->dispatch('$refresh');
+        $this->resetPage();
     }
 
     /* -------------------------

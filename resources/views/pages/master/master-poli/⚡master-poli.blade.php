@@ -52,7 +52,7 @@ new class extends Component {
     public function refreshAfterSaved(): void
     {
         // resetPage kadang tidak trigger kalau sudah di page 1 → paksa refresh
-        $this->dispatch('$refresh');
+        $this->resetPage();
     }
 
     /* -------------------------

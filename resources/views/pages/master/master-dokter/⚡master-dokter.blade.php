@@ -50,7 +50,7 @@ new class extends Component {
     #[On('master.dokter.saved')]
     public function refreshAfterSaved(): void
     {
-        $this->dispatch('$refresh')->self();
+        $this->resetPage();
     }
 
     /* ===============================

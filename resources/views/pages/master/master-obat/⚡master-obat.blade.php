@@ -17,7 +17,7 @@ new class extends Component {
 
     /* -------------------------
      | Update Search Keyword
-         * Fungsi: Reset halaman saat keyword berubah
+             * Fungsi: Reset halaman saat keyword berubah
      * ------------------------- */
     public function updatedSearchKeyword(): void
     {
@@ -26,7 +26,7 @@ new class extends Component {
 
     /* -------------------------
      | Update Items Per Page
-         * Fungsi: Reset halaman saat jumlah item per halaman berubah
+             * Fungsi: Reset halaman saat jumlah item per halaman berubah
      * ------------------------- */
     public function updatedItemsPerPage(): void
     {
@@ -35,7 +35,7 @@ new class extends Component {
 
     /* -------------------------
      | Open Create Modal
-         * Fungsi: Trigger modal create di child component
+             * Fungsi: Trigger modal create di child component
      * ------------------------- */
     public function openCreate(): void
     {
@@ -44,7 +44,7 @@ new class extends Component {
 
     /* -------------------------
      | Open Edit Modal
-         * Fungsi: Trigger modal edit di child component
+             * Fungsi: Trigger modal edit di child component
      * ------------------------- */
     public function openEdit(string $productId): void
     {
@@ -53,7 +53,7 @@ new class extends Component {
 
     /* -------------------------
      | Request Delete
-         * Fungsi: Delegate proses delete ke child component (actions)
+             * Fungsi: Delegate proses delete ke child component (actions)
      * ------------------------- */
     public function requestDelete(string $productId): void
     {
@@ -62,18 +62,18 @@ new class extends Component {
 
     /* -------------------------
      | Refresh After Saved
-         * Fungsi: Refresh grid setelah data disimpan dari child component
+             * Fungsi: Refresh grid setelah data disimpan dari child component
      * ------------------------- */
     #[On('master.obat.saved')]
     public function refreshAfterSaved(): void
     {
         // resetPage kadang tidak trigger kalau sudah di page 1 → paksa refresh
-        $this->dispatch('$refresh');
+        $this->resetPage();
     }
 
     /* -------------------------
      | Base Query
-         * Fungsi: Query builder dasar dengan filter search
+             * Fungsi: Query builder dasar dengan filter search
      * ------------------------- */
     #[Computed]
     public function baseQuery()
@@ -132,7 +132,7 @@ new class extends Component {
 
     /* -------------------------
      | Rows (Paginated Data)
-         * Fungsi: Data obat dengan pagination
+             * Fungsi: Data obat dengan pagination
      * ------------------------- */
     #[Computed]
     public function rows()
