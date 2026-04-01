@@ -14,8 +14,10 @@ use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\BPJS\VclaimTrait; // FIX #1: import tetap ada untuk use trait
 
 new class extends Component {
-    // FIX #1: tambah VclaimTrait agar $this->sep_insert() / $this->sep_update() tersedia
-    use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, VclaimTrait;
+    // CATATAN: VclaimTrait tidak di-use di sini untuk menghindari potensi method conflict
+    // dengan trait lain (sendResponse, sendError, signature, dll bisa bentrok).
+    // Gunakan VclaimTrait::method() static call langsung.
+    use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait;
 
     public string $formMode = 'create';
     public bool $isFormLocked = false;
@@ -383,8 +385,8 @@ new class extends Component {
             return;
         }
         try {
-            // FIX #1: gunakan $this->sep_insert() bukan VclaimTrait::sep_insert()
-            $response = $this->sep_insert($reqSep)->getOriginalContent();
+            // Static call — VclaimTrait tidak di-use di class ini (potensi method conflict)
+            $response = VclaimTrait::sep_insert($reqSep)->getOriginalContent();
             $code = $response['metadata']['code'] ?? 500;
 
             if ($code == 200) {
@@ -431,8 +433,8 @@ new class extends Component {
                 ],
             ];
 
-            // FIX #1: gunakan $this->sep_update() bukan VclaimTrait::sep_update()
-            $response = $this->sep_update($payload)->getOriginalContent();
+            // Static call — VclaimTrait tidak di-use di class ini (potensi method conflict)
+            $response = VclaimTrait::sep_update($payload)->getOriginalContent();
             $code = $response['metadata']['code'] ?? 500;
             $msg = $response['metadata']['message'] ?? '';
             $this->dispatch('toast', type: $code == 200 ? 'success' : 'error', message: "Update SEP ({$code}): {$msg}");

@@ -612,14 +612,9 @@ new class extends Component {
                                         :error="$errors->has('SEPForm.poli.tujuan')" />
                                     <x-input-error :messages="$errors->get('SEPForm.poli.tujuan')" class="mt-1" />
                                 </div>
-                                <div class="flex items-end">
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input type="checkbox" wire:model="SEPForm.poli.eksekutif" value="1"
-                                            @checked($SEPForm['poli']['eksekutif'] == '1') {{ $isFormLocked ? 'disabled' : '' }}
-                                            class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
-                                        <span
-                                            class="text-sm font-medium text-gray-700 dark:text-gray-300">Eksekutif</span>
-                                    </label>
+                                <div class="flex items-end pb-1">
+                                    <x-toggle wire:model="SEPForm.poli.eksekutif" trueValue="1" falseValue="0"
+                                        label="Eksekutif" :disabled="$isFormLocked" />
                                 </div>
 
                                 {{-- 2. LOV Dokter DPJP --}}
@@ -974,6 +969,5 @@ new class extends Component {
             </div>
         </div>
 
-</div>
-</x-modal>
+    </x-modal>
 </div>
