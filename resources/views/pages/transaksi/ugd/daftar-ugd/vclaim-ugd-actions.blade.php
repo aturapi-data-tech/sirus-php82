@@ -190,6 +190,7 @@ new class extends Component {
     /* ----
      | FIX #3: Load klsRawatHak dari API peserta BPJS
      | Memanggil service: /Peserta/nokartu/{noka}/tglSEP/{tgl}
+     | Method di VclaimTrait: peserta_nomorkartu($nomorKartu, $tanggal)
      ---- */
     private function loadKlsRawatFromBPJS(): void
     {
@@ -201,8 +202,9 @@ new class extends Component {
         }
 
         try {
-            $response = $this->peserta_by_nokartu($noKartu, $tglSep);
-            $content = is_array($response) ? $response : $response->getOriginalContent();
+            // nama method sesuai VclaimTrait: peserta_nomorkartu()
+            $response = $this->peserta_nomorkartu($noKartu, $tglSep);
+            $content = $response->getOriginalContent();
             $code = $content['metadata']['code'] ?? 500;
 
             if ($code == 200) {
@@ -286,32 +288,29 @@ new class extends Component {
 
     private function buildSEPRequest(): array
     {
-        /* FIX #2: rujukan — untuk IGD murni (noRujukan kosong + tglRujukan kosong),
-         * hanya kirim asalRujukan & ppkRujukan. tglRujukan dan noRujukan
-         * hanya dimasukkan jika terisi (mencegah error validasi API VClaim).
+        /* FIX #2: rujukan — tglRujukan WAJIB di validasi VclaimTrait::sep_insert()
+         * (rule "tglRujukan" => "required" tidak dikomentari di trait).
+         * Untuk IGD murni tanpa rujukan: tglRujukan diisi sama dengan tglSep,
+         * noRujukan hanya dikirim jika terisi (opsional di BPJS untuk IGD).
          */
+        $tglSepFormatted = Carbon::createFromFormat('d/m/Y', $this->SEPForm['tglSep'])->format('Y-m-d');
+        $noRujukan = $this->SEPForm['rujukan']['noRujukan'] ?? '';
+        $tglRujukan = !empty($this->SEPForm['rujukan']['tglRujukan']) ? $this->SEPForm['rujukan']['tglRujukan'] : $tglSepFormatted; // fallback: sama dengan tglSep (IGD murni)
+
         $rujukan = [
             'asalRujukan' => '2',
             'asalRujukanNama' => 'Faskes Tingkat 2 (RS)',
+            'tglRujukan' => $tglRujukan,
+            'noRujukan' => $noRujukan, // boleh kosong untuk IGD
             'ppkRujukan' => '0184R006',
             'ppkRujukanNama' => 'RSI Madinah',
         ];
-
-        $noRujukan = $this->SEPForm['rujukan']['noRujukan'] ?? '';
-        $tglRujukan = $this->SEPForm['rujukan']['tglRujukan'] ?? '';
-
-        if (!empty($noRujukan)) {
-            $rujukan['noRujukan'] = $noRujukan;
-        }
-        if (!empty($tglRujukan)) {
-            $rujukan['tglRujukan'] = $tglRujukan;
-        }
 
         return [
             'request' => [
                 't_sep' => [
                     'noKartu' => $this->SEPForm['noKartu'] ?? '',
-                    'tglSep' => Carbon::createFromFormat('d/m/Y', $this->SEPForm['tglSep'])->format('Y-m-d'),
+                    'tglSep' => $tglSepFormatted,
                     'ppkPelayanan' => $this->SEPForm['ppkPelayanan'] ?? '0184R006',
                     'jnsPelayanan' => '2', // UGD: selalu rawat jalan darurat
                     'klsRawat' => [
