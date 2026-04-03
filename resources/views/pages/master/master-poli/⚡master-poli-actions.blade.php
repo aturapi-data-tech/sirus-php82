@@ -33,7 +33,7 @@ new class extends Component {
         $this->resetValidation();
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'master-poli-actions');
-        $this->dispatch('focus-poli-id'); // ← ID Dokter kosong saat create
+        $this->dispatch('focus-poli-id'); // ← ID Poli kosong saat create
     }
 
     #[On('master.poli.openEdit')]
