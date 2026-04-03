@@ -5,12 +5,17 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Database\QueryException;
+use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 
 new class extends Component {
+    use WithRenderVersioningTrait;
+
     /* -------------------------
      | Form Mode
      * ------------------------- */
     public string $formMode = 'create'; // create|edit
+    public array $renderVersions = [];
+    protected array $renderAreas = ['modal'];
 
     /* -------------------------
      | Informasi Dasar
@@ -91,6 +96,11 @@ new class extends Component {
     public $grpOptions = [];
     public $suppOptions = [];
 
+     public function mount(): void
+    {
+        $this->registerAreas(['modal']);
+    }
+
     /* -------------------------
      | Open Create Modal
      * ------------------------- */
@@ -101,6 +111,7 @@ new class extends Component {
         $this->formMode = 'create';
         $this->resetValidation();
         $this->loadDropdownOptions();
+        $this->incrementVersion('modal');
 
         $this->dispatch('open-modal', name: 'master-obat-actions');
         $this->dispatch('focus-field', mode: 'create');
@@ -122,6 +133,7 @@ new class extends Component {
         $this->fillFormFromRow($row);
         $this->resetValidation();
         $this->loadDropdownOptions();
+        $this->incrementVersion('modal');
 
         $this->dispatch('open-modal', name: 'master-obat-actions');
         $this->dispatch('focus-field', mode: 'edit');
@@ -180,6 +192,7 @@ new class extends Component {
         $this->productStatus = '1';
         $this->activeStatus = '1';
         $this->fornasNonfornasStatus = '0';
+        $this->resetVersion();
     }
 
     /* -------------------------
@@ -471,7 +484,7 @@ new class extends Component {
 <div>
     <x-modal name="master-obat-actions" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
-            wire:key="master-obat-actions-{{ $formMode }}{{ $formMode === 'edit' ? '-' . $productId : '' }}">
+            wire:key="{{ $this->renderKey('modal', [$formMode, $productId ?? 'new']) }}">
 
             {{-- HEADER --}}
             <div class="relative px-6 py-5 border-b border-gray-200 dark:border-gray-700">
