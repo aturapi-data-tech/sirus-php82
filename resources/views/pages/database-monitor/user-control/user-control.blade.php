@@ -10,7 +10,7 @@ new class extends Component {
     use WithPagination;
 
     public string $searchKeyword = '';
-    public string $filterRole = ''; // filter role aktif
+    public string $filterRole = '';
     public int $itemsPerPage = 10;
 
     public function updatedSearchKeyword(): void
@@ -59,7 +59,6 @@ new class extends Component {
 
         $query = DB::table('users as u')->select('u.id', 'u.myuser_code', 'u.myuser_name', 'u.email', 'u.myuser_sip', 'u.myuser_ttd_image', 'u.emp_id', DB::raw("TO_CHAR(u.created_at, 'dd/mm/yyyy HH24:MI:SS') as created_at"))->orderBy('u.myuser_name', 'asc');
 
-        // Filter role — join model_has_roles + roles
         if ($this->filterRole !== '') {
             $query->whereIn('u.id', function ($sub) {
                 $sub->select('model_id')->from('model_has_roles')->join('roles', 'roles.id', '=', 'model_has_roles.role_id')->where('roles.name', $this->filterRole);
@@ -146,9 +145,6 @@ new class extends Component {
         };
     }
 
-    /**
-     * Warna dot/bullet di filter role button (active state).
-     */
     public function roleFilterDotClass(string $role): string
     {
         return match ($role) {
@@ -185,7 +181,6 @@ new class extends Component {
 
                     {{-- Kiri: search + filter role --}}
                     <div class="flex flex-wrap items-end gap-2">
-                        {{-- Search --}}
                         <div class="w-full lg:w-72">
                             <x-input-label for="searchKeyword" value="Cari User" class="sr-only" />
                             <x-text-input id="searchKeyword" type="text"
@@ -193,12 +188,9 @@ new class extends Component {
                                 class="block w-full" />
                         </div>
 
-                        {{-- Filter Role — pill buttons --}}
-                        @php
-                            $allRoles = ['Tu', 'Perawat', 'Dokter', 'Mr', 'Apoteker', 'Gizi', 'Casmix', 'Admin'];
-                        @endphp
+                        {{-- Filter role pill --}}
+                        @php $allRoles = ['Tu','Perawat','Dokter','Mr','Apoteker','Gizi','Casmix','Admin']; @endphp
                         <div class="flex flex-wrap gap-1.5">
-                            {{-- Pill: Semua --}}
                             <button type="button" wire:click="$set('filterRole', '')"
                                 class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium transition border
                                     {{ $filterRole === ''
@@ -206,15 +198,12 @@ new class extends Component {
                                         : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700 dark:hover:border-gray-500' }}">
                                 Semua
                             </button>
-
-                            {{-- Pill per role --}}
                             @foreach ($allRoles as $role)
                                 <button type="button" wire:click="$set('filterRole', '{{ $role }}')"
                                     class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition border
                                         {{ $filterRole === $role
                                             ? $this->roleBadgeClass($role) . ' border-transparent ring-2 ring-offset-1 ring-current'
                                             : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700 dark:hover:border-gray-500' }}">
-                                    {{-- Dot warna role --}}
                                     <span
                                         class="w-1.5 h-1.5 rounded-full shrink-0 {{ $this->roleFilterDotClass($role) }}"></span>
                                     {{ $role }}
@@ -235,6 +224,7 @@ new class extends Component {
                                 <option value="100">100</option>
                             </x-select-input>
                         </div>
+                        {{-- ✅ Tambah: x-primary-button --}}
                         <x-primary-button type="button" wire:click="openCreate">
                             + Tambah User
                         </x-primary-button>
@@ -288,14 +278,12 @@ new class extends Component {
                                 <tr wire:key="user-row-{{ $row->id }}"
                                     class="hover:bg-gray-50 dark:hover:bg-gray-800/60">
 
-                                    {{-- Nama + Kode --}}
                                     <td class="px-4 py-3">
                                         <div class="font-semibold">{{ $row->myuser_name ?? '-' }}</div>
                                         <div class="text-xs font-mono text-gray-500">{{ $row->myuser_code ?? '-' }}
                                         </div>
                                     </td>
 
-                                    {{-- Email + SIP --}}
                                     <td class="px-4 py-3">
                                         <div>{{ $row->email ?? '-' }}</div>
                                         @if ($row->myuser_sip)
@@ -303,7 +291,6 @@ new class extends Component {
                                         @endif
                                     </td>
 
-                                    {{-- EMP ID --}}
                                     <td class="px-4 py-3">
                                         @if ($row->emp_id)
                                             <x-badge variant="alternative">{{ $row->emp_id }}</x-badge>
@@ -312,7 +299,6 @@ new class extends Component {
                                         @endif
                                     </td>
 
-                                    {{-- TTD --}}
                                     <td class="px-4 py-3">
                                         @if ($row->myuser_ttd_image)
                                             <img src="{{ asset('storage/' . $row->myuser_ttd_image) }}"
@@ -363,6 +349,7 @@ new class extends Component {
                                                     @foreach ($allRoles as $role)
                                                         @php $active = in_array($role, $userRoles); @endphp
                                                         <li>
+                                                            {{-- ✅ Toggle role: raw <button> (inline list item) --}}
                                                             <button type="button"
                                                                 wire:click="toggleRole({{ $row->id }}, '{{ $role }}')"
                                                                 @click="open = false"
@@ -388,18 +375,19 @@ new class extends Component {
                                         </div>
                                     </td>
 
-                                    {{-- Dibuat --}}
                                     <td class="px-4 py-3 text-xs text-gray-500">{{ $row->created_at ?? '-' }}</td>
 
-                                    {{-- Aksi --}}
+                                    {{-- Aksi — ikut pola master-poli --}}
                                     <td class="px-4 py-3">
                                         <div class="flex flex-wrap gap-2">
+                                            {{-- ✅ Edit: x-outline-button (sama seperti master-poli) --}}
                                             <x-outline-button type="button"
                                                 wire:click="openEdit({{ $row->id }})">
                                                 Edit User
                                             </x-outline-button>
 
-                                            <x-outline-button type="button"
+                                            {{-- ✅ Kelola Kas: x-secondary-button (aksi sekunder/manajemen) --}}
+                                            <x-secondary-button type="button"
                                                 wire:click="openKasManage({{ $row->id }})">
                                                 Kelola Kas
                                                 @if ($row->kas_count > 0)
@@ -408,8 +396,9 @@ new class extends Component {
                                                         {{ $row->kas_count }}
                                                     </span>
                                                 @endif
-                                            </x-outline-button>
+                                            </x-secondary-button>
 
+                                            {{-- ✅ Hapus: x-confirm-button variant="danger" (sama seperti master-poli) --}}
                                             <x-confirm-button variant="danger" :action="'requestDelete(' . $row->id . ')'" title="Hapus User"
                                                 message="Yakin hapus user {{ $row->myuser_name }}? Semua data terkait termasuk akses kas akan dihapus."
                                                 confirmText="Ya, hapus" cancelText="Batal">
@@ -423,7 +412,8 @@ new class extends Component {
                                     <td colspan="7"
                                         class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
                                         @if ($filterRole !== '')
-                                            Tidak ada user dengan role <span
+                                            Tidak ada user dengan role
+                                            <span
                                                 class="{{ $this->roleBadgeClass($filterRole) }}">{{ $filterRole }}</span>.
                                         @else
                                             Data user belum ada.
