@@ -1,5 +1,4 @@
 <?php
-// resources/views/pages/transaksi/ugd/administrasi-ugd/kasir-ugd.blade.php
 
 use Livewire\Component;
 use Livewire\Attributes\On;
@@ -49,10 +48,7 @@ new class extends Component {
     }
 
     /* ===============================
-     | LISTENER — dari parent administrasi-ugd
-     |
-     | ⚠️  #[On] TIDAK BOLEH di mount() — harus method terpisah.
-     |     Kalau di mount(), event tidak akan pernah ter-trigger.
+     | LISTENER
      =============================== */
     #[On('administrasi-kasir-ugd.updated')]
     public function onAdministrasiKasirUpdated(): void
@@ -197,36 +193,50 @@ new class extends Component {
      =============================== */
     public function postTransaksi(): void
     {
+        // 1. Read-only guard
         if ($this->isFormLocked) {
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, transaksi terkunci.');
             return;
         }
 
-        $userCode = auth()->user()->user_code ?? null;
-        $cekAkunKas = DB::table('acmst_accounts')->whereIn('acc_id', fn($q) => $q->select('acc_id')->from('smmst_kases')->where('user_code', $userCode))->count();
+        // 2. Cek akun kas user — pakai user_kas (bukan smmst_kases)
+        $cekAkunKas = DB::table('user_kas')
+            ->where('user_id', auth()->id())
+            ->count();
 
         if ($cekAkunKas === 0) {
-            $this->dispatch('toast', type: 'error', message: 'Akun kas anda belum terkonfigurasi.');
+            $this->dispatch('toast', type: 'error', message: 'Akun kas anda belum terkonfigurasi. Hubungi administrator.');
             return;
         }
 
-        // Re-cek status sebelum transaksi — guard awal
+        // 3. Guard header
         if (!DB::table('rstxn_ugdhdrs')->where('rj_no', $this->rjNo)->exists()) {
             $this->dispatch('toast', type: 'error', message: 'Data transaksi tidak ditemukan.');
             return;
         }
 
+        // 4. Cek status UGD sebelum lock
         if ($this->checkUGDStatus($this->rjNo)) {
             $this->dispatch('toast', type: 'info', message: 'Data sudah diproses.');
             return;
         }
 
+        // 5. Validasi form
         $this->validate();
 
+        // 6. Cek lab pending
         $checkupLap = DB::table('lbtxn_checkuphdrs')->where('status_rjri', 'UGD')->where('checkup_status', 'P')->where('ref_no', $this->rjNo)->count();
 
         if ($checkupLap > 0) {
             $this->dispatch('toast', type: 'error', message: 'Hasil Lab belum selesai, pembayaran tidak bisa diproses.');
+            return;
+        }
+
+        // 7. Ambil emp_id dari users — tidak perlu query smmst_users lagi
+        $empId = auth()->user()->emp_id;
+
+        if (!$empId) {
+            $this->dispatch('toast', type: 'error', message: 'EMP ID belum diisi di profil user. Hubungi administrator.');
             return;
         }
 
@@ -235,21 +245,14 @@ new class extends Component {
         $newTxnStatus = null;
 
         try {
-            DB::transaction(function () use ($bayar, $dspTotalAll, &$newTxnStatus) {
-                // Re-cek status setelah masuk transaksi — hard stop race condition
+            DB::transaction(function () use ($bayar, $dspTotalAll, $empId, &$newTxnStatus) {
                 $this->lockUGDRow($this->rjNo);
+
                 if ($this->checkUGDStatus($this->rjNo)) {
                     throw new \RuntimeException('Data sudah diproses oleh user lain.');
                 }
 
                 $rjHdr = DB::table('rstxn_ugdhdrs')->where('rj_no', $this->rjNo)->first();
-                $empId = DB::table('smmst_users')
-                    ->where('user_code', auth()->user()->user_code)
-                    ->value('emp_id');
-
-                if (!$empId) {
-                    throw new \RuntimeException('ID karyawan tidak ditemukan, hubungi administrator.');
-                }
 
                 $cashRow = [
                     'acc_id' => $this->accId,
@@ -298,7 +301,6 @@ new class extends Component {
                 }
             });
 
-            // Update state + notify — di luar transaksi
             $this->txnStatus = $newTxnStatus;
             $this->hitungTotal();
             $this->isFormLocked = true;
@@ -306,7 +308,7 @@ new class extends Component {
             $this->kembalian = 0;
             $this->incrementVersion('kasir-ugd');
 
-            $msg = $this->txnStatus === 'L' ? 'Pembayaran lunas berhasil disimpan.' : 'Pembayaran sebagian (cicilan) berhasil disimpan.';
+            $msg = $newTxnStatus === 'L' ? 'Pembayaran lunas berhasil disimpan.' : 'Pembayaran sebagian (cicilan) berhasil disimpan.';
 
             $this->dispatch('toast', type: 'success', message: $msg);
             $this->dispatch('administrasi-ugd.updated');
@@ -356,7 +358,6 @@ new class extends Component {
                 }
             });
 
-            // Update state + notify — di luar transaksi
             $this->txnStatus = null;
             $this->rjDiskon = 0;
             $this->accId = null;
@@ -416,7 +417,10 @@ new class extends Component {
                 </p>
                 @if (!$isFormLocked)
                     <x-text-input wire:model.live="rjDiskon" type="number" min="0"
-                        class="w-full px-0 py-0 text-base font-bold text-amber-700 bg-transparent border-0 dark:text-amber-300 focus:ring-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        class="w-full px-0 py-0 text-base font-bold text-amber-700 bg-transparent border-0
+                            dark:text-amber-300 focus:ring-0 focus:outline-none
+                            [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none
+                            [&::-webkit-inner-spin-button]:appearance-none"
                         placeholder="0" x-on:keyup.enter="$dispatch('focus-lov-kas-kasir-ugd')" />
                     <x-input-error :messages="$errors->get('rjDiskon')" class="mt-1" />
                 @else
@@ -459,13 +463,17 @@ new class extends Component {
 
             <div
                 class="flex-1 px-4 py-3 border rounded-xl
-                {{ $rjSisa > 0 ? 'border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-900/10' : 'border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-900/10' }}">
+                {{ $rjSisa > 0
+                    ? 'border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-900/10'
+                    : 'border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-900/10' }}">
                 <p
                     class="text-xs mb-0.5 {{ $rjSisa > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400' }}">
-                    Sisa Tagihan</p>
+                    Sisa Tagihan
+                </p>
                 <p
                     class="text-base font-bold {{ $rjSisa > 0 ? 'text-rose-700 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300' }}">
-                    Rp {{ number_format($rjSisa) }}</p>
+                    Rp {{ number_format($rjSisa) }}
+                </p>
             </div>
 
         </div>
@@ -487,13 +495,15 @@ new class extends Component {
         @else
             <div class="flex items-end gap-3">
 
+                {{-- LOV Akun Kas — tipe="ugd" agar hanya tampil kas aktif untuk UGD --}}
                 <div class="w-80"
                     x-on:focus-lov-kas-kasir-ugd.window="$nextTick(() => $el.querySelector('input')?.focus())">
-                    <livewire:lov.kas.lov-kas target="kas-kasir-ugd" label="Akun Kas" :initialAccId="$accId"
+                    <livewire:lov.kas.lov-kas target="kas-kasir-ugd" tipe="ugd" label="Akun Kas" :initialAccId="$accId"
                         wire:key="lov-kas-kasir-ugd-{{ $rjNo }}-{{ $renderVersions['kasir-ugd'] ?? 0 }}" />
                     <x-input-error :messages="$errors->get('accId')" class="mt-1" />
                 </div>
 
+                {{-- Input Bayar --}}
                 <div class="w-52">
                     <x-input-label value="Nominal Bayar (Rp)" class="mb-1" />
                     <x-text-input type="number" wire:model.live="bayar" placeholder="0"
@@ -502,6 +512,7 @@ new class extends Component {
                     <x-input-error :messages="$errors->get('bayar')" class="mt-1" />
                 </div>
 
+                {{-- Kembalian / Kurang Bayar --}}
                 @if ((int) ($bayar ?? 0) >= $rjSisa && $rjSisa > 0)
                     <div
                         class="flex-1 px-4 py-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-900/10">
@@ -520,9 +531,10 @@ new class extends Component {
                     <div class="flex-1"></div>
                 @endif
 
+                {{-- Tombol Post --}}
                 <div class="flex gap-2 pb-0.5">
                     <x-primary-button wire:click="postTransaksi" wire:loading.attr="disabled"
-                        wire:target="postTransaksi" title="Klik untuk memproses pembayaran">
+                        wire:target="postTransaksi">
                         <span wire:loading.remove wire:target="postTransaksi">Post Transaksi</span>
                         <span wire:loading wire:target="postTransaksi"><x-loading /></span>
                     </x-primary-button>
@@ -530,14 +542,16 @@ new class extends Component {
 
             </div>
 
+            {{-- Badge status pembayaran --}}
             @if ((int) ($bayar ?? 0) >= $rjSisa && $rjSisa > 0)
                 <div class="flex items-center gap-1.5 mt-3">
                     <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Pembayaran akan diproses
-                        sebagai LUNAS</span>
+                    <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                        Pembayaran akan diproses sebagai LUNAS
+                    </span>
                 </div>
             @elseif ((int) ($bayar ?? 0) > 0 && (int) ($bayar ?? 0) < $rjSisa)
                 <div class="flex items-center gap-1.5 mt-3">
@@ -577,15 +591,18 @@ new class extends Component {
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                     @forelse ($cashins as $cash)
-                        <tr class="transition group hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                        <tr class="transition hover:bg-gray-50 dark:hover:bg-gray-800/40">
                             <td class="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                                {{ Carbon::parse($cash->rjc_date)->format('d/m/Y') }}</td>
+                                {{ Carbon::parse($cash->rjc_date)->format('d/m/Y') }}
+                            </td>
                             <td class="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                                {{ $cash->acc_id }}</td>
+                                {{ $cash->acc_id }}
+                            </td>
                             <td class="px-4 py-3 text-gray-800 dark:text-gray-200">{{ $cash->rjc_desc }}</td>
                             <td
                                 class="px-4 py-3 font-semibold text-right text-gray-800 dark:text-gray-200 whitespace-nowrap">
-                                Rp {{ number_format($cash->rjc_nominal) }}</td>
+                                Rp {{ number_format($cash->rjc_nominal) }}
+                            </td>
                         </tr>
                     @empty
                         <tr>
@@ -606,10 +623,12 @@ new class extends Component {
                     <tfoot class="border-t border-gray-200 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700">
                         <tr>
                             <td colspan="3"
-                                class="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-400">Total Dibayar
+                                class="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-gray-400">
+                                Total Dibayar
                             </td>
-                            <td class="px-4 py-3 text-sm font-bold text-right text-brand-green dark:text-brand-lime">Rp
-                                {{ number_format($cashins->sum('rjc_nominal')) }}</td>
+                            <td class="px-4 py-3 text-sm font-bold text-right text-brand-green dark:text-brand-lime">
+                                Rp {{ number_format($cashins->sum('rjc_nominal')) }}
+                            </td>
                         </tr>
                     </tfoot>
                 @endif

@@ -48,7 +48,7 @@ new class extends Component {
     }
 
     /* ===============================
-     | EVENT LISTENER — refresh saat administrasi diperbarui
+     | EVENT LISTENER
      =============================== */
     #[On('administrasi-kasir-rj.updated')]
     public function onAdministrasiKasirUpdated(): void
@@ -81,7 +81,6 @@ new class extends Component {
             return;
         }
 
-        // Gunakan trait — konsisten dengan komponen lain
         if ($this->checkRJStatus($rjNo)) {
             $this->isFormLocked = true;
         }
@@ -98,16 +97,13 @@ new class extends Component {
         $this->incrementVersion('kasir-rj');
     }
 
-    /* ===============================
-     | FIND DATA
-     =============================== */
     private function findData(int $rjNo): void
     {
         $this->dataDaftarPoliRJ = $this->findDataRJ($rjNo) ?? [];
     }
 
     /* ===============================
-     | HITUNG TOTAL — query langsung dari DB
+     | HITUNG TOTAL
      =============================== */
     public function hitungTotal(): void
     {
@@ -132,7 +128,7 @@ new class extends Component {
     }
 
     /* ===============================
-     | REAKTIF — updated hooks
+     | REAKTIF
      =============================== */
     public function updatedRjDiskon(): void
     {
@@ -195,16 +191,17 @@ new class extends Component {
             return;
         }
 
-        // 2. Cek akun kas user — sebelum lock (tidak perlu atomik)
-        $userCode = auth()->user()->user_code ?? null;
-        $cekAkunKas = DB::table('acmst_accounts')->whereIn('acc_id', fn($q) => $q->select('acc_id')->from('smmst_kases')->where('user_code', $userCode))->count();
+        // 2. Cek akun kas user — pakai user_kas (bukan smmst_kases)
+        $cekAkunKas = DB::table('user_kas')
+            ->where('user_id', auth()->id())
+            ->count();
 
         if ($cekAkunKas === 0) {
-            $this->dispatch('toast', type: 'error', message: 'Akun kas anda belum terkonfigurasi.');
+            $this->dispatch('toast', type: 'error', message: 'Akun kas anda belum terkonfigurasi. Hubungi administrator.');
             return;
         }
 
-        // 3. Cek status RJ via trait sebelum masuk lock
+        // 3. Cek status RJ sebelum lock
         if ($this->checkRJStatus($this->rjNo)) {
             $this->dispatch('toast', type: 'info', message: 'Data sudah diproses.');
             return;
@@ -213,7 +210,7 @@ new class extends Component {
         // 4. Validasi form
         $this->validate();
 
-        // 5. Cek lab pending — sebelum lock
+        // 5. Cek lab pending
         $checkupLap = DB::table('lbtxn_checkuphdrs')->where('status_rjri', 'RJ')->where('checkup_status', 'P')->where('ref_no', $this->rjNo)->count();
 
         if ($checkupLap > 0) {
@@ -221,28 +218,29 @@ new class extends Component {
             return;
         }
 
+        // 6. Ambil emp_id dari users — tidak perlu query smmst_users lagi
+        $empId = auth()->user()->emp_id;
+
+        if (!$empId) {
+            $this->dispatch('toast', type: 'error', message: 'EMP ID belum diisi di profil user. Hubungi administrator.');
+            return;
+        }
+
         $bayar = (int) $this->bayar;
         $dspTotalAll = $this->rjSisa;
+        $newTxnStatus = null;
 
         try {
-            DB::transaction(function () use ($bayar, $dspTotalAll) {
-                // 6. Lock row — update header + cashins harus atomik
+            DB::transaction(function () use ($bayar, $dspTotalAll, $empId, &$newTxnStatus) {
+                // Lock row
                 $this->lockRJRow($this->rjNo);
 
-                // 7. Re-cek status setelah lock (cegah double-submit)
+                // Re-cek setelah lock (cegah double-submit)
                 if ($this->checkRJStatus($this->rjNo)) {
-                    $this->dispatch('toast', type: 'info', message: 'Data sudah diproses.');
-                    return;
+                    throw new \RuntimeException('Data sudah diproses oleh user lain.');
                 }
 
                 $rjHdr = DB::table('rstxn_rjhdrs')->where('rj_no', $this->rjNo)->first();
-                $empId = DB::table('smmst_users')
-                    ->where('user_code', auth()->user()->user_code)
-                    ->value('emp_id');
-
-                if (!$empId) {
-                    throw new \RuntimeException('ID karyawan tidak ditemukan, hubungi administrator.');
-                }
 
                 $cashRow = [
                     'acc_id' => $this->accId,
@@ -267,7 +265,7 @@ new class extends Component {
                             'rj_status' => 'L',
                             'emp_id' => $empId,
                         ]);
-                    $this->txnStatus = 'H';
+                    $newTxnStatus = 'H';
                 } else {
                     // LUNAS
                     if ($this->rjTotal > 0) {
@@ -283,7 +281,7 @@ new class extends Component {
                             'rj_status' => 'L',
                             'emp_id' => $empId,
                         ]);
-                    $this->txnStatus = 'L';
+                    $newTxnStatus = 'L';
 
                     DB::table('rsmst_pasiens')
                         ->where('reg_no', $rjHdr->reg_no)
@@ -291,13 +289,14 @@ new class extends Component {
                 }
             });
 
+            $this->txnStatus = $newTxnStatus;
             $this->hitungTotal();
             $this->isFormLocked = true;
             $this->bayar = null;
             $this->kembalian = 0;
             $this->incrementVersion('kasir-rj');
 
-            $msg = $this->txnStatus === 'L' ? 'Pembayaran lunas berhasil disimpan.' : 'Pembayaran sebagian (cicilan) berhasil disimpan.';
+            $msg = $newTxnStatus === 'L' ? 'Pembayaran lunas berhasil disimpan.' : 'Pembayaran sebagian (cicilan) berhasil disimpan.';
 
             $this->dispatch('toast', type: 'success', message: $msg);
             $this->dispatch('administrasi-rj.updated');
@@ -320,7 +319,6 @@ new class extends Component {
 
         try {
             DB::transaction(function () {
-                // Lock row dulu — delete cashins + update header harus atomik
                 $this->lockRJRow($this->rjNo);
 
                 $hdr = DB::table('rstxn_rjhdrs')->select('rj_status', 'txn_status', 'reg_no')->where('rj_no', $this->rjNo)->first();
@@ -504,10 +502,10 @@ new class extends Component {
         @else
             <div class="flex items-end gap-3">
 
-                {{-- LOV Akun Kas --}}
+                {{-- LOV Akun Kas — tipe="rj" agar hanya tampil kas yang aktif untuk RJ --}}
                 <div class="w-80"
                     x-on:focus-lov-kas-kasir-rj.window="$nextTick(() => $el.querySelector('input')?.focus())">
-                    <livewire:lov.kas.lov-kas target="kas-kasir-rj" label="Akun Kas" :initialAccId="$accId"
+                    <livewire:lov.kas.lov-kas target="kas-kasir-rj" tipe="rj" label="Akun Kas" :initialAccId="$accId"
                         wire:key="lov-kas-kasir-rj-{{ $rjNo }}-{{ $renderVersions['kasir-rj'] ?? 0 }}" />
                     <x-input-error :messages="$errors->get('accId')" class="mt-1" />
                 </div>
@@ -540,19 +538,13 @@ new class extends Component {
                     <div class="flex-1"></div>
                 @endif
 
-                {{-- Tombol Aksi --}}
+                {{-- Tombol Post --}}
                 <div class="flex gap-2 pb-0.5">
                     <x-primary-button wire:click="postTransaksi" wire:loading.attr="disabled"
-                        wire:target="postTransaksi" title="Klik untuk memproses pembayaran">
+                        wire:target="postTransaksi">
                         <span wire:loading.remove wire:target="postTransaksi">Post Transaksi</span>
                         <span wire:loading wire:target="postTransaksi"><x-loading /></span>
                     </x-primary-button>
-
-                    {{-- <x-confirm-button variant="danger" :action="'batalTransaksi()'" title="Batal Transaksi"
-                        message="Yakin ingin membatalkan transaksi? Semua data pembayaran akan dihapus."
-                        confirmText="Ya, batalkan" cancelText="Batal">
-                        Batal
-                    </x-confirm-button> --}}
                 </div>
 
             </div>
@@ -606,16 +598,14 @@ new class extends Component {
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                     @forelse ($cashins as $cash)
-                        <tr class="transition group hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                        <tr class="transition hover:bg-gray-50 dark:hover:bg-gray-800/40">
                             <td class="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                 {{ Carbon::parse($cash->rjc_date)->format('d/m/Y') }}
                             </td>
                             <td class="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                 {{ $cash->acc_id }}
                             </td>
-                            <td class="px-4 py-3 text-gray-800 dark:text-gray-200">
-                                {{ $cash->rjc_desc }}
-                            </td>
+                            <td class="px-4 py-3 text-gray-800 dark:text-gray-200">{{ $cash->rjc_desc }}</td>
                             <td
                                 class="px-4 py-3 font-semibold text-right text-gray-800 dark:text-gray-200 whitespace-nowrap">
                                 Rp {{ number_format($cash->rjc_nominal) }}

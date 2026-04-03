@@ -1,26 +1,32 @@
 <?php
 
 /**
- * resources/views/livewire/lov/kas/lov-kas.blade.php
+ * resources/views/livewire/lov/employer/lov-employer.blade.php
  *
- * LOV Akun Kas — pakai user_kas (bukan smmst_kases).
+ * LOV Karyawan dari tabel IMMST_EMPLOYERS.
  *
  * Payload dispatch ke parent:
  *   [
- *     'acc_id'   => '...',
- *     'acc_name' => '...',
- *     'emp_id'   => '...',   // langsung dari users.emp_id auth user
- *     'tipe_rj'  => true|false,
- *     'tipe_ugd' => true|false,
- *     'tipe_ri'  => true|false,
+ *     'emp_id'    => '...',
+ *     'emp_name'  => '...',
+ *     'emp_index' => '...',
+ *     'emp_grade' => '...',
+ *     'bu_id'     => '...',
+ *     'phone'     => '...',
+ *     'address'   => '...',
  *   ]
  *
- * Di parent, tidak perlu query emp_id lagi:
- *   #[On('lov.selected.kas-kasir-rj')]
- *   public function onKasSelected(string $target, ?array $payload): void
+ * Cara pakai:
+ *   <livewire:lov.kasir.lov-kasir
+ *       target="kasir-user-control"
+ *       :initialEmpId="$emp_id"
+ *       wire:key="lov-kasir-{{ $userId }}" />
+ *
+ *   #[On('lov.selected.kasir-user-control')]
+ *   public function onEmployerSelected(string $target, ?array $payload): void
  *   {
- *       $this->accId  = $payload['acc_id']  ?? null;
- *       $this->empId  = $payload['emp_id']  ?? null;  // <-- langsung pakai
+ *       $this->emp_id   = $payload['emp_id']   ?? null;
+ *       $this->emp_name = $payload['emp_name']  ?? null;
  *   }
  */
 
@@ -30,14 +36,8 @@ use Livewire\Attributes\Reactive;
 
 new class extends Component {
     public string $target = 'default';
-
-    /**
-     * Filter tipe kas: 'rj' | 'ugd' | 'ri' | '' (semua)
-     */
-    public string $tipe = 'rj';
-
-    public string $label = 'Akun Kas';
-    public string $placeholder = 'Ketik kode/nama kas...';
+    public string $label = 'Karyawan (EMP ID)';
+    public string $placeholder = 'Ketik EMP ID atau nama karyawan...';
 
     public string $search = '';
     public array $options = [];
@@ -46,7 +46,7 @@ new class extends Component {
     public ?array $selected = null;
 
     #[Reactive]
-    public ?string $initialAccId = null;
+    public ?string $initialEmpId = null;
 
     public bool $disabled = false;
 
@@ -54,12 +54,12 @@ new class extends Component {
 
     public function mount(): void
     {
-        if ($this->initialAccId) {
-            $this->loadSelected($this->initialAccId);
+        if ($this->initialEmpId) {
+            $this->loadSelected($this->initialEmpId);
         }
     }
 
-    public function updatedInitialAccId(?string $value): void
+    public function updatedInitialEmpId(?string $value): void
     {
         $this->selected = null;
         $this->search = '';
@@ -73,13 +73,21 @@ new class extends Component {
 
     /* ── Load mode edit ── */
 
-    protected function loadSelected(string $accId): void
+    protected function loadSelected(string $empId): void
     {
-        $row = $this->baseQuery()->where('a.acc_id', $accId)->first();
+        $row = $this->baseQuery()->where('emp_id', $empId)->first();
 
         if ($row) {
             $this->selected = $this->buildPayload($row);
         }
+    }
+
+    /* ── Query dasar ── */
+
+    protected function baseQuery(): \Illuminate\Database\Query\Builder
+    {
+        return DB::table('immst_employers')->select('emp_id', 'emp_name', 'emp_index', 'emp_grade', 'bu_id', 'phone', 'address', 'active_record');
+        //->where('active_record', '1') // hanya karyawan aktif
     }
 
     /* ── Pencarian real-time ── */
@@ -99,8 +107,8 @@ new class extends Component {
 
         $upperKeyword = mb_strtoupper($keyword);
 
-        // Exact match → langsung pilih tanpa dropdown
-        $exactRow = $this->baseQuery()->where('a.acc_id', $keyword)->first();
+        // Exact match by emp_id → langsung pilih
+        $exactRow = $this->baseQuery()->where('emp_id', $keyword)->first();
 
         if ($exactRow) {
             $this->dispatchSelected($this->buildPayload($exactRow));
@@ -108,9 +116,18 @@ new class extends Component {
         }
 
         // Partial match
-        $rows = $this->baseQuery()->where(fn($q) => $q->where('a.acc_id', 'like', "%{$keyword}%")->orWhereRaw('UPPER(a.acc_name) LIKE ?', ["%{$upperKeyword}%"]))->orderBy('a.acc_id')->limit(50)->get();
+        $rows = $this->baseQuery()
+            ->where(
+                fn($q) => $q
+                    ->where('emp_id', 'like', "%{$keyword}%")
+                    ->orWhereRaw('UPPER(emp_name) LIKE ?', ["%{$upperKeyword}%"])
+                    ->orWhereRaw('UPPER(emp_index) LIKE ?', ["%{$upperKeyword}%"]),
+            )
+            ->orderBy('emp_name')
+            ->limit(50)
+            ->get();
 
-        $this->options = $rows->map(fn($row) => array_merge($this->buildPayload($row), ['label' => (string) ($row->acc_name ?: $row->acc_id)]))->toArray();
+        $this->options = $rows->map(fn($row) => array_merge($this->buildPayload($row), ['label' => (string) ($row->emp_name ?: $row->emp_id)]))->toArray();
 
         $this->isOpen = count($this->options) > 0;
         $this->selectedIndex = 0;
@@ -120,38 +137,18 @@ new class extends Component {
         }
     }
 
-    /* ── Query dasar — DRY ── */
-
-    protected function baseQuery(): \Illuminate\Database\Query\Builder
-    {
-        return DB::table('acmst_accounts as a')
-            ->join('acmst_kases as b', 'a.acc_id', '=', 'b.acc_id')
-            ->select('a.acc_id', 'a.acc_name', 'b.rj', 'b.ugd', 'b.ri')
-            ->when($this->tipe !== '', fn($q) => $q->where('b.' . $this->tipe, '1'))
-            ->whereIn(
-                'a.acc_id',
-                fn($q) => $q
-                    ->select('acc_id')
-                    ->from('user_kas')
-                    ->where('user_id', auth()->id()),
-            );
-    }
-
     /* ── Build payload ── */
 
-    /**
-     * emp_id diambil dari auth()->user()->emp_id (kolom baru di tabel users).
-     * Parent tidak perlu query emp_id lagi ke Oracle.
-     */
     protected function buildPayload(object $row): array
     {
         return [
-            'acc_id' => (string) $row->acc_id,
-            'acc_name' => (string) ($row->acc_name ?? ''),
-            'emp_id' => (string) (auth()->user()->emp_id ?? ''),
-            'tipe_rj' => ($row->rj ?? '') === '1',
-            'tipe_ugd' => ($row->ugd ?? '') === '1',
-            'tipe_ri' => ($row->ri ?? '') === '1',
+            'emp_id' => (string) ($row->emp_id ?? ''),
+            'emp_name' => (string) ($row->emp_name ?? ''),
+            'emp_index' => (string) ($row->emp_index ?? ''),
+            'emp_grade' => (string) ($row->emp_grade ?? ''),
+            'bu_id' => (string) ($row->bu_id ?? ''),
+            'phone' => (string) ($row->phone ?? ''),
+            'address' => (string) ($row->address ?? ''),
         ];
     }
 
@@ -250,9 +247,10 @@ new class extends Component {
                     :placeholder="$placeholder" disabled />
             @endif
         @else
+            {{-- Mode selected --}}
             <div class="flex items-center gap-2">
                 <div class="flex-1">
-                    <x-text-input type="text" class="block w-full" :value="$selected['acc_id'] . ' — ' . $selected['acc_name']" disabled />
+                    <x-text-input type="text" class="block w-full font-mono" :value="$selected['emp_id'] . ' — ' . $selected['emp_name']" disabled />
                 </div>
                 @if (!$disabled)
                     <x-secondary-button type="button" wire:click="clearSelected" class="px-4 whitespace-nowrap">
@@ -261,59 +259,66 @@ new class extends Component {
                 @endif
             </div>
 
-            {{-- Info subtle: emp_id + badge tipe --}}
-            <div class="flex items-center gap-1.5 mt-1">
-                @if (!empty($selected['emp_id']))
-                    <span class="text-[10px] font-mono text-gray-400 dark:text-gray-600">
-                        emp: {{ $selected['emp_id'] }}
+            {{-- Info subtle --}}
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+                @if (!empty($selected['emp_index']))
+                    <span class="text-[10px] text-gray-400 dark:text-gray-600">
+                        Index: <span class="font-mono">{{ $selected['emp_index'] }}</span>
                     </span>
-                    <span class="text-gray-300 dark:text-gray-700">·</span>
                 @endif
-                @if (!empty($selected['tipe_rj']))
-                    <span
-                        class="px-1.5 text-[10px] font-semibold rounded bg-blue-100 text-blue-500 dark:bg-blue-900/30 dark:text-blue-400">RJ</span>
+                @if (!empty($selected['emp_grade']))
+                    <span class="text-[10px] text-gray-400 dark:text-gray-600">
+                        Grade: {{ $selected['emp_grade'] }}
+                    </span>
                 @endif
-                @if (!empty($selected['tipe_ugd']))
-                    <span
-                        class="px-1.5 text-[10px] font-semibold rounded bg-rose-100 text-rose-500 dark:bg-rose-900/30 dark:text-rose-400">UGD</span>
+                @if (!empty($selected['bu_id']))
+                    <span class="text-[10px] text-gray-400 dark:text-gray-600">
+                        BU: {{ $selected['bu_id'] }}
+                    </span>
                 @endif
-                @if (!empty($selected['tipe_ri']))
-                    <span
-                        class="px-1.5 text-[10px] font-semibold rounded bg-violet-100 text-violet-500 dark:bg-violet-900/30 dark:text-violet-400">RI</span>
+                @if (!empty($selected['phone']))
+                    <span class="text-[10px] text-gray-400 dark:text-gray-600">
+                        ☎ {{ $selected['phone'] }}
+                    </span>
                 @endif
             </div>
         @endif
 
-        {{-- Dropdown --}}
+        {{-- Dropdown list --}}
         @if ($isOpen && $selected === null && !$disabled)
             <div
                 class="absolute z-50 w-full mt-2 overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
                 <ul class="overflow-y-auto divide-y divide-gray-100 max-h-72 dark:divide-gray-800">
                     @foreach ($options as $index => $option)
-                        <li wire:key="lov-kas-{{ $option['acc_id'] }}-{{ $index }}"
+                        <li wire:key="lov-emp-{{ $option['emp_id'] }}-{{ $index }}"
                             x-ref="lovItem{{ $index }}">
                             <x-lov.item wire:click="choose({{ $index }})" :active="$index === $selectedIndex">
-                                <div class="flex items-center justify-between gap-2">
-                                    <span class="font-semibold text-gray-900 dark:text-gray-100">
-                                        {{ $option['label'] }}
-                                    </span>
-                                    <div class="flex gap-1 shrink-0">
-                                        @if (!empty($option['tipe_rj']))
-                                            <span
-                                                class="px-1.5 text-[10px] font-semibold rounded bg-blue-100 text-blue-500 dark:bg-blue-900/30 dark:text-blue-400">RJ</span>
-                                        @endif
-                                        @if (!empty($option['tipe_ugd']))
-                                            <span
-                                                class="px-1.5 text-[10px] font-semibold rounded bg-rose-100 text-rose-500 dark:bg-rose-900/30 dark:text-rose-400">UGD</span>
-                                        @endif
-                                        @if (!empty($option['tipe_ri']))
-                                            <span
-                                                class="px-1.5 text-[10px] font-semibold rounded bg-violet-100 text-violet-500 dark:bg-violet-900/30 dark:text-violet-400">RI</span>
-                                        @endif
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="font-semibold text-gray-900 truncate dark:text-gray-100">
+                                            {{ $option['emp_name'] ?: $option['emp_id'] }}
+                                        </div>
+                                        <div class="flex flex-wrap gap-x-2 gap-y-0 mt-0.5">
+                                            <span class="text-xs font-mono text-gray-500 dark:text-gray-400">
+                                                {{ $option['emp_id'] }}
+                                            </span>
+                                            @if (!empty($option['emp_grade']))
+                                                <span class="text-xs text-gray-400">
+                                                    · {{ $option['emp_grade'] }}
+                                                </span>
+                                            @endif
+                                            @if (!empty($option['bu_id']))
+                                                <span class="text-xs text-gray-400">
+                                                    · {{ $option['bu_id'] }}
+                                                </span>
+                                            @endif
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="text-xs font-mono text-gray-400 dark:text-gray-500">
-                                    {{ $option['acc_id'] }}
+                                    @if (!empty($option['phone']))
+                                        <span class="text-[11px] text-gray-400 shrink-0 mt-0.5">
+                                            {{ $option['phone'] }}
+                                        </span>
+                                    @endif
                                 </div>
                             </x-lov.item>
                         </li>
@@ -322,7 +327,7 @@ new class extends Component {
 
                 @if (mb_strlen(trim($search)) >= 1 && count($options) === 0)
                     <div class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                        Data tidak ditemukan.
+                        Karyawan tidak ditemukan.
                     </div>
                 @endif
             </div>
