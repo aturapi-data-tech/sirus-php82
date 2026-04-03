@@ -49,7 +49,7 @@ new class extends Component {
         $this->selectedItems = [];
         $this->searchItem = '';
         $this->resetPage();
-        $this->incrementVersion('laborat-order-modal');
+        //$this->incrementVersion('laborat-order-modal');
 
         $version = $this->renderVersions['laborat-order-modal'] ?? 0;
         $this->dispatch('open-modal', name: "laborat-order-{$version}");
@@ -60,6 +60,7 @@ new class extends Component {
         $version = $this->renderVersions['laborat-order-modal'] ?? 0;
         $this->dispatch('close-modal', name: "laborat-order-{$version}");
         $this->reset(['selectedItems', 'searchItem']);
+        $this->incrementVersion('laborat-order-modal');
     }
 
     /* ===============================

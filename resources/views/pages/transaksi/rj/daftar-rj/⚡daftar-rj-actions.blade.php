@@ -14,9 +14,14 @@ use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 
 new class extends Component {
+    // CATATAN: VclaimTrait & AntrianTrait TIDAK di-use di sini karena keduanya
+    // mendefinisikan method yang sama (sendResponse, sendError, signature, dll).
+    // Jika dipakai bersamaan dalam satu class → PHP fatal error "conflict".
+    // Solusi: gunakan static call langsung VclaimTrait::method() & AntrianTrait::method()
+    // — PHP mengizinkan static call ke trait tanpa harus use-nya di class.
     use EmrRJTrait, MasterPasienTrait, WithRenderVersioningTrait;
 
-    public string $formMode = 'create'; // create|edit
+    public string $formMode = 'create';
     public bool $isFormLocked = false;
 
     public ?string $rjNo = null;
@@ -120,13 +125,6 @@ new class extends Component {
 
     /* ===============================
      | SAVE
-     |
-     | Pola:
-     |   1. Guard read-only
-     |   2. setDataPrimer() + validateDataRJ()
-     |   3. BPJS API calls DI LUAR transaksi (boleh fail tanpa rollback DB)
-     |   4. DB::transaction: lock (edit only) + insert/update + updateJsonData()
-     |   5. afterSave() DI LUAR transaksi
      =============================== */
     public function save(): void
     {
@@ -147,33 +145,42 @@ new class extends Component {
 
         try {
             // ============================================================
-            // 1. BPJS API CALLS — di luar transaksi
-            //    (API call tidak boleh di dalam DB::transaction)
+            // 1. QUERY isPoliSpesialis SEKALI — dipakai di step 2 & 3
             // ============================================================
-            if ($this->dataDaftarPoliRJ['klaimId'] !== 'KR') {
-                $this->pushDataAntrian();
+            $isPoliSpesialis = DB::table('rsmst_polis')->where('poli_id', $this->dataDaftarPoliRJ['poliId'])->where('spesialis_status', '1')->exists();
+
+            // ============================================================
+            // 2. BPJS ANTRIAN — hanya untuk poli spesialis, bukan KR
+            // ============================================================
+            if ($this->dataDaftarPoliRJ['klaimId'] !== 'KR' && $isPoliSpesialis) {
+                $this->pushDataAntrian($isPoliSpesialis);
             }
 
+            // ============================================================
+            // 3. BPJS SEP — cek dengan mempertimbangkan isPoliSpesialis
+            // ============================================================
             $isBpjs = ($this->dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($this->dataDaftarPoliRJ['klaimId'] ?? '') === 'JM';
 
             if ($isBpjs) {
                 $statusTambahPendaftaran = $this->dataDaftarPoliRJ['taskIdPelayanan']['tambahPendaftaran'] ?? '';
-                $isSuccess = $statusTambahPendaftaran == 200 || $statusTambahPendaftaran == 208;
+                $antrianSudahOk = $statusTambahPendaftaran == 200 || $statusTambahPendaftaran == 208;
 
-                if (!$isSuccess) {
-                    $this->dispatch('toast', type: 'error', message: 'Harap lakukan tambah antrian terlebih dahulu sebelum membuat SEP.');
+                // SEP diblok HANYA jika poli spesialis DAN antrian belum berhasil
+                if ($isPoliSpesialis && !$antrianSudahOk) {
+                    $this->dispatch('toast', type: 'warning', message: 'Harap selesaikan tambah antrian BPJS terlebih dahulu sebelum membuat SEP.', title: 'Antrian Belum Terdaftar', position: 'top-right', duration: 6000);
+                    // Lanjut simpan data tanpa SEP — tidak return di sini
+                    // agar data RJ tetap tersimpan meski SEP belum ada
                 } else {
                     $this->handleSepCreation();
                 }
             }
 
             // ============================================================
-            // 2. DB TRANSACTION — insert/update header + JSON
+            // 4. DB TRANSACTION
             // ============================================================
             $message = '';
 
             if ($this->formMode === 'create') {
-                // CREATE: gunakan Cache::lock karena row belum ada — lockRJRow() tidak bisa dipakai
                 Cache::lock("lock:rstxn_rjhdrs:{$rjNo}", 15)->block(5, function () use ($rjNo, &$message) {
                     DB::transaction(function () use ($rjNo, &$message) {
                         DB::table('rstxn_rjhdrs')->insert($this->buildPayload($rjNo));
@@ -182,7 +189,6 @@ new class extends Component {
                     });
                 });
             } else {
-                // EDIT: gunakan lockRJRow() — SELECT FOR UPDATE lebih atomik dengan Oracle
                 DB::transaction(function () use ($rjNo, &$message) {
                     $this->lockRJRow($rjNo);
                     DB::table('rstxn_rjhdrs')->where('rj_no', $rjNo)->update($this->buildPayload($rjNo));
@@ -192,7 +198,7 @@ new class extends Component {
             }
 
             // ============================================================
-            // 3. AFTER SAVE — di luar transaksi
+            // 5. AFTER SAVE
             // ============================================================
             $this->afterSave($message);
         } catch (LockTimeoutException $e) {
@@ -207,7 +213,126 @@ new class extends Component {
     }
 
     /* ===============================
-     | BUILD PAYLOAD — helper agar tidak duplikasi antara insert dan update
+ | PUSH DATA ANTRIAN BPJS — REFACTORED
+ | Menerima $isPoliSpesialis dari save() agar tidak query ulang
+ =============================== */
+    private function pushDataAntrian(bool $isPoliSpesialis = false): void
+    {
+        if ($this->dataDaftarPoliRJ['klaimId'] === 'KR') {
+            return;
+        }
+
+        if (!$isPoliSpesialis) {
+            return;
+        }
+
+        // Skip jika sudah berhasil sebelumnya
+        $statusTambahPendaftaran = $this->dataDaftarPoliRJ['taskIdPelayanan']['tambahPendaftaran'] ?? '';
+        if ($statusTambahPendaftaran == 200 || $statusTambahPendaftaran == 208) {
+            return;
+        }
+
+        try {
+            $dataAntrian = $this->prepareDataAntrian();
+            $response = AntrianTrait::tambah_antrean($dataAntrian)->getOriginalContent();
+            $code = $response['metadata']['code'] ?? '';
+            $message = $response['metadata']['message'] ?? '';
+            $isSuccess = $code == 200 || $code == 208;
+
+            // Simpan kode ke taskIdPelayanan
+            $this->dataDaftarPoliRJ['taskIdPelayanan']['tambahPendaftaran'] = $code;
+
+            // Log selalu — sukses maupun gagal — untuk audit trail
+            \Log::info('BPJS Antrian tambah_antrean', [
+                'rjNo' => $this->dataDaftarPoliRJ['rjNo'] ?? null,
+                'noBooking' => $dataAntrian['kodebooking'] ?? null,
+                'poliId' => $dataAntrian['kodepoli'] ?? null,
+                'code' => $code,
+                'message' => $message,
+                // Tampilkan errors validator jika ada (code 201)
+                'errors' => $response['response'] ?? null,
+                'payload_nik' => $dataAntrian['nik'] ?? null,
+                'payload_nohp' => $dataAntrian['nohp'] ?? null,
+            ]);
+
+            $this->dispatch('toast', type: $isSuccess ? 'success' : 'error', message: 'Tambah Pendaftaran: ' . $message, title: $isSuccess ? 'Berhasil' : 'Gagal', position: 'top-right', duration: 5000);
+
+            $this->updateTaskId1And2();
+            $this->updateTaskId3();
+        } catch (\Exception $e) {
+            $this->handleAntrianError($e);
+        }
+    }
+
+    /* ===============================
+ | PREPARE DATA ANTRIAN — SANITASI NIK & NOHP
+ =============================== */
+    private function prepareDataAntrian(): array
+    {
+        $rjDate = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate']);
+
+        $jadwalPraktek = $this->getJadwalPraktek($rjDate);
+        $jamPraktek = substr($jadwalPraktek['mulai_praktek'], 0, 5) . '-' . substr($jadwalPraktek['selesai_praktek'], 0, 5);
+        $estimasiDilayani = $rjDate->copy()->valueOf();
+
+        $kuotaTotal = $jadwalPraktek['kuota'];
+        $noAntrian = (int) $this->dataDaftarPoliRJ['noAntrian'];
+        $sisaKuota = max(0, $kuotaTotal - $noAntrian);
+
+        if ($sisaKuota <= 0) {
+            $this->dispatch('toast', type: 'warning', message: "PERINGATAN: Kuota praktek telah habis! (Kuota: {$kuotaTotal}, No. Antrian: {$noAntrian})", title: 'Kuota Habis', position: 'top-end');
+        }
+
+        // ── Sanitasi NIK ─────────────────────────────────────────────
+        // Strip semua non-digit, pastikan 16 karakter persis untuk JKN
+        $rawNik = $this->dataPasien['pasien']['identitas']['nik'] ?? '';
+        $nik = preg_replace('/\D/', '', $rawNik);
+
+        // ── Sanitasi NoHP ────────────────────────────────────────────
+        // Strip semua non-digit (+62 / 62 → 08, spasi, strip, titik)
+        $rawNohp = $this->dataPasien['pasien']['kontak']['nomerTelponSelulerPasien'] ?? '';
+        $nohp = preg_replace('/\D/', '', $rawNohp);
+        if (str_starts_with($nohp, '62')) {
+            $nohp = '0' . substr($nohp, 2);
+        }
+        // Fallback: jika kosong setelah sanitasi, kirim '0' agar tidak gagal required
+        if (empty($nohp)) {
+            $nohp = '0';
+            \Log::warning('BPJS Antrian: nomor HP pasien kosong', [
+                'regNo' => $this->dataDaftarPoliRJ['regNo'] ?? null,
+                'rawNohp' => $rawNohp,
+            ]);
+        }
+
+        return [
+            'kodebooking' => $this->dataDaftarPoliRJ['noBooking'],
+            'jenispasien' => $this->getJenisPasien(),
+            'nomorkartu' => $this->getNomorKartu(),
+            'nik' => $nik,
+            'nohp' => $nohp,
+            'kodepoli' => $this->getKodePoli(),
+            'namapoli' => $this->dataDaftarPoliRJ['poliDesc'],
+            'pasienbaru' => (int) ($this->dataDaftarPoliRJ['passStatus'] === 'N'),
+            'norm' => $this->dataDaftarPoliRJ['regNo'],
+            'tanggalperiksa' => $rjDate->format('Y-m-d'),
+            'kodedokter' => $this->getKodeDokter(),
+            'namadokter' => $this->dataDaftarPoliRJ['drDesc'],
+            'jampraktek' => $jamPraktek,
+            'jeniskunjungan' => $this->getJenisKunjunganBPJS(),
+            'nomorreferensi' => $this->dataDaftarPoliRJ['noReferensi'] ?? '',
+            'nomorantrean' => $this->dataDaftarPoliRJ['noAntrian'],
+            'angkaantrean' => (int) $this->dataDaftarPoliRJ['noAntrian'],
+            'estimasidilayani' => $estimasiDilayani,
+            'sisakuotajkn' => $sisaKuota,
+            'kuotajkn' => $kuotaTotal,
+            'sisakuotanonjkn' => $sisaKuota,
+            'kuotanonjkn' => $kuotaTotal,
+            'keterangan' => 'Peserta harap 30 menit lebih awal guna pencatatan administrasi.',
+        ];
+    }
+
+    /* ===============================
+     | BUILD PAYLOAD
      =============================== */
     private function buildPayload(string $rjNo): array
     {
@@ -240,34 +365,28 @@ new class extends Component {
     {
         $data = &$this->dataDaftarPoliRJ;
 
-        // 1. Status Kunjungan Internal
         if (!empty($data['kunjunganId']) && $data['kunjunganId'] == 2) {
             $data['kunjunganInternalStatus'] = '1';
         }
 
-        // 2. Generate No Booking
         if (empty($data['noBooking'])) {
             $data['noBooking'] = Carbon::now()->format('YmdHis') . 'RSIM';
         }
 
-        // 3. Generate No RJ
         if (empty($data['rjNo'])) {
             $maxRjNo = DB::table('rstxn_rjhdrs')->max('rj_no');
             $data['rjNo'] = $maxRjNo ? $maxRjNo + 1 : 1;
         }
 
-        // 4. Generate No Antrian
         if (empty($data['noAntrian'])) {
             if (!empty($data['klaimId']) && $data['klaimId'] !== 'KR') {
                 if (!empty($data['rjDate']) && !empty($data['drId'])) {
                     $tglAntrian = Carbon::createFromFormat('d/m/Y H:i:s', $data['rjDate'])->format('dmY');
-
                     $noUrutAntrian = DB::table('rstxn_rjhdrs')
                         ->where('dr_id', $data['drId'])
                         ->where('klaim_id', '!=', 'KR')
                         ->whereRaw("to_char(rj_date, 'ddmmyyyy') = ?", [$tglAntrian])
                         ->count();
-
                     $data['noAntrian'] = $noUrutAntrian + 1;
                 }
             } else {
@@ -275,7 +394,6 @@ new class extends Component {
             }
         }
 
-        // 5. Task ID Pelayanan — init jika kosong
         $data['taskIdPelayanan'] ??= [];
 
         if (empty($data['taskIdPelayanan']['taskId3']) && !empty($data['rjDate'])) {
@@ -294,20 +412,12 @@ new class extends Component {
             'dataDaftarPoliRJ.drDesc' => 'Nama Dokter',
             'dataDaftarPoliRJ.poliId' => 'ID Poli',
             'dataDaftarPoliRJ.poliDesc' => 'Nama Poli',
-            'dataDaftarPoliRJ.kddrbpjs' => 'Kode Dokter BPJS',
-            'dataDaftarPoliRJ.kdpolibpjs' => 'Kode Poli BPJS',
             'dataDaftarPoliRJ.rjDate' => 'Tanggal Kunjungan',
             'dataDaftarPoliRJ.rjNo' => 'Nomor Kunjungan',
             'dataDaftarPoliRJ.shift' => 'Shift',
             'dataDaftarPoliRJ.noAntrian' => 'Nomor Antrian',
             'dataDaftarPoliRJ.noBooking' => 'Nomor Booking',
             'dataDaftarPoliRJ.slCodeFrom' => 'Kode Sumber',
-            'dataDaftarPoliRJ.passStatus' => 'Status Pasien',
-            'dataDaftarPoliRJ.rjStatus' => 'Status Rawat Jalan',
-            'dataDaftarPoliRJ.txnStatus' => 'Status Transaksi',
-            'dataDaftarPoliRJ.ermStatus' => 'Status EMR',
-            'dataDaftarPoliRJ.cekLab' => 'Cek Laboratorium',
-            'dataDaftarPoliRJ.kunjunganInternalStatus' => 'Status Kunjungan Internal',
             'dataDaftarPoliRJ.noReferensi' => 'Nomor Referensi',
             'dataDaftarPoliRJ.klaimId' => 'ID Klaim',
         ];
@@ -336,12 +446,10 @@ new class extends Component {
             'dataDaftarPoliRJ.klaimId' => 'required|exists:rsmst_klaimtypes,klaim_id',
         ];
 
-        // Validasi khusus BPJS
         if (($this->dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($this->dataDaftarPoliRJ['klaimId'] ?? '') === 'JM') {
             $rules['dataDaftarPoliRJ.noReferensi'] = 'bail|required|string|min:3|max:19';
         }
 
-        // Validasi khusus Kronis
         if (($this->dataDaftarPoliRJ['klaimStatus'] ?? '') === 'KRONIS') {
             $rules['dataDaftarPoliRJ.noAntrian'] = 'required|numeric';
         }
@@ -351,9 +459,6 @@ new class extends Component {
 
     /* ===============================
      | UPDATE JSON DATA
-     |
-     | ⚠️  Dipanggil di dalam DB::transaction + setelah lock.
-     |     Throws RuntimeException jika data tidak ditemukan — agar transaksi rollback.
      =============================== */
     private function updateJsonData(string $rjNo): void
     {
@@ -364,14 +469,12 @@ new class extends Component {
             return;
         }
 
-        // Edit: ambil data existing dari DB (row sudah di-lock di caller)
         $existingData = $this->findDataRJ($rjNo);
 
         if (empty($existingData)) {
             throw new \RuntimeException('Data RJ tidak ditemukan, simpan dibatalkan.');
         }
 
-        // Patch hanya field yang diizinkan — hindari array_replace_recursive
         foreach ($allowedFields as $field) {
             if (array_key_exists($field, $this->dataDaftarPoliRJ)) {
                 $existingData[$field] = $this->dataDaftarPoliRJ[$field];
@@ -382,7 +485,7 @@ new class extends Component {
     }
 
     /* ===============================
-     | AFTER SAVE — di luar transaksi
+     | AFTER SAVE
      =============================== */
     private function afterSave(string $message): void
     {
@@ -396,7 +499,7 @@ new class extends Component {
     }
 
     /* ===============================
-     | HANDLE DATABASE ERROR
+     | DB ERROR HANDLER
      =============================== */
     private function handleDatabaseError(QueryException $e): void
     {
@@ -416,89 +519,7 @@ new class extends Component {
         \Log::error('Database error in save: ' . $e->getMessage(), [
             'rjNo' => $this->dataDaftarPoliRJ['rjNo'] ?? null,
             'formMode' => $this->formMode,
-            'sql' => $e->getSql() ?? null,
-            'bindings' => $e->getBindings() ?? null,
-            'trace' => $e->getTraceAsString(),
         ]);
-    }
-
-    /* ===============================
-     | PUSH DATA ANTRIAN KE BPJS
-     | ⚠️  Dipanggil DI LUAR DB::transaction
-     =============================== */
-    private function pushDataAntrian(): void
-    {
-        if ($this->dataDaftarPoliRJ['klaimId'] === 'KR') {
-            return;
-        }
-
-        $isPoliSpesialis = DB::table('rsmst_polis')->where('poli_id', $this->dataDaftarPoliRJ['poliId'])->where('spesialis_status', '1')->exists();
-
-        if (!$isPoliSpesialis) {
-            return;
-        }
-
-        $statusTambahPendaftaran = $this->dataDaftarPoliRJ['taskIdPelayanan']['tambahPendaftaran'] ?? '';
-        if ($statusTambahPendaftaran == 200 || $statusTambahPendaftaran == 208) {
-            return;
-        }
-
-        try {
-            $dataAntrian = $this->prepareDataAntrian();
-            $response = AntrianTrait::tambah_antrean($dataAntrian)->getOriginalContent();
-            $code = $response['metadata']['code'] ?? '';
-            $message = $response['metadata']['message'] ?? '';
-
-            $this->dataDaftarPoliRJ['taskIdPelayanan']['tambahPendaftaran'] = $code;
-            $this->dispatch('toast', type: $code == 200 ? 'success' : 'error', message: 'Tambah Pendaftaran: ' . $message, title: $code == 200 ? 'Berhasil' : 'Gagal', position: 'top-right', duration: 5000);
-
-            $this->updateTaskId1And2();
-            $this->updateTaskId3();
-        } catch (\Exception $e) {
-            $this->handleAntrianError($e);
-        }
-    }
-
-    private function prepareDataAntrian(): array
-    {
-        $rjDate = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate']);
-        $jadwalPraktek = $this->getJadwalPraktek($rjDate);
-        $jamPraktek = substr($jadwalPraktek['mulai_praktek'], 0, 5) . '-' . substr($jadwalPraktek['selesai_praktek'], 0, 5);
-        $estimasiDilayani = $rjDate->copy()->valueOf();
-
-        $kuotaTotal = $jadwalPraktek['kuota'];
-        $noAntrian = (int) $this->dataDaftarPoliRJ['noAntrian'];
-        $sisaKuota = max(0, $kuotaTotal - $noAntrian);
-
-        if ($sisaKuota <= 0) {
-            $this->dispatch('toast', type: 'warning', message: "PERINGATAN: Kuota praktek telah habis! (Kuota: {$kuotaTotal}, No. Antrian: {$noAntrian})", title: 'Kuota Habis', position: 'top-end');
-        }
-
-        return [
-            'kodebooking' => $this->dataDaftarPoliRJ['noBooking'],
-            'jenispasien' => $this->getJenisPasien(),
-            'nomorkartu' => $this->getNomorKartu(),
-            'nik' => $this->dataPasien['pasien']['identitas']['nik'] ?? '',
-            'nohp' => $this->dataPasien['pasien']['kontak']['nomerTelponSelulerPasien'] ?? '',
-            'kodepoli' => $this->getKodePoli(),
-            'namapoli' => $this->dataDaftarPoliRJ['poliDesc'],
-            'pasienbaru' => (int) ($this->dataDaftarPoliRJ['passStatus'] === 'N'),
-            'norm' => $this->dataDaftarPoliRJ['regNo'],
-            'tanggalperiksa' => $rjDate->format('Y-m-d'),
-            'kodedokter' => $this->getKodeDokter(),
-            'namadokter' => $this->dataDaftarPoliRJ['drDesc'],
-            'jampraktek' => $jamPraktek,
-            'jeniskunjungan' => $this->getJenisKunjunganBPJS(),
-            'nomorreferensi' => $this->dataDaftarPoliRJ['noReferensi'] ?? '',
-            'nomorantrean' => $this->dataDaftarPoliRJ['noAntrian'],
-            'angkaantrean' => (int) $this->dataDaftarPoliRJ['noAntrian'],
-            'estimasidilayani' => $estimasiDilayani,
-            'sisakuotajkn' => $sisaKuota,
-            'kuotajkn' => $kuotaTotal,
-            'sisakuotanonjkn' => $sisaKuota,
-            'kuotanonjkn' => $kuotaTotal,
-            'keterangan' => 'Peserta harap 30 menit lebih awal guna pencatatan administrasi.',
-        ];
     }
 
     private function getJadwalPraktek(Carbon $rjDate): array
@@ -604,6 +625,7 @@ new class extends Component {
 
     private function pushDataTaskId($noBooking, $taskId, $time): int|string
     {
+        // Static call — tidak bisa $this-> karena trait conflict
         $response = AntrianTrait::update_antrean($noBooking, $taskId, $time, '')->getOriginalContent();
         $code = $response['metadata']['code'] ?? '';
         $message = $response['metadata']['message'] ?? '';
@@ -621,15 +643,17 @@ new class extends Component {
 
     /* ===============================
      | PUSH INSERT SEP
+     | Static call VclaimTrait:: — tidak bisa use bersamaan dengan AntrianTrait (method conflict)
      =============================== */
     private function pushInsertSEP(array $reqSep): void
     {
         if (empty($reqSep)) {
-            $this->dispatch('toast', type: 'warning', message: 'Data request SEP kosong, tidak dapat membuat SEP.', title: 'Peringatan');
+            $this->dispatch('toast', type: 'warning', message: 'Data request SEP kosong, tidak dapat membuat SEP.');
             return;
         }
 
         try {
+            // Static call — tidak bisa $this-> karena VclaimTrait & AntrianTrait conflict
             $response = VclaimTrait::sep_insert($reqSep)->getOriginalContent();
             $code = $response['metadata']['code'] ?? 500;
 
@@ -663,7 +687,7 @@ new class extends Component {
             $this->dataDaftarPoliRJ['noReferensi'] = $reqSep['request']['t_sep']['rujukan']['noRujukan'];
         }
 
-        $this->dispatch('toast', type: 'success', message: "SEP berhasil dibuat: {$sepData['noSep']}", title: 'Sukses');
+        $this->dispatch('toast', type: 'success', message: "SEP berhasil dibuat: {$sepData['noSep']}");
         $this->incrementVersion('modal');
     }
 
@@ -671,7 +695,7 @@ new class extends Component {
     {
         $code = $response['metadata']['code'] ?? 500;
         $message = $response['metadata']['message'] ?? 'Gagal membuat SEP';
-        $this->dispatch('toast', type: 'error', message: "Gagal membuat SEP: {$message} ({$code})", title: 'Error SEP');
+        $this->dispatch('toast', type: 'error', message: "Gagal membuat SEP: {$message} ({$code})");
     }
 
     private function handleInsertSepException(\Exception $e): void
@@ -681,6 +705,7 @@ new class extends Component {
 
     /* ===============================
      | PUSH UPDATE SEP
+     | Static call VclaimTrait:: — tidak bisa use bersamaan dengan AntrianTrait (method conflict)
      =============================== */
     private function pushUpdateSEP(array $reqSepUpdate): void
     {
@@ -690,6 +715,7 @@ new class extends Component {
 
         try {
             $reqUpdate = $this->formatUpdateSepRequest($reqSepUpdate);
+            // Static call — tidak bisa $this-> karena VclaimTrait & AntrianTrait conflict
             $response = VclaimTrait::sep_update($reqUpdate)->getOriginalContent();
             $code = $response['metadata']['code'] ?? 500;
 
@@ -699,7 +725,7 @@ new class extends Component {
                 $this->handleUpdateSepError($response);
             }
         } catch (\Exception $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal update SEP: ' . $e->getMessage(), title: 'Error Update SEP');
+            $this->dispatch('toast', type: 'error', message: 'Gagal update SEP: ' . $e->getMessage());
         }
     }
 
@@ -757,7 +783,7 @@ new class extends Component {
     {
         $code = $response['metadata']['code'] ?? 200;
         $message = $response['metadata']['message'] ?? 'SEP berhasil diupdate';
-        $this->dispatch('toast', type: 'success', message: "Update SEP ({$code}): {$message}", title: 'Sukses');
+        $this->dispatch('toast', type: 'success', message: "Update SEP ({$code}): {$message}");
         $this->dataDaftarPoliRJ['sep']['updated_at'] = Carbon::now()->format('d/m/Y H:i:s');
     }
 
@@ -765,7 +791,7 @@ new class extends Component {
     {
         $code = $response['metadata']['code'] ?? 500;
         $message = $response['metadata']['message'] ?? 'Gagal update SEP';
-        $this->dispatch('toast', type: 'error', message: "Update SEP gagal ({$code}): {$message}", title: 'Gagal Update SEP');
+        $this->dispatch('toast', type: 'error', message: "Update SEP gagal ({$code}): {$message}");
     }
 
     /* ===============================
@@ -803,7 +829,7 @@ new class extends Component {
         $this->dataDaftarPoliRJ['sep']['reqSep'] = $reqSep;
         $this->dataDaftarPoliRJ['noReferensi'] = $reqSep['request']['t_sep']['rujukan']['noRujukan'] ?? ($this->dataDaftarPoliRJ['noReferensi'] ?? null);
         $this->incrementVersion('modal');
-        $this->dispatch('toast', ['type' => 'success', 'message' => 'Request SEP berhasil diterima']);
+        $this->dispatch('toast', type: 'success', message: 'Request SEP berhasil diterima');
     }
 
     public function openVclaimModal(): void
@@ -826,6 +852,15 @@ new class extends Component {
         }
 
         $this->dispatch('open-vclaim-modal', rjNo: $this->rjNo, regNo: $this->dataDaftarPoliRJ['regNo'], drId: $this->dataDaftarPoliRJ['drId'], drDesc: $this->dataDaftarPoliRJ['drDesc'], poliId: $this->dataDaftarPoliRJ['poliId'], poliDesc: $this->dataDaftarPoliRJ['poliDesc'], kdpolibpjs: $this->dataDaftarPoliRJ['kdpolibpjs'] ?? null, kunjunganId: $this->kunjunganId, kontrol12: $this->kontrol12, internal12: $this->internal12, postInap: $this->dataDaftarPoliRJ['postInap'] ?? false, noReferensi: $this->dataDaftarPoliRJ['noReferensi'] ?? null, sepData: $this->dataDaftarPoliRJ['sep'] ?? []);
+    }
+
+    public function cetakSEP(): void
+    {
+        if (empty($this->dataDaftarPoliRJ['sep']['noSep'])) {
+            $this->dispatch('toast', type: 'error', message: 'Tidak ada SEP untuk dicetak.');
+            return;
+        }
+        $this->dispatch('cetak-sep-rj.open', noSep: $this->dataDaftarPoliRJ['sep']['noSep']);
     }
 
     /* ===============================
@@ -922,9 +957,7 @@ new class extends Component {
     }
 };
 ?>
-{{-- ============================================================
-     BLADE TEMPLATE — tidak ada perubahan dari versi asli
-     ============================================================ --}}
+{{-- Blade template tidak ada perubahan --}}
 <div>
     <x-modal name="rj-actions" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
@@ -981,7 +1014,6 @@ new class extends Component {
                         </div>
                     </div>
                     <x-secondary-button type="button" wire:click="closeModal" class="!p-2">
-                        <span class="sr-only">Close</span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd"
                                 d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
@@ -1013,14 +1045,12 @@ new class extends Component {
                                         dianggap Pasien Lama.</p>
                                     <x-input-error :messages="$errors->get('dataDaftarPoliRJ.passStatus')" class="mt-1" />
                                 </div>
-                                <div class="mt-2" x-ref="lovPasien"
-                                    x-on:keydown.enter.prevent="if (!$wire.isFormLocked) $nextTick(() => $refs.lovDokter?.querySelector('input')?.focus())">
+                                <div class="mt-2" x-ref="lovPasien">
                                     <livewire:lov.pasien.lov-pasien target="rjFormPasien" :initialRegNo="$dataDaftarPoliRJ['regNo'] ?? ''"
                                         :disabled="$isFormLocked" />
                                     <x-input-error :messages="$errors->get('dataDaftarPoliRJ.regNo')" class="mt-1" />
                                 </div>
-                                <div class="mt-2" x-ref="lovDokter"
-                                    x-on:keydown.enter.prevent="if (!$wire.isFormLocked) $nextTick(() => $refs.klaimOptions?.querySelector('input[type=radio]')?.focus())">
+                                <div class="mt-2" x-ref="lovDokter">
                                     <livewire:lov.dokter.lov-dokter label="Cari Dokter - Poli" target="rjFormDokter"
                                         :initialDrId="$dataDaftarPoliRJ['drId'] ?? null" :disabled="$isFormLocked" />
                                     <x-input-error :messages="$errors->get('dataDaftarPoliRJ.drId')" class="mt-1" />
@@ -1028,8 +1058,7 @@ new class extends Component {
                                     <x-input-error :messages="$errors->get('dataDaftarPoliRJ.poliId')" class="mt-1" />
                                     <x-input-error :messages="$errors->get('dataDaftarPoliRJ.poliDesc')" class="mt-1" />
                                 </div>
-                                <div x-ref="klaimOptions"
-                                    x-on:keydown.enter.prevent="if (!$wire.isFormLocked) { let next = $refs.inputNoReferensi ?? $refs.inputNoSep; $nextTick(() => next?.querySelector('input')?.focus() ?? next?.focus()) }">
+                                <div x-ref="klaimOptions">
                                     <x-input-label value="Jenis Klaim" />
                                     <div class="grid grid-cols-5 gap-2 mt-2">
                                         @foreach ($klaimOptions ?? [] as $klaim)
@@ -1080,8 +1109,7 @@ new class extends Component {
                                         <div class="grid" x-ref="inputNoReferensi">
                                             <x-input-label value="No Referensi" />
                                             <x-text-input wire:model.live="dataDaftarPoliRJ.noReferensi"
-                                                :disabled="$isFormLocked"
-                                                x-on:keydown.enter.prevent="if (!$wire.isFormLocked) $nextTick(() => $refs.inputNoSep?.focus())" />
+                                                :disabled="$isFormLocked" />
                                             <x-input-error :messages="$errors->get('dataDaftarPoliRJ.noReferensi')" />
                                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">di isi dgn : (No
                                                 Rujukan untuk FKTP/FKTL) (SKDP untuk Kontrol/Rujukan Internal)</p>
@@ -1144,8 +1172,7 @@ new class extends Component {
                                         <div class="grid">
                                             <x-input-label value="No SEP" />
                                             <x-text-input wire:model.live="dataDaftarPoliRJ.sep.noSep"
-                                                :disabled="$isFormLocked" x-ref="inputNoSep"
-                                                x-on:keydown.enter.prevent="if (!$wire.isFormLocked) $nextTick(() => $refs.btnSimpan?.focus())" />
+                                                :disabled="$isFormLocked" x-ref="inputNoSep" />
                                             <x-input-error :messages="$errors->get('dataDaftarPoliRJ.sep.noSep')" class="mt-1" />
                                         </div>
                                     </div>

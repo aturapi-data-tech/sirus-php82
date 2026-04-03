@@ -49,7 +49,7 @@ new class extends Component {
         $this->selectedItems = [];
         $this->searchItem = '';
         $this->resetPage();
-        $this->incrementVersion('radiologi-order-modal');
+        //$this->incrementVersion('radiologi-order-modal');
 
         $version = $this->renderVersions['radiologi-order-modal'] ?? 0;
         $this->dispatch('open-modal', name: "radiologi-order-{$version}");
@@ -60,6 +60,7 @@ new class extends Component {
         $version = $this->renderVersions['radiologi-order-modal'] ?? 0;
         $this->dispatch('close-modal', name: "radiologi-order-{$version}");
         $this->reset(['selectedItems', 'searchItem']);
+        $this->incrementVersion('radiologi-order-modal');
     }
 
     /* ===============================

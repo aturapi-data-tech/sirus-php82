@@ -5,8 +5,15 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 
+// Deklarasi Render Versioning Trait //
+use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+
 new class extends Component {
+    use WithRenderVersioningTrait;
     public string $formMode = 'create'; // create|edit
+    public string $originalPoliId = '';
+    public array $renderVersions = [];
+    protected array $renderAreas = ['modal']; // ← area ini tidak untuk poli
 
     // Array dengan struktur yang diminta
     public array $formPoli = [
@@ -22,7 +29,11 @@ new class extends Component {
     {
         $this->resetFormFields();
         $this->formMode = 'create';
+        $this->originalPoliId = '';
+
         $this->resetValidation();
+
+        $this->incrementVersion('modal');
 
         $this->dispatch('open-modal', name: 'master-poli-actions');
         $this->dispatch('focus-field', mode: 'create'); // Dispatch event dengan mode create
@@ -38,7 +49,11 @@ new class extends Component {
 
         $this->resetFormFields();
         $this->formMode = 'edit';
+        $this->originalPoliId = $poliId;
+
         $this->fillFormFromRow($row);
+
+        $this->incrementVersion('modal');
 
         $this->dispatch('open-modal', name: 'master-poli-actions');
         $this->dispatch('focus-field', mode: 'edit'); // Dispatch event dengan mode edit
@@ -138,7 +153,9 @@ new class extends Component {
 
     public function closeModal(): void
     {
+        $this->resetFormFields();
         $this->dispatch('close-modal', name: 'master-poli-actions');
+        $this->resetVersion();
     }
 
     #[On('master.poli.requestDelete')]
@@ -170,12 +187,18 @@ new class extends Component {
             throw $e;
         }
     }
+
+    public function mount(): void
+    {
+        $this->registerAreas(['modal']);
+    }
 };
 ?>
 
 <div>
     <x-modal name="master-poli-actions" size="full" height="full" focusable>
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]">
+        <div class="flex flex-col min-h-[calc(100vh-8rem)]"
+            wire:key="{{ $this->renderKey('modal', [$formMode, $originalPoliId]) }}">
 
             {{-- HEADER --}}
             <div class="relative px-6 py-5 border-b border-gray-200 dark:border-gray-700">
@@ -308,6 +331,7 @@ new class extends Component {
                     </div>
                 </div>
             </div>
+        </div>
 
             {{-- FOOTER --}}
             <div
@@ -323,16 +347,15 @@ new class extends Component {
                         <span class="hidden sm:inline"> di field terakhir untuk menyimpan</span>
                     </div>
 
-                    <div class="flex justify-end gap-2">
-                        <x-secondary-button type="button" wire:click="closeModal">
-                            Batal
-                        </x-secondary-button>
+                <div class="flex justify-end gap-2">
+                    <x-secondary-button type="button" wire:click="closeModal">
+                        Batal
+                    </x-secondary-button>
 
-                        <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
-                            <span wire:loading.remove>Simpan</span>
-                            <span wire:loading>Saving...</span>
-                        </x-primary-button>
-                    </div>
+                    <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
+                        <span wire:loading.remove>Simpan</span>
+                        <span wire:loading>Saving...</span>
+                    </x-primary-button>
                 </div>
             </div>
         </div>
