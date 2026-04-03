@@ -348,24 +348,66 @@ new class extends Component {
                 'faring' => 'Faring',
             ];
         @endphp
-        <div class="mt-3 grid grid-cols-2 gap-3">
-            @foreach ($anatomiList as $key => $label)
-                @php $kelainan = $dataDaftarRi['pengkajianDokter']['anatomi'][$key]['kelainan'] ?? 'Tidak Diperiksa'; @endphp
-                <div class="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                    <p class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">{{ $label }}</p>
-                    <x-select-input
-                        wire:model.live="dataDaftarRi.pengkajianDokter.anatomi.{{ $key }}.kelainan"
-                        class="w-full" :disabled="$isFormLocked">
-                        <option value="Tidak Diperiksa">Tidak Diperiksa</option>
-                        <option value="Tidak Ada Kelainan">Tidak Ada Kelainan</option>
-                        <option value="Ada">Ada Kelainan</option>
-                    </x-select-input>
-                    @if ($kelainan === 'Ada')
-                        <x-text-input wire:model.live="dataDaftarRi.pengkajianDokter.anatomi.{{ $key }}.desc"
-                            class="w-full mt-1" placeholder="Deskripsi kelainan..." :disabled="$isFormLocked" />
-                    @endif
+
+        <div class="mt-4" x-data="{ activeTabAnatomi: '{{ array_key_first($anatomiList) }}' }">
+            <div class="flex gap-4">
+
+                {{-- SIDEBAR TABS --}}
+                <div
+                    class="w-44 shrink-0 overflow-y-auto max-h-80 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                    @foreach ($anatomiList as $key => $label)
+                        <button type="button" @click="activeTabAnatomi = '{{ $key }}'"
+                            class="w-full text-left px-3 py-2.5 text-xs font-medium border-b border-gray-100 dark:border-gray-700 transition-colors last:border-0"
+                            :class="activeTabAnatomi === '{{ $key }}'
+                                ?
+                                'bg-brand text-white' :
+                                'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800'">
+                            {{ strtoupper($label) }}
+                        </button>
+                    @endforeach
                 </div>
-            @endforeach
+
+                {{-- PANEL KONTEN --}}
+                <div class="flex-1 min-w-0">
+                    @foreach ($anatomiList as $key => $label)
+                        @php
+                            $kelainan =
+                                $dataDaftarRi['pengkajianDokter']['anatomi'][$key]['kelainan'] ?? 'Tidak Diperiksa';
+                        @endphp
+
+                        {{-- ✅ x-data per panel agar kelainan Alpine reactive --}}
+                        <div x-show="activeTabAnatomi === '{{ $key }}'" x-data="{ kelainan: '{{ $kelainan }}' }"
+                            x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
+                            x-transition:enter-end="opacity-100" class="space-y-3">
+
+                            {{-- Kelainan --}}
+                            <div>
+                                <x-input-label :value="__(strtoupper($label) . ' — Kelainan')" />
+                                <x-select-input x-on:change="kelainan = $event.target.value"
+                                    wire:model.live="dataDaftarRi.pengkajianDokter.anatomi.{{ $key }}.kelainan"
+                                    :disabled="$isFormLocked" class="w-full mt-1">
+                                    <option value="Tidak Diperiksa">Tidak Diperiksa</option>
+                                    <option value="Tidak Ada Kelainan">Tidak Ada Kelainan</option>
+                                    <option value="Ada">Ada Kelainan</option>
+                                </x-select-input>
+                                <x-input-error :messages="$errors->get('dataDaftarRi.pengkajianDokter.anatomi.' . $key . '.kelainan')" class="mt-1" />
+                            </div>
+
+                            {{-- Deskripsi — ✅ reactive via Alpine state --}}
+                            <div x-show="kelainan === 'Ada'" x-cloak>
+                                <x-input-label value="Deskripsi Kelainan" />
+                                <x-textarea
+                                    wire:model.live="dataDaftarRi.pengkajianDokter.anatomi.{{ $key }}.desc"
+                                    placeholder="Deskripsi kelainan {{ $label }}..." :disabled="$isFormLocked"
+                                    rows="4" class="w-full mt-1" />
+                                <x-input-error :messages="$errors->get('dataDaftarRi.pengkajianDokter.anatomi.' . $key . '.desc')" class="mt-1" />
+                            </div>
+
+                        </div>
+                    @endforeach
+                </div>
+
+            </div>
         </div>
     </x-border-form>
 
