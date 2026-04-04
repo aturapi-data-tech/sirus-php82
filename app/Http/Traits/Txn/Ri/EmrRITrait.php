@@ -263,15 +263,15 @@ trait EmrRITrait
     protected function checkEmrRIStatus($riHdrNo): bool
     {
         $row = DB::table('rstxn_rihdrs')
-            ->select('emr_status')
+            ->select('ri_status')
             ->where('rihdr_no', $riHdrNo)
             ->first();
 
-        if (! $row || empty($row->emr_status)) {
+        if (! $row || empty($row->ri_status)) {
             return false;
         }
 
         // Terkunci jika bukan 'I' (sudah Pulang atau status lain)
-        return $row->emr_status !== 'I';
+        return $row->ri_status !== 'I';
     }
 }

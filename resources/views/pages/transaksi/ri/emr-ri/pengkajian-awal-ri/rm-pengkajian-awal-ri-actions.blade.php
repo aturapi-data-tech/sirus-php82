@@ -5,8 +5,6 @@ use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Contracts\Cache\LockTimeoutException;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
 
@@ -20,7 +18,6 @@ new class extends Component {
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-pengkajian-awal-ri'];
 
-    /* ── Default struktur ── */
     public array $pengkajianAwalDefault = [
         'bagian1DataUmum' => [
             'kondisiSaatMasuk' => '',
@@ -80,7 +77,6 @@ new class extends Component {
         'levelingDokter' => [],
     ];
 
-    /* ── Form leveling dokter ── */
     public array $levelingDokter = [
         'drId' => '',
         'drName' => '',
@@ -101,6 +97,7 @@ new class extends Component {
         if (empty($riHdrNo)) {
             return;
         }
+
         $this->riHdrNo = $riHdrNo;
         $this->resetForm();
         $this->resetValidation();
@@ -110,32 +107,36 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data RI tidak ditemukan.');
             return;
         }
+
         $this->dataDaftarRi = $data;
         $this->dataDaftarRi['pengkajianAwalPasienRawatInap'] ??= $this->pengkajianAwalDefault;
 
-        $this->incrementVersion('modal-pengkajian-awal-ri');
+        $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
 
-        $riStatus = DB::scalar('select ri_status from rstxn_rihdrs where rihdr_no=:r', ['r' => $riHdrNo]);
-        $this->isFormLocked = $riStatus !== 'I';
+        $this->incrementVersion('modal-pengkajian-awal-ri');
     }
 
     #[On('save-rm-pengkajian-awal-ri')]
-    public function store(): void
+    public function save(): void
     {
         if ($this->isFormLocked) {
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, form terkunci.');
             return;
         }
+
         try {
-            $this->withRiLock(function () {
+            DB::transaction(function () {
+                // ← trait pattern
+                $this->lockRIRow($this->riHdrNo);
+
                 $fresh = $this->findDataRI($this->riHdrNo) ?? [];
                 $fresh['pengkajianAwalPasienRawatInap'] = $this->dataDaftarRi['pengkajianAwalPasienRawatInap'] ?? [];
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->dataDaftarRi = $fresh;
             });
             $this->afterSave('Pengkajian Awal berhasil disimpan.');
-        } catch (LockTimeoutException) {
-            $this->dispatch('toast', type: 'error', message: 'Sistem sibuk, coba lagi.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
         }
@@ -150,10 +151,9 @@ new class extends Component {
         $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian5CatatanDanTandaTangan']['petugasPengkaji'] = auth()->user()->myuser_name;
         $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian5CatatanDanTandaTangan']['petugasPengkajiCode'] = auth()->user()->myuser_code;
         $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian5CatatanDanTandaTangan']['jamPengkaji'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
-        $this->store();
+        $this->save();
     }
 
-    /* ── Leveling Dokter ── */
     #[On('lov.selected.leveling-dokter-ri')]
     public function onDokterSelected(string $target, array $payload): void
     {
@@ -162,7 +162,6 @@ new class extends Component {
         $this->levelingDokter['poliId'] = $payload['poli_id'] ?? '';
         $this->levelingDokter['poliDesc'] = $payload['poli_desc'] ?? '';
 
-        // Jika sudah ada dokter Utama, default level jadi RawatGabung
         $sudahAdaUtama = collect($this->dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [])->contains('levelDokter', 'Utama');
 
         $this->levelingDokter['levelDokter'] = $sudahAdaUtama ? 'RawatGabung' : 'Utama';
@@ -205,7 +204,7 @@ new class extends Component {
             'levelDokter' => $this->levelingDokter['levelDokter'],
         ];
 
-        $this->store();
+        $this->save();
         $this->reset(['levelingDokter']);
         $this->levelingDokter['levelDokter'] = 'Utama';
     }
@@ -214,7 +213,7 @@ new class extends Component {
     {
         $list = collect($this->dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? []);
         $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] = $list->where('tglEntry', '!=', $tglEntry)->values()->toArray();
-        $this->store();
+        $this->save();
     }
 
     public function setLevelDokter(int $index, string $level): void
@@ -229,7 +228,7 @@ new class extends Component {
             return;
         }
         $list[$index]['levelDokter'] = $level;
-        $this->store();
+        $this->save();
     }
 
     private function afterSave(string $msg): void
@@ -244,16 +243,6 @@ new class extends Component {
         $this->isFormLocked = false;
         $this->reset(['levelingDokter']);
         $this->levelingDokter['levelDokter'] = 'Utama';
-    }
-
-    private function withRiLock(callable $fn): void
-    {
-        Cache::lock("ri:{$this->riHdrNo}", 10)->block(5, function () use ($fn) {
-            DB::transaction(function () use ($fn) {
-                $this->lockRIRow($this->riHdrNo);
-                $fn();
-            }, 5);
-        });
     }
 };
 ?>
@@ -278,7 +267,7 @@ new class extends Component {
     | BAGIAN 1 — DATA UMUM
     ══════════════════════════════════════════ --}}
     <x-border-form title="Bagian 1 — Data Umum" align="start" bgcolor="bg-gray-50">
-        <div class="mt-3 grid grid-cols-2 gap-4">
+        <div class="mt-3 grid grid-cols-4 gap-2">
 
             {{-- Kondisi Saat Masuk --}}
             <div>
@@ -485,7 +474,7 @@ new class extends Component {
             </div>
 
             {{-- Vaksinasi --}}
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-2 gap-2">
                 <div>
                     <x-input-label value="Vaksinasi Influenza" />
                     <x-select-input
@@ -511,7 +500,7 @@ new class extends Component {
             </div>
 
             {{-- Riwayat Keluarga --}}
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 gap-4">
                 <div>
                     <x-input-label value="Riwayat Penyakit Keluarga" />
                     <x-select-input
@@ -544,7 +533,7 @@ new class extends Component {
     | BAGIAN 3 — PSIKOSOSIAL & EKONOMI
     ══════════════════════════════════════════ --}}
     <x-border-form title="Bagian 3 — Psikososial & Ekonomi" align="start" bgcolor="bg-gray-50">
-        <div class="mt-3 grid grid-cols-2 gap-4">
+        <div class="mt-3 grid grid-cols-6 gap-2">
 
             {{-- Agama / Kepercayaan --}}
             <div>
@@ -696,7 +685,7 @@ new class extends Component {
     <x-border-form title="Bagian 4 — Tanda Vital & Pemeriksaan Fisik" align="start" bgcolor="bg-gray-50">
 
         {{-- TTV --}}
-        <div class="mt-3 grid grid-cols-3 gap-3">
+        <div class="mt-3 grid grid-cols-9 gap-2">
             @foreach ([['key' => 'sistolik', 'label' => 'Sistolik (mmHg)'], ['key' => 'distolik', 'label' => 'Diastolik (mmHg)'], ['key' => 'frekuensiNadi', 'label' => 'Nadi (x/mnt)'], ['key' => 'frekuensiNafas', 'label' => 'Nafas (x/mnt)'], ['key' => 'suhu', 'label' => 'Suhu (°C)'], ['key' => 'spo2', 'label' => 'SPO2 (%)'], ['key' => 'gda', 'label' => 'GDA (g/dl)'], ['key' => 'bb', 'label' => 'BB (Kg)'], ['key' => 'tb', 'label' => 'TB (Cm)']] as $ttv)
                 <div>
                     <x-input-label value="{{ $ttv['label'] }}" />
@@ -786,7 +775,7 @@ new class extends Component {
                 ];
             @endphp
 
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-8 gap-2">
                 @foreach ($organSystems as $organ)
                     @php
                         $currentPilihan =
@@ -927,7 +916,7 @@ new class extends Component {
                 class="mt-4 p-3 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800/50">
                 <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wide">Tambah
                     Dokter</p>
-                <div class="grid grid-cols-3 gap-3 items-end">
+                <div class="grid grid-cols-5 gap-3 items-end">
 
                     {{-- LOV Dokter --}}
                     <div class="col-span-2">
@@ -946,7 +935,7 @@ new class extends Component {
                     </div>
 
                     {{-- Level Dokter --}}
-                    <div>
+                    <div class="col-span-2">
                         <x-input-label value="Level Dokter" />
                         <x-select-input wire:model.live="levelingDokter.levelDokter" class="w-full mt-1">
                             <option value="Utama">Utama</option>
@@ -956,7 +945,7 @@ new class extends Component {
                     </div>
 
                     {{-- Tombol Tambah --}}
-                    <div class="col-span-3 flex justify-end">
+                    <div class="col-span-1">
                         <x-primary-button type="button" wire:click="addLevelingDokter" :disabled="empty($levelingDokter['drId'])">
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -1013,14 +1002,14 @@ new class extends Component {
     {{-- ── TOMBOL SIMPAN ── --}}
     @if (!$isFormLocked)
         <div class="flex justify-end pt-2">
-            <x-primary-button wire:click="store" type="button" wire:loading.attr="disabled" wire:target="store">
-                <span wire:loading.remove wire:target="store" class="flex items-center gap-1">
+            <x-primary-button wire:click="save" type="button" wire:loading.attr="disabled" wire:target="save">
+                <span wire:loading.remove wire:target="save" class="flex items-center gap-1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                     </svg>
                     Simpan Pengkajian Awal
                 </span>
-                <span wire:loading wire:target="store" class="flex items-center gap-1">
+                <span wire:loading wire:target="save" class="flex items-center gap-1">
                     <x-loading /> Menyimpan...
                 </span>
             </x-primary-button>

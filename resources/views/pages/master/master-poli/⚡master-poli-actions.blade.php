@@ -30,13 +30,10 @@ new class extends Component {
         $this->resetFormFields();
         $this->formMode = 'create';
         $this->originalPoliId = '';
-
         $this->resetValidation();
-
         $this->incrementVersion('modal');
-
         $this->dispatch('open-modal', name: 'master-poli-actions');
-        $this->dispatch('focus-field', mode: 'create'); // Dispatch event dengan mode create
+        $this->dispatch('focus-poli-id'); // ← ID Dokter kosong saat create
     }
 
     #[On('master.poli.openEdit')]
@@ -258,6 +255,7 @@ new class extends Component {
                         x-on:focus-poli-name.window="$nextTick(() => setTimeout(() => $refs.inputPoliName?.focus(), 150))">
                         <div class="p-5 space-y-5">
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+<<<<<<< HEAD
 
                                 {{-- Poli ID --}}
                                 <div>
@@ -314,79 +312,62 @@ new class extends Component {
                                     <x-input-error :messages="$errors->get('formPoli.poliUuid')" class="mt-1" />
                                 </div>
                             </div>
+=======
+>>>>>>> 04f7d21643dc53dc869eeda09acdf97e201e2e15
 
-                            {{-- FOKUS DINAMIS BERDASARKAN MODE --}}
-                            <div x-data="{ 
-                                    formMode: @entangle('formMode'),
-                                    init() {
-                                        // Listen untuk event focus dari Livewire
-                                        Livewire.on('focus-field', (data) => {
-                                            setTimeout(() => {
-                                                if (data.mode === 'create' && this.$refs.poliId && !this.$refs.poliId.disabled) {
-                                                    this.$refs.poliId.focus();
-                                                } else if (data.mode === 'edit' && this.$refs.poliName) {
-                                                    this.$refs.poliName.focus();
-                                                }
-                                            }, 150); // Delay untuk memastikan modal sudah terbuka
-                                        });
-                                    }
-                                }">
-
-                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                    {{-- Poli ID --}}
-                                    <div>
-                                        <x-input-label value="Poli ID" />
-                                        <x-text-input x-ref="poliId" wire:model.live="formPoli.poliId"
-                                            :disabled="$formMode === 'edit'" :error="$errors->has('formPoli.poliId')"
-                                            class="w-full mt-1" x-on:keydown.enter.prevent="$refs.poliName.focus()" />
-                                        <x-input-error :messages="$errors->get('formPoli.poliId')" class="mt-1" />
-                                    </div>
-
-                                    {{-- Status --}}
-                                    <div>
-                                        <x-input-label value="Status" />
-                                        <x-select-input wire:model.live="formPoli.isSpecialist"
-                                            :error="$errors->has('formPoli.isSpecialist')" class="w-full mt-1">
-                                            <option value="0">Non Spesialis</option>
-                                            <option value="1">Spesialis</option>
-                                        </x-select-input>
-                                        <x-input-error :messages="$errors->get('formPoli.isSpecialist')" class="mt-1" />
-                                    </div>
+                                {{-- Poli ID --}}
+                                <div>
+                                    <x-input-label value="Poli ID" />
+                                    <x-text-input wire:model.live="formPoli.poliId" x-ref="inputPoliId"
+                                        :disabled="$formMode === 'edit'" :error="$errors->has('formPoli.poliId')"
+                                        class="w-full mt-1" x-on:keydown.enter.prevent="$refs.inputPoliName?.focus()" />
+                                    <x-input-error :messages="$errors->get('formPoli.poliId')" class="mt-1" />
                                 </div>
 
-                                {{-- Nama Poli --}}
-                                <div class="mt-4">
-                                    <x-input-label value="Nama Poli" />
-                                    <x-text-input x-ref="poliName" wire:model.live="formPoli.poliName"
-                                        :error="$errors->has('formPoli.poliName')" class="w-full mt-1"
-                                        x-on:keydown.enter.prevent="$refs.bpjsPoliCode.focus()" />
-                                    <x-input-error :messages="$errors->get('formPoli.poliName')" class="mt-1" />
+                                {{-- Status --}}
+                                <div>
+                                    <x-input-label value="Status" />
+                                    <x-select-input wire:model.live="formPoli.isSpecialist"
+                                        :error="$errors->has('formPoli.isSpecialist')" class="w-full mt-1">
+                                        <option value="0">Non Spesialis</option>
+                                        <option value="1">Spesialis</option>
+                                    </x-select-input>
+                                    <x-input-error :messages="$errors->get('formPoli.isSpecialist')" class="mt-1" />
+                                </div>
+                            </div>
+
+                            {{-- Nama Poli --}}
+                            <div>
+                                <x-input-label value="Nama Poli" />
+                                <x-text-input wire:model.live="formPoli.poliName" x-ref="inputPoliName"
+                                    :error="$errors->has('formPoli.poliName')" class="w-full mt-1"
+                                    x-on:keydown.enter.prevent="$refs.inputBpjsPoliCode?.focus()" />
+                                <x-input-error :messages="$errors->get('formPoli.poliName')" class="mt-1" />
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                {{-- Kode BPJS --}}
+                                <div>
+                                    <x-input-label value="Kode Poli BPJS" />
+                                    <x-text-input wire:model.live="formPoli.bpjsPoliCode" x-ref="inputBpjsPoliCode"
+                                        :error="$errors->has('formPoli.bpjsPoliCode')" class="w-full mt-1"
+                                        x-on:keydown.enter.prevent="$refs.inputPoliUuid?.focus()" />
+                                    <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                        Opsional — isi jika poli terhubung ke referensi BPJS.
+                                    </p>
+                                    <x-input-error :messages="$errors->get('formPoli.bpjsPoliCode')" class="mt-1" />
                                 </div>
 
-                                <div class="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-2">
-                                    {{-- Kode BPJS --}}
-                                    <div>
-                                        <x-input-label value="Kode Poli BPJS" />
-                                        <x-text-input x-ref="bpjsPoliCode" wire:model.live="formPoli.bpjsPoliCode"
-                                            :error="$errors->has('formPoli.bpjsPoliCode')" class="w-full mt-1"
-                                            x-on:keydown.enter.prevent="$refs.poliUuid.focus()" />
-                                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                                            Opsional — isi jika poli terhubung ke referensi BPJS.
-                                        </p>
-                                        <x-input-error :messages="$errors->get('formPoli.bpjsPoliCode')" class="mt-1" />
-                                    </div>
-
-                                    {{-- UUID --}}
-                                    <div>
-                                        <x-input-label value="UUID" />
-                                        <x-text-input x-ref="poliUuid" wire:model.live="formPoli.poliUuid"
-                                            :error="$errors->has('formPoli.poliUuid')" class="w-full mt-1"
-                                            x-on:keydown.enter.prevent="$wire.save()" />
-                                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                                            Opsional — untuk sinkronisasi sistem.
-                                        </p>
-                                        <x-input-error :messages="$errors->get('formPoli.poliUuid')" class="mt-1" />
-                                    </div>
+                                {{-- UUID --}}
+                                <div>
+                                    <x-input-label value="UUID" />
+                                    <x-text-input wire:model.live="formPoli.poliUuid" x-ref="inputPoliUuid"
+                                        :error="$errors->has('formPoli.poliUuid')" class="w-full mt-1"
+                                        x-on:keydown.enter.prevent="$wire.save()" />
+                                    <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                        Opsional — untuk sinkronisasi sistem.
+                                    </p>
+                                    <x-input-error :messages="$errors->get('formPoli.poliUuid')" class="mt-1" />
                                 </div>
                             </div>
                         </div>

@@ -5,8 +5,6 @@ use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Contracts\Cache\LockTimeoutException;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
 
@@ -33,33 +31,47 @@ new class extends Component {
         if (empty($riHdrNo)) {
             return;
         }
+
         $this->riHdrNo = $riHdrNo;
         $this->resetForm();
         $this->resetValidation();
+
         $data = $this->findDataRI($riHdrNo);
         if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data RI tidak ditemukan.');
             return;
         }
+
         $this->dataDaftarRi = $data;
         $this->dataDaftarRi['perencanaan'] ??= [
-            'tindakLanjut' => ['tindakLanjut' => '', 'tindakLanjutKode' => '', 'statusPulang' => '', 'noSuratMeninggal' => '', 'tglMeninggal' => '', 'tglPulang' => '', 'noLPManual' => '', 'noSep' => ''],
+            'tindakLanjut' => [
+                'tindakLanjut' => '',
+                'tindakLanjutKode' => '',
+                'statusPulang' => '',
+                'noSuratMeninggal' => '',
+                'tglMeninggal' => '',
+                'tglPulang' => '',
+                'noLPManual' => '',
+                'noSep' => '',
+            ],
             'dischargePlanning' => [
                 'pelayananBerkelanjutan' => ['pelayananBerkelanjutan' => 'Tidak Ada', 'ketPelayananBerkelanjutan' => '', 'pelayananBerkelanjutanData' => []],
                 'penggunaanAlatBantu' => ['penggunaanAlatBantu' => 'Tidak Ada', 'ketPenggunaanAlatBantu' => '', 'penggunaanAlatBantuData' => []],
             ],
         ];
-        // Auto-set noSep jika BPJS
+
         $klaimStatus =
             DB::table('rsmst_klaimtypes')
                 ->where('klaim_id', $this->dataDaftarRi['klaimId'] ?? '')
                 ->value('klaim_status') ?? 'UMUM';
+
         if ($klaimStatus === 'BPJS' && empty($this->dataDaftarRi['perencanaan']['tindakLanjut']['noSep'])) {
             $this->dataDaftarRi['perencanaan']['tindakLanjut']['noSep'] = $this->dataDaftarRi['sep']['noSep'] ?? '';
         }
+
+        $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
+
         $this->incrementVersion('modal-perencanaan-ri');
-        $riStatus = DB::scalar('select ri_status from rstxn_rihdrs where rihdr_no=:r', ['r' => $riHdrNo]);
-        $this->isFormLocked = $riStatus !== 'I';
     }
 
     public function updatedDataDaftarRiPerencanaanTindakLanjutTindakLanjut(string $val): void
@@ -78,16 +90,21 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang.');
             return;
         }
+
         try {
-            $this->withRiLock(function () {
+            DB::transaction(function () {
+                // ← trait pattern
+                $this->lockRIRow($this->riHdrNo);
+
                 $fresh = $this->findDataRI($this->riHdrNo) ?? [];
                 $fresh['perencanaan'] = $this->dataDaftarRi['perencanaan'] ?? [];
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->dataDaftarRi = $fresh;
             });
+
             $this->afterSave('Perencanaan berhasil disimpan.');
-        } catch (LockTimeoutException) {
-            $this->dispatch('toast', type: 'error', message: 'Sistem sibuk, coba lagi.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
         }
@@ -113,16 +130,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-    }
-
-    private function withRiLock(callable $fn): void
-    {
-        Cache::lock("ri:{$this->riHdrNo}", 10)->block(5, function () use ($fn) {
-            DB::transaction(function () use ($fn) {
-                $this->lockRIRow($this->riHdrNo); // row-level lock Oracle
-                $fn();
-            }, 5);
-        });
     }
 };
 ?>

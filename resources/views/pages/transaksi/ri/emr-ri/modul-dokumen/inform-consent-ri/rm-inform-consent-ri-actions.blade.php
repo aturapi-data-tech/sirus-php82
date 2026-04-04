@@ -6,8 +6,6 @@ use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -21,7 +19,6 @@ new class extends Component {
     public ?string $regNo = null;
     public array $dataDaftarRi = [];
 
-    /* TTD dari canvas */
     public $signature;
     public $signatureSaksi;
 
@@ -59,6 +56,7 @@ new class extends Component {
         if (empty($riHdrNo)) {
             return;
         }
+
         $this->riHdrNo = $riHdrNo;
         $this->resetForm();
 
@@ -67,14 +65,14 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data RI tidak ditemukan.');
             return;
         }
+
         $this->dataDaftarRi = $data;
         $this->regNo = $data['regNo'] ?? null;
         $this->dataDaftarRi['informConsentPasienRI'] ??= [];
 
-        $this->incrementVersion('modal-inform-consent-ri');
+        $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
 
-        $riStatus = DB::scalar('select ri_status from rstxn_rihdrs where rihdr_no=:r', ['r' => $riHdrNo]);
-        $this->isFormLocked = $riStatus !== 'I';
+        $this->incrementVersion('modal-inform-consent-ri');
     }
 
     public function submit(): void
@@ -149,20 +147,21 @@ new class extends Component {
     private function store(): void
     {
         try {
-            Cache::lock("ri:{$this->riHdrNo}", 5)->block(3, function () {
-                DB::transaction(function () {
-                    $this->lockRIRow($this->riHdrNo); // row-level lock Oracle
-                    $fresh = $this->findDataRI($this->riHdrNo) ?: [];
-                    $fresh['informConsentPasienRI'] ??= [];
+            DB::transaction(function () {
+                // ← trait pattern
+                $this->lockRIRow($this->riHdrNo);
 
-                    $exists = collect($fresh['informConsentPasienRI'])->firstWhere('signatureDate', $this->informConsentPasienRI['signatureDate']);
-                    if (!$exists) {
-                        $fresh['informConsentPasienRI'][] = $this->informConsentPasienRI;
-                    }
+                $fresh = $this->findDataRI($this->riHdrNo) ?: [];
+                $fresh['informConsentPasienRI'] ??= [];
 
-                    $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                    $this->dataDaftarRi = $fresh;
-                });
+                $exists = collect($fresh['informConsentPasienRI'])->firstWhere('signatureDate', $this->informConsentPasienRI['signatureDate']);
+
+                if (!$exists) {
+                    $fresh['informConsentPasienRI'][] = $this->informConsentPasienRI;
+                }
+
+                $this->updateJsonRI((int) $this->riHdrNo, $fresh);
+                $this->dataDaftarRi = $fresh;
             });
 
             $this->informConsentPasienRI = $this->defaultConsent();
@@ -170,8 +169,8 @@ new class extends Component {
             $this->signatureSaksi = null;
             $this->resetValidation();
             $this->afterSave('Inform Consent berhasil disimpan.');
-        } catch (LockTimeoutException) {
-            $this->dispatch('toast', type: 'error', message: 'Sistem sibuk, coba lagi.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan Inform Consent.');
         }
@@ -193,8 +192,10 @@ new class extends Component {
         if (empty($this->dataDaftarRi)) {
             return;
         }
+
         $list = $this->dataDaftarRi['informConsentPasienRI'] ?? [];
         $consent = collect($list)->firstWhere('signatureDate', $signatureDate);
+
         if (!$consent) {
             $this->dispatch('toast', type: 'error', message: 'Data consent tidak ditemukan.');
             return;
@@ -209,6 +210,7 @@ new class extends Component {
                 'dataRi' => $this->dataDaftarRi,
                 'consent' => $consent,
             ])->output();
+
             $this->dispatch('toast', type: 'success', message: 'Berhasil mencetak Inform Consent.');
             return response()->streamDownload(fn() => print $pdf, 'inform-consent-ri-' . $this->riHdrNo . '.pdf');
         } catch (\Throwable $e) {
@@ -403,7 +405,8 @@ new class extends Component {
                         <div><span class="font-semibold">Wali:</span> {{ $consent['wali'] ?? '-' }}</div>
                         <div><span class="font-semibold">Saksi:</span> {{ $consent['saksi'] ?? '-' }}</div>
                         <div><span class="font-semibold">Dokter:</span> {{ $consent['dokter'] ?? '-' }}</div>
-                        <div><span class="font-semibold">Petugas:</span> {{ $consent['petugasPemeriksa'] ?? '-' }}</div>
+                        <div><span class="font-semibold">Petugas:</span> {{ $consent['petugasPemeriksa'] ?? '-' }}
+                        </div>
                     </div>
                 </div>
             @empty

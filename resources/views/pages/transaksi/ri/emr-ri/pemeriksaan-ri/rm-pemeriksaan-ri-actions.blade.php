@@ -7,9 +7,7 @@ use Livewire\WithFileUploads;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Contracts\Cache\LockTimeoutException;
 use Carbon\Carbon;
 
 new class extends Component {
@@ -22,7 +20,6 @@ new class extends Component {
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-pemeriksaan-ri'];
 
-    /* ── Upload ── */
     public $filePDF = null;
     public string $descPDF = '';
     public string $viewFilePDF = '';
@@ -32,15 +29,13 @@ new class extends Component {
         $this->registerAreas(['modal-pemeriksaan-ri']);
     }
 
-    /* ═══════════════════════════════════════
-    | OPEN
-    ═══════════════════════════════════════ */
     #[On('open-rm-pemeriksaan-ri')]
     public function open(string $riHdrNo): void
     {
         if (empty($riHdrNo)) {
             return;
         }
+
         $this->riHdrNo = $riHdrNo;
         $this->resetForm();
 
@@ -49,31 +44,28 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data RI tidak ditemukan.');
             return;
         }
+
         $this->dataDaftarRi = $data;
         $this->dataDaftarRi['pemeriksaan'] ??= [
             'pemeriksaanPenunjang' => ['lab' => [], 'rad' => []],
             'uploadHasilPenunjang' => [],
         ];
 
-        $this->incrementVersion('modal-pemeriksaan-ri');
+        $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
 
-        $riStatus = DB::scalar('select ri_status from rstxn_rihdrs where rihdr_no=:r', ['r' => $riHdrNo]);
-        $this->isFormLocked = $riStatus !== 'I';
-
-        /* broadcast ke child order components */
         $this->dispatch('open-rm-laboratorium-ri', $riHdrNo);
         $this->dispatch('open-rm-radiologi-ri', $riHdrNo);
+
+        $this->incrementVersion('modal-pemeriksaan-ri');
     }
 
-    /* ═══════════════════════════════════════
-    | UPLOAD HASIL PENUNJANG
-    ═══════════════════════════════════════ */
     public function uploadHasilPenunjang(): void
     {
         if ($this->isFormLocked) {
             $this->dispatch('toast', type: 'error', message: 'Form terkunci.');
             return;
         }
+
         $this->validate(
             [
                 'filePDF' => 'required|file|mimes:pdf|max:10240',
@@ -88,8 +80,11 @@ new class extends Component {
         );
 
         try {
-            $this->withRiLock(function () {
-                $path = $this->filePDF->store('uploadHasilPenunjang', 'local');
+            $path = $this->filePDF->store('uploadHasilPenunjang', 'local');
+
+            DB::transaction(function () use ($path) {
+                $this->lockRIRow($this->riHdrNo);
+
                 $fresh = $this->findDataRI($this->riHdrNo) ?: [];
                 $fresh['pemeriksaan']['uploadHasilPenunjang'][] = [
                     'file' => $path,
@@ -104,9 +99,12 @@ new class extends Component {
                 $this->updateJsonRI($this->riHdrNo, $fresh);
                 $this->dataDaftarRi = $fresh;
             });
+
             $this->reset(['filePDF', 'descPDF']);
             $this->resetValidation(['filePDF', 'descPDF']);
             $this->afterSave('File berhasil diupload.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal upload: ' . $e->getMessage());
         }
@@ -117,9 +115,13 @@ new class extends Component {
         if ($this->isFormLocked) {
             return;
         }
+
         Storage::disk('local')->exists($file) && Storage::disk('local')->delete($file);
+
         try {
-            $this->withRiLock(function () use ($file) {
+            DB::transaction(function () use ($file) {
+                $this->lockRIRow($this->riHdrNo);
+
                 $fresh = $this->findDataRI($this->riHdrNo) ?: [];
                 $fresh['pemeriksaan']['uploadHasilPenunjang'] = collect($fresh['pemeriksaan']['uploadHasilPenunjang'] ?? [])
                     ->filter(fn($i) => ($i['file'] ?? '') !== $file)
@@ -128,7 +130,10 @@ new class extends Component {
                 $this->updateJsonRI($this->riHdrNo, $fresh);
                 $this->dataDaftarRi = $fresh;
             });
+
             $this->afterSave('File berhasil dihapus.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal hapus: ' . $e->getMessage());
         }
@@ -151,7 +156,6 @@ new class extends Component {
         $this->dispatch('close-modal', name: 'view-penunjang-pdf-ri');
     }
 
-    /* ── helpers ── */
     private function afterSave(string $msg): void
     {
         $this->incrementVersion('modal-pemeriksaan-ri');
@@ -164,13 +168,6 @@ new class extends Component {
         $this->isFormLocked = false;
         $this->filePDF = null;
         $this->descPDF = $this->viewFilePDF = '';
-    }
-
-    private function withRiLock(callable $fn): void
-    {
-        Cache::lock("ri:{$this->riHdrNo}", 60)->block(10, function () use ($fn) {
-            DB::transaction(fn() => $fn());
-        });
     }
 };
 ?>

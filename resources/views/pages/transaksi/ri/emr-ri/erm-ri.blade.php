@@ -100,7 +100,6 @@ new class extends Component {
         $this->dispatch('open-rm-penilaian-ri', $riHdrNo);
         $this->dispatch('open-rm-diagnosa-ri', $riHdrNo);
         $this->dispatch('open-rm-observasi-ri', $riHdrNo);
-        $this->dispatch('open-rm-obat-dan-cairan-ri', $riHdrNo);
         $this->dispatch('open-rm-perencanaan-ri', $riHdrNo);
         $this->dispatch('open-rm-asuhan-keperawatan-ri', $riHdrNo);
         $this->dispatch('open-rm-edukasi-pasien-ri', $riHdrNo);
@@ -154,7 +153,7 @@ new class extends Component {
 <div>
     <x-modal name="rm-ri-actions" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
-            wire:key="{{ $this->renderKey('modal-emr-ri', [$riHdrNo ?? 'new']) }}" x-data="{ activeTab: 'pengkajian' }">
+            wire:key="{{ $this->renderKey('modal-emr-ri', [$riHdrNo ?? 'new']) }}" x-data="{ activeTab: 'pengkajian-perawat' }">
 
             {{-- ═══════════ HEADER ═══════════ --}}
             <div class="relative px-6 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
@@ -290,48 +289,60 @@ new class extends Component {
 
                         @php
                             $tabs = [
-                                [
-                                    'key' => 'pengkajian',
-                                    'label' => 'Pengkajian',
-                                    'icon' =>
-                                        'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
-                                ],
-                                [
-                                    'key' => 'asuhan',
-                                    'label' => 'Asuhan Kep.',
+                                /* 1 */ [
+                                    'key' => 'pengkajian-perawat',
+                                    'label' => 'Pengkajian Perawat',
                                     'icon' =>
                                         'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z',
                                 ],
-                                [
-                                    'key' => 'cppt',
-                                    'label' => 'CPPT',
+                                /* 2 */ [
+                                    'key' => 'pengkajian-dokter',
+                                    'label' => 'Pengkajian Dokter',
                                     'icon' =>
-                                        'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
+                                        'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
                                 ],
-                                [
+                                /* 3 */ [
                                     'key' => 'pemeriksaan',
                                     'label' => 'Pemeriksaan',
                                     'icon' =>
                                         'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
                                 ],
-                                [
-                                    'key' => 'diagnosa',
-                                    'label' => 'Diagnosa & Rencana',
-                                    'icon' => 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+                                /* 4 */ [
+                                    'key' => 'penilaian',
+                                    'label' => 'Penilaian',
+                                    'icon' =>
+                                        'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z',
                                 ],
-                                [
+                                /* 5 */ [
                                     'key' => 'observasi',
-                                    'label' => 'Observasi & Terapi',
+                                    'label' => 'Observasi',
                                     'icon' =>
                                         'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
                                 ],
-                                [
-                                    'key' => 'dokumen',
-                                    'label' => 'Consent & MPP',
+                                /* 6 */ [
+                                    'key' => 'asuhan',
+                                    'label' => 'Asuhan Kep.',
                                     'icon' =>
-                                        'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+                                        'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z',
                                 ],
-                                [
+                                /* 7 */ [
+                                    'key' => 'cppt',
+                                    'label' => 'CPPT',
+                                    'icon' =>
+                                        'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
+                                ],
+                                /* 8 */ [
+                                    'key' => 'diagnosa',
+                                    'label' => 'Diagnosa (ICD)',
+                                    'icon' => 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+                                ],
+                                /* 9 */ [
+                                    'key' => 'perencanaan',
+                                    'label' => 'Perencanaan',
+                                    'icon' =>
+                                        'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+                                ],
+                                /*10 */ [
                                     'key' => 'riwayat',
                                     'label' => 'Riwayat Kunjungan',
                                     'icon' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
@@ -369,55 +380,47 @@ new class extends Component {
                         class="p-4 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
                         {{-- ────────────────────────────────────────────
-                        | TAB 1 — PENGKAJIAN
-                        | Pengkajian Awal (Perawat) | Pengkajian Dokter | Penilaian
+                        | TAB 1 — PENGKAJIAN PERAWAT
+                        | Diisi oleh Perawat — Pengkajian Awal Rawat Inap
                         ──────────────────────────────────────────── --}}
-                        <div x-show="activeTab === 'pengkajian'" x-transition.opacity.duration.200ms>
-                            <div class="grid grid-cols-3 gap-3">
-                                @hasanyrole('Perawat|Admin')
-                                    <livewire:pages::transaksi.ri.emr-ri.pengkajian-awal-ri.rm-pengkajian-awal-ri-actions
-                                        :riHdrNo="$riHdrNo" wire:key="pengkajian-awal-ri-{{ $riHdrNo }}" />
-                                @endhasanyrole
-
-                                @hasanyrole('Dokter|Admin')
-                                    <livewire:pages::transaksi.ri.emr-ri.pengkajian-dokter-ri.rm-pengkajian-dokter-ri-actions
-                                        :riHdrNo="$riHdrNo" wire:key="pengkajian-dokter-ri-{{ $riHdrNo }}" />
-                                @endhasanyrole
-
-                                <livewire:pages::transaksi.ri.emr-ri.penilaian-ri.rm-penilaian-ri-actions
-                                    :riHdrNo="$riHdrNo" wire:key="penilaian-ri-{{ $riHdrNo }}" />
-                            </div>
-                        </div>
-
-                        {{-- ────────────────────────────────────────────
-                        | TAB 2 — ASUHAN KEPERAWATAN
-                        | Asuhan Keperawatan | Diagnosa Keperawatan | Edukasi Pasien
-                        ──────────────────────────────────────────── --}}
-                        <div x-show="activeTab === 'asuhan'" x-transition.opacity.duration.200ms>
+                        <div x-show="activeTab === 'pengkajian-perawat'" x-transition.opacity.duration.200ms>
                             @hasanyrole('Perawat|Admin')
-                                <div class="grid grid-cols-2 gap-3">
-                                    <livewire:pages::transaksi.ri.emr-ri.asuhan-keperawatan-ri.rm-asuhan-keperawatan-ri-actions
-                                        :riHdrNo="$riHdrNo" wire:key="asuhan-keperawatan-ri-{{ $riHdrNo }}" />
-                                    <livewire:pages::transaksi.ri.emr-ri.diagnosa-keperawatan-ri.rm-diagnosa-keperawatan-ri-actions
-                                        :riHdrNo="$riHdrNo" wire:key="diagnosa-keperawatan-ri-{{ $riHdrNo }}" />
-                                </div>
-                                <div class="mt-4">
-                                    <livewire:pages::transaksi.ri.emr-ri.edukasi-pasien-ri.rm-edukasi-pasien-ri-actions
-                                        :riHdrNo="$riHdrNo" wire:key="edukasi-pasien-ri-{{ $riHdrNo }}" />
+                                <livewire:pages::transaksi.ri.emr-ri.pengkajian-awal-ri.rm-pengkajian-awal-ri-actions
+                                    :riHdrNo="$riHdrNo" wire:key="pengkajian-awal-ri-{{ $riHdrNo }}" />
+                            @else
+                                <div class="py-12 text-sm text-center text-gray-400 dark:text-gray-600">
+                                    <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                    Hanya Perawat yang dapat mengakses Pengkajian Perawat.
                                 </div>
                             @endhasanyrole
                         </div>
 
                         {{-- ────────────────────────────────────────────
-                        | TAB 3 — CPPT
+                        | TAB 2 — PENGKAJIAN DOKTER
+                        | Diisi oleh Dokter — Pengkajian Dokter RI
                         ──────────────────────────────────────────── --}}
-                        <div x-show="activeTab === 'cppt'" x-transition.opacity.duration.200ms>
-                            <livewire:pages::transaksi.ri.emr-ri.cppt-ri.rm-cppt-ri-actions :riHdrNo="$riHdrNo"
-                                wire:key="cppt-ri-{{ $riHdrNo }}" />
+                        <div x-show="activeTab === 'pengkajian-dokter'" x-transition.opacity.duration.200ms>
+                            @hasanyrole('Dokter|Admin')
+                                <livewire:pages::transaksi.ri.emr-ri.pengkajian-dokter-ri.rm-pengkajian-dokter-ri-actions
+                                    :riHdrNo="$riHdrNo" wire:key="pengkajian-dokter-ri-{{ $riHdrNo }}" />
+                            @else
+                                <div class="py-12 text-sm text-center text-gray-400 dark:text-gray-600">
+                                    <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                    Hanya Dokter yang dapat mengakses Pengkajian Dokter.
+                                </div>
+                            @endhasanyrole
                         </div>
 
                         {{-- ────────────────────────────────────────────
-                        | TAB — PEMERIKSAAN
+                        | TAB 3 — PEMERIKSAAN
                         | TTV | Nutrisi | Lab | Radiologi | Upload
                         ──────────────────────────────────────────── --}}
                         <div x-show="activeTab === 'pemeriksaan'" x-transition.opacity.duration.200ms>
@@ -426,16 +429,12 @@ new class extends Component {
                         </div>
 
                         {{-- ────────────────────────────────────────────
-                        | TAB 4 — DIAGNOSA & RENCANA
-                        | Pemeriksaan TTV | Diagnosa ICD-10 | Perencanaan
+                        | TAB 4 — PENILAIAN
+                        | Penilaian pasien rawat inap
                         ──────────────────────────────────────────── --}}
-                        <div x-show="activeTab === 'diagnosa'" x-transition.opacity.duration.200ms>
-                            <div class="grid grid-cols-2 gap-3">
-                                <livewire:pages::transaksi.ri.emr-ri.diagnosa-ri.rm-diagnosa-ri-actions
-                                    :riHdrNo="$riHdrNo" wire:key="diagnosa-ri-{{ $riHdrNo }}" />
-                                <livewire:pages::transaksi.ri.emr-ri.perencanaan-ri.rm-perencanaan-ri-actions
-                                    :riHdrNo="$riHdrNo" wire:key="perencanaan-ri-{{ $riHdrNo }}" />
-                            </div>
+                        <div x-show="activeTab === 'penilaian'" x-transition.opacity.duration.200ms>
+                            <livewire:pages::transaksi.ri.emr-ri.penilaian-ri.rm-penilaian-ri-actions :riHdrNo="$riHdrNo"
+                                wire:key="penilaian-ri-{{ $riHdrNo }}" />
                         </div>
 
                         {{-- ────────────────────────────────────────────
@@ -446,30 +445,51 @@ new class extends Component {
                             <div class="space-y-4">
                                 <livewire:pages::transaksi.ri.emr-ri.observasi-ri.rm-observasi-ri-actions
                                     :riHdrNo="$riHdrNo" wire:key="observasi-ri-{{ $riHdrNo }}" />
-                                <livewire:pages::transaksi.ri.emr-ri.obat-dan-cairan-ri.rm-obat-dan-cairan-ri-actions
-                                    :riHdrNo="$riHdrNo" wire:key="obat-cairan-ri-{{ $riHdrNo }}" />
                             </div>
                         </div>
 
                         {{-- ────────────────────────────────────────────
-                        | TAB 6 — CONSENT & MPP
-                        | Inform Consent | General Consent | Case Manager
+                        | TAB 6 — ASUHAN KEPERAWATAN
+                        | Asuhan Keperawatan | Diagnosa Keperawatan | Edukasi Pasien
                         ──────────────────────────────────────────── --}}
-                        <div x-show="activeTab === 'dokumen'" x-transition.opacity.duration.200ms>
-                            <div class="grid grid-cols-3 gap-3">
-                                <livewire:pages::transaksi.ri.emr-ri.inform-consent-ri.rm-inform-consent-ri-actions
-                                    :riHdrNo="$riHdrNo" wire:key="inform-consent-ri-{{ $riHdrNo }}" />
-                                <livewire:pages::transaksi.ri.emr-ri.general-consent-ri.rm-general-consent-ri-actions
-                                    :riHdrNo="$riHdrNo" wire:key="general-consent-ri-{{ $riHdrNo }}" />
-                                @hasanyrole('Perawat|Admin|MPP')
-                                    <livewire:pages::transaksi.ri.emr-ri.case-manager-ri.rm-case-manager-ri-actions
-                                        :riHdrNo="$riHdrNo" wire:key="case-manager-ri-{{ $riHdrNo }}" />
-                                @endhasanyrole
-                            </div>
+                        <div x-show="activeTab === 'asuhan'" x-transition.opacity.duration.200ms>
+                            @hasanyrole('Perawat|Admin')
+                                <div class="grid grid-cols-2 gap-3">
+                                    <livewire:pages::transaksi.ri.emr-ri.asuhan-keperawatan-ri.rm-asuhan-keperawatan-ri-actions
+                                        :riHdrNo="$riHdrNo" wire:key="asuhan-keperawatan-ri-{{ $riHdrNo }}" />
+                                    <livewire:pages::transaksi.ri.emr-ri.diagnosa-keperawatan-ri.rm-diagnosa-keperawatan-ri-actions
+                                        :riHdrNo="$riHdrNo" wire:key="diagnosa-keperawatan-ri-{{ $riHdrNo }}" />
+                                </div>
+                            @endhasanyrole
                         </div>
 
                         {{-- ────────────────────────────────────────────
-                        | TAB 7 — RIWAYAT KUNJUNGAN
+                        | TAB 7 — CPPT
+                        ──────────────────────────────────────────── --}}
+                        <div x-show="activeTab === 'cppt'" x-transition.opacity.duration.200ms>
+                            <livewire:pages::transaksi.ri.emr-ri.cppt-ri.rm-cppt-ri-actions :riHdrNo="$riHdrNo"
+                                wire:key="cppt-ri-{{ $riHdrNo }}" />
+                        </div>
+
+                        {{-- ────────────────────────────────────────────
+                        | TAB 8 — DIAGNOSA (ICD)
+                        | Diagnosa ICD-10
+                        ──────────────────────────────────────────── --}}
+                        <div x-show="activeTab === 'diagnosa'" x-transition.opacity.duration.200ms>
+                            <livewire:pages::transaksi.ri.emr-ri.diagnosa-ri.rm-diagnosa-ri-actions :riHdrNo="$riHdrNo"
+                                wire:key="diagnosa-ri-{{ $riHdrNo }}" />
+                        </div>
+
+                        {{-- ────────────────────────────────────────────
+                        | TAB 9 — PERENCANAAN
+                        ──────────────────────────────────────────── --}}
+                        <div x-show="activeTab === 'perencanaan'" x-transition.opacity.duration.200ms>
+                            <livewire:pages::transaksi.ri.emr-ri.perencanaan-ri.rm-perencanaan-ri-actions
+                                :riHdrNo="$riHdrNo" wire:key="perencanaan-ri-{{ $riHdrNo }}" />
+                        </div>
+
+                        {{-- ────────────────────────────────────────────
+                        | TAB 10 — RIWAYAT KUNJUNGAN
                         ──────────────────────────────────────────── --}}
                         <div x-show="activeTab === 'riwayat'" x-transition.opacity.duration.200ms>
                             <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
@@ -482,11 +502,10 @@ new class extends Component {
             </div>
 
             {{-- ═══════════ FOOTER ═══════════ --}}
-            <div
+            {{-- <div
                 class="sticky bottom-0 z-10 px-6 py-3 bg-white border-t border-gray-200
                         dark:bg-gray-900 dark:border-gray-700 shrink-0">
                 <div class="flex items-center justify-between">
-                    {{-- Tab aktif info --}}
                     <div class="text-xs text-gray-400" x-text="activeTab"></div>
 
                     <div class="flex gap-2">
@@ -506,7 +525,7 @@ new class extends Component {
                         @endif
                     </div>
                 </div>
-            </div>
+            </div> --}}
 
         </div>
     </x-modal>
