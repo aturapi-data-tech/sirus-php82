@@ -5,8 +5,6 @@ use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
@@ -18,10 +16,8 @@ new class extends Component {
     public ?string $riHdrNo = null;
     public array $dataDaftarRi = [];
 
-    /* Tab profesi aktif — default 'Semua' */
     public string $activeProfession = 'Semua';
-
-    public array $professionTabs = ['Semua', 'Dokter', 'Perawat', 'Apoteker', 'Gizi', 'Penunjang'];
+    public array $professionTabs = ['Semua', 'Dokter', 'Perawat', 'Apoteker', 'Gizi', 'Penunjang', 'MPP'];
 
     public array $formEntryCPPT = [
         'tglCPPT' => '',
@@ -47,6 +43,7 @@ new class extends Component {
         if (empty($riHdrNo)) {
             return;
         }
+
         $this->riHdrNo = $riHdrNo;
         $this->resetForm();
         $this->resetValidation();
@@ -56,10 +53,10 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data RI tidak ditemukan.');
             return;
         }
+
         $this->dataDaftarRi = $data;
         $this->dataDaftarRi['cppt'] ??= [];
 
-        /* Auto-fill assessment dari diagnosa awal (Dokter/Admin) */
         if (
             auth()
                 ->user()
@@ -71,7 +68,6 @@ new class extends Component {
             }
         }
 
-        /* Set tab awal sesuai role user */
         $role = auth()->user()->roles->first()->name ?? '';
         $this->activeProfession = match (true) {
             in_array($role, ['Dokter']) => 'Dokter',
@@ -81,9 +77,9 @@ new class extends Component {
             default => 'Semua',
         };
 
+        $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
+
         $this->incrementVersion('modal-cppt-ri');
-        $riStatus = DB::scalar('select ri_status from rstxn_rihdrs where rihdr_no=:r', ['r' => $riHdrNo]);
-        $this->isFormLocked = $riStatus !== 'I';
     }
 
     public function setTglCPPT(): void
@@ -124,7 +120,10 @@ new class extends Component {
 
         try {
             $inserted = false;
-            $this->withRiLock(function () use ($fingerprint, &$inserted) {
+
+            DB::transaction(function () use ($fingerprint, &$inserted) {
+                $this->lockRIRow($this->riHdrNo);
+
                 $fresh = $this->findDataRI($this->riHdrNo) ?? [];
                 $fresh['cppt'] ??= [];
 
@@ -147,8 +146,8 @@ new class extends Component {
                 $this->reset(['formEntryCPPT']);
                 $this->afterSave('CPPT berhasil ditambahkan.');
             }
-        } catch (LockTimeoutException) {
-            $this->dispatch('toast', type: 'error', message: 'Sistem sibuk, coba lagi.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
         }
@@ -160,22 +159,28 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang.');
             return;
         }
+
         try {
-            $this->withRiLock(function () use ($cpptId) {
+            DB::transaction(function () use ($cpptId) {
+                $this->lockRIRow($this->riHdrNo);
+
                 $fresh = $this->findDataRI($this->riHdrNo) ?? [];
                 $cppts = collect($fresh['cppt'] ?? []);
                 $idx = $cppts->search(fn($r) => ($r['cpptId'] ?? null) === $cpptId);
+
                 if ($idx === false) {
                     throw new \RuntimeException('CPPT tidak ditemukan.');
                 }
+
                 $cppts->forget($idx);
                 $fresh['cppt'] = $cppts->values()->all();
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->dataDaftarRi = $fresh;
             });
+
             $this->afterSave('CPPT berhasil dihapus.');
-        } catch (LockTimeoutException) {
-            $this->dispatch('toast', type: 'error', message: 'Sistem sibuk, coba lagi.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
         }
@@ -184,10 +189,12 @@ new class extends Component {
     public function copyCPPT(string $cpptId): void
     {
         $cppt = collect($this->dataDaftarRi['cppt'] ?? [])->first(fn($r) => ($r['cpptId'] ?? null) === $cpptId);
+
         if (!$cppt) {
             $this->dispatch('toast', type: 'error', message: 'CPPT tidak ditemukan.');
             return;
         }
+
         $this->formEntryCPPT = array_merge($this->formEntryCPPT, [
             'tglCPPT' => '',
             'petugasCPPT' => '',
@@ -197,11 +204,11 @@ new class extends Component {
             'instruction' => $cppt['instruction'] ?? '',
             'review' => $cppt['review'] ?? '',
         ]);
+
         $this->incrementVersion('modal-cppt-ri');
         $this->dispatch('toast', type: 'success', message: 'CPPT dicopy ke form.');
     }
 
-    /* Hitung jumlah CPPT per profesi — untuk badge di tab */
     public function getCpptCount(string $profession): int
     {
         $list = $this->dataDaftarRi['cppt'] ?? [];
@@ -224,20 +231,10 @@ new class extends Component {
         $this->activeProfession = 'Semua';
         $this->reset(['formEntryCPPT']);
     }
-
-    private function withRiLock(callable $fn): void
-    {
-        Cache::lock("ri:{$this->riHdrNo}", 10)->block(5, function () use ($fn) {
-            DB::transaction(function () use ($fn) {
-                $this->lockRIRow($this->riHdrNo);
-                $fn();
-            }, 5);
-        });
-    }
 };
 ?>
 
-<div class="space-y-4" wire:key="{{ $this->renderKey('modal-cppt-ri', [$riHdrNo ?? 'new']) }}">
+<div class="space-y-4" wire:key="{{ $this->renderKey('modal-cppt-ri', [$riHdrNo ?? 'new']) }}" x-data="{ activeTab: 'cppt' }">
 
     @if ($isFormLocked)
         <div
@@ -252,198 +249,321 @@ new class extends Component {
         </div>
     @endif
 
-    {{-- ============================================================
-    | FORM ENTRY
-    ============================================================= --}}
-    @if (!$isFormLocked)
-        <x-border-form title="Entry CPPT" align="start" bgcolor="bg-gray-50">
-            <div class="mt-3 space-y-3">
-
-                <div class="flex items-end gap-3">
-                    <div class="flex-1">
-                        <x-input-label value="Tanggal CPPT *" />
-
-                        <x-text-input wire:model="formEntryCPPT.tglCPPT" class="w-full mt-1 font-mono"
-                            placeholder="dd/mm/yyyy hh:mm:ss" :error="$errors->has('formEntryCPPT.tglCPPT')" />
-                        <x-input-error :messages="$errors->get('formEntryCPPT.tglCPPT')" class="mt-1" />
-                    </div>
-                    <x-secondary-button wire:click="setTglCPPT" type="button">Sekarang</x-secondary-button>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    @foreach ([['subjective', 'S — Subjective *'], ['objective', 'O — Objective *'], ['assessment', 'A — Assessment *'], ['plan', 'P — Plan *']] as [$key, $label])
-                        <div>
-                            <x-input-label value="{{ $label }}" />
-                            <x-textarea wire:model="formEntryCPPT.soap.{{ $key }}" class="w-full mt-1"
-                                rows="3" :error="$errors->has('formEntryCPPT.soap.' . $key)" placeholder="{{ $label }}..." />
-                            <x-input-error :messages="$errors->get('formEntryCPPT.soap.' . $key)" class="mt-1" />
-                        </div>
-                    @endforeach
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <x-input-label value="Instruksi" />
-                        <x-textarea wire:model="formEntryCPPT.instruction" class="w-full mt-1" rows="2" />
-                    </div>
-                    <div>
-                        <x-input-label value="Review" />
-                        <x-textarea wire:model="formEntryCPPT.review" class="w-full mt-1" rows="2" />
-                    </div>
-                </div>
-
-                <div class="flex justify-end">
-                    <x-primary-button wire:click="addCPPT" type="button">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+    {{-- ── TAB NAV ── --}}
+    <div class="border-b border-gray-200 dark:border-gray-700">
+        <ul class="flex flex-wrap -mb-px text-xs font-medium text-gray-500 dark:text-gray-400">
+            <li class="mr-2">
+                <button type="button" @click="activeTab = 'cppt'"
+                    :class="activeTab === 'cppt'
+                        ?
+                        'text-brand border-brand bg-brand/5 font-semibold' :
+                        'border-transparent hover:text-gray-600 hover:border-gray-300'"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 border-b-2 rounded-t-lg transition-colors">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    CPPT
+                    @php $totalCppt = $this->getCpptCount('Semua'); @endphp
+                    @if ($totalCppt > 0)
+                        <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-brand text-white">
+                            {{ $totalCppt }}
+                        </span>
+                    @endif
+                </button>
+            </li>
+            @hasanyrole('Perawat|Admin|MPP')
+                <li class="mr-2">
+                    <button type="button" @click="activeTab = 'caseManager'"
+                        :class="activeTab === 'caseManager'
+                            ?
+                            'text-brand border-brand bg-brand/5 font-semibold' :
+                            'border-transparent hover:text-gray-600 hover:border-gray-300'"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 border-b-2 rounded-t-lg transition-colors">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        Tambah CPPT
-                    </x-primary-button>
+                        Case Manager (MPP)
+                    </button>
+                </li>
+            @endhasanyrole
+        </ul>
+    </div>
+
+    {{-- ── TAB: CPPT ── --}}
+    <div x-show="activeTab === 'cppt'" x-transition.opacity.duration.200ms class="space-y-4">
+
+        {{-- FORM ENTRY --}}
+        @if (!$isFormLocked)
+            <x-border-form title="Entry CPPT" align="start" bgcolor="bg-gray-50">
+                <div class="mt-3 space-y-3">
+
+                    <div class="flex items-end gap-3">
+                        <div class="flex-1">
+                            <x-input-label value="Tanggal CPPT *" />
+                            <x-text-input wire:model="formEntryCPPT.tglCPPT" class="w-full mt-1 font-mono"
+                                placeholder="dd/mm/yyyy hh:mm:ss" :error="$errors->has('formEntryCPPT.tglCPPT')" />
+                            <x-input-error :messages="$errors->get('formEntryCPPT.tglCPPT')" class="mt-1" />
+                        </div>
+                        <x-secondary-button wire:click="setTglCPPT" type="button">Sekarang</x-secondary-button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        @foreach ([['subjective', 'S — Subjective *'], ['objective', 'O — Objective *'], ['assessment', 'A — Assessment *'], ['plan', 'P — Plan *']] as [$key, $label])
+                            <div>
+                                <x-input-label value="{{ $label }}" />
+                                <x-textarea wire:model="formEntryCPPT.soap.{{ $key }}" class="w-full mt-1"
+                                    rows="3" :error="$errors->has('formEntryCPPT.soap.' . $key)" placeholder="{{ $label }}..." />
+                                <x-input-error :messages="$errors->get('formEntryCPPT.soap.' . $key)" class="mt-1" />
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <x-input-label value="Instruksi" />
+                            <x-textarea wire:model="formEntryCPPT.instruction" class="w-full mt-1" rows="2" />
+                        </div>
+                        <div>
+                            <x-input-label value="Review" />
+                            <x-textarea wire:model="formEntryCPPT.review" class="w-full mt-1" rows="2" />
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <x-primary-button wire:click="addCPPT" type="button">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4" />
+                            </svg>
+                            Tambah CPPT
+                        </x-primary-button>
+                    </div>
+
+                </div>
+            </x-border-form>
+        @endif
+
+        {{-- RIWAYAT CPPT --}}
+        <x-border-form title="Riwayat CPPT" align="start" bgcolor="bg-gray-50">
+            <div class="mt-2">
+
+                {{-- Tab Profesi --}}
+                <div class="border-b border-gray-200 dark:border-gray-700 mb-3">
+                    <ul class="flex flex-wrap -mb-px text-xs font-medium">
+                        @foreach ($professionTabs as $prof)
+                            @php $count = $this->getCpptCount($prof); @endphp
+                            <li class="mr-0.5">
+                                <button type="button" wire:click="$set('activeProfession', '{{ $prof }}')"
+                                    class="inline-flex items-center gap-1.5 px-3 py-2 border-b-2 rounded-t-lg transition-colors
+                                        {{ $activeProfession === $prof
+                                            ? 'text-brand border-brand bg-brand/5 font-semibold'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
+                                    {{ $prof }}
+                                    @if ($count > 0)
+                                        <span
+                                            class="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-full
+                                            {{ $activeProfession === $prof ? 'bg-brand text-white' : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300' }}">
+                                            {{ $count }}
+                                        </span>
+                                    @endif
+                                </button>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+
+                {{-- List CPPT --}}
+                <div class="space-y-3">
+                    @php
+                        $allCppt = array_reverse($dataDaftarRi['cppt'] ?? []);
+                        $filtered =
+                            $activeProfession === 'Semua'
+                                ? $allCppt
+                                : array_values(
+                                    array_filter($allCppt, fn($c) => ($c['profession'] ?? '') === $activeProfession),
+                                );
+                    @endphp
+
+                    @if ($activeProfession === 'MPP')
+                        {{-- ── TAMPILAN KHUSUS TAB MPP ── --}}
+                        @hasanyrole('Perawat|Admin|MPP')
+                            <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                                <table class="w-full text-xs text-left text-gray-600 dark:text-gray-300">
+                                    <thead class="bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300">
+                                        <tr>
+                                            <th class="px-3 py-2">Tgl / Petugas</th>
+                                            <th class="px-3 py-2">Profesi</th>
+                                            <th class="px-3 py-2">Pelaksanaan / Monitoring</th>
+                                            <th class="px-3 py-2">Advokasi / Kolaborasi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                        @forelse ($allCppt as $idx => $cppt)
+                                            @php $mpp = $cppt['mpp'] ?? null; @endphp
+                                            @if ($mpp)
+                                                <tr wire:key="mpp-row-{{ $cppt['cpptId'] ?? $idx }}"
+                                                    class="bg-white dark:bg-gray-800 hover:bg-purple-50/50">
+                                                    <td class="px-3 py-2 whitespace-nowrap">
+                                                        <div class="font-mono">{{ $cppt['tglCPPT'] ?? '-' }}</div>
+                                                        <div class="text-gray-400">{{ $cppt['petugasCPPT'] ?? '-' }}</div>
+                                                    </td>
+                                                    <td class="px-3 py-2">
+                                                        @php
+                                                            $profColor = match ($cppt['profession'] ?? '') {
+                                                                'Dokter' => 'bg-blue-100 text-blue-700',
+                                                                'Perawat' => 'bg-green-100 text-green-700',
+                                                                'Apoteker' => 'bg-purple-100 text-purple-700',
+                                                                'Gizi' => 'bg-orange-100 text-orange-700',
+                                                                default => 'bg-gray-100 text-gray-600',
+                                                            };
+                                                        @endphp
+                                                        <span
+                                                            class="px-2 py-0.5 rounded-full text-[10px] font-bold {{ $profColor }}">
+                                                            {{ $cppt['profession'] ?? '-' }}
+                                                        </span>
+                                                    </td>
+                                                    <td class="px-3 py-2 max-w-xs">
+                                                        <p class="whitespace-pre-wrap">{{ $mpp['pelaksanaan'] ?? '-' }}
+                                                        </p>
+                                                    </td>
+                                                    <td class="px-3 py-2 max-w-xs">
+                                                        <p class="whitespace-pre-wrap">{{ $mpp['advokasi'] ?? '-' }}</p>
+                                                    </td>
+                                                </tr>
+                                            @endif
+                                        @empty
+                                        @endforelse
+                                        @if (collect($allCppt)->filter(fn($c) => isset($c['mpp']))->isEmpty())
+                                            <tr>
+                                                <td colspan="4" class="px-3 py-6 text-center text-gray-400">
+                                                    Belum ada catatan MPP.
+                                                </td>
+                                            </tr>
+                                        @endif
+                                    </tbody>
+                                </table>
+                            </div>
+                        @else
+                            <p class="text-xs text-center text-gray-400 py-6">Akses terbatas.</p>
+                        @endhasanyrole
+                    @else
+                        {{-- ── TAMPILAN NORMAL (tab selain MPP) ── --}}
+                        @forelse ($filtered as $idx => $cppt)
+                            <div wire:key="cppt-{{ $cppt['cpptId'] ?? $idx }}-{{ $this->renderKey('modal-cppt-ri') }}"
+                                class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
+
+                                <div
+                                    class="flex items-center justify-between px-4 py-2.5
+                        bg-gray-50 dark:bg-gray-700/60 border-b border-gray-100 dark:border-gray-700">
+                                    <div class="flex items-center gap-2 text-xs">
+                                        @php
+                                            $profColor = match ($cppt['profession'] ?? '') {
+                                                'Dokter' => 'bg-blue-100 text-blue-700',
+                                                'Perawat' => 'bg-green-100 text-green-700',
+                                                'Apoteker' => 'bg-purple-100 text-purple-700',
+                                                'Gizi' => 'bg-orange-100 text-orange-700',
+                                                default => 'bg-gray-100 text-gray-600',
+                                            };
+                                        @endphp
+                                        <span
+                                            class="px-2 py-0.5 rounded-full text-[10px] font-bold {{ $profColor }}">
+                                            {{ $cppt['profession'] ?? '-' }}
+                                        </span>
+                                        <span class="font-semibold text-gray-700 dark:text-gray-200">
+                                            {{ $cppt['petugasCPPT'] ?? '-' }}
+                                        </span>
+                                        <span class="font-mono text-gray-400">{{ $cppt['tglCPPT'] ?? '-' }}</span>
+                                    </div>
+
+                                    @if (!$isFormLocked)
+                                        <div class="flex gap-1">
+                                            <x-icon-button variant="info"
+                                                wire:click="copyCPPT('{{ $cppt['cpptId'] }}')"
+                                                tooltip="Copy ke form">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                </svg>
+                                            </x-icon-button>
+                                            <x-icon-button variant="danger"
+                                                wire:click="removeCPPT('{{ $cppt['cpptId'] }}')"
+                                                wire:confirm="Yakin hapus CPPT ini?" tooltip="Hapus">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </x-icon-button>
+                                        </div>
+                                    @endif
+                                </div>
+
+                                <div class="px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                                    @foreach ([['S', 'subjective'], ['O', 'objective'], ['A', 'assessment'], ['P', 'plan']] as [$lbl, $k])
+                                        <div>
+                                            <span class="font-bold text-brand">{{ $lbl }}</span>
+                                            <span class="text-gray-500"> —
+                                                {{ match ($k) {
+                                                    'subjective' => 'Subjective',
+                                                    'objective' => 'Objective',
+                                                    'assessment' => 'Assessment',
+                                                    'plan' => 'Plan',
+                                                } }}</span>
+                                            <p
+                                                class="mt-0.5 text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                                {{ $cppt['soap'][$k] ?? '-' }}
+                                            </p>
+                                        </div>
+                                    @endforeach
+
+                                    @if (!empty($cppt['instruction']))
+                                        <div>
+                                            <span
+                                                class="font-semibold text-gray-600 dark:text-gray-400">Instruksi:</span>
+                                            <p class="mt-0.5 text-gray-700 dark:text-gray-300">
+                                                {{ $cppt['instruction'] }}</p>
+                                        </div>
+                                    @endif
+                                    @if (!empty($cppt['review']))
+                                        <div>
+                                            <span class="font-semibold text-gray-600 dark:text-gray-400">Review:</span>
+                                            <p class="mt-0.5 text-gray-700 dark:text-gray-300">{{ $cppt['review'] }}
+                                            </p>
+                                        </div>
+                                    @endif
+                                </div>
+
+                            </div>
+                        @empty
+                            <p wire:key="cppt-empty-{{ $activeProfession }}-{{ $this->renderKey('modal-cppt-ri') }}"
+                                class="text-xs text-center text-gray-400 py-6">
+                                @if ($activeProfession === 'Semua')
+                                    Belum ada CPPT.
+                                @else
+                                    Belum ada CPPT dari <strong>{{ $activeProfession }}</strong>.
+                                @endif
+                            </p>
+                        @endforelse
+                    @endif
+
                 </div>
 
             </div>
         </x-border-form>
-    @endif
 
-    {{-- ============================================================
-    | RIWAYAT CPPT — dengan tab profesi
-    ============================================================= --}}
-    <x-border-form title="Riwayat CPPT" align="start" bgcolor="bg-gray-50">
-        <div class="mt-2">
+    </div>{{-- end tab cppt --}}
 
-            {{-- Tab Profesi --}}
-            <div class="border-b border-gray-200 dark:border-gray-700 mb-3">
-                <ul class="flex flex-wrap -mb-px text-xs font-medium">
-                    @foreach ($professionTabs as $prof)
-                        @php $count = $this->getCpptCount($prof); @endphp
-                        <li class="mr-0.5">
-                            <button type="button" wire:click="$set('activeProfession', '{{ $prof }}')"
-                                class="inline-flex items-center gap-1.5 px-3 py-2 border-b-2 rounded-t-lg transition-colors
-                                   {{ $activeProfession === $prof
-                                       ? 'text-brand border-brand bg-brand/5 font-semibold'
-                                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
-                                {{ $prof }}
-                                @if ($count > 0)
-                                    <span
-                                        class="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-full
-                                         {{ $activeProfession === $prof ? 'bg-brand text-white' : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300' }}">
-                                        {{ $count }}
-                                    </span>
-                                @endif
-                            </button>
-                        </li>
-                    @endforeach
-                </ul>
-            </div>
-
-            {{-- List CPPT --}}
-            <div class="space-y-3">
-                @php
-                    $allCppt = array_reverse($dataDaftarRi['cppt'] ?? []);
-                    $filtered =
-                        $activeProfession === 'Semua'
-                            ? $allCppt
-                            : array_values(
-                                array_filter($allCppt, fn($c) => ($c['profession'] ?? '') === $activeProfession),
-                            );
-                @endphp
-
-                @forelse ($filtered as $idx => $cppt)
-                    <div wire:key="cppt-{{ $cppt['cpptId'] ?? $idx }}-{{ $this->renderKey('modal-cppt-ri') }}"
-                        class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
-
-                        {{-- Header --}}
-                        <div
-                            class="flex items-center justify-between px-4 py-2.5
-                                bg-gray-50 dark:bg-gray-700/60
-                                border-b border-gray-100 dark:border-gray-700">
-                            <div class="flex items-center gap-2 text-xs">
-                                {{-- Badge profesi --}}
-                                @php
-                                    $profColor = match ($cppt['profession'] ?? '') {
-                                        'Dokter' => 'bg-blue-100 text-blue-700',
-                                        'Perawat' => 'bg-green-100 text-green-700',
-                                        'Apoteker' => 'bg-purple-100 text-purple-700',
-                                        'Gizi' => 'bg-orange-100 text-orange-700',
-                                        default => 'bg-gray-100 text-gray-600',
-                                    };
-                                @endphp
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold {{ $profColor }}">
-                                    {{ $cppt['profession'] ?? '-' }}
-                                </span>
-                                <span class="font-semibold text-gray-700 dark:text-gray-200">
-                                    {{ $cppt['petugasCPPT'] ?? '-' }}
-                                </span>
-                                <span class="font-mono text-gray-400">
-                                    {{ $cppt['tglCPPT'] ?? '-' }}
-                                </span>
-                            </div>
-
-                            @if (!$isFormLocked)
-                                <div class="flex gap-1">
-                                    <x-icon-button variant="info" wire:click="copyCPPT('{{ $cppt['cpptId'] }}')"
-                                        tooltip="Copy ke form">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                        </svg>
-                                    </x-icon-button>
-                                    <x-icon-button variant="danger" wire:click="removeCPPT('{{ $cppt['cpptId'] }}')"
-                                        wire:confirm="Yakin hapus CPPT ini?" tooltip="Hapus">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858
-                                             L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </x-icon-button>
-                                </div>
-                            @endif
-                        </div>
-
-                        {{-- Body SOAP --}}
-                        <div class="px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                            @foreach ([['S', 'subjective'], ['O', 'objective'], ['A', 'assessment'], ['P', 'plan']] as [$lbl, $k])
-                                <div>
-                                    <span class="font-bold text-brand">{{ $lbl }}</span>
-                                    <span class="text-gray-500"> —
-                                        {{ match ($k) {'subjective' => 'Subjective','objective' => 'Objective','assessment' => 'Assessment','plan' => 'Plan'} }}</span>
-                                    <p
-                                        class="mt-0.5 text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-                                        {{ $cppt['soap'][$k] ?? '-' }}
-                                    </p>
-                                </div>
-                            @endforeach
-
-                            {{-- Instruksi & Review jika ada --}}
-                            @if (!empty($cppt['instruction']))
-                                <div>
-                                    <span class="font-semibold text-gray-600 dark:text-gray-400">Instruksi:</span>
-                                    <p class="mt-0.5 text-gray-700 dark:text-gray-300">{{ $cppt['instruction'] }}</p>
-                                </div>
-                            @endif
-                            @if (!empty($cppt['review']))
-                                <div>
-                                    <span class="font-semibold text-gray-600 dark:text-gray-400">Review:</span>
-                                    <p class="mt-0.5 text-gray-700 dark:text-gray-300">{{ $cppt['review'] }}</p>
-                                </div>
-                            @endif
-                        </div>
-
-                    </div>
-                @empty
-                    <p wire:key="cppt-empty-{{ $activeProfession }}-{{ $this->renderKey('modal-cppt-ri') }}"
-                        class="text-xs text-center text-gray-400 py-6">
-                        @if ($activeProfession === 'Semua')
-                            Belum ada CPPT.
-                        @else
-                            Belum ada CPPT dari <strong>{{ $activeProfession }}</strong>.
-                        @endif
-                    </p>
-                @endforelse
-            </div>
-
+    {{-- ── TAB: CASE MANAGER ── --}}
+    @hasanyrole('Perawat|Admin|MPP')
+        <div x-show="activeTab === 'caseManager'" x-transition.opacity.duration.200ms style="display:none">
+            <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.case-manager-ri.rm-case-manager-ri-actions :riHdrNo="$riHdrNo"
+                wire:key="case-manager-cppt-{{ $riHdrNo }}" />
         </div>
-    </x-border-form>
+    @endhasanyrole
 
 </div>

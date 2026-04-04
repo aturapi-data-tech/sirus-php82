@@ -1,485 +1,209 @@
 <?php
-// resources/views/pages/transaksi/ri/emr-ri/observasi/rm-observasi-ri-actions.blade.php
+// resources/views/pages/transaksi/ri/emr-ri/observasi-ri/rm-observasi-ri-actions.blade.php
 
 use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Contracts\Cache\LockTimeoutException;
-use Carbon\Carbon;
 use Livewire\Attributes\On;
 
 new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait;
 
-    public bool    $isFormLocked = false;
-    public ?string $riHdrNo      = null;
-    public array   $dataDaftarRi = [];
-
-    public array $formEntryObservasi = [
-        'cairan'=>'','tetesan'=>'','sistolik'=>'','distolik'=>'',
-        'frekuensiNafas'=>'','frekuensiNadi'=>'','suhu'=>'','spo2'=>'',
-        'gda'=>'','gcs'=>'','waktuPemeriksaan'=>'','pemeriksa'=>'',
-    ];
-
-    public array $formEntryOksigen = [
-        'jenisAlatOksigen'=>'Nasal Kanul','jenisAlatOksigenDetail'=>'',
-        'dosisOksigen'=>'1-2 L/menit','dosisOksigenDetail'=>'',
-        'modelPenggunaan'=>'Kontinu','durasiPenggunaan'=>'',
-        'tanggalWaktuMulai'=>'','tanggalWaktuSelesai'=>'',
-    ];
-
-    public array $formEntryPengeluaran = [
-        'waktuPengeluaran'=>'','jenisOutput'=>'','volume'=>'',
-        'warnaKarakteristik'=>'','keterangan'=>'','pemeriksa'=>'',
-    ];
+    public bool $isFormLocked = false;
+    public ?string $riHdrNo = null;
+    public array $dataDaftarRi = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-observasi-ri'];
 
-    public function mount(): void { $this->registerAreas(['modal-observasi-ri']); }
+    public function mount(): void
+    {
+        $this->registerAreas(['modal-observasi-ri']);
+    }
 
     #[On('open-rm-observasi-ri')]
     public function open(string $riHdrNo): void
     {
-        if (empty($riHdrNo)) return;
+        if (empty($riHdrNo)) {
+            return;
+        }
         $this->riHdrNo = $riHdrNo;
         $this->resetForm();
         $this->resetValidation();
+
         $data = $this->findDataRI($riHdrNo);
-        if (!$data) { $this->dispatch('toast', type:'error', message:'Data RI tidak ditemukan.'); return; }
+        if (!$data) {
+            $this->dispatch('toast', type: 'error', message: 'Data RI tidak ditemukan.');
+            return;
+        }
+
         $this->dataDaftarRi = $data;
+
+        // Inisialisasi struktur array jika belum ada
         $this->dataDaftarRi['observasi'] ??= [];
-        $this->dataDaftarRi['observasi']['observasiLanjutan'] ??= ['tandaVitalTab'=>'Observasi Lanjutan','tandaVital'=>[]];
-        $this->dataDaftarRi['observasi']['pemakaianOksigen']  ??= ['pemakaianOksigenTab'=>'Pemakaian Oksigen','pemakaianOksigenData'=>[]];
-        $this->dataDaftarRi['observasi']['pengeluaranCairan'] ??= ['pengeluaranCairanTab'=>'Pengeluaran Cairan','pengeluaranCairan'=>[]];
+        $this->dataDaftarRi['observasi']['obatDanCairan'] ??= [
+            'pemberianObatDanCairanTab' => 'Pemberian Obat Dan Cairan',
+            'pemberianObatDanCairan' => [],
+        ];
+        $this->dataDaftarRi['observasi']['pengeluaranCairan'] ??= [
+            'pengeluaranCairanTab' => 'Pengeluaran Cairan',
+            'pengeluaranCairan' => [],
+        ];
+        $this->dataDaftarRi['observasi']['pemakaianOksigen'] ??= [
+            'pemakaianOksigenTab' => 'Pemakaian Oksigen',
+            'pemakaianOksigenData' => [],
+        ];
+        $this->dataDaftarRi['observasi']['observasiLanjutan'] ??= [
+            'tandaVitalTab' => 'Observasi Lanjutan',
+            'tandaVital' => [],
+        ];
+
+        // Gunakan trait untuk cek status
+        $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
+
+        // Dispatch ke semua sub-komponen observasi
+        $this->dispatch('open-rm-obat-dan-cairan-ri', $riHdrNo);
+        $this->dispatch('open-observasi-lanjutan-ri', $riHdrNo);
+        $this->dispatch('open-pemakaian-oksigen-ri', $riHdrNo);
+        $this->dispatch('open-pengeluaran-cairan-ri', $riHdrNo);
+
         $this->incrementVersion('modal-observasi-ri');
-        $riStatus = DB::scalar("select ri_status from rstxn_rihdrs where rihdr_no=:r", ['r'=>$riHdrNo]);
-        $this->isFormLocked = ($riStatus !== 'I');
-    }
-
-    public function setWaktuPemeriksaan(): void
-    {
-        $this->formEntryObservasi['waktuPemeriksaan'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
-    }
-
-    public function addObservasiLanjutan(): void
-    {
-        if ($this->isFormLocked) { $this->dispatch('toast', type:'error', message:'Pasien sudah pulang.'); return; }
-        $this->formEntryObservasi['pemeriksa'] = auth()->user()->myuser_name;
-        $this->validate([
-            'formEntryObservasi.waktuPemeriksaan' => 'required|date_format:d/m/Y H:i:s',
-            'formEntryObservasi.sistolik'         => 'required|numeric',
-            'formEntryObservasi.distolik'         => 'required|numeric',
-            'formEntryObservasi.frekuensiNafas'   => 'required|numeric',
-            'formEntryObservasi.frekuensiNadi'    => 'required|numeric',
-            'formEntryObservasi.suhu'             => 'required|numeric',
-            'formEntryObservasi.spo2'             => 'required|numeric',
-        ]);
-        $target = trim($this->formEntryObservasi['waktuPemeriksaan']);
-        $dup = collect($this->dataDaftarRi['observasi']['observasiLanjutan']['tandaVital']??[])
-            ->contains('waktuPemeriksaan', $target);
-        if ($dup) { $this->dispatch('toast', type:'error', message:'Observasi dengan waktu tersebut sudah ada.'); return; }
-        try {
-            $this->withRiLock(function () use ($target) {
-                $fresh = $this->findDataRI($this->riHdrNo) ?? [];
-                $fresh['observasi']['observasiLanjutan']['tandaVital'][] = array_merge($this->formEntryObservasi, [
-                    'sistolik'=>(int)$this->formEntryObservasi['sistolik'],
-                    'distolik'=>(int)$this->formEntryObservasi['distolik'],
-                    'frekuensiNafas'=>(int)$this->formEntryObservasi['frekuensiNafas'],
-                    'frekuensiNadi'=>(int)$this->formEntryObservasi['frekuensiNadi'],
-                    'suhu'=>(float)$this->formEntryObservasi['suhu'],
-                    'spo2'=>(int)$this->formEntryObservasi['spo2'],
-                    'gda'=>$this->formEntryObservasi['gda']===''?null:(float)$this->formEntryObservasi['gda'],
-                    'gcs'=>$this->formEntryObservasi['gcs']===''?null:(int)$this->formEntryObservasi['gcs'],
-                ]);
-                $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
-            });
-            $this->reset(['formEntryObservasi']);
-            $this->afterSave('Observasi berhasil disimpan.');
-        } catch (LockTimeoutException) { $this->dispatch('toast', type:'error', message:'Sistem sibuk, coba lagi.');
-        } catch (\Throwable $e) { $this->dispatch('toast', type:'error', message:'Gagal: '.$e->getMessage()); }
-    }
-
-    public function removeObservasiLanjutan(string $waktuPemeriksaan): void
-    {
-        if ($this->isFormLocked) { $this->dispatch('toast', type:'error', message:'Pasien sudah pulang.'); return; }
-        try {
-            $this->withRiLock(function () use ($waktuPemeriksaan) {
-                $fresh = $this->findDataRI($this->riHdrNo) ?? [];
-                $list  = collect($fresh['observasi']['observasiLanjutan']['tandaVital'] ?? []);
-                $fresh['observasi']['observasiLanjutan']['tandaVital'] =
-                    $list->reject(fn($r) => trim($r['waktuPemeriksaan']??'') === trim($waktuPemeriksaan))->values()->all();
-                $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
-            });
-            $this->afterSave('Observasi berhasil dihapus.');
-        } catch (LockTimeoutException) { $this->dispatch('toast', type:'error', message:'Sistem sibuk, coba lagi.');
-        } catch (\Throwable $e) { $this->dispatch('toast', type:'error', message:'Gagal: '.$e->getMessage()); }
-    }
-
-    // Oksigen
-    public function setWaktuMulaiOksigen(): void
-    {
-        $this->formEntryOksigen['tanggalWaktuMulai'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
-    }
-
-    public function addPemakaianOksigen(): void
-    {
-        if ($this->isFormLocked) { $this->dispatch('toast', type:'error', message:'Pasien sudah pulang.'); return; }
-        $this->validate([
-            'formEntryOksigen.jenisAlatOksigen'  => 'required',
-            'formEntryOksigen.dosisOksigen'      => 'required',
-            'formEntryOksigen.tanggalWaktuMulai' => 'required|date_format:d/m/Y H:i:s',
-        ]);
-        $target = trim($this->formEntryOksigen['tanggalWaktuMulai']);
-        try {
-            $this->withRiLock(function () use ($target) {
-                $fresh = $this->findDataRI($this->riHdrNo) ?? [];
-                $fresh['observasi']['pemakaianOksigen']['pemakaianOksigenData'][] = array_merge($this->formEntryOksigen, ['pemeriksa'=>auth()->user()->myuser_name]);
-                $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
-            });
-            $this->reset(['formEntryOksigen']);
-            $this->afterSave('Pemakaian Oksigen berhasil disimpan.');
-        } catch (LockTimeoutException) { $this->dispatch('toast', type:'error', message:'Sistem sibuk, coba lagi.');
-        } catch (\Throwable $e) { $this->dispatch('toast', type:'error', message:'Gagal: '.$e->getMessage()); }
-    }
-
-    public function removePemakaianOksigen(string $waktuMulai): void
-    {
-        if ($this->isFormLocked) { $this->dispatch('toast', type:'error', message:'Pasien sudah pulang.'); return; }
-        try {
-            $this->withRiLock(function () use ($waktuMulai) {
-                $fresh = $this->findDataRI($this->riHdrNo) ?? [];
-                $list  = collect($fresh['observasi']['pemakaianOksigen']['pemakaianOksigenData'] ?? []);
-                $fresh['observasi']['pemakaianOksigen']['pemakaianOksigenData'] =
-                    $list->reject(fn($r) => trim($r['tanggalWaktuMulai']??'') === trim($waktuMulai))->values()->all();
-                $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
-            });
-            $this->afterSave('Pemakaian Oksigen berhasil dihapus.');
-        } catch (LockTimeoutException) { $this->dispatch('toast', type:'error', message:'Sistem sibuk, coba lagi.');
-        } catch (\Throwable $e) { $this->dispatch('toast', type:'error', message:'Gagal: '.$e->getMessage()); }
-    }
-
-    // Pengeluaran cairan
-    public function setWaktuPengeluaran(): void
-    {
-        $this->formEntryPengeluaran['waktuPengeluaran'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
-    }
-
-    public function addPengeluaranCairan(): void
-    {
-        if ($this->isFormLocked) { $this->dispatch('toast', type:'error', message:'Pasien sudah pulang.'); return; }
-        $this->formEntryPengeluaran['pemeriksa'] = auth()->user()->myuser_name;
-        $this->validate([
-            'formEntryPengeluaran.waktuPengeluaran' => 'required|date_format:d/m/Y H:i:s',
-            'formEntryPengeluaran.jenisOutput'      => 'required',
-            'formEntryPengeluaran.volume'           => 'required|numeric',
-        ]);
-        try {
-            $this->withRiLock(function () {
-                $fresh = $this->findDataRI($this->riHdrNo) ?? [];
-                $fresh['observasi']['pengeluaranCairan']['pengeluaranCairan'][] = array_merge($this->formEntryPengeluaran, ['volume'=>(float)$this->formEntryPengeluaran['volume']]);
-                $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
-            });
-            $this->reset(['formEntryPengeluaran']);
-            $this->afterSave('Pengeluaran cairan berhasil disimpan.');
-        } catch (LockTimeoutException) { $this->dispatch('toast', type:'error', message:'Sistem sibuk, coba lagi.');
-        } catch (\Throwable $e) { $this->dispatch('toast', type:'error', message:'Gagal: '.$e->getMessage()); }
-    }
-
-    public function removePengeluaranCairan(string $waktu): void
-    {
-        if ($this->isFormLocked) { $this->dispatch('toast', type:'error', message:'Pasien sudah pulang.'); return; }
-        try {
-            $this->withRiLock(function () use ($waktu) {
-                $fresh = $this->findDataRI($this->riHdrNo) ?? [];
-                $list  = collect($fresh['observasi']['pengeluaranCairan']['pengeluaranCairan'] ?? []);
-                $fresh['observasi']['pengeluaranCairan']['pengeluaranCairan'] =
-                    $list->reject(fn($r) => trim($r['waktuPengeluaran']??'') === trim($waktu))->values()->all();
-                $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
-            });
-            $this->afterSave('Pengeluaran cairan berhasil dihapus.');
-        } catch (LockTimeoutException) { $this->dispatch('toast', type:'error', message:'Sistem sibuk, coba lagi.');
-        } catch (\Throwable $e) { $this->dispatch('toast', type:'error', message:'Gagal: '.$e->getMessage()); }
-    }
-
-    private function afterSave(string $msg): void
-    {
-        $this->incrementVersion('modal-observasi-ri');
-        $this->dispatch('toast', type:'success', message:$msg);
     }
 
     protected function resetForm(): void
     {
-        $this->resetVersion(); $this->isFormLocked = false;
-        $this->reset(['formEntryObservasi','formEntryOksigen','formEntryPengeluaran']);
+        $this->resetVersion();
+        $this->isFormLocked = false;
+        $this->dataDaftarRi = [];
     }
 
-    private function withRiLock(callable $fn): void
+    // Helper untuk mengambil count tiap tab
+    public function getCountObatProperty(): int
     {
-        Cache::lock("ri:{$this->riHdrNo}", 10)->block(5, function () use ($fn) {
-            DB::transaction(function () use ($fn) {
-                $this->lockRIRow($this->riHdrNo); // row-level lock Oracle
-                $fn();
-            }, 5);
-        });
+        return count($this->dataDaftarRi['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? []);
+    }
+
+    public function getCountPengeluaranProperty(): int
+    {
+        return count($this->dataDaftarRi['observasi']['pengeluaranCairan']['pengeluaranCairan'] ?? []);
+    }
+
+    public function getCountOksigenProperty(): int
+    {
+        return count($this->dataDaftarRi['observasi']['pemakaianOksigen']['pemakaianOksigenData'] ?? []);
+    }
+
+    public function getCountTTVProperty(): int
+    {
+        return count($this->dataDaftarRi['observasi']['observasiLanjutan']['tandaVital'] ?? []);
     }
 };
 ?>
 
-<div class="space-y-4" wire:key="{{ $this->renderKey('modal-observasi-ri', [$riHdrNo ?? 'new']) }}">
+<div wire:key="{{ $this->renderKey('modal-observasi-ri', [$riHdrNo ?? 'new']) }}">
 
+    {{-- Locked banner --}}
     @if ($isFormLocked)
-        <div class="flex items-center gap-2 px-4 py-2.5 mb-2 rounded-lg
+        <div
+            class="flex items-center gap-2 px-4 py-2.5 mb-3 rounded-lg text-sm
                     bg-amber-50 border border-amber-200 text-amber-800
-                    dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300 text-sm">
+                    dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                    d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
             </svg>
-            Pasien sudah pulang — form dalam mode <strong>read-only</strong>.
+            Pasien sudah pulang — semua form dalam mode <strong>read-only</strong>.
         </div>
     @endif
 
-    {{-- ── OBSERVASI TTV LANJUTAN ── --}}
-    <x-border-form title="Observasi Tanda Vital Lanjutan" align="start" bgcolor="bg-gray-50">
-        <div class="mt-3 space-y-3">
-            @if (!$isFormLocked)
-            <div class="grid grid-cols-4 gap-3">
-                @foreach ([['sistolik','Sistolik'],['distolik','Diastolik'],['frekuensiNadi','Nadi'],['frekuensiNafas','Nafas'],['suhu','Suhu'],['spo2','SpO2'],['gda','GDA'],['gcs','GCS'],['cairan','Cairan'],['tetesan','Tetesan']] as [$k,$l])
-                <div>
-                    <x-input-label value="{{ $l }}" />
-                    <x-text-input wire:model="formEntryObservasi.{{ $k }}" class="w-full mt-1 text-sm"
-                        type="{{ in_array($k,['cairan','tetesan'])?'text':'number' }}" step="any" />
-                </div>
+    {{-- ══ 4 TAB OBSERVASI ══ --}}
+    <div x-data="{ tab: 'obat-cairan' }">
+
+        {{-- Tab header --}}
+        <div class="border-b border-gray-200 dark:border-gray-700">
+            <ul class="flex flex-wrap -mb-px text-sm font-medium text-gray-500 dark:text-gray-400">
+                @php
+                    $obsTabs = [
+                        [
+                            'key' => 'obat-cairan',
+                            'label' => 'Pemberian Obat & Cairan',
+                            'count' => $this->countObat,
+                            'icon' =>
+                                'M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z',
+                        ],
+                        [
+                            'key' => 'pengeluaran',
+                            'label' => 'Pengeluaran Cairan',
+                            'count' => $this->countPengeluaran,
+                            'icon' =>
+                                'M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z',
+                        ],
+                        [
+                            'key' => 'oksigen',
+                            'label' => 'Pemakaian Oksigen',
+                            'count' => $this->countOksigen,
+                            'icon' =>
+                                'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z',
+                        ],
+                        [
+                            'key' => 'ttv',
+                            'label' => 'Observasi Lanjutan',
+                            'count' => $this->countTTV,
+                            'icon' =>
+                                'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z',
+                        ],
+                    ];
+                @endphp
+
+                @foreach ($obsTabs as $t)
+                    <li class="mr-0.5">
+                        <button type="button" @click="tab = '{{ $t['key'] }}'"
+                            class="inline-flex items-center gap-2 px-4 py-2.5 border-b-2 rounded-t-lg text-xs transition-colors"
+                            :class="tab === '{{ $t['key'] }}'
+                                ?
+                                'text-brand border-brand bg-brand/5 dark:bg-brand/10 font-semibold' :
+                                'border-transparent hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'">
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="{{ $t['icon'] }}" />
+                            </svg>
+                            {{ $t['label'] }}
+                            @if ($t['count'] > 0)
+                                <span
+                                    class="px-1.5 py-0.5 rounded-full text-[10px] font-bold
+                                    bg-brand-green text-white dark:bg-brand-lime dark:text-gray-900">
+                                    {{ $t['count'] }}
+                                </span>
+                            @endif
+                        </button>
+                    </li>
                 @endforeach
-                <div class="col-span-2">
-                    <x-input-label value="Waktu Pemeriksaan *" />
-                    <div class="flex gap-2 mt-1">
-                        <x-text-input wire:model="formEntryObservasi.waktuPemeriksaan"
-                            class="flex-1 font-mono text-sm" readonly
-                            :error="$errors->has('formEntryObservasi.waktuPemeriksaan')" />
-                        <x-secondary-button wire:click="setWaktuPemeriksaan" type="button" class="text-xs">Sekarang</x-secondary-button>
-                    </div>
-                    <x-input-error :messages="$errors->get('formEntryObservasi.waktuPemeriksaan')" class="mt-1" />
-                </div>
-            </div>
-            <div class="flex justify-end">
-                <x-primary-button wire:click="addObservasiLanjutan" type="button">+ Tambah Observasi</x-primary-button>
-            </div>
-            @endif
-
-            {{-- List --}}
-            @if (!empty($dataDaftarRi['observasi']['observasiLanjutan']['tandaVital']))
-            <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                <table class="w-full text-xs">
-                    <thead class="bg-gray-50 dark:bg-gray-700 text-gray-500">
-                        <tr>
-                            @foreach (['Waktu','TD','Nadi','Nafas','Suhu','SpO2','GDA','GCS','Pemeriksa',''] as $h)
-                            <th class="px-3 py-2 font-medium text-left">{{ $h }}</th>
-                            @endforeach
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                        @foreach ($dataDaftarRi['observasi']['observasiLanjutan']['tandaVital'] as $obs)
-                        <tr wire:key="obs-{{ $obs['waktuPemeriksaan'] }}" class="bg-white dark:bg-gray-800">
-                            <td class="px-3 py-2 font-mono">{{ $obs['waktuPemeriksaan']??'-' }}</td>
-                            <td class="px-3 py-2">{{ ($obs['sistolik']??'-').'/'.($obs['distolik']??'-') }}</td>
-                            <td class="px-3 py-2">{{ $obs['frekuensiNadi']??'-' }}</td>
-                            <td class="px-3 py-2">{{ $obs['frekuensiNafas']??'-' }}</td>
-                            <td class="px-3 py-2">{{ $obs['suhu']??'-' }}</td>
-                            <td class="px-3 py-2">{{ $obs['spo2']??'-' }}</td>
-                            <td class="px-3 py-2">{{ $obs['gda']??'-' }}</td>
-                            <td class="px-3 py-2">{{ $obs['gcs']??'-' }}</td>
-                            <td class="px-3 py-2">{{ $obs['pemeriksa']??'-' }}</td>
-                            @if (!$isFormLocked)
-                            <td class="px-3 py-2">
-                                <x-icon-button variant="danger"
-                                    wire:click="removeObservasiLanjutan('{{ $obs['waktuPemeriksaan'] }}')"
-                                    wire:confirm="Hapus data observasi ini?" tooltip="Hapus">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                    </svg>
-                                </x-icon-button>
-                            </td>
-                            @endif
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            @else
-                <p class="text-xs text-center text-gray-400 py-3">Belum ada data observasi.</p>
-            @endif
+            </ul>
         </div>
-    </x-border-form>
 
-    {{-- ── PEMAKAIAN OKSIGEN ── --}}
-    <x-border-form title="Pemakaian Oksigen" align="start" bgcolor="bg-gray-50">
-        <div class="mt-3 space-y-3">
-            @if (!$isFormLocked)
-            <div class="grid grid-cols-3 gap-3">
-                <div>
-                    <x-input-label value="Jenis Alat Oksigen" />
-                    <x-select-input wire:model="formEntryOksigen.jenisAlatOksigen" class="w-full mt-1">
-                        @foreach (['Nasal Kanul','Masker Sederhana','Ventilator Non-Invasif','Lainnya'] as $opt)
-                        <option value="{{ $opt }}">{{ $opt }}</option>
-                        @endforeach
-                    </x-select-input>
-                </div>
-                <div>
-                    <x-input-label value="Dosis Oksigen" />
-                    <x-select-input wire:model="formEntryOksigen.dosisOksigen" class="w-full mt-1">
-                        @foreach (['1-2 L/menit','3-4 L/menit','2-6 L/menit (Nasal Kanul)','5-10 L/menit (Masker)','Lainnya'] as $opt)
-                        <option value="{{ $opt }}">{{ $opt }}</option>
-                        @endforeach
-                    </x-select-input>
-                </div>
-                <div>
-                    <x-input-label value="Model Penggunaan" />
-                    <x-select-input wire:model="formEntryOksigen.modelPenggunaan" class="w-full mt-1">
-                        <option value="Kontinu">Kontinu</option>
-                        <option value="Intermiten">Intermiten</option>
-                    </x-select-input>
-                </div>
-                <div class="col-span-2">
-                    <x-input-label value="Waktu Mulai *" />
-                    <div class="flex gap-2 mt-1">
-                        <x-text-input wire:model="formEntryOksigen.tanggalWaktuMulai"
-                            class="flex-1 font-mono text-sm" readonly />
-                        <x-secondary-button wire:click="setWaktuMulaiOksigen" type="button" class="text-xs">Sekarang</x-secondary-button>
-                    </div>
-                </div>
-            </div>
-            <div class="flex justify-end">
-                <x-primary-button wire:click="addPemakaianOksigen" type="button">+ Tambah Oksigen</x-primary-button>
-            </div>
-            @endif
-
-            @if (!empty($dataDaftarRi['observasi']['pemakaianOksigen']['pemakaianOksigenData']))
-            <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                <table class="w-full text-xs">
-                    <thead class="bg-gray-50 dark:bg-gray-700 text-gray-500">
-                        <tr>
-                            @foreach (['Jenis Alat','Dosis','Model','Waktu Mulai','Durasi',''] as $h)
-                            <th class="px-3 py-2 font-medium text-left">{{ $h }}</th>
-                            @endforeach
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                        @foreach ($dataDaftarRi['observasi']['pemakaianOksigen']['pemakaianOksigenData'] as $o2)
-                        <tr wire:key="o2-{{ $o2['tanggalWaktuMulai']??'' }}" class="bg-white dark:bg-gray-800">
-                            <td class="px-3 py-2">{{ $o2['jenisAlatOksigen']??'-' }}</td>
-                            <td class="px-3 py-2">{{ $o2['dosisOksigen']??'-' }}</td>
-                            <td class="px-3 py-2">{{ $o2['modelPenggunaan']??'-' }}</td>
-                            <td class="px-3 py-2 font-mono">{{ $o2['tanggalWaktuMulai']??'-' }}</td>
-                            <td class="px-3 py-2">{{ $o2['durasiPenggunaan']??'-' }}</td>
-                            @if (!$isFormLocked)
-                            <td class="px-3 py-2">
-                                <x-icon-button variant="danger"
-                                    wire:click="removePemakaianOksigen('{{ $o2['tanggalWaktuMulai'] }}')"
-                                    wire:confirm="Hapus data oksigen ini?" tooltip="Hapus">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                    </svg>
-                                </x-icon-button>
-                            </td>
-                            @endif
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            @else
-                <p class="text-xs text-center text-gray-400 py-3">Belum ada data oksigen.</p>
-            @endif
+        {{-- Tab 1: Pemberian Obat & Cairan --}}
+        <div x-show="tab === 'obat-cairan'" x-transition.opacity.duration.150ms class="pt-3">
+            <livewire:pages::transaksi.ri.emr-ri.observasi-ri.obat-dan-cairan-ri.rm-obat-dan-cairan-ri-actions
+                :riHdrNo="$riHdrNo" wire:key="obat-cairan-{{ $riHdrNo }}" />
         </div>
-    </x-border-form>
 
-    {{-- ── PENGELUARAN CAIRAN ── --}}
-    <x-border-form title="Pengeluaran Cairan" align="start" bgcolor="bg-gray-50">
-        <div class="mt-3 space-y-3">
-            @if (!$isFormLocked)
-            <div class="grid grid-cols-3 gap-3">
-                <div>
-                    <x-input-label value="Jenis Output" />
-                    <x-text-input wire:model="formEntryPengeluaran.jenisOutput" class="w-full mt-1" placeholder="Urine / Feses / dll" />
-                </div>
-                <div>
-                    <x-input-label value="Volume (ml) *" />
-                    <x-text-input wire:model="formEntryPengeluaran.volume" class="w-full mt-1" type="number" step="any" />
-                </div>
-                <div>
-                    <x-input-label value="Warna / Karakteristik" />
-                    <x-text-input wire:model="formEntryPengeluaran.warnaKarakteristik" class="w-full mt-1" />
-                </div>
-                <div>
-                    <x-input-label value="Keterangan" />
-                    <x-text-input wire:model="formEntryPengeluaran.keterangan" class="w-full mt-1" />
-                </div>
-                <div class="col-span-2">
-                    <x-input-label value="Waktu Pengeluaran *" />
-                    <div class="flex gap-2 mt-1">
-                        <x-text-input wire:model="formEntryPengeluaran.waktuPengeluaran"
-                            class="flex-1 font-mono text-sm" readonly />
-                        <x-secondary-button wire:click="setWaktuPengeluaran" type="button" class="text-xs">Sekarang</x-secondary-button>
-                    </div>
-                </div>
-            </div>
-            <div class="flex justify-end">
-                <x-primary-button wire:click="addPengeluaranCairan" type="button">+ Tambah Cairan</x-primary-button>
-            </div>
-            @endif
-
-            @if (!empty($dataDaftarRi['observasi']['pengeluaranCairan']['pengeluaranCairan']))
-            <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                <table class="w-full text-xs">
-                    <thead class="bg-gray-50 dark:bg-gray-700 text-gray-500">
-                        <tr>
-                            @foreach (['Waktu','Jenis','Volume','Warna','Keterangan','Pemeriksa',''] as $h)
-                            <th class="px-3 py-2 font-medium text-left">{{ $h }}</th>
-                            @endforeach
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                        @foreach ($dataDaftarRi['observasi']['pengeluaranCairan']['pengeluaranCairan'] as $pc)
-                        <tr wire:key="pc-{{ $pc['waktuPengeluaran']??'' }}" class="bg-white dark:bg-gray-800">
-                            <td class="px-3 py-2 font-mono">{{ $pc['waktuPengeluaran']??'-' }}</td>
-                            <td class="px-3 py-2">{{ $pc['jenisOutput']??'-' }}</td>
-                            <td class="px-3 py-2">{{ $pc['volume']??'-' }} ml</td>
-                            <td class="px-3 py-2">{{ $pc['warnaKarakteristik']??'-' }}</td>
-                            <td class="px-3 py-2">{{ $pc['keterangan']??'-' }}</td>
-                            <td class="px-3 py-2">{{ $pc['pemeriksa']??'-' }}</td>
-                            @if (!$isFormLocked)
-                            <td class="px-3 py-2">
-                                <x-icon-button variant="danger"
-                                    wire:click="removePengeluaranCairan('{{ $pc['waktuPengeluaran'] }}')"
-                                    wire:confirm="Hapus data pengeluaran ini?" tooltip="Hapus">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                    </svg>
-                                </x-icon-button>
-                            </td>
-                            @endif
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            @else
-                <p class="text-xs text-center text-gray-400 py-3">Belum ada data pengeluaran cairan.</p>
-            @endif
+        {{-- Tab 2: Pengeluaran Cairan --}}
+        <div x-show="tab === 'pengeluaran'" x-transition.opacity.duration.150ms class="pt-4" style="display:none">
+            <livewire:pages::transaksi.ri.emr-ri.observasi-ri.pengeluaran-cairan-ri.rm-pengeluaran-cairan-ri-actions
+                :riHdrNo="$riHdrNo" wire:key="pengeluaran-{{ $riHdrNo }}" />
         </div>
-    </x-border-form>
 
+        {{-- Tab 3: Pemakaian Oksigen --}}
+        <div x-show="tab === 'oksigen'" x-transition.opacity.duration.150ms class="pt-4" style="display:none">
+            <livewire:pages::transaksi.ri.emr-ri.observasi-ri.pemakaian-oksigen-ri.rm-pemakaian-oksigen-ri-actions
+                :riHdrNo="$riHdrNo" wire:key="oksigen-{{ $riHdrNo }}" />
+        </div>
+
+        {{-- Tab 4: Observasi Lanjutan (Tanda Vital) --}}
+        <div x-show="tab === 'ttv'" x-transition.opacity.duration.150ms class="pt-4" style="display:none">
+            <livewire:pages::transaksi.ri.emr-ri.observasi-ri.observasi-lanjutan-ri.rm-observasi-lanjutan-ri-actions
+                :riHdrNo="$riHdrNo" wire:key="ttv-{{ $riHdrNo }}" />
+        </div>
+
+    </div>{{-- end x-data tab --}}
 </div>

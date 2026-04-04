@@ -6,8 +6,6 @@ use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -25,7 +23,6 @@ new class extends Component {
 
     public array $agreementOptions = [['agreementId' => '1', 'agreementDesc' => 'Setuju'], ['agreementId' => '0', 'agreementDesc' => 'Tidak Setuju']];
 
-    /* Nilai default — digunakan untuk init & init di dataDaftarRi */
     private function defaultConsent(): array
     {
         return [
@@ -53,6 +50,7 @@ new class extends Component {
         if (empty($riHdrNo)) {
             return;
         }
+
         $this->riHdrNo = $riHdrNo;
         $this->resetForm();
 
@@ -61,13 +59,14 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data RI tidak ditemukan.');
             return;
         }
+
         $this->dataDaftarRi = $data;
         $this->regNo = $data['regNo'] ?? null;
         $this->dataDaftarRi['generalConsentPasienRI'] ??= $this->defaultConsent();
 
+        $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
+
         $this->incrementVersion('modal-general-consent-ri');
-        $riStatus = DB::scalar('select ri_status from rstxn_rihdrs where rihdr_no=:r', ['r' => $riHdrNo]);
-        $this->isFormLocked = $riStatus !== 'I';
     }
 
     public function submit(): void
@@ -76,6 +75,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang.');
             return;
         }
+
         if (empty($this->signature)) {
             $this->dispatch('toast', type: 'error', message: 'Tanda tangan pasien/wali belum diisi.');
             return;
@@ -120,19 +120,20 @@ new class extends Component {
     private function store(): void
     {
         try {
-            Cache::lock("ri:{$this->riHdrNo}", 5)->block(3, function () {
-                DB::transaction(function () {
-                    $this->lockRIRow($this->riHdrNo); // row-level lock Oracle
-                    $fresh = $this->findDataRI($this->riHdrNo) ?: [];
-                    $fresh['generalConsentPasienRI'] = array_replace($fresh['generalConsentPasienRI'] ?? $this->defaultConsent(), (array) ($this->dataDaftarRi['generalConsentPasienRI'] ?? []));
-                    $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                    $this->dataDaftarRi = $fresh;
-                });
+            DB::transaction(function () {
+                // ← trait pattern
+                $this->lockRIRow($this->riHdrNo);
+
+                $fresh = $this->findDataRI($this->riHdrNo) ?: [];
+                $fresh['generalConsentPasienRI'] = array_replace($fresh['generalConsentPasienRI'] ?? $this->defaultConsent(), (array) ($this->dataDaftarRi['generalConsentPasienRI'] ?? []));
+                $this->updateJsonRI((int) $this->riHdrNo, $fresh);
+                $this->dataDaftarRi = $fresh;
             });
+
             $this->signature = null;
             $this->afterSave('General Consent berhasil disimpan.');
-        } catch (LockTimeoutException) {
-            $this->dispatch('toast', type: 'error', message: 'Sistem sibuk, coba lagi.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan General Consent.');
         }
@@ -156,6 +157,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data General Consent belum tersedia.');
             return;
         }
+
         try {
             $identitasRs = DB::table('rsmst_identitases')->select('int_name', 'int_phone1', 'int_phone2', 'int_fax', 'int_address', 'int_city')->first();
             $dataPasien = $this->findDataMasterPasien($this->regNo ?? '');
@@ -165,6 +167,7 @@ new class extends Component {
                 'dataRi' => $this->dataDaftarRi,
                 'consent' => $consent,
             ])->output();
+
             $this->dispatch('toast', type: 'success', message: 'Berhasil mencetak General Consent.');
             return response()->streamDownload(fn() => print $pdf, 'general-consent-ri-' . $this->riHdrNo . '.pdf');
         } catch (\Throwable $e) {

@@ -5,8 +5,6 @@ use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Contracts\Cache\LockTimeoutException;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
 
@@ -33,6 +31,7 @@ new class extends Component {
         if (empty($riHdrNo)) {
             return;
         }
+
         $this->riHdrNo = $riHdrNo;
         $this->resetForm();
         $this->resetValidation();
@@ -42,6 +41,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data RI tidak ditemukan.');
             return;
         }
+
         $this->dataDaftarRi = $data;
         $this->dataDaftarRi['pengkajianDokter'] ??= [
             'anamnesa' => [
@@ -63,10 +63,9 @@ new class extends Component {
             'tandaTanganDokter' => ['dokterPengkaji' => '', 'dokterPengkajiCode' => '', 'jamDokterPengkaji' => ''],
         ];
 
-        $this->incrementVersion('modal-pengkajian-dokter-ri');
+        $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
 
-        $riStatus = DB::scalar('select ri_status from rstxn_rihdrs where rihdr_no=:r', ['r' => $riHdrNo]);
-        $this->isFormLocked = $riStatus !== 'I';
+        $this->incrementVersion('modal-pengkajian-dokter-ri');
     }
 
     #[On('save-rm-pengkajian-dokter-ri')]
@@ -76,24 +75,21 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, form terkunci.');
             return;
         }
-        $this->validate(
-            [
-                'dataDaftarRi.pengkajianDokter.anamnesa.keluhanUtama' => 'required|string|max:1000',
-            ],
-            [
-                'dataDaftarRi.pengkajianDokter.anamnesa.keluhanUtama.required' => 'Keluhan utama wajib diisi.',
-            ],
-        );
+
+        $this->validate(['dataDaftarRi.pengkajianDokter.anamnesa.keluhanUtama' => 'required|string|max:1000'], ['dataDaftarRi.pengkajianDokter.anamnesa.keluhanUtama.required' => 'Keluhan utama wajib diisi.']);
+
         try {
-            $this->withRiLock(function () {
+            DB::transaction(function () {
+                $this->lockRIRow($this->riHdrNo);
+
                 $fresh = $this->findDataRI($this->riHdrNo) ?? [];
                 $fresh['pengkajianDokter'] = $this->dataDaftarRi['pengkajianDokter'] ?? [];
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->dataDaftarRi = $fresh;
             });
             $this->afterSave('Pengkajian Dokter berhasil disimpan.');
-        } catch (LockTimeoutException) {
-            $this->dispatch('toast', type: 'error', message: 'Sistem sibuk, coba lagi.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
         }
@@ -117,16 +113,20 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Nama obat kosong.');
             return;
         }
+
         $exists = collect($this->dataDaftarRi['pengkajianDokter']['anamnesa']['rekonsiliasiObat'] ?? [])->contains('namaObat', $this->rekonsiliasiObat['namaObat']);
+
         if ($exists) {
             $this->dispatch('toast', type: 'error', message: 'Obat sudah ada.');
             return;
         }
+
         $this->dataDaftarRi['pengkajianDokter']['anamnesa']['rekonsiliasiObat'][] = [
             'namaObat' => $this->rekonsiliasiObat['namaObat'],
             'dosis' => $this->rekonsiliasiObat['dosis'],
             'rute' => $this->rekonsiliasiObat['rute'],
         ];
+
         $this->store();
         $this->reset(['rekonsiliasiObat']);
     }
@@ -137,6 +137,7 @@ new class extends Component {
             ->reject(fn($o) => $o['namaObat'] === $namaObat)
             ->values()
             ->toArray();
+
         $this->store();
     }
 
@@ -151,16 +152,6 @@ new class extends Component {
         $this->resetVersion();
         $this->isFormLocked = false;
         $this->reset(['rekonsiliasiObat']);
-    }
-
-    private function withRiLock(callable $fn): void
-    {
-        Cache::lock("ri:{$this->riHdrNo}", 10)->block(5, function () use ($fn) {
-            DB::transaction(function () use ($fn) {
-                $this->lockRIRow($this->riHdrNo);
-                $fn();
-            }, 5);
-        });
     }
 };
 ?>

@@ -121,8 +121,8 @@ new class extends Component {
             return;
         }
 
-        $riStatus = DB::scalar('select ri_status from rstxn_rihdrs where rihdr_no=:r', ['r' => $this->riHdrNo]);
-        if ($riStatus !== 'I') {
+        if ($this->checkRIStatus($this->riHdrNo)) {
+            // ← trait, ganti DB::scalar
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, tidak dapat menambah pemeriksaan.');
             return;
         }
@@ -155,7 +155,6 @@ new class extends Component {
                     $this->insertItemAndChildren($checkupNo, $item);
                 }
 
-                /* patch JSON RI */
                 $data = $this->findDataRI($this->riHdrNo) ?? [];
                 if (empty($data)) {
                     throw new \RuntimeException('Data RI tidak ditemukan saat akan disimpan.');
@@ -173,14 +172,13 @@ new class extends Component {
                 $this->updateJsonRI($this->riHdrNo, $data);
             });
 
-            /* refresh display */
             $this->findData($this->riHdrNo);
-
             $this->dispatch('toast', type: 'success', message: count($this->selectedItems) . ' item lab berhasil dikirim.');
             $this->closeModal();
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            // ← ganti \Exception
             $this->dispatch('toast', type: 'error', message: 'Gagal mengirim: ' . $e->getMessage());
         }
     }
