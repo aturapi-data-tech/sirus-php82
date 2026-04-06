@@ -35,6 +35,8 @@ new class extends Component {
     public string $formMode = 'create';
     public bool $isFormLocked = false;
     public bool $showRujukanLov = false;
+    public bool $showSkdpLov = false;
+    public array $skdpOptions = [];
     public array $dataRujukan = [];
     public array $selectedRujukan = [];
     public array $dataPasien = [];
@@ -230,6 +232,59 @@ new class extends Component {
             '4' => '2',
             default => '1',
         };
+    }
+
+    /* ---- LOV SKDP ---- */
+    public function loadSkdpOptions(): void
+    {
+        if (empty($this->regNo)) {
+            $this->dispatch('toast', type: 'warning', message: 'No. registrasi pasien tidak ditemukan.');
+            return;
+        }
+
+        $rows = DB::table('rstxn_rjhdrs')
+            ->where('reg_no', $this->regNo)
+            ->whereNotNull('datadaftarpolirj_json')
+            ->orderByDesc('rj_date')
+            ->limit(30)
+            ->pluck('datadaftarpolirj_json');
+
+        $options = [];
+        foreach ($rows as $json) {
+            $data = json_decode($json, true) ?? [];
+            $noSkdp = $data['kontrol']['noSKDPBPJS'] ?? '';
+            if (empty($noSkdp)) {
+                continue;
+            }
+            $options[] = [
+                'noSKDP'       => $noSkdp,
+                'tglKontrol'   => $data['kontrol']['tglKontrol'] ?? '-',
+                'drKontrol'    => $data['kontrol']['drKontrolDesc'] ?? '',
+                'drKontrolBpjs'=> $data['kontrol']['drKontrolBPJS'] ?? '',
+                'poliKontrol'  => $data['kontrol']['poliKontrolDesc'] ?? '',
+            ];
+        }
+
+        // deduplikasi berdasarkan noSKDP
+        $seen = [];
+        $this->skdpOptions = array_values(array_filter($options, function ($o) use (&$seen) {
+            if (isset($seen[$o['noSKDP']])) return false;
+            return $seen[$o['noSKDP']] = true;
+        }));
+
+        if (empty($this->skdpOptions)) {
+            $this->dispatch('toast', type: 'warning', message: 'Tidak ada SKDP tersimpan untuk pasien ini.');
+            return;
+        }
+
+        $this->showSkdpLov = true;
+    }
+
+    public function selectSkdp(string $noSkdp, string $kodeDpjp): void
+    {
+        $this->SEPForm['skdp']['noSurat']  = $noSkdp;
+        $this->SEPForm['skdp']['kodeDPJP'] = $kodeDpjp;
+        $this->showSkdpLov = false;
     }
 
     /* ---- Cari Rujukan ---- */
@@ -949,21 +1004,70 @@ new class extends Component {
 
                                     {{-- 7 & 8. Surat Kontrol/SKDP — hanya untuk Kontrol non-postInap --}}
                                     @if ($kunjunganId == '3' && !$postInap)
-                                        <div class="lg:col-span-2">
+                                        <div class="lg:col-span-4">
                                             <x-input-label value="No. Surat Kontrol/SKDP *" />
-                                            <x-text-input wire:model="SEPForm.skdp.noSurat" class="w-full"
-                                                :disabled="$isFormLocked" placeholder="Dari menu Surat Kontrol BPJS" />
-                                            <p class="mt-1 text-xs text-amber-500">
-                                                Isi dari nomor surat kontrol (bukan nomor rujukan FKTP).
-                                            </p>
+
+                                            @if (!$isFormLocked)
+                                                <div class="flex gap-2 mt-1">
+                                                    <x-text-input wire:model="SEPForm.skdp.noSurat" class="flex-1"
+                                                        placeholder="Pilih dari riwayat atau ketik manual" />
+                                                    <button type="button" wire:click="loadSkdpOptions"
+                                                        wire:loading.attr="disabled" wire:target="loadSkdpOptions"
+                                                        class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white rounded-xl bg-brand-green hover:bg-brand-green/90 dark:bg-brand-lime dark:text-gray-900 transition whitespace-nowrap">
+                                                        <span wire:loading.remove wire:target="loadSkdpOptions">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h8" />
+                                                            </svg>
+                                                        </span>
+                                                        <span wire:loading wire:target="loadSkdpOptions"><x-loading class="w-4 h-4" /></span>
+                                                        Pilih Riwayat
+                                                    </button>
+                                                </div>
+
+                                                {{-- LOV dropdown riwayat SKDP --}}
+                                                @if ($showSkdpLov && count($skdpOptions) > 0)
+                                                    <div class="relative mt-1">
+                                                        <div class="absolute z-50 w-full overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
+                                                            <div class="flex items-center justify-between px-3 py-2 border-b border-gray-100 dark:border-gray-800">
+                                                                <span class="text-xs font-semibold text-gray-500 uppercase">Riwayat SKDP Pasien</span>
+                                                                <button type="button" wire:click="$set('showSkdpLov', false)"
+                                                                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                            <ul class="overflow-y-auto divide-y divide-gray-100 max-h-56 dark:divide-gray-800">
+                                                                @foreach ($skdpOptions as $opt)
+                                                                    <li>
+                                                                        <button type="button"
+                                                                            wire:click="selectSkdp('{{ $opt['noSKDP'] }}', '{{ $opt['drKontrolBpjs'] }}')"
+                                                                            class="w-full px-4 py-2.5 text-left hover:bg-brand-green/5 dark:hover:bg-brand-lime/5 transition">
+                                                                            <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ $opt['noSKDP'] }}</div>
+                                                                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                                                Tgl Kontrol: {{ $opt['tglKontrol'] }}
+                                                                                @if ($opt['drKontrol']) · Dr. {{ $opt['drKontrol'] }} @endif
+                                                                                @if ($opt['poliKontrol']) · {{ $opt['poliKontrol'] }} @endif
+                                                                            </div>
+                                                                        </button>
+                                                                    </li>
+                                                                @endforeach
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                @endif
+                                            @else
+                                                <x-text-input wire:model="SEPForm.skdp.noSurat" class="w-full mt-1" disabled />
+                                            @endif
+
                                             <x-input-error :messages="$errors->get('SEPForm.skdp.noSurat')" class="mt-1" />
-                                        </div>
-                                        <div class="lg:col-span-2">
-                                            <x-input-label value="DPJP Pemberi Surat SKDP/SPRI *" />
-                                            <x-text-input wire:model="SEPForm.skdp.kodeDPJP" class="w-full"
-                                                :disabled="$isFormLocked" placeholder="Kode dokter pemberi SKDP" />
-                                            <p class="mt-1 text-xs text-gray-400">Otomatis terisi dari LOV Dokter.</p>
-                                            <x-input-error :messages="$errors->get('SEPForm.skdp.kodeDPJP')" class="mt-1" />
+
+                                            <div class="mt-2">
+                                                <x-input-label value="Kode DPJP Pemberi SKDP *" />
+                                                <x-text-input wire:model="SEPForm.skdp.kodeDPJP" class="w-full mt-1"
+                                                    :disabled="$isFormLocked" placeholder="Otomatis dari pilih riwayat atau isi manual" />
+                                                <x-input-error :messages="$errors->get('SEPForm.skdp.kodeDPJP')" class="mt-1" />
+                                            </div>
                                         </div>
                                     @endif
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Traits\Txn\Ri;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -258,6 +259,23 @@ trait EmrRITrait
 
         // Terkunci jika bukan 'I' (sudah Pulang atau status lain)
         return $row->ri_status !== 'I';
+    }
+
+    /**
+     * Append satu entry ke AdministrasiRI.userLogs di JSON.
+     * Panggil DI DALAM DB::transaction setelah lockRIRow().
+     */
+    protected function appendAdminLog(int $riHdrNo, string $keterangan): void
+    {
+        $data = $this->findDataRI($riHdrNo);
+
+        $data['AdministrasiRI']['userLogs'][] = [
+            'userLog'     => auth()->user()->myuser_name ?? auth()->user()->name ?? 'SYSTEM',
+            'userLogDate' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
+            'userLogDesc' => $keterangan,
+        ];
+
+        $this->updateJsonRI($riHdrNo, $data);
     }
 
     protected function checkEmrRIStatus($riHdrNo): bool
