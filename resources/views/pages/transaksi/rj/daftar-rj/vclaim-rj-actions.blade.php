@@ -494,6 +494,8 @@ new class extends Component {
             'SEPForm.diagAwal' => 'required',
             'SEPForm.poli.tujuan' => 'required',
             'SEPForm.dpjpLayan' => 'required',
+            'SEPForm.klsRawat.klsRawatHak' => 'required',
+            'SEPForm.noTelp' => 'required',
             // FIX #4: validasi KLL — lokasi wajib jika lakaLantas != 0 (UAT 6.1.3–6.1.5)
             'SEPForm.jaminan.lakaLantas' => 'required|in:0,1,2,3',
             'SEPForm.jaminan.penjamin.suplesi.lokasiLaka.kdPropinsi' => 'required_unless:SEPForm.jaminan.lakaLantas,0',
@@ -513,6 +515,8 @@ new class extends Component {
             'SEPForm.diagAwal.required' => 'Diagnosa awal harus diisi.',
             'SEPForm.poli.tujuan.required' => 'Poli tujuan harus diisi.',
             'SEPForm.dpjpLayan.required' => 'DPJP harus diisi.',
+            'SEPForm.klsRawat.klsRawatHak.required' => 'Kelas rawat hak belum terisi. Pilih rujukan terlebih dahulu.',
+            'SEPForm.noTelp.required' => 'No. telepon pasien harus diisi.',
             'SEPForm.jaminan.lakaLantas.in' => 'Nilai Laka Lantas tidak valid.',
             'SEPForm.jaminan.penjamin.suplesi.lokasiLaka.kdPropinsi.required_unless' => 'Kode Propinsi wajib diisi untuk kasus KLL.',
             'SEPForm.jaminan.penjamin.suplesi.lokasiLaka.kdKabupaten.required_unless' => 'Kode Kabupaten wajib diisi untuk kasus KLL.',
@@ -1112,7 +1116,9 @@ new class extends Component {
                                     <div class="lg:col-span-2">
                                         <x-input-label value="No. Telepon *" />
                                         <x-text-input wire:model="SEPForm.noTelp" class="w-full" :disabled="$isFormLocked"
-                                            placeholder="08xxxx" />
+                                            placeholder="08xxxx"
+                                            :error="$errors->has('SEPForm.noTelp')" />
+                                        <x-input-error :messages="$errors->get('SEPForm.noTelp')" class="mt-1" />
                                     </div>
 
                                     {{-- 13. Catatan --}}
@@ -1283,14 +1289,16 @@ new class extends Component {
                                     <div x-show="open" x-collapse class="p-4">
                                         <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                                             <div>
-                                                <x-input-label value="Kelas Rawat Hak" />
+                                                <x-input-label value="Kelas Rawat Hak *" />
                                                 <x-select-input wire:model="SEPForm.klsRawat.klsRawatHak"
-                                                    class="w-full" :disabled="true">
-                                                    <option value="">Pilih Kelas</option>
+                                                    class="w-full" :disabled="true"
+                                                    :error="$errors->has('SEPForm.klsRawat.klsRawatHak')">
+                                                    <option value="">-- Pilih Rujukan dulu --</option>
                                                     <option value="1">Kelas 1</option>
                                                     <option value="2">Kelas 2</option>
                                                     <option value="3">Kelas 3</option>
                                                 </x-select-input>
+                                                <x-input-error :messages="$errors->get('SEPForm.klsRawat.klsRawatHak')" class="mt-1" />
                                             </div>
                                             <div>
                                                 <x-input-label value="Kelas Rawat Naik" />
