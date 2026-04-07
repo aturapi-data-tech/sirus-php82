@@ -150,6 +150,45 @@ new class extends Component {
             $isPoliSpesialis = DB::table('rsmst_polis')->where('poli_id', $this->dataDaftarPoliRJ['poliId'])->where('spesialis_status', '1')->exists();
 
             // ============================================================
+            // 1b. CEK KUOTA — hanya untuk poli spesialis, warning saja
+            // ============================================================
+            if ($isPoliSpesialis && $this->formMode === 'create') {
+                $jadwal = $this->getJadwalPraktek(
+                    Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate'])
+                );
+
+                if ($jadwal['_not_found'] ?? false) {
+                    $this->dispatch('toast', type: 'warning',
+                        message: 'Jadwal praktek dokter tidak ditemukan untuk hari ini. Data tetap disimpan.',
+                        title: 'Jadwal Tidak Ditemukan', position: 'top-end', duration: 7000);
+                } else {
+                    $rjDateCarbon  = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate']);
+
+                    $jumlahRjhdrs = DB::table('rstxn_rjhdrs')
+                        ->where('dr_id', $this->dataDaftarPoliRJ['drId'])
+                        ->where('poli_id', $this->dataDaftarPoliRJ['poliId'])
+                        ->where('klaim_id', '!=', 'KR')
+                        ->whereRaw("to_char(rj_date,'ddmmyyyy') = ?", [$rjDateCarbon->format('dmY')])
+                        ->count();
+
+                    $jumlahBooking = DB::table('referensi_mobilejkn_bpjs as b')
+                        ->join('rsmst_doctors as d', 'd.kd_dr_bpjs', '=', 'b.kodedokter')
+                        ->where('d.dr_id', $this->dataDaftarPoliRJ['drId'])
+                        ->where('b.tanggalperiksa', $rjDateCarbon->format('Y-m-d'))
+                        ->where('b.status', 'Belum')
+                        ->count();
+
+                    $jumlahTerdaftar = $jumlahRjhdrs + $jumlahBooking;
+
+                    if ($jumlahTerdaftar >= $jadwal['kuota']) {
+                        $this->dispatch('toast', type: 'warning',
+                            message: "Kuota praktek penuh! (Kuota: {$jadwal['kuota']}, Terdaftar: {$jumlahTerdaftar}). Data tetap disimpan.",
+                            title: 'Kuota Penuh', position: 'top-end', duration: 7000);
+                    }
+                }
+            }
+
+            // ============================================================
             // 2. BPJS ANTRIAN — hanya untuk poli spesialis, bukan KR
             // ============================================================
             if ($this->dataDaftarPoliRJ['klaimId'] !== 'KR' && $isPoliSpesialis) {
@@ -541,7 +580,11 @@ new class extends Component {
 
         $jadwal = DB::table('scmst_scpolis')->select('scmst_scpolis.dr_id', DB::raw("nvl(mulai_praktek, '07:00:00') as mulai_praktek"), DB::raw("nvl(selesai_praktek, '13:00:00') as selesai_praktek"), DB::raw('nvl(kuota, 30) as kuota'))->where('dr_id', $this->dataDaftarPoliRJ['drId'])->where('poli_id', $this->dataDaftarPoliRJ['poliId'])->where('day_id', $dayId)->where('sc_poli_status_', 1)->orderBy('no_urut')->first();
 
-        return $jadwal ? ['mulai_praktek' => $jadwal->mulai_praktek, 'selesai_praktek' => $jadwal->selesai_praktek, 'kuota' => (int) $jadwal->kuota] : ['mulai_praktek' => '07:00:00', 'selesai_praktek' => '13:00:00', 'kuota' => 30];
+        if (!$jadwal) {
+            return ['mulai_praktek' => '07:00:00', 'selesai_praktek' => '13:00:00', 'kuota' => 30, '_not_found' => true];
+        }
+
+        return ['mulai_praktek' => $jadwal->mulai_praktek, 'selesai_praktek' => $jadwal->selesai_praktek, 'kuota' => (int) $jadwal->kuota, '_not_found' => false];
     }
 
     private function getJenisPasien(): string
