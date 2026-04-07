@@ -18,10 +18,16 @@ new class extends Component {
     public array $dataDaftarRI = [];
 
     public array $formEntry = [
+        'otherDate' => '',
         'lainId'    => '',
         'lainDesc'  => '',
         'lainPrice' => '',
     ];
+
+    private function nowFormatted(): string
+    {
+        return Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+    }
 
     /* ===============================
      | MOUNT
@@ -29,6 +35,7 @@ new class extends Component {
     public function mount(): void
     {
         $this->registerAreas($this->renderAreas);
+        $this->formEntry['otherDate'] = $this->nowFormatted();
 
         if ($this->riHdrNo) {
             $this->findData($this->riHdrNo);
@@ -49,7 +56,7 @@ new class extends Component {
                 'rstxn_riothers.other_no',
             )
             ->where('rstxn_riothers.rihdr_no', $riHdrNo)
-            ->orderBy('other_date')
+            ->orderByDesc('other_date')
             ->get();
 
         $this->dataDaftarRI['RiLainLain'] = $rows->map(fn($r) => (array) $r)->toArray();
@@ -115,7 +122,7 @@ new class extends Component {
                     'other_no'    => $last->other_no_max,
                     'rihdr_no'    => $this->riHdrNo,
                     'other_id'    => $this->formEntry['lainId'],
-                    'other_date'  => DB::raw("sysdate"),
+                    'other_date'  => DB::raw("TO_DATE('" . $this->formEntry['otherDate'] . "','dd/mm/yyyy hh24:mi:ss')"),
                     'other_price' => $this->formEntry['lainPrice'],
                 ]);
                 $this->appendAdminLog($this->riHdrNo, 'Tambah Lain-Lain: ' . $this->formEntry['lainDesc']);
@@ -159,9 +166,16 @@ new class extends Component {
         }
     }
 
+    public function refreshOtherDate(): void
+    {
+        $this->formEntry['otherDate'] = $this->nowFormatted();
+        $this->resetErrorBag('formEntry.otherDate');
+    }
+
     public function resetFormEntry(): void
     {
         $this->reset(['formEntry']);
+        $this->formEntry['otherDate'] = $this->nowFormatted();
         $this->resetValidation();
         $this->incrementVersion('modal-lain-lain-ri');
     }
@@ -186,49 +200,47 @@ new class extends Component {
             x-on:focus-input-lain-price.window="$nextTick(() => $refs.inputLainPrice?.focus())">
 
             @if (empty($formEntry['lainId']))
-                <div class="w-80">
-                    <livewire:lov.lain-lain.lov-lain-lain target="lain-lain-ri" label="Lain-Lain"
-                        placeholder="Ketik kode/nama..."
-                        wire:key="lov-lain-{{ $riHdrNo }}-{{ $renderVersions['modal-lain-lain-ri'] ?? 0 }}" />
-                </div>
+                <livewire:lov.lain-lain.lov-lain-lain target="lain-lain-ri" label="Lain-Lain"
+                    placeholder="Ketik kode/nama..."
+                    wire:key="lov-lain-{{ $riHdrNo }}-{{ $renderVersions['modal-lain-lain-ri'] ?? 0 }}" />
             @else
-                <div class="flex items-end gap-3">
-                    <div class="w-28">
+                <div class="grid grid-cols-5 gap-3 items-end">
+                    <div>
+                        <x-input-label value="Tanggal" class="mb-1" />
+                        <div class="flex gap-1">
+                            <x-text-input wire:model="formEntry.otherDate" placeholder="dd/mm/yyyy hh:mm:ss"
+                                class="flex-1 text-sm font-mono min-w-0" />
+                            <button type="button" wire:click="refreshOtherDate" title="Waktu sekarang"
+                                class="shrink-0 px-2 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
                         <x-input-label value="Kode" class="mb-1" />
                         <x-text-input wire:model="formEntry.lainId" disabled class="w-full text-sm" />
                     </div>
-                    <div class="flex-1">
+                    <div class="col-span-2">
                         <x-input-label value="Keterangan" class="mb-1" />
                         <x-text-input wire:model="formEntry.lainDesc" disabled class="w-full text-sm" />
                     </div>
-                    <div class="w-36">
-                        <x-input-label value="Tarif" class="mb-1" />
-                        <x-text-input wire:model="formEntry.lainPrice" placeholder="Tarif" class="w-full text-sm"
-                            x-ref="inputLainPrice"
-                            x-on:keyup.enter="$wire.insertLainLain()" />
-                        @error('formEntry.lainPrice')
-                            <x-input-error :messages="$message" class="mt-1" />
-                        @enderror
-                    </div>
-                    <div class="flex gap-2 pb-0.5">
-                        <button type="button" wire:click.prevent="insertLainLain" wire:loading.attr="disabled"
-                            wire:target="insertLainLain"
-                            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-brand-green hover:bg-brand-green/90 disabled:opacity-60 dark:bg-brand-lime dark:text-gray-900 transition shadow-sm">
-                            <span wire:loading.remove wire:target="insertLainLain">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                            </span>
+                    <div class="flex gap-2 items-end">
+                        <div class="flex-1">
+                            <x-input-label value="Tarif" class="mb-1" />
+                            <x-text-input-number wire:model="formEntry.lainPrice"
+                                x-ref="inputLainPrice"
+                                x-on:keydown.enter.prevent="$wire.insertLainLain()" />
+                            @error('formEntry.lainPrice') <x-input-error :messages="$message" class="mt-1" /> @enderror
+                        </div>
+                        <x-primary-button wire:click.prevent="insertLainLain" wire:loading.attr="disabled"
+                            wire:target="insertLainLain">
+                            <span wire:loading.remove wire:target="insertLainLain">Tambah</span>
                             <span wire:loading wire:target="insertLainLain"><x-loading class="w-4 h-4" /></span>
-                            Tambah
-                        </button>
-                        <button type="button" wire:click.prevent="resetFormEntry"
-                            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                            Batal
-                        </button>
+                        </x-primary-button>
+                        <x-secondary-button wire:click.prevent="resetFormEntry">Batal</x-secondary-button>
                     </div>
                 </div>
             @endif

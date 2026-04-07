@@ -36,6 +36,8 @@ new class extends Component {
     {
         $this->registerAreas($this->renderAreas);
 
+        $this->formEntry['visitDate'] = $this->nowFormatted();
+
         if ($this->riHdrNo) {
             $this->findData($this->riHdrNo);
         } else {
@@ -58,7 +60,7 @@ new class extends Component {
                 'rstxn_rivisits.visit_no',
             )
             ->where('rstxn_rivisits.rihdr_no', $riHdrNo)
-            ->orderBy('visit_date')
+            ->orderByDesc('visit_date')
             ->get();
 
         $this->dataDaftarRI['RiVisit'] = $rows->map(fn($r) => (array) $r)->toArray();
@@ -184,7 +186,7 @@ new class extends Component {
             DB::transaction(function () use ($visitNo) {
                 $this->lockRIRow($this->riHdrNo);
                 DB::table('rstxn_rivisits')->where('visit_no', $visitNo)->delete();
-                $this->appendAdminLog($this->riHdrNo, 'Hapus Visit #' . $visitNo);
+                $this->appendAdminLog($this->riHdrNo, "Hapus Visit #{$visitNo}");
             });
 
             $this->findData($this->riHdrNo);
@@ -203,6 +205,12 @@ new class extends Component {
     public function setVisitDate(string $date): void
     {
         $this->formEntry['visitDate'] = $date;
+    }
+
+    public function refreshVisitDate(): void
+    {
+        $this->formEntry['visitDate'] = $this->nowFormatted();
+        $this->resetErrorBag('formEntry.visitDate');
     }
 
     /* ===============================
@@ -238,60 +246,50 @@ new class extends Component {
             x-on:focus-input-visit-price.window="$nextTick(() => $refs.inputVisitPrice?.focus())">
 
             @if (empty($formEntry['drId']))
-                <div class="w-72">
-                    <livewire:lov.dokter.lov-dokter target="dokter-visit-ri" label="Dokter Kunjungan"
-                        placeholder="Ketik kode/nama dokter..."
-                        wire:key="lov-dokter-visit-{{ $riHdrNo }}-{{ $renderVersions['modal-visit-ri'] ?? 0 }}" />
-                </div>
+                <livewire:lov.dokter.lov-dokter target="dokter-visit-ri" label="Dokter Kunjungan"
+                    placeholder="Ketik kode/nama dokter..."
+                    wire:key="lov-dokter-visit-{{ $riHdrNo }}-{{ $renderVersions['modal-visit-ri'] ?? 0 }}" />
             @else
-                <div class="flex items-end gap-2">
+                <div class="grid grid-cols-4 gap-3 items-end">
                     {{-- Dokter --}}
-                    <div class="w-56">
+                    <div>
                         <x-input-label value="Dokter" class="mb-1" />
-                        <x-text-input wire:model="formEntry.drName" disabled class="w-full text-sm bg-gray-50 dark:bg-gray-800/60" />
+                        <x-text-input wire:model="formEntry.drName" disabled class="w-full text-sm" />
                     </div>
-                    {{-- Tanggal Kunjungan --}}
-                    <div class="w-60">
+                    {{-- Tanggal --}}
+                    <div>
                         <x-input-label value="Tanggal Kunjungan" class="mb-1" />
-                        <x-text-input wire:model="formEntry.visitDate" placeholder="dd/mm/yyyy hh:mm:ss"
-                            class="w-full text-sm font-mono"
-                            x-on:keyup.enter="$refs.inputVisitPrice?.focus()" />
-                        @error('formEntry.visitDate')
-                            <x-input-error :messages="$message" class="mt-1" />
-                        @enderror
+                        <div class="flex gap-1">
+                            <x-text-input wire:model="formEntry.visitDate" placeholder="dd/mm/yyyy hh:mm:ss"
+                                class="flex-1 text-sm font-mono min-w-0"
+                                x-on:keyup.enter="$refs.inputVisitPrice?.focus()" />
+                            <button type="button" wire:click="refreshVisitDate" title="Waktu sekarang"
+                                class="shrink-0 px-2 text-gray-400 hover:text-brand-green dark:hover:text-brand-lime transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </button>
+                        </div>
+                        @error('formEntry.visitDate') <x-input-error :messages="$message" class="mt-1" /> @enderror
                     </div>
                     {{-- Tarif --}}
-                    <div class="w-44">
+                    <div>
                         <x-input-label value="Tarif Kunjungan" class="mb-1" />
-                        <x-text-input wire:model="formEntry.visitPrice" placeholder="0"
-                            class="w-full text-sm text-right tabular-nums"
+                        <x-text-input-number wire:model="formEntry.visitPrice"
                             x-ref="inputVisitPrice"
                             x-init="$nextTick(() => $refs.inputVisitPrice?.focus())"
-                            x-on:keyup.enter="$wire.insertVisit()" />
-                        @error('formEntry.visitPrice')
-                            <x-input-error :messages="$message" class="mt-1" />
-                        @enderror
+                            x-on:keydown.enter.prevent="$wire.insertVisit()" />
+                        @error('formEntry.visitPrice') <x-input-error :messages="$message" class="mt-1" /> @enderror
                     </div>
                     {{-- Buttons --}}
-                    <div class="flex gap-2 pb-0.5">
-                        <button type="button" wire:click.prevent="insertVisit" wire:loading.attr="disabled"
-                            wire:target="insertVisit"
-                            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-brand-green hover:bg-brand-green/90 disabled:opacity-60 dark:bg-brand-lime dark:text-gray-900 transition shadow-sm">
-                            <span wire:loading.remove wire:target="insertVisit">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                            </span>
+                    <div class="flex gap-2 items-end">
+                        <x-primary-button wire:click.prevent="insertVisit" wire:loading.attr="disabled"
+                            wire:target="insertVisit" class="flex-1 justify-center">
+                            <span wire:loading.remove wire:target="insertVisit">Simpan</span>
                             <span wire:loading wire:target="insertVisit"><x-loading class="w-4 h-4" /></span>
-                            Simpan
-                        </button>
-                        <button type="button" wire:click.prevent="resetFormEntry"
-                            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                            Batal
-                        </button>
+                        </x-primary-button>
+                        <x-secondary-button wire:click.prevent="resetFormEntry">Batal</x-secondary-button>
                     </div>
                 </div>
             @endif

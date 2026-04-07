@@ -36,7 +36,7 @@ new class extends Component {
                 'ok_no',
             )
             ->where('rihdr_no', $riHdrNo)
-            ->orderBy('ok_date')
+            ->orderByDesc('ok_date')
             ->get();
 
         $this->dataOk = $rows->map(fn($r) => (array) $r)->toArray();

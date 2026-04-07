@@ -37,7 +37,7 @@ new class extends Component {
                 'checkup_no',
             )
             ->where('rihdr_no', $riHdrNo)
-            ->orderBy('lab_date')
+            ->orderByDesc('lab_date')
             ->get();
 
         $this->dataLab = $rows->map(fn($r) => (array) $r)->toArray();

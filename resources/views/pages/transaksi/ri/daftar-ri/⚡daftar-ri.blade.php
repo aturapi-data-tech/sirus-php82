@@ -772,6 +772,7 @@ new class extends Component {
             <livewire:pages::transaksi.ri.daftar-ri.daftar-ri-actions wire:key="daftar-ri-actions" />
             <livewire:pages::transaksi.ri.emr-ri.erm-ri wire:key="emr-ri-actions" />
             <livewire:pages::transaksi.ri.administrasi-ri.administrasi-ri wire:key="administrasi-ri-actions" />
+            <livewire:pages::transaksi.ri.administrasi-ri.pindah-kamar-ri wire:key="pindah-kamar-ri" />
             <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.modul-dokumen-ri wire:key="modul-dokumen-ri" />
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-ri" />
 

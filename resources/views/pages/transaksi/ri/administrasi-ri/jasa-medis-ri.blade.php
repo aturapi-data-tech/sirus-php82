@@ -18,11 +18,17 @@ new class extends Component {
     public array $dataDaftarRI = [];
 
     public array $formEntry = [
+        'actpDate'      => '',
         'jasaMedisId'   => '',
         'jasaMedisDesc' => '',
         'jasaMedisPrice'=> '',
         'jasaMedisQty'  => '1',
     ];
+
+    private function nowFormatted(): string
+    {
+        return Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+    }
 
     /* ===============================
      | MOUNT
@@ -30,6 +36,8 @@ new class extends Component {
     public function mount(): void
     {
         $this->registerAreas($this->renderAreas);
+
+        $this->formEntry['actpDate'] = $this->nowFormatted();
 
         if ($this->riHdrNo) {
             $this->findData($this->riHdrNo);
@@ -51,7 +59,7 @@ new class extends Component {
                 'rstxn_riactparams.actp_no',
             )
             ->where('rstxn_riactparams.rihdr_no', $riHdrNo)
-            ->orderBy('actp_date')
+            ->orderByDesc('actp_date')
             ->get();
 
         $this->dataDaftarRI['RiJasaMedis'] = $rows->map(fn($r) => (array) $r)->toArray();
@@ -125,7 +133,7 @@ new class extends Component {
                     'actp_no'    => $last->actp_no_max,
                     'rihdr_no'   => $this->riHdrNo,
                     'pact_id'    => $this->formEntry['jasaMedisId'],
-                    'actp_date'  => DB::raw("sysdate"),
+                    'actp_date'  => DB::raw("TO_DATE('" . $this->formEntry['actpDate'] . "','dd/mm/yyyy hh24:mi:ss')"),
                     'actp_price' => $this->formEntry['jasaMedisPrice'],
                     'actp_qty'   => $this->formEntry['jasaMedisQty'],
                 ]);
@@ -170,10 +178,17 @@ new class extends Component {
         }
     }
 
+    public function refreshActpDate(): void
+    {
+        $this->formEntry['actpDate'] = $this->nowFormatted();
+        $this->resetErrorBag('formEntry.actpDate');
+    }
+
     public function resetFormEntry(): void
     {
         $this->reset(['formEntry']);
         $this->formEntry['jasaMedisQty'] = '1';
+        $this->formEntry['actpDate']     = $this->nowFormatted();
         $this->resetValidation();
         $this->incrementVersion('modal-jasa-medis-ri');
     }
@@ -198,58 +213,60 @@ new class extends Component {
             x-on:focus-input-jm-price.window="$nextTick(() => $refs.inputJmPrice?.focus())">
 
             @if (empty($formEntry['jasaMedisId']))
-                <div class="w-80">
-                    <livewire:lov.jasa-medis.lov-jasa-medis target="jasa-medis-ri" label="Jasa Medis"
-                        placeholder="Ketik kode/nama jasa medis..."
-                        wire:key="lov-jm-{{ $riHdrNo }}-{{ $renderVersions['modal-jasa-medis-ri'] ?? 0 }}" />
-                </div>
+                <livewire:lov.jasa-medis.lov-jasa-medis target="jasa-medis-ri" label="Jasa Medis"
+                    placeholder="Ketik kode/nama jasa medis..."
+                    wire:key="lov-jm-{{ $riHdrNo }}-{{ $renderVersions['modal-jasa-medis-ri'] ?? 0 }}" />
             @else
-                <div class="flex items-end gap-3">
-                    <div class="w-28">
+                <div class="grid grid-cols-6 gap-3 items-end">
+                    {{-- Tanggal --}}
+                    <div>
+                        <x-input-label value="Tanggal" class="mb-1" />
+                        <div class="flex gap-1">
+                            <x-text-input wire:model="formEntry.actpDate" placeholder="dd/mm/yyyy hh:mm:ss"
+                                class="flex-1 text-sm font-mono min-w-0" />
+                            <button type="button" wire:click="refreshActpDate" title="Waktu sekarang"
+                                class="shrink-0 px-2 text-gray-400 hover:text-brand-green dark:hover:text-brand-lime transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    {{-- Kode --}}
+                    <div>
                         <x-input-label value="Kode" class="mb-1" />
                         <x-text-input wire:model="formEntry.jasaMedisId" disabled class="w-full text-sm" />
                     </div>
-                    <div class="flex-1">
+                    {{-- Nama --}}
+                    <div class="col-span-2">
                         <x-input-label value="Jasa Medis" class="mb-1" />
                         <x-text-input wire:model="formEntry.jasaMedisDesc" disabled class="w-full text-sm" />
                     </div>
-                    <div class="w-32">
+                    {{-- Tarif --}}
+                    <div>
                         <x-input-label value="Tarif" class="mb-1" />
-                        <x-text-input wire:model="formEntry.jasaMedisPrice" placeholder="Tarif" class="w-full text-sm"
+                        <x-text-input-number wire:model="formEntry.jasaMedisPrice"
                             x-ref="inputJmPrice"
-                            x-on:keyup.enter="$refs.inputJmQty?.focus()" />
-                        @error('formEntry.jasaMedisPrice')
-                            <x-input-error :messages="$message" class="mt-1" />
-                        @enderror
+                            x-on:keydown.enter.prevent="$refs.inputJmQty?.focus()" />
+                        @error('formEntry.jasaMedisPrice') <x-input-error :messages="$message" class="mt-1" /> @enderror
                     </div>
-                    <div class="w-24">
-                        <x-input-label value="Jumlah" class="mb-1" />
-                        <x-text-input wire:model="formEntry.jasaMedisQty" placeholder="Qty" class="w-full text-sm"
-                            x-ref="inputJmQty"
-                            x-on:keyup.enter="$wire.insertJasaMedis()" />
-                        @error('formEntry.jasaMedisQty')
-                            <x-input-error :messages="$message" class="mt-1" />
-                        @enderror
-                    </div>
-                    <div class="flex gap-2 pb-0.5">
-                        <button type="button" wire:click.prevent="insertJasaMedis" wire:loading.attr="disabled"
-                            wire:target="insertJasaMedis"
-                            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-brand-green hover:bg-brand-green/90 disabled:opacity-60 dark:bg-brand-lime dark:text-gray-900 transition shadow-sm">
-                            <span wire:loading.remove wire:target="insertJasaMedis">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                            </span>
+                    {{-- Qty + Buttons --}}
+                    <div class="flex gap-2 items-end">
+                        <div class="flex-1">
+                            <x-input-label value="Qty" class="mb-1" />
+                            <x-text-input type="number" min="1" wire:model="formEntry.jasaMedisQty" placeholder="1"
+                                class="w-full text-sm text-right tabular-nums"
+                                x-ref="inputJmQty"
+                                x-on:keydown.enter.prevent="$wire.insertJasaMedis()" />
+                            @error('formEntry.jasaMedisQty') <x-input-error :messages="$message" class="mt-1" /> @enderror
+                        </div>
+                        <x-primary-button wire:click.prevent="insertJasaMedis" wire:loading.attr="disabled"
+                            wire:target="insertJasaMedis">
+                            <span wire:loading.remove wire:target="insertJasaMedis">Tambah</span>
                             <span wire:loading wire:target="insertJasaMedis"><x-loading class="w-4 h-4" /></span>
-                            Tambah
-                        </button>
-                        <button type="button" wire:click.prevent="resetFormEntry"
-                            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                            Batal
-                        </button>
+                        </x-primary-button>
+                        <x-secondary-button wire:click.prevent="resetFormEntry">Batal</x-secondary-button>
                     </div>
                 </div>
             @endif

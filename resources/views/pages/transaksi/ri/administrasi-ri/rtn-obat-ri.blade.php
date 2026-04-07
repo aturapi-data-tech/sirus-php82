@@ -39,7 +39,7 @@ new class extends Component {
                 'rstxn_riobatrtns.riobat_no',
             )
             ->where('rstxn_riobatrtns.rihdr_no', $riHdrNo)
-            ->orderBy('riobat_date')
+            ->orderByDesc('riobat_date')
             ->get();
 
         $this->dataRtnObat = $rows->map(fn($r) => (array) $r)->toArray();

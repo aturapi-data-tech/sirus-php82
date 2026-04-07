@@ -53,6 +53,7 @@ new class extends Component {
         ['ermMenuId' => 'RiRtnObat',   'ermMenuName' => 'Return Obat'],
         ['ermMenuId' => 'RiObatPinjam','ermMenuName' => 'Obat Pinjam'],
         ['ermMenuId' => 'RiAdminLog',  'ermMenuName' => 'Admin Log'],
+        ['ermMenuId' => 'RiKasir',    'ermMenuName' => 'Kasir Pulang'],
     ];
 
     /* ===============================
@@ -139,7 +140,13 @@ new class extends Component {
             ->where('rihdr_no', $n)->sum('rirad_price');
 
         $this->sumRiTrfUgdRj = (int) DB::table('rstxn_ritempadmins')
-            ->where('rihdr_no', $n)->selectRaw('nvl(sum(rj_admin + poli_price),0) as total')->value('total');
+            ->where('rihdr_no', $n)
+            ->selectRaw('nvl(sum(
+                nvl(rj_admin,0) + nvl(poli_price,0) + nvl(acte_price,0) +
+                nvl(actp_price,0) + nvl(actd_price,0) + nvl(obat,0) +
+                nvl(rad,0) + nvl(lab,0) + nvl(other,0) + nvl(rs_admin,0)
+            ),0) as total')
+            ->value('total');
 
         $this->sumRiLainLain = (int) DB::table('rstxn_riothers')
             ->where('rihdr_no', $n)->sum('other_price');
@@ -181,7 +188,9 @@ new class extends Component {
             $this->sumRiCService +
             $this->sumRiPerawatan +
             $this->sumRiBonResep +
-            $this->sumRiObatPinjam -
+            $this->sumRiObatPinjam +
+            $this->sumAdminAge +
+            $this->sumAdminStatus -
             $this->sumRiRtnObat;
     }
 
@@ -266,20 +275,22 @@ new class extends Component {
                         <div class="flex items-center gap-3">
 
                             {{-- Grid biaya --}}
-                            <div class="grid flex-1 grid-cols-6 gap-1.5">
+                            <div class="grid flex-1 grid-cols-4 gap-1.5 md:grid-cols-7">
                                 @foreach ([
-                                    ['label' => 'Visit',       'value' => $sumRiVisit],
-                                    ['label' => 'Konsul',      'value' => $sumRiKonsul],
-                                    ['label' => 'Jasa Medis',  'value' => $sumRiJasaMedis],
-                                    ['label' => 'Jasa Dokter', 'value' => $sumRiJasaDokter],
-                                    ['label' => 'Lab',         'value' => $sumRiLab],
-                                    ['label' => 'Radiologi',   'value' => $sumRiRad],
-                                    ['label' => 'Kamar',       'value' => $sumRiRoom + $sumRiCService + $sumRiPerawatan],
-                                    ['label' => 'Lain-Lain',   'value' => $sumRiLainLain],
-                                    ['label' => 'Bon Resep',   'value' => $sumRiBonResep],
-                                    ['label' => 'Obat Pinjam', 'value' => $sumRiObatPinjam],
-                                    ['label' => 'Rtn Obat',    'value' => $sumRiRtnObat],
-                                    ['label' => 'Admin',       'value' => $sumAdminAge + $sumAdminStatus],
+                                    ['label' => 'Visit',        'value' => $sumRiVisit],
+                                    ['label' => 'Konsul',       'value' => $sumRiKonsul],
+                                    ['label' => 'Jasa Medis',   'value' => $sumRiJasaMedis],
+                                    ['label' => 'Jasa Dokter',  'value' => $sumRiJasaDokter],
+                                    ['label' => 'Lab',          'value' => $sumRiLab],
+                                    ['label' => 'Radiologi',    'value' => $sumRiRad],
+                                    ['label' => 'Kamar',        'value' => $sumRiRoom + $sumRiCService + $sumRiPerawatan],
+                                    ['label' => 'Lain-Lain',    'value' => $sumRiLainLain],
+                                    ['label' => 'Operasi (OK)', 'value' => $sumRiOk],
+                                    ['label' => 'Bon Resep',    'value' => $sumRiBonResep],
+                                    ['label' => 'Obat Pinjam',  'value' => $sumRiObatPinjam],
+                                    ['label' => 'Trf UGD/RJ',   'value' => $sumRiTrfUgdRj],
+                                    ['label' => 'Admin',        'value' => $sumAdminAge + $sumAdminStatus],
+                                    ['label' => 'Rtn Obat (-)', 'value' => $sumRiRtnObat],
                                 ] as $item)
                                     <div class="px-2.5 py-1.5 bg-white border border-gray-200 rounded-xl dark:bg-gray-900 dark:border-gray-700">
                                         <p class="text-xs text-gray-500 dark:text-gray-400 mb-0.5 truncate">{{ $item['label'] }}</p>
@@ -412,6 +423,11 @@ new class extends Component {
                             <div x-show="tab === 'RiAdminLog'" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
                                 <livewire:pages::transaksi.ri.administrasi-ri.admin-log-ri :riHdrNo="$riHdrNo"
                                     wire:key="tab-adminlog-ri-{{ $riHdrNo }}" />
+                            </div>
+
+                            <div x-show="tab === 'RiKasir'" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
+                                <livewire:pages::transaksi.ri.administrasi-ri.kasir-ri :riHdrNo="$riHdrNo"
+                                    wire:key="tab-kasir-ri-{{ $riHdrNo }}" />
                             </div>
 
                         </div>

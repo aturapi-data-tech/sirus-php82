@@ -36,6 +36,8 @@ new class extends Component {
     {
         $this->registerAreas($this->renderAreas);
 
+        $this->formEntry['konsulDate'] = $this->nowFormatted();
+
         if ($this->riHdrNo) {
             $this->findData($this->riHdrNo);
         } else {
@@ -55,7 +57,7 @@ new class extends Component {
                 'rstxn_rikonsuls.konsul_no',
             )
             ->where('rstxn_rikonsuls.rihdr_no', $riHdrNo)
-            ->orderBy('konsul_date')
+            ->orderByDesc('konsul_date')
             ->get();
 
         $this->dataDaftarRI['RiKonsul'] = $rows->map(fn($r) => (array) $r)->toArray();
@@ -193,6 +195,12 @@ new class extends Component {
         }
     }
 
+    public function refreshKonsulDate(): void
+    {
+        $this->formEntry['konsulDate'] = $this->nowFormatted();
+        $this->resetErrorBag('formEntry.konsulDate');
+    }
+
     public function resetFormEntry(): void
     {
         $this->reset(['formEntry']);
@@ -221,53 +229,45 @@ new class extends Component {
             x-on:focus-input-konsul-price.window="$nextTick(() => $refs.inputKonsulPrice?.focus())">
 
             @if (empty($formEntry['drId']))
-                <div class="w-64">
-                    <livewire:lov.dokter.lov-dokter target="dokter-konsul-ri" label="Dokter Konsul"
-                        placeholder="Ketik kode/nama dokter..."
-                        wire:key="lov-dokter-konsul-{{ $riHdrNo }}-{{ $renderVersions['modal-konsul-ri'] ?? 0 }}" />
-                </div>
+                <livewire:lov.dokter.lov-dokter target="dokter-konsul-ri" label="Dokter Konsul"
+                    placeholder="Ketik kode/nama dokter..."
+                    wire:key="lov-dokter-konsul-{{ $riHdrNo }}-{{ $renderVersions['modal-konsul-ri'] ?? 0 }}" />
             @else
-                <div class="flex items-end gap-3">
-                    <div class="w-48">
+                <div class="grid grid-cols-4 gap-3 items-end">
+                    <div>
                         <x-input-label value="Dokter" class="mb-1" />
                         <x-text-input wire:model="formEntry.drName" disabled class="w-full text-sm" />
                     </div>
-                    <div class="flex-1">
+                    <div>
                         <x-input-label value="Tanggal Konsul" class="mb-1" />
-                        <x-text-input wire:model="formEntry.konsulDate" placeholder="dd/mm/yyyy hh:mm:ss" class="w-full text-sm"
-                            x-on:keyup.enter="$wire.insertKonsul()" />
-                        @error('formEntry.konsulDate')
-                            <x-input-error :messages="$message" class="mt-1" />
-                        @enderror
-                    </div>
-                    <div class="w-40">
-                        <x-input-label value="Tarif" class="mb-1" />
-                        <x-text-input wire:model="formEntry.konsulPrice" placeholder="Tarif" class="w-full text-sm"
-                            x-ref="inputKonsulPrice"
-                            x-on:keyup.enter="$wire.insertKonsul()" />
-                        @error('formEntry.konsulPrice')
-                            <x-input-error :messages="$message" class="mt-1" />
-                        @enderror
-                    </div>
-                    <div class="flex gap-2 pb-0.5">
-                        <button type="button" wire:click.prevent="insertKonsul" wire:loading.attr="disabled"
-                            wire:target="insertKonsul"
-                            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-brand-green hover:bg-brand-green/90 disabled:opacity-60 dark:bg-brand-lime dark:text-gray-900 transition shadow-sm">
-                            <span wire:loading.remove wire:target="insertKonsul">
+                        <div class="flex gap-1">
+                            <x-text-input wire:model="formEntry.konsulDate" placeholder="dd/mm/yyyy hh:mm:ss"
+                                class="flex-1 text-sm font-mono min-w-0"
+                                x-on:keyup.enter="$refs.inputKonsulPrice?.focus()" />
+                            <button type="button" wire:click="refreshKonsulDate" title="Waktu sekarang"
+                                class="shrink-0 px-2 text-gray-400 hover:text-brand-green dark:hover:text-brand-lime transition">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                 </svg>
-                            </span>
+                            </button>
+                        </div>
+                        @error('formEntry.konsulDate') <x-input-error :messages="$message" class="mt-1" /> @enderror
+                    </div>
+                    <div>
+                        <x-input-label value="Tarif" class="mb-1" />
+                        <x-text-input-number wire:model="formEntry.konsulPrice"
+                            x-ref="inputKonsulPrice"
+                            x-on:keydown.enter.prevent="$wire.insertKonsul()" />
+                        @error('formEntry.konsulPrice') <x-input-error :messages="$message" class="mt-1" /> @enderror
+                    </div>
+                    <div class="flex gap-2 items-end">
+                        <x-primary-button wire:click.prevent="insertKonsul" wire:loading.attr="disabled"
+                            wire:target="insertKonsul" class="flex-1 justify-center">
+                            <span wire:loading.remove wire:target="insertKonsul">Tambah</span>
                             <span wire:loading wire:target="insertKonsul"><x-loading class="w-4 h-4" /></span>
-                            Tambah
-                        </button>
-                        <button type="button" wire:click.prevent="resetFormEntry"
-                            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                            Batal
-                        </button>
+                        </x-primary-button>
+                        <x-secondary-button wire:click.prevent="resetFormEntry">Batal</x-secondary-button>
                     </div>
                 </div>
             @endif

@@ -36,7 +36,7 @@ new class extends Component {
                 'tempadm_no', 'tempadm_flag',
             )
             ->where('rihdr_no', $riHdrNo)
-            ->orderBy('tempadm_date')
+            ->orderByDesc('tempadm_date')
             ->get();
 
         $this->dataTrf = $rows->map(fn($r) => (array) $r)->toArray();
