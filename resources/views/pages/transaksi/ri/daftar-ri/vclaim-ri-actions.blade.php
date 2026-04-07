@@ -193,6 +193,11 @@ new class extends Component {
 
         $this->activeTab = !empty($spriData['noSPRIBPJS']) ? 'sep' : 'spri';
 
+        /* ---- Auto-fetch klsRawatHak jika belum terisi ---- */
+        if (!$this->isFormLocked && !empty($this->SEPForm['noKartu']) && empty($this->SEPForm['klsRawat']['klsRawatHak'])) {
+            $this->fetchKlasRawat();
+        }
+
         $this->resetVersion();
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'vclaim-ri-actions');
@@ -426,20 +431,24 @@ new class extends Component {
     {
         $this->validate(
             [
-                'SEPForm.noKartu' => 'required',
-                'SEPForm.tglSep' => 'required|date_format:d/m/Y',
-                'SEPForm.noMR' => 'required',
-                'SEPForm.diagAwal' => 'required',
-                'SEPForm.poli.tujuan' => 'required',
-                'SEPForm.dpjpLayan' => 'required',
+                'SEPForm.noKartu'              => 'required',
+                'SEPForm.tglSep'               => 'required|date_format:d/m/Y',
+                'SEPForm.noMR'                 => 'required',
+                'SEPForm.diagAwal'             => 'required',
+                'SEPForm.poli.tujuan'          => 'required',
+                'SEPForm.dpjpLayan'            => 'required',
+                'SEPForm.klsRawat.klsRawatHak' => 'required',
+                'SEPForm.noTelp'               => 'required',
             ],
             [
-                'SEPForm.noKartu.required' => 'Nomor Kartu BPJS harus diisi.',
-                'SEPForm.tglSep.required' => 'Tanggal SEP wajib diisi.',
-                'SEPForm.tglSep.date_format' => 'Format Tanggal SEP harus dd/mm/yyyy.',
-                'SEPForm.diagAwal.required' => 'Diagnosa awal harus diisi.',
-                'SEPForm.poli.tujuan.required' => 'Kode poli BPJS harus diisi.',
-                'SEPForm.dpjpLayan.required' => 'DPJP harus diisi.',
+                'SEPForm.noKartu.required'              => 'Nomor Kartu BPJS harus diisi.',
+                'SEPForm.tglSep.required'               => 'Tanggal SEP wajib diisi.',
+                'SEPForm.tglSep.date_format'            => 'Format Tanggal SEP harus dd/mm/yyyy.',
+                'SEPForm.diagAwal.required'             => 'Diagnosa awal harus diisi.',
+                'SEPForm.poli.tujuan.required'          => 'Kode poli BPJS harus diisi.',
+                'SEPForm.dpjpLayan.required'            => 'DPJP harus diisi.',
+                'SEPForm.klsRawat.klsRawatHak.required' => 'Kelas rawat hak belum dimuat. Klik tombol "↺ Muat Kelas Rawat".',
+                'SEPForm.noTelp.required'               => 'No. telepon pasien harus diisi.',
             ],
         );
     }
@@ -1118,18 +1127,22 @@ new class extends Component {
 
                                     {{-- 9. Kelas Rawat (auto dari BPJS) --}}
                                     <div class="lg:col-span-2">
-                                        <x-input-label value="Kelas Rawat (auto dari BPJS)" />
+                                        <x-input-label value="Kelas Rawat Hak *" />
                                         <x-select-input wire:model="SEPForm.klsRawat.klsRawatHak" class="w-full"
-                                            :disabled="true">
-                                            <option value="">-- Klik ↺ Muat Kelas Rawat --</option>
+                                            :disabled="true"
+                                            :error="$errors->has('SEPForm.klsRawat.klsRawatHak')">
+                                            <option value="">-- Memuat... --</option>
                                             <option value="1">Kelas 1</option>
                                             <option value="2">Kelas 2</option>
                                             <option value="3">Kelas 3</option>
                                         </x-select-input>
                                         @if (empty($SEPForm['klsRawat']['klsRawatHak']))
-                                            <p class="mt-1 text-xs text-amber-500">Klik tombol "Muat Kelas Rawat" untuk
-                                                mengisi otomatis.</p>
+                                            <p class="mt-1 text-xs text-amber-500">
+                                                <span wire:loading wire:target="fetchKlasRawat">Sedang memuat kelas rawat...</span>
+                                                <span wire:loading.remove wire:target="fetchKlasRawat">Belum termuat. Klik tombol "↺ Muat Kelas Rawat".</span>
+                                            </p>
                                         @endif
+                                        <x-input-error :messages="$errors->get('SEPForm.klsRawat.klsRawatHak')" class="mt-1" />
                                     </div>
 
                                     {{-- LOV Dokter DPJP --}}
@@ -1174,7 +1187,9 @@ new class extends Component {
                                     <div class="lg:col-span-2">
                                         <x-input-label value="No. Telepon *" />
                                         <x-text-input wire:model="SEPForm.noTelp" class="w-full" :disabled="$isFormLocked"
-                                            placeholder="08xxxx" />
+                                            placeholder="08xxxx"
+                                            :error="$errors->has('SEPForm.noTelp')" />
+                                        <x-input-error :messages="$errors->get('SEPForm.noTelp')" class="mt-1" />
                                     </div>
 
                                     {{-- 12. Catatan --}}
