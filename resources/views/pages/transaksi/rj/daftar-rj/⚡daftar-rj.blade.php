@@ -196,7 +196,7 @@ new class extends Component {
             ->join('rsmst_pasiens as p', DB::raw('UPPER(b.norm)'), '=', 'p.reg_no')
             ->select([
                 'b.nobooking as rj_no',
-                DB::raw("TO_CHAR(TO_DATE(b.tanggalperiksa,'yyyy-mm-dd'),'dd/mm/yyyy') || ' 00:00:00' as rj_date_display"),
+                DB::raw("TO_CHAR(TO_DATE(b.tanggalperiksa,'yyyy-mm-dd'),'dd/mm/yyyy') || ' ' || SUBSTR(b.jampraktek,1,5) || ':00' as rj_date_display"),
                 DB::raw("UPPER(b.norm) as reg_no"),
                 'p.reg_name', 'p.sex', 'p.address',
                 DB::raw("TO_CHAR(p.birth_date,'dd/mm/yyyy') as birth_date"),
