@@ -9,21 +9,6 @@ new class extends Component {
 
     use AplicaresTrait, SirsTrait;
 
-    // ─── Mapping kelas RS ────────────────────────────────────────────────────
-    // rs_namakelas    : nama tampilan kelas (internal RS)
-    // rs_class_id     : to_char(class_id) di rsmst_rooms (internal RS)
-    // aplic_kodekelas : kode kelas Aplicares BPJS
-    // sirs_id_tt      : id_tt dari referensi SIRS Kemenkes (GET /Referensi/tempat_tidur)
-    //                   → sesuaikan dengan nilai yang dikembalikan API SIRS RS masing-masing
-    private const MAPPING = [
-        ['rs_namakelas' => 'VIP',       'rs_class_id' => 'VIP', 'aplic_kodekelas' => 'VIP', 'sirs_id_tt' => '1'],
-        ['rs_namakelas' => 'Kelas I',   'rs_class_id' => '1',   'aplic_kodekelas' => 'KL1', 'sirs_id_tt' => '2'],
-        ['rs_namakelas' => 'Kelas II',  'rs_class_id' => '2',   'aplic_kodekelas' => 'KL2', 'sirs_id_tt' => '3'],
-        ['rs_namakelas' => 'Kelas III', 'rs_class_id' => '3',   'aplic_kodekelas' => 'KL3', 'sirs_id_tt' => '4'],
-        ['rs_namakelas' => 'ICU',       'rs_class_id' => 'ICU', 'aplic_kodekelas' => 'ICU', 'sirs_id_tt' => '5'],
-        ['rs_namakelas' => 'NICU',      'rs_class_id' => 'NIC', 'aplic_kodekelas' => 'NIC', 'sirs_id_tt' => '6'],
-        ['rs_namakelas' => 'PICU',      'rs_class_id' => 'PIC', 'aplic_kodekelas' => 'PIC', 'sirs_id_tt' => '7'],
-    ];
 
     // ─── State ───────────────────────────────────────────────────────────────
     public string $activeTab   = 'aplicares';   // 'aplicares' | 'sirs' | 'konfigurasi'
@@ -39,34 +24,38 @@ new class extends Component {
         $this->loadRows();
     }
 
-    // ─── LOAD ROWS dari DB ───────────────────────────────────────────────────
+    // ─── LOAD ROWS dari rsmst_class ─────────────────────────────────────────
     public function loadRows(): void
     {
-        $this->rows = collect(self::MAPPING)->map(function ($map) {
-            $kapasitas = DB::table('rsmst_rooms as a')
-                ->where(DB::raw("to_char(a.class_id)"), $map['rs_class_id'])
+        $classes = DB::table('rsmst_class')
+            ->select('class_id', 'class_desc', 'aplic_kodekelas', 'sirs_id_tt', 'id_t_tt')
+            ->orderBy('class_id')
+            ->get();
+
+        $this->rows = $classes->map(function ($cls) {
+            $kapasitas = DB::table('rsmst_rooms')
+                ->where('class_id', $cls->class_id)
                 ->count();
 
             $terpakai = DB::table('rsmst_rooms as a')
                 ->join('rstxn_rihdrs as b', 'a.room_id', '=', 'b.room_id')
                 ->where('b.ri_status', 'I')
-                ->where(DB::raw("to_char(a.class_id)"), $map['rs_class_id'])
+                ->where('a.class_id', $cls->class_id)
                 ->count();
 
             return [
-                'rs_namakelas'    => $map['rs_namakelas'],
-                'rs_class_id'     => $map['rs_class_id'],
-                'aplic_kodekelas' => $map['aplic_kodekelas'],
-                'sirs_id_tt'      => $map['sirs_id_tt'],
-                'id_t_tt_sirs' => null,        // diisi saat loadSirsExisting()
-                'kapasitas'    => $kapasitas,
-                'terpakai'     => $terpakai,
-                'tersedia'     => max(0, $kapasitas - $terpakai),
-                // status per sistem
-                'status_aplic' => null,        // null | 'ok' | 'error' | 'loading'
-                'pesan_aplic'  => '',
-                'status_sirs'  => null,
-                'pesan_sirs'   => '',
+                'class_id'        => (int) $cls->class_id,
+                'rs_namakelas'    => (string) ($cls->class_desc ?? ''),
+                'aplic_kodekelas' => (string) ($cls->aplic_kodekelas ?? ''),
+                'sirs_id_tt'      => (string) ($cls->sirs_id_tt ?? ''),
+                'id_t_tt_sirs'    => ($cls->id_t_tt ?? null) ?: null,
+                'kapasitas'       => $kapasitas,
+                'terpakai'        => $terpakai,
+                'tersedia'        => max(0, $kapasitas - $terpakai),
+                'status_aplic'    => null,
+                'pesan_aplic'     => '',
+                'status_sirs'     => null,
+                'pesan_sirs'      => '',
             ];
         })->values()->all();
     }
@@ -83,7 +72,13 @@ new class extends Component {
                 foreach ($this->rows as $i => $row) {
                     $found = collect($list)->firstWhere('id_tt', $row['sirs_id_tt']);
                     if ($found) {
-                        $this->rows[$i]['id_t_tt_sirs'] = $found['id_t_tt'] ?? null;
+                        $idTTt = $found['id_t_tt'] ?? null;
+                        $this->rows[$i]['id_t_tt_sirs'] = $idTTt;
+                        if ($idTTt) {
+                            DB::table('rsmst_class')
+                                ->where('class_id', $row['class_id'])
+                                ->update(['id_t_tt' => $idTTt]);
+                        }
                     }
                 }
                 $this->dispatch('toast', type: 'info', message: 'Data SIRS berhasil dimuat.');
@@ -153,7 +148,7 @@ new class extends Component {
         }
 
         $this->syncingAll = false;
-        $this->dispatch('toast', type: 'success', message: 'Sync Aplicares selesai: ' . $this->syncDone . ' kelas.');
+        $this->dispatch('toast', type: 'success', message: "Sync Aplicares selesai: {$this->syncDone} kelas.");
     }
 
     // =========================================================================
@@ -191,6 +186,9 @@ new class extends Component {
                 // Simpan id_t_tt jika dikembalikan API
                 if (!empty($res['id_t_tt'])) {
                     $this->rows[$index]['id_t_tt_sirs'] = $res['id_t_tt'];
+                    DB::table('rsmst_class')
+                        ->where('class_id', $row['class_id'])
+                        ->update(['id_t_tt' => $res['id_t_tt']]);
                 }
             }
 
@@ -219,7 +217,7 @@ new class extends Component {
         }
 
         $this->syncingAll = false;
-        $this->dispatch('toast', type: 'success', message: 'Sync SIRS selesai: ' . $this->syncDone . ' kelas.');
+        $this->dispatch('toast', type: 'success', message: "Sync SIRS selesai: {$this->syncDone} kelas.");
     }
 
     // ─── Helper ─────────────────────────────────────────────────────────────
@@ -359,7 +357,7 @@ new class extends Component {
             </div>
 
             {{-- Tabel --}}
-            @include('pages.transaksi.ri.update-tt-ri._table-aplicares')
+            @include('pages.transaksi.ri.update-tt-ri.table-aplicares')
         </div>
     @endif
 
@@ -409,7 +407,7 @@ new class extends Component {
             @endif
 
             {{-- Tabel --}}
-            @include('pages.transaksi.ri.update-tt-ri._table-sirs')
+            @include('pages.transaksi.ri.update-tt-ri.table-sirs')
         </div>
     @endif
 

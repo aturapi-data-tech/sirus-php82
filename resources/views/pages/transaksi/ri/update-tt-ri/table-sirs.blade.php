@@ -67,7 +67,7 @@
                     </td>
 
                     <td class="px-4 py-3 text-center">
-                        @include('pages.transaksi.ri.update-tt-ri._status-badge', ['status' => $row['status_sirs'], 'pesan' => $row['pesan_sirs']])
+                        @include('pages.transaksi.ri.update-tt-ri.status-badge', ['status' => $row['status_sirs'], 'pesan' => $row['pesan_sirs']])
                     </td>
 
                     <td class="px-4 py-3 text-center">
