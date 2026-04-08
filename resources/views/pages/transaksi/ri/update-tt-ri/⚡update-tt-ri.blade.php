@@ -24,31 +24,39 @@ new class extends Component {
         $this->loadRows();
     }
 
-    // ─── LOAD ROWS dari rsmst_class ─────────────────────────────────────────
+    // ─── LOAD ROWS dari rsmst_rooms (per kamar) ─────────────────────────────
     public function loadRows(): void
     {
-        $classes = DB::table('rsmst_class')
-            ->select('class_id', 'class_desc', 'aplic_kodekelas', 'sirs_id_tt', 'id_t_tt')
-            ->orderBy('class_id')
+        $rooms = DB::table('rsmst_rooms as r')
+            ->select(
+                'r.room_id', 'r.room_name', 'r.class_id',
+                'r.aplic_kodekelas', 'r.sirs_id_tt', 'r.sirs_id_t_tt',
+                'c.class_desc'
+            )
+            ->leftJoin('rsmst_class as c', 'r.class_id', '=', 'c.class_id')
+            ->whereIn('r.active_status', ['AC', '1'])
+            ->orderBy('r.class_id')
+            ->orderBy('r.room_name')
             ->get();
 
-        $this->rows = $classes->map(function ($cls) {
-            $kapasitas = DB::table('rsmst_rooms')
-                ->where('class_id', $cls->class_id)
+        $this->rows = $rooms->map(function ($room) {
+            $kapasitas = DB::table('rsmst_beds')
+                ->where('room_id', $room->room_id)
                 ->count();
 
-            $terpakai = DB::table('rsmst_rooms as a')
-                ->join('rstxn_rihdrs as b', 'a.room_id', '=', 'b.room_id')
-                ->where('b.ri_status', 'I')
-                ->where('a.class_id', $cls->class_id)
+            $terpakai = DB::table('rstxn_rihdrs')
+                ->where('room_id', $room->room_id)
+                ->where('ri_status', 'I')
                 ->count();
 
             return [
-                'class_id'        => (int) $cls->class_id,
-                'rs_namakelas'    => (string) ($cls->class_desc ?? ''),
-                'aplic_kodekelas' => (string) ($cls->aplic_kodekelas ?? ''),
-                'sirs_id_tt'      => (string) ($cls->sirs_id_tt ?? ''),
-                'id_t_tt_sirs'    => ($cls->id_t_tt ?? null) ?: null,
+                'room_id'         => (string) $room->room_id,
+                'rs_namakamar'    => (string) ($room->room_name ?? ''),
+                'rs_namakelas'    => (string) ($room->class_desc ?? ''),
+                'class_id'        => (int) $room->class_id,
+                'aplic_kodekelas' => (string) ($room->aplic_kodekelas ?? ''),
+                'sirs_id_tt'      => (string) ($room->sirs_id_tt ?? ''),
+                'id_t_tt_sirs'    => ($room->sirs_id_t_tt ?? null) ?: null,
                 'kapasitas'       => $kapasitas,
                 'terpakai'        => $terpakai,
                 'tersedia'        => max(0, $kapasitas - $terpakai),
@@ -67,7 +75,6 @@ new class extends Component {
             $res  = $this->sirsGetTempaTidur()->getOriginalContent();
             $list = $res['data'] ?? $res ?? [];
 
-            // list bisa berupa array flat atau nested; coba ambil array of rows
             if (isset($list[0])) {
                 foreach ($this->rows as $i => $row) {
                     $found = collect($list)->firstWhere('id_tt', $row['sirs_id_tt']);
@@ -75,9 +82,9 @@ new class extends Component {
                         $idTTt = $found['id_t_tt'] ?? null;
                         $this->rows[$i]['id_t_tt_sirs'] = $idTTt;
                         if ($idTTt) {
-                            DB::table('rsmst_class')
-                                ->where('class_id', $row['class_id'])
-                                ->update(['id_t_tt' => $idTTt]);
+                            DB::table('rsmst_rooms')
+                                ->where('room_id', $row['room_id'])
+                                ->update(['sirs_id_t_tt' => $idTTt]);
                         }
                     }
                 }
@@ -108,10 +115,12 @@ new class extends Component {
 
         $this->rows[$index]['status_aplic'] = 'loading';
 
+        $namaruang = trim($row['rs_namakamar'] . ' ' . $row['rs_namakelas']);
+
         $payload = [
             'kodekelas'          => $row['aplic_kodekelas'],
-            'koderuang'          => $row['aplic_kodekelas'],
-            'namaruang'          => $row['rs_namakelas'],
+            'koderuang'          => $row['room_id'],
+            'namaruang'          => $namaruang,
             'kapasitas'          => $row['kapasitas'] ?: 1,
             'tersedia'           => $row['tersedia'],
             'tersediapria'       => 0,
@@ -127,11 +136,11 @@ new class extends Component {
             $ok = $code == 1;
             $this->rows[$index]['status_aplic'] = $ok ? 'ok' : 'error';
             $this->rows[$index]['pesan_aplic']  = $msg;
-            $this->addLog('APLIC', $row['rs_namakelas'], $ok ? 'ok' : 'error', $msg);
+            $this->addLog('APLIC', $row['rs_namakamar'], $ok ? 'ok' : 'error', $msg);
         } catch (\Throwable $e) {
             $this->rows[$index]['status_aplic'] = 'error';
             $this->rows[$index]['pesan_aplic']  = $e->getMessage();
-            $this->addLog('APLIC', $row['rs_namakelas'], 'error', $e->getMessage());
+            $this->addLog('APLIC', $row['rs_namakamar'], 'error', $e->getMessage());
         }
     }
 
@@ -148,7 +157,7 @@ new class extends Component {
         }
 
         $this->syncingAll = false;
-        $this->dispatch('toast', type: 'success', message: "Sync Aplicares selesai: {$this->syncDone} kelas.");
+        $this->dispatch('toast', type: 'success', message: "Sync Aplicares selesai: {$this->syncDone} kamar.");
     }
 
     // =========================================================================
@@ -161,9 +170,11 @@ new class extends Component {
 
         $this->rows[$index]['status_sirs'] = 'loading';
 
+        $namaRuang = trim($row['rs_namakamar'] . ' ' . $row['rs_namakelas']);
+
         $payload = [
             'id_tt'              => $row['sirs_id_tt'],
-            'ruang'              => $row['rs_namakelas'],
+            'ruang'              => $namaRuang,
             'jumlah_ruang'       => 1,
             'jumlah'             => $row['kapasitas'] ?: 1,
             'terpakai'           => $row['terpakai'],
@@ -183,12 +194,12 @@ new class extends Component {
                 $res = $this->sirsUpdateTempaTidur($payload)->getOriginalContent();
             } else {
                 $res = $this->sirsKirimTempaTidur($payload)->getOriginalContent();
-                // Simpan id_t_tt jika dikembalikan API
+                // Simpan sirs_id_t_tt per kamar jika dikembalikan API
                 if (!empty($res['id_t_tt'])) {
                     $this->rows[$index]['id_t_tt_sirs'] = $res['id_t_tt'];
-                    DB::table('rsmst_class')
-                        ->where('class_id', $row['class_id'])
-                        ->update(['id_t_tt' => $res['id_t_tt']]);
+                    DB::table('rsmst_rooms')
+                        ->where('room_id', $row['room_id'])
+                        ->update(['sirs_id_t_tt' => $res['id_t_tt']]);
                 }
             }
 
@@ -196,11 +207,11 @@ new class extends Component {
             $msg = $res['message'] ?? '-';
             $this->rows[$index]['status_sirs'] = $ok ? 'ok' : 'error';
             $this->rows[$index]['pesan_sirs']  = $msg;
-            $this->addLog('SIRS', $row['rs_namakelas'], $ok ? 'ok' : 'error', $msg);
+            $this->addLog('SIRS', $row['rs_namakamar'], $ok ? 'ok' : 'error', $msg);
         } catch (\Throwable $e) {
             $this->rows[$index]['status_sirs'] = 'error';
             $this->rows[$index]['pesan_sirs']  = $e->getMessage();
-            $this->addLog('SIRS', $row['rs_namakelas'], 'error', $e->getMessage());
+            $this->addLog('SIRS', $row['rs_namakamar'], 'error', $e->getMessage());
         }
     }
 
@@ -217,16 +228,16 @@ new class extends Component {
         }
 
         $this->syncingAll = false;
-        $this->dispatch('toast', type: 'success', message: "Sync SIRS selesai: {$this->syncDone} kelas.");
+        $this->dispatch('toast', type: 'success', message: "Sync SIRS selesai: {$this->syncDone} kamar.");
     }
 
     // ─── Helper ─────────────────────────────────────────────────────────────
-    private function addLog(string $sistem, string $kelas, string $status, string $msg): void
+    private function addLog(string $sistem, string $kamar, string $status, string $msg): void
     {
         $this->logLines[] = [
             'waktu'   => now()->format('H:i:s'),
             'sistem'  => $sistem,
-            'kelas'   => $kelas,
+            'kamar'   => $kamar,
             'status'  => $status,
             'msg'     => $msg,
         ];
@@ -344,7 +355,7 @@ new class extends Component {
             <div class="flex justify-end">
                 <x-primary-button wire:click="syncAplicSemua"
                                   wire:loading.attr="disabled"
-                                  wire:confirm="Sync semua kelas ke Aplicares BPJS?">
+                                  wire:confirm="Sync semua kamar ke Aplicares BPJS?">
                     <svg wire:loading wire:target="syncAplicSemua" class="w-4 h-4 mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
@@ -381,7 +392,7 @@ new class extends Component {
 
                 <x-primary-button wire:click="syncSirsSemua"
                                   wire:loading.attr="disabled"
-                                  wire:confirm="Sync semua kelas ke SIRS Kemenkes?">
+                                  wire:confirm="Sync semua kamar ke SIRS Kemenkes?">
                     <svg wire:loading wire:target="syncSirsSemua" class="w-4 h-4 mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
@@ -400,7 +411,7 @@ new class extends Component {
                         <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
                     </svg>
                     <span>
-                        Beberapa kelas belum punya <code class="font-mono text-xs bg-amber-100 dark:bg-amber-800 px-1 rounded">id_t_tt</code> SIRS.
+                        Beberapa kamar belum punya <code class="font-mono text-xs bg-amber-100 dark:bg-amber-800 px-1 rounded">id_t_tt</code> SIRS.
                         Klik <strong>Ambil Data Existing SIRS</strong> untuk load data yang sudah pernah dikirim, atau langsung Sync (akan Insert baru).
                     </span>
                 </div>
@@ -435,7 +446,7 @@ new class extends Component {
                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">SIRS</span>
                             @endif
                         </span>
-                        <span class="font-semibold text-gray-700 dark:text-gray-300 shrink-0 w-20">{{ $log['kelas'] }}</span>
+                        <span class="font-semibold text-gray-700 dark:text-gray-300 shrink-0 w-20">{{ $log['kamar'] }}</span>
                         @if ($log['status'] === 'ok')
                             <span class="text-emerald-600 dark:text-emerald-400 shrink-0">&#10003;</span>
                         @else

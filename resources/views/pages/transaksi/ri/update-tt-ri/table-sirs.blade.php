@@ -2,7 +2,7 @@
     <table class="w-full text-sm">
         <thead class="bg-gray-50 dark:bg-gray-800 text-xs uppercase text-gray-500 dark:text-gray-400">
             <tr>
-                <th class="px-4 py-3 text-left">Kelas</th>
+                <th class="px-4 py-3 text-left">Kamar</th>
                 <th class="px-4 py-3 text-center">id_tt SIRS</th>
                 <th class="px-4 py-3 text-center">id_t_tt</th>
                 <th class="px-4 py-3 text-center">Kapasitas</th>
@@ -25,7 +25,15 @@
                 @endphp
                 <tr class="bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
 
-                    <td class="px-4 py-3 font-semibold text-gray-800 dark:text-gray-200">{{ $row['rs_namakelas'] }}</td>
+                    <td class="px-4 py-3">
+                        <div class="font-semibold text-gray-800 dark:text-gray-200">{{ $row['rs_namakamar'] }}</div>
+                        @if ($row['rs_namakelas'])
+                            <span class="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold
+                                         bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300">
+                                {{ $row['rs_namakelas'] }}
+                            </span>
+                        @endif
+                    </td>
 
                     {{-- id_tt referensi --}}
                     <td class="px-4 py-3 text-center">

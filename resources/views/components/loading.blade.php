@@ -1,4 +1,12 @@
-<svg class="inline w-4 h-4 mr-1 -ml-1 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path stroke-linecap="round" stroke-linecap="round" stroke-width="2"
-        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+@props(['size' => 'sm'])
+
+@php
+$sizes = ['xs' => 'w-3 h-3', 'sm' => 'w-4 h-4', 'md' => 'w-5 h-5', 'lg' => 'w-6 h-6'];
+$sizeClass = $sizes[$size] ?? $sizes['sm'];
+@endphp
+
+<svg {{ $attributes->class(["inline animate-spin $sizeClass"]) }}
+     fill="none" viewBox="0 0 24 24">
+    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
 </svg>

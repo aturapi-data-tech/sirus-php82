@@ -39,16 +39,17 @@ new class extends Component {
     #[Computed]
     public function rows()
     {
-        $q = DB::table('rsmst_class')
-            ->select('class_id', 'class_desc', 'aplic_kodekelas', 'sirs_id_tt', 'id_t_tt')
-            ->orderBy('class_id');
+        $q = DB::table('rsmst_class as c')
+            ->selectRaw('c.class_id, c.class_desc, COUNT(r.room_id) AS jumlah_kamar')
+            ->leftJoin('rsmst_rooms as r', 'c.class_id', '=', 'r.class_id')
+            ->groupBy('c.class_id', 'c.class_desc')
+            ->orderBy('c.class_id');
 
         if (trim($this->searchKeyword) !== '') {
             $kw = mb_strtoupper(trim($this->searchKeyword));
             $q->where(function ($sub) use ($kw) {
-                $sub->whereRaw('UPPER(class_desc) LIKE ?', ["%{$kw}%"])
-                    ->orWhereRaw('UPPER(aplic_kodekelas) LIKE ?', ["%{$kw}%"])
-                    ->orWhereRaw('UPPER(sirs_id_tt) LIKE ?', ["%{$kw}%"]);
+                $sub->whereRaw('UPPER(c.class_desc) LIKE ?', ["%{$kw}%"])
+                    ->orWhereRaw('CAST(c.class_id AS VARCHAR(10)) LIKE ?', ["%{$kw}%"]);
             });
         }
 
@@ -65,7 +66,7 @@ new class extends Component {
                 Master Kelas Rawat
             </h2>
             <p class="text-sm text-gray-500 dark:text-gray-400">
-                Kelola kelas kamar & mapping Aplicares BPJS / SIRS Kemenkes
+                Kelola kelas kamar rawat inap
             </p>
         </div>
     </header>
@@ -106,8 +107,7 @@ new class extends Component {
                         <thead class="sticky top-0 z-10 text-gray-600 bg-gray-50 dark:bg-gray-800 dark:text-gray-200">
                             <tr class="text-left">
                                 <th class="px-5 py-3 font-semibold">KELAS</th>
-                                <th class="px-5 py-3 font-semibold">MAPPING</th>
-                                <th class="px-5 py-3 font-semibold">SIRS id_t_tt</th>
+                                <th class="px-5 py-3 font-semibold">JUMLAH KAMAR</th>
                                 <th class="px-5 py-3 font-semibold">AKSI</th>
                             </tr>
                         </thead>
@@ -126,35 +126,9 @@ new class extends Component {
                                         </div>
                                     </td>
 
-                                    {{-- MAPPING: aplic_kodekelas + sirs_id_tt --}}
-                                    <td class="px-5 py-4 align-top space-y-2">
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-xs text-gray-400 dark:text-gray-500 w-16 shrink-0">Aplicares</span>
-                                            @if ($row->aplic_kodekelas)
-                                                <x-badge variant="info">{{ $row->aplic_kodekelas }}</x-badge>
-                                            @else
-                                                <span class="text-xs text-gray-300 dark:text-gray-600 italic">—</span>
-                                            @endif
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-xs text-gray-400 dark:text-gray-500 w-16 shrink-0">SIRS ref</span>
-                                            @if ($row->sirs_id_tt)
-                                                <x-badge variant="success">{{ $row->sirs_id_tt }}</x-badge>
-                                            @else
-                                                <span class="text-xs text-gray-300 dark:text-gray-600 italic">—</span>
-                                            @endif
-                                        </div>
-                                    </td>
-
-                                    {{-- SIRS id_t_tt (record ID dari GET /Fasyankes) --}}
+                                    {{-- JUMLAH KAMAR --}}
                                     <td class="px-5 py-4 align-top">
-                                        @if ($row->id_t_tt)
-                                            <span class="font-mono text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                                                {{ $row->id_t_tt }}
-                                            </span>
-                                        @else
-                                            <span class="text-xs text-gray-300 dark:text-gray-600 italic">belum ada</span>
-                                        @endif
+                                        <x-badge variant="info">{{ $row->jumlah_kamar }} Kamar</x-badge>
                                     </td>
 
                                     {{-- AKSI --}}
@@ -176,7 +150,7 @@ new class extends Component {
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="px-5 py-10 text-center text-gray-500 dark:text-gray-400">
+                                    <td colspan="3" class="px-5 py-10 text-center text-gray-500 dark:text-gray-400">
                                         Data kelas tidak ditemukan.
                                     </td>
                                 </tr>

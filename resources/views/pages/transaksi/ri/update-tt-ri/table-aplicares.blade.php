@@ -2,8 +2,8 @@
     <table class="w-full text-sm">
         <thead class="bg-gray-50 dark:bg-gray-800 text-xs uppercase text-gray-500 dark:text-gray-400">
             <tr>
-                <th class="px-4 py-3 text-left">Kelas</th>
-                <th class="px-4 py-3 text-center">Kode BPJS</th>
+                <th class="px-4 py-3 text-left">Kamar</th>
+                <th class="px-4 py-3 text-center">Kode Ruang</th>
                 <th class="px-4 py-3 text-center">Kapasitas</th>
                 <th class="px-4 py-3 text-center">Terpakai</th>
                 <th class="px-4 py-3 text-center">Tersedia</th>
@@ -20,12 +20,31 @@
                 @endphp
                 <tr class="bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
 
-                    <td class="px-4 py-3 font-semibold text-gray-800 dark:text-gray-200">{{ $row['rs_namakelas'] }}</td>
+                    {{-- Kamar: nama kamar + badge kelas --}}
+                    <td class="px-4 py-3">
+                        <div class="font-semibold text-gray-800 dark:text-gray-200">{{ $row['rs_namakamar'] }}</div>
+                        @if ($row['rs_namakelas'])
+                            <span class="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold
+                                         bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300">
+                                {{ $row['rs_namakelas'] }}
+                            </span>
+                        @endif
+                    </td>
 
-                    <td class="px-4 py-3 text-center">
-                        <span class="px-2 py-0.5 rounded-full text-xs font-mono bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-                            {{ $row['aplic_kodekelas'] }}
-                        </span>
+                    {{-- Kode Ruang (room_id) + Kode BPJS (aplic_kodekelas) --}}
+                    <td class="px-4 py-3 text-center space-y-1">
+                        <div>
+                            <span class="px-2 py-0.5 rounded-full text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                {{ $row['room_id'] }}
+                            </span>
+                        </div>
+                        @if ($row['aplic_kodekelas'])
+                            <div>
+                                <span class="px-2 py-0.5 rounded-full text-xs font-mono bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                                    BPJS: {{ $row['aplic_kodekelas'] }}
+                                </span>
+                            </div>
+                        @endif
                     </td>
 
                     <td class="px-4 py-3 text-center font-mono font-semibold text-gray-700 dark:text-gray-300">

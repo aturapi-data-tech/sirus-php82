@@ -16,6 +16,7 @@ trait AplicaresTrait
 {
     public static function sendResponse($message, $data, $code = 200, $url, $requestTransferTime)
     {
+
         $response = [
             'response' => $data,
             'metadata' => [
@@ -23,6 +24,7 @@ trait AplicaresTrait
                 'code' => $code,
             ],
         ];
+
 
         // Insert webLogStatus
         DB::table('web_log_status')->insert([

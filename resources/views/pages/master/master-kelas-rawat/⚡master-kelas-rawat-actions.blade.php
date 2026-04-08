@@ -5,11 +5,9 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
-use App\Http\Traits\BPJS\AplicaresTrait;
-use App\Http\Traits\SIRS\SirsTrait;
 
 new class extends Component {
-    use WithRenderVersioningTrait, AplicaresTrait, SirsTrait;
+    use WithRenderVersioningTrait;
 
     public string $formMode   = 'create';
     public int    $originalId = 0;
@@ -17,82 +15,13 @@ new class extends Component {
     protected array $renderAreas  = ['modal'];
 
     public array $form = [
-        'class_id'        => '',
-        'class_desc'      => '',
-        'aplic_kodekelas' => '',
-        'sirs_id_tt'      => '',
-        'id_t_tt'         => '',
+        'class_id'   => '',
+        'class_desc' => '',
     ];
-
-    // ─── State lookup API ──────────────────────────────────────
-    public array  $aplicList      = [];   // hasil GET referensiKamar
-    public array  $sirsList       = [];   // hasil GET sirsRefTempaTidur
-    public bool   $loadingAplic   = false;
-    public bool   $loadingSirs    = false;
-    public string $aplicError     = '';
-    public string $sirsError      = '';
 
     public function mount(): void
     {
         $this->registerAreas(['modal']);
-    }
-
-    // ─── Fetch Aplicares ref/kelas ────────────────────────────
-    public function fetchAplic(): void
-    {
-        $this->aplicList  = [];
-        $this->aplicError = '';
-        $this->loadingAplic = true;
-
-        try {
-            $res  = $this->referensiKamar()->getOriginalContent();
-            $list = $res['list'] ?? $res['data'] ?? $res ?? [];
-
-            if (is_array($list) && !empty($list)) {
-                $this->aplicList = array_values($list);
-            } else {
-                $this->aplicError = 'Respons kosong dari Aplicares.';
-            }
-        } catch (\Throwable $e) {
-            $this->aplicError = $e->getMessage();
-        }
-
-        $this->loadingAplic = false;
-    }
-
-    public function pilihAplic(string $kode): void
-    {
-        $this->form['aplic_kodekelas'] = $kode;
-        $this->aplicList = [];
-    }
-
-    // ─── Fetch SIRS referensi tempat tidur ────────────────────
-    public function fetchSirs(): void
-    {
-        $this->sirsList  = [];
-        $this->sirsError = '';
-        $this->loadingSirs = true;
-
-        try {
-            $res  = $this->sirsRefTempaTidur()->getOriginalContent();
-            $list = $res['data'] ?? $res ?? [];
-
-            if (is_array($list) && !empty($list)) {
-                $this->sirsList = array_values($list);
-            } else {
-                $this->sirsError = 'Respons kosong dari SIRS.';
-            }
-        } catch (\Throwable $e) {
-            $this->sirsError = $e->getMessage();
-        }
-
-        $this->loadingSirs = false;
-    }
-
-    public function pilihSirs(string $idTt): void
-    {
-        $this->form['sirs_id_tt'] = $idTt;
-        $this->sirsList = [];
     }
 
     // ─── Open Create ──────────────────────────────────────────
@@ -118,11 +47,8 @@ new class extends Component {
         $this->formMode   = 'edit';
         $this->originalId = $classId;
         $this->form = [
-            'class_id'        => (string) $row->class_id,
-            'class_desc'      => (string) ($row->class_desc ?? ''),
-            'aplic_kodekelas' => (string) ($row->aplic_kodekelas ?? ''),
-            'sirs_id_tt'      => (string) ($row->sirs_id_tt ?? ''),
-            'id_t_tt'         => (string) ($row->id_t_tt ?? ''),
+            'class_id'   => (string) $row->class_id,
+            'class_desc' => (string) ($row->class_desc ?? ''),
         ];
 
         $this->incrementVersion('modal');
@@ -162,26 +88,17 @@ new class extends Component {
     public function save(): void
     {
         $this->validate([
-            'form.class_id'        => $this->formMode === 'create'
+            'form.class_id'   => $this->formMode === 'create'
                 ? 'required|integer|unique:rsmst_class,class_id'
                 : 'required|integer',
-            'form.class_desc'      => 'required|string|max:20',
-            'form.aplic_kodekelas' => 'nullable|string|max:5',
-            'form.sirs_id_tt'      => 'nullable|string|max:5',
-            'form.id_t_tt'         => 'nullable|string|max:20',
+            'form.class_desc' => 'required|string|max:20',
         ], [], [
-            'form.class_id'        => 'ID Kelas',
-            'form.class_desc'      => 'Nama Kelas',
-            'form.aplic_kodekelas' => 'Kode Aplicares',
-            'form.sirs_id_tt'      => 'SIRS id_tt',
-            'form.id_t_tt'         => 'SIRS id_t_tt',
+            'form.class_id'   => 'ID Kelas',
+            'form.class_desc' => 'Nama Kelas',
         ]);
 
         $payload = [
-            'class_desc'      => $this->form['class_desc'],
-            'aplic_kodekelas' => $this->form['aplic_kodekelas'] ?: null,
-            'sirs_id_tt'      => $this->form['sirs_id_tt'] ?: null,
-            'id_t_tt'         => $this->form['id_t_tt'] ?: null,
+            'class_desc' => $this->form['class_desc'],
         ];
 
         if ($this->formMode === 'create') {
@@ -205,13 +122,7 @@ new class extends Component {
 
     private function resetForm(): void
     {
-        $this->form         = ['class_id'=>'','class_desc'=>'','aplic_kodekelas'=>'','sirs_id_tt'=>'','id_t_tt'=>''];
-        $this->aplicList    = [];
-        $this->sirsList     = [];
-        $this->aplicError   = '';
-        $this->sirsError    = '';
-        $this->loadingAplic = false;
-        $this->loadingSirs  = false;
+        $this->form = ['class_id' => '', 'class_desc' => ''];
         $this->resetValidation();
     }
 };
@@ -238,7 +149,7 @@ new class extends Component {
                                     {{ $formMode === 'edit' ? 'Ubah Data Kelas Rawat' : 'Tambah Data Kelas Rawat' }}
                                 </h2>
                                 <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-                                    Lengkapi informasi kelas & mapping sistem eksternal.
+                                    Lengkapi data berikut lalu klik Simpan.
                                 </p>
                             </div>
                         </div>
@@ -283,141 +194,8 @@ new class extends Component {
                                     maxlength="20"
                                     :error="$errors->has('form.class_desc')"
                                     class="w-full mt-1 uppercase"
-                                    x-on:keydown.enter.prevent="$refs.inputAplic?.focus()" />
-                                <x-input-error :messages="$errors->get('form.class_desc')" class="mt-1" />
-                            </div>
-                        </div>
-
-                        {{-- Separator --}}
-                        <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
-                            <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">
-                                Mapping Sistem Eksternal
-                            </p>
-
-                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-
-                                {{-- Aplicares --}}
-                                <div>
-                                    <x-input-label value="Kode Aplicares BPJS" />
-                                    <div class="flex gap-2 mt-1">
-                                        <x-text-input wire:model.live="form.aplic_kodekelas" x-ref="inputAplic"
-                                            maxlength="5"
-                                            :error="$errors->has('form.aplic_kodekelas')"
-                                            class="w-full uppercase"
-                                            placeholder="KL1, KL2, VIP …" />
-                                        <button type="button" wire:click="fetchAplic"
-                                                wire:loading.attr="disabled" wire:target="fetchAplic"
-                                                class="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-blue-300 dark:border-blue-600
-                                                       text-blue-600 dark:text-blue-400 text-xs font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 transition
-                                                       disabled:opacity-50">
-                                            <svg wire:loading wire:target="fetchAplic" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                                            </svg>
-                                            <svg wire:loading.remove wire:target="fetchAplic" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                                            </svg>
-                                            Cek API
-                                        </button>
-                                    </div>
-
-                                    {{-- Error --}}
-                                    @if ($aplicError)
-                                        <p class="mt-1 text-xs text-red-500">{{ $aplicError }}</p>
-                                    @endif
-
-                                    {{-- Dropdown hasil --}}
-                                    @if (!empty($aplicList))
-                                        <div class="mt-2 rounded-lg border border-blue-200 dark:border-blue-700 bg-white dark:bg-gray-800 shadow-sm divide-y divide-gray-100 dark:divide-gray-700 max-h-40 overflow-y-auto">
-                                            @foreach ($aplicList as $item)
-                                                <button type="button"
-                                                        wire:click="pilihAplic('{{ $item['kodeKelas'] ?? $item['kode'] ?? $item['kelas'] ?? '' }}')"
-                                                        class="w-full flex items-center justify-between px-3 py-2 text-xs text-left hover:bg-blue-50 dark:hover:bg-blue-900/20 transition">
-                                                    <span class="font-mono font-bold text-blue-700 dark:text-blue-300">
-                                                        {{ $item['kodeKelas'] ?? $item['kode'] ?? $item['kelas'] ?? '-' }}
-                                                    </span>
-                                                    <span class="text-gray-500 dark:text-gray-400">
-                                                        {{ $item['namaKelas'] ?? $item['nama'] ?? '' }}
-                                                    </span>
-                                                </button>
-                                            @endforeach
-                                        </div>
-                                    @endif
-
-                                    <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
-                                        Kode kelas yang dikirim ke Aplicares saat update TT.
-                                    </p>
-                                    <x-input-error :messages="$errors->get('form.aplic_kodekelas')" class="mt-1" />
-                                </div>
-
-                                {{-- SIRS id_tt referensi --}}
-                                <div>
-                                    <x-input-label value="SIRS id_tt (referensi)" />
-                                    <div class="flex gap-2 mt-1">
-                                        <x-text-input wire:model.live="form.sirs_id_tt" x-ref="inputSirsIdTt"
-                                            maxlength="5"
-                                            :error="$errors->has('form.sirs_id_tt')"
-                                            class="w-full"
-                                            placeholder="1, 2, 3 …" />
-                                        <button type="button" wire:click="fetchSirs"
-                                                wire:loading.attr="disabled" wire:target="fetchSirs"
-                                                class="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-green-300 dark:border-green-600
-                                                       text-green-600 dark:text-green-400 text-xs font-medium hover:bg-green-50 dark:hover:bg-green-900/20 transition
-                                                       disabled:opacity-50">
-                                            <svg wire:loading wire:target="fetchSirs" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                                            </svg>
-                                            <svg wire:loading.remove wire:target="fetchSirs" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                                            </svg>
-                                            Cek API
-                                        </button>
-                                    </div>
-
-                                    {{-- Error --}}
-                                    @if ($sirsError)
-                                        <p class="mt-1 text-xs text-red-500">{{ $sirsError }}</p>
-                                    @endif
-
-                                    {{-- Dropdown hasil --}}
-                                    @if (!empty($sirsList))
-                                        <div class="mt-2 rounded-lg border border-green-200 dark:border-green-700 bg-white dark:bg-gray-800 shadow-sm divide-y divide-gray-100 dark:divide-gray-700 max-h-40 overflow-y-auto">
-                                            @foreach ($sirsList as $item)
-                                                <button type="button"
-                                                        wire:click="pilihSirs('{{ $item['id_tt'] ?? $item['kode'] ?? '' }}')"
-                                                        class="w-full flex items-center justify-between px-3 py-2 text-xs text-left hover:bg-green-50 dark:hover:bg-green-900/20 transition">
-                                                    <span class="font-mono font-bold text-green-700 dark:text-green-300">
-                                                        {{ $item['id_tt'] ?? $item['kode'] ?? '-' }}
-                                                    </span>
-                                                    <span class="text-gray-500 dark:text-gray-400">
-                                                        {{ $item['nama'] ?? $item['keterangan'] ?? $item['nm_tt'] ?? '' }}
-                                                    </span>
-                                                </button>
-                                            @endforeach
-                                        </div>
-                                    @endif
-
-                                    <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
-                                        Dari referensi <code class="font-mono">GET /Referensi/tempat_tidur</code>.
-                                    </p>
-                                    <x-input-error :messages="$errors->get('form.sirs_id_tt')" class="mt-1" />
-                                </div>
-                            </div>
-
-                            {{-- SIRS id_t_tt (record transaksi) --}}
-                            <div class="mt-4">
-                                <x-input-label value="SIRS id_t_tt (record transaksi)" />
-                                <x-text-input wire:model.live="form.id_t_tt" x-ref="inputIdTTt"
-                                    maxlength="20"
-                                    :error="$errors->has('form.id_t_tt')"
-                                    class="w-full mt-1 font-mono"
-                                    placeholder="Diisi otomatis saat sync TT …"
                                     x-on:keydown.enter.prevent="$wire.save()" />
-                                <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
-                                    Record ID dari <code class="font-mono">GET /Fasyankes</code> — diisi otomatis saat Ambil Data Existing SIRS.
-                                </p>
-                                <x-input-error :messages="$errors->get('form.id_t_tt')" class="mt-1" />
+                                <x-input-error :messages="$errors->get('form.class_desc')" class="mt-1" />
                             </div>
                         </div>
 
