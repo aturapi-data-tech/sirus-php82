@@ -20,8 +20,11 @@
                 @endphp
                 <tr class="bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
 
-                    {{-- Kamar: nama kamar + badge kelas --}}
+                    {{-- Kamar: bangsal - nama kamar + badge kelas --}}
                     <td class="px-4 py-3">
+                        @if ($row['rs_namabangsal'])
+                            <div class="text-xs text-gray-400 dark:text-gray-500">{{ $row['rs_namabangsal'] }}</div>
+                        @endif
                         <div class="font-semibold text-gray-800 dark:text-gray-200">{{ $row['rs_namakamar'] }}</div>
                         @if ($row['rs_namakelas'])
                             <span class="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold
@@ -80,14 +83,11 @@
                                        bg-blue-50 text-blue-700 hover:bg-blue-100
                                        dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50
                                        transition disabled:opacity-50">
-                            <svg wire:loading wire:target="syncAplicSatu({{ $i }})" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                            </svg>
+                            <x-loading wire:loading wire:target="syncAplicSatu({{ $i }})" class="w-3 h-3" />
                             <svg wire:loading.remove wire:target="syncAplicSatu({{ $i }})" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                             </svg>
-                            Sync
+                            Kirim
                         </button>
                     </td>
                 </tr>

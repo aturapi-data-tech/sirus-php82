@@ -9,14 +9,9 @@ new class extends Component {
 
     use AplicaresTrait, SirsTrait;
 
-
     // ─── State ───────────────────────────────────────────────────────────────
-    public string $activeTab   = 'aplicares';   // 'aplicares' | 'sirs' | 'konfigurasi'
-    public array  $rows        = [];
-    public array  $logLines    = [];
-    public bool   $syncingAll  = false;
-    public int    $syncDone    = 0;
-    public int    $syncTotal   = 0;
+    public array $rows      = [];
+    public array $logLines  = [];
 
     // ─── Mount ───────────────────────────────────────────────────────────────
     public function mount(): void
@@ -24,36 +19,30 @@ new class extends Component {
         $this->loadRows();
     }
 
-    // ─── LOAD ROWS dari rsmst_rooms (per kamar) ─────────────────────────────
+    // ─── Load rows dari rsmst_rooms ─────────────────────────────────────────
     public function loadRows(): void
     {
         $rooms = DB::table('rsmst_rooms as r')
-            ->select(
-                'r.room_id', 'r.room_name', 'r.class_id',
-                'r.aplic_kodekelas', 'r.sirs_id_tt', 'r.sirs_id_t_tt',
-                'c.class_desc'
-            )
+            ->select('r.room_id', 'r.room_name', 'r.class_id',
+                     'r.aplic_kodekelas', 'r.sirs_id_tt', 'r.sirs_id_t_tt',
+                     'c.class_desc', 'b.bangsal_name')
             ->leftJoin('rsmst_class as c', 'r.class_id', '=', 'c.class_id')
+            ->leftJoin('rsmst_bangsals as b', 'r.bangsal_id', '=', 'b.bangsal_id')
             ->whereIn('r.active_status', ['AC', '1'])
-            ->orderBy('r.class_id')
+            ->orderBy('b.bangsal_name')
             ->orderBy('r.room_name')
             ->get();
 
         $this->rows = $rooms->map(function ($room) {
-            $kapasitas = DB::table('rsmst_beds')
-                ->where('room_id', $room->room_id)
-                ->count();
-
-            $terpakai = DB::table('rstxn_rihdrs')
-                ->where('room_id', $room->room_id)
-                ->where('ri_status', 'I')
-                ->count();
+            $kapasitas = DB::table('rsmst_beds')->where('room_id', $room->room_id)->count();
+            $terpakai  = DB::table('rstxn_rihdrs')->where('room_id', $room->room_id)->where('ri_status', 'I')->count();
 
             return [
                 'room_id'         => (string) $room->room_id,
+                'rs_namabangsal'  => (string) ($room->bangsal_name ?? ''),
                 'rs_namakamar'    => (string) ($room->room_name ?? ''),
                 'rs_namakelas'    => (string) ($room->class_desc ?? ''),
-                'class_id'        => (int) $room->class_id,
+                'class_id'        => $room->class_id,
                 'aplic_kodekelas' => (string) ($room->aplic_kodekelas ?? ''),
                 'sirs_id_tt'      => (string) ($room->sirs_id_tt ?? ''),
                 'id_t_tt_sirs'    => ($room->sirs_id_t_tt ?? null) ?: null,
@@ -68,35 +57,6 @@ new class extends Component {
         })->values()->all();
     }
 
-    // ─── Load id_t_tt existing dari SIRS ────────────────────────────────────
-    public function loadSirsExisting(): void
-    {
-        try {
-            $res  = $this->sirsGetTempaTidur()->getOriginalContent();
-            $list = $res['data'] ?? $res ?? [];
-
-            if (isset($list[0])) {
-                foreach ($this->rows as $i => $row) {
-                    $found = collect($list)->firstWhere('id_tt', $row['sirs_id_tt']);
-                    if ($found) {
-                        $idTTt = $found['id_t_tt'] ?? null;
-                        $this->rows[$i]['id_t_tt_sirs'] = $idTTt;
-                        if ($idTTt) {
-                            DB::table('rsmst_rooms')
-                                ->where('room_id', $row['room_id'])
-                                ->update(['sirs_id_t_tt' => $idTTt]);
-                        }
-                    }
-                }
-                $this->dispatch('toast', type: 'info', message: 'Data SIRS berhasil dimuat.');
-            } else {
-                $this->dispatch('toast', type: 'warning', message: 'Data SIRS kosong atau format berbeda.');
-            }
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal ambil data SIRS: ' . $e->getMessage());
-        }
-    }
-
     // ─── Refresh DB ─────────────────────────────────────────────────────────
     public function refresh(): void
     {
@@ -105,19 +65,25 @@ new class extends Component {
         $this->dispatch('toast', type: 'info', message: 'Data DB diperbarui.');
     }
 
+
     // =========================================================================
-    // APLICARES — sync satu / semua
+    // APLICARES
     // =========================================================================
     public function syncAplicSatu(int $index): void
     {
         $row = $this->rows[$index] ?? null;
         if (!$row) return;
 
+        if (!$row['aplic_kodekelas']) {
+            $this->rows[$index]['status_aplic'] = 'skip';
+            $this->rows[$index]['pesan_aplic']  = 'Kode Aplicares belum diisi';
+            return;
+        }
+
         $this->rows[$index]['status_aplic'] = 'loading';
 
         $namaruang = trim($row['rs_namakamar'] . ' ' . $row['rs_namakelas']);
-
-        $payload = [
+        $payload   = [
             'kodekelas'          => $row['aplic_kodekelas'],
             'koderuang'          => $row['room_id'],
             'namaruang'          => $namaruang,
@@ -132,8 +98,8 @@ new class extends Component {
             $res  = $this->updateKetersediaanTempatTidur($payload)->getOriginalContent();
             $code = $res['metadata']['code'] ?? 500;
             $msg  = $res['metadata']['message'] ?? '-';
+            $ok   = $code == 1;
 
-            $ok = $code == 1;
             $this->rows[$index]['status_aplic'] = $ok ? 'ok' : 'error';
             $this->rows[$index]['pesan_aplic']  = $msg;
             $this->addLog('APLIC', $row['rs_namakamar'], $ok ? 'ok' : 'error', $msg);
@@ -146,68 +112,96 @@ new class extends Component {
 
     public function syncAplicSemua(): void
     {
-        $this->syncingAll = true;
-        $this->syncTotal  = count($this->rows);
-        $this->syncDone   = 0;
-        $this->logLines   = [];
-
+        $this->logLines = [];
         foreach ($this->rows as $i => $_) {
             $this->syncAplicSatu($i);
-            $this->syncDone++;
         }
-
-        $this->syncingAll = false;
-        $this->dispatch('toast', type: 'success', message: "Sync Aplicares selesai: {$this->syncDone} kamar.");
+        $ok = collect($this->rows)->where('status_aplic', 'ok')->count();
+        $this->dispatch('toast', type: 'success', message: "Kirim ke Aplicares selesai: {$ok} berhasil.");
     }
 
     // =========================================================================
-    // SIRS — sync satu / semua
+    // SIRS
     // =========================================================================
     public function syncSirsSatu(int $index): void
     {
         $row = $this->rows[$index] ?? null;
         if (!$row) return;
 
+        if (!$row['sirs_id_tt']) {
+            $this->rows[$index]['status_sirs'] = 'skip';
+            $this->rows[$index]['pesan_sirs']  = 'id_tt SIRS belum diisi';
+            return;
+        }
+
         $this->rows[$index]['status_sirs'] = 'loading';
 
         $namaRuang = trim($row['rs_namakamar'] . ' ' . $row['rs_namakelas']);
-
-        $payload = [
-            'id_tt'              => $row['sirs_id_tt'],
-            'ruang'              => $namaRuang,
-            'jumlah_ruang'       => 1,
-            'jumlah'             => $row['kapasitas'] ?: 1,
-            'terpakai'           => $row['terpakai'],
-            'terpakai_suspek'    => 0,
-            'terpakai_konfirmasi'=> 0,
-            'antrian'            => 0,
-            'prepare'            => 0,
-            'prepare_plan'       => 0,
-            'covid'              => 0,
+        $payload   = [
+            'ruang'               => $namaRuang,
+            'jumlah_ruang'        => 1,
+            'jumlah'              => $row['kapasitas'] ?: 1,
+            'terpakai'            => $row['terpakai'],
+            'terpakai_suspek'     => 0,
+            'terpakai_konfirmasi' => 0,
+            'antrian'             => 0,
+            'prepare'             => 0,
+            'prepare_plan'        => 0,
+            'covid'               => 0,
         ];
 
         try {
-            // Jika sudah punya id_t_tt → UPDATE, jika belum → INSERT
-            if (!empty($row['id_t_tt_sirs'])) {
-                $payload['id_t_tt'] = $row['id_t_tt_sirs'];
-                unset($payload['id_tt']);
-                $res = $this->sirsUpdateTempaTidur($payload)->getOriginalContent();
+            if ($row['id_t_tt_sirs']) {
+                // PUT — sudah punya id_t_tt
+                $res    = $this->sirsUpdateTempaTidur(array_merge($payload, ['id_t_tt' => $row['id_t_tt_sirs']]))->getOriginalContent();
+                $first  = $res['fasyankes'][0] ?? [];
+                $status = (string) ($first['status'] ?? '500');
+                $ok     = $status === '200';
+                $msg    = $first['message'] ?? '-';
             } else {
-                $res = $this->sirsKirimTempaTidur($payload)->getOriginalContent();
-                // Simpan sirs_id_t_tt per kamar jika dikembalikan API
-                if (!empty($res['id_t_tt'])) {
-                    $this->rows[$index]['id_t_tt_sirs'] = $res['id_t_tt'];
-                    DB::table('rsmst_rooms')
-                        ->where('room_id', $row['room_id'])
-                        ->update(['sirs_id_t_tt' => $res['id_t_tt']]);
+                // POST — daftar baru
+                $res    = $this->sirsKirimTempaTidur(array_merge($payload, ['id_tt' => $row['sirs_id_tt']]))->getOriginalContent();
+                $first  = $res['fasyankes'][0] ?? [];
+                $status = (string) ($first['status'] ?? '500');
+                $msg    = $first['message'] ?? '-';
+
+                if ($status === '200' && !str_contains($msg, 'sudah ada')) {
+                    $idTTt = (string) ($first['id_t_tt'] ?? '');
+                    if ($idTTt) {
+                        $this->rows[$index]['id_t_tt_sirs'] = $idTTt;
+                        DB::table('rsmst_rooms')->where('room_id', $row['room_id'])->update(['sirs_id_t_tt' => $idTTt]);
+                    }
+                    $ok = true;
+                } elseif ($status === '200' && str_contains($msg, 'sudah ada')) {
+                    // Auto-GET → PUT
+                    $listRes = $this->sirsGetTempaTidur()->getOriginalContent();
+                    $match   = collect($listRes['fasyankes'] ?? [])->first(fn($r) =>
+                        (string) ($r['id_tt'] ?? '') === (string) $row['sirs_id_tt'] &&
+                        ($r['id_t_tt'] ?? null) !== null
+                    );
+
+                    if ($match) {
+                        $idTTt  = (string) $match['id_t_tt'];
+                        $this->rows[$index]['id_t_tt_sirs'] = $idTTt;
+                        DB::table('rsmst_rooms')->where('room_id', $row['room_id'])->update(['sirs_id_t_tt' => $idTTt]);
+
+                        $resU   = $this->sirsUpdateTempaTidur(array_merge($payload, ['id_t_tt' => $idTTt]))->getOriginalContent();
+                        $firstU = $resU['fasyankes'][0] ?? [];
+                        $statU  = (string) ($firstU['status'] ?? '500');
+                        $ok     = $statU === '200';
+                        $msg    = $ok ? 'Sudah ada, berhasil diperbarui' : ($firstU['message'] ?? 'Gagal');
+                    } else {
+                        $ok  = null; // warning
+                        $msg = 'Sudah ada di SIRS, id_t_tt tidak ditemukan';
+                    }
+                } else {
+                    $ok = false;
                 }
             }
 
-            $ok  = ($res['status'] ?? $res['code'] ?? 200) == 200;
-            $msg = $res['message'] ?? '-';
-            $this->rows[$index]['status_sirs'] = $ok ? 'ok' : 'error';
+            $this->rows[$index]['status_sirs'] = $ok === true ? 'ok' : ($ok === null ? 'warning' : 'error');
             $this->rows[$index]['pesan_sirs']  = $msg;
-            $this->addLog('SIRS', $row['rs_namakamar'], $ok ? 'ok' : 'error', $msg);
+            $this->addLog('SIRS', $row['rs_namakamar'], $ok === true ? 'ok' : 'error', $msg);
         } catch (\Throwable $e) {
             $this->rows[$index]['status_sirs'] = 'error';
             $this->rows[$index]['pesan_sirs']  = $e->getMessage();
@@ -217,29 +211,23 @@ new class extends Component {
 
     public function syncSirsSemua(): void
     {
-        $this->syncingAll = true;
-        $this->syncTotal  = count($this->rows);
-        $this->syncDone   = 0;
-        $this->logLines   = [];
-
+        $this->logLines = [];
         foreach ($this->rows as $i => $_) {
             $this->syncSirsSatu($i);
-            $this->syncDone++;
         }
-
-        $this->syncingAll = false;
-        $this->dispatch('toast', type: 'success', message: "Sync SIRS selesai: {$this->syncDone} kamar.");
+        $ok = collect($this->rows)->where('status_sirs', 'ok')->count();
+        $this->dispatch('toast', type: 'success', message: "Kirim ke SIRS selesai: {$ok} berhasil.");
     }
 
     // ─── Helper ─────────────────────────────────────────────────────────────
     private function addLog(string $sistem, string $kamar, string $status, string $msg): void
     {
         $this->logLines[] = [
-            'waktu'   => now()->format('H:i:s'),
-            'sistem'  => $sistem,
-            'kamar'   => $kamar,
-            'status'  => $status,
-            'msg'     => $msg,
+            'waktu'  => now()->format('H:i:s'),
+            'sistem' => $sistem,
+            'kamar'  => $kamar,
+            'status' => $status,
+            'msg'    => $msg,
         ];
     }
 };
@@ -247,31 +235,25 @@ new class extends Component {
 
 <div class="p-4 space-y-4">
 
-    {{-- ══════════════════════════════════════════════════════════════
-         HEADER
-    ══════════════════════════════════════════════════════════════ --}}
+    {{-- ══ HEADER ══════════════════════════════════════════════════════════ --}}
     <div class="flex items-start justify-between gap-4">
         <div>
             <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">Update Tempat Tidur RI</h1>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                Sync ketersediaan kamar rawat inap ke Aplicares BPJS & SIRS Kemenkes secara real-time.
+                Kirim ketersediaan kamar rawat inap ke Aplicares BPJS & SIRS Kemenkes secara real-time.
             </p>
         </div>
-        <x-secondary-button wire:click="refresh" wire:loading.attr="disabled" class="shrink-0">
-            <svg wire:loading wire:target="refresh" class="w-4 h-4 mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-            </svg>
-            <svg wire:loading.remove wire:target="refresh" class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.001 7.001 0 0112 5c2.276 0 4.293.965 5.71 2.5M19.418 15A7.001 7.001 0 0112 19c-2.276 0-4.293-.965-5.71-2.5"/>
+        <x-secondary-button wire:click="refresh" wire:loading.attr="disabled" wire:target="refresh" class="shrink-0 gap-2">
+            <x-loading size="xs" wire:loading wire:target="refresh" />
+            <svg wire:loading.remove wire:target="refresh" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.001 7.001 0 0112 5c2.276 0 4.293.965 5.71 2.5M19.418 15A7.001 7.001 0 0112 19c-2.276 0-4.293-.965-5.71-2.5"/>
             </svg>
             Refresh DB
         </x-secondary-button>
     </div>
 
-    {{-- ══════════════════════════════════════════════════════════════
-         RINGKASAN
-    ══════════════════════════════════════════════════════════════ --}}
+    {{-- ══ RINGKASAN ════════════════════════════════════════════════════════ --}}
     @php
         $totalKap  = collect($rows)->sum('kapasitas');
         $totalTerp = collect($rows)->sum('terpakai');
@@ -297,139 +279,104 @@ new class extends Component {
         </div>
     </div>
 
-    {{-- ══════════════════════════════════════════════════════════════
-         PROGRESS SYNC
-    ══════════════════════════════════════════════════════════════ --}}
-    @if ($syncingAll)
-        <div class="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
-            <div class="flex items-center gap-3">
-                <svg class="w-5 h-5 animate-spin text-blue-600 shrink-0" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                </svg>
-                <span class="text-sm font-medium text-blue-700 dark:text-blue-300">
-                    Sync berjalan… {{ $syncDone }} / {{ $syncTotal }}
-                </span>
-            </div>
-            <div class="mt-2 w-full bg-blue-200 dark:bg-blue-800 rounded-full h-1.5">
-                <div class="bg-blue-600 h-1.5 rounded-full transition-all"
-                     style="width: {{ $syncTotal > 0 ? ($syncDone / $syncTotal * 100) : 0 }}%"></div>
-            </div>
-        </div>
-    @endif
+    {{-- ══ TAB + KONTEN ════════════════════════════════════════════════════ --}}
+    <div x-data="{ tab: 'aplicares' }">
 
-    {{-- ══════════════════════════════════════════════════════════════
-         TAB SWITCHER
-    ══════════════════════════════════════════════════════════════ --}}
-    <div class="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit">
-        <button wire:click="$set('activeTab','aplicares')"
-                class="px-4 py-2 text-sm font-medium rounded-lg transition
-                       {{ $activeTab === 'aplicares'
-                            ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100'
-                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300' }}">
-            <span class="flex items-center gap-2">
+        {{-- Tab bar --}}
+        <div class="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+            <button type="button" @click="tab = 'aplicares'"
+                :class="tab === 'aplicares'
+                    ? 'border-b-2 border-brand text-brand dark:text-brand-lime dark:border-brand-lime font-semibold'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                class="px-5 py-3 text-sm transition-colors flex items-center gap-2">
                 <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold
                              bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">BPJS</span>
                 Aplicares
-            </span>
-        </button>
-        <button wire:click="$set('activeTab','sirs')"
-                class="px-4 py-2 text-sm font-medium rounded-lg transition
-                       {{ $activeTab === 'sirs'
-                            ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100'
-                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300' }}">
-            <span class="flex items-center gap-2">
+            </button>
+            <button type="button" @click="tab = 'sirs'"
+                :class="tab === 'sirs'
+                    ? 'border-b-2 border-brand text-brand dark:text-brand-lime dark:border-brand-lime font-semibold'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                class="px-5 py-3 text-sm transition-colors flex items-center gap-2">
                 <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold
                              bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">SIRS</span>
-                SIRS Kemenkes
-            </span>
-        </button>
-    </div>
+                Kemenkes
+            </button>
+        </div>
 
-    {{-- ══════════════════════════════════════════════════════════════
-         TAB: APLICARES
-    ══════════════════════════════════════════════════════════════ --}}
-    @if ($activeTab === 'aplicares')
-        <div class="space-y-3">
-            {{-- Toolbar --}}
-            <div class="flex justify-end">
-                <x-primary-button wire:click="syncAplicSemua"
-                                  wire:loading.attr="disabled"
-                                  wire:confirm="Sync semua kamar ke Aplicares BPJS?">
-                    <svg wire:loading wire:target="syncAplicSemua" class="w-4 h-4 mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+        {{-- ── TAB APLICARES ────────────────────────────────────────────── --}}
+        <div x-show="tab === 'aplicares'" class="space-y-3 pt-4">
+            <div class="flex items-center justify-between gap-2">
+                @php
+                    $aplOk   = collect($rows)->where('status_aplic', 'ok')->count();
+                    $aplFail = collect($rows)->where('status_aplic', 'error')->count();
+                    $aplSkip = collect($rows)->where('status_aplic', 'skip')->count();
+                @endphp
+                @if ($aplOk || $aplFail || $aplSkip)
+                    <div class="flex items-center gap-3 text-xs">
+                        @if ($aplOk) <span class="text-emerald-600 dark:text-emerald-400 font-mono font-semibold">{{ $aplOk }} ok</span> @endif
+                        @if ($aplFail) <span class="text-red-600 dark:text-red-400 font-mono font-semibold">{{ $aplFail }} gagal</span> @endif
+                        @if ($aplSkip) <span class="text-gray-400 dark:text-gray-500 font-mono">{{ $aplSkip }} dilewati</span> @endif
+                    </div>
+                @else
+                    <span></span>
+                @endif
+                <x-primary-button wire:click="syncAplicSemua" wire:loading.attr="disabled"
+                    wire:target="syncAplicSemua" wire:confirm="Kirim semua kamar ke Aplicares BPJS?" class="gap-2">
+                    <x-loading size="xs" wire:loading wire:target="syncAplicSemua" />
+                    <svg wire:loading.remove wire:target="syncAplicSemua" class="w-4 h-4"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                     </svg>
-                    <svg wire:loading.remove wire:target="syncAplicSemua" class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-                    </svg>
-                    Sync Semua ke Aplicares
+                    Kirim Semua ke Aplicares
                 </x-primary-button>
             </div>
-
-            {{-- Tabel --}}
             @include('pages.transaksi.ri.update-tt-ri.table-aplicares')
         </div>
-    @endif
 
-    {{-- ══════════════════════════════════════════════════════════════
-         TAB: SIRS
-    ══════════════════════════════════════════════════════════════ --}}
-    @if ($activeTab === 'sirs')
-        <div class="space-y-3">
-            {{-- Toolbar --}}
+        {{-- ── TAB SIRS ──────────────────────────────────────────────────── --}}
+        <div x-show="tab === 'sirs'" class="space-y-3 pt-4">
             <div class="flex items-center justify-between gap-2">
-                <x-secondary-button wire:click="loadSirsExisting" wire:loading.attr="disabled">
-                    <svg wire:loading wire:target="loadSirsExisting" class="w-4 h-4 mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                    </svg>
-                    <svg wire:loading.remove wire:target="loadSirsExisting" class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
-                    </svg>
-                    Ambil Data Existing SIRS
-                </x-secondary-button>
-
-                <x-primary-button wire:click="syncSirsSemua"
-                                  wire:loading.attr="disabled"
-                                  wire:confirm="Sync semua kamar ke SIRS Kemenkes?">
-                    <svg wire:loading wire:target="syncSirsSemua" class="w-4 h-4 mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                    </svg>
-                    <svg wire:loading.remove wire:target="syncSirsSemua" class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-                    </svg>
-                    Sync Semua ke SIRS
-                </x-primary-button>
+                @php
+                    $srsOk   = collect($rows)->where('status_sirs', 'ok')->count();
+                    $srsFail = collect($rows)->where('status_sirs', 'error')->count();
+                    $srsSkip = collect($rows)->where('status_sirs', 'skip')->count();
+                @endphp
+                @if ($srsOk || $srsFail || $srsSkip)
+                    <div class="flex items-center gap-3 text-xs">
+                        @if ($srsOk) <span class="text-emerald-600 dark:text-emerald-400 font-mono font-semibold">{{ $srsOk }} ok</span> @endif
+                        @if ($srsFail) <span class="text-red-600 dark:text-red-400 font-mono font-semibold">{{ $srsFail }} gagal</span> @endif
+                        @if ($srsSkip) <span class="text-gray-400 dark:text-gray-500 font-mono">{{ $srsSkip }} dilewati</span> @endif
+                    </div>
+                @else
+                    <span></span>
+                @endif
+                <div class="flex items-center gap-2">
+                    <x-primary-button wire:click="syncSirsSemua" wire:loading.attr="disabled"
+                        wire:target="syncSirsSemua" wire:confirm="Kirim semua kamar ke SIRS Kemenkes?" class="gap-2">
+                        <x-loading size="xs" wire:loading wire:target="syncSirsSemua" />
+                        <svg wire:loading.remove wire:target="syncSirsSemua" class="w-4 h-4"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                        </svg>
+                        Kirim Semua ke SIRS
+                    </x-primary-button>
+                </div>
             </div>
 
-            {{-- Info id_t_tt --}}
-            @if (collect($rows)->whereNull('id_t_tt_sirs')->count() > 0)
-                <div class="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg text-sm text-amber-700 dark:text-amber-300">
-                    <svg class="w-4 h-4 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                    </svg>
-                    <span>
-                        Beberapa kamar belum punya <code class="font-mono text-xs bg-amber-100 dark:bg-amber-800 px-1 rounded">id_t_tt</code> SIRS.
-                        Klik <strong>Ambil Data Existing SIRS</strong> untuk load data yang sudah pernah dikirim, atau langsung Sync (akan Insert baru).
-                    </span>
-                </div>
-            @endif
-
-            {{-- Tabel --}}
             @include('pages.transaksi.ri.update-tt-ri.table-sirs')
         </div>
-    @endif
 
-    {{-- ══════════════════════════════════════════════════════════════
-         LOG SYNC
-    ══════════════════════════════════════════════════════════════ --}}
+    </div>{{-- end x-data tab --}}
+
+    {{-- ══ LOG SYNC ═════════════════════════════════════════════════════════ --}}
     @if (!empty($logLines))
         <div class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div class="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                 <span class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                    Log Sync
+                    Log Aktivitas
                 </span>
                 <button wire:click="$set('logLines', [])" class="text-xs text-gray-400 hover:text-red-500 transition">
                     Hapus Log
@@ -446,7 +393,7 @@ new class extends Component {
                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">SIRS</span>
                             @endif
                         </span>
-                        <span class="font-semibold text-gray-700 dark:text-gray-300 shrink-0 w-20">{{ $log['kamar'] }}</span>
+                        <span class="font-semibold text-gray-700 dark:text-gray-300 shrink-0 truncate max-w-[120px]">{{ $log['kamar'] }}</span>
                         @if ($log['status'] === 'ok')
                             <span class="text-emerald-600 dark:text-emerald-400 shrink-0">&#10003;</span>
                         @else

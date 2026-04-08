@@ -18,14 +18,18 @@
                 @php
                     $occ      = $row['kapasitas'] > 0 ? round($row['terpakai'] / $row['kapasitas'] * 100) : 0;
                     $occColor = $occ >= 90 ? 'bg-red-500' : ($occ >= 70 ? 'bg-amber-400' : 'bg-emerald-500');
-                    $modeLabel = empty($row['id_t_tt_sirs']) ? 'Insert' : 'Update';
-                    $modeColor = empty($row['id_t_tt_sirs'])
+                    $belumDaftar = empty($row['sirs_id_tt']);
+                    $modeLabel   = empty($row['id_t_tt_sirs']) ? 'Kirim' : 'Perbarui';
+                    $modeColor   = empty($row['id_t_tt_sirs'])
                         ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                         : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
                 @endphp
                 <tr class="bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
 
                     <td class="px-4 py-3">
+                        @if ($row['rs_namabangsal'])
+                            <div class="text-xs text-gray-400 dark:text-gray-500">{{ $row['rs_namabangsal'] }}</div>
+                        @endif
                         <div class="font-semibold text-gray-800 dark:text-gray-200">{{ $row['rs_namakamar'] }}</div>
                         @if ($row['rs_namakelas'])
                             <span class="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold
@@ -79,20 +83,24 @@
                     </td>
 
                     <td class="px-4 py-3 text-center">
-                        <button wire:click="syncSirsSatu({{ $i }})"
-                                wire:loading.attr="disabled"
-                                wire:target="syncSirsSatu({{ $i }})"
-                                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
-                                       {{ $modeColor }} hover:opacity-80 transition disabled:opacity-50">
-                            <svg wire:loading wire:target="syncSirsSatu({{ $i }})" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                            </svg>
-                            <svg wire:loading.remove wire:target="syncSirsSatu({{ $i }})" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-                            </svg>
-                            {{ $modeLabel }}
-                        </button>
+                        @if ($belumDaftar)
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+                                         bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500 italic">
+                                Belum didaftarkan
+                            </span>
+                        @else
+                            <button wire:click="syncSirsSatu({{ $i }})"
+                                    wire:loading.attr="disabled"
+                                    wire:target="syncSirsSatu({{ $i }})"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
+                                           {{ $modeColor }} hover:opacity-80 transition disabled:opacity-50">
+                                <x-loading wire:loading wire:target="syncSirsSatu({{ $i }})" class="w-3 h-3" />
+                                <svg wire:loading.remove wire:target="syncSirsSatu({{ $i }})" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                </svg>
+                                {{ $modeLabel }}
+                            </button>
+                        @endif
                     </td>
                 </tr>
             @endforeach
