@@ -69,10 +69,14 @@ new class extends Component {
 
         $findShift = DB::table('rstxn_shiftctls')
             ->select('shift')
+            ->whereNotNull('shift_start')
+            ->whereNotNull('shift_end')
+            ->where('shift_start', '!=', '')
+            ->where('shift_end', '!=', '')
             ->whereRaw('? BETWEEN shift_start AND shift_end', [$now->format('H:i:s')])
             ->first();
 
-        $this->dataDaftarPoliRJ['shift'] = (string) ($findShift->shift ?? 3);
+        $this->dataDaftarPoliRJ['shift'] = (string) ($findShift?->shift ?? 1);
 
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'rj-actions');

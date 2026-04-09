@@ -120,9 +120,11 @@ new class extends Component {
         $jamselesai = substr($jamPraktek, 6, 5);
 
         $shiftRow = DB::table('rstxn_shiftctls')
-            ->whereRaw("? BETWEEN shift_sta AND shift_end", [$jammulai . ':00'])
+            ->whereNotNull('shift_start')
+            ->whereNotNull('shift_end')
+            ->whereRaw("? BETWEEN shift_start AND shift_end", [$jammulai . ':00'])
             ->first();
-        $shift = $shiftRow->shift ?? 1;
+        $shift = $shiftRow?->shift ?? 1;
 
         $payload = [
             'sc_poli_status_'      => '1',
@@ -184,7 +186,9 @@ new class extends Component {
             $jammulai   = substr($j['jadwal'], 0, 5);
             $jamselesai = substr($j['jadwal'], 6, 5);
             $shiftRow   = DB::table('rstxn_shiftctls')
-                ->whereRaw("? BETWEEN shift_sta AND shift_end", [$jammulai . ':00'])
+                ->whereNotNull('shift_start')
+                ->whereNotNull('shift_end')
+                ->whereRaw("? BETWEEN shift_start AND shift_end", [$jammulai . ':00'])
                 ->first();
 
             $payload = [
@@ -193,7 +197,7 @@ new class extends Component {
                 'day_id'               => $j['hari'],
                 'poli_id'              => $poli->poli_id,
                 'dr_id'                => $dokter->dr_id,
-                'shift'                => $shiftRow->shift ?? 1,
+                'shift'                => $shiftRow?->shift ?? 1,
                 'mulai_praktek'        => $jammulai . ':00',
                 'selesai_praktek'      => $jamselesai . ':00',
                 'pelayanan_perp_asien' => '',
@@ -276,7 +280,9 @@ new class extends Component {
                 $jammulai   = substr($j['jadwal'], 0, 5);
                 $jamselesai = substr($j['jadwal'], 6, 5);
                 $shiftRow   = DB::table('rstxn_shiftctls')
-                    ->whereRaw("? BETWEEN shift_sta AND shift_end", [$jammulai . ':00'])
+                    ->whereNotNull('shift_start')
+                    ->whereNotNull('shift_end')
+                    ->whereRaw("? BETWEEN shift_start AND shift_end", [$jammulai . ':00'])
                     ->first();
 
                 $payload = [
@@ -285,7 +291,7 @@ new class extends Component {
                     'day_id'               => $j['hari'],
                     'poli_id'              => $poli->poli_id,
                     'dr_id'                => $dokter->dr_id,
-                    'shift'                => $shiftRow->shift ?? 1,
+                    'shift'                => $shiftRow?->shift ?? 1,
                     'mulai_praktek'        => $jammulai . ':00',
                     'selesai_praktek'      => $jamselesai . ':00',
                     'pelayanan_perp_asien' => '',

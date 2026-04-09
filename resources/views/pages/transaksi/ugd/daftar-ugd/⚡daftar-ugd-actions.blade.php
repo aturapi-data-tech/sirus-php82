@@ -79,10 +79,14 @@ new class extends Component {
 
         $findShift = DB::table('rstxn_shiftctls')
             ->select('shift')
+            ->whereNotNull('shift_start')
+            ->whereNotNull('shift_end')
+            ->where('shift_start', '!=', '')
+            ->where('shift_end', '!=', '')
             ->whereRaw('? BETWEEN shift_start AND shift_end', [$now->format('H:i:s')])
             ->first();
 
-        $this->dataDaftarUGD['shift'] = (string) ($findShift->shift ?? 3);
+        $this->dataDaftarUGD['shift'] = (string) ($findShift?->shift ?? 1);
         $this->dataDaftarUGD['entryId'] = $this->entryId;
         $this->dataDaftarUGD['entryDesc'] = collect($this->entryOptions)->firstWhere('entryId', $this->entryId)['entryDesc'] ?? '';
 
