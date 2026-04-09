@@ -107,6 +107,14 @@ new class extends Component {
         $this->dispatch('open-rm-inform-consent-ri', $riHdrNo);
         $this->dispatch('open-rm-general-consent-ri', $riHdrNo);
         $this->dispatch('open-rm-case-manager-ri', $riHdrNo);
+
+        // SKDP hanya untuk BPJS
+        $klaimStatus = DB::table('rsmst_klaimtypes')
+            ->where('klaim_id', $data['klaimId'] ?? '')
+            ->value('klaim_status') ?? 'UMUM';
+        if ($klaimStatus === 'BPJS') {
+            $this->dispatch('open-rm-skdp-ri', $riHdrNo);
+        }
     }
 
     /* ── Close ── */
@@ -310,6 +318,11 @@ new class extends Component {
                     <ul class="flex flex-wrap -mb-px text-sm font-medium text-center text-gray-500 dark:text-gray-400">
 
                         @php
+                            $klaimStatusRi = \Illuminate\Support\Facades\DB::table('rsmst_klaimtypes')
+                                ->where('klaim_id', $dataDaftarRi['klaimId'] ?? '')
+                                ->value('klaim_status') ?? 'UMUM';
+                            $isBPJSRi = $klaimStatusRi === 'BPJS';
+
                             $tabs = [
                                 /* 1 */ [
                                     'key' => 'pengkajian-perawat',
@@ -370,6 +383,17 @@ new class extends Component {
                                     'icon' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
                                 ],
                             ];
+
+                            // Tab Surat Kontrol hanya untuk BPJS
+                            if ($isBPJSRi) {
+                                array_splice($tabs, 9, 0, [
+                                    [
+                                        'key' => 'skdp',
+                                        'label' => 'Surat Kontrol',
+                                        'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+                                    ],
+                                ]);
+                            }
                         @endphp
 
                         @foreach ($tabs as $tab)
@@ -511,7 +535,17 @@ new class extends Component {
                         </div>
 
                         {{-- ────────────────────────────────────────────
-                        | TAB 10 — RIWAYAT KUNJUNGAN
+                        | TAB — SURAT KONTROL (SKDP) — hanya BPJS
+                        ──────────────────────────────────────────── --}}
+                        @if ($isBPJSRi)
+                            <div x-show="activeTab === 'skdp'" x-transition.opacity.duration.200ms>
+                                <livewire:pages::transaksi.ri.emr-ri.skdp-ri.rm-skdp-ri-actions
+                                    :riHdrNo="$riHdrNo" wire:key="skdp-ri-{{ $riHdrNo }}" />
+                            </div>
+                        @endif
+
+                        {{-- ────────────────────────────────────────────
+                        | TAB — RIWAYAT KUNJUNGAN
                         ──────────────────────────────────────────── --}}
                         <div x-show="activeTab === 'riwayat'" x-transition.opacity.duration.200ms>
                             <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
