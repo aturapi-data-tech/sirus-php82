@@ -31,8 +31,6 @@ new class extends Component {
     public bool $loadingAplicares = false;
     public string $aplicaresError = '';
     public array $aplicaresData = [];
-    public int $aplicStart = 1;
-    public int $aplicLimit = 20;
     public int $aplicTotal = 0;
 
     /* ─── Ketersediaan SIRS ───────────────────────────────────── */
@@ -442,7 +440,7 @@ new class extends Component {
         $this->aplicaresError = '';
 
         try {
-            $res = $this->ketersediaanKamarRS($this->aplicStart, $this->aplicLimit)->getOriginalContent();
+            $res = $this->ketersediaanKamarRS(1, 100)->getOriginalContent();
             $body = $res['response'] ?? [];
             $this->aplicaresData = $body['list'] ?? ($body['data'] ?? []);
             $this->aplicTotal = (int) ($body['total'] ?? count($this->aplicaresData));
@@ -451,21 +449,6 @@ new class extends Component {
         }
 
         $this->loadingAplicares = false;
-    }
-
-    public function aplicaresPrev(): void
-    {
-        if ($this->aplicStart <= 1) {
-            return;
-        }
-        $this->aplicStart = max(1, $this->aplicStart - $this->aplicLimit);
-        $this->loadAplicares();
-    }
-
-    public function aplicaresNext(): void
-    {
-        $this->aplicStart += $this->aplicLimit;
-        $this->loadAplicares();
     }
 
     public function hapusAplicares(string $kodekelas, string $koderuang): void
@@ -550,7 +533,7 @@ new class extends Component {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                 </svg>
-                Daftarkan Semua
+                Daftarkan Semua ke Aplicares &amp; SIRS
             </x-outline-button>
             <x-outline-button wire:click="openPanel" wire:loading.attr="disabled" wire:target="openPanel,loadAplicares"
                 class="shrink-0 gap-2">
@@ -560,13 +543,7 @@ new class extends Component {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                Ketersediaan Kamar
-                <span
-                    class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold
-                             bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">BPJS</span>
-                <span
-                    class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold
-                             bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">SIRS</span>
+                Data Kamar Terdaftar di Aplicares &amp; SIRS
             </x-outline-button>
             </div>{{-- closes flex gap-2 shrink-0 --}}
         </div>
@@ -983,7 +960,7 @@ new class extends Component {
                                 </div>
                                 <div>
                                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 leading-tight">
-                                        Ketersediaan Kamar Eksternal
+                                        Data Kamar Terdaftar di Aplicares &amp; SIRS
                                     </h3>
                                     <div class="flex items-center gap-2 mt-0.5">
                                         <span
@@ -1063,7 +1040,7 @@ new class extends Component {
                             </div>
                             <div>
                                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 leading-tight">
-                                    Daftarkan Semua Kamar
+                                    Daftarkan Semua Kamar ke Aplicares &amp; SIRS
                                 </h3>
                                 <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                                     Sinkronisasi seluruh kamar ke BPJS Aplicares dan/atau SIRS Kemenkes sekaligus.
@@ -1107,6 +1084,39 @@ new class extends Component {
                         {{-- ── TAB APLICARES ────────────────────────────────── --}}
                         <div x-show="tab === 'aplicares'" class="flex flex-col flex-1 overflow-hidden">
 
+                            {{-- Panduan Langkah Aplicares --}}
+                            <div class="px-5 py-3 border-b border-blue-100 dark:border-blue-900/40 shrink-0 bg-white dark:bg-gray-900">
+                                <div class="flex items-start gap-0">
+                                    {{-- Step 1 --}}
+                                    <div class="flex flex-col items-center">
+                                        <div class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-bold shrink-0">1</div>
+                                        <div class="w-px flex-1 bg-blue-200 dark:bg-blue-800 mt-1 min-h-[20px]"></div>
+                                    </div>
+                                    <div class="ml-3 pb-4">
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Tarik data kode kelas dari Aplicares</p>
+                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Klik tombol <strong class="text-blue-600 dark:text-blue-400">Tarik Data Aplicares</strong> di bawah untuk mengambil daftar kode kelas yang tersedia di sistem BPJS Aplicares.</p>
+                                    </div>
+
+                                    <div class="flex flex-col items-center ml-6">
+                                        <div class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-bold shrink-0">2</div>
+                                        <div class="w-px flex-1 bg-blue-200 dark:bg-blue-800 mt-1 min-h-[20px]"></div>
+                                    </div>
+                                    <div class="ml-3 pb-4">
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Sesuaikan mapping kelas</p>
+                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Pilih kode Aplicares yang sesuai untuk setiap kelas kamar RS. Kamar yang sudah punya kode akan diperbarui; yang belum akan didaftarkan baru.</p>
+                                    </div>
+
+                                    <div class="flex flex-col items-center ml-6">
+                                        <div class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-bold shrink-0">3</div>
+                                        <div class="w-px flex-1 bg-transparent mt-1 min-h-[20px]"></div>
+                                    </div>
+                                    <div class="ml-3 pb-4">
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Jalankan pendaftaran massal</p>
+                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Klik <strong class="text-blue-600 dark:text-blue-400">Daftarkan ke Aplicares</strong> — sistem akan memproses semua kamar sekaligus dan menampilkan hasilnya.</p>
+                                    </div>
+                                </div>
+                            </div>
+
                             {{-- Mapping Kelas → Kode Aplicares --}}
                             <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0 bg-blue-50/60 dark:bg-blue-900/10">
                                 <div class="flex items-center justify-between gap-3 mb-2">
@@ -1122,8 +1132,8 @@ new class extends Component {
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.001 7.001 0 0112 5c2.276 0 4.293.965 5.71 2.5M19.418 15A7.001 7.001 0 0112 19c-2.276 0-4.293-.965-5.71-2.5"/>
                                         </svg>
-                                        <span wire:loading.remove wire:target="loadAplRef">Muat Kode Aplicares</span>
-                                        <span wire:loading wire:target="loadAplRef">Memuat…</span>
+                                        <span wire:loading.remove wire:target="loadAplRef">Tarik Data Aplicares</span>
+                                        <span wire:loading wire:target="loadAplRef">Menarik…</span>
                                     </x-secondary-button>
                                 </div>
                                 @php
@@ -1204,6 +1214,39 @@ new class extends Component {
                         {{-- ── TAB SIRS ──────────────────────────────────────── --}}
                         <div x-show="tab === 'sirs'" class="flex flex-col flex-1 overflow-hidden">
 
+                            {{-- Panduan Langkah SIRS --}}
+                            <div class="px-5 py-3 border-b border-green-100 dark:border-green-900/40 shrink-0 bg-white dark:bg-gray-900">
+                                <div class="flex items-start gap-0">
+                                    {{-- Step 1 --}}
+                                    <div class="flex flex-col items-center">
+                                        <div class="flex items-center justify-center w-6 h-6 rounded-full bg-green-600 text-white text-[11px] font-bold shrink-0">1</div>
+                                        <div class="w-px flex-1 bg-green-200 dark:bg-green-800 mt-1 min-h-[20px]"></div>
+                                    </div>
+                                    <div class="ml-3 pb-4">
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Tarik data tipe tempat tidur dari SIRS</p>
+                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Klik tombol <strong class="text-green-600 dark:text-green-400">Tarik Data SIRS</strong> di bawah untuk mengambil daftar tipe tempat tidur dari SIRS Kemenkes.</p>
+                                    </div>
+
+                                    <div class="flex flex-col items-center ml-6">
+                                        <div class="flex items-center justify-center w-6 h-6 rounded-full bg-green-600 text-white text-[11px] font-bold shrink-0">2</div>
+                                        <div class="w-px flex-1 bg-green-200 dark:bg-green-800 mt-1 min-h-[20px]"></div>
+                                    </div>
+                                    <div class="ml-3 pb-4">
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Sesuaikan mapping kelas ke tipe TT</p>
+                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Pilih tipe tempat tidur SIRS yang sesuai untuk setiap kelas kamar RS. Kamar yang sudah terdaftar akan diperbarui; yang belum akan didaftarkan baru.</p>
+                                    </div>
+
+                                    <div class="flex flex-col items-center ml-6">
+                                        <div class="flex items-center justify-center w-6 h-6 rounded-full bg-green-600 text-white text-[11px] font-bold shrink-0">3</div>
+                                        <div class="w-px flex-1 bg-transparent mt-1 min-h-[20px]"></div>
+                                    </div>
+                                    <div class="ml-3 pb-4">
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Jalankan pendaftaran massal</p>
+                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Klik <strong class="text-green-600 dark:text-green-400">Daftarkan ke SIRS</strong> — sistem akan memproses semua kamar sekaligus dan menampilkan hasilnya per baris.</p>
+                                    </div>
+                                </div>
+                            </div>
+
                             {{-- Mapping Kelas → Tipe TT SIRS --}}
                             <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0 bg-green-50/60 dark:bg-green-900/10">
                                 <div class="flex items-center justify-between gap-3 mb-2">
@@ -1219,8 +1262,8 @@ new class extends Component {
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.001 7.001 0 0112 5c2.276 0 4.293.965 5.71 2.5M19.418 15A7.001 7.001 0 0112 19c-2.276 0-4.293-.965-5.71-2.5"/>
                                         </svg>
-                                        <span wire:loading.remove wire:target="loadSirsRef">Muat Tipe TT SIRS</span>
-                                        <span wire:loading wire:target="loadSirsRef">Memuat…</span>
+                                        <span wire:loading.remove wire:target="loadSirsRef">Tarik Data SIRS</span>
+                                        <span wire:loading wire:target="loadSirsRef">Menarik…</span>
                                     </x-secondary-button>
                                 </div>
                                 <div class="grid grid-cols-5 gap-5">

@@ -878,24 +878,24 @@ new class extends Component {
                                                 Mapping Aplicares BPJS
                                             </p>
                                             <x-input-label value="Kode Kelas BPJS (Aplicares)" />
-                                            <p class="text-[11px] text-gray-400 dark:text-gray-500 mb-1">Mapping kelas
-                                                kamar ke kelas BPJS — pilih via tombol Cek API.</p>
+                                            <p class="text-[11px] text-gray-400 dark:text-gray-500 mb-1">Pilih kode
+                                                kelas BPJS yang tersedia di Aplicares untuk dikaitkan dengan kamar ini.</p>
                                             <div class="flex gap-2 mt-1">
                                                 <x-text-input wire:model.live="formKamar.aplic_kodekelas"
                                                     x-ref="inputAplic" maxlength="10" :error="$errors->has('formKamar.aplic_kodekelas')"
                                                     class="w-full uppercase bg-gray-50 dark:bg-gray-800/60"
-                                                    placeholder="Pilih dari daftar Cek API…" readonly />
+                                                    placeholder="Pilih dari daftar di bawah…" readonly />
                                                 <x-outline-button wire:click="fetchAplic" wire:loading.attr="disabled"
                                                     wire:target="fetchAplic" class="shrink-0">
                                                     <x-loading size="xs" wire:loading wire:target="fetchAplic" />
                                                     <svg wire:loading.remove wire:target="fetchAplic"
-                                                        class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                        class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
                                                         viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round"
                                                             stroke-width="2"
                                                             d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                                     </svg>
-                                                    Cek API
+                                                    Tarik Data Aplicares
                                                 </x-outline-button>
                                             </div>
                                             @if ($aplicError)
@@ -929,7 +929,7 @@ new class extends Component {
                                                             bg-blue-50/40 dark:bg-blue-900/10 p-4 space-y-3">
                                                     <p
                                                         class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">
-                                                        Daftarkan / Update ke Aplicares
+                                                        Kirim Ketersediaan ke Aplicares
                                                     </p>
                                                     <div class="grid grid-cols-5 gap-2">
                                                         <div>
@@ -990,27 +990,27 @@ new class extends Component {
                                             </p>
                                             <div class="grid grid-cols-2 gap-4 items-end">
                                                 <div>
-                                                    <x-input-label value="Kode Tipe TT SIRS (Mapping Kelas)" />
+                                                    <x-input-label value="Tipe Tempat Tidur SIRS" />
                                                     <p class="text-[11px] text-gray-400 dark:text-gray-500 mb-1">Pilih
-                                                        via tombol Cek API.</p>
+                                                        tipe tempat tidur dari referensi SIRS Kemenkes.</p>
                                                     <div class="flex gap-2 mt-1">
                                                         <x-text-input wire:model.live="formKamar.sirs_id_tt"
                                                             x-ref="inputSirsIdTt" maxlength="5" :error="$errors->has('formKamar.sirs_id_tt')"
                                                             class="w-full bg-gray-50 dark:bg-gray-800/60"
-                                                            placeholder="Pilih dari Cek API…" readonly />
+                                                            placeholder="Pilih dari daftar di bawah…" readonly />
                                                         <x-outline-button wire:click="fetchSirs"
                                                             wire:loading.attr="disabled" wire:target="fetchSirs"
                                                             class="shrink-0">
                                                             <x-loading size="xs" wire:loading
                                                                 wire:target="fetchSirs" />
                                                             <svg wire:loading.remove wire:target="fetchSirs"
-                                                                class="w-3.5 h-3.5" fill="none"
+                                                                class="w-3.5 h-3.5 mr-1" fill="none"
                                                                 stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round"
                                                                     stroke-width="2"
                                                                     d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                                             </svg>
-                                                            Cek API
+                                                            Tarik Data SIRS
                                                         </x-outline-button>
                                                     </div>
                                                     @if ($sirsError)
@@ -1039,9 +1039,9 @@ new class extends Component {
                                                     <x-input-error :messages="$errors->get('formKamar.sirs_id_tt')" class="mt-1" />
                                                 </div>
                                                 <div>
-                                                    <x-input-label value="SIRS id_t_tt (record transaksi)" />
+                                                    <x-input-label value="ID Record SIRS (id_t_tt)" />
                                                     <p class="text-[11px] text-gray-400 dark:text-gray-500 mb-1">
-                                                        Diisi otomatis saat klik <strong>Daftarkan ke SIRS</strong>.
+                                                        Terisi otomatis setelah kamar berhasil didaftarkan ke SIRS.
                                                     </p>
                                                     <x-text-input :value="$formKamar['sirs_id_t_tt']" maxlength="20"
                                                         class="w-full font-mono bg-gray-50 dark:bg-gray-800/60"
@@ -1055,7 +1055,7 @@ new class extends Component {
                                                             bg-green-50/40 dark:bg-green-900/10 p-4 space-y-3">
                                                     <p
                                                         class="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wide">
-                                                        {{ $formKamar['sirs_id_t_tt'] ? 'Update di SIRS Kemenkes' : 'Daftarkan ke SIRS Kemenkes' }}
+                                                        {{ $formKamar['sirs_id_t_tt'] ? 'Perbarui Data di SIRS' : 'Kirim Data ke SIRS Kemenkes' }}
                                                     </p>
                                                     <div class="grid grid-cols-3 gap-3">
                                                         <div>
@@ -1087,7 +1087,7 @@ new class extends Component {
                                                                 stroke-width="2"
                                                                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                                         </svg>
-                                                        {{ $formKamar['sirs_id_t_tt'] ? 'Update di SIRS' : 'Daftarkan ke SIRS' }}
+                                                        {{ $formKamar['sirs_id_t_tt'] ? 'Perbarui Data di SIRS' : 'Kirim Data ke SIRS Kemenkes' }}
                                                     </x-primary-button>
                                                     @if ($formKamar['sirs_id_t_tt'])
                                                         <p

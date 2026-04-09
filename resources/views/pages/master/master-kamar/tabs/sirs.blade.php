@@ -30,7 +30,33 @@
             Memuat data dari SIRS Kemenkes…
         </div>
 
+        {{-- Rekap Tipe TT & Kapasitas --}}
+        @if (!empty($sirsData))
+            @php
+                $sirsTotalRuang    = collect($sirsData)->sum('jumlah_ruang');
+                $sirsTotalJumlah   = collect($sirsData)->sum('jumlah');
+                $sirsTotalKosong   = collect($sirsData)->sum('kosong');
+                $sirsTotalTerpakai = collect($sirsData)->sum('terpakai');
+            @endphp
+            <div wire:loading.remove wire:target="loadSirs,hapusSirs"
+                 class="px-5 py-2.5 border-b border-green-100 dark:border-green-900/40 bg-green-50/60 dark:bg-green-900/10 shrink-0 flex items-center justify-end">
+                <div class="flex items-center gap-1.5 bg-green-600 dark:bg-green-700 rounded-lg px-2.5 py-1 text-[11px] text-white font-semibold">
+                    <span>Total:</span>
+                    <span>{{ $sirsTotalRuang }} ruang</span>
+                    <span class="opacity-60">·</span>
+                    <span>Jml: {{ $sirsTotalJumlah }}</span>
+                    <span class="opacity-60">·</span>
+                    <span>Kosong: {{ $sirsTotalKosong }}</span>
+                    <span class="opacity-60">·</span>
+                    <span>Pakai: {{ $sirsTotalTerpakai }}</span>
+                </div>
+            </div>
+        @endif
+
         {{-- Table --}}
+        @php
+            $sirsDataSorted = collect($sirsData)->sortBy('ruang')->values()->all();
+        @endphp
         <div wire:loading.remove wire:target="loadSirs,hapusSirs"
              class="flex-1 overflow-auto">
             <table class="min-w-full text-sm">
@@ -48,7 +74,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700 text-gray-700 dark:text-gray-200">
-                    @forelse ($sirsData as $sirs)
+                    @forelse ($sirsDataSorted as $sirs)
                         @php
                             $idTTt    = (string) ($sirs['id_t_tt'] ?? '');
                             $kosong   = (int) ($sirs['kosong'] ?? 0);

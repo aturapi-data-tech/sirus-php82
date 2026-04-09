@@ -2,18 +2,7 @@
 <div x-show="tab === 'aplicares'" class="flex flex-col h-full">
 
     {{-- Toolbar --}}
-    <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
-        <div class="flex items-center gap-2">
-            <span class="text-xs text-gray-500 dark:text-gray-400">Tampil</span>
-            <x-select-input wire:model.live="aplicLimit" wire:change="loadAplicares"
-                            class="!text-xs !py-1 !px-2 w-20">
-                <option value="10">10</option>
-                <option value="20">20</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-            </x-select-input>
-            <span class="text-xs text-gray-500 dark:text-gray-400">per halaman</span>
-        </div>
+    <div class="flex items-center justify-end px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
         <x-secondary-button wire:click="loadAplicares" wire:loading.attr="disabled"
             wire:target="loadAplicares" class="!py-1 !px-3 !text-xs">
             <x-loading size="xs" wire:loading wire:target="loadAplicares" class="mr-1" />
@@ -35,14 +24,60 @@
         </div>
     @else
         {{-- Loading state --}}
-        <div wire:loading wire:target="loadAplicares,aplicaresPrev,aplicaresNext"
+        <div wire:loading wire:target="loadAplicares"
              class="flex-1 flex flex-col items-center justify-center text-sm text-gray-400">
             <x-loading size="md" class="block mb-2" />
             Memuat data dari Aplicares…
         </div>
 
+        {{-- Rekap Kelas & Kapasitas --}}
+        @if (!empty($aplicaresData))
+            @php
+                $aplRekap = collect($aplicaresData)
+                    ->groupBy(fn($r) => $r['kodekelas'] ?? $r['kode_kelas'] ?? '-')
+                    ->map(fn($g) => [
+                        'jumlah_ruang'    => $g->count(),
+                        'total_kapasitas' => $g->sum('kapasitas'),
+                        'total_tersedia'  => $g->sum('tersedia'),
+                    ]);
+            @endphp
+            @php
+                $aplTotalRuang     = collect($aplicaresData)->count();
+                $aplTotalKapasitas = collect($aplicaresData)->sum('kapasitas');
+                $aplTotalTersedia  = collect($aplicaresData)->sum('tersedia');
+            @endphp
+            <div wire:loading.remove wire:target="loadAplicares"
+                 class="px-5 py-2.5 border-b border-blue-100 dark:border-blue-900/40 bg-blue-50/60 dark:bg-blue-900/10 shrink-0 flex flex-wrap gap-3 items-center">
+                <span class="text-[11px] font-semibold text-blue-600 dark:text-blue-400 self-center mr-1">Rekap per Kelas:</span>
+                @foreach ($aplRekap as $kode => $r)
+                    <div class="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 rounded-lg px-2.5 py-1 text-[11px]">
+                        <span class="font-mono font-bold text-blue-700 dark:text-blue-300">{{ $kode }}</span>
+                        <span class="text-gray-300 dark:text-gray-600">·</span>
+                        <span class="text-gray-500 dark:text-gray-400">{{ $r['jumlah_ruang'] }} ruang</span>
+                        <span class="text-gray-300 dark:text-gray-600">·</span>
+                        <span class="text-gray-700 dark:text-gray-200">Kap: <span class="font-semibold">{{ $r['total_kapasitas'] }}</span></span>
+                        <span class="text-gray-300 dark:text-gray-600">·</span>
+                        <span class="text-emerald-600 dark:text-emerald-400">Tersedia: <span class="font-semibold">{{ $r['total_tersedia'] }}</span></span>
+                    </div>
+                @endforeach
+                <div class="ml-auto flex items-center gap-1.5 bg-blue-600 dark:bg-blue-700 rounded-lg px-2.5 py-1 text-[11px] text-white font-semibold">
+                    <span>Total:</span>
+                    <span>{{ $aplTotalRuang }} ruang</span>
+                    <span class="opacity-60">·</span>
+                    <span>Kap: {{ $aplTotalKapasitas }}</span>
+                    <span class="opacity-60">·</span>
+                    <span>Tersedia: {{ $aplTotalTersedia }}</span>
+                </div>
+            </div>
+        @endif
+
         {{-- Table --}}
-        <div wire:loading.remove wire:target="loadAplicares,aplicaresPrev,aplicaresNext"
+        @php
+            $aplicaresDataSorted = collect($aplicaresData)
+                ->sortBy(fn($r) => $r['namaruang'] ?? $r['nama_ruang'] ?? '')
+                ->values()->all();
+        @endphp
+        <div wire:loading.remove wire:target="loadAplicares"
              class="flex-1 overflow-auto">
             <table class="min-w-full text-sm">
                 <thead class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 text-xs uppercase text-gray-500 dark:text-gray-400">
@@ -59,7 +94,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700 text-gray-700 dark:text-gray-200">
-                    @forelse ($aplicaresData as $aplic)
+                    @forelse ($aplicaresDataSorted as $aplic)
                         @php
                             $koderuang = $aplic['koderuang'] ?? $aplic['kode_ruang'] ?? '';
                             $kodekelas = $aplic['kodekelas'] ?? $aplic['kode_kelas'] ?? '';
@@ -105,16 +140,10 @@
             </table>
         </div>
 
-        {{-- Pagination --}}
         @if (!empty($aplicaresData))
-            <div wire:loading.remove wire:target="loadAplicares,aplicaresPrev,aplicaresNext"
-                 class="flex items-center justify-between px-5 py-3 border-t border-gray-100 dark:border-gray-800
-                        text-xs text-gray-500 dark:text-gray-400 shrink-0">
-                <span>Start: {{ $aplicStart }} — {{ $aplicStart + count($aplicaresData) - 1 }}</span>
-                <div class="flex gap-2">
-                    <x-secondary-button wire:click="aplicaresPrev" :disabled="$aplicStart <= 1" class="!px-3 !py-1 !text-xs">← Prev</x-secondary-button>
-                    <x-secondary-button wire:click="aplicaresNext" :disabled="count($aplicaresData) < $aplicLimit" class="!px-3 !py-1 !text-xs">Next →</x-secondary-button>
-                </div>
+            <div wire:loading.remove wire:target="loadAplicares"
+                 class="px-5 py-2 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-400 dark:text-gray-500 shrink-0">
+                {{ count($aplicaresData) }} data ruangan
             </div>
         @endif
     @endif
