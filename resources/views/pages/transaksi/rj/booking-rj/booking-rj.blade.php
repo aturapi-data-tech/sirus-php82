@@ -8,35 +8,32 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\BPJS\AntrianTrait;
+use App\Http\Traits\Txn\Rj\EmrRJTrait;
 
 new class extends Component {
-    use WithPagination, WithRenderVersioningTrait;
+    use WithPagination, WithRenderVersioningTrait, EmrRJTrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['booking-rj-toolbar'];
 
     /* ─── Filter ─── */
-    public string $filterTanggal  = '';
-    public string $filterStatus   = 'Belum';
-    public string $filterDrId     = '';
-    public string $filterDrName   = '';
+    public string $filterTanggal = '';
+    public string $filterStatus = 'Belum';
+    public string $filterDrId = '';
+    public string $filterDrName = '';
     public string $filterKdDrBpjs = '';
-    public string $searchKeyword  = '';
-    public int    $itemsPerPage   = 10;
+    public string $searchKeyword = '';
+    public int $itemsPerPage = 10;
 
     /* ─── Status options ─── */
-    public array $statusOptions = [
-        ['id' => 'Belum',   'label' => 'Belum'],
-        ['id' => 'Checkin', 'label' => 'Checkin'],
-        ['id' => 'Batal',   'label' => 'Batal'],
-    ];
+    public array $statusOptions = [['id' => 'Belum', 'label' => 'Belum'], ['id' => 'Checkin', 'label' => 'Checkin'], ['id' => 'Batal', 'label' => 'Batal']];
 
     /* ─── Batal modal ─── */
-    public string $batalNobooking  = '';
+    public string $batalNobooking = '';
     public string $batalKeterangan = '';
 
     /* ─── Cek BPJS modal ─── */
-    public ?array $bpjsResult   = null;
+    public ?array $bpjsResult = null;
     public string $cekNobooking = '';
 
     /* ===============================
@@ -49,10 +46,22 @@ new class extends Component {
     }
 
     /* ─── Reset page on filter change ─── */
-    public function updatedSearchKeyword(): void    { $this->resetPage(); }
-    public function updatedFilterTanggal(): void    { $this->resetPage(); }
-    public function updatedFilterStatus(): void     { $this->resetPage(); }
-    public function updatedItemsPerPage(): void     { $this->resetPage(); }
+    public function updatedSearchKeyword(): void
+    {
+        $this->resetPage();
+    }
+    public function updatedFilterTanggal(): void
+    {
+        $this->resetPage();
+    }
+    public function updatedFilterStatus(): void
+    {
+        $this->resetPage();
+    }
+    public function updatedItemsPerPage(): void
+    {
+        $this->resetPage();
+    }
 
     /* ===============================
      | LOV DOKTER
@@ -61,12 +70,12 @@ new class extends Component {
     public function onDokterSelected(?array $payload): void
     {
         if (!$payload) {
-            $this->filterDrId     = '';
-            $this->filterDrName   = '';
+            $this->filterDrId = '';
+            $this->filterDrName = '';
             $this->filterKdDrBpjs = '';
         } else {
-            $this->filterDrId     = $payload['dr_id']      ?? '';
-            $this->filterDrName   = $payload['dr_name']    ?? '';
+            $this->filterDrId = $payload['dr_id'] ?? '';
+            $this->filterDrName = $payload['dr_name'] ?? '';
             $this->filterKdDrBpjs = $payload['kd_dr_bpjs'] ?? '';
         }
         $this->resetPage();
@@ -74,8 +83,8 @@ new class extends Component {
 
     public function clearDokter(): void
     {
-        $this->filterDrId     = '';
-        $this->filterDrName   = '';
+        $this->filterDrId = '';
+        $this->filterDrName = '';
         $this->filterKdDrBpjs = '';
         $this->resetPage();
         $this->incrementVersion('booking-rj-toolbar');
@@ -86,12 +95,12 @@ new class extends Component {
      =============================== */
     public function resetFilters(): void
     {
-        $this->filterTanggal  = Carbon::now(config('app.timezone'))->format('d/m/Y');
-        $this->filterStatus   = 'Belum';
-        $this->filterDrId     = '';
-        $this->filterDrName   = '';
+        $this->filterTanggal = Carbon::now(config('app.timezone'))->format('d/m/Y');
+        $this->filterStatus = 'Belum';
+        $this->filterDrId = '';
+        $this->filterDrName = '';
         $this->filterKdDrBpjs = '';
-        $this->searchKeyword  = '';
+        $this->searchKeyword = '';
         $this->resetPage();
         $this->incrementVersion('booking-rj-toolbar');
     }
@@ -114,13 +123,11 @@ new class extends Component {
      =============================== */
     public function prosesCheckin(string $nobooking): void
     {
-        $now     = Carbon::now(config('app.timezone'));
+        $now = Carbon::now(config('app.timezone'));
         $waktuMs = $now->valueOf(); // milliseconds untuk BPJS
 
         // Fetch antrian
-        $row = DB::table('referensi_mobilejkn_bpjs')
-            ->where('nobooking', $nobooking)
-            ->first();
+        $row = DB::table('referensi_mobilejkn_bpjs')->where('nobooking', $nobooking)->first();
 
         if (!$row) {
             $this->dispatch('toast', type: 'error', message: 'Data booking tidak ditemukan.');
@@ -136,20 +143,42 @@ new class extends Component {
             return;
         }
 
+        // Validasi tanggal periksa harus hari ini
+        if (!Carbon::parse($row->tanggalperiksa)->isToday()) {
+            $this->dispatch('toast', type: 'error', message: "Tanggal periksa bukan hari ini, tetapi tgl {$row->tanggalperiksa}");
+            return;
+        }
+
         // Parse jampraktek "HH:mm-HH:mm"
         [$jammulai, $jamselesai] = explode('-', $row->jampraktek);
-        $jammulai   = trim($jammulai);
+        $jammulai = trim($jammulai);
         $jamselesai = trim($jamselesai);
+
+        // Validasi waktu checkin: paling cepat 1 jam sebelum mulai praktek
+        $tanggalperiksaMulai = $row->tanggalperiksa . ' ' . $jammulai . ':00';
+        $tanggalperiksaSelesai = $row->tanggalperiksa . ' ' . $jamselesai . ':00';
+
+        $startCheckinAllowed = Carbon::createFromFormat('Y-m-d H:i:s', $tanggalperiksaMulai, config('app.timezone'))->subHour();
+        $endCheckinAllowed = Carbon::createFromFormat('Y-m-d H:i:s', $tanggalperiksaSelesai, config('app.timezone'));
+
+        if ($now->lt($startCheckinAllowed)) {
+            $this->dispatch('toast', type: 'error', message: "Checkin minimal 1 jam sebelum pelayanan. Pelayanan dimulai pada: {$tanggalperiksaMulai}");
+            return;
+        }
+        if ($now->gt($endCheckinAllowed)) {
+            $this->dispatch('toast', type: 'error', message: "Checkin sudah expired, pelayanan telah berakhir pada: {$tanggalperiksaSelesai}");
+            return;
+        }
 
         // Konversi hari ke Indonesia untuk query scview_scpolis
         $hariMap = [
-            'Sunday'    => 'MINGGU',
-            'Monday'    => 'SENIN',
-            'Tuesday'   => 'SELASA',
+            'Sunday' => 'MINGGU',
+            'Monday' => 'SENIN',
+            'Tuesday' => 'SELASA',
             'Wednesday' => 'RABU',
-            'Thursday'  => 'KAMIS',
-            'Friday'    => 'JUMAT',
-            'Saturday'  => 'SABTU',
+            'Thursday' => 'KAMIS',
+            'Friday' => 'JUMAT',
+            'Saturday' => 'SABTU',
         ];
         $hari = $hariMap[Carbon::parse($row->tanggalperiksa)->dayName] ?? strtoupper(Carbon::parse($row->tanggalperiksa)->dayName);
 
@@ -175,49 +204,49 @@ new class extends Component {
             ->where(DB::raw("to_char(rj_date,'dd/mm/yyyy')"), Carbon::parse($row->tanggalperiksa)->format('d/m/Y'))
             ->count();
 
-        if (($cekQuota->kuota - $cekDaftar) <= 0) {
+        if ($cekQuota->kuota - $cekDaftar <= 0) {
             $this->dispatch('toast', type: 'error', message: "Quota Poli {$cekQuota->poli_desc} Dokter {$cekQuota->dr_name} penuh.");
             return;
         }
 
         try {
             // Hitung rj_no baru
-            $rjNo = DB::table('rstxn_rjhdrs')
-                ->selectRaw("nvl(max(rj_no) + 1, 1) as rjno_max")
-                ->value('rjno_max');
+            $rjNo = DB::table('rstxn_rjhdrs')->selectRaw('nvl(max(rj_no) + 1, 1) as rjno_max')->value('rjno_max');
 
             // No antrian mengikuti nomor yang ditetapkan saat booking
-            $noAntrian    = (int) $row->angkaantrean;
+            $noAntrian = (int) $row->angkaantrean;
             $nomorAntrean = (string) $row->nomorantrean;
 
-            // rj_date = tanggalperiksa + jammulai (jadwal booking, bukan jam checkin)
-            $rjDate = Carbon::createFromFormat('Y-m-d H:i', $row->tanggalperiksa . ' ' . $jammulai);
+            // rj_date = waktu realtime checkin (bukan jadwal dokter)
+            // Agar task 3 (checkin) mencerminkan waktu sebenarnya
+            // dan tidak terjadi anomali task 4 < task 3 di BPJS
+            $rjDateStr = $now->format('Y-m-d H:i:s');
 
-            // Shift dari rstxn_shiftctls berdasarkan jam mulai praktek
+            // Shift dari rstxn_shiftctls berdasarkan jam checkin realtime
             $shiftRow = DB::table('rstxn_shiftctls')
-                ->whereRaw("? BETWEEN shift_sta AND shift_end", [$jammulai . ':00'])
+                ->whereRaw('? BETWEEN shift_start AND shift_end', [$now->format('H:i:s')])
                 ->first();
-            $shift = $shiftRow->shift ?? $cekQuota->shift;
+            $shift = (string) ($shiftRow->shift ?? $cekQuota->shift);
 
             // Insert kunjungan RJ
             DB::table('rstxn_rjhdrs')->insert([
-                'rj_no'                     => $rjNo,
-                'rj_date'                   => DB::raw("to_date('" . $rjDate->format('Y-m-d H:i:s') . "', 'yyyy-mm-dd hh24:mi:ss')"),
-                'reg_no'                    => strtoupper($row->norm),
-                'nobooking'                 => $nobooking,
-                'no_antrian'                => $noAntrian,
-                'klaim_id'                  => 'JM',
-                'poli_id'                   => $cekQuota->poli_id,
-                'dr_id'                     => $cekQuota->dr_id,
-                'shift'                     => $shift,
-                'txn_status'                => 'A',
-                'rj_status'                 => 'A',
-                'erm_status'                => 'A',
-                'pass_status'               => 'O',
-                'cek_lab'                   => '0',
-                'sl_codefrom'               => '02',
-                'kunjungan_internal_status' => '0',
-                'waktu_masuk_pelayanan'     => DB::raw("to_date('" . $now->format('Y-m-d H:i:s') . "', 'yyyy-mm-dd hh24:mi:ss')"),
+                'rj_no' => $rjNo,
+                'rj_date' => DB::raw("to_date('" . $rjDateStr . "', 'yyyy-mm-dd hh24:mi:ss')"),
+                'reg_no' => strtoupper($row->norm),
+                'nobooking' => $nobooking,
+                'no_antrian' => $noAntrian,
+                'klaim_id' => 'JM',
+                'poli_id' => $cekQuota->poli_id,
+                'dr_id' => $cekQuota->dr_id,
+                'shift' => $shift,
+                'txn_status' => 'A',
+                'rj_status' => 'A',
+                'erm_status' => 'A',
+                'pass_status' => 'O',
+                'cek_lab' => '0',
+                'sl_codefrom' => '02',
+                'kunjungan_internal_status' => $row->jeniskunjungan == 2 ? '1' : '0',
+                'waktu_masuk_pelayanan' => DB::raw("to_date('" . $rjDateStr . "', 'yyyy-mm-dd hh24:mi:ss')"),
             ]);
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal insert kunjungan: ' . $e->getMessage());
@@ -229,14 +258,61 @@ new class extends Component {
             DB::table('referensi_mobilejkn_bpjs')
                 ->where('nobooking', $nobooking)
                 ->update([
-                    'status'        => 'Checkin',
-                    'validasi'      => $now->format('Y-m-d H:i:s'),
-                    'nomorantrean'  => $nomorAntrean,
-                    'angkaantrean'  => $noAntrian,
+                    'status' => 'Checkin',
+                    'validasi' => $now->format('Y-m-d H:i:s'),
+                    'nomorantrean' => $nomorAntrean,
+                    'angkaantrean' => $noAntrian,
                 ]);
 
-            // Push update waktu ke BPJS (taskid=3 = checkin)
-            AntrianTrait::update_antrean($nobooking, 3, $waktuMs, '');
+            // ── 1. Tambah Antrean BPJS ──
+            $tambahCode = '';
+            try {
+                $dataAntrian = [
+                    'kodebooking' => $nobooking,
+                    'jenispasien' => 'JKN',
+                    'nomorkartu' => $row->nomorkartu,
+                    'nik' => $row->nik,
+                    'nohp' => $row->nohp,
+                    'kodepoli' => $row->kodepoli,
+                    'namapoli' => $cekQuota->poli_desc,
+                    'pasienbaru' => 0,
+                    'norm' => strtoupper($row->norm),
+                    'tanggalperiksa' => $row->tanggalperiksa,
+                    'kodedokter' => $row->kodedokter,
+                    'namadokter' => $cekQuota->dr_name,
+                    'jampraktek' => $jammulai . '-' . $jamselesai,
+                    'jeniskunjungan' => $row->jeniskunjungan,
+                    'nomorreferensi' => $row->nomorreferensi ?? '',
+                    'nomorantrean' => $nomorAntrean,
+                    'angkaantrean' => $noAntrian,
+                    'estimasidilayani' => $row->estimasidilayani,
+                    'sisakuotajkn' => $cekQuota->kuota - $noAntrian,
+                    'kuotajkn' => $cekQuota->kuota,
+                    'sisakuotanonjkn' => $cekQuota->kuota - $noAntrian,
+                    'kuotanonjkn' => $cekQuota->kuota,
+                    'keterangan' => 'Peserta harap 30 menit lebih awal guna pencatatan administrasi.',
+                ];
+                $responseTambah = AntrianTrait::tambah_antrean($dataAntrian)->getOriginalContent();
+                $tambahCode = $responseTambah['metadata']['code'] ?? '';
+            } catch (\Exception $e) {
+                $this->dispatch('toast', type: 'warning', message: 'Gagal tambah antrean BPJS: ' . $e->getMessage());
+            }
+
+            // ── 2. Task ID 3 (mulai pelayanan / checkin) ──
+            // Task 1 & 2 tidak dipush di sini — itu untuk pendaftaran pasien baru
+            // (regDate & regDateStore), dipush oleh daftar-rj-actions saat save
+            $response3 = AntrianTrait::update_antrean($nobooking, 3, $waktuMs, '')->getOriginalContent();
+            $taskId3Code = $response3['metadata']['code'] ?? '';
+
+            // ── 3. Simpan datadaftarpolirj_json ──
+            $dataDaftarPoliRJ = $this->findDataRJ($rjNo);
+            $dataDaftarPoliRJ['taskIdPelayanan']['tambahPendaftaran'] = $tambahCode;
+            $dataDaftarPoliRJ['taskIdPelayanan']['taskId3'] = $now->format('d/m/Y H:i:s');
+            $dataDaftarPoliRJ['taskIdPelayanan']['taskId3Status'] = $taskId3Code;
+            $dataDaftarPoliRJ['noReferensi'] = $row->nomorreferensi ?? '';
+            $dataDaftarPoliRJ['kunjunganId'] = (string) $row->jeniskunjungan;
+            $dataDaftarPoliRJ['kunjunganInternalStatus'] = $row->jeniskunjungan == 2 ? '1' : '0';
+            $this->updateJsonRJ($rjNo, $dataDaftarPoliRJ);
 
             $this->dispatch('toast', type: 'success', message: "Checkin berhasil. Antrian: {$nomorAntrean}");
             unset($this->bookingData);
@@ -250,34 +326,30 @@ new class extends Component {
      =============================== */
     public function openBatalModal(string $nobooking): void
     {
-        $this->batalNobooking  = $nobooking;
+        $this->batalNobooking = $nobooking;
         $this->batalKeterangan = '';
         $this->dispatch('open-modal', name: 'batal-booking');
     }
 
     public function konfirmasiBatal(): void
     {
-        $this->validate(
-            ['batalKeterangan' => 'required|min:3'],
-            [],
-            ['batalKeterangan' => 'Keterangan Batal']
-        );
+        $this->validate(['batalKeterangan' => 'required|min:3'], [], ['batalKeterangan' => 'Keterangan Batal']);
 
         try {
             $result = AntrianTrait::batal_antrean($this->batalNobooking, $this->batalKeterangan);
-            $body   = json_decode($result->getContent(), true);
+            $body = json_decode($result->getContent(), true);
 
             if (($body['metadata']['code'] ?? 0) === 200) {
                 DB::table('referensi_mobilejkn_bpjs')
                     ->where('nobooking', $this->batalNobooking)
                     ->update([
-                        'status'           => 'Batal',
+                        'status' => 'Batal',
                         'keterangan_batal' => $this->batalKeterangan,
                     ]);
 
                 $this->dispatch('close-modal', name: 'batal-booking');
                 $this->dispatch('toast', type: 'success', message: "Booking {$this->batalNobooking} berhasil dibatalkan.");
-                $this->batalNobooking  = '';
+                $this->batalNobooking = '';
                 $this->batalKeterangan = '';
                 unset($this->bookingData);
             } else {
@@ -295,9 +367,9 @@ new class extends Component {
     public function cekStatusBpjs(string $nobooking): void
     {
         try {
-            $result          = AntrianTrait::antrean_per_kodebooking($nobooking);
-            $body            = json_decode($result->getContent(), true);
-            $this->bpjsResult   = $body;
+            $result = AntrianTrait::antrean_per_kodebooking($nobooking);
+            $body = json_decode($result->getContent(), true);
+            $this->bpjsResult = $body;
             $this->cekNobooking = $nobooking;
             $this->dispatch('open-modal', name: 'bpjs-status');
         } catch (\Exception $e) {
@@ -311,40 +383,7 @@ new class extends Component {
     #[Computed]
     public function bookingData()
     {
-        $query = DB::table('referensi_mobilejkn_bpjs as b')
-            ->join('rsmst_pasiens as p', DB::raw('UPPER(b.norm)'), '=', 'p.reg_no')
-            ->select(
-                'b.nobooking',
-                'b.norm',
-                'b.nomorkartu',
-                'b.nik',
-                'b.nohp',
-                'b.kodepoli',
-                DB::raw("(SELECT poli_desc FROM rsmst_polis WHERE kd_poli_bpjs = b.kodepoli AND ROWNUM = 1) AS poli_desc"),
-                'b.pasienbaru',
-                'b.kodedokter',
-                DB::raw("(SELECT dr_name FROM rsmst_doctors WHERE kd_dr_bpjs = b.kodedokter AND ROWNUM = 1) AS dr_name"),
-                DB::raw("TO_CHAR(TO_DATE(b.tanggalperiksa,'yyyy-mm-dd'),'dd/mm/yyyy') AS tanggalperiksa"),
-                'b.jampraktek',
-                'b.jeniskunjungan',
-                'b.nomorreferensi',
-                'b.nomorantrean',
-                'b.angkaantrean',
-                'b.estimasidilayani',
-                'b.sisakuotajkn',
-                'b.kuotajkn',
-                'b.sisakuotanonjkn',
-                'b.kuotanonjkn',
-                'b.status',
-                'b.validasi',
-                'b.keterangan_batal',
-                'b.tanggalbooking',
-                'b.daftardariapp',
-                'p.reg_name',
-                'p.address',
-            )
-            ->where(DB::raw("TO_CHAR(TO_DATE(b.tanggalperiksa,'yyyy-mm-dd'),'dd/mm/yyyy')"), $this->filterTanggal)
-            ->where('b.status', $this->filterStatus);
+        $query = DB::table('referensi_mobilejkn_bpjs as b')->join('rsmst_pasiens as p', DB::raw('UPPER(b.norm)'), '=', 'p.reg_no')->select('b.nobooking', 'b.norm', 'b.nomorkartu', 'b.nik', 'b.nohp', 'b.kodepoli', DB::raw('(SELECT poli_desc FROM rsmst_polis WHERE kd_poli_bpjs = b.kodepoli AND ROWNUM = 1) AS poli_desc'), 'b.pasienbaru', 'b.kodedokter', DB::raw('(SELECT dr_name FROM rsmst_doctors WHERE kd_dr_bpjs = b.kodedokter AND ROWNUM = 1) AS dr_name'), DB::raw("TO_CHAR(TO_DATE(b.tanggalperiksa,'yyyy-mm-dd'),'dd/mm/yyyy') AS tanggalperiksa"), 'b.jampraktek', 'b.jeniskunjungan', 'b.nomorreferensi', 'b.nomorantrean', 'b.angkaantrean', 'b.estimasidilayani', 'b.sisakuotajkn', 'b.kuotajkn', 'b.sisakuotanonjkn', 'b.kuotanonjkn', 'b.status', 'b.validasi', 'b.keterangan_batal', 'b.tanggalbooking', 'b.daftardariapp', 'p.reg_name', 'p.address')->where(DB::raw("TO_CHAR(TO_DATE(b.tanggalperiksa,'yyyy-mm-dd'),'dd/mm/yyyy')"), $this->filterTanggal)->where('b.status', $this->filterStatus);
 
         if (!empty($this->filterKdDrBpjs)) {
             $query->where('b.kodedokter', $this->filterKdDrBpjs);
@@ -353,17 +392,15 @@ new class extends Component {
         if (!empty($this->searchKeyword)) {
             $kw = strtoupper($this->searchKeyword);
             $query->where(function ($q) use ($kw) {
-                $q->where(DB::raw('UPPER(b.nobooking)'),    'LIKE', "%{$kw}%")
-                  ->orWhere(DB::raw('UPPER(b.norm)'),        'LIKE', "%{$kw}%")
-                  ->orWhere(DB::raw('UPPER(b.nik)'),         'LIKE', "%{$kw}%")
-                  ->orWhere(DB::raw('UPPER(p.reg_name)'),    'LIKE', "%{$kw}%")
-                  ->orWhere(DB::raw('UPPER(b.nomorkartu)'),  'LIKE', "%{$kw}%");
+                $q->where(DB::raw('UPPER(b.nobooking)'), 'LIKE', "%{$kw}%")
+                    ->orWhere(DB::raw('UPPER(b.norm)'), 'LIKE', "%{$kw}%")
+                    ->orWhere(DB::raw('UPPER(b.nik)'), 'LIKE', "%{$kw}%")
+                    ->orWhere(DB::raw('UPPER(p.reg_name)'), 'LIKE', "%{$kw}%")
+                    ->orWhere(DB::raw('UPPER(b.nomorkartu)'), 'LIKE', "%{$kw}%");
             });
         }
 
-        $query->orderBy('b.tanggalperiksa', 'asc')
-              ->orderBy('b.kodedokter',      'asc')
-              ->orderBy('b.tanggalbooking',  'asc');
+        $query->orderBy('b.tanggalperiksa', 'asc')->orderBy('b.kodedokter', 'asc')->orderBy('b.tanggalbooking', 'asc');
 
         return $query->paginate($this->itemsPerPage);
     }
@@ -396,7 +433,8 @@ new class extends Component {
                         <x-input-label value="Pencarian" class="sr-only" />
                         <div class="relative mt-1">
                             <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                <svg class="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 text-gray-700" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
@@ -411,7 +449,8 @@ new class extends Component {
                         <x-input-label value="Tgl Periksa" />
                         <div class="relative mt-1">
                             <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                <svg class="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 text-gray-700" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
@@ -435,9 +474,7 @@ new class extends Component {
                     <div class="w-full sm:w-auto">
                         <div class="w-72">
                             @if (empty($filterDrId))
-                                <livewire:lov.dokter.lov-dokter
-                                    target="booking-rj-dokter"
-                                    label="Filter Dokter"
+                                <livewire:lov.dokter.lov-dokter target="booking-rj-dokter" label="Filter Dokter"
                                     placeholder="Ketik nama dokter..."
                                     wire:key="lov-dokter-booking-{{ $renderVersions['booking-rj-toolbar'] ?? 0 }}" />
                             @else
@@ -447,8 +484,10 @@ new class extends Component {
                                         <x-text-input :value="$filterDrName" disabled class="flex-1" />
                                         <button type="button" wire:click="clearDokter"
                                             class="shrink-0 px-2 py-2 text-gray-400 hover:text-red-500 transition">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M6 18L18 6M6 6l12 12" />
                                             </svg>
                                         </button>
                                     </div>
@@ -480,13 +519,15 @@ new class extends Component {
             </div>
 
             {{-- ═══════════ TABLE ═══════════ --}}
-            <div class="mt-4 bg-white border border-gray-200 shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+            <div
+                class="mt-4 bg-white border border-gray-200 shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
 
                 <div class="overflow-x-auto overflow-y-auto max-h-[calc(100dvh-320px)] rounded-t-2xl">
                     <table class="min-w-full text-base border-separate border-spacing-y-3">
 
                         <thead class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">
-                            <tr class="text-base font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300">
+                            <tr
+                                class="text-base font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300">
                                 <th class="px-6 py-3">Pasien</th>
                                 <th class="px-6 py-3">Poli / Dokter</th>
                                 <th class="px-6 py-3">Booking</th>
@@ -497,13 +538,14 @@ new class extends Component {
                         <tbody>
                             @forelse ($this->bookingData as $i => $row)
                                 @php
-                                    $statusVariant = match($row->status) {
+                                    $statusVariant = match ($row->status) {
                                         'Checkin' => 'success',
-                                        'Batal'   => 'danger',
-                                        default   => 'gray',
+                                        'Batal' => 'danger',
+                                        default => 'gray',
                                     };
                                 @endphp
-                                <tr class="transition bg-white dark:bg-gray-900 hover:shadow-lg hover:bg-green-50 dark:hover:bg-gray-800 rounded-2xl">
+                                <tr
+                                    class="transition bg-white dark:bg-gray-900 hover:shadow-lg hover:bg-green-50 dark:hover:bg-gray-800 rounded-2xl">
 
                                     {{-- PASIEN --}}
                                     <td class="px-6 py-5 space-y-2 align-top">
@@ -512,25 +554,30 @@ new class extends Component {
                                                 {{ $row->angkaantrean ?? '-' }}
                                             </div>
                                             <div class="space-y-1">
-                                                <div class="text-base font-medium text-gray-700 dark:text-gray-300 font-mono">
+                                                <div
+                                                    class="text-base font-medium text-gray-700 dark:text-gray-300 font-mono">
                                                     {{ $row->norm }}
                                                 </div>
                                                 <div class="text-lg font-semibold text-brand dark:text-white">
                                                     {{ $row->reg_name }}
                                                 </div>
                                                 <div class="flex flex-wrap gap-1">
-                                                    <x-badge variant="{{ $row->pasienbaru === '1' ? 'warning' : 'gray' }}">
+                                                    <x-badge
+                                                        variant="{{ $row->pasienbaru === '1' ? 'warning' : 'gray' }}">
                                                         {{ $row->pasienbaru === '1' ? 'Pasien Baru' : 'Pasien Lama' }}
                                                     </x-badge>
-                                                    <x-badge variant="{{ $row->jeniskunjungan == 1 ? 'brand' : 'gray' }}">
+                                                    <x-badge
+                                                        variant="{{ $row->jeniskunjungan == 1 ? 'brand' : 'gray' }}">
                                                         {{ $row->jeniskunjungan == 1 ? 'Rujukan' : 'Tanpa Rujukan' }}
                                                     </x-badge>
                                                 </div>
                                                 @if (!empty($row->nohp))
-                                                    <div class="text-sm text-gray-600 dark:text-gray-400">{{ $row->nohp }}</div>
+                                                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                                                        {{ $row->nohp }}</div>
                                                 @endif
                                                 @if (!empty($row->nik))
-                                                    <div class="text-xs text-gray-500 dark:text-gray-500 font-mono">NIK: {{ $row->nik }}</div>
+                                                    <div class="text-xs text-gray-500 dark:text-gray-500 font-mono">NIK:
+                                                        {{ $row->nik }}</div>
                                                 @endif
                                             </div>
                                         </div>
@@ -563,12 +610,14 @@ new class extends Component {
                                             {{ $row->nobooking }}
                                         </div>
                                         @if (!empty($row->nomorkartu))
-                                            <div class="text-xs text-gray-500 dark:text-gray-500 font-mono">{{ $row->nomorkartu }}</div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-500 font-mono">
+                                                {{ $row->nomorkartu }}</div>
                                         @endif
                                         <div class="flex flex-wrap gap-2 items-center">
                                             <x-badge :variant="$statusVariant">{{ $row->status }}</x-badge>
                                             @if (!empty($row->nomorantrean))
-                                                <x-badge variant="alternative">Antrian: {{ $row->nomorantrean }}</x-badge>
+                                                <x-badge variant="alternative">Antrian:
+                                                    {{ $row->nomorantrean }}</x-badge>
                                             @endif
                                         </div>
                                         @if (!empty($row->estimasidilayani))
@@ -578,10 +627,12 @@ new class extends Component {
                                         @endif
                                         <div class="text-xs text-gray-600 dark:text-gray-400">
                                             Kuota JKN:
-                                            <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ $row->sisakuotajkn ?? 0 }}</span>
+                                            <span
+                                                class="font-semibold text-emerald-600 dark:text-emerald-400">{{ $row->sisakuotajkn ?? 0 }}</span>
                                             / {{ $row->kuotajkn ?? 0 }}
                                             @if (!empty($row->sisakuotanonjkn))
-                                                &nbsp;·&nbsp; Non: {{ $row->sisakuotanonjkn }}/{{ $row->kuotanonjkn ?? 0 }}
+                                                &nbsp;·&nbsp; Non:
+                                                {{ $row->sisakuotanonjkn }}/{{ $row->kuotanonjkn ?? 0 }}
                                             @endif
                                         </div>
                                         @if ($row->status === 'Batal' && !empty($row->keterangan_batal))
@@ -602,8 +653,11 @@ new class extends Component {
                                                 wire:target="cekStatusBpjs('{{ $row->nobooking }}')"
                                                 class="w-full inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium
                                                        bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                 </svg>
                                                 Cek BPJS
                                             </button>
@@ -626,8 +680,10 @@ new class extends Component {
                                                     wire:target="prosesCheckin('{{ $row->nobooking }}')"
                                                     class="w-full inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium
                                                            bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 transition">
-                                                    <span wire:loading.remove wire:target="prosesCheckin('{{ $row->nobooking }}')">Checkin</span>
-                                                    <span wire:loading wire:target="prosesCheckin('{{ $row->nobooking }}')">Proses...</span>
+                                                    <span wire:loading.remove
+                                                        wire:target="prosesCheckin('{{ $row->nobooking }}')">Checkin</span>
+                                                    <span wire:loading
+                                                        wire:target="prosesCheckin('{{ $row->nobooking }}')">Proses...</span>
                                                 </button>
                                             @endif
 
@@ -646,10 +702,12 @@ new class extends Component {
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="px-6 py-16 text-center text-gray-500 dark:text-gray-400">
+                                    <td colspan="4"
+                                        class="px-6 py-16 text-center text-gray-500 dark:text-gray-400">
                                         Tidak ada data booking
                                         <span class="font-semibold">{{ $filterStatus }}</span>
-                                        untuk tanggal <span class="font-semibold font-mono">{{ $filterTanggal }}</span>
+                                        untuk tanggal <span
+                                            class="font-semibold font-mono">{{ $filterTanggal }}</span>
                                     </td>
                                 </tr>
                             @endforelse
@@ -659,7 +717,8 @@ new class extends Component {
                 </div>
 
                 {{-- Pagination --}}
-                <div class="sticky bottom-0 z-10 px-4 py-3 bg-white border-t border-gray-200 rounded-b-2xl dark:bg-gray-900 dark:border-gray-700">
+                <div
+                    class="sticky bottom-0 z-10 px-4 py-3 bg-white border-t border-gray-200 rounded-b-2xl dark:bg-gray-900 dark:border-gray-700">
                     {{ $this->bookingData->links() }}
                 </div>
 
@@ -673,7 +732,8 @@ new class extends Component {
         <div class="p-6">
             <div class="flex items-center gap-3 mb-4">
                 <div class="flex items-center justify-center w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/40">
-                    <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                     </svg>
@@ -702,8 +762,8 @@ new class extends Component {
                 <x-secondary-button wire:click="$dispatch('close-modal', { name: 'batal-booking' })">
                     Batal
                 </x-secondary-button>
-                <button type="button" wire:click="konfirmasiBatal"
-                    wire:loading.attr="disabled" wire:target="konfirmasiBatal"
+                <button type="button" wire:click="konfirmasiBatal" wire:loading.attr="disabled"
+                    wire:target="konfirmasiBatal"
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
                            bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition">
                     <span wire:loading.remove wire:target="konfirmasiBatal">Konfirmasi Batal</span>
@@ -718,8 +778,10 @@ new class extends Component {
         <div class="p-6">
             <div class="flex items-center gap-3 mb-4">
                 <div class="flex items-center justify-center w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40">
-                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
                 <div>
@@ -730,10 +792,10 @@ new class extends Component {
 
             @if ($bpjsResult)
                 @php
-                    $code    = $bpjsResult['metadata']['code']    ?? '-';
-                    $msg     = $bpjsResult['metadata']['message']  ?? '-';
-                    $resp    = $bpjsResult['response']             ?? null;
-                    $isOk    = $code == 200;
+                    $code = $bpjsResult['metadata']['code'] ?? '-';
+                    $msg = $bpjsResult['metadata']['message'] ?? '-';
+                    $resp = $bpjsResult['response'] ?? null;
+                    $isOk = $code == 200;
                 @endphp
 
                 <div class="mb-3 flex items-center gap-2">
@@ -746,7 +808,9 @@ new class extends Component {
                         <table class="w-full text-xs text-left">
                             @foreach ((array) $resp as $key => $val)
                                 <tr class="border-b border-gray-100 dark:border-gray-700 last:border-0">
-                                    <td class="py-1.5 pr-4 font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ $key }}</td>
+                                    <td
+                                        class="py-1.5 pr-4 font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                        {{ $key }}</td>
                                     <td class="py-1.5 text-gray-800 dark:text-gray-200 break-all">
                                         {{ is_array($val) ? json_encode($val) : $val }}
                                     </td>
