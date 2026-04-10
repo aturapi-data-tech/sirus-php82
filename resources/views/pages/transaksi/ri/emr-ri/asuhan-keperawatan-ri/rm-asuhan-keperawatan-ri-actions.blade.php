@@ -770,8 +770,8 @@ new class extends Component {
                         <span class="font-mono">{{ $askep['tglAsuhanKeperawatan'] ?? '-' }}</span>
                     </div>
                     @if (!$isFormLocked)
-                    <x-icon-button variant="danger" wire:click="removeAsuhanKeperawatan({{ $idx }})"
-                        wire:confirm="Yakin ingin menghapus Asuhan Keperawatan ini?" tooltip="Hapus">
+                    <x-icon-button color="red" wire:click="removeAsuhanKeperawatan({{ $idx }})"
+                        wire:confirm="Yakin ingin menghapus Asuhan Keperawatan ini?" title="Hapus">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -854,16 +854,14 @@ new class extends Component {
                             <p class="text-xs font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wide">Implementasi & Evaluasi</p>
                             @if (!$isFormLocked)
                                 @if ($activeImplIndex !== $idx)
-                                    <button type="button" wire:click="openFormImpl({{ $idx }})"
-                                        class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-lg border border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-900/30 transition-colors">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                    <x-outline-button type="button" wire:click="openFormImpl({{ $idx }})" class="!px-2.5 !py-1 !text-[11px]">
+                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                         Tambah SOAP
-                                    </button>
+                                    </x-outline-button>
                                 @else
-                                    <button type="button" wire:click="closeFormImpl"
-                                        class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 transition-colors">
+                                    <x-secondary-button type="button" wire:click="closeFormImpl" class="!px-2.5 !py-1 !text-[11px]">
                                         Batal
-                                    </button>
+                                    </x-secondary-button>
                                 @endif
                             @endif
                         </div>
@@ -968,8 +966,8 @@ new class extends Component {
                                         @endif
                                     </div>
                                     @if (!$isFormLocked)
-                                        <x-icon-button variant="danger" wire:click="removeImplementasi({{ $idx }}, {{ $realIdx }})"
-                                            wire:confirm="Yakin hapus implementasi ini?" tooltip="Hapus">
+                                        <x-icon-button color="red" wire:click="removeImplementasi({{ $idx }}, {{ $realIdx }})"
+                                            wire:confirm="Yakin hapus implementasi ini?" title="Hapus">
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                             </svg>

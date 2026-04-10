@@ -512,9 +512,9 @@ new class extends Component {
 
                                     @if (!$isFormLocked)
                                         <div class="flex gap-1">
-                                            <x-icon-button variant="info"
+                                            <x-icon-button color="blue"
                                                 wire:click="copyCPPT('{{ $cppt['cpptId'] }}')"
-                                                tooltip="Copy ke form">
+                                                title="Copy ke form">
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -522,9 +522,9 @@ new class extends Component {
                                                         d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                                 </svg>
                                             </x-icon-button>
-                                            <x-icon-button variant="danger"
+                                            <x-icon-button color="red"
                                                 wire:click="removeCPPT('{{ $cppt['cpptId'] }}')"
-                                                wire:confirm="Yakin hapus CPPT ini?" tooltip="Hapus">
+                                                wire:confirm="Yakin hapus CPPT ini?" title="Hapus">
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
