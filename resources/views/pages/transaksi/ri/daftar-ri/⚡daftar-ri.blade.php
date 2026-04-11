@@ -106,7 +106,7 @@ new class extends Component {
     #[Computed]
     public function baseQuery()
     {
-        $statusColumn = $this->isDokterOrPerawat() ? DB::raw("NVL(rv.erm_status,'A')") : DB::raw("NVL(rv.ri_status,'I')");
+        $statusColumn = $this->isDokterOrPerawat() ? DB::raw("NVL(rv.ri_status,'I')") : DB::raw("NVL(rv.ri_status,'I')");
 
         $labSub = DB::table('lbtxn_checkuphdrs')->select('ref_no', DB::raw('COUNT(*) as lab_status'))->where('status_rjri', 'RI')->where('checkup_status', '!=', 'B')->groupBy('ref_no');
 
@@ -147,8 +147,6 @@ new class extends Component {
                 DB::raw('COALESCE(rad.rad_status, 0) as rad_status'),
                 'rv.datadaftarri_json',
             ])
-            ->orderBy('rv.bangsal_name', 'asc')
-            ->orderBy('rv.bed_no', 'asc')
             ->orderBy('entry_date_sort', 'desc');
 
         if ($this->filterStatus !== '') {
@@ -330,15 +328,9 @@ new class extends Component {
                     <div class="w-full sm:w-auto">
                         <x-input-label value="Status" />
                         <x-select-input wire:model.live="filterStatus" class="w-full mt-1 sm:w-44">
-                            <option value="I">Dirawat</option>
                             <option value="">Semua</option>
-                            @if (auth()->user()->hasAnyRole(['Dokter', 'Perawat']))
-                                <option value="A">Belum Dilayani</option>
-                                <option value="L">Selesai</option>
-                            @else
-                                <option value="L">Pulang</option>
-                                <option value="P">Pindah Kamar</option>
-                            @endif
+                            <option value="I">Dirawat</option>
+                            <option value="P">Pulang</option>
                         </x-select-input>
                     </div>
 
@@ -771,7 +763,8 @@ new class extends Component {
             {{-- Child components --}}
             <livewire:pages::transaksi.ri.daftar-ri.daftar-ri-actions wire:key="daftar-ri-actions" />
             <livewire:pages::transaksi.ri.emr-ri.erm-ri wire:key="emr-ri-actions" />
-            {{-- <livewire:pages::transaksi.ri.administrasi-ri.administrasi-ri wire:key="administrasi-ri-actions" /> --}}
+            <livewire:pages::transaksi.ri.administrasi-ri.administrasi-ri wire:key="administrasi-ri-actions" />
+            <livewire:pages::transaksi.ri.administrasi-ri.pindah-kamar-ri wire:key="pindah-kamar-ri" />
             <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.modul-dokumen-ri wire:key="modul-dokumen-ri" />
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-ri" />
 

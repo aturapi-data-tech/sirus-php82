@@ -69,10 +69,14 @@ new class extends Component {
 
         $findShift = DB::table('rstxn_shiftctls')
             ->select('shift')
+            ->whereNotNull('shift_start')
+            ->whereNotNull('shift_end')
+            ->where('shift_start', '!=', '')
+            ->where('shift_end', '!=', '')
             ->whereRaw('? BETWEEN shift_start AND shift_end', [$now->format('H:i:s')])
             ->first();
 
-        $this->dataDaftarPoliRJ['shift'] = (string) ($findShift->shift ?? 3);
+        $this->dataDaftarPoliRJ['shift'] = (string) ($findShift?->shift ?? 1);
 
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'rj-actions');
@@ -150,6 +154,45 @@ new class extends Component {
             $isPoliSpesialis = DB::table('rsmst_polis')->where('poli_id', $this->dataDaftarPoliRJ['poliId'])->where('spesialis_status', '1')->exists();
 
             // ============================================================
+            // 1b. CEK KUOTA — hanya untuk poli spesialis, warning saja
+            // ============================================================
+            if ($isPoliSpesialis && $this->formMode === 'create') {
+                $jadwal = $this->getJadwalPraktek(
+                    Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate'])
+                );
+
+                if ($jadwal['_not_found'] ?? false) {
+                    $this->dispatch('toast', type: 'warning',
+                        message: 'Jadwal praktek dokter tidak ditemukan untuk hari ini. Data tetap disimpan.',
+                        title: 'Jadwal Tidak Ditemukan', position: 'top-end', duration: 7000);
+                } else {
+                    $rjDateCarbon  = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate']);
+
+                    $jumlahRjhdrs = DB::table('rstxn_rjhdrs')
+                        ->where('dr_id', $this->dataDaftarPoliRJ['drId'])
+                        ->where('poli_id', $this->dataDaftarPoliRJ['poliId'])
+                        ->where('klaim_id', '!=', 'KR')
+                        ->whereRaw("to_char(rj_date,'ddmmyyyy') = ?", [$rjDateCarbon->format('dmY')])
+                        ->count();
+
+                    $jumlahBooking = DB::table('referensi_mobilejkn_bpjs as b')
+                        ->join('rsmst_doctors as d', 'd.kd_dr_bpjs', '=', 'b.kodedokter')
+                        ->where('d.dr_id', $this->dataDaftarPoliRJ['drId'])
+                        ->where('b.tanggalperiksa', $rjDateCarbon->format('Y-m-d'))
+                        ->where('b.status', 'Belum')
+                        ->count();
+
+                    $jumlahTerdaftar = $jumlahRjhdrs + $jumlahBooking;
+
+                    if ($jumlahTerdaftar >= $jadwal['kuota']) {
+                        $this->dispatch('toast', type: 'warning',
+                            message: "Kuota praktek penuh! (Kuota: {$jadwal['kuota']}, Terdaftar: {$jumlahTerdaftar}). Data tetap disimpan.",
+                            title: 'Kuota Penuh', position: 'top-end', duration: 7000);
+                    }
+                }
+            }
+
+            // ============================================================
             // 2. BPJS ANTRIAN — hanya untuk poli spesialis, bukan KR
             // ============================================================
             if ($this->dataDaftarPoliRJ['klaimId'] !== 'KR' && $isPoliSpesialis) {
@@ -163,7 +206,9 @@ new class extends Component {
 
             if ($isBpjs) {
                 $statusTambahPendaftaran = $this->dataDaftarPoliRJ['taskIdPelayanan']['tambahPendaftaran'] ?? '';
-                $antrianSudahOk = $statusTambahPendaftaran == 200 || $statusTambahPendaftaran == 208;
+                $statusTaskId3 = $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3Status'] ?? '';
+                $antrianSudahOk = $statusTambahPendaftaran == 200 || $statusTambahPendaftaran == 208
+                    || $statusTaskId3 == 200 || $statusTaskId3 == 208;
 
                 // SEP diblok HANYA jika poli spesialis DAN antrian belum berhasil
                 if ($isPoliSpesialis && !$antrianSudahOk) {
@@ -226,9 +271,11 @@ new class extends Component {
             return;
         }
 
-        // Skip jika sudah berhasil sebelumnya
+        // Skip jika sudah berhasil sebelumnya (cek tambahPendaftaran ATAU taskId3Status)
         $statusTambahPendaftaran = $this->dataDaftarPoliRJ['taskIdPelayanan']['tambahPendaftaran'] ?? '';
-        if ($statusTambahPendaftaran == 200 || $statusTambahPendaftaran == 208) {
+        $statusTaskId3 = $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3Status'] ?? '';
+        if ($statusTambahPendaftaran == 200 || $statusTambahPendaftaran == 208
+            || $statusTaskId3 == 200 || $statusTaskId3 == 208) {
             return;
         }
 
@@ -381,13 +428,25 @@ new class extends Component {
         if (empty($data['noAntrian'])) {
             if (!empty($data['klaimId']) && $data['klaimId'] !== 'KR') {
                 if (!empty($data['rjDate']) && !empty($data['drId'])) {
-                    $tglAntrian = Carbon::createFromFormat('d/m/Y H:i:s', $data['rjDate'])->format('dmY');
-                    $noUrutAntrian = DB::table('rstxn_rjhdrs')
+                    $rjDateCarbon = Carbon::createFromFormat('d/m/Y H:i:s', $data['rjDate']);
+
+                    // Pasien yang sudah terdaftar di rstxn_rjhdrs (checkin / daftar offline)
+                    $noUrutRjhdrs = DB::table('rstxn_rjhdrs')
                         ->where('dr_id', $data['drId'])
                         ->where('klaim_id', '!=', 'KR')
-                        ->whereRaw("to_char(rj_date, 'ddmmyyyy') = ?", [$tglAntrian])
+                        ->whereRaw("to_char(rj_date, 'ddmmyyyy') = ?", [$rjDateCarbon->format('dmY')])
                         ->count();
-                    $data['noAntrian'] = $noUrutAntrian + 1;
+
+                    // Slot booking yang sudah dipesan tapi belum checkin (status Belum)
+                    // — agar no antrian offline tidak bentrok dengan no antrian booking
+                    $noUrutBooking = DB::table('referensi_mobilejkn_bpjs as b')
+                        ->join('rsmst_doctors as d', 'd.kd_dr_bpjs', '=', 'b.kodedokter')
+                        ->where('d.dr_id', $data['drId'])
+                        ->where('b.tanggalperiksa', $rjDateCarbon->format('Y-m-d'))
+                        ->where('b.status', 'Belum')
+                        ->count();
+
+                    $data['noAntrian'] = $noUrutRjhdrs + $noUrutBooking + 1;
                 }
             } else {
                 $data['noAntrian'] = 999;
@@ -529,7 +588,11 @@ new class extends Component {
 
         $jadwal = DB::table('scmst_scpolis')->select('scmst_scpolis.dr_id', DB::raw("nvl(mulai_praktek, '07:00:00') as mulai_praktek"), DB::raw("nvl(selesai_praktek, '13:00:00') as selesai_praktek"), DB::raw('nvl(kuota, 30) as kuota'))->where('dr_id', $this->dataDaftarPoliRJ['drId'])->where('poli_id', $this->dataDaftarPoliRJ['poliId'])->where('day_id', $dayId)->where('sc_poli_status_', 1)->orderBy('no_urut')->first();
 
-        return $jadwal ? ['mulai_praktek' => $jadwal->mulai_praktek, 'selesai_praktek' => $jadwal->selesai_praktek, 'kuota' => (int) $jadwal->kuota] : ['mulai_praktek' => '07:00:00', 'selesai_praktek' => '13:00:00', 'kuota' => 30];
+        if (!$jadwal) {
+            return ['mulai_praktek' => '07:00:00', 'selesai_praktek' => '13:00:00', 'kuota' => 30, '_not_found' => true];
+        }
+
+        return ['mulai_praktek' => $jadwal->mulai_praktek, 'selesai_praktek' => $jadwal->selesai_praktek, 'kuota' => (int) $jadwal->kuota, '_not_found' => false];
     }
 
     private function getJenisPasien(): string
@@ -815,6 +878,8 @@ new class extends Component {
         $this->dataDaftarPoliRJ['drDesc'] = $payload['dr_name'] ?? '';
         $this->dataDaftarPoliRJ['poliId'] = $payload['poli_id'] ?? '';
         $this->dataDaftarPoliRJ['poliDesc'] = $payload['poli_desc'] ?? '';
+        $this->dataDaftarPoliRJ['kddrbpjs'] = $payload['kd_dr_bpjs'] ?? '';
+        $this->dataDaftarPoliRJ['kdpolibpjs'] = $payload['kd_poli_bpjs'] ?? '';
         $this->incrementVersion('dokter');
         $this->incrementVersion('modal');
         $this->dispatch('focus-klaim-options');

@@ -196,6 +196,11 @@ new class extends Component {
         $this->resetVersion();
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'vclaim-ri-actions');
+
+        /* ---- Auto-fetch klsRawatHak: deferred agar modal buka dulu ---- */
+        if (!$this->isFormLocked && !empty($this->SEPForm['noKartu']) && empty($this->SEPForm['klsRawat']['klsRawatHak'])) {
+            $this->dispatch('vclaim-ri.auto-fetch-kelas');
+        }
     }
 
     /* ---- Load data pasien ---- */
@@ -258,6 +263,15 @@ new class extends Component {
             }
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Error: ' . $e->getMessage());
+        }
+    }
+
+    /* ---- Deferred auto-fetch: dipanggil setelah modal buka ---- */
+    #[On('vclaim-ri.auto-fetch-kelas')]
+    public function autoFetchKlasRawat(): void
+    {
+        if (!$this->isFormLocked && !empty($this->SEPForm['noKartu']) && empty($this->SEPForm['klsRawat']['klsRawatHak'])) {
+            $this->fetchKlasRawat();
         }
     }
 
@@ -407,7 +421,7 @@ new class extends Component {
     }
 
     /* ===============================
-     | GENERATE SEP — simpan reqSep ke parent
+     | BUAT SEP — push langsung ke BPJS API
      =============================== */
     public function generateSEP(): void
     {
@@ -417,29 +431,46 @@ new class extends Component {
         }
         $this->validateSEPForm();
         $request = $this->buildSEPRequest();
-        $this->dispatch('sep-generated-ri', reqSep: $request);
-        $this->dispatch('toast', type: 'success', message: 'Data SEP RI berhasil disimpan ke form pendaftaran.');
-        $this->closeModal();
+
+        try {
+            $response = $this->sep_insert($request)->getOriginalContent();
+            $code = $response['metadata']['code'] ?? 500;
+            if ($code == 200) {
+                $sepData = $response['response']['sep'] ?? [];
+                $noSep = $sepData['noSep'] ?? '';
+                $this->dispatch('sep-generated-ri', reqSep: $request, noSep: $noSep, resSep: $sepData);
+                $this->dispatch('toast', type: 'success', message: "SEP RI berhasil dibuat: {$noSep}");
+                $this->closeModal();
+            } else {
+                $this->dispatch('toast', type: 'error', message: "Buat SEP gagal ({$code}): " . ($response['metadata']['message'] ?? '-'));
+            }
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Error buat SEP: ' . $e->getMessage());
+        }
     }
 
     private function validateSEPForm(): void
     {
         $this->validate(
             [
-                'SEPForm.noKartu' => 'required',
-                'SEPForm.tglSep' => 'required|date_format:d/m/Y',
-                'SEPForm.noMR' => 'required',
-                'SEPForm.diagAwal' => 'required',
-                'SEPForm.poli.tujuan' => 'required',
-                'SEPForm.dpjpLayan' => 'required',
+                'SEPForm.noKartu'              => 'required',
+                'SEPForm.tglSep'               => 'required|date_format:d/m/Y',
+                'SEPForm.noMR'                 => 'required',
+                'SEPForm.diagAwal'             => 'required',
+                'SEPForm.poli.tujuan'          => 'required',
+                'SEPForm.dpjpLayan'            => 'required',
+                'SEPForm.klsRawat.klsRawatHak' => 'required',
+                'SEPForm.noTelp'               => 'required',
             ],
             [
-                'SEPForm.noKartu.required' => 'Nomor Kartu BPJS harus diisi.',
-                'SEPForm.tglSep.required' => 'Tanggal SEP wajib diisi.',
-                'SEPForm.tglSep.date_format' => 'Format Tanggal SEP harus dd/mm/yyyy.',
-                'SEPForm.diagAwal.required' => 'Diagnosa awal harus diisi.',
-                'SEPForm.poli.tujuan.required' => 'Kode poli BPJS harus diisi.',
-                'SEPForm.dpjpLayan.required' => 'DPJP harus diisi.',
+                'SEPForm.noKartu.required'              => 'Nomor Kartu BPJS harus diisi.',
+                'SEPForm.tglSep.required'               => 'Tanggal SEP wajib diisi.',
+                'SEPForm.tglSep.date_format'            => 'Format Tanggal SEP harus dd/mm/yyyy.',
+                'SEPForm.diagAwal.required'             => 'Diagnosa awal harus diisi.',
+                'SEPForm.poli.tujuan.required'          => 'Kode poli BPJS harus diisi.',
+                'SEPForm.dpjpLayan.required'            => 'DPJP harus diisi.',
+                'SEPForm.klsRawat.klsRawatHak.required' => 'Kelas rawat hak belum dimuat. Klik tombol "↺ Muat Kelas Rawat".',
+                'SEPForm.noTelp.required'               => 'No. telepon pasien harus diisi.',
             ],
         );
     }
@@ -813,7 +844,7 @@ new class extends Component {
                             <div class="flex items-center gap-1">
                                 <span
                                     class="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold {{ !empty($sepData['noSep']) ? 'bg-green-500' : 'bg-gray-300' }}">3</span>
-                                <span>Klik Simpan pendaftaran → SEP dikirim</span>
+                                <span>Klik Buat SEP → SEP langsung dikirim ke BPJS</span>
                                 @if (!empty($sepData['noSep']))
                                     <span class="text-green-600">✓</span>
                                 @endif
@@ -1118,18 +1149,22 @@ new class extends Component {
 
                                     {{-- 9. Kelas Rawat (auto dari BPJS) --}}
                                     <div class="lg:col-span-2">
-                                        <x-input-label value="Kelas Rawat (auto dari BPJS)" />
+                                        <x-input-label value="Kelas Rawat Hak *" />
                                         <x-select-input wire:model="SEPForm.klsRawat.klsRawatHak" class="w-full"
-                                            :disabled="true">
-                                            <option value="">-- Klik ↺ Muat Kelas Rawat --</option>
+                                            :disabled="true"
+                                            :error="$errors->has('SEPForm.klsRawat.klsRawatHak')">
+                                            <option value="">-- Memuat... --</option>
                                             <option value="1">Kelas 1</option>
                                             <option value="2">Kelas 2</option>
                                             <option value="3">Kelas 3</option>
                                         </x-select-input>
                                         @if (empty($SEPForm['klsRawat']['klsRawatHak']))
-                                            <p class="mt-1 text-xs text-amber-500">Klik tombol "Muat Kelas Rawat" untuk
-                                                mengisi otomatis.</p>
+                                            <p class="mt-1 text-xs text-amber-500">
+                                                <span wire:loading wire:target="fetchKlasRawat">Sedang memuat kelas rawat...</span>
+                                                <span wire:loading.remove wire:target="fetchKlasRawat">Belum termuat. Klik tombol "↺ Muat Kelas Rawat".</span>
+                                            </p>
                                         @endif
+                                        <x-input-error :messages="$errors->get('SEPForm.klsRawat.klsRawatHak')" class="mt-1" />
                                     </div>
 
                                     {{-- LOV Dokter DPJP --}}
@@ -1174,7 +1209,9 @@ new class extends Component {
                                     <div class="lg:col-span-2">
                                         <x-input-label value="No. Telepon *" />
                                         <x-text-input wire:model="SEPForm.noTelp" class="w-full" :disabled="$isFormLocked"
-                                            placeholder="08xxxx" />
+                                            placeholder="08xxxx"
+                                            :error="$errors->has('SEPForm.noTelp')" />
+                                        <x-input-error :messages="$errors->get('SEPForm.noTelp')" class="mt-1" />
                                     </div>
 
                                     {{-- 12. Catatan --}}
@@ -1396,9 +1433,9 @@ new class extends Component {
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
                                     </svg>
-                                    Simpan Data SEP ke Form
+                                    Buat SEP
                                 </span>
-                                <span wire:loading><x-loading /> Menyimpan...</span>
+                                <span wire:loading><x-loading /> Mengirim ke BPJS...</span>
                             </x-primary-button>
                         @endif
                     </div>

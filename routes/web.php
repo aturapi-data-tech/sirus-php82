@@ -20,6 +20,12 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/master/poli', 'pages::master.master-poli.master-poli')
         ->name('master.poli');
 
+    // ===========================================
+    // MASTER - SETUP JADWAL PELAYANAN DOKTER BPJS
+    // ===========================================
+    Route::livewire('/master/setup-jadwal-bpjs', 'pages::master.setup-jadwal-bpjs.setup-jadwal-bpjs')
+        ->name('master.setup-jadwal-bpjs');
+
     Route::livewire('/master/dokter', 'pages::master.master-dokter.master-dokter')
         ->name('master.dokter');
 
@@ -32,17 +38,35 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/master/diagnosa', 'pages::master.master-diagnosa.master-diagnosa')
         ->name('master.diagnosa');
 
+    Route::livewire('/master/kamar', 'pages::master.master-kamar.master-kamar')
+        ->name('master.kamar');
+
+    Route::livewire('/master/kelas', 'pages::master.master-kelas-rawat.master-kelas-rawat')
+        ->name('master.kelas');
+
+    Route::livewire('/master/agama', 'pages::master.master-agama.master-agama')
+        ->name('master.agama');
+
     Route::livewire('/master/others', 'pages::master.master-others.master-others')
         ->name('master.others');
 
     Route::livewire('/master/radiologis', 'pages::master.master-radiologis.master-radiologis')
         ->name('master.radiologis');
 
+    Route::livewire('/master/diag-keperawatan', 'pages::master.master-diag-keperawatan.master-diag-keperawatan')
+        ->name('master.diag-keperawatan');
+
     // ===========================================
     // RAWAT JALAN (RJ) - DAFTAR RAWAT JALAN
     // ===========================================
     Route::livewire('/rawat-jalan/daftar', 'pages::transaksi.rj.daftar-rj.daftar-rj')
         ->name('rawat-jalan.daftar');
+
+    // ===========================================
+    // RAWAT JALAN (RJ) - BOOKING RJ (Mobile JKN)
+    // ===========================================
+    Route::livewire('/rawat-jalan/booking', 'pages::transaksi.rj.booking-rj.booking-rj')
+        ->name('rawat-jalan.booking');
 
     // ===========================================
     // TRANSAKSI RJ - ANTRIAN APOTEK
@@ -70,6 +94,18 @@ Route::middleware(['auth'])->group(function () {
     // ===========================================
     Route::livewire('/ri/daftar', 'pages::transaksi.ri.daftar-ri.daftar-ri')
         ->name('ri.daftar');
+
+    // ===========================================
+    // RI — UPDATE TEMPAT TIDUR (Aplicares + SIRS)
+    // ===========================================
+    Route::livewire('/ri/update-tt-ri', 'pages::transaksi.ri.update-tt-ri.update-tt-ri')
+        ->name('ri.update-tt-ri');
+    // ===========================================
+    // OPERASI - JADWAL OPERASI
+    // ===========================================
+    Route::livewire('/operasi/jadwal-operasi', 'pages::operasi.jadwal-operasi.jadwal-operasi')
+        ->name('operasi.jadwal-operasi');
+
     // ===========================================
     // DATABASE MONITOR - MONITORING DASHBOARD
     // ===========================================

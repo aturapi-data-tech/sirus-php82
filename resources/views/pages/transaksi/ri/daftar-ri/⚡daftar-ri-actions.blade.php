@@ -76,9 +76,11 @@ new class extends Component {
 
         $findShift = DB::table('rstxn_shiftctls')
             ->select('shift')
+            ->whereNotNull('shift_start')
+            ->whereNotNull('shift_end')
             ->whereRaw('? BETWEEN shift_start AND shift_end', [$now->format('H:i:s')])
             ->first();
-        $this->dataDaftarRi['shift'] = (string) ($findShift->shift ?? 1);
+        $this->dataDaftarRi['shift'] = (string) ($findShift?->shift ?? 1);
 
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'ri-actions');
@@ -153,11 +155,6 @@ new class extends Component {
         }
 
         try {
-            $isBpjs = ($this->dataDaftarRi['klaimStatus'] ?? '') === 'BPJS' || ($this->dataDaftarRi['klaimId'] ?? '') === 'JM';
-            if ($isBpjs) {
-                $this->handleSepCreation();
-            }
-
             $message = '';
             if ($this->formMode === 'create') {
                 Cache::lock("lock:rstxn_rihdrs:{$riHdrNo}", 15)->block(5, function () use ($riHdrNo, &$message) {
@@ -581,13 +578,25 @@ new class extends Component {
 
     /* ---- SEP & SPRI event dari vclaim-ri-actions ---- */
     #[On('sep-generated-ri')]
-    public function handleSepGenerated(array $reqSep): void
+    public function handleSepGenerated(array $reqSep, string $noSep = '', array $resSep = []): void
     {
         $this->dataDaftarRi['sep']['reqSep'] = $reqSep;
+
+        if (!empty($noSep)) {
+            $this->dataDaftarRi['sep']['noSep'] = $noSep;
+            $this->dataDaftarRi['sep']['resSep'] = $resSep;
+        }
+
         $noRujukan = $reqSep['request']['t_sep']['rujukan']['noRujukan'] ?? null;
         if ($noRujukan) {
             $this->dataDaftarRi['noReferensi'] = $noRujukan;
         }
+
+        // Simpan ke JSON agar noSep tidak hilang saat reload
+        if ($this->riHdrNo) {
+            $this->updateJsonData($this->riHdrNo);
+        }
+
         $this->incrementVersion('modal');
     }
 
@@ -945,15 +954,18 @@ new class extends Component {
 
                             <div class="space-y-2">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <x-secondary-button type="button" wire:click="openVclaimModal"
-                                        class="gap-2 text-xs">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                        Kelola SEP RI
-                                    </x-secondary-button>
+                                    {{-- Tombol SPRI / SEP: hanya mode edit + klaim BPJS --}}
+                                    @if ($formMode === 'edit' && (($dataDaftarRi['klaimStatus'] ?? '') === 'BPJS' || ($dataDaftarRi['klaimId'] ?? '') === 'JM'))
+                                        <x-secondary-button type="button" wire:click="openVclaimModal"
+                                            class="gap-2 text-xs">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            SPRI / SEP
+                                        </x-secondary-button>
+                                    @endif
 
                                     @if (!empty($dataDaftarRi['sep']['noSep']))
                                         <x-secondary-button type="button" wire:click="cetakSEP"

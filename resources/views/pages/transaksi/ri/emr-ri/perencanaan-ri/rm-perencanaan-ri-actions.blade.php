@@ -3,6 +3,7 @@
 
 use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
+use App\Http\Traits\BPJS\VclaimTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -12,6 +13,7 @@ new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait;
 
     public bool $isFormLocked = false;
+    public bool $isBPJS = false;
     public ?string $riHdrNo = null;
     public array $dataDaftarRi = [];
 
@@ -65,7 +67,9 @@ new class extends Component {
                 ->where('klaim_id', $this->dataDaftarRi['klaimId'] ?? '')
                 ->value('klaim_status') ?? 'UMUM';
 
-        if ($klaimStatus === 'BPJS' && empty($this->dataDaftarRi['perencanaan']['tindakLanjut']['noSep'])) {
+        $this->isBPJS = $klaimStatus === 'BPJS';
+
+        if ($this->isBPJS && empty($this->dataDaftarRi['perencanaan']['tindakLanjut']['noSep'])) {
             $this->dataDaftarRi['perencanaan']['tindakLanjut']['noSep'] = $this->dataDaftarRi['sep']['noSep'] ?? '';
         }
 
@@ -120,6 +124,79 @@ new class extends Component {
         $this->dataDaftarRi['perencanaan']['tindakLanjut']['tglMeninggal'] = Carbon::now(config('app.timezone'))->format('d/m/Y');
     }
 
+    public function updateTglPulangBPJS(): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang.');
+            return;
+        }
+
+        // Simpan JSON dulu sebelum kirim ke BPJS
+        $this->store();
+
+        $tindak = $this->dataDaftarRi['perencanaan']['tindakLanjut'] ?? [];
+
+        // Cek klaim BPJS
+        $klaimStatus = DB::table('rsmst_klaimtypes')
+            ->where('klaim_id', $this->dataDaftarRi['klaimId'] ?? '')
+            ->value('klaim_status') ?? 'UMUM';
+
+        if ($klaimStatus !== 'BPJS') {
+            $this->dispatch('toast', type: 'error', message: 'Gagal: Klaim ini bukan BPJS.');
+            return;
+        }
+
+        $noSep = $tindak['noSep'] ?? '';
+        if (empty($noSep)) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal: Nomor SEP belum tersedia.');
+            return;
+        }
+
+        $tglSepRaw = $this->dataDaftarRi['sep']['reqSep']['request']['t_sep']['tglSep'] ?? null;
+        if (empty($tglSepRaw)) {
+            $this->dispatch('toast', type: 'error', message: 'Pembuatan SEP bukan melalui siRUS, Tgl SEP belum tersedia.');
+            return;
+        }
+
+        // Konversi format tanggal dd/mm/yyyy → Y-m-d
+        try {
+            $tglPulang = !empty($tindak['tglPulang'])
+                ? Carbon::createFromFormat('d/m/Y', $tindak['tglPulang'])->format('Y-m-d')
+                : null;
+            $tglMeninggal = !empty($tindak['tglMeninggal'])
+                ? Carbon::createFromFormat('d/m/Y', $tindak['tglMeninggal'])->format('Y-m-d')
+                : null;
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Format tanggal tidak valid: ' . $e->getMessage());
+            return;
+        }
+
+        $SEPJsonReq = [
+            'request' => [
+                't_sep' => [
+                    'noSep'             => $noSep,
+                    'statusPulang'      => $tindak['statusPulang'] ?? '',
+                    'noSuratMeninggal'  => $tindak['noSuratMeninggal'] ?? '',
+                    'tglMeninggal'      => $tglMeninggal,
+                    'tglPulang'         => $tglPulang,
+                    'noLPManual'        => $tindak['noLPManual'] ?? '',
+                    'user'              => 'siRUS',
+                    'isKLL'             => $tindak['isKLL'] ?? 0,
+                    'tglSep'            => $tglSepRaw,
+                    'isAlreadyReferred' => false,
+                ],
+            ],
+        ];
+
+        $HttpGetBpjs = VclaimTrait::sep_updtglplg($SEPJsonReq)->getOriginalContent();
+
+        if (($HttpGetBpjs['metadata']['code'] ?? 0) == 200) {
+            $this->dispatch('toast', type: 'success', message: 'Update Tgl Pulang BPJS: ' . $HttpGetBpjs['metadata']['message']);
+        } else {
+            $this->dispatch('toast', type: 'error', message: 'Update Tgl Pulang BPJS: ' . ($HttpGetBpjs['metadata']['message'] ?? 'Gagal'));
+        }
+    }
+
     private function afterSave(string $msg): void
     {
         $this->incrementVersion('modal-perencanaan-ri');
@@ -130,6 +207,11 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
+    }
+
+    public function cetakRiwayatPengobatan(): void
+    {
+        $this->dispatch('cetak-riwayat-pengobatan-ri.open', riHdrNo: $this->riHdrNo);
     }
 };
 ?>
@@ -173,7 +255,8 @@ new class extends Component {
                 @endif
             </div>
 
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-2 gap-3">
+                {{-- Tanggal Pulang --}}
                 <div>
                     <x-input-label value="Tanggal Pulang" />
                     <div class="flex gap-2 mt-1">
@@ -185,11 +268,8 @@ new class extends Component {
                         @endif
                     </div>
                 </div>
-                <div>
-                    <x-input-label value="No. SEP" />
-                    <x-text-input wire:model.live="dataDaftarRi.perencanaan.tindakLanjut.noSep"
-                        class="w-full mt-1 font-mono" :disabled="$isFormLocked" />
-                </div>
+
+                {{-- Keterangan --}}
                 <div>
                     <x-input-label value="Keterangan Tindak Lanjut" />
                     <x-text-input wire:model.live="dataDaftarRi.perencanaan.tindakLanjut.keteranganTindakLanjut"
@@ -197,16 +277,16 @@ new class extends Component {
                 </div>
             </div>
 
-            {{-- Jika Meninggal --}}
-            @if (($dataDaftarRi['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '') === '419099009')
+            {{-- Jika Meninggal (statusPulang: 4) --}}
+            @if (($dataDaftarRi['perencanaan']['tindakLanjut']['statusPulang'] ?? '') == 4)
                 <div class="grid grid-cols-2 gap-3 p-3 rounded-lg bg-red-50 border border-red-200">
                     <div>
-                        <x-input-label value="No. Surat Keterangan Meninggal" />
+                        <x-input-label value="No. Surat Keterangan Meninggal *" />
                         <x-text-input wire:model.live="dataDaftarRi.perencanaan.tindakLanjut.noSuratMeninggal"
-                            class="w-full mt-1" :disabled="$isFormLocked" />
+                            class="w-full mt-1" :disabled="$isFormLocked" placeholder="Wajib diisi jika meninggal" />
                     </div>
                     <div>
-                        <x-input-label value="Tanggal Meninggal" />
+                        <x-input-label value="Tanggal Meninggal *" />
                         <div class="flex gap-2 mt-1">
                             <x-text-input wire:model.live="dataDaftarRi.perencanaan.tindakLanjut.tglMeninggal"
                                 class="flex-1" placeholder="dd/mm/yyyy" :disabled="$isFormLocked" />
@@ -215,6 +295,44 @@ new class extends Component {
                                     class="text-xs">Sekarang</x-secondary-button>
                             @endif
                         </div>
+                    </div>
+                </div>
+            @endif
+
+            {{-- Jika KLL (Kecelakaan Lalu Lintas) --}}
+            @if ($dataDaftarRi['kPolisi'] ?? false)
+                <div class="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+                    <div>
+                        <x-input-label value="No. Laporan Polisi (KLL) *" />
+                        <x-text-input wire:model.live="dataDaftarRi.perencanaan.tindakLanjut.noLPManual"
+                            class="w-full mt-1" :disabled="$isFormLocked" placeholder="Wajib diisi untuk kasus KLL" />
+                    </div>
+                </div>
+            @endif
+
+            {{-- BPJS: No SEP + Tombol Update Pulang --}}
+            @if ($isBPJS)
+                <div class="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                    <div>
+                        <x-input-label value="No. SEP" />
+                        <div class="flex gap-2 mt-1">
+                            <x-text-input wire:model.live="dataDaftarRi.perencanaan.tindakLanjut.noSep"
+                                class="flex-1 font-mono" :disabled="$isFormLocked" />
+                            @if (!$isFormLocked)
+                                <x-primary-button wire:click="updateTglPulangBPJS" type="button"
+                                    wire:confirm="Kirim update tanggal pulang ke BPJS?"
+                                    wire:loading.attr="disabled" class="text-xs">
+                                    <span wire:loading.remove wire:target="updateTglPulangBPJS">Update Pasien Pulang BPJS</span>
+                                    <span wire:loading wire:target="updateTglPulangBPJS" class="inline-flex items-center gap-1">
+                                        <x-loading /> Mengirim...
+                                    </span>
+                                </x-primary-button>
+                            @endif
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">
+                            Status Pulang: <span class="font-mono">{{ $dataDaftarRi['perencanaan']['tindakLanjut']['statusPulang'] ?? '-' }}</span>
+                            (1: Atas Persetujuan Dokter, 3: Atas Permintaan Sendiri, 4: Meninggal, 5: Lain-lain)
+                        </p>
                     </div>
                 </div>
             @endif
@@ -261,15 +379,33 @@ new class extends Component {
         </div>
     </x-border-form>
 
-    @if (!$isFormLocked)
-        <div class="flex justify-end pt-2">
+    <div class="flex justify-end gap-2 pt-2">
+        {{-- Cetak Riwayat Pengobatan --}}
+        <x-secondary-button type="button" wire:click="cetakRiwayatPengobatan" wire:loading.attr="disabled">
+            <span wire:loading.remove wire:target="cetakRiwayatPengobatan" class="inline-flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Cetak Riwayat Pengobatan
+            </span>
+            <span wire:loading wire:target="cetakRiwayatPengobatan" class="inline-flex items-center gap-1">
+                <x-loading /> Mencetak...
+            </span>
+        </x-secondary-button>
+
+        {{-- Simpan Perencanaan --}}
+        @if (!$isFormLocked)
             <x-primary-button wire:click="store" type="button">
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
                 Simpan Perencanaan
             </x-primary-button>
-        </div>
-    @endif
+        @endif
+    </div>
 
+    {{-- Component cetak (hidden) --}}
+    <livewire:pages::components.modul-dokumen.r-i.riwayat-pengobatan.cetak-riwayat-pengobatan-ri
+        wire:key="cetak-riwayat-pengobatan-ri-{{ $riHdrNo }}" />
 </div>

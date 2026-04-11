@@ -262,7 +262,8 @@ new class extends Component {
             return;
         }
 
-        $row = DB::table('rsmst_mstdiags')->where('diag_id', $value)->first();
+        $row = DB::table('rsmst_mstdiags')->where('diag_id', $value)->first()
+            ?? DB::table('rsmst_mstdiags')->where('icdx', $value)->first();
 
         if ($row) {
             $this->setSelectedFromRow($row);
