@@ -76,13 +76,18 @@ new class extends Component {
         $this->resetFormFields();
         $this->formMode = 'create';
 
-        // Isi data default dari template trait
+        // Isi data default dari template trait (regNo dikosongkan, di-generate saat save)
         $this->dataPasien = $this->getDefaultPasienTemplate();
-        // Generate regNo baru
-        $jmlPasien = DB::table('rsmst_pasiens')->count();
-        $this->dataPasien['pasien']['regNo'] = sprintf('%07s', $jmlPasien + 1) . 'Z';
-        $this->regNo = $this->dataPasien['pasien']['regNo'];
+        $this->dataPasien['pasien']['regNo'] = '';
+        $this->regNo = '';
         $this->dispatch('open-modal', name: 'master-pasien-actions');
+    }
+
+    /** Generate regNo baru saat simpan (tidak bisa diinput manual) */
+    protected function generateRegNo(): string
+    {
+        $jmlPasien = DB::table('rsmst_pasiens')->count();
+        return sprintf('%07s', $jmlPasien + 1) . 'Z';
     }
 
     #[On('master.pasien.openEdit')]
@@ -114,7 +119,8 @@ new class extends Component {
     protected function rules(): array
     {
         return [
-            'dataPasien.pasien.regNo' => ['required', 'string', 'max:50', $this->formMode === 'create' ? Rule::unique('rsmst_pasiens', 'reg_no') : Rule::unique('rsmst_pasiens', 'reg_no')->ignore($this->dataPasien['pasien']['regNo'] ?? '', 'reg_no')],
+            // regNo: di-generate otomatis saat create, tidak bisa diedit
+            'dataPasien.pasien.regNo' => $this->formMode === 'edit' ? ['required', 'string'] : [],
             'dataPasien.pasien.regName' => ['required', 'string', 'min:3', 'max:200'],
             'dataPasien.pasien.tempatLahir' => ['required', 'string', 'max:100'],
             'dataPasien.pasien.tglLahir' => ['required', 'date_format:d/m/Y'],
@@ -123,17 +129,17 @@ new class extends Component {
             'dataPasien.pasien.statusPerkawinan.statusPerkawinanId' => ['required', 'numeric'],
             'dataPasien.pasien.pendidikan.pendidikanId' => ['required', 'numeric'],
             'dataPasien.pasien.pekerjaan.pekerjaanId' => ['required', 'numeric'],
-            'dataPasien.pasien.identitas.nik' => ['required', 'digits:16'],
+            'dataPasien.pasien.identitas.nik' => ['required', 'string', 'regex:/^\d{16}$/'],
             'dataPasien.pasien.identitas.alamat' => ['required', 'string', 'max:500'],
             'dataPasien.pasien.identitas.rt' => ['required', 'string', 'max:10'],
             'dataPasien.pasien.identitas.rw' => ['required', 'string', 'max:10'],
-            'dataPasien.pasien.kontak.nomerTelponSelulerPasien' => ['required', 'digits_between:6,15'],
-            'dataPasien.pasien.hubungan.namaPenanggungJawab' => ['required', 'string', 'min:3', 'max:200'],
-            'dataPasien.pasien.hubungan.nomerTelponSelulerPenanggungJawab' => ['required', 'digits_between:6,15'],
-            'dataPasien.pasien.hubungan.namaAyah' => ['required', 'string', 'min:3', 'max:200'],
-            'dataPasien.pasien.hubungan.nomerTelponSelulerAyah' => ['required', 'digits_between:6,15'],
-            'dataPasien.pasien.hubungan.namaIbu' => ['required', 'string', 'min:3', 'max:200'],
-            'dataPasien.pasien.hubungan.nomerTelponSelulerIbu' => ['required', 'digits_between:6,15'],
+            'dataPasien.pasien.kontak.nomerTelponSelulerPasien' => ['required', 'string', 'regex:/^[0-9]{6,15}$/'],
+            'dataPasien.pasien.hubungan.namaPenanggungJawab' => ['nullable', 'string', 'max:200'],
+            'dataPasien.pasien.hubungan.nomerTelponSelulerPenanggungJawab' => ['nullable', 'string', 'regex:/^[0-9]{6,15}$/'],
+            'dataPasien.pasien.hubungan.namaAyah' => ['nullable', 'string', 'max:200'],
+            'dataPasien.pasien.hubungan.nomerTelponSelulerAyah' => ['nullable', 'string', 'regex:/^[0-9]{6,15}$/'],
+            'dataPasien.pasien.hubungan.namaIbu' => ['nullable', 'string', 'max:200'],
+            'dataPasien.pasien.hubungan.nomerTelponSelulerIbu' => ['nullable', 'string', 'regex:/^[0-9]{6,15}$/'],
         ];
     }
 
@@ -180,7 +186,7 @@ new class extends Component {
 
             // Identitas - NIK
             'dataPasien.pasien.identitas.nik.required' => 'NIK wajib diisi.',
-            'dataPasien.pasien.identitas.nik.digits' => 'NIK harus 16 digit.',
+            'dataPasien.pasien.identitas.nik.regex' => 'NIK harus 16 digit angka.',
 
             // Identitas - Alamat
             'dataPasien.pasien.identitas.alamat.required' => 'Alamat wajib diisi.',
@@ -196,34 +202,25 @@ new class extends Component {
 
             // Kontak - No HP Pasien
             'dataPasien.pasien.kontak.nomerTelponSelulerPasien.required' => 'No. HP Pasien wajib diisi.',
-            'dataPasien.pasien.kontak.nomerTelponSelulerPasien.digits_between' => 'No. HP Pasien harus antara :min sampai :max digit.',
+            'dataPasien.pasien.kontak.nomerTelponSelulerPasien.regex' => 'No. HP Pasien harus 6-15 digit angka.',
 
             // Hubungan - Nama Penanggung Jawab
-            'dataPasien.pasien.hubungan.namaPenanggungJawab.required' => 'Nama Penanggung Jawab wajib diisi.',
-            'dataPasien.pasien.hubungan.namaPenanggungJawab.min' => 'Nama Penanggung Jawab minimal :min karakter.',
             'dataPasien.pasien.hubungan.namaPenanggungJawab.max' => 'Nama Penanggung Jawab maksimal :max karakter.',
 
             // Hubungan - No HP Penanggung Jawab
-            'dataPasien.pasien.hubungan.nomerTelponSelulerPenanggungJawab.required' => 'No. HP Penanggung Jawab wajib diisi.',
-            'dataPasien.pasien.hubungan.nomerTelponSelulerPenanggungJawab.digits_between' => 'No. HP Penanggung Jawab harus antara :min sampai :max digit.',
+            'dataPasien.pasien.hubungan.nomerTelponSelulerPenanggungJawab.regex' => 'No. HP Penanggung Jawab harus 6-15 digit angka.',
 
             // Hubungan - Nama Ayah
-            'dataPasien.pasien.hubungan.namaAyah.required' => 'Nama Ayah wajib diisi.',
-            'dataPasien.pasien.hubungan.namaAyah.min' => 'Nama Ayah minimal :min karakter.',
             'dataPasien.pasien.hubungan.namaAyah.max' => 'Nama Ayah maksimal :max karakter.',
 
             // Hubungan - No HP Ayah
-            'dataPasien.pasien.hubungan.nomerTelponSelulerAyah.required' => 'No. HP Ayah wajib diisi.',
-            'dataPasien.pasien.hubungan.nomerTelponSelulerAyah.digits_between' => 'No. HP Ayah harus antara :min sampai :max digit.',
+            'dataPasien.pasien.hubungan.nomerTelponSelulerAyah.regex' => 'No. HP Ayah harus 6-15 digit angka.',
 
             // Hubungan - Nama Ibu
-            'dataPasien.pasien.hubungan.namaIbu.required' => 'Nama Ibu wajib diisi.',
-            'dataPasien.pasien.hubungan.namaIbu.min' => 'Nama Ibu minimal :min karakter.',
             'dataPasien.pasien.hubungan.namaIbu.max' => 'Nama Ibu maksimal :max karakter.',
 
             // Hubungan - No HP Ibu
-            'dataPasien.pasien.hubungan.nomerTelponSelulerIbu.required' => 'No. HP Ibu wajib diisi.',
-            'dataPasien.pasien.hubungan.nomerTelponSelulerIbu.digits_between' => 'No. HP Ibu harus antara :min sampai :max digit.',
+            'dataPasien.pasien.hubungan.nomerTelponSelulerIbu.regex' => 'No. HP Ibu harus 6-15 digit angka.',
         ];
     }
 
@@ -235,6 +232,12 @@ new class extends Component {
         // update regDateStore -- akhir admisi
         if (empty($this->dataPasien['pasien']['regDateStore'])) {
             $this->dataPasien['pasien']['regDateStore'] = Carbon::now()->format('d/m/Y H:i:s');
+        }
+
+        // Generate regNo otomatis saat create
+        if ($this->formMode === 'create') {
+            $this->dataPasien['pasien']['regNo'] = $this->generateRegNo();
+            $this->regNo = $this->dataPasien['pasien']['regNo'];
         }
 
         $pasien = $this->dataPasien['pasien'] ?? [];
@@ -772,8 +775,8 @@ new class extends Component {
                                                 </div>
 
                                                 <div class="flex items-end w-1/5">
-                                                    <x-check-box value='1' :label="__('Pasien Tidak Dikenal')"
-                                                        wire:model.live="dataPasien.pasien.pasientidakdikenal" />
+                                                    <x-toggle wire:model.live="dataPasien.pasien.pasientidakdikenal"
+                                                        trueValue="1" falseValue="" label="Pasien Tidak Dikenal" />
                                                 </div>
                                             </div>
                                         @endif
