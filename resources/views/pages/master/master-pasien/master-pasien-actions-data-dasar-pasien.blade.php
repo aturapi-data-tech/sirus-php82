@@ -1,12 +1,12 @@
 <x-border-form :title="__('Data Dasar Pasien')" :align="__('start')" :bgcolor="__('bg-white')">
     <div class="space-y-5">
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {{-- Reg No --}}
+            {{-- Reg No (auto-generate saat simpan, tidak bisa diedit) --}}
             <div>
-                <x-input-label value="Reg No Pasien" :required="true" />
-                <x-text-input wire:model.live="dataPasien.pasien.regNo" :disabled="$formMode === 'edit'" :error="$errors->has('dataPasien.pasien.regNo')"
-                    class="w-full mt-1" />
-                <x-input-error :messages="$errors->get('dataPasien.pasien.regNo')" class="mt-1" />
+                <x-input-label value="Reg No Pasien" />
+                <x-text-input value="{{ $dataPasien['pasien']['regNo'] ?? '' }}" disabled
+                    placeholder="{{ $formMode === 'create' ? 'Otomatis saat disimpan' : '' }}"
+                    class="w-full mt-1 bg-gray-100 dark:bg-gray-800" />
             </div>
 
             {{-- Gelar Depan + Nama + Gelar Belakang + Nama Panggilan --}}

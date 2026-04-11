@@ -123,8 +123,8 @@ trait MasterPasienTrait
         $dataPasien['pasien']['regDate'] = $row->reg_date ?? '';
 
         // Identity information
-        $dataPasien['pasien']['identitas']['idbpjs'] = $row->nokartu_bpjs ?? '-';
-        $dataPasien['pasien']['identitas']['nik'] = $row->nik_bpjs ?? '-';
+        $dataPasien['pasien']['identitas']['idbpjs'] = $row->nokartu_bpjs ?? '';
+        $dataPasien['pasien']['identitas']['nik'] = $row->nik_bpjs ?? '';
         $dataPasien['pasien']['identitas']['alamat'] = $row->address ?? '';
 
         $dataPasien['pasien']['identitas']['desaId'] = $row->des_id ?? '';

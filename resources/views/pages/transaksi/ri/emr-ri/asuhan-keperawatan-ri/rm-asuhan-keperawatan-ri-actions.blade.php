@@ -536,8 +536,8 @@ new class extends Component {
                         class="grid grid-cols-1 lg:grid-cols-3 gap-0 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden text-sm">
 
                         {{-- ══════════════════════════════════════
-                | KOLOM 1: DIAGNOSIS KEPERAWATAN (SDKI)
-                ══════════════════════════════════════ --}}
+                        | KOLOM 1: DIAGNOSIS KEPERAWATAN (SDKI)
+                        ══════════════════════════════════════ --}}
                         <div class="border-b lg:border-b-0 lg:border-r border-gray-300 dark:border-gray-600">
                             {{-- Header --}}
                             <div class="px-3 py-2 bg-red-600 text-white font-bold text-center uppercase tracking-wide">
@@ -708,8 +708,8 @@ new class extends Component {
                         </div>
 
                         {{-- ══════════════════════════════════════
-                | KOLOM 2: LUARAN KEPERAWATAN (SLKI)
-                ══════════════════════════════════════ --}}
+                        | KOLOM 2: LUARAN KEPERAWATAN (SLKI)
+                        ══════════════════════════════════════ --}}
                         <div class="border-b lg:border-b-0 lg:border-r border-gray-300 dark:border-gray-600">
                             <div
                                 class="px-3 py-2 bg-green-600 text-white font-bold text-center uppercase tracking-wide">
@@ -751,8 +751,8 @@ new class extends Component {
                         </div>
 
                         {{-- ══════════════════════════════════════
-                | KOLOM 3: INTERVENSI KEPERAWATAN (SIKI)
-                ══════════════════════════════════════ --}}
+                        | KOLOM 3: INTERVENSI KEPERAWATAN (SIKI)
+                        ══════════════════════════════════════ --}}
                         <div>
                             <div
                                 class="px-3 py-2 bg-blue-600 text-white font-bold text-center uppercase tracking-wide">
@@ -862,14 +862,17 @@ new class extends Component {
 
             {{-- Kolom Kanan: Implementasi & Evaluasi (implementasi-asuhan-keperawatan.blade.php) --}}
             <div>
-                @include('pages::transaksi.ri.emr-ri.asuhan-keperawatan-ri.implementasi-asuhan-keperawatan', [
-                    'askep' => $askep,
-                    'idx' => $idx,
-                    'isFormLocked' => $isFormLocked,
-                    'activeImplIndex' => $activeImplIndex,
-                    'formImpl' => $formImpl,
-                    'errors' => $errors,
-                ])
+                @include(
+                    'pages::transaksi.ri.emr-ri.asuhan-keperawatan-ri.implementasi-asuhan-keperawatan',
+                    [
+                        'askep' => $askep,
+                        'idx' => $idx,
+                        'isFormLocked' => $isFormLocked,
+                        'activeImplIndex' => $activeImplIndex,
+                        'formImpl' => $formImpl,
+                        'errors' => $errors,
+                    ]
+                )
             </div>
 
         </div>
