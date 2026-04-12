@@ -38,7 +38,7 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/master/diagnosa', 'pages::master.master-diagnosa.master-diagnosa')
         ->name('master.diagnosa');
 
-    Route::livewire('/master/kamar', 'pages::master.master-kamar.master-kamar')
+    Route::livewire('/master/kamar', 'pages::master.master-kamar.bangsal.master-bangsal')
         ->name('master.kamar');
 
     Route::livewire('/master/kelas', 'pages::master.master-kelas-rawat.master-kelas-rawat')
