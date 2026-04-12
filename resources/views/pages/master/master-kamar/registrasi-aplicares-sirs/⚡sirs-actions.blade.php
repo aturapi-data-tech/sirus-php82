@@ -1,5 +1,5 @@
 <?php
-// resources/views/pages/master/master-kamar/master-registrasi/sirs-actions.blade.php
+// resources/views/pages/master/master-kamar/registrasi-aplicares-sirs/sirs-actions.blade.php
 //
 // SIRS (Sistem Informasi Rumah Sakit) Kemenkes
 // Sistem milik Kementerian Kesehatan RI untuk pelaporan data

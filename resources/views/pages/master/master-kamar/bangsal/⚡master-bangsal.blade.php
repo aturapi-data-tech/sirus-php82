@@ -19,7 +19,7 @@
 // │  │   └── ⚡master-kamar-actions.blade.php    ← CRUD kamar          │
 // │  ├── bed/                                                           │
 // │  │   └── ⚡master-bed-actions.blade.php      ← CRUD bed            │
-// │  └── master-registrasi/                                             │
+// │  └── registrasi-aplicares-sirs/                                             │
 // │      ├── ⚡registrasi-aplicares-sirs.blade.php ← Bulk registrasi   │
 // │      ├── ⚡aplicares-actions.blade.php        ← Data di Aplicares  │
 // │      ├── ⚡sirs-actions.blade.php             ← Data di SIRS       │
@@ -30,6 +30,15 @@
 // ┌─────────────────────────────────────────────────────────────────────┐
 // │  CARA KERJA & ALUR TAMPILAN                                        │
 // ├─────────────────────────────────────────────────────────────────────┤
+// │                                                                     │
+// │  ┌───────────────────────────────────────────────────────────────┐  │
+// │  │ HEADER                                                        │  │
+// │  │ Master Kamar              [Daftarkan Semua] [Data Terdaftar]  │  │
+// │  │ Bangsal, kamar & bed               ↓                ↓        │  │
+// │  └────────────────────────────────────┼────────────────┼─────────┘  │
+// │           Alpine $dispatch()          ↓                ↓            │
+// │           registrasi.openBulkRegistrasiAplicaresSirs ──► registrasi-aplicares-sirs   │
+// │           registrasi.openDataTerdaftarAplicaresSirs ────────► (buka modal)               │
 // │                                                                     │
 // │  Halaman terbagi 2 kolom (grid 50:50):                              │
 // │                                                                     │
@@ -72,6 +81,12 @@
 // │     *-actions  ──dispatch('master.kamar.saved')──►  semua komponen  │
 // │     → master-bangsal refresh tabel bangsal (jika entity='bangsal')  │
 // │     → master-kamar refresh tabel kamar (jika entity='kamar'/'bed')  │
+// │                                                                     │
+// │  4. Tombol Aplicares/SIRS di header                                 │
+// │     Alpine $dispatch('registrasi.openBulkRegistrasiAplicaresSirs')                   │
+// │       → registrasi-aplicares-sirs #[On] → buka modal bulk           │
+// │     Alpine $dispatch('registrasi.openDataTerdaftarAplicaresSirs')                        │
+// │       → registrasi-aplicares-sirs #[On] → buka modal data terdaftar │
 // │                                                                     │
 // └─────────────────────────────────────────────────────────────────────┘
 //
@@ -198,6 +213,22 @@ new class extends Component {
                 <p class="text-sm text-gray-500 dark:text-gray-400">
                     Bangsal, kamar & bed rawat inap
                 </p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <x-outline-button x-on:click="$dispatch('registrasi.openBulkRegistrasiAplicaresSirs')" class="shrink-0 gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    Daftarkan Semua ke Aplicares &amp; SIRS
+                </x-outline-button>
+                <x-outline-button x-on:click="$dispatch('registrasi.openDataTerdaftarAplicaresSirs')" class="shrink-0 gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Data Kamar Terdaftar di Aplicares &amp; SIRS
+                </x-outline-button>
             </div>
         </div>
     </header>
@@ -340,6 +371,6 @@ new class extends Component {
     <livewire:pages::master.master-kamar.bed.master-bed-actions wire:key="master-bed-actions" />
 
     {{-- Child: Registrasi Aplicares & SIRS --}}
-    <livewire:pages::master.master-kamar.master-registrasi.registrasi-aplicares-sirs wire:key="registrasi-aplicares-sirs" />
+    <livewire:pages::master.master-kamar.registrasi-aplicares-sirs.registrasi-aplicares-sirs wire:key="registrasi-aplicares-sirs" />
 
 </div>

@@ -1,7 +1,7 @@
 <?php
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  REGISTRASI APLICARES & SIRS                                       ║
-// ║  master-kamar/master-registrasi/registrasi-aplicares-sirs.blade.php║
+// ║  master-kamar/registrasi-aplicares-sirs/registrasi-aplicares-sirs.blade.php║
 // ╚══════════════════════════════════════════════════════════════════════╝
 //
 // ┌─────────────────────────────────────────────────────────────────────┐
@@ -24,7 +24,7 @@
 // └─────────────────────────────────────────────────────────────────────┘
 //
 // ┌─────────────────────────────────────────────────────────────────────┐
-// │  STRUKTUR FOLDER master-registrasi/                                │
+// │  STRUKTUR FOLDER registrasi-aplicares-sirs/                                │
 // ├─────────────────────────────────────────────────────────────────────┤
 // │                                                                     │
 // │  ⚡registrasi-aplicares-sirs.blade.php  ← FILE INI                 │
@@ -48,9 +48,12 @@
 // │  CARA KERJA                                                         │
 // ├─────────────────────────────────────────────────────────────────────┤
 // │                                                                     │
-// │  Komponen ini menampilkan 2 tombol di halaman utama:                │
+// │  Tombol ada di HEADER halaman utama (master-bangsal.blade.php),     │
+// │  memanggil komponen ini via Alpine $dispatch():                      │
 // │                                                                     │
 // │  [Daftarkan Semua ke Aplicares & SIRS]                              │
+// │     → $dispatch('registrasi.openBulkRegistrasiAplicaresSirs')                        │
+// │     → #[On('registrasi.openBulkRegistrasiAplicaresSirs')] openBulkRegistrasiAplicaresSirs()           │
 // │     → Buka modal bulk registrasi                                    │
 // │     → Tab Aplicares / Tab SIRS                                      │
 // │     → Alur per tab:                                                 │
@@ -62,6 +65,8 @@
 // │           - Hasil per kamar ditampilkan di tabel (bulk-results)     │
 // │                                                                     │
 // │  [Data Kamar Terdaftar di Aplicares & SIRS]                         │
+// │     → $dispatch('registrasi.openDataTerdaftarAplicaresSirs')                             │
+// │     → #[On('registrasi.openDataTerdaftarAplicaresSirs')] openDataTerdaftarAplicaresSirs()                     │
 // │     → Buka modal data terdaftar                                     │
 // │     → Tab Aplicares (aplicares-actions) — tarik & tampilkan data    │
 // │     → Tab SIRS (sirs-actions) — tarik & tampilkan data              │
@@ -79,6 +84,7 @@
 // └─────────────────────────────────────────────────────────────────────┘
 
 use Livewire\Component;
+use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\BPJS\AplicaresTrait;
 use App\Http\Traits\SIRS\SirsTrait;
@@ -96,14 +102,16 @@ new class extends Component {
     public array $sirsRefList     = [];
     public bool  $loadingSirsRef  = false;
 
-    /* --- Buka modal ketersediaan --- */
-    public function openPanel(): void
+    /* --- Buka modal ketersediaan (dipanggil dari header via event) --- */
+    #[On('registrasi.openDataTerdaftarAplicaresSirs')]
+    public function openDataTerdaftarAplicaresSirs(): void
     {
         $this->dispatch('open-modal', name: 'ketersediaan-kamar');
     }
 
-    /* --- Buka modal bulk daftarkan --- */
-    public function openBulkDaftar(): void
+    /* --- Buka modal bulk daftarkan (dipanggil dari header via event) --- */
+    #[On('registrasi.openBulkRegistrasiAplicaresSirs')]
+    public function openBulkRegistrasiAplicaresSirs(): void
     {
         $this->aplBulkResults  = [];
         $this->sirsBulkResults = [];
@@ -301,24 +309,6 @@ new class extends Component {
 
 <div>
 
-    {{-- ══ TOMBOL AKSI ═══════════════════════════════════════════ --}}
-    <div class="flex items-center gap-2 px-6 pt-4">
-        <x-outline-button wire:click="openBulkDaftar" class="shrink-0 gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-            Daftarkan Semua ke Aplicares &amp; SIRS
-        </x-outline-button>
-        <x-outline-button wire:click="openPanel" class="shrink-0 gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            Data Kamar Terdaftar di Aplicares &amp; SIRS
-        </x-outline-button>
-    </div>
-
     {{-- ══ MODAL KETERSEDIAAN KAMAR EKSTERNAL ═══════════════════ --}}
     <x-modal name="ketersediaan-kamar" size="full" height="full" focusable>
         <div x-data="{ tab: 'aplicares' }" class="flex flex-col h-[calc(100vh-8rem)]">
@@ -385,10 +375,10 @@ new class extends Component {
             {{-- Tab content --}}
             <div class="flex-1 overflow-hidden flex flex-col bg-white dark:bg-gray-900">
                 <div x-show="tab === 'aplicares'" class="flex flex-col h-full">
-                    <livewire:pages::master.master-kamar.master-registrasi.aplicares-actions wire:key="tab-aplicares" />
+                    <livewire:pages::master.master-kamar.registrasi-aplicares-sirs.aplicares-actions wire:key="tab-aplicares" />
                 </div>
                 <div x-show="tab === 'sirs'" class="flex flex-col h-full">
-                    <livewire:pages::master.master-kamar.master-registrasi.sirs-actions wire:key="tab-sirs" />
+                    <livewire:pages::master.master-kamar.registrasi-aplicares-sirs.sirs-actions wire:key="tab-sirs" />
                 </div>
             </div>
 
@@ -568,7 +558,7 @@ new class extends Component {
                                 <p>Klik <strong>Daftarkan ke Aplicares</strong> untuk memulai sinkronisasi.</p>
                             </div>
                         @else
-                            @include('pages.master.master-kamar.master-registrasi.bulk-results', ['rows' => $aplBulkResults])
+                            @include('pages.master.master-kamar.registrasi-aplicares-sirs.bulk-results', ['rows' => $aplBulkResults])
                         @endif
                     </div>
                 </div>
@@ -690,7 +680,7 @@ new class extends Component {
                                 <p>Klik <strong>Daftarkan ke SIRS</strong> untuk memulai sinkronisasi.</p>
                             </div>
                         @else
-                            @include('pages.master.master-kamar.master-registrasi.bulk-results', ['rows' => $sirsBulkResults])
+                            @include('pages.master.master-kamar.registrasi-aplicares-sirs.bulk-results', ['rows' => $sirsBulkResults])
                         @endif
                     </div>
                 </div>

@@ -1,5 +1,5 @@
 <?php
-// resources/views/pages/master/master-kamar/master-registrasi/aplicares-actions.blade.php
+// resources/views/pages/master/master-kamar/registrasi-aplicares-sirs/aplicares-actions.blade.php
 //
 // APLICARES (Aplikasi Komunikasi Antar Rumah Sakit)
 // Sistem milik BPJS Kesehatan untuk mengelola data ketersediaan
