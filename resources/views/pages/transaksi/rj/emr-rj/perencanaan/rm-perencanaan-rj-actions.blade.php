@@ -31,13 +31,6 @@ new class extends Component {
         $this->registerAreas(['modal-perencanaan-rj']);
     }
 
-    public function rendering(): void
-    {
-        $default = $this->getDefaultPerencanaan();
-        $current = $this->dataDaftarPoliRJ['perencanaan'] ?? [];
-        $this->dataDaftarPoliRJ['perencanaan'] = array_replace_recursive($default, $current);
-    }
-
     /* ===============================
      | OPEN REKAM MEDIS - PERENCANAAN
      =============================== */

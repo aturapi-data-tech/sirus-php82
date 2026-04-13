@@ -32,13 +32,6 @@ new class extends Component {
         $this->registerAreas(['modal-screening-ugd']);
     }
 
-    public function rendering(): void
-    {
-        $default = $this->getDefaultScreening();
-        $current = $this->dataDaftarUGD['screening'] ?? [];
-        $this->dataDaftarUGD['screening'] = array_replace_recursive($default, $current);
-    }
-
     /* ===============================
      | OPEN
      =============================== */

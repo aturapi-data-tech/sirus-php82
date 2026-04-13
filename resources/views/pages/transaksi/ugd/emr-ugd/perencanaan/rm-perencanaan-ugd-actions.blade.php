@@ -31,13 +31,6 @@ new class extends Component {
         $this->registerAreas(['modal-perencanaan-ugd']);
     }
 
-    public function rendering(): void
-    {
-        $default = $this->getDefaultPerencanaan();
-        $current = $this->dataDaftarUGD['perencanaan'] ?? [];
-        $this->dataDaftarUGD['perencanaan'] = array_replace_recursive($default, $current);
-    }
-
     /* ===============================
      | OPEN
      =============================== */

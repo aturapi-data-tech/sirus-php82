@@ -25,13 +25,6 @@ new class extends Component {
         $this->registerAreas(['modal-suket-ugd']);
     }
 
-    public function rendering(): void
-    {
-        $default = $this->getDefaultSuket();
-        $current = $this->dataDaftarUGD['suket'] ?? [];
-        $this->dataDaftarUGD['suket'] = array_replace_recursive($default, $current);
-    }
-
     /* ===============================
      | OPEN
      =============================== */

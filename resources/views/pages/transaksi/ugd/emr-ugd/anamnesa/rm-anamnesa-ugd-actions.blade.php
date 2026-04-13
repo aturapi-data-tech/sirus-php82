@@ -35,13 +35,6 @@ new class extends Component {
         $this->registerAreas(['modal-anamnesa-ugd']);
     }
 
-    public function rendering(): void
-    {
-        $default = $this->getDefaultAnamnesa();
-        $current = $this->dataDaftarUGD['anamnesa'] ?? [];
-        $this->dataDaftarUGD['anamnesa'] = array_replace_recursive($default, $current);
-    }
-
     /* ===============================
      | OPEN
      =============================== */
