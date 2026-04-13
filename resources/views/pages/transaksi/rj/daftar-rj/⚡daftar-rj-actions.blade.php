@@ -226,8 +226,16 @@ new class extends Component {
             $message = '';
 
             if ($this->formMode === 'create') {
-                Cache::lock("lock:rstxn_rjhdrs:{$rjNo}", 15)->block(5, function () use ($rjNo, &$message) {
-                    DB::transaction(function () use ($rjNo, &$message) {
+                $drId = $this->dataDaftarPoliRJ['drId'];
+                $rjDateCarbon = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate']);
+                $lockKey = "lock:antrian:{$drId}:" . $rjDateCarbon->format('Ymd');
+
+                Cache::lock($lockKey, 15)->block(5, function () use ($rjNo, $drId, $rjDateCarbon, &$message) {
+                    DB::transaction(function () use ($rjNo, $drId, $rjDateCarbon, &$message) {
+                        // Re-hitung noAntrian di dalam lock untuk cegah race condition
+                        if (!empty($this->dataDaftarPoliRJ['klaimId']) && $this->dataDaftarPoliRJ['klaimId'] !== 'KR') {
+                            $this->dataDaftarPoliRJ['noAntrian'] = $this->hitungNoAntrian($drId, $rjDateCarbon);
+                        }
                         DB::table('rstxn_rjhdrs')->insert($this->buildPayload($rjNo));
                         $this->updateJsonData($rjNo);
                         $message = 'Data Rawat Jalan berhasil disimpan.';
@@ -430,23 +438,7 @@ new class extends Component {
                 if (!empty($data['rjDate']) && !empty($data['drId'])) {
                     $rjDateCarbon = Carbon::createFromFormat('d/m/Y H:i:s', $data['rjDate']);
 
-                    // Pasien yang sudah terdaftar di rstxn_rjhdrs (checkin / daftar offline)
-                    $noUrutRjhdrs = DB::table('rstxn_rjhdrs')
-                        ->where('dr_id', $data['drId'])
-                        ->where('klaim_id', '!=', 'KR')
-                        ->whereRaw("to_char(rj_date, 'ddmmyyyy') = ?", [$rjDateCarbon->format('dmY')])
-                        ->count();
-
-                    // Slot booking yang sudah dipesan tapi belum checkin (status Belum)
-                    // — agar no antrian offline tidak bentrok dengan no antrian booking
-                    $noUrutBooking = DB::table('referensi_mobilejkn_bpjs as b')
-                        ->join('rsmst_doctors as d', 'd.kd_dr_bpjs', '=', 'b.kodedokter')
-                        ->where('d.dr_id', $data['drId'])
-                        ->where('b.tanggalperiksa', $rjDateCarbon->format('Y-m-d'))
-                        ->where('b.status', 'Belum')
-                        ->count();
-
-                    $data['noAntrian'] = $noUrutRjhdrs + $noUrutBooking + 1;
+                    $data['noAntrian'] = $this->hitungNoAntrian($data['drId'], $rjDateCarbon);
                 }
             } else {
                 $data['noAntrian'] = 999;
@@ -638,6 +630,24 @@ new class extends Component {
         return $reqSep['request']['t_sep']['rujukan']['noRujukan']
             ?? $this->dataDaftarPoliRJ['noReferensi']
             ?? null;
+    }
+
+    private function hitungNoAntrian(string $drId, Carbon $rjDateCarbon): int
+    {
+        $maxAntrianRjhdrs = (int) DB::table('rstxn_rjhdrs')
+            ->where('dr_id', $drId)
+            ->where('klaim_id', '!=', 'KR')
+            ->whereRaw("to_char(rj_date, 'ddmmyyyy') = ?", [$rjDateCarbon->format('dmY')])
+            ->max('no_antrian');
+
+        $maxAntrianBooking = (int) DB::table('referensi_mobilejkn_bpjs as b')
+            ->join('rsmst_doctors as d', 'd.kd_dr_bpjs', '=', 'b.kodedokter')
+            ->where('d.dr_id', $drId)
+            ->where('b.tanggalperiksa', $rjDateCarbon->format('Y-m-d'))
+            ->where('b.status', 'Belum')
+            ->max('b.angkaantrean');
+
+        return max($maxAntrianRjhdrs, $maxAntrianBooking) + 1;
     }
 
     private function updateTaskId3(): void
