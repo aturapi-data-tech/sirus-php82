@@ -33,6 +33,7 @@ new class extends Component {
         $this->incrementVersion('modal');
 
         $this->dispatch('open-modal', name: 'master-others-actions');
+        $this->dispatch('focus-other-id'); // ← ID Others kosong saat create
     }
 
     #[On('master.others.openEdit')]
@@ -50,6 +51,7 @@ new class extends Component {
         $this->incrementVersion('modal');
 
         $this->dispatch('open-modal', name: 'master-others-actions');
+        $this->dispatch('focus-other-desc'); // ← ID Others sudah ada saat edit, langsung ke nama
     }
 
     public function closeModal(): void
@@ -223,6 +225,12 @@ new class extends Component {
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 bg-gray-50/70 dark:bg-gray-950/20">
                 <div class="max-w-4xl">
+
+                    {{-- x-data: tangkap focus event dari PHP --}}
+                    <div x-data
+                        x-on:focus-other-id.window="$nextTick(() => setTimeout(() => $refs.inputOtherId?.focus(), 150))"
+                        x-on:focus-other-desc.window="$nextTick(() => setTimeout(() => $refs.inputOtherDesc?.focus(), 150))">
+                    </div>
                     <div
                         class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                         <div class="p-5 space-y-5">
@@ -236,8 +244,10 @@ new class extends Component {
                                     {{-- Other ID --}}
                                     <div>
                                         <x-input-label value="ID Lain-lain" />
-                                        <x-text-input wire:model.live="otherId" :disabled="$formMode === 'edit'"
-                                            :error="$errors->has('otherId')" class="w-full mt-1" />
+                                        <x-text-input wire:model.live="otherId" x-ref="inputOtherId"
+                                            x-on:keydown.enter.prevent="$refs.inputOtherDesc?.focus()"
+                                            :disabled="$formMode === 'edit'" :error="$errors->has('otherId')"
+                                            class="w-full mt-1" />
                                         <x-input-error :messages="$errors->get('otherId')" class="mt-1" />
                                     </div>
 
@@ -257,8 +267,10 @@ new class extends Component {
                             {{-- Nama Lain-lain --}}
                             <div>
                                 <x-input-label value="Nama Lain-lain" />
-                                <x-text-input wire:model.live="otherDesc" :error="$errors->has('otherDesc')"
-                                    class="w-full mt-1" placeholder="Contoh: Administrasi, Ambulans, dll" />
+                                <x-text-input wire:model.live="otherDesc" x-ref="inputOtherDesc"
+                                    x-on:keydown.enter.prevent="$refs.inputOtherPrice?.focus()"
+                                    :error="$errors->has('otherDesc')" class="w-full mt-1"
+                                    placeholder="Contoh: Administrasi, Ambulans, dll" />
                                 <x-input-error :messages="$errors->get('otherDesc')" class="mt-1" />
                             </div>
 
@@ -269,7 +281,8 @@ new class extends Component {
                                     <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                         <span class="text-gray-500 sm:text-sm">Rp</span>
                                     </div>
-                                    <x-text-input wire:model.live="otherPrice" :error="$errors->has('otherPrice')"
+                                    <x-text-input wire:model.live="otherPrice" x-ref="inputOtherPrice"
+                                        x-on:keydown.enter.prevent="$wire.save()" :error="$errors->has('otherPrice')"
                                         class="w-full pl-10" placeholder="0" />
                                 </div>
                                 <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">

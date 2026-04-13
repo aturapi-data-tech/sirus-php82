@@ -439,21 +439,20 @@ new class extends Component {
                 </p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-            <x-outline-button wire:click="openBulkDaftar" class="shrink-0 gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                Daftarkan Semua ke Aplicares &amp; SIRS
-            </x-outline-button>
-            <x-outline-button wire:click="openPanel" class="shrink-0 gap-2">
-                <svg class="w-4 h-4" fill="none"
-                    stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                Data Kamar Terdaftar di Aplicares &amp; SIRS
-            </x-outline-button>
+                <x-outline-button wire:click="openBulkDaftar" class="shrink-0 gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    Daftarkan Semua ke Aplicares &amp; SIRS
+                </x-outline-button>
+                <x-outline-button wire:click="openPanel" class="shrink-0 gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Data Kamar Terdaftar di Aplicares &amp; SIRS
+                </x-outline-button>
             </div>{{-- closes flex gap-2 shrink-0 --}}
         </div>
     </header>
@@ -505,80 +504,79 @@ new class extends Component {
                                 <tbody
                                     class="text-gray-700 divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-200">
                                     @forelse ($this->bangsals as $bangsal)
-                                        @php $isActive = $selectedBangsalId === $bangsal->bangsal_id; @endphp
-                                        <tr wire:key="bangsal-{{ $bangsal->bangsal_id }}"
-                                            wire:click="selectBangsal('{{ $bangsal->bangsal_id }}', '{{ addslashes($bangsal->bangsal_name) }}')"
-                                            class="cursor-pointer transition
+                                    @php $isActive = $selectedBangsalId === $bangsal->bangsal_id; @endphp
+                                    <tr wire:key="bangsal-{{ $bangsal->bangsal_id }}"
+                                        wire:click="selectBangsal('{{ $bangsal->bangsal_id }}', '{{ addslashes($bangsal->bangsal_name) }}')"
+                                        class="cursor-pointer transition
                                            {{ $isActive
                                                ? 'bg-brand-green/5 dark:bg-brand-green/10 ring-1 ring-inset ring-brand-green/30 dark:ring-brand-green/40'
                                                : 'bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/60' }}">
 
-                                            {{-- BANGSAL: nama + id + kode sl + seq --}}
-                                            <td class="px-5 py-4 align-top space-y-1">
-                                                <div class="flex items-center gap-2">
-                                                    @if ($isActive)
-                                                        <svg class="w-3.5 h-3.5 text-brand shrink-0" fill="currentColor"
-                                                            viewBox="0 0 20 20">
-                                                            <path fill-rule="evenodd"
-                                                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                                                clip-rule="evenodd" />
-                                                        </svg>
-                                                    @endif
-                                                    <span
-                                                        class="font-semibold text-base {{ $isActive ? 'text-brand dark:text-brand-lime' : 'text-gray-800 dark:text-gray-100' }}">
-                                                        {{ $bangsal->bangsal_name }}
-                                                    </span>
-                                                </div>
-                                                <div
-                                                    class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                                                    <span class="font-mono">{{ $bangsal->bangsal_id }}</span>
-                                                    @if ($bangsal->sl_codefrom)
-                                                        <span>SL: <span
-                                                                class="font-mono">{{ $bangsal->sl_codefrom }}</span></span>
-                                                    @endif
-                                                    @if ($bangsal->bangsal_seq)
-                                                        <span>Seq: {{ $bangsal->bangsal_seq }}</span>
-                                                    @endif
-                                                </div>
-                                            </td>
-
-                                            {{-- KAPASITAS: jumlah kamar + bed + bed bangsal --}}
-                                            <td class="px-5 py-4 align-top space-y-1">
-                                                <div class="flex items-center gap-2">
-                                                    <x-badge variant="info">{{ $bangsal->jumlah_kamar }} Kamar</x-badge>
-                                                    <x-badge variant="success">{{ $bangsal->jumlah_bed }} Bed</x-badge>
-                                                </div>
-                                                @if ($bangsal->bed_bangsal)
-                                                    <div class="text-xs text-gray-400 dark:text-gray-500">
-                                                        Bed bangsal: <span
-                                                            class="font-mono">{{ $bangsal->bed_bangsal }}</span>
-                                                    </div>
+                                        {{-- BANGSAL: nama + id + kode sl + seq --}}
+                                        <td class="px-5 py-4 align-top space-y-1">
+                                            <div class="flex items-center gap-2">
+                                                @if ($isActive)
+                                                <svg class="w-3.5 h-3.5 text-brand shrink-0" fill="currentColor"
+                                                    viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd"
+                                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                                        clip-rule="evenodd" />
+                                                </svg>
                                                 @endif
-                                            </td>
+                                                <span
+                                                    class="font-semibold text-base {{ $isActive ? 'text-brand dark:text-brand-lime' : 'text-gray-800 dark:text-gray-100' }}">
+                                                    {{ $bangsal->bangsal_name }}
+                                                </span>
+                                            </div>
+                                            <div
+                                                class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                                                <span class="font-mono">{{ $bangsal->bangsal_id }}</span>
+                                                @if ($bangsal->sl_codefrom)
+                                                <span>SL: <span class="font-mono">{{ $bangsal->sl_codefrom
+                                                        }}</span></span>
+                                                @endif
+                                                @if ($bangsal->bangsal_seq)
+                                                <span>Seq: {{ $bangsal->bangsal_seq }}</span>
+                                                @endif
+                                            </div>
+                                        </td>
 
-                                            {{-- AKSI --}}
-                                            <td class="px-5 py-4 align-top" wire:click.stop>
-                                                <div class="flex flex-wrap gap-2">
-                                                    <x-outline-button type="button"
-                                                        wire:click="openEditBangsal('{{ $bangsal->bangsal_id }}')">
-                                                        Edit
-                                                    </x-outline-button>
-                                                    <x-confirm-button variant="danger" :action="'requestDeleteBangsal(\'' . $bangsal->bangsal_id . '\')'"
-                                                        title="Hapus Bangsal"
-                                                        message="Yakin hapus bangsal {{ $bangsal->bangsal_name }}?"
-                                                        confirmText="Ya, hapus" cancelText="Batal">
-                                                        Hapus
-                                                    </x-confirm-button>
-                                                </div>
-                                            </td>
-                                        </tr>
+                                        {{-- KAPASITAS: jumlah kamar + bed + bed bangsal --}}
+                                        <td class="px-5 py-4 align-top space-y-1">
+                                            <div class="flex items-center gap-2">
+                                                <x-badge variant="info">{{ $bangsal->jumlah_kamar }} Kamar</x-badge>
+                                                <x-badge variant="success">{{ $bangsal->jumlah_bed }} Bed</x-badge>
+                                            </div>
+                                            @if ($bangsal->bed_bangsal)
+                                            <div class="text-xs text-gray-400 dark:text-gray-500">
+                                                Bed bangsal: <span class="font-mono">{{ $bangsal->bed_bangsal }}</span>
+                                            </div>
+                                            @endif
+                                        </td>
+
+                                        {{-- AKSI --}}
+                                        <td class="px-5 py-4 align-top" wire:click.stop>
+                                            <div class="flex flex-wrap gap-2">
+                                                <x-outline-button type="button"
+                                                    wire:click="openEditBangsal('{{ $bangsal->bangsal_id }}')">
+                                                    Edit
+                                                </x-outline-button>
+                                                <x-confirm-button variant="danger"
+                                                    :action="'requestDeleteBangsal(\'' . $bangsal->bangsal_id . '\')'"
+                                                    title="Hapus Bangsal"
+                                                    message="Yakin hapus bangsal {{ $bangsal->bangsal_name }}?"
+                                                    confirmText="Ya, hapus" cancelText="Batal">
+                                                    Hapus
+                                                </x-confirm-button>
+                                            </div>
+                                        </td>
+                                    </tr>
                                     @empty
-                                        <tr>
-                                            <td colspan="3"
-                                                class="px-5 py-10 text-center text-gray-500 dark:text-gray-400">
-                                                Data bangsal tidak ditemukan.
-                                            </td>
-                                        </tr>
+                                    <tr>
+                                        <td colspan="3" class="px-5 py-10 text-center text-gray-500 dark:text-gray-400">
+                                            Data bangsal tidak ditemukan.
+                                        </td>
+                                    </tr>
                                     @endforelse
                                 </tbody>
                             </table>
@@ -591,284 +589,272 @@ new class extends Component {
                 </div>
                 {{-- ══ KAMAR (muncul setelah bangsal dipilih) ═══════════ --}}
                 @if ($selectedBangsalId)
-                    <div wire:loading.class="opacity-60" wire:target="selectBangsal">
+                <div wire:loading.class="opacity-60" wire:target="selectBangsal">
 
-                        {{-- Toolbar Kamar --}}
-                        <div
-                            class="sticky z-30 px-4 py-3 bg-white border-b border-gray-200 top-20 dark:bg-gray-900 dark:border-gray-700">
-                            <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                                <div class="flex items-center gap-3 w-full lg:max-w-xs">
-                                    <x-text-input type="text" wire:model.live.debounce.300ms="searchKamar"
-                                        placeholder="Cari kamar..." class="block w-full" />
+                    {{-- Toolbar Kamar --}}
+                    <div
+                        class="sticky z-30 px-4 py-3 bg-white border-b border-gray-200 top-20 dark:bg-gray-900 dark:border-gray-700">
+                        <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                            <div class="flex items-center gap-3 w-full lg:max-w-xs">
+                                <x-text-input type="text" wire:model.live.debounce.300ms="searchKamar"
+                                    placeholder="Cari kamar..." class="block w-full" />
+                            </div>
+                            <div class="flex items-center justify-end gap-2">
+                                <div class="w-28">
+                                    <x-select-input wire:model.live="itemsPerPageKamar">
+                                        <option value="5">5</option>
+                                        <option value="10">10</option>
+                                        <option value="15">15</option>
+                                        <option value="20">20</option>
+                                    </x-select-input>
                                 </div>
-                                <div class="flex items-center justify-end gap-2">
-                                    <div class="w-28">
-                                        <x-select-input wire:model.live="itemsPerPageKamar">
-                                            <option value="5">5</option>
-                                            <option value="10">10</option>
-                                            <option value="15">15</option>
-                                            <option value="20">20</option>
-                                        </x-select-input>
-                                    </div>
-                                    <x-primary-button type="button" wire:click="openCreateKamar">
-                                        + Tambah Kamar
-                                    </x-primary-button>
-                                </div>
+                                <x-primary-button type="button" wire:click="openCreateKamar">
+                                    + Tambah Kamar
+                                </x-primary-button>
                             </div>
                         </div>
+                    </div>
 
-                        {{-- Rekap Kamar --}}
-                        @php
-                            $rekapRooms  = $this->rooms;
-                            $totalKamar  = $rekapRooms->total();
-                            $aktifKamar  = collect($rekapRooms->items())->where('active_status', '1')->count();
-                            $nonAktif    = collect($rekapRooms->items())->where('active_status', '0')->count();
-                        @endphp
-                        <div class="flex items-center gap-3 px-5 py-2 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40 text-xs flex-wrap">
-                            <div class="flex items-center gap-1.5">
-                                <span class="text-gray-400 dark:text-gray-500">Total</span>
-                                <span class="font-bold text-gray-700 dark:text-gray-200">{{ $totalKamar }} kamar</span>
-                            </div>
-                            <span class="text-gray-200 dark:text-gray-700">·</span>
-                            <div class="flex items-center gap-1.5">
-                                <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-                                <span class="text-gray-500 dark:text-gray-400">Aktif</span>
-                                <span class="font-bold text-emerald-600 dark:text-emerald-400">{{ $aktifKamar }}</span>
-                            </div>
-                            <span class="text-gray-200 dark:text-gray-700">·</span>
-                            <div class="flex items-center gap-1.5">
-                                <span class="inline-block w-2 h-2 rounded-full bg-red-400"></span>
-                                <span class="text-gray-500 dark:text-gray-400">Non Aktif</span>
-                                <span class="font-bold text-red-500 dark:text-red-400">{{ $nonAktif }}</span>
-                            </div>
+                    {{-- Rekap Kamar --}}
+                    @php
+                    $rekapRooms = $this->rooms;
+                    $totalKamar = $rekapRooms->total();
+                    $aktifKamar = collect($rekapRooms->items())->where('active_status', '1')->count();
+                    $nonAktif = collect($rekapRooms->items())->where('active_status', '0')->count();
+                    @endphp
+                    <div
+                        class="flex items-center gap-3 px-5 py-2 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40 text-xs flex-wrap">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-gray-400 dark:text-gray-500">Total</span>
+                            <span class="font-bold text-gray-700 dark:text-gray-200">{{ $totalKamar }} kamar</span>
                         </div>
+                        <span class="text-gray-200 dark:text-gray-700">·</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <span class="text-gray-500 dark:text-gray-400">Aktif</span>
+                            <span class="font-bold text-emerald-600 dark:text-emerald-400">{{ $aktifKamar }}</span>
+                        </div>
+                        <span class="text-gray-200 dark:text-gray-700">·</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="inline-block w-2 h-2 rounded-full bg-red-400"></span>
+                            <span class="text-gray-500 dark:text-gray-400">Non Aktif</span>
+                            <span class="font-bold text-red-500 dark:text-red-400">{{ $nonAktif }}</span>
+                        </div>
+                    </div>
 
-                        {{-- Tabel Kamar --}}
-                        <div
-                            class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-                            <div class="overflow-x-auto overflow-y-auto max-h-[calc(100dvh-320px)] rounded-t-2xl">
-                                <table class="min-w-full text-sm">
-                                    <thead
-                                        class="sticky top-0 z-10 text-gray-600 bg-gray-50 dark:bg-gray-800 dark:text-gray-200">
-                                        <tr class="text-left">
-                                            <th class="px-4 py-3 w-8"></th>
-                                            <th class="px-5 py-3 font-semibold">
-                                                KAMAR
-                                                <span class="font-normal text-brand dark:text-brand-lime ml-1">—
-                                                    {{ $selectedBangsalName }}</span>
-                                            </th>
-                                            <th class="px-5 py-3 font-semibold">TARIF</th>
-                                            <th class="px-5 py-3 font-semibold">AKSI</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody
-                                        class="text-gray-700 divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-200">
-                                        @forelse ($this->rooms as $room)
-                                            @php
-                                                $isExpanded = in_array($room->room_id, $expandedRooms);
-                                                $beds = $bedsCache[$room->room_id] ?? [];
-                                                $isActive = (string) $room->active_status === '1';
-                                            @endphp
+                    {{-- Tabel Kamar --}}
+                    <div
+                        class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                        <div class="overflow-x-auto overflow-y-auto max-h-[calc(100dvh-320px)] rounded-t-2xl">
+                            <table class="min-w-full text-sm">
+                                <thead
+                                    class="sticky top-0 z-10 text-gray-600 bg-gray-50 dark:bg-gray-800 dark:text-gray-200">
+                                    <tr class="text-left">
+                                        <th class="px-4 py-3 w-8"></th>
+                                        <th class="px-5 py-3 font-semibold">
+                                            KAMAR
+                                            <span class="font-normal text-brand dark:text-brand-lime ml-1">—
+                                                {{ $selectedBangsalName }}</span>
+                                        </th>
+                                        <th class="px-5 py-3 font-semibold">TARIF</th>
+                                        <th class="px-5 py-3 font-semibold">AKSI</th>
+                                    </tr>
+                                </thead>
+                                <tbody
+                                    class="text-gray-700 divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-200">
+                                    @forelse ($this->rooms as $room)
+                                    @php
+                                    $isExpanded = in_array($room->room_id, $expandedRooms);
+                                    $beds = $bedsCache[$room->room_id] ?? [];
+                                    $isActive = (string) $room->active_status === '1';
+                                    @endphp
 
-                                            {{-- Row Kamar --}}
-                                            <tr wire:key="room-{{ $room->room_id }}"
-                                                wire:click="toggleRoom('{{ $room->room_id }}')"
-                                                class="cursor-pointer transition
+                                    {{-- Row Kamar --}}
+                                    <tr wire:key="room-{{ $room->room_id }}"
+                                        wire:click="toggleRoom('{{ $room->room_id }}')"
+                                        class="cursor-pointer transition
                                                    {{ $isExpanded ? 'bg-indigo-50 dark:bg-indigo-900/10' : 'hover:bg-gray-50 dark:hover:bg-gray-800/60' }}">
 
-                                                {{-- Chevron --}}
-                                                <td class="px-4 py-4 text-center text-gray-400 align-top">
-                                                    <svg class="w-4 h-4 transition-transform {{ $isExpanded ? 'rotate-90' : '' }}"
-                                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2" d="M9 5l7 7-7 7" />
-                                                    </svg>
-                                                </td>
+                                        {{-- Chevron --}}
+                                        <td class="px-4 py-4 text-center text-gray-400 align-top">
+                                            <svg class="w-4 h-4 transition-transform {{ $isExpanded ? 'rotate-90' : '' }}"
+                                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </td>
 
-                                                {{-- KAMAR: nama + id + kelas + badge BPJS + status + bed --}}
-                                                <td class="px-5 py-4 align-top space-y-1">
-                                                    <div
-                                                        class="font-semibold text-base text-gray-800 dark:text-gray-100">
-                                                        {{ $room->room_name }}
-                                                    </div>
-                                                    <div
-                                                        class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                                                        <span class="font-mono">{{ $room->room_id }}</span>
-                                                        <span>{{ $room->class_desc ?? 'Kelas ' . $room->class_id }}</span>
-                                                        @if ($room->aplic_kodekelas)
-                                                            <span
-                                                                class="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold
+                                        {{-- KAMAR: nama + id + kelas + badge BPJS + status + bed --}}
+                                        <td class="px-5 py-4 align-top space-y-1">
+                                            <div class="font-semibold text-base text-gray-800 dark:text-gray-100">
+                                                {{ $room->room_name }}
+                                            </div>
+                                            <div
+                                                class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                                                <span class="font-mono">{{ $room->room_id }}</span>
+                                                <span>{{ $room->class_desc ?? 'Kelas ' . $room->class_id }}</span>
+                                                @if ($room->aplic_kodekelas)
+                                                <span
+                                                    class="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold
                                                                          bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
-                                                                BPJS: {{ $room->aplic_kodekelas }}
-                                                            </span>
-                                                        @endif
-                                                    </div>
-                                                    <div class="flex items-center gap-2 pt-0.5">
-                                                        <x-badge :variant="$isActive ? 'success' : 'danger'">
-                                                            {{ $isActive ? 'Aktif' : 'Non Aktif' }}
-                                                        </x-badge>
-                                                        <x-badge variant="info">{{ $room->jumlah_bed }} Bed</x-badge>
-                                                    </div>
-                                                </td>
+                                                    BPJS: {{ $room->aplic_kodekelas }}
+                                                </span>
+                                                @endif
+                                            </div>
+                                            <div class="flex items-center gap-2 pt-0.5">
+                                                <x-badge :variant="$isActive ? 'success' : 'danger'">
+                                                    {{ $isActive ? 'Aktif' : 'Non Aktif' }}
+                                                </x-badge>
+                                                <x-badge variant="info">{{ $room->jumlah_bed }} Bed</x-badge>
+                                            </div>
+                                        </td>
 
-                                                {{-- TARIF: kamar | perawatan --}}
-                                                <td class="px-5 py-4 align-top">
-                                                    <div class="flex items-start gap-6">
-                                                        <div>
-                                                            <div
-                                                                class="text-xs text-gray-400 dark:text-gray-500 mb-0.5">
-                                                                Kamar</div>
-                                                            <div
-                                                                class="font-mono font-semibold text-gray-700 dark:text-gray-200">
-                                                                {{ number_format($room->room_price ?? 0, 0, ',', '.') }}
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <div
-                                                                class="text-xs text-gray-400 dark:text-gray-500 mb-0.5">
-                                                                Perawatan</div>
-                                                            <div class="font-mono text-gray-600 dark:text-gray-300">
-                                                                {{ number_format($room->perawatan_price ?? 0, 0, ',', '.') }}
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <div
-                                                                class="text-xs text-gray-400 dark:text-gray-500 mb-0.5">
-                                                                Pel. Umum</div>
-                                                            <div class="font-mono text-gray-600 dark:text-gray-300">
-                                                                {{ number_format($room->common_service ?? 0, 0, ',', '.') }}
-                                                            </div>
-                                                        </div>
+                                        {{-- TARIF: kamar | perawatan --}}
+                                        <td class="px-5 py-4 align-top">
+                                            <div class="flex items-start gap-6">
+                                                <div>
+                                                    <div class="text-xs text-gray-400 dark:text-gray-500 mb-0.5">
+                                                        Kamar</div>
+                                                    <div
+                                                        class="font-mono font-semibold text-gray-700 dark:text-gray-200">
+                                                        {{ number_format($room->room_price ?? 0, 0, ',', '.') }}
                                                     </div>
-                                                </td>
-
-                                                {{-- AKSI --}}
-                                                <td class="px-5 py-4 align-top" wire:click.stop>
-                                                    <div class="flex flex-wrap gap-2">
-                                                        <x-outline-button type="button"
-                                                            wire:click="openEditKamar('{{ $room->room_id }}')">
-                                                            Edit
-                                                        </x-outline-button>
-                                                        <x-confirm-button variant="danger" :action="'requestDeleteKamar(\'' . $room->room_id . '\')'"
-                                                            title="Hapus Kamar"
-                                                            message="Yakin hapus kamar {{ $room->room_name }}?"
-                                                            confirmText="Ya, hapus" cancelText="Batal">
-                                                            Hapus
-                                                        </x-confirm-button>
+                                                </div>
+                                                <div>
+                                                    <div class="text-xs text-gray-400 dark:text-gray-500 mb-0.5">
+                                                        Perawatan</div>
+                                                    <div class="font-mono text-gray-600 dark:text-gray-300">
+                                                        {{ number_format($room->perawatan_price ?? 0, 0, ',', '.') }}
                                                     </div>
-                                                </td>
-                                            </tr>
+                                                </div>
+                                                <div>
+                                                    <div class="text-xs text-gray-400 dark:text-gray-500 mb-0.5">
+                                                        Pel. Umum</div>
+                                                    <div class="font-mono text-gray-600 dark:text-gray-300">
+                                                        {{ number_format($room->common_service ?? 0, 0, ',', '.') }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
 
-                                            {{-- Row Bed (expandable) --}}
-                                            @if ($isExpanded)
-                                                <tr wire:key="beds-{{ $room->room_id }}"
-                                                    class="bg-indigo-50/60 dark:bg-indigo-900/5">
-                                                    <td colspan="4" class="px-8 py-3">
-                                                        <div class="flex flex-wrap gap-2">
-                                                            {{-- Tambah bed --}}
-                                                            <x-ghost-button
-                                                                wire:click="openCreateBed('{{ $room->room_id }}')"
-                                                                class="!text-indigo-500 hover:!bg-indigo-50 dark:!text-indigo-400 dark:hover:!bg-indigo-900/20
+                                        {{-- AKSI --}}
+                                        <td class="px-5 py-4 align-top" wire:click.stop>
+                                            <div class="flex flex-wrap gap-2">
+                                                <x-outline-button type="button"
+                                                    wire:click="openEditKamar('{{ $room->room_id }}')">
+                                                    Edit
+                                                </x-outline-button>
+                                                <x-confirm-button variant="danger"
+                                                    :action="'requestDeleteKamar(\'' . $room->room_id . '\')'"
+                                                    title="Hapus Kamar"
+                                                    message="Yakin hapus kamar {{ $room->room_name }}?"
+                                                    confirmText="Ya, hapus" cancelText="Batal">
+                                                    Hapus
+                                                </x-confirm-button>
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    {{-- Row Bed (expandable) --}}
+                                    @if ($isExpanded)
+                                    <tr wire:key="beds-{{ $room->room_id }}"
+                                        class="bg-indigo-50/60 dark:bg-indigo-900/5">
+                                        <td colspan="4" class="px-8 py-3">
+                                            <div class="flex flex-wrap gap-2">
+                                                {{-- Tambah bed --}}
+                                                <x-ghost-button wire:click="openCreateBed('{{ $room->room_id }}')"
+                                                    class="!text-indigo-500 hover:!bg-indigo-50 dark:!text-indigo-400 dark:hover:!bg-indigo-900/20
                                                                        !px-3 !py-1.5 !text-xs border border-dashed border-indigo-300 dark:border-indigo-600
                                                                        focus:!ring-indigo-200 dark:focus:!ring-indigo-900/40">
-                                                                <svg class="w-3.5 h-3.5" fill="none"
-                                                                    stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round"
-                                                                        stroke-linejoin="round" stroke-width="2"
-                                                                        d="M12 4v16m8-8H4" />
-                                                                </svg>
-                                                                Tambah Bed
-                                                            </x-ghost-button>
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2" d="M12 4v16m8-8H4" />
+                                                    </svg>
+                                                    Tambah Bed
+                                                </x-ghost-button>
 
-                                                            @if (empty($beds))
-                                                                <p class="text-xs text-gray-400 italic self-center">
-                                                                    Belum
-                                                                    ada bed.</p>
-                                                            @else
-                                                                @foreach ($beds as $bed)
-                                                                    <div
-                                                                        class="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg
+                                                @if (empty($beds))
+                                                <p class="text-xs text-gray-400 italic self-center">
+                                                    Belum
+                                                    ada bed.</p>
+                                                @else
+                                                @foreach ($beds as $bed)
+                                                <div
+                                                    class="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg
                                                                             border border-indigo-200 dark:border-indigo-700
                                                                             bg-white dark:bg-gray-800 shadow-sm text-xs">
-                                                                        <svg class="w-3.5 h-3.5 text-indigo-400 shrink-0"
-                                                                            fill="none" stroke="currentColor"
-                                                                            viewBox="0 0 24 24">
-                                                                            <path stroke-linecap="round"
-                                                                                stroke-linejoin="round"
-                                                                                stroke-width="2"
-                                                                                d="M5 12h14M5 12c0-2.761 2.686-5 6-5s6 2.239 6 5M5 12c0 2.761 2.686 5 6 5s6-2.239 6-5" />
-                                                                        </svg>
-                                                                        <span
-                                                                            class="font-bold text-gray-700 dark:text-gray-200 font-mono">{{ $bed['bed_no'] }}</span>
-                                                                        @if (!empty($bed['bed_desc']))
-                                                                            <span
-                                                                                class="text-gray-400 dark:text-gray-500">{{ $bed['bed_desc'] }}</span>
-                                                                        @endif
-                                                                        <span
-                                                                            class="hidden group-hover:inline-flex items-center gap-1 ml-1">
-                                                                            <x-ghost-button
-                                                                                wire:click="openEditBed('{{ $bed['bed_no'] }}', '{{ $room->room_id }}')"
-                                                                                class="!text-indigo-500 hover:!bg-indigo-50 dark:!text-indigo-400 dark:hover:!bg-indigo-900/20
+                                                    <svg class="w-3.5 h-3.5 text-indigo-400 shrink-0" fill="none"
+                                                        stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M5 12h14M5 12c0-2.761 2.686-5 6-5s6 2.239 6 5M5 12c0 2.761 2.686 5 6 5s6-2.239 6-5" />
+                                                    </svg>
+                                                    <span
+                                                        class="font-bold text-gray-700 dark:text-gray-200 font-mono">{{
+                                                        $bed['bed_no'] }}</span>
+                                                    @if (!empty($bed['bed_desc']))
+                                                    <span class="text-gray-400 dark:text-gray-500">{{ $bed['bed_desc']
+                                                        }}</span>
+                                                    @endif
+                                                    <span
+                                                        class="hidden group-hover:inline-flex items-center gap-1 ml-1">
+                                                        <x-ghost-button
+                                                            wire:click="openEditBed('{{ $bed['bed_no'] }}', '{{ $room->room_id }}')"
+                                                            class="!text-indigo-500 hover:!bg-indigo-50 dark:!text-indigo-400 dark:hover:!bg-indigo-900/20
                                                                                        !p-1 !rounded focus:!ring-indigo-200">
-                                                                                <svg class="w-3 h-3" fill="none"
-                                                                                    stroke="currentColor"
-                                                                                    viewBox="0 0 24 24">
-                                                                                    <path stroke-linecap="round"
-                                                                                        stroke-linejoin="round"
-                                                                                        stroke-width="2"
-                                                                                        d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828A2 2 0 019 16H7v-2a2 2 0 01.586-1.414z" />
-                                                                                </svg>
-                                                                            </x-ghost-button>
-                                                                            <x-ghost-button
-                                                                                wire:click="requestDeleteBed('{{ $bed['bed_no'] }}', '{{ $room->room_id }}')"
-                                                                                wire:confirm="Hapus bed {{ $bed['bed_no'] }}?"
-                                                                                class="!text-red-400 hover:!bg-red-50 dark:!text-red-400 dark:hover:!bg-red-900/20
+                                                            <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828A2 2 0 019 16H7v-2a2 2 0 01.586-1.414z" />
+                                                            </svg>
+                                                        </x-ghost-button>
+                                                        <x-ghost-button
+                                                            wire:click="requestDeleteBed('{{ $bed['bed_no'] }}', '{{ $room->room_id }}')"
+                                                            wire:confirm="Hapus bed {{ $bed['bed_no'] }}?"
+                                                            class="!text-red-400 hover:!bg-red-50 dark:!text-red-400 dark:hover:!bg-red-900/20
                                                                                        !p-1 !rounded focus:!ring-red-200">
-                                                                                <svg class="w-3 h-3" fill="none"
-                                                                                    stroke="currentColor"
-                                                                                    viewBox="0 0 24 24">
-                                                                                    <path stroke-linecap="round"
-                                                                                        stroke-linejoin="round"
-                                                                                        stroke-width="2"
-                                                                                        d="M6 18L18 6M6 6l12 12" />
-                                                                                </svg>
-                                                                            </x-ghost-button>
-                                                                        </span>
-                                                                    </div>
-                                                                @endforeach
-                                                            @endif
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            @endif
+                                                            <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                            </svg>
+                                                        </x-ghost-button>
+                                                    </span>
+                                                </div>
+                                                @endforeach
+                                                @endif
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @endif
 
-                                        @empty
-                                            <tr>
-                                                <td colspan="4"
-                                                    class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
-                                                    Tidak ada kamar untuk bangsal ini.
-                                                </td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div
-                                class="sticky bottom-0 z-10 px-4 py-3 bg-white border-t border-gray-200 rounded-b-2xl dark:bg-gray-900 dark:border-gray-700">
-                                {{ $this->rooms->links() }}
-                            </div>
+                                    @empty
+                                    <tr>
+                                        <td colspan="4" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
+                                            Tidak ada kamar untuk bangsal ini.
+                                        </td>
+                                    </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
                         </div>
+                        <div
+                            class="sticky bottom-0 z-10 px-4 py-3 bg-white border-t border-gray-200 rounded-b-2xl dark:bg-gray-900 dark:border-gray-700">
+                            {{ $this->rooms->links() }}
+                        </div>
+                    </div>
 
-                    </div>
+                </div>
                 @else
-                    <div class="flex flex-col items-center justify-center py-12 text-gray-400 dark:text-gray-500">
-                        <svg class="w-10 h-10 mb-3 opacity-40" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                        <p class="text-sm">Pilih bangsal di atas untuk melihat daftar kamar & bed.</p>
-                    </div>
+                <div class="flex flex-col items-center justify-center py-12 text-gray-400 dark:text-gray-500">
+                    <svg class="w-10 h-10 mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    <p class="text-sm">Pilih bangsal di atas untuk melihat daftar kamar & bed.</p>
+                </div>
                 @endif
             </div>
 
@@ -921,19 +907,16 @@ new class extends Component {
 
                     {{-- Tab bar --}}
                     <div class="flex border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-900">
-                        <button type="button" @click="tab = 'aplicares'"
-                            :class="tab === 'aplicares'
+                        <button type="button" @click="tab = 'aplicares'" :class="tab === 'aplicares'
                                 ?
                                 'border-b-2 border-brand text-brand dark:text-brand-lime dark:border-brand-lime font-semibold' :
                                 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
                             class="px-5 py-3 text-sm transition-colors flex items-center gap-2">
-                            <span
-                                class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold
                                          bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">BPJS</span>
                             Aplicares
                         </button>
-                        <button type="button" @click="tab = 'sirs'"
-                            :class="tab === 'sirs'
+                        <button type="button" @click="tab = 'sirs'" :class="tab === 'sirs'
                                 ?
                                 'border-b-2 border-brand text-brand dark:text-brand-lime dark:border-brand-lime font-semibold' :
                                 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
@@ -963,10 +946,13 @@ new class extends Component {
                 <div class="flex flex-col h-[calc(100vh-8rem)]">
 
                     {{-- Header --}}
-                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0 flex items-center justify-between gap-4">
+                    <div
+                        class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0 flex items-center justify-between gap-4">
                         <div class="flex items-center gap-3">
-                            <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 shrink-0">
-                                <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div
+                                class="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 shrink-0">
+                                <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                 </svg>
@@ -981,8 +967,7 @@ new class extends Component {
                             </div>
                         </div>
                         <x-secondary-button type="button"
-                            x-on:click="$dispatch('close-modal', { name: 'bulk-daftar-kamar' })"
-                            class="!p-2 shrink-0">
+                            x-on:click="$dispatch('close-modal', { name: 'bulk-daftar-kamar' })" class="!p-2 shrink-0">
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd"
                                     d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
@@ -993,22 +978,23 @@ new class extends Component {
 
                     {{-- Tab bar: Aplicares | SIRS --}}
                     <div x-data="{ tab: 'aplicares' }" class="flex flex-col flex-1 overflow-hidden">
-                        <div class="flex border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-900">
-                            <button type="button" @click="tab = 'aplicares'"
-                                :class="tab === 'aplicares'
+                        <div
+                            class="flex border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-900">
+                            <button type="button" @click="tab = 'aplicares'" :class="tab === 'aplicares'
                                     ? 'border-b-2 border-brand text-brand dark:text-brand-lime dark:border-brand-lime font-semibold'
                                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
                                 class="px-5 py-3 text-sm transition-colors flex items-center gap-2">
-                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold
+                                <span
+                                    class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold
                                              bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">BPJS</span>
                                 Aplicares
                             </button>
-                            <button type="button" @click="tab = 'sirs'"
-                                :class="tab === 'sirs'
+                            <button type="button" @click="tab = 'sirs'" :class="tab === 'sirs'
                                     ? 'border-b-2 border-brand text-brand dark:text-brand-lime dark:border-brand-lime font-semibold'
                                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
                                 class="px-5 py-3 text-sm transition-colors flex items-center gap-2">
-                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold
+                                <span
+                                    class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold
                                              bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">SIRS</span>
                                 Kemenkes
                             </button>
@@ -1018,112 +1004,143 @@ new class extends Component {
                         <div x-show="tab === 'aplicares'" class="flex flex-col flex-1 overflow-hidden">
 
                             {{-- Panduan Langkah Aplicares --}}
-                            <div class="px-5 py-3 border-b border-blue-100 dark:border-blue-900/40 shrink-0 bg-white dark:bg-gray-900">
+                            <div
+                                class="px-5 py-3 border-b border-blue-100 dark:border-blue-900/40 shrink-0 bg-white dark:bg-gray-900">
                                 <div class="flex items-start gap-0">
                                     {{-- Step 1 --}}
                                     <div class="flex flex-col items-center">
-                                        <div class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-bold shrink-0">1</div>
+                                        <div
+                                            class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-bold shrink-0">
+                                            1</div>
                                         <div class="w-px flex-1 bg-blue-200 dark:bg-blue-800 mt-1 min-h-[20px]"></div>
                                     </div>
                                     <div class="ml-3 pb-4">
-                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Tarik data kode kelas dari Aplicares</p>
-                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Klik tombol <strong class="text-blue-600 dark:text-blue-400">Tarik Data Aplicares</strong> di bawah untuk mengambil daftar kode kelas yang tersedia di sistem BPJS Aplicares.</p>
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Tarik data
+                                            kode kelas dari Aplicares</p>
+                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Klik tombol
+                                            <strong class="text-blue-600 dark:text-blue-400">Tarik Data
+                                                Aplicares</strong> di bawah untuk mengambil daftar kode kelas yang
+                                            tersedia di sistem BPJS Aplicares.</p>
                                     </div>
 
                                     <div class="flex flex-col items-center ml-6">
-                                        <div class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-bold shrink-0">2</div>
+                                        <div
+                                            class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-bold shrink-0">
+                                            2</div>
                                         <div class="w-px flex-1 bg-blue-200 dark:bg-blue-800 mt-1 min-h-[20px]"></div>
                                     </div>
                                     <div class="ml-3 pb-4">
-                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Sesuaikan mapping kelas</p>
-                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Pilih kode Aplicares yang sesuai untuk setiap kelas kamar RS. Kamar yang sudah punya kode akan diperbarui; yang belum akan didaftarkan baru.</p>
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Sesuaikan
+                                            mapping kelas</p>
+                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Pilih kode
+                                            Aplicares yang sesuai untuk setiap kelas kamar RS. Kamar yang sudah punya
+                                            kode akan diperbarui; yang belum akan didaftarkan baru.</p>
                                     </div>
 
                                     <div class="flex flex-col items-center ml-6">
-                                        <div class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-bold shrink-0">3</div>
+                                        <div
+                                            class="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-bold shrink-0">
+                                            3</div>
                                         <div class="w-px flex-1 bg-transparent mt-1 min-h-[20px]"></div>
                                     </div>
                                     <div class="ml-3 pb-4">
-                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Jalankan pendaftaran massal</p>
-                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Klik <strong class="text-blue-600 dark:text-blue-400">Daftarkan ke Aplicares</strong> — sistem akan memproses semua kamar sekaligus dan menampilkan hasilnya.</p>
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Jalankan
+                                            pendaftaran massal</p>
+                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Klik <strong
+                                                class="text-blue-600 dark:text-blue-400">Daftarkan ke Aplicares</strong>
+                                            — sistem akan memproses semua kamar sekaligus dan menampilkan hasilnya.</p>
                                     </div>
                                 </div>
                             </div>
 
                             {{-- Mapping Kelas → Kode Aplicares --}}
-                            <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0 bg-blue-50/60 dark:bg-blue-900/10">
+                            <div
+                                class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0 bg-blue-50/60 dark:bg-blue-900/10">
                                 <div class="flex items-center justify-between gap-3 mb-2">
                                     <span class="text-xs font-semibold text-blue-700 dark:text-blue-300">
                                         Mapping Kelas RS → Kode Aplicares
-                                        <span class="font-normal text-blue-500 dark:text-blue-400 ml-1">(untuk kamar yang belum punya kode)</span>
+                                        <span class="font-normal text-blue-500 dark:text-blue-400 ml-1">(untuk kamar
+                                            yang belum punya kode)</span>
                                     </span>
                                     <x-secondary-button wire:click="loadAplRef" wire:loading.attr="disabled"
                                         wire:target="loadAplRef" class="!py-1 !px-2.5 !text-xs shrink-0">
                                         <x-loading size="xs" wire:loading wire:target="loadAplRef" class="mr-1" />
                                         <svg wire:loading.remove wire:target="loadAplRef" class="w-3 h-3 mr-1"
-                                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.001 7.001 0 0112 5c2.276 0 4.293.965 5.71 2.5M19.418 15A7.001 7.001 0 0112 19c-2.276 0-4.293-.965-5.71-2.5"/>
+                                                d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.001 7.001 0 0112 5c2.276 0 4.293.965 5.71 2.5M19.418 15A7.001 7.001 0 0112 19c-2.276 0-4.293-.965-5.71-2.5" />
                                         </svg>
                                         <span wire:loading.remove wire:target="loadAplRef">Tarik Data Aplicares</span>
                                         <span wire:loading wire:target="loadAplRef">Menarik…</span>
                                     </x-secondary-button>
                                 </div>
                                 @php
-                                    $kelasList = DB::table('rsmst_class')->select('class_id', 'class_desc')->orderBy('class_id')->get();
+                                $kelasList = DB::table('rsmst_class')->select('class_id',
+                                'class_desc')->orderBy('class_id')->get();
                                 @endphp
                                 <div class="grid grid-cols-5 gap-5">
                                     @foreach ($kelasList as $kls)
-                                        <div>
-                                            <x-input-label :value="$kls->class_desc" class="truncate" :title="$kls->class_desc" />
-                                            <x-select-input wire:model.live="aplClassMap.{{ $kls->class_id }}" class="mt-1 w-full">
-                                                <option value="">—</option>
-                                                @foreach ($aplRefList as $ref)
-                                                    <option value="{{ $ref['kodekelas'] ?? '' }}">{{ $ref['kodekelas'] ?? '' }}</option>
-                                                @endforeach
-                                                @if (empty($aplRefList) && !empty($aplClassMap[$kls->class_id]))
-                                                    <option value="{{ $aplClassMap[$kls->class_id] }}" selected>{{ $aplClassMap[$kls->class_id] }}</option>
-                                                @endif
-                                            </x-select-input>
-                                        </div>
+                                    <div>
+                                        <x-input-label :value="$kls->class_desc" class="truncate"
+                                            :title="$kls->class_desc" />
+                                        <x-select-input wire:model.live="aplClassMap.{{ $kls->class_id }}"
+                                            class="mt-1 w-full">
+                                            <option value="">—</option>
+                                            @foreach ($aplRefList as $ref)
+                                            <option value="{{ $ref['kodekelas'] ?? '' }}">{{ $ref['kodekelas'] ?? '' }}
+                                            </option>
+                                            @endforeach
+                                            @if (empty($aplRefList) && !empty($aplClassMap[$kls->class_id]))
+                                            <option value="{{ $aplClassMap[$kls->class_id] }}" selected>{{
+                                                $aplClassMap[$kls->class_id] }}</option>
+                                            @endif
+                                        </x-select-input>
+                                    </div>
                                     @endforeach
                                 </div>
                             </div>
 
                             {{-- Toolbar Aplicares --}}
-                            <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-between gap-4 bg-gray-50 dark:bg-gray-800/60">
+                            <div
+                                class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-between gap-4 bg-gray-50 dark:bg-gray-800/60">
                                 @if (!empty($aplBulkResults))
-                                    @php
-                                        $aplOk   = collect($aplBulkResults)->where('ok', true)->count();
-                                        $aplFail = collect($aplBulkResults)->where('ok', false)->count();
-                                        $aplSkip = collect($aplBulkResults)->where('ok', null)->count();
-                                    @endphp
-                                    <div class="flex items-center gap-3 text-xs">
-                                        <span class="text-emerald-600 dark:text-emerald-400 font-mono font-semibold">{{ $aplOk }} ok</span>
-                                        @if ($aplFail) <span class="text-red-600 dark:text-red-400 font-mono font-semibold">{{ $aplFail }} gagal</span> @endif
-                                        @if ($aplSkip) <span class="text-gray-400 dark:text-gray-500 font-mono">{{ $aplSkip }} dilewati</span> @endif
-                                        <span class="text-gray-300 dark:text-gray-600">·</span>
-                                        <span class="text-gray-400 dark:text-gray-500">{{ count($aplBulkResults) }} kamar</span>
-                                    </div>
+                                @php
+                                $aplOk = collect($aplBulkResults)->where('ok', true)->count();
+                                $aplFail = collect($aplBulkResults)->where('ok', false)->count();
+                                $aplSkip = collect($aplBulkResults)->where('ok', null)->count();
+                                @endphp
+                                <div class="flex items-center gap-3 text-xs">
+                                    <span class="text-emerald-600 dark:text-emerald-400 font-mono font-semibold">{{
+                                        $aplOk }} ok</span>
+                                    @if ($aplFail) <span
+                                        class="text-red-600 dark:text-red-400 font-mono font-semibold">{{ $aplFail }}
+                                        gagal</span> @endif
+                                    @if ($aplSkip) <span class="text-gray-400 dark:text-gray-500 font-mono">{{ $aplSkip
+                                        }} dilewati</span> @endif
+                                    <span class="text-gray-300 dark:text-gray-600">·</span>
+                                    <span class="text-gray-400 dark:text-gray-500">{{ count($aplBulkResults) }}
+                                        kamar</span>
+                                </div>
                                 @else
-                                    <span class="text-xs text-gray-400 dark:text-gray-500 italic">Belum diproses</span>
+                                <span class="text-xs text-gray-400 dark:text-gray-500 italic">Belum diproses</span>
                                 @endif
-                                <x-primary-button wire:click="jalankanBulkAplic"
-                                    wire:loading.attr="disabled" wire:target="jalankanBulkAplic"
-                                    class="shrink-0 gap-2">
+                                <x-primary-button wire:click="jalankanBulkAplic" wire:loading.attr="disabled"
+                                    wire:target="jalankanBulkAplic" class="shrink-0 gap-2">
                                     <x-loading size="xs" wire:loading wire:target="jalankanBulkAplic" />
-                                    <svg wire:loading.remove wire:target="jalankanBulkAplic"
-                                         class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    <svg wire:loading.remove wire:target="jalankanBulkAplic" class="w-4 h-4" fill="none"
+                                        stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7" />
                                     </svg>
-                                    <span wire:loading.remove wire:target="jalankanBulkAplic">Daftarkan ke Aplicares</span>
+                                    <span wire:loading.remove wire:target="jalankanBulkAplic">Daftarkan ke
+                                        Aplicares</span>
                                     <span wire:loading wire:target="jalankanBulkAplic">Memproses…</span>
                                 </x-primary-button>
                             </div>
 
                             {{-- Loading Aplicares --}}
                             <div wire:loading wire:target="jalankanBulkAplic"
-                                 class="flex-1 flex flex-col items-center justify-center text-sm text-gray-400">
+                                class="flex-1 flex flex-col items-center justify-center text-sm text-gray-400">
                                 <x-loading size="md" class="block mb-2" />
                                 Mendaftarkan semua kamar ke Aplicares…
                             </div>
@@ -1131,15 +1148,17 @@ new class extends Component {
                             {{-- Tabel Aplicares --}}
                             <div wire:loading.remove wire:target="jalankanBulkAplic" class="flex-1 overflow-auto">
                                 @if (empty($aplBulkResults))
-                                    <div class="flex flex-col items-center justify-center h-full text-gray-400 dark:text-gray-500 text-sm">
-                                        <svg class="w-10 h-10 mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                        </svg>
-                                        <p>Klik <strong>Daftarkan ke Aplicares</strong> untuk memulai sinkronisasi.</p>
-                                    </div>
+                                <div
+                                    class="flex flex-col items-center justify-center h-full text-gray-400 dark:text-gray-500 text-sm">
+                                    <svg class="w-10 h-10 mb-3 opacity-40" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                    </svg>
+                                    <p>Klik <strong>Daftarkan ke Aplicares</strong> untuk memulai sinkronisasi.</p>
+                                </div>
                                 @else
-                                    @include('pages.master.master-kamar.tabs.bulk-results', ['rows' => $aplBulkResults])
+                                @include('pages.master.master-kamar.tabs.bulk-results', ['rows' => $aplBulkResults])
                                 @endif
                             </div>
                         </div>
@@ -1148,100 +1167,130 @@ new class extends Component {
                         <div x-show="tab === 'sirs'" class="flex flex-col flex-1 overflow-hidden">
 
                             {{-- Panduan Langkah SIRS --}}
-                            <div class="px-5 py-3 border-b border-green-100 dark:border-green-900/40 shrink-0 bg-white dark:bg-gray-900">
+                            <div
+                                class="px-5 py-3 border-b border-green-100 dark:border-green-900/40 shrink-0 bg-white dark:bg-gray-900">
                                 <div class="flex items-start gap-0">
                                     {{-- Step 1 --}}
                                     <div class="flex flex-col items-center">
-                                        <div class="flex items-center justify-center w-6 h-6 rounded-full bg-green-600 text-white text-[11px] font-bold shrink-0">1</div>
+                                        <div
+                                            class="flex items-center justify-center w-6 h-6 rounded-full bg-green-600 text-white text-[11px] font-bold shrink-0">
+                                            1</div>
                                         <div class="w-px flex-1 bg-green-200 dark:bg-green-800 mt-1 min-h-[20px]"></div>
                                     </div>
                                     <div class="ml-3 pb-4">
-                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Tarik data tipe tempat tidur dari SIRS</p>
-                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Klik tombol <strong class="text-green-600 dark:text-green-400">Tarik Data SIRS</strong> di bawah untuk mengambil daftar tipe tempat tidur dari SIRS Kemenkes.</p>
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Tarik data
+                                            tipe tempat tidur dari SIRS</p>
+                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Klik tombol
+                                            <strong class="text-green-600 dark:text-green-400">Tarik Data SIRS</strong>
+                                            di bawah untuk mengambil daftar tipe tempat tidur dari SIRS Kemenkes.</p>
                                     </div>
 
                                     <div class="flex flex-col items-center ml-6">
-                                        <div class="flex items-center justify-center w-6 h-6 rounded-full bg-green-600 text-white text-[11px] font-bold shrink-0">2</div>
+                                        <div
+                                            class="flex items-center justify-center w-6 h-6 rounded-full bg-green-600 text-white text-[11px] font-bold shrink-0">
+                                            2</div>
                                         <div class="w-px flex-1 bg-green-200 dark:bg-green-800 mt-1 min-h-[20px]"></div>
                                     </div>
                                     <div class="ml-3 pb-4">
-                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Sesuaikan mapping kelas ke tipe TT</p>
-                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Pilih tipe tempat tidur SIRS yang sesuai untuk setiap kelas kamar RS. Kamar yang sudah terdaftar akan diperbarui; yang belum akan didaftarkan baru.</p>
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Sesuaikan
+                                            mapping kelas ke tipe TT</p>
+                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Pilih tipe tempat
+                                            tidur SIRS yang sesuai untuk setiap kelas kamar RS. Kamar yang sudah
+                                            terdaftar akan diperbarui; yang belum akan didaftarkan baru.</p>
                                     </div>
 
                                     <div class="flex flex-col items-center ml-6">
-                                        <div class="flex items-center justify-center w-6 h-6 rounded-full bg-green-600 text-white text-[11px] font-bold shrink-0">3</div>
+                                        <div
+                                            class="flex items-center justify-center w-6 h-6 rounded-full bg-green-600 text-white text-[11px] font-bold shrink-0">
+                                            3</div>
                                         <div class="w-px flex-1 bg-transparent mt-1 min-h-[20px]"></div>
                                     </div>
                                     <div class="ml-3 pb-4">
-                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Jalankan pendaftaran massal</p>
-                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Klik <strong class="text-green-600 dark:text-green-400">Daftarkan ke SIRS</strong> — sistem akan memproses semua kamar sekaligus dan menampilkan hasilnya per baris.</p>
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">Jalankan
+                                            pendaftaran massal</p>
+                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Klik <strong
+                                                class="text-green-600 dark:text-green-400">Daftarkan ke SIRS</strong> —
+                                            sistem akan memproses semua kamar sekaligus dan menampilkan hasilnya per
+                                            baris.</p>
                                     </div>
                                 </div>
                             </div>
 
                             {{-- Mapping Kelas → Tipe TT SIRS --}}
-                            <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0 bg-green-50/60 dark:bg-green-900/10">
+                            <div
+                                class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0 bg-green-50/60 dark:bg-green-900/10">
                                 <div class="flex items-center justify-between gap-3 mb-2">
                                     <span class="text-xs font-semibold text-green-700 dark:text-green-300">
                                         Mapping Kelas RS → Kode Tipe TT SIRS
-                                        <span class="font-normal text-green-500 dark:text-green-400 ml-1">(untuk kamar yang belum punya id_tt)</span>
+                                        <span class="font-normal text-green-500 dark:text-green-400 ml-1">(untuk kamar
+                                            yang belum punya id_tt)</span>
                                     </span>
                                     <x-secondary-button wire:click="loadSirsRef" wire:loading.attr="disabled"
                                         wire:target="loadSirsRef" class="!py-1 !px-2.5 !text-xs shrink-0">
                                         <x-loading size="xs" wire:loading wire:target="loadSirsRef" class="mr-1" />
                                         <svg wire:loading.remove wire:target="loadSirsRef" class="w-3 h-3 mr-1"
-                                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.001 7.001 0 0112 5c2.276 0 4.293.965 5.71 2.5M19.418 15A7.001 7.001 0 0112 19c-2.276 0-4.293-.965-5.71-2.5"/>
+                                                d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.001 7.001 0 0112 5c2.276 0 4.293.965 5.71 2.5M19.418 15A7.001 7.001 0 0112 19c-2.276 0-4.293-.965-5.71-2.5" />
                                         </svg>
                                         <span wire:loading.remove wire:target="loadSirsRef">Tarik Data SIRS</span>
                                         <span wire:loading wire:target="loadSirsRef">Menarik…</span>
                                     </x-secondary-button>
                                 </div>
                                 <div class="grid grid-cols-5 gap-5">
-                                    @foreach (DB::table('rsmst_class')->select('class_id', 'class_desc')->orderBy('class_id')->get() as $kls)
-                                        <div>
-                                            <x-input-label :value="$kls->class_desc" class="truncate" :title="$kls->class_desc" />
-                                            <x-select-input wire:model.live="sirsClassMap.{{ $kls->class_id }}" class="mt-1 w-full">
-                                                <option value="">—</option>
-                                                @foreach ($sirsRefList as $ref)
-                                                    <option value="{{ $ref['kode_tt'] ?? '' }}">{{ $ref['kode_tt'] ?? '' }} – {{ $ref['nama_tt'] ?? '' }}</option>
-                                                @endforeach
-                                                @if (empty($sirsRefList) && !empty($sirsClassMap[$kls->class_id]))
-                                                    <option value="{{ $sirsClassMap[$kls->class_id] }}" selected>{{ $sirsClassMap[$kls->class_id] }}</option>
-                                                @endif
-                                            </x-select-input>
-                                        </div>
+                                    @foreach (DB::table('rsmst_class')->select('class_id',
+                                    'class_desc')->orderBy('class_id')->get() as $kls)
+                                    <div>
+                                        <x-input-label :value="$kls->class_desc" class="truncate"
+                                            :title="$kls->class_desc" />
+                                        <x-select-input wire:model.live="sirsClassMap.{{ $kls->class_id }}"
+                                            class="mt-1 w-full">
+                                            <option value="">—</option>
+                                            @foreach ($sirsRefList as $ref)
+                                            <option value="{{ $ref['kode_tt'] ?? '' }}">{{ $ref['kode_tt'] ?? '' }} – {{
+                                                $ref['nama_tt'] ?? '' }}</option>
+                                            @endforeach
+                                            @if (empty($sirsRefList) && !empty($sirsClassMap[$kls->class_id]))
+                                            <option value="{{ $sirsClassMap[$kls->class_id] }}" selected>{{
+                                                $sirsClassMap[$kls->class_id] }}</option>
+                                            @endif
+                                        </x-select-input>
+                                    </div>
                                     @endforeach
                                 </div>
                             </div>
 
                             {{-- Toolbar SIRS --}}
-                            <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-between gap-4 bg-gray-50 dark:bg-gray-800/60">
+                            <div
+                                class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-between gap-4 bg-gray-50 dark:bg-gray-800/60">
                                 @if (!empty($sirsBulkResults))
-                                    @php
-                                        $srsOk   = collect($sirsBulkResults)->where('ok', true)->count();
-                                        $srsFail = collect($sirsBulkResults)->where('ok', false)->count();
-                                        $srsSkip = collect($sirsBulkResults)->where('ok', null)->count();
-                                    @endphp
-                                    <div class="flex items-center gap-3 text-xs">
-                                        <span class="text-emerald-600 dark:text-emerald-400 font-mono font-semibold">{{ $srsOk }} ok</span>
-                                        @if ($srsFail) <span class="text-red-600 dark:text-red-400 font-mono font-semibold">{{ $srsFail }} gagal</span> @endif
-                                        @if ($srsSkip) <span class="text-gray-400 dark:text-gray-500 font-mono">{{ $srsSkip }} dilewati</span> @endif
-                                        <span class="text-gray-300 dark:text-gray-600">·</span>
-                                        <span class="text-gray-400 dark:text-gray-500">{{ count($sirsBulkResults) }} kamar</span>
-                                    </div>
+                                @php
+                                $srsOk = collect($sirsBulkResults)->where('ok', true)->count();
+                                $srsFail = collect($sirsBulkResults)->where('ok', false)->count();
+                                $srsSkip = collect($sirsBulkResults)->where('ok', null)->count();
+                                @endphp
+                                <div class="flex items-center gap-3 text-xs">
+                                    <span class="text-emerald-600 dark:text-emerald-400 font-mono font-semibold">{{
+                                        $srsOk }} ok</span>
+                                    @if ($srsFail) <span
+                                        class="text-red-600 dark:text-red-400 font-mono font-semibold">{{ $srsFail }}
+                                        gagal</span> @endif
+                                    @if ($srsSkip) <span class="text-gray-400 dark:text-gray-500 font-mono">{{ $srsSkip
+                                        }} dilewati</span> @endif
+                                    <span class="text-gray-300 dark:text-gray-600">·</span>
+                                    <span class="text-gray-400 dark:text-gray-500">{{ count($sirsBulkResults) }}
+                                        kamar</span>
+                                </div>
                                 @else
-                                    <span class="text-xs text-gray-400 dark:text-gray-500 italic">Belum diproses</span>
+                                <span class="text-xs text-gray-400 dark:text-gray-500 italic">Belum diproses</span>
                                 @endif
-                                <x-primary-button wire:click="jalankanBulkSirs"
-                                    wire:loading.attr="disabled" wire:target="jalankanBulkSirs"
-                                    class="shrink-0 gap-2">
+                                <x-primary-button wire:click="jalankanBulkSirs" wire:loading.attr="disabled"
+                                    wire:target="jalankanBulkSirs" class="shrink-0 gap-2">
                                     <x-loading size="xs" wire:loading wire:target="jalankanBulkSirs" />
-                                    <svg wire:loading.remove wire:target="jalankanBulkSirs"
-                                         class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    <svg wire:loading.remove wire:target="jalankanBulkSirs" class="w-4 h-4" fill="none"
+                                        stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 13l4 4L19 7" />
                                     </svg>
                                     <span wire:loading.remove wire:target="jalankanBulkSirs">Daftarkan ke SIRS</span>
                                     <span wire:loading wire:target="jalankanBulkSirs">Memproses…</span>
@@ -1250,7 +1299,7 @@ new class extends Component {
 
                             {{-- Loading SIRS --}}
                             <div wire:loading wire:target="jalankanBulkSirs"
-                                 class="flex-1 flex flex-col items-center justify-center text-sm text-gray-400">
+                                class="flex-1 flex flex-col items-center justify-center text-sm text-gray-400">
                                 <x-loading size="md" class="block mb-2" />
                                 Mendaftarkan semua kamar ke SIRS Kemenkes…
                             </div>
@@ -1258,15 +1307,17 @@ new class extends Component {
                             {{-- Tabel SIRS --}}
                             <div wire:loading.remove wire:target="jalankanBulkSirs" class="flex-1 overflow-auto">
                                 @if (empty($sirsBulkResults))
-                                    <div class="flex flex-col items-center justify-center h-full text-gray-400 dark:text-gray-500 text-sm">
-                                        <svg class="w-10 h-10 mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                        </svg>
-                                        <p>Klik <strong>Daftarkan ke SIRS</strong> untuk memulai sinkronisasi.</p>
-                                    </div>
+                                <div
+                                    class="flex flex-col items-center justify-center h-full text-gray-400 dark:text-gray-500 text-sm">
+                                    <svg class="w-10 h-10 mb-3 opacity-40" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                    </svg>
+                                    <p>Klik <strong>Daftarkan ke SIRS</strong> untuk memulai sinkronisasi.</p>
+                                </div>
                                 @else
-                                    @include('pages.master.master-kamar.tabs.bulk-results', ['rows' => $sirsBulkResults])
+                                @include('pages.master.master-kamar.tabs.bulk-results', ['rows' => $sirsBulkResults])
                                 @endif
                             </div>
                         </div>

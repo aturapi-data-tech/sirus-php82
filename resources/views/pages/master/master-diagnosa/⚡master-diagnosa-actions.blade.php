@@ -28,10 +28,9 @@ protected array $renderAreas = ['modal'];
         $this->resetFormFields();
         $this->formMode = 'create';
         $this->resetValidation();
-
-$this->incrementVersion('modal');
-
+        $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'master-diagnosa-actions');
+        $this->dispatch('focus-diag-id'); // ← ID Diagnosa kosong saat create
     }
 
     #[On('master.diagnosa.openEdit')]
@@ -45,10 +44,9 @@ $this->incrementVersion('modal');
         $this->resetFormFields();
         $this->formMode = 'edit';
         $this->fillFormFromRow($row);
-    
-$this->incrementVersion('modal');
-
+        $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'master-diagnosa-actions');
+        $this->dispatch('focus-diag-icdx'); // ← ID Diagnosa sudah ada saat edit, langsung ke nama
     }
 
     public function closeModal(): void
@@ -216,69 +214,82 @@ $this->incrementVersion('modal');
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 bg-gray-50/70 dark:bg-gray-950/20">
                 <div class="max-w-4xl">
-                    <div
-                        class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                        <div class="p-5 space-y-5">
 
-                            {{-- Informasi Dasar --}}
-                            <div>
-                                <h3 class="mb-3 text-sm font-semibold text-gray-700 uppercase dark:text-gray-300">
-                                    Informasi Dasar
-                                </h3>
-                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                    {{-- Diagnosa ID --}}
-                                    <div>
-                                        <x-input-label value="ID Diagnosa" />
-                                        <x-text-input wire:model.live="diagId" :disabled="$formMode === 'edit'"
-                                            :error="$errors->has('diagId')" class="w-full mt-1" />
-                                        <x-input-error :messages="$errors->get('diagId')" class="mt-1" />
-                                    </div>
+                    {{-- x-data: tangkap focus event dari PHP --}}
+                    <div x-data
+                        x-on:focus-diag-id.window="$nextTick(() => setTimeout(() => $refs.inputDiagId?.focus(), 150))"
+                        x-on:focus-diag-icdx.window="$nextTick(() => setTimeout(() => $refs.inputIcdx?.focus(), 150))">
 
-                                    {{-- Kode ICD X --}}
-                                    <div>
-                                        <x-input-label value="Kode ICD X" />
-                                        <x-text-input wire:model.live="icdx" :error="$errors->has('icdx')"
-                                            class="w-full mt-1" placeholder="Contoh: E11, I10, A09" />
-                                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                                            Kode diagnosa sesuai standar ICD-10.
-                                        </p>
-                                        <x-input-error :messages="$errors->get('icdx')" class="mt-1" />
+                        <div
+                            class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                            <div class="p-5 space-y-5">
+
+                                {{-- Informasi Dasar --}}
+                                <div>
+                                    <h3 class="mb-3 text-sm font-semibold text-gray-700 uppercase dark:text-gray-300">
+                                        Informasi Dasar
+                                    </h3>
+                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+                                        {{-- Diagnosa ID --}}
+                                        <div>
+                                            <x-input-label value="ID Diagnosa" />
+                                            <x-text-input wire:model.live="diagId" x-ref="inputDiagId"
+                                                :disabled="$formMode === 'edit'" :error="$errors->has('diagId')"
+                                                class="w-full mt-1"
+                                                x-on:keydown.enter.prevent="$refs.inputIcdx?.focus()" />
+                                            <x-input-error :messages="$errors->get('diagId')" class="mt-1" />
+                                        </div>
+
+                                        {{-- Kode ICD X --}}
+                                        <div>
+                                            <x-input-label value="Kode ICD X" />
+                                            <x-text-input wire:model.live="icdx" x-ref="inputIcdx"
+                                                :error="$errors->has('icdx')" class="w-full mt-1"
+                                                placeholder="Contoh: E11, I10, A09"
+                                                x-on:keydown.enter.prevent="$refs.inputDiagDesc?.focus()" />
+                                            <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                                Kode diagnosa sesuai standar ICD-10.
+                                            </p>
+                                            <x-input-error :messages="$errors->get('icdx')" class="mt-1" />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {{-- Nama Diagnosa --}}
-                            <div>
-                                <x-input-label value="Nama Diagnosa" />
-                                <x-text-input wire:model.live="diagDesc" :error="$errors->has('diagDesc')"
-                                    class="w-full mt-1" placeholder="Contoh: Diabetes Mellitus Tipe 2" />
-                                <x-input-error :messages="$errors->get('diagDesc')" class="mt-1" />
+                                {{-- Nama Diagnosa --}}
+                                <div>
+                                    <x-input-label value="Nama Diagnosa" />
+                                    <x-text-input wire:model.live="diagDesc" x-ref="inputDiagDesc"
+                                        :error="$errors->has('diagDesc')" class="w-full mt-1"
+                                        placeholder="Contoh: Diabetes Mellitus Tipe 2"
+                                        x-on:keydown.enter.prevent="$wire.save()" />
+                                    <x-input-error :messages="$errors->get('diagDesc')" class="mt-1" />
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {{-- FOOTER --}}
-            <div
-                class="sticky bottom-0 z-10 px-6 py-4 mt-auto bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700">
-                <div class="flex items-center justify-between gap-3">
-                    <div class="text-xs text-gray-500 dark:text-gray-400">
-                        Pastikan data sudah benar sebelum menyimpan.
-                    </div>
+                {{-- FOOTER --}}
+                <div
+                    class="sticky bottom-0 z-10 px-6 py-4 mt-auto bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                            Pastikan data sudah benar sebelum menyimpan.
+                        </div>
 
-                    <div class="flex justify-end gap-2">
-                        <x-secondary-button type="button" wire:click="closeModal">
-                            Batal
-                        </x-secondary-button>
+                        <div class="flex justify-end gap-2">
+                            <x-secondary-button type="button" wire:click="closeModal">
+                                Batal
+                            </x-secondary-button>
 
-                        <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
-                            <span wire:loading.remove>Simpan</span>
-                            <span wire:loading>Saving...</span>
-                        </x-primary-button>
+                            <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
+                                <span wire:loading.remove>Simpan</span>
+                                <span wire:loading>Saving...</span>
+                            </x-primary-button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
     </x-modal>
 </div>
