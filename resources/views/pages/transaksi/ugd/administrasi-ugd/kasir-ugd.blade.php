@@ -103,10 +103,7 @@ new class extends Component {
             $this->isFormLocked = true;
         }
 
-        // txn_status dari DB, fallback ke rj_status jika rj_status='I' tapi txn_status masih 'A'
-        $this->txnStatus = ($hdr->rj_status === 'I' && $hdr->txn_status === 'A')
-            ? 'I'
-            : $hdr->txn_status;
+        $this->txnStatus = $hdr->txn_status;
         $this->rjDiskon = (int) ($hdr->rj_diskon ?? 0);
 
         if ($hdr->acc_id) {
@@ -467,7 +464,10 @@ new class extends Component {
                 }
 
                 // Cek lockstatus pasien
-                $pasien = DB::table('rsmst_pasiens')->where('reg_no', $ugdHdr->reg_no)->lockForUpdate()->first();
+                $pasien = DB::table('rsmst_pasiens')
+                    ->where('reg_no', $ugdHdr->reg_no)
+                    ->lockForUpdate()
+                    ->first();
 
                 if ($pasien->lockstatus && !in_array($pasien->lockstatus, ['UGD', null])) {
                     throw new \RuntimeException("Pasien sedang dalam status {$pasien->lockstatus}, tidak bisa transfer.");
@@ -484,93 +484,97 @@ new class extends Component {
                 $now = Carbon::now();
                 $findShift = DB::table('rstxn_shiftctls')
                     ->select('shift')
-                    ->whereNotNull('shift_start')
-                    ->whereNotNull('shift_end')
+                    ->whereNotNull('shift_start')->whereNotNull('shift_end')
                     ->whereRaw('? BETWEEN shift_start AND shift_end', [$now->format('H:i:s')])
                     ->first();
 
                 // Insert RI header
                 DB::table('rstxn_rihdrs')->insert([
-                    'rihdr_no' => $riHdrNo,
-                    'reg_no' => $ugdHdr->reg_no,
-                    'entry_date' => DB::raw('SYSDATE'),
-                    'entry_id' => '5', // dari UGD
-                    'dr_id' => $ugdHdr->dr_id,
-                    'room_id' => $this->transferRoomId,
-                    'bed_no' => $this->transferBedNo,
-                    'klaim_id' => $ugdHdr->klaim_id,
-                    'shift' => (string) ($findShift?->shift ?? 1),
-                    'ri_status' => 'I',
-                    'erm_status' => 'A',
-                    'ri_total' => 0,
-                    'ri_diskon' => 0,
-                    'ri_bayar' => 0,
-                    'ri_titip' => 0,
+                    'rihdr_no'    => $riHdrNo,
+                    'reg_no'      => $ugdHdr->reg_no,
+                    'entry_date'  => DB::raw('SYSDATE'),
+                    'entry_id'    => '5', // dari UGD
+                    'dr_id'       => $ugdHdr->dr_id,
+                    'room_id'     => $this->transferRoomId,
+                    'bed_no'      => $this->transferBedNo,
+                    'klaim_id'    => $ugdHdr->klaim_id,
+                    'shift'       => (string) ($findShift?->shift ?? 1),
+                    'ri_status'   => 'I',
+                    'erm_status'  => 'A',
+                    'ri_total'    => 0,
+                    'ri_diskon'   => 0,
+                    'ri_bayar'    => 0,
+                    'ri_titip'    => 0,
                     'admin_status' => '0',
-                    'admin_age' => 0,
+                    'admin_age'   => 0,
                     'police_case' => '0',
                     'trf_gudang_status' => '0',
                     'push_antrian_bpjs_status' => '0',
                 ]);
 
                 // Insert rsmst_trfrooms
-                $room = DB::table('rsmst_rooms')->where('room_id', $this->transferRoomId)->select('room_price', 'perawatan_price', 'common_service')->first();
+                $room = DB::table('rsmst_rooms')
+                    ->where('room_id', $this->transferRoomId)
+                    ->select('room_price', 'perawatan_price', 'common_service')
+                    ->first();
 
                 $maxTrfr = (int) DB::table('rsmst_trfrooms')->max('trfr_no') + 1;
 
                 DB::table('rsmst_trfrooms')->insert([
-                    'trfr_no' => $maxTrfr,
-                    'rihdr_no' => $riHdrNo,
-                    'room_id' => $this->transferRoomId,
-                    'start_date' => DB::raw('SYSDATE'),
-                    'bed_no' => $this->transferBedNo,
-                    'room_price' => $room->room_price ?? 0,
+                    'trfr_no'         => $maxTrfr,
+                    'rihdr_no'        => $riHdrNo,
+                    'room_id'         => $this->transferRoomId,
+                    'start_date'      => DB::raw('SYSDATE'),
+                    'bed_no'          => $this->transferBedNo,
+                    'room_price'      => $room->room_price ?? 0,
                     'perawatan_price' => $room->perawatan_price ?? 0,
-                    'common_service' => $room->common_service ?? 0,
+                    'common_service'  => $room->common_service ?? 0,
                 ]);
 
                 // Insert biaya UGD sendiri ke rstxn_ritempadmins
                 $tempadmNo = (int) DB::table('rstxn_ritempadmins')->max('tempadm_no') + 1;
 
                 DB::table('rstxn_ritempadmins')->insert([
-                    'tempadm_no' => $tempadmNo,
+                    'tempadm_no'   => $tempadmNo,
                     'tempadm_date' => DB::raw('SYSDATE'),
                     'tempadm_flag' => 'UGD',
-                    'tempadm_ref' => $this->rjNo,
-                    'rihdr_no' => $riHdrNo,
-                    'rj_admin' => $costs['rjAdmin'],
-                    'poli_price' => $costs['poliPrice'],
-                    'acte_price' => $costs['actePrice'],
-                    'actp_price' => $costs['actpPrice'],
-                    'actd_price' => $costs['actdPrice'],
-                    'obat' => $costs['obat'],
-                    'lab' => $costs['lab'],
-                    'rad' => $costs['rad'],
-                    'other' => $costs['other'],
-                    'rs_admin' => $costs['rsAdmin'],
+                    'tempadm_ref'  => $this->rjNo,
+                    'rihdr_no'     => $riHdrNo,
+                    'rj_admin'     => $costs['rjAdmin'],
+                    'poli_price'   => $costs['poliPrice'],
+                    'acte_price'   => $costs['actePrice'],
+                    'actp_price'   => $costs['actpPrice'],
+                    'actd_price'   => $costs['actdPrice'],
+                    'obat'         => $costs['obat'],
+                    'lab'          => $costs['lab'],
+                    'rad'          => $costs['rad'],
+                    'other'        => $costs['other'],
+                    'rs_admin'     => $costs['rsAdmin'],
                 ]);
 
                 // Copy biaya RJ dari rstxn_ugdtempadmins ke rstxn_ritempadmins (cascade)
-                $ugdTemps = DB::table('rstxn_ugdtempadmins')->where('rj_no', $this->rjNo)->get();
+                $ugdTemps = DB::table('rstxn_ugdtempadmins')
+                    ->where('rj_no', $this->rjNo)
+                    ->get();
 
                 foreach ($ugdTemps as $temp) {
                     $tempadmNo++;
                     DB::table('rstxn_ritempadmins')->insert([
-                        'tempadm_no' => $tempadmNo,
+                        'tempadm_no'   => $tempadmNo,
                         'tempadm_date' => $temp->tempadm_date,
                         'tempadm_flag' => $temp->tempadm_flag,
-                        'tempadm_ref' => $temp->tempadm_ref,
-                        'rihdr_no' => $riHdrNo,
-                        'rj_admin' => $temp->rj_admin,
-                        'poli_price' => $temp->poli_price,
-                        'acte_price' => $temp->acte_price,
-                        'actp_price' => $temp->actp_price,
-                        'actd_price' => $temp->actd_price,
-                        'obat' => $temp->obat,
-                        'lab' => $temp->lab,
-                        'rad' => $temp->rad,
-                        'other' => $temp->other,
-                        'rs_admin' => $temp->rs_admin,
+                        'tempadm_ref'  => $temp->tempadm_ref,
+                        'rihdr_no'     => $riHdrNo,
+                        'rj_admin'     => $temp->rj_admin,
+                        'poli_price'   => $temp->poli_price,
+                        'acte_price'   => $temp->acte_price,
+                        'actp_price'   => $temp->actp_price,
+                        'actd_price'   => $temp->actd_price,
+                        'obat'         => $temp->obat,
+                        'lab'          => $temp->lab,
+                        'rad'          => $temp->rad,
+                        'other'        => $temp->other,
+                        'rs_admin'     => $temp->rs_admin,
                     ]);
                 }
 
@@ -579,10 +583,10 @@ new class extends Component {
 
                 // Insert link table
                 DB::table('rstxn_ribiayaselamadugds')->insert([
-                    'rj_no' => $this->rjNo,
-                    'ugd_no_rsri' => $riHdrNo,
-                    'tanggal_ugd' => $ugdHdr->rj_date,
-                    'total_biayaugd' => $totalBiayaUGD,
+                    'rj_no'              => $this->rjNo,
+                    'ugd_no_rsri'        => $riHdrNo,
+                    'tanggal_ugd'        => $ugdHdr->rj_date,
+                    'total_biayaugd'     => $totalBiayaUGD,
                     'keterangan_biayaugd' => 'UNIT GAWAT DARURAT',
                 ]);
 
@@ -590,7 +594,7 @@ new class extends Component {
                 DB::table('rstxn_ugdhdrs')
                     ->where('rj_no', $this->rjNo)
                     ->update([
-                        'rj_status' => 'I',
+                        'rj_status'  => 'I',
                         'txn_status' => 'I',
                     ]);
 
@@ -625,7 +629,9 @@ new class extends Component {
             return;
         }
 
-        $transfer = DB::table('rstxn_ribiayaselamadugds')->where('rj_no', $this->rjNo)->first();
+        $transfer = DB::table('rstxn_ribiayaselamadugds')
+            ->where('rj_no', $this->rjNo)
+            ->first();
 
         if (!$transfer) {
             $this->dispatch('toast', type: 'error', message: 'Tidak ada data transfer untuk UGD ini.');
@@ -642,7 +648,17 @@ new class extends Component {
         }
 
         // Cek RI belum ada transaksi
-        $riAdaTransaksi = DB::table('rstxn_rivisits')->where('rihdr_no', $riHdrNo)->exists() || DB::table('rstxn_rikonsuls')->where('rihdr_no', $riHdrNo)->exists() || DB::table('rstxn_riactparams')->where('rihdr_no', $riHdrNo)->exists() || DB::table('rstxn_riactdocs')->where('rihdr_no', $riHdrNo)->exists() || DB::table('rstxn_rilabs')->where('rihdr_no', $riHdrNo)->exists() || DB::table('rstxn_riradiologs')->where('rihdr_no', $riHdrNo)->exists() || DB::table('rstxn_rioks')->where('rihdr_no', $riHdrNo)->exists() || DB::table('rstxn_riobats')->where('rihdr_no', $riHdrNo)->exists() || DB::table('rstxn_riothers')->where('rihdr_no', $riHdrNo)->exists() || DB::table('rstxn_ripaymentdtls')->where('rihdr_no', $riHdrNo)->exists();
+        $riAdaTransaksi =
+            DB::table('rstxn_rivisits')->where('rihdr_no', $riHdrNo)->exists()
+            || DB::table('rstxn_rikonsuls')->where('rihdr_no', $riHdrNo)->exists()
+            || DB::table('rstxn_riactparams')->where('rihdr_no', $riHdrNo)->exists()
+            || DB::table('rstxn_riactdocs')->where('rihdr_no', $riHdrNo)->exists()
+            || DB::table('rstxn_rilabs')->where('rihdr_no', $riHdrNo)->exists()
+            || DB::table('rstxn_riradiologs')->where('rihdr_no', $riHdrNo)->exists()
+            || DB::table('rstxn_rioks')->where('rihdr_no', $riHdrNo)->exists()
+            || DB::table('rstxn_riobats')->where('rihdr_no', $riHdrNo)->exists()
+            || DB::table('rstxn_riothers')->where('rihdr_no', $riHdrNo)->exists()
+            || DB::table('rstxn_ripaymentdtls')->where('rihdr_no', $riHdrNo)->exists();
 
         if ($riAdaTransaksi) {
             $this->dispatch('toast', type: 'error', message: 'RI #' . $riHdrNo . ' sudah ada transaksi. Tidak bisa dibatalkan.');
@@ -665,26 +681,29 @@ new class extends Component {
                 }
 
                 // Restore rstxn_ugdtempadmins dari rstxn_ritempadmins (kecuali flag='UGD' yang biaya UGD sendiri)
-                $riTemps = DB::table('rstxn_ritempadmins')->where('rihdr_no', $riHdrNo)->where('tempadm_flag', '!=', 'UGD')->get();
+                $riTemps = DB::table('rstxn_ritempadmins')
+                    ->where('rihdr_no', $riHdrNo)
+                    ->where('tempadm_flag', '!=', 'UGD')
+                    ->get();
 
                 $ugdTempNo = (int) DB::table('rstxn_ugdtempadmins')->max('tempadm_no') + 1;
                 foreach ($riTemps as $temp) {
                     DB::table('rstxn_ugdtempadmins')->insert([
-                        'tempadm_no' => $ugdTempNo++,
+                        'tempadm_no'   => $ugdTempNo++,
                         'tempadm_date' => $temp->tempadm_date,
                         'tempadm_flag' => $temp->tempadm_flag,
-                        'tempadm_ref' => $temp->tempadm_ref,
-                        'rj_no' => $this->rjNo,
-                        'rj_admin' => $temp->rj_admin,
-                        'poli_price' => $temp->poli_price,
-                        'acte_price' => $temp->acte_price,
-                        'actp_price' => $temp->actp_price,
-                        'actd_price' => $temp->actd_price,
-                        'obat' => $temp->obat,
-                        'lab' => $temp->lab,
-                        'rad' => $temp->rad,
-                        'other' => $temp->other,
-                        'rs_admin' => $temp->rs_admin,
+                        'tempadm_ref'  => $temp->tempadm_ref,
+                        'rj_no'        => $this->rjNo,
+                        'rj_admin'     => $temp->rj_admin,
+                        'poli_price'   => $temp->poli_price,
+                        'acte_price'   => $temp->acte_price,
+                        'actp_price'   => $temp->actp_price,
+                        'actd_price'   => $temp->actd_price,
+                        'obat'         => $temp->obat,
+                        'lab'          => $temp->lab,
+                        'rad'          => $temp->rad,
+                        'other'        => $temp->other,
+                        'rs_admin'     => $temp->rs_admin,
                     ]);
                 }
 
@@ -698,7 +717,7 @@ new class extends Component {
                 DB::table('rstxn_ugdhdrs')
                     ->where('rj_no', $this->rjNo)
                     ->update([
-                        'rj_status' => 'A',
+                        'rj_status'  => 'A',
                         'txn_status' => 'A',
                     ]);
 
@@ -725,7 +744,6 @@ new class extends Component {
 ?>
 
 <div class="space-y-4" wire:key="{{ $this->renderKey('kasir-ugd', [$rjNo ?? 'new']) }}">
-    {{ $txnStatus . 'xxxxxxxxxxxx' }}
 
     {{-- LOCKED BANNER --}}
     @if ($isFormLocked)
@@ -852,42 +870,32 @@ new class extends Component {
                 </div>
 
                 @if ($txnStatus === 'I')
-                    <div
-                        class="flex items-start gap-2 px-3 py-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300">
+                    <div class="flex items-start gap-2 px-3 py-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300">
                         <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <div>
                             <p class="font-semibold">Status: Sudah ditransfer ke Rawat Inap</p>
-                            <p class="mt-1">Biaya UGD (termasuk biaya RJ jika ada) telah dipindahkan ke RI. Jika perlu
-                                membatalkan transfer:</p>
+                            <p class="mt-1">Biaya UGD (termasuk biaya RJ jika ada) telah dipindahkan ke RI. Jika perlu membatalkan transfer:</p>
                             <ol class="mt-1 ml-4 space-y-0.5 list-decimal">
-                                <li>Pastikan di RI <strong>belum ada transaksi</strong> apapun (visit, konsul, lab,
-                                    radiologi, OK, obat, lain-lain, pembayaran).</li>
+                                <li>Pastikan di RI <strong>belum ada transaksi</strong> apapun (visit, konsul, lab, radiologi, OK, obat, lain-lain, pembayaran).</li>
                                 <li>Pastikan <strong>hasil lab UGD sudah selesai</strong> (tidak ada lab pending).</li>
                                 <li>Klik tombol <strong>"Batal Transfer RI"</strong> di atas, lalu konfirmasi.</li>
-                                <li>Status UGD akan kembali aktif, data RI dihapus, dan biaya cascade (dari RJ)
-                                    dikembalikan ke UGD.</li>
+                                <li>Status UGD akan kembali aktif, data RI dihapus, dan biaya cascade (dari RJ) dikembalikan ke UGD.</li>
                             </ol>
                         </div>
                     </div>
                 @elseif ($txnStatus === 'L')
-                    <div
-                        class="flex items-start gap-2 px-3 py-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg dark:bg-emerald-900/20 dark:border-emerald-700 dark:text-emerald-300">
+                    <div class="flex items-start gap-2 px-3 py-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg dark:bg-emerald-900/20 dark:border-emerald-700 dark:text-emerald-300">
                         <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <p class="font-semibold">Status: Lunas</p>
                     </div>
                 @elseif ($txnStatus === 'H')
-                    <div
-                        class="flex items-start gap-2 px-3 py-2 text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded-lg dark:bg-violet-900/20 dark:border-violet-700 dark:text-violet-300">
-                        <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <div class="flex items-start gap-2 px-3 py-2 text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded-lg dark:bg-violet-900/20 dark:border-violet-700 dark:text-violet-300">
+                        <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <p class="font-semibold">Status: Cicilan (Belum Lunas)</p>
                     </div>
@@ -896,20 +904,15 @@ new class extends Component {
         @else
             {{-- Panduan penggunaan --}}
             @if ($txnStatus === null || $txnStatus === 'A')
-                <div
-                    class="flex items-start gap-2 px-3 py-2 mb-3 text-xs text-gray-600 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">
+                <div class="flex items-start gap-2 px-3 py-2 mb-3 text-xs text-gray-600 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">
                     <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div>
                         <p class="font-semibold text-gray-700 dark:text-gray-300">Panduan Kasir UGD:</p>
                         <ul class="mt-1 space-y-0.5 list-disc list-inside">
-                            <li><strong>Post Transaksi</strong> — Pilih Akun Kas, isi nominal bayar, lalu klik "Post
-                                Transaksi". Bisa cicilan atau lunas.</li>
-                            <li><strong>Transfer ke RI</strong> — Jika pasien UGD perlu rawat inap, klik "Transfer ke
-                                RI", pilih ruangan & bed, lalu konfirmasi. Seluruh biaya UGD (termasuk biaya RJ jika
-                                ada) akan dipindahkan ke RI.</li>
+                            <li><strong>Post Transaksi</strong> — Pilih Akun Kas, isi nominal bayar, lalu klik "Post Transaksi". Bisa cicilan atau lunas.</li>
+                            <li><strong>Transfer ke RI</strong> — Jika pasien UGD perlu rawat inap, klik "Transfer ke RI", pilih ruangan & bed, lalu konfirmasi. Seluruh biaya UGD (termasuk biaya RJ jika ada) akan dipindahkan ke RI.</li>
                         </ul>
                     </div>
                 </div>
@@ -920,8 +923,7 @@ new class extends Component {
                 {{-- LOV Akun Kas — tipe="ugd" agar hanya tampil kas aktif untuk UGD --}}
                 <div class="w-80"
                     x-on:focus-lov-kas-kasir-ugd.window="$nextTick(() => $el.querySelector('input')?.focus())">
-                    <livewire:lov.kas.lov-kas target="kas-kasir-ugd" tipe="ugd" label="Akun Kas"
-                        :initialAccId="$accId"
+                    <livewire:lov.kas.lov-kas target="kas-kasir-ugd" tipe="ugd" label="Akun Kas" :initialAccId="$accId"
                         wire:key="lov-kas-kasir-ugd-{{ $rjNo }}-{{ $renderVersions['kasir-ugd'] ?? 0 }}" />
                     <x-input-error :messages="$errors->get('accId')" class="mt-1" />
                 </div>
@@ -997,10 +999,8 @@ new class extends Component {
 
             {{-- PANEL TRANSFER KE RI --}}
             @if ($showTransferRI)
-                <div
-                    class="p-4 mt-3 space-y-3 border border-blue-200 rounded-xl bg-blue-50 dark:bg-blue-900/20 dark:border-blue-700">
-                    <p class="text-sm font-semibold text-blue-700 dark:text-blue-300">Transfer ke Rawat Inap — Pilih
-                        Ruangan & Bed</p>
+                <div class="p-4 mt-3 space-y-3 border border-blue-200 rounded-xl bg-blue-50 dark:bg-blue-900/20 dark:border-blue-700">
+                    <p class="text-sm font-semibold text-blue-700 dark:text-blue-300">Transfer ke Rawat Inap — Pilih Ruangan & Bed</p>
 
                     <div class="w-full">
                         <livewire:lov.room.lov-room target="room-transfer-ri"
@@ -1010,8 +1010,7 @@ new class extends Component {
                     @if ($transferRoomId && $transferBedNo)
                         <div class="flex items-center gap-3">
                             <span class="text-sm text-blue-700 dark:text-blue-300">
-                                Ruangan: <strong>{{ $transferRoomName }}</strong> | Bed:
-                                <strong>{{ $transferBedNo }}</strong>
+                                Ruangan: <strong>{{ $transferRoomName }}</strong> | Bed: <strong>{{ $transferBedNo }}</strong>
                             </span>
                             <x-confirm-button variant="warning" :action="'transferKeRI()'" title="Transfer ke RI"
                                 message="Yakin ingin mentransfer biaya UGD ke Rawat Inap? Pasien akan masuk ruangan {{ $transferRoomName }} bed {{ $transferBedNo }}."
@@ -1020,8 +1019,7 @@ new class extends Component {
                             </x-confirm-button>
                         </div>
                     @else
-                        <p class="text-xs text-blue-500 dark:text-blue-400">Cari dan pilih ruangan/bed di atas untuk
-                            melanjutkan transfer.</p>
+                        <p class="text-xs text-blue-500 dark:text-blue-400">Cari dan pilih ruangan/bed di atas untuk melanjutkan transfer.</p>
                     @endif
                 </div>
             @endif
