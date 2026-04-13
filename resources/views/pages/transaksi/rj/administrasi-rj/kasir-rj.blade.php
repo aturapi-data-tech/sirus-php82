@@ -85,7 +85,10 @@ new class extends Component {
             $this->isFormLocked = true;
         }
 
-        $this->txnStatus = $hdr->txn_status;
+        // txn_status dari DB, fallback ke rj_status jika rj_status='I' tapi txn_status masih 'A'
+        $this->txnStatus = ($hdr->rj_status === 'I' && $hdr->txn_status === 'A')
+            ? 'I'
+            : $hdr->txn_status;
         $this->rjDiskon = (int) ($hdr->rj_diskon ?? 0);
 
         if ($hdr->acc_id) {
