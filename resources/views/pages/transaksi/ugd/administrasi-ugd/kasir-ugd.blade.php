@@ -876,7 +876,13 @@ new class extends Component {
                         </svg>
                         <div>
                             <p class="font-semibold">Status: Sudah ditransfer ke Rawat Inap</p>
-                            <p class="mt-0.5">Biaya UGD telah dipindahkan ke RI. Untuk membatalkan, klik "Batal Transfer RI". Syarat: RI belum ada transaksi apapun.</p>
+                            <p class="mt-1">Biaya UGD (termasuk biaya RJ jika ada) telah dipindahkan ke RI. Jika perlu membatalkan transfer:</p>
+                            <ol class="mt-1 ml-4 space-y-0.5 list-decimal">
+                                <li>Pastikan di RI <strong>belum ada transaksi</strong> apapun (visit, konsul, lab, radiologi, OK, obat, lain-lain, pembayaran).</li>
+                                <li>Pastikan <strong>hasil lab UGD sudah selesai</strong> (tidak ada lab pending).</li>
+                                <li>Klik tombol <strong>"Batal Transfer RI"</strong> di atas, lalu konfirmasi.</li>
+                                <li>Status UGD akan kembali aktif, data RI dihapus, dan biaya cascade (dari RJ) dikembalikan ke UGD.</li>
+                            </ol>
                         </div>
                     </div>
                 @elseif ($txnStatus === 'L')
