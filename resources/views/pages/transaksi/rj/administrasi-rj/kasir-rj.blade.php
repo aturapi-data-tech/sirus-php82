@@ -308,6 +308,11 @@ new class extends Component {
      =============================== */
     public function batalTransaksi(): void
     {
+        if (!auth()->user()->hasAnyRole(['Admin', 'Tu'])) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya Admin dan TU yang dapat membatalkan transaksi.');
+            return;
+        }
+
         if (!$this->rjNo) {
             $this->dispatch('toast', type: 'error', message: 'Data transaksi tidak ditemukan.');
             return;
@@ -517,6 +522,11 @@ new class extends Component {
      =============================== */
     public function batalTransferUGD(): void
     {
+        if (!auth()->user()->hasAnyRole(['Admin', 'Tu'])) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya Admin dan TU yang dapat membatalkan transfer.');
+            return;
+        }
+
         if (!$this->rjNo) {
             $this->dispatch('toast', type: 'error', message: 'Data transaksi tidak ditemukan.');
             return;
@@ -734,6 +744,7 @@ new class extends Component {
             <div class="space-y-3">
                 <div class="flex items-center justify-between">
                     <p class="text-sm italic text-gray-400 dark:text-gray-600">Form input dinonaktifkan.</p>
+                    @hasanyrole('Admin|Tu')
                     <div class="flex gap-2">
                         @if ($txnStatus === 'I')
                             <x-confirm-button variant="warning" :action="'batalTransferUGD()'" title="Batal Transfer UGD"
@@ -749,6 +760,7 @@ new class extends Component {
                             </x-confirm-button>
                         @endif
                     </div>
+                    @endhasanyrole
                 </div>
 
                 {{-- Keterangan status --}}
