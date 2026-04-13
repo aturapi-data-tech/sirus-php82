@@ -86,8 +86,12 @@ new class extends Component {
     /** Generate regNo baru saat simpan (tidak bisa diinput manual) */
     protected function generateRegNo(): string
     {
-        $jmlPasien = DB::table('rsmst_pasiens')->count();
-        return sprintf('%07s', $jmlPasien + 1) . 'Z';
+        $maxRegNo = DB::table('rsmst_pasiens')
+            ->whereRaw("reg_no LIKE '%Z'")
+            ->max(DB::raw("TO_NUMBER(REPLACE(reg_no,'Z',''))"));
+
+        $nextNo = ($maxRegNo ?? 0) + 1;
+        return sprintf('%07s', $nextNo) . 'Z';
     }
 
     #[On('master.pasien.openEdit')]
@@ -234,64 +238,62 @@ new class extends Component {
             $this->dataPasien['pasien']['regDateStore'] = Carbon::now()->format('d/m/Y H:i:s');
         }
 
-        // Generate regNo otomatis saat create
-        if ($this->formMode === 'create') {
-            $this->dataPasien['pasien']['regNo'] = $this->generateRegNo();
-            $this->regNo = $this->dataPasien['pasien']['regNo'];
-        }
-
         $pasien = $this->dataPasien['pasien'] ?? [];
         $identitas = $pasien['identitas'] ?? [];
         $kontak = $pasien['kontak'] ?? [];
 
+        // Untuk edit, regNo sudah ada
         $regNo = $pasien['regNo'] ?? null;
-        if (!$regNo) {
+        if ($this->formMode !== 'create' && !$regNo) {
             $this->dispatch('toast', type: 'error', message: 'regNo kosong.');
             return;
         }
 
-        $saveData = [
-            'reg_no' => $regNo,
-            'reg_name' => strtoupper($pasien['regName'] ?? ''),
-            'sex' => ($pasien['jenisKelamin']['jenisKelaminId'] ?? 0) == 1 ? 'L' : 'P',
-
-            'birth_date' => !empty($pasien['tglLahir']) ? DB::raw("to_date('{$pasien['tglLahir']}', 'dd/mm/yyyy')") : null,
-
-            'birth_place' => strtoupper($pasien['tempatLahir'] ?? ''),
-
-            'nik_bpjs' => $identitas['nik'] ?? null,
-            'nokartu_bpjs' => $identitas['idbpjs'] ?? null,
-            'patient_uuid' => $identitas['patientUuid'] ?? null,
-
-            'blood' => $pasien['golonganDarah']['golonganDarahId'] ?? null,
-
-            // marital_status VARCHAR2 => aman pakai kode
-            'marital_status' => ($pasien['statusPerkawinan']['statusPerkawinanId'] ?? 1) == 1 ? 'S' : (($pasien['statusPerkawinan']['statusPerkawinanId'] ?? 1) == 2 ? 'M' : (($pasien['statusPerkawinan']['statusPerkawinanId'] ?? 1) == 3 ? 'D' : 'W')),
-
-            'rel_id' => $pasien['agama']['agamaId'] ?? '1',
-            'edu_id' => $pasien['pendidikan']['pendidikanId'] ?? '3',
-            'job_id' => $pasien['pekerjaan']['pekerjaanId'] ?? '4',
-
-            'kk' => strtoupper($pasien['hubungan']['namaPenanggungJawab'] ?? ''),
-            'nyonya' => strtoupper($pasien['hubungan']['namaIbu'] ?? ''),
-
-            'address' => $identitas['alamat'] ?? '',
-            'rt' => $identitas['rt'] ?? '',
-            'rw' => $identitas['rw'] ?? '',
-            'des_id' => $identitas['desaId'] ?? null,
-            'kec_id' => $identitas['kecamatanId'] ?? null,
-            'kab_id' => $identitas['kotaId'] ?? '3504',
-            'prop_id' => $identitas['propinsiId'] ?? '35',
-
-            'phone' => $kontak['nomerTelponSelulerPasien'] ?? '',
-        ];
-
-        $lockKey = "lock:rsmst_pasiens:{$regNo}";
+        $lockKey = "lock:rsmst_pasiens:create";
 
         try {
-            Cache::lock($lockKey, 15)->block(5, function () use ($regNo, $saveData) {
-                DB::transaction(function () use ($regNo, $saveData) {
+            Cache::lock($lockKey, 15)->block(5, function () use ($pasien, $identitas, $kontak) {
+                DB::transaction(function () use ($pasien, $identitas, $kontak) {
+                    // Generate regNo di dalam lock+transaction untuk cegah race condition
                     if ($this->formMode === 'create') {
+                        $regNo = $this->generateRegNo();
+                        $this->dataPasien['pasien']['regNo'] = $regNo;
+                        $this->regNo = $regNo;
+                    } else {
+                        $regNo = $pasien['regNo'];
+                    }
+
+                    $saveData = [
+                        'reg_no' => $regNo,
+                        'reg_name' => strtoupper($pasien['regName'] ?? ''),
+                        'sex' => ($pasien['jenisKelamin']['jenisKelaminId'] ?? 0) == 1 ? 'L' : 'P',
+                        'birth_date' => !empty($pasien['tglLahir']) ? DB::raw("to_date('{$pasien['tglLahir']}', 'dd/mm/yyyy')") : null,
+                        'birth_place' => strtoupper($pasien['tempatLahir'] ?? ''),
+                        'nik_bpjs' => $identitas['nik'] ?? null,
+                        'nokartu_bpjs' => $identitas['idbpjs'] ?? null,
+                        'patient_uuid' => $identitas['patientUuid'] ?? null,
+                        'blood' => $pasien['golonganDarah']['golonganDarahId'] ?? null,
+                        'marital_status' => ($pasien['statusPerkawinan']['statusPerkawinanId'] ?? 1) == 1 ? 'S' : (($pasien['statusPerkawinan']['statusPerkawinanId'] ?? 1) == 2 ? 'M' : (($pasien['statusPerkawinan']['statusPerkawinanId'] ?? 1) == 3 ? 'D' : 'W')),
+                        'rel_id' => $pasien['agama']['agamaId'] ?? '1',
+                        'edu_id' => $pasien['pendidikan']['pendidikanId'] ?? '3',
+                        'job_id' => $pasien['pekerjaan']['pekerjaanId'] ?? '4',
+                        'kk' => strtoupper($pasien['hubungan']['namaPenanggungJawab'] ?? ''),
+                        'nyonya' => strtoupper($pasien['hubungan']['namaIbu'] ?? ''),
+                        'address' => $identitas['alamat'] ?? '',
+                        'rt' => $identitas['rt'] ?? '',
+                        'rw' => $identitas['rw'] ?? '',
+                        'des_id' => $identitas['desaId'] ?? null,
+                        'kec_id' => $identitas['kecamatanId'] ?? null,
+                        'kab_id' => $identitas['kotaId'] ?? '3504',
+                        'prop_id' => $identitas['propinsiId'] ?? '35',
+                        'phone' => $kontak['nomerTelponSelulerPasien'] ?? '',
+                    ];
+
+                    if ($this->formMode === 'create') {
+                        // Cek duplikat sebelum insert
+                        if (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->exists()) {
+                            throw new \Exception("No RM {$regNo} sudah terpakai. Silakan ulangi proses pendaftaran.");
+                        }
                         $saveData['reg_date'] = DB::raw('SYSDATE');
                         DB::table('rsmst_pasiens')->insert($saveData);
                     } else {
