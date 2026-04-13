@@ -11,13 +11,15 @@ use Illuminate\Validation\Rule;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\SATUSEHAT\PatientTrait;
+use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use Carbon\Carbon;
 
 new class extends Component {
-    use MasterPasienTrait, PatientTrait;
+    use MasterPasienTrait, PatientTrait, WithRenderVersioningTrait;
 
     public string $formMode = 'create'; // create|edit
     public string $regNo = '';
+    public array $renderVersions = [];
 
     // Data utama pasien
     public array $dataPasien = [];
@@ -40,6 +42,7 @@ new class extends Component {
 
     public function mount(): void
     {
+        $this->registerAreas(['modal']);
         $this->initializeLOVOptions();
     }
 
@@ -80,15 +83,14 @@ new class extends Component {
         $this->dataPasien = $this->getDefaultPasienTemplate();
         $this->dataPasien['pasien']['regNo'] = '';
         $this->regNo = '';
+        $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'master-pasien-actions');
     }
 
     /** Generate regNo baru saat simpan (tidak bisa diinput manual) */
     protected function generateRegNo(): string
     {
-        $maxRegNo = DB::table('rsmst_pasiens')
-            ->whereRaw("reg_no LIKE '%Z'")
-            ->max(DB::raw("TO_NUMBER(REPLACE(reg_no,'Z',''))"));
+        $maxRegNo = DB::table('rsmst_pasiens')->whereRaw("reg_no LIKE '%Z'")->whereRaw("REGEXP_LIKE(REPLACE(reg_no,'Z',''), '^\d+$')")->max(DB::raw("TO_NUMBER(REPLACE(reg_no,'Z',''))"));
 
         $nextNo = ($maxRegNo ?? 0) + 1;
         return sprintf('%07s', $nextNo) . 'Z';
@@ -103,13 +105,14 @@ new class extends Component {
 
         // Menggunakan trait untuk mendapatkan data pasien
         $this->dataPasien = $this->findDataMasterPasien($regNo);
+        $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'master-pasien-actions');
     }
 
     public function closeModal(): void
     {
-        $this->resetFormFields();
         $this->dispatch('close-modal', name: 'master-pasien-actions');
+        $this->resetFormFields();
     }
 
     protected function resetFormFields(): void
@@ -137,6 +140,9 @@ new class extends Component {
             'dataPasien.pasien.identitas.alamat' => ['required', 'string', 'max:500'],
             'dataPasien.pasien.identitas.rt' => ['required', 'string', 'max:10'],
             'dataPasien.pasien.identitas.rw' => ['required', 'string', 'max:10'],
+            'dataPasien.pasien.identitas.desaId' => ['required', 'string'],
+            'dataPasien.pasien.identitas.kotaId' => ['required', 'string'],
+            'dataPasien.pasien.identitas.propinsiId' => ['required', 'string'],
             'dataPasien.pasien.kontak.nomerTelponSelulerPasien' => ['required', 'string', 'regex:/^[0-9]{6,15}$/'],
             'dataPasien.pasien.hubungan.namaPenanggungJawab' => ['nullable', 'string', 'max:200'],
             'dataPasien.pasien.hubungan.nomerTelponSelulerPenanggungJawab' => ['nullable', 'string', 'regex:/^[0-9]{6,15}$/'],
@@ -204,6 +210,11 @@ new class extends Component {
             'dataPasien.pasien.identitas.rw.required' => 'RW wajib diisi.',
             'dataPasien.pasien.identitas.rw.max' => 'RW maksimal :max karakter.',
 
+            // Identitas - Desa & Kota
+            'dataPasien.pasien.identitas.desaId.required' => 'Desa wajib dipilih.',
+            'dataPasien.pasien.identitas.kotaId.required' => 'Kota/Kabupaten wajib dipilih.',
+            'dataPasien.pasien.identitas.propinsiId.required' => 'Provinsi wajib dipilih.',
+
             // Kontak - No HP Pasien
             'dataPasien.pasien.kontak.nomerTelponSelulerPasien.required' => 'No. HP Pasien wajib diisi.',
             'dataPasien.pasien.kontak.nomerTelponSelulerPasien.regex' => 'No. HP Pasien harus 6-15 digit angka.',
@@ -249,7 +260,7 @@ new class extends Component {
             return;
         }
 
-        $lockKey = "lock:rsmst_pasiens:create";
+        $lockKey = 'lock:rsmst_pasiens:create';
 
         try {
             Cache::lock($lockKey, 15)->block(5, function () use ($pasien, $identitas, $kontak) {
@@ -282,8 +293,8 @@ new class extends Component {
                         'address' => $identitas['alamat'] ?? '',
                         'rt' => $identitas['rt'] ?? '',
                         'rw' => $identitas['rw'] ?? '',
-                        'des_id' => $identitas['desaId'] ?? null,
-                        'kec_id' => $identitas['kecamatanId'] ?? null,
+                        'des_id' => $identitas['desaId'] ?? '',
+                        'kec_id' => $identitas['kecamatanId'] ?? '',
                         'kab_id' => $identitas['kotaId'] ?? '3504',
                         'prop_id' => $identitas['propinsiId'] ?? '35',
                         'phone' => $kontak['nomerTelponSelulerPasien'] ?? '',
@@ -322,9 +333,13 @@ new class extends Component {
                 });
             });
 
-            $this->dispatch('toast', type: 'success', message: $this->formMode === 'create' ? 'Data pasien berhasil disimpan.' : 'Data pasien berhasil diupdate.');
+            $this->dispatch('toast', type: 'success', message: $this->formMode === 'create' ? "Data pasien berhasil disimpan. No RM: {$this->regNo}" : 'Data pasien berhasil diupdate.');
 
-            $this->closeModal();
+            // Setelah create, switch ke mode edit agar user bisa lihat regNo & lanjut edit
+            if ($this->formMode === 'create') {
+                $this->formMode = 'edit';
+            }
+
             $this->dispatch('master.pasien.saved');
         } catch (LockTimeoutException $e) {
             $this->dispatch('toast', type: 'error', message: 'Sistem sibuk, gagal memperoleh lock. Coba lagi.');
@@ -340,7 +355,7 @@ new class extends Component {
     {
         try {
             // Cek apakah pasien sudah punya transaksi
-            $isUsed = DB::table('rstxn_rjhdrs')->where('reg_no', $regNo)->exists() || DB::table('rstxn_igdhdrs')->where('reg_no', $regNo)->exists() || DB::table('rstxn_rihdrs')->where('reg_no', $regNo)->exists();
+            $isUsed = DB::table('rstxn_rjhdrs')->where('reg_no', $regNo)->exists() || DB::table('rstxn_ugdhdrs')->where('reg_no', $regNo)->exists() || DB::table('rstxn_rihdrs')->where('reg_no', $regNo)->exists();
 
             if ($isUsed) {
                 $this->dispatch('toast', type: 'error', message: 'Pasien sudah dipakai pada transaksi, tidak bisa dihapus.');
@@ -671,7 +686,7 @@ new class extends Component {
 <div>
     <x-modal name="master-pasien-actions" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
-            wire:key="master-pasien-actions-{{ $formMode }}-{{ $dataPasien['pasien']['regNo'] ?? 'new' }}">
+            wire:key="{{ $this->renderKey('modal', [$formMode, $regNo]) }}">
 
             {{-- HEADER --}}
             <div class="relative px-6 py-5 border-b border-gray-200 dark:border-gray-700">
@@ -755,7 +770,8 @@ new class extends Component {
                                                                     <span class="font-semibold">Tgl Lahir:</span>
                                                                     {{ $dataPasien['pasien']['tglLahir'] ?? '-' }}
                                                                 </span>
-                                                                <span class="mx-2 text-gray-700 dark:text-gray-300">|</span>
+                                                                <span
+                                                                    class="mx-2 text-gray-700 dark:text-gray-300">|</span>
                                                                 @if (isset($dataPasien['pasien']['thn']))
                                                                     <span
                                                                         class="font-semibold text-gray-700 dark:text-gray-300">
