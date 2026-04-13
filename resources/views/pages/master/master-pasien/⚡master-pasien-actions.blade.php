@@ -42,7 +42,7 @@ new class extends Component {
 
     public function mount(): void
     {
-        $this->registerAreas(['modal']);
+        $this->registerAreas(['modal', 'alamat_identitas', 'alamat_domisil']);
         $this->initializeLOVOptions();
     }
 
@@ -211,9 +211,9 @@ new class extends Component {
             'dataPasien.pasien.identitas.rw.max' => 'RW maksimal :max karakter.',
 
             // Identitas - Desa & Kota
-            'dataPasien.pasien.identitas.desaId.required' => 'Desa wajib dipilih.',
-            'dataPasien.pasien.identitas.kotaId.required' => 'Kota/Kabupaten wajib dipilih.',
-            'dataPasien.pasien.identitas.propinsiId.required' => 'Provinsi wajib dipilih.',
+            'dataPasien.pasien.identitas.desaId.required' => 'Desa wajib dipilih (cari nama desa, kecamatan, atau kota).',
+            'dataPasien.pasien.identitas.kotaId.required' => 'Kota/Kabupaten wajib diisi (otomatis dari pilihan desa).',
+            'dataPasien.pasien.identitas.propinsiId.required' => 'Provinsi wajib diisi (otomatis dari pilihan desa).',
 
             // Kontak - No HP Pasien
             'dataPasien.pasien.kontak.nomerTelponSelulerPasien.required' => 'No. HP Pasien wajib diisi.',
@@ -474,6 +474,12 @@ new class extends Component {
         $this->dataPasien['pasien']['identitas']['desaName'] = $payload['des_name'] ?? '';
         $this->dataPasien['pasien']['identitas']['kecamatanId'] = $payload['kec_id'] ?? '';
         $this->dataPasien['pasien']['identitas']['kecamatanName'] = $payload['kec_name'] ?? '';
+        // Auto-fill kota & provinsi dari desa
+        $this->dataPasien['pasien']['identitas']['kotaId'] = $payload['kab_id'] ?? '';
+        $this->dataPasien['pasien']['identitas']['kotaName'] = $payload['kab_name'] ?? '';
+        $this->dataPasien['pasien']['identitas']['propinsiId'] = $payload['prop_id'] ?? '';
+        $this->dataPasien['pasien']['identitas']['propinsiName'] = $payload['prop_name'] ?? '';
+        $this->incrementVersion('alamat_identitas');
     }
 
     #[On('lov.selected.desa_domisil')]
@@ -483,21 +489,14 @@ new class extends Component {
         $this->dataPasien['pasien']['domisil']['desaName'] = $payload['des_name'] ?? '';
         $this->dataPasien['pasien']['domisil']['kecamatanId'] = $payload['kec_id'] ?? '';
         $this->dataPasien['pasien']['domisil']['kecamatanName'] = $payload['kec_name'] ?? '';
+        // Auto-fill kota & provinsi dari desa
+        $this->dataPasien['pasien']['domisil']['kotaId'] = $payload['kab_id'] ?? '';
+        $this->dataPasien['pasien']['domisil']['kotaName'] = $payload['kab_name'] ?? '';
+        $this->dataPasien['pasien']['domisil']['propinsiId'] = $payload['prop_id'] ?? '';
+        $this->dataPasien['pasien']['domisil']['propinsiName'] = $payload['prop_name'] ?? '';
+        $this->incrementVersion('alamat_domisil');
     }
 
-    #[On('lov.selected.kota_identitas')]
-    public function kota_identitas(string $target, array $payload): void
-    {
-        $this->dataPasien['pasien']['identitas']['kotaId'] = $payload['kota_id'] ?? '';
-        $this->dataPasien['pasien']['identitas']['kotaName'] = $payload['kota_name'] ?? '';
-    }
-
-    #[On('lov.selected.kota_domisil')]
-    public function kota_domisil(string $target, array $payload): void
-    {
-        $this->dataPasien['pasien']['domisil']['kotaId'] = $payload['kota_id'] ?? '';
-        $this->dataPasien['pasien']['domisil']['kotaName'] = $payload['kota_name'] ?? '';
-    }
 
     /**
      * Update atau generate UUID Pasien dari SATUSEHAT berdasarkan NIK
