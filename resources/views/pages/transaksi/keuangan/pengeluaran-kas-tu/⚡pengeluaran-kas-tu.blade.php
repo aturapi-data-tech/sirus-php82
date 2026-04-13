@@ -53,11 +53,17 @@ new class extends Component {
             ->leftJoin('acmst_accounts as b', 'a.acc_id', '=', 'b.acc_id')
             ->leftJoin('acmst_accounts as c', 'a.acc_id_kas', '=', 'c.acc_id')
             ->leftJoin('immst_employers as d', 'a.emp_id', '=', 'd.emp_id')
-            ->select(
-                'a.tucashk_no', 'a.tucashk_date', 'a.tucashk_desc', 'a.tucashk_nominal',
-                'a.acc_id', 'b.acc_name', 'a.acc_id_kas', 'c.acc_name as acc_name_kas',
-                'a.emp_id', 'd.emp_name', 'a.shift', 'a.tucashk_status'
-            )
+            ->select([
+                'a.tucashk_no',
+                DB::raw("to_char(a.tucashk_date,'dd/mm/yyyy hh24:mi:ss') as tucashk_date_display"),
+                'a.shift',
+                'a.tucashk_desc',
+                'a.tucashk_nominal',
+                'a.acc_id', 'b.acc_name',
+                'a.acc_id_kas', 'c.acc_name as acc_name_kas',
+                'a.emp_id', 'd.emp_name',
+                'a.tucashk_status',
+            ])
             ->orderByDesc('a.tucashk_date')
             ->orderByDesc('a.shift');
 
@@ -142,34 +148,32 @@ new class extends Component {
                                 <th class="px-4 py-3 font-semibold">NO</th>
                                 <th class="px-4 py-3 font-semibold">TANGGAL</th>
                                 <th class="px-4 py-3 font-semibold">KETERANGAN</th>
-                                <th class="px-4 py-3 font-semibold">AKUN</th>
                                 <th class="px-4 py-3 font-semibold text-right">NOMINAL</th>
                                 <th class="px-4 py-3 font-semibold">KAS</th>
-                                <th class="px-4 py-3 font-semibold">PETUGAS</th>
-                                <th class="px-4 py-3 font-semibold">STATUS</th>
+                                <th class="px-4 py-3 font-semibold">INFO</th>
                                 <th class="px-4 py-3 font-semibold">AKSI</th>
                             </tr>
                         </thead>
                         <tbody class="text-gray-700 divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-200">
                             @forelse($this->rows as $row)
                                 <tr wire:key="co-row-{{ $row->tucashk_no }}" class="hover:bg-gray-50 dark:hover:bg-gray-800/60">
-                                    <td class="px-4 py-3 font-mono text-xs whitespace-nowrap">{{ $row->tucashk_no }}</td>
-                                    <td class="px-4 py-3 text-xs whitespace-nowrap">
-                                        {{ $row->tucashk_date ? Carbon::parse($row->tucashk_date)->format('d/m/Y H:i:s') : '-' }}
+                                    <td class="px-4 py-3 font-mono text-sm whitespace-nowrap">{{ $row->tucashk_no }}</td>
+                                    <td class="px-4 py-3 text-sm whitespace-nowrap">
+                                        <div>{{ $row->tucashk_date_display ?? '-' }}</div>
+                                        <div class="text-gray-400">Shift {{ $row->shift ?? '-' }}</div>
                                     </td>
-                                    <td class="px-4 py-3 max-w-xs truncate">{{ $row->tucashk_desc ?? '-' }}</td>
-                                    <td class="px-4 py-3 text-xs">
-                                        <div class="font-semibold">{{ $row->acc_name ?? '-' }}</div>
-                                        <div class="text-gray-400">{{ $row->acc_id }}</div>
+                                    <td class="px-4 py-3 text-sm">
+                                        <div>{{ $row->tucashk_desc ?? '-' }}</div>
+                                        <div class="text-gray-400">{{ $row->acc_id }} - {{ $row->acc_name ?? '-' }}</div>
                                     </td>
                                     <td class="px-4 py-3 font-mono text-right whitespace-nowrap">Rp {{ number_format($row->tucashk_nominal ?? 0) }}</td>
-                                    <td class="px-4 py-3 text-xs">
+                                    <td class="px-4 py-3 text-sm">
                                         <div>{{ $row->acc_name_kas ?? '-' }}</div>
                                         <div class="text-gray-400">{{ $row->acc_id_kas }}</div>
                                     </td>
-                                    <td class="px-4 py-3 text-xs">{{ $row->emp_name ?? $row->emp_id ?? '-' }}</td>
-                                    <td class="px-4 py-3">
-                                        <x-badge variant="success">Posted</x-badge>
+                                    <td class="px-4 py-3 text-sm">
+                                        <div>{{ $row->emp_name ?? $row->emp_id ?? '-' }}</div>
+                                        <x-badge variant="success" class="mt-1">Posted</x-badge>
                                     </td>
                                     <td class="px-4 py-3">
                                         <div class="flex flex-wrap gap-2">
@@ -185,7 +189,7 @@ new class extends Component {
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="9" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
+                                    <td colspan="6" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
                                         Tidak ada data pengeluaran kas.
                                     </td>
                                 </tr>
