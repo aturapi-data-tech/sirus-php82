@@ -57,6 +57,11 @@ new class extends Component {
             return;
         }
 
+        // Cek emp_id user
+        if (empty(auth()->user()->emp_id)) {
+            $this->dispatch('toast', type: 'warning', message: 'EMP ID belum diisi di profil user Anda. Data pemeriksa tidak bisa otomatis terisi. Hubungi administrator.');
+        }
+
         $this->checkupNo = $checkupNo;
         $this->activeTab = 'PemeriksaanLab';
 
@@ -260,9 +265,10 @@ new class extends Component {
 
                     if (empty($hdr->emp_id)) {
                         $authEmpId = auth()->user()->emp_id ?? null;
-                        if ($authEmpId) {
-                            $updateData['emp_id'] = $authEmpId;
+                        if (!$authEmpId) {
+                            throw new \RuntimeException('EMP ID belum diisi di profil user Anda. Hubungi administrator.');
                         }
+                        $updateData['emp_id'] = $authEmpId;
                     }
 
                     if (empty($hdr->waktu_masuk_pelayanan)) {
@@ -307,7 +313,7 @@ new class extends Component {
                 ->value('emp_id');
 
             if (empty($empId)) {
-                $this->dispatch('toast', type: 'error', message: 'Kolom pemeriksa masih kosong.');
+                $this->dispatch('toast', type: 'error', message: 'Kolom pemeriksa masih kosong. Pastikan EMP ID sudah diisi di profil user, lalu proses ulang pemeriksaan.');
                 return;
             }
 
