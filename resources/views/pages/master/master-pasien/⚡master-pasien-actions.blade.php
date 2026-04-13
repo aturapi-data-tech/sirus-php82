@@ -490,6 +490,8 @@ new class extends Component {
     {
         $this->dataPasien['pasien']['identitas']['kotaId'] = $payload['kota_id'] ?? '';
         $this->dataPasien['pasien']['identitas']['kotaName'] = $payload['kota_name'] ?? '';
+        $this->dataPasien['pasien']['identitas']['propinsiId'] = $payload['prop_id'] ?? '';
+        $this->dataPasien['pasien']['identitas']['propinsiName'] = $payload['prop_name'] ?? '';
     }
 
     #[On('lov.selected.kota_domisil')]
@@ -497,6 +499,22 @@ new class extends Component {
     {
         $this->dataPasien['pasien']['domisil']['kotaId'] = $payload['kota_id'] ?? '';
         $this->dataPasien['pasien']['domisil']['kotaName'] = $payload['kota_name'] ?? '';
+        $this->dataPasien['pasien']['domisil']['propinsiId'] = $payload['prop_id'] ?? '';
+        $this->dataPasien['pasien']['domisil']['propinsiName'] = $payload['prop_name'] ?? '';
+    }
+
+    #[On('lov.selected.propinsi_identitas')]
+    public function propinsi_identitas(string $target, array $payload): void
+    {
+        $this->dataPasien['pasien']['identitas']['propinsiId'] = $payload['prop_id'] ?? '';
+        $this->dataPasien['pasien']['identitas']['propinsiName'] = $payload['prop_name'] ?? '';
+    }
+
+    #[On('lov.selected.propinsi_domisil')]
+    public function propinsi_domisil(string $target, array $payload): void
+    {
+        $this->dataPasien['pasien']['domisil']['propinsiId'] = $payload['prop_id'] ?? '';
+        $this->dataPasien['pasien']['domisil']['propinsiName'] = $payload['prop_name'] ?? '';
     }
 
     /**

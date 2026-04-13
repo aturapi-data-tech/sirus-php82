@@ -48,6 +48,12 @@
                 <x-input-error :messages="$errors->get('dataPasien.pasien.identitas.kotaId')" class="mt-1" />
             </div>
 
+            {{-- Provinsi --}}
+            <div>
+                <livewire:lov.propinsi.lov-propinsi target="propinsi_identitas" :initialPropId="$dataPasien['pasien']['identitas']['propinsiId'] ?? null" />
+                <x-input-error :messages="$errors->get('dataPasien.pasien.identitas.propinsiId')" class="mt-1" />
+            </div>
+
             {{-- Negara --}}
             <div>
                 <x-input-label value="Negara" />

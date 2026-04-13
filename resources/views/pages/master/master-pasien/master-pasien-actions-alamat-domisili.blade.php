@@ -64,6 +64,12 @@
              </div>
 
 
+             {{-- Provinsi Domisili --}}
+             <div>
+                 <livewire:lov.propinsi.lov-propinsi target="propinsi_domisil" :initialPropId="$dataPasien['pasien']['domisil']['propinsiId'] ?? null" />
+                 <x-input-error :messages="$errors->get('dataPasien.pasien.domisil.propinsiId')" class="mt-1" />
+             </div>
+
              {{-- Negara Domisili --}}
              <div>
                  <x-input-label value="Negara Domisili" />
