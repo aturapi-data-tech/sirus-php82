@@ -485,7 +485,7 @@ new class extends Component {
                          IDENTITAS DIAGNOSIS
                     ========================================= --}}
                     <div class="p-5 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                        <h3 class="mb-4 text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">Identitas Diagnosis</h3>
+                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2 mb-4">Identitas Diagnosis</h3>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
                                 <x-input-label value="Kode Diagnosis (cth: D.0001)" />
@@ -507,7 +507,7 @@ new class extends Component {
                          SDKI
                     ========================================= --}}
                     <div class="p-5 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                        <h3 class="mb-4 text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">SDKI (Standar Diagnosis Keperawatan Indonesia)</h3>
+                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2 mb-4">SDKI (Standar Diagnosis Keperawatan Indonesia)</h3>
 
                         <div class="space-y-4">
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -600,7 +600,7 @@ new class extends Component {
                     ========================================= --}}
                     <div class="p-5 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                         <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">SLKI (Standar Luaran Keperawatan Indonesia)</h3>
+                            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">SLKI (Standar Luaran Keperawatan Indonesia)</h3>
                             <x-outline-button type="button" wire:click="addSlki">+ Tambah SLKI</x-outline-button>
                         </div>
 
@@ -637,7 +637,7 @@ new class extends Component {
                     ========================================= --}}
                     <div class="p-5 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
                         <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">SIKI (Standar Intervensi Keperawatan Indonesia)</h3>
+                            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">SIKI (Standar Intervensi Keperawatan Indonesia)</h3>
                             <x-outline-button type="button" wire:click="addSiki">+ Tambah SIKI</x-outline-button>
                         </div>
 

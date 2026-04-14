@@ -1,5 +1,7 @@
 # Standar Komponen Tombol
 
+> Bagian dari [Standar UI & Komponen](standar-ui-komponen.md) — lihat juga standar modal, form section, tabel, dan input number.
+
 Panduan penggunaan komponen tombol (`resources/views/components/*-button.blade.php`) agar konsisten di seluruh aplikasi.
 
 ---

@@ -174,32 +174,32 @@ new class extends Component {
                      x-on:focus-class-id.window="$nextTick(() => setTimeout(() => $refs.inputClassId?.focus(), 150))"
                      x-on:focus-class-desc.window="$nextTick(() => setTimeout(() => $refs.inputClassDesc?.focus(), 150))">
 
-                    <div class="p-5 space-y-5 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-
-                        {{-- ID + Nama --}}
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <div>
-                                <x-input-label value="ID Kelas" />
-                                <x-text-input wire:model.live="form.class_id" x-ref="inputClassId"
-                                    type="number" min="1"
-                                    :disabled="$formMode === 'edit'"
-                                    :error="$errors->has('form.class_id')"
-                                    class="w-full mt-1"
-                                    x-on:keydown.enter.prevent="$refs.inputClassDesc?.focus()" />
-                                <x-input-error :messages="$errors->get('form.class_id')" class="mt-1" />
-                            </div>
-                            <div>
-                                <x-input-label value="Nama Kelas" />
-                                <x-text-input wire:model.live="form.class_desc" x-ref="inputClassDesc"
-                                    maxlength="20"
-                                    :error="$errors->has('form.class_desc')"
-                                    class="w-full mt-1 uppercase"
-                                    x-on:keydown.enter.prevent="$wire.save()" />
-                                <x-input-error :messages="$errors->get('form.class_desc')" class="mt-1" />
+                    <x-border-form title="Data Kelas Rawat">
+                        <div class="space-y-5">
+                            {{-- ID + Nama --}}
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div>
+                                    <x-input-label value="ID Kelas" />
+                                    <x-text-input wire:model.live="form.class_id" x-ref="inputClassId"
+                                        type="number" min="1"
+                                        :disabled="$formMode === 'edit'"
+                                        :error="$errors->has('form.class_id')"
+                                        class="w-full mt-1"
+                                        x-on:keydown.enter.prevent="$refs.inputClassDesc?.focus()" />
+                                    <x-input-error :messages="$errors->get('form.class_id')" class="mt-1" />
+                                </div>
+                                <div>
+                                    <x-input-label value="Nama Kelas" />
+                                    <x-text-input wire:model.live="form.class_desc" x-ref="inputClassDesc"
+                                        maxlength="20"
+                                        :error="$errors->has('form.class_desc')"
+                                        class="w-full mt-1 uppercase"
+                                        x-on:keydown.enter.prevent="$wire.save()" />
+                                    <x-input-error :messages="$errors->get('form.class_desc')" class="mt-1" />
+                                </div>
                             </div>
                         </div>
-
-                    </div>
+                    </x-border-form>
                 </div>
             </div>
 

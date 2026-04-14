@@ -174,36 +174,36 @@ new class extends Component {
             </div>
 
             {{-- BODY --}}
-            <div class="flex-1 px-6 py-5 bg-gray-50/70 dark:bg-gray-950/20"
+            <div class="flex-1 px-4 py-4 bg-gray-50/70 dark:bg-gray-950/20"
                  x-data
                  x-on:focus-rel-id.window="$nextTick(() => setTimeout(() => $refs.inputRelId?.focus(), 150))"
                  x-on:focus-rel-desc.window="$nextTick(() => setTimeout(() => $refs.inputRelDesc?.focus(), 150))">
 
-                <div class="p-5 space-y-4 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div>
-                            <x-input-label value="ID Agama" />
-                            <x-text-input wire:model.live="form.rel_id" x-ref="inputRelId"
-                                type="number" min="1" max="99"
-                                :disabled="$formMode === 'edit'"
-                                :error="$errors->has('form.rel_id')"
-                                class="w-full mt-1"
-                                x-on:keydown.enter.prevent="$refs.inputRelDesc?.focus()" />
-                            <x-input-error :messages="$errors->get('form.rel_id')" class="mt-1" />
-                        </div>
-                        <div class="sm:col-span-2">
-                            <x-input-label value="Nama Agama" />
-                            <x-text-input wire:model.live="form.rel_desc" x-ref="inputRelDesc"
-                                maxlength="15"
-                                :error="$errors->has('form.rel_desc')"
-                                class="w-full mt-1 uppercase"
-                                x-on:keydown.enter.prevent="$wire.save()" />
-                            <x-input-error :messages="$errors->get('form.rel_desc')" class="mt-1" />
+                <x-border-form title="Data Agama">
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                            <div>
+                                <x-input-label value="ID Agama" />
+                                <x-text-input wire:model.live="form.rel_id" x-ref="inputRelId"
+                                    type="number" min="1" max="99"
+                                    :disabled="$formMode === 'edit'"
+                                    :error="$errors->has('form.rel_id')"
+                                    class="w-full mt-1"
+                                    x-on:keydown.enter.prevent="$refs.inputRelDesc?.focus()" />
+                                <x-input-error :messages="$errors->get('form.rel_id')" class="mt-1" />
+                            </div>
+                            <div class="sm:col-span-2">
+                                <x-input-label value="Nama Agama" />
+                                <x-text-input wire:model.live="form.rel_desc" x-ref="inputRelDesc"
+                                    maxlength="15"
+                                    :error="$errors->has('form.rel_desc')"
+                                    class="w-full mt-1 uppercase"
+                                    x-on:keydown.enter.prevent="$wire.save()" />
+                                <x-input-error :messages="$errors->get('form.rel_desc')" class="mt-1" />
+                            </div>
                         </div>
                     </div>
-
-                </div>
+                </x-border-form>
             </div>
 
             {{-- FOOTER --}}

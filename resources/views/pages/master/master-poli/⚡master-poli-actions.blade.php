@@ -245,15 +245,12 @@ new class extends Component {
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 bg-gray-50/70 dark:bg-gray-950/20">
                 <div class="max-w-4xl">
-                    <div
-                        class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                    </div>
-
                     {{-- x-data: tangkap focus event dari PHP --}}
-                    <div x-data
+                    <x-border-form title="Data Poli"
+                        x-data
                         x-on:focus-poli-id.window="$nextTick(() => setTimeout(() => $refs.inputPoliId?.focus(), 150))"
                         x-on:focus-poli-name.window="$nextTick(() => setTimeout(() => $refs.inputPoliName?.focus(), 150))">
-                        <div class="p-5 space-y-5">
+                        <div class="space-y-5">
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
                                 {{-- Poli ID --}}
@@ -313,7 +310,7 @@ new class extends Component {
                             </div>
 
                         </div>
-                    </div>
+                    </x-border-form>
                 </div>
             </div>
         </div>

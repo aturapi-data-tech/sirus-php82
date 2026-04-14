@@ -183,36 +183,37 @@ new class extends Component {
 
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 bg-gray-50/70 dark:bg-gray-950/20">
-                <div class="max-w-xl space-y-5 p-5 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700"
+                <x-border-form title="Data Bed" class="max-w-xl"
                     x-data
                     x-on:focus-bed-no.window="$nextTick(() => setTimeout(() => $refs.inputBedNo?.focus(), 150))"
                     x-on:focus-bed-desc.window="$nextTick(() => setTimeout(() => $refs.inputBedDesc?.focus(), 150))">
-
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div>
-                            <x-input-label value="No Bed" />
-                            <x-text-input wire:model.live="formBed.bed_no" x-ref="inputBedNo"
-                                :disabled="$formMode === 'edit'" maxlength="5" :error="$errors->has('formBed.bed_no')"
-                                class="w-full mt-1 uppercase"
-                                x-on:keydown.enter.prevent="$refs.inputBedDesc?.focus()" />
-                            <x-input-error :messages="$errors->get('formBed.bed_no')" class="mt-1" />
+                    <div class="space-y-5">
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div>
+                                <x-input-label value="No Bed" />
+                                <x-text-input wire:model.live="formBed.bed_no" x-ref="inputBedNo"
+                                    :disabled="$formMode === 'edit'" maxlength="5" :error="$errors->has('formBed.bed_no')"
+                                    class="w-full mt-1 uppercase"
+                                    x-on:keydown.enter.prevent="$refs.inputBedDesc?.focus()" />
+                                <x-input-error :messages="$errors->get('formBed.bed_no')" class="mt-1" />
+                            </div>
+                            <div>
+                                <x-input-label value="Kamar" />
+                                <x-text-input :value="$formBed['room_id']" disabled
+                                    class="w-full mt-1 bg-gray-50 dark:bg-gray-800" />
+                            </div>
                         </div>
+
                         <div>
-                            <x-input-label value="Kamar" />
-                            <x-text-input :value="$formBed['room_id']" disabled
-                                class="w-full mt-1 bg-gray-50 dark:bg-gray-800" />
+                            <x-input-label value="Keterangan Bed" />
+                            <x-text-input wire:model.live="formBed.bed_desc" x-ref="inputBedDesc" maxlength="50"
+                                :error="$errors->has('formBed.bed_desc')" class="w-full mt-1"
+                                x-on:keydown.enter.prevent="$wire.save()" />
+                            <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Opsional — misal: "Bed A", "Bed Pojok", dll.</p>
+                            <x-input-error :messages="$errors->get('formBed.bed_desc')" class="mt-1" />
                         </div>
                     </div>
-
-                    <div>
-                        <x-input-label value="Keterangan Bed" />
-                        <x-text-input wire:model.live="formBed.bed_desc" x-ref="inputBedDesc" maxlength="50"
-                            :error="$errors->has('formBed.bed_desc')" class="w-full mt-1"
-                            x-on:keydown.enter.prevent="$wire.save()" />
-                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Opsional — misal: "Bed A", "Bed Pojok", dll.</p>
-                        <x-input-error :messages="$errors->get('formBed.bed_desc')" class="mt-1" />
-                    </div>
-                </div>
+                </x-border-form>
             </div>
 
             {{-- FOOTER --}}

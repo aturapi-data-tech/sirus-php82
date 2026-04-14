@@ -333,12 +333,8 @@ new class extends Component {
                         <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 
                             {{-- ══ KOLOM KIRI — Data Dokter ══ --}}
-                            <div
-                                class="p-5 space-y-4 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                                <h3
-                                    class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">
-                                    Data Dokter
-                                </h3>
+                            <x-border-form title="Data Dokter">
+                                <div class="space-y-4">
 
                                 {{-- ID Dokter --}}
                                 <div>
@@ -411,15 +407,12 @@ new class extends Component {
                                         label="Status Aktif" />
                                     <x-input-error :messages="$errors->get('activeStatus')" class="mt-1" />
                                 </div>
-                            </div>
+                                </div>
+                            </x-border-form>
 
                             {{-- ══ KOLOM KANAN — Tarif & Lainnya ══ --}}
-                            <div
-                                class="p-5 space-y-4 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                                <h3
-                                    class="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-2">
-                                    Tarif &amp; Administrasi
-                                </h3>
+                            <x-border-form title="Tarif & Administrasi">
+                                <div class="space-y-4">
 
                                 {{-- Gaji Pokok --}}
                                 <div>
@@ -480,7 +473,8 @@ new class extends Component {
                                         <x-input-error :messages="$errors->get('ugdPriceBpjs')" class="mt-1" />
                                     </div>
                                 </div>
-                            </div>
+                                </div>
+                            </x-border-form>
 
                         </div>
                     </div>

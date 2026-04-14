@@ -291,14 +291,15 @@ new class extends Component {
                                     {{-- AKSI --}}
                                     <td class="px-5 py-4 align-top" wire:click.stop>
                                         <div class="flex flex-wrap gap-2">
-                                            <x-outline-button type="button"
-                                                wire:click="openEditKamar('{{ $room->room_id }}')">
+                                            <x-secondary-button type="button"
+                                                wire:click="openEditKamar('{{ $room->room_id }}')" class="px-2 py-1 text-xs">
                                                 Edit
-                                            </x-outline-button>
+                                            </x-secondary-button>
                                             <x-confirm-button variant="danger" :action="'requestDeleteKamar(\'' . $room->room_id . '\')'"
                                                 title="Hapus Kamar"
                                                 message="Yakin hapus kamar {{ $room->room_name }}?"
-                                                confirmText="Ya, hapus" cancelText="Batal">
+                                                confirmText="Ya, hapus" cancelText="Batal"
+                                                class="px-2 py-1 text-xs">
                                                 Hapus
                                             </x-confirm-button>
                                         </div>
@@ -369,7 +370,7 @@ new class extends Component {
                                                                     title="Hapus Bed"
                                                                     :message="'Hapus bed ' . $bed['bed_no'] . '?'"
                                                                     confirmText="Ya, hapus" cancelText="Batal"
-                                                                    class="!p-1 !text-xs">
+                                                                    class="px-2 py-1 text-xs">
                                                                     <svg class="w-3 h-3" fill="none"
                                                                         stroke="currentColor"
                                                                         viewBox="0 0 24 24">

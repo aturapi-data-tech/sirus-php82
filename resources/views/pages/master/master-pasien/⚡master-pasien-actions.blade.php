@@ -735,9 +735,8 @@ new class extends Component {
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 bg-gray-50/70 dark:bg-gray-950/20">
                 <div class="w-full">
-                    <div
-                        class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                        <div class="p-5 space-y-5">
+                    <x-border-form title="Data Pasien">
+                        <div class="space-y-5">
 
                             {{-- CONTENT AREA --}}
                             <div class="flex-1 overflow-y-auto">
@@ -829,7 +828,7 @@ new class extends Component {
                             </div>
 
                         </div>
-                    </div>
+                    </x-border-form>
                 </div>
             </div>
 
