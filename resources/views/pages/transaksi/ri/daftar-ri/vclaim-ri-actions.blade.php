@@ -205,7 +205,8 @@ new class extends Component {
         }
 
         /* ---- Sync SKDP & SEP dari SPRI yang sudah ada ---- */
-        if (!empty($spriData['noSPRIBPJS'])) {
+        // Hanya sync jika SEP belum terbit — kalau SEP sudah ada, data sudah tersimpan di reqSep
+        if (!empty($spriData['noSPRIBPJS']) && empty($sepData['noSep'])) {
             $this->SEPForm['skdp']['noSurat'] = $spriData['noSPRIBPJS'];
             $this->SEPForm['skdp']['kodeDPJP'] = $spriData['drKontrolBPJS'] ?? '';
             $this->SEPForm['rujukan']['noRujukan'] = $spriData['noSPRIBPJS'];
