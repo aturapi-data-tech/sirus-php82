@@ -136,6 +136,24 @@ new class extends Component {
         $this->noReferensi = $noReferensi;
         $this->formMode = $riHdrNo ? 'edit' : 'create';
 
+        // Baca fresh dari DB — agar data SPRI/SEP yang sudah tersimpan selalu ter-load
+        if ($riHdrNo) {
+            $fresh = $this->findDataRI($riHdrNo);
+            if (!empty($fresh['spri'])) {
+                $spriData = $fresh['spri'];
+            }
+            if (!empty($fresh['sep'])) {
+                $sepData = $fresh['sep'];
+            }
+            if (!empty($fresh['noReferensi']) && empty($noReferensi)) {
+                $this->noReferensi = $fresh['noReferensi'];
+                $noReferensi = $fresh['noReferensi'];
+            }
+            if (!empty($fresh['kdpolibpjs']) && empty($kdpolibpjs)) {
+                $kdpolibpjs = $fresh['kdpolibpjs'];
+            }
+        }
+
         /* ---- Restore DPJP dari reqSep (edit mode) ---- */
         $tSep = $sepData['reqSep']['request']['t_sep'] ?? [];
         if (!empty($tSep['dpjpLayan'])) {
