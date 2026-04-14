@@ -6,11 +6,11 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\BPJS\VclaimTrait;
+use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 
 new class extends Component {
-    // VclaimTrait di-use → semua call pakai $this->method() bukan VclaimTrait::method()
-    use VclaimTrait, WithRenderVersioningTrait;
+    use VclaimTrait, EmrRITrait, WithRenderVersioningTrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal', 'form-sep', 'form-spri', 'info-pasien'];
@@ -397,6 +397,9 @@ new class extends Component {
                     $this->SEPForm['poli']['tujuan'] = $this->SPRIForm['poliKontrolBPJS'];
                 }
 
+                // Persist SPRI langsung ke JSON DB
+                $this->syncVclaimJson(spriData: $this->SPRIForm);
+
                 $this->dispatch('spri-generated-ri', spriData: $this->SPRIForm);
                 $this->dispatch('toast', type: 'success', message: ($isUpdate ? 'Update' : 'Insert') . " SPRI berhasil ({$code}): {$msg}");
 
@@ -460,19 +463,22 @@ new class extends Component {
         try {
             $response = $this->sep_insert($request)->getOriginalContent();
             $code = $response['metadata']['code'] ?? 500;
-            if ($code == 200) {
+            if ($code == 200 || ($code == 201 && !empty($response['response']['sep']['noSep']))) {
                 $sepData = $response['response']['sep'] ?? [];
                 $noSep = $sepData['noSep'] ?? '';
+
+                // Persist SEP langsung ke JSON DB
+                $this->syncVclaimJson(sepData: [
+                    'noSep' => $noSep,
+                    'reqSep' => $request,
+                    'resSep' => $sepData,
+                ]);
+
                 $this->dispatch('sep-generated-ri', reqSep: $request, noSep: $noSep, resSep: $sepData);
                 $this->dispatch('toast', type: 'success', message: "SEP RI berhasil dibuat: {$noSep}");
-                $this->closeModal();
-            } elseif ($code == 201 && !empty($response['response']['sep']['noSep'])) {
-                // 201 = SEP berhasil dibuat dengan catatan (misal poliTujuan dikosongkan untuk RANAP)
-                $sepData = $response['response']['sep'] ?? [];
-                $noSep = $sepData['noSep'] ?? '';
-                $this->dispatch('sep-generated-ri', reqSep: $request, noSep: $noSep, resSep: $sepData);
-                $this->dispatch('toast', type: 'success', message: "SEP RI berhasil dibuat: {$noSep}");
-                $this->dispatch('toast', type: 'info', message: $response['metadata']['message'] ?? '');
+                if ($code == 201) {
+                    $this->dispatch('toast', type: 'info', message: $response['metadata']['message'] ?? '');
+                }
                 $this->closeModal();
             } else {
                 $this->dispatch('toast', type: 'error', message: "Buat SEP gagal ({$code}): " . ($response['metadata']['message'] ?? '-'));
@@ -613,6 +619,10 @@ new class extends Component {
             if (in_array($code, [200, 201])) {
                 $this->sepData = ['noSep' => '', 'reqSep' => [], 'resSep' => []];
                 $this->isFormLocked = false;
+
+                // Persist hapus SEP ke JSON DB
+                $this->syncVclaimJson(sepData: ['noSep' => '', 'reqSep' => [], 'resSep' => []]);
+
                 $this->dispatch('sep-generated-ri', reqSep: []);
                 $this->dispatch('toast', type: 'success', message: "SEP berhasil dihapus ({$code}): {$msg}");
                 $this->incrementVersion('form-sep');
@@ -647,6 +657,13 @@ new class extends Component {
             $msg = $response['metadata']['message'] ?? '-';
 
             if ($code == 200) {
+                // Persist update SEP ke JSON DB
+                $this->syncVclaimJson(sepData: [
+                    'noSep' => $this->sepData['noSep'],
+                    'reqSep' => $request,
+                    'resSep' => $this->sepData['resSep'] ?? [],
+                ]);
+
                 $this->dispatch('sep-generated-ri', reqSep: $request, noSep: $this->sepData['noSep'], resSep: $this->sepData['resSep'] ?? []);
                 $this->dispatch('toast', type: 'success', message: "SEP berhasil diupdate ({$code}): {$msg}");
                 $this->isFormLocked = true;
@@ -703,6 +720,34 @@ new class extends Component {
         }
         $this->incrementVersion('form-spri');
         $this->incrementVersion('form-sep');
+    }
+
+    /* ===============================
+     | PERSIST JSON — simpan langsung ke DB via EmrRITrait
+     =============================== */
+    private function syncVclaimJson(array $spriData = [], array $sepData = []): void
+    {
+        if (!$this->riHdrNo) {
+            return;
+        }
+
+        DB::transaction(function () use ($spriData, $sepData) {
+            $this->lockRIRow($this->riHdrNo);
+
+            $fresh = $this->findDataRI($this->riHdrNo);
+
+            if (!empty($spriData)) {
+                $fresh['spri'] = $spriData;
+            }
+            if (!empty($sepData)) {
+                $fresh['sep'] = array_merge($fresh['sep'] ?? [], $sepData);
+            }
+            if (!empty($this->noReferensi)) {
+                $fresh['noReferensi'] = $this->noReferensi;
+            }
+
+            $this->updateJsonRI((int) $this->riHdrNo, $fresh);
+        });
     }
 
     /* ===============================
