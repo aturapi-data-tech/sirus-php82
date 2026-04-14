@@ -448,6 +448,14 @@ new class extends Component {
                 $this->dispatch('sep-generated-ri', reqSep: $request, noSep: $noSep, resSep: $sepData);
                 $this->dispatch('toast', type: 'success', message: "SEP RI berhasil dibuat: {$noSep}");
                 $this->closeModal();
+            } elseif ($code == 201 && !empty($response['response']['sep']['noSep'])) {
+                // 201 = SEP berhasil dibuat dengan catatan (misal poliTujuan dikosongkan untuk RANAP)
+                $sepData = $response['response']['sep'] ?? [];
+                $noSep = $sepData['noSep'] ?? '';
+                $this->dispatch('sep-generated-ri', reqSep: $request, noSep: $noSep, resSep: $sepData);
+                $this->dispatch('toast', type: 'success', message: "SEP RI berhasil dibuat: {$noSep}");
+                $this->dispatch('toast', type: 'info', message: $response['metadata']['message'] ?? '');
+                $this->closeModal();
             } else {
                 $this->dispatch('toast', type: 'error', message: "Buat SEP gagal ({$code}): " . ($response['metadata']['message'] ?? '-'));
             }
@@ -464,7 +472,6 @@ new class extends Component {
                 'SEPForm.tglSep'               => 'required|date_format:d/m/Y',
                 'SEPForm.noMR'                 => 'required',
                 'SEPForm.diagAwal'             => 'required',
-                'SEPForm.poli.tujuan'          => 'required',
                 'SEPForm.klsRawat.klsRawatHak' => 'required',
                 'SEPForm.noTelp'               => 'required',
             ],
@@ -473,7 +480,6 @@ new class extends Component {
                 'SEPForm.tglSep.required'               => 'Tanggal SEP wajib diisi.',
                 'SEPForm.tglSep.date_format'            => 'Format Tanggal SEP harus dd/mm/yyyy.',
                 'SEPForm.diagAwal.required'             => 'Diagnosa awal harus diisi.',
-                'SEPForm.poli.tujuan.required'          => 'Kode poli BPJS harus diisi.',
                 'SEPForm.klsRawat.klsRawatHak.required' => 'Kelas rawat hak belum dimuat. Klik tombol "↺ Muat Kelas Rawat".',
                 'SEPForm.noTelp.required'               => 'No. telepon pasien harus diisi.',
             ],
@@ -513,7 +519,7 @@ new class extends Component {
                     'catatan' => $this->SEPForm['catatan'] ?: '-',
                     'diagAwal' => $this->SEPForm['diagAwal'] ?? '',
                     'poli' => [
-                        'tujuan' => $this->SEPForm['poli']['tujuan'] ?? '',
+                        'tujuan' => '', // kosong untuk RANAP (jnsPelayanan=1)
                         'eksekutif' => $this->SEPForm['poli']['eksekutif'] ?? '0',
                     ],
                     'cob' => ['cob' => $this->SEPForm['cob']['cob'] ?? '0'],
