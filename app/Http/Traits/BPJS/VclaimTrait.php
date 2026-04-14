@@ -1247,4 +1247,280 @@ trait VclaimTrait
             );
         }
     }
+
+    // =========================================================
+    // RUJUKAN ANTAR RS — Insert / Update / Delete
+    // =========================================================
+
+    /**
+     * Insert Rujukan Antar RS 2.0
+     * Endpoint: POST Rujukan/2.0/insert
+     */
+    public static function rujukan_insert($rujukan)
+    {
+        $messages = [
+            'required' => ':attribute wajib diisi.',
+            'date' => ':attribute harus berupa tanggal yang valid.',
+        ];
+
+        $attributes = [
+            'request.t_rujukan.noSep' => 'No. SEP',
+            'request.t_rujukan.tglRujukan' => 'Tanggal Rujukan',
+            'request.t_rujukan.tglRencanaKunjungan' => 'Tanggal Rencana Kunjungan',
+            'request.t_rujukan.ppkDirujuk' => 'PPK Tujuan Rujukan',
+            'request.t_rujukan.jnsPelayanan' => 'Jenis Pelayanan',
+            'request.t_rujukan.catatan' => 'Catatan',
+            'request.t_rujukan.diagRujukan' => 'Diagnosa Rujukan',
+            'request.t_rujukan.tipeRujukan' => 'Tipe Rujukan',
+            'request.t_rujukan.poliRujukan' => 'Poli Rujukan',
+            'request.t_rujukan.user' => 'User',
+        ];
+
+        $r = [
+            'request' => [
+                't_rujukan' => [
+                    'noSep' => $rujukan['noSep'],
+                    'tglRujukan' => $rujukan['tglRujukan'],
+                    'tglRencanaKunjungan' => $rujukan['tglRencanaKunjungan'],
+                    'ppkDirujuk' => $rujukan['ppkDirujuk'],
+                    'jnsPelayanan' => $rujukan['jnsPelayanan'],
+                    'catatan' => $rujukan['catatan'] ?? '-',
+                    'diagRujukan' => $rujukan['diagRujukan'],
+                    'tipeRujukan' => $rujukan['tipeRujukan'],
+                    'poliRujukan' => $rujukan['poliRujukan'] ?? '',
+                    'user' => $rujukan['user'] ?? 'Sirus',
+                ],
+            ],
+        ];
+
+        $rules = [
+            'request.t_rujukan.noSep' => 'required',
+            'request.t_rujukan.tglRujukan' => 'required|date',
+            'request.t_rujukan.tglRencanaKunjungan' => 'required|date',
+            'request.t_rujukan.ppkDirujuk' => 'required',
+            'request.t_rujukan.jnsPelayanan' => 'required',
+            'request.t_rujukan.diagRujukan' => 'required',
+            'request.t_rujukan.tipeRujukan' => 'required',
+            'request.t_rujukan.user' => 'required',
+        ];
+
+        $validator = Validator::make($r, $rules, $messages, $attributes);
+
+        if ($validator->fails()) {
+            return self::sendError($validator->errors()->first(), $validator->errors(), 201, null, null);
+        }
+
+        try {
+            $url = env('VCLAIM_URL') . "Rujukan/2.0/insert";
+            $signature = self::signature();
+            $signature['Content-Type'] = 'application/x-www-form-urlencoded';
+
+            $response = Http::timeout(10)
+                ->withHeaders($signature)
+                ->post($url, $r);
+
+            return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
+        } catch (Exception $e) {
+            return self::sendError($e->getMessage(), $validator->errors(), 408, $url, null);
+        }
+    }
+
+    /**
+     * Update Rujukan Antar RS 2.0
+     * Endpoint: PUT Rujukan/2.0/update
+     */
+    public static function rujukan_update($rujukan)
+    {
+        $messages = [
+            'required' => ':attribute wajib diisi.',
+            'date' => ':attribute harus berupa tanggal yang valid.',
+        ];
+
+        $attributes = [
+            'request.t_rujukan.noRujukan' => 'No. Rujukan',
+            'request.t_rujukan.tglRujukan' => 'Tanggal Rujukan',
+            'request.t_rujukan.tglRencanaKunjungan' => 'Tanggal Rencana Kunjungan',
+            'request.t_rujukan.ppkDirujuk' => 'PPK Tujuan Rujukan',
+            'request.t_rujukan.jnsPelayanan' => 'Jenis Pelayanan',
+            'request.t_rujukan.catatan' => 'Catatan',
+            'request.t_rujukan.diagRujukan' => 'Diagnosa Rujukan',
+            'request.t_rujukan.tipeRujukan' => 'Tipe Rujukan',
+            'request.t_rujukan.poliRujukan' => 'Poli Rujukan',
+            'request.t_rujukan.user' => 'User',
+        ];
+
+        $r = [
+            'request' => [
+                't_rujukan' => [
+                    'noRujukan' => $rujukan['noRujukan'],
+                    'tglRujukan' => $rujukan['tglRujukan'],
+                    'tglRencanaKunjungan' => $rujukan['tglRencanaKunjungan'],
+                    'ppkDirujuk' => $rujukan['ppkDirujuk'],
+                    'jnsPelayanan' => $rujukan['jnsPelayanan'],
+                    'catatan' => $rujukan['catatan'] ?? '-',
+                    'diagRujukan' => $rujukan['diagRujukan'],
+                    'tipeRujukan' => $rujukan['tipeRujukan'],
+                    'poliRujukan' => $rujukan['poliRujukan'] ?? '',
+                    'user' => $rujukan['user'] ?? 'Sirus',
+                ],
+            ],
+        ];
+
+        $rules = [
+            'request.t_rujukan.noRujukan' => 'required',
+            'request.t_rujukan.tglRujukan' => 'required|date',
+            'request.t_rujukan.tglRencanaKunjungan' => 'required|date',
+            'request.t_rujukan.ppkDirujuk' => 'required',
+            'request.t_rujukan.jnsPelayanan' => 'required',
+            'request.t_rujukan.diagRujukan' => 'required',
+            'request.t_rujukan.tipeRujukan' => 'required',
+            'request.t_rujukan.user' => 'required',
+        ];
+
+        $validator = Validator::make($r, $rules, $messages, $attributes);
+
+        if ($validator->fails()) {
+            return self::sendError($validator->errors()->first(), $validator->errors(), 201, null, null);
+        }
+
+        try {
+            $url = env('VCLAIM_URL') . "Rujukan/2.0/update";
+            $signature = self::signature();
+            $signature['Content-Type'] = 'application/x-www-form-urlencoded';
+
+            $response = Http::timeout(10)
+                ->withHeaders($signature)
+                ->put($url, $r);
+
+            return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
+        } catch (Exception $e) {
+            return self::sendError($e->getMessage(), $validator->errors(), 408, $url, null);
+        }
+    }
+
+    /**
+     * Delete Rujukan Antar RS
+     * Endpoint: DELETE Rujukan/delete
+     */
+    public static function rujukan_delete($rujukan)
+    {
+        $messages = [
+            'required' => ':attribute wajib diisi.',
+        ];
+
+        $attributes = [
+            'request.t_rujukan.noRujukan' => 'No. Rujukan',
+            'request.t_rujukan.user' => 'User',
+        ];
+
+        $r = [
+            'request' => [
+                't_rujukan' => [
+                    'noRujukan' => $rujukan['noRujukan'],
+                    'user' => $rujukan['user'] ?? 'Sirus',
+                ],
+            ],
+        ];
+
+        $rules = [
+            'request.t_rujukan.noRujukan' => 'required',
+            'request.t_rujukan.user' => 'required',
+        ];
+
+        $validator = Validator::make($r, $rules, $messages, $attributes);
+
+        if ($validator->fails()) {
+            return self::sendError($validator->errors()->first(), $validator->errors(), 201, null, null);
+        }
+
+        try {
+            $url = env('VCLAIM_URL') . "Rujukan/delete";
+            $signature = self::signature();
+            $signature['Content-Type'] = 'application/x-www-form-urlencoded';
+
+            $response = Http::timeout(10)
+                ->withHeaders($signature)
+                ->delete($url, $r);
+
+            return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
+        } catch (Exception $e) {
+            return self::sendError($e->getMessage(), $validator->errors(), 408, $url, null);
+        }
+    }
+
+    // =========================================================
+    // RUJUKAN — List Spesialistik & List Sarana
+    // =========================================================
+
+    /**
+     * List Spesialistik Rujukan
+     * Endpoint: GET Rujukan/ListSpesialistik/PPKRujukan/{ppkRujukan}/TglRujukan/{tglRujukan}
+     */
+    public static function rujukan_list_spesialistik(string $ppkRujukan, string $tglRujukan)
+    {
+        $payload = [
+            'ppkRujukan' => $ppkRujukan,
+            'tglRujukan' => $tglRujukan,
+        ];
+
+        $validator = Validator::make($payload, [
+            'ppkRujukan' => 'required',
+            'tglRujukan' => 'required|date',
+        ], [
+            'ppkRujukan.required' => 'PPK Rujukan wajib diisi.',
+            'tglRujukan.required' => 'Tanggal Rujukan wajib diisi.',
+            'tglRujukan.date' => 'Format tanggal rujukan tidak valid.',
+        ]);
+
+        if ($validator->fails()) {
+            return self::sendError($validator->errors()->first(), $validator->errors(), 400, null, null);
+        }
+
+        try {
+            $url = env('VCLAIM_URL') . "Rujukan/ListSpesialistik/PPKRujukan/{$ppkRujukan}/TglRujukan/{$tglRujukan}";
+            $signature = self::signature();
+            $signature['Content-Type'] = 'application/x-www-form-urlencoded';
+
+            $response = Http::timeout(10)
+                ->withHeaders($signature)
+                ->get($url);
+
+            return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
+        } catch (\Throwable $e) {
+            return self::sendError($e->getMessage(), [], 408, $url, null);
+        }
+    }
+
+    /**
+     * List Sarana Rujukan
+     * Endpoint: GET Rujukan/ListSarana/PPKRujukan/{ppkRujukan}
+     */
+    public static function rujukan_list_sarana(string $ppkRujukan)
+    {
+        $payload = ['ppkRujukan' => $ppkRujukan];
+
+        $validator = Validator::make($payload, [
+            'ppkRujukan' => 'required',
+        ], [
+            'ppkRujukan.required' => 'PPK Rujukan wajib diisi.',
+        ]);
+
+        if ($validator->fails()) {
+            return self::sendError($validator->errors()->first(), $validator->errors(), 400, null, null);
+        }
+
+        try {
+            $url = env('VCLAIM_URL') . "Rujukan/ListSarana/PPKRujukan/{$ppkRujukan}";
+            $signature = self::signature();
+            $signature['Content-Type'] = 'application/x-www-form-urlencoded';
+
+            $response = Http::timeout(10)
+                ->withHeaders($signature)
+                ->get($url);
+
+            return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
+        } catch (\Throwable $e) {
+            return self::sendError($e->getMessage(), [], 408, $url, null);
+        }
+    }
 }
