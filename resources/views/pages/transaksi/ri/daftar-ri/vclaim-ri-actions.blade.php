@@ -126,6 +126,9 @@ new class extends Component {
     #[On('open-vclaim-modal-ri')]
     public function handleOpenVclaimModal(?string $riHdrNo = null, ?string $regNo = null, ?string $drId = null, ?string $drDesc = null, ?string $poliId = null, ?string $poliDesc = null, ?string $kdpolibpjs = null, ?string $noReferensi = null, array $sepData = [], array $spriData = []): void
     {
+        // Reset form dulu agar tidak ada sisa state dari sesi sebelumnya
+        $this->resetFormData();
+
         $this->riHdrNo = $riHdrNo;
         $this->regNo = $regNo;
         $this->poliId = $poliId;
