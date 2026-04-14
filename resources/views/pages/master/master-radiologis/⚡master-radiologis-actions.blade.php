@@ -42,6 +42,7 @@ new class extends Component {
         $this->incrementVersion('modal');
 
         $this->dispatch('open-modal', name: 'master-radiologis-actions');
+        $this->dispatch('focus-rad-id'); // ← ID Radiologi kosong saat create
     }
 
     // ==================== OPEN EDIT MODAL ====================
@@ -61,6 +62,7 @@ new class extends Component {
          $this->incrementVersion('modal');
 
         $this->dispatch('open-modal', name: 'master-radiologis-actions');
+        $this->dispatch('focus-rad-desc'); // ← ID sudah ada saat edit, langsung ke nama
     }
 
     // ==================== CLOSE MODAL ====================
@@ -271,98 +273,111 @@ new class extends Component {
                 <div class="max-w-4xl">
                     <div
                         class="bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                        <div class="p-5 space-y-5">
 
-                            {{-- Baris 1: ID Radiologis & Status Aktif --}}
-                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                {{-- RAD ID --}}
-                                <div>
-                                    <x-input-label value="ID Radiologis" />
-                                    <x-text-input wire:model.live="radId" :disabled="$formMode === 'edit'"
-                                        :error="$errors->has('radId')" class="w-full mt-1" />
-                                    <x-input-error :messages="$errors->get('radId')" class="mt-1" />
+                        {{-- x-data: tangkap focus event dari PHP --}}
+                        <div x-data
+                            x-on:focus-rad-id.window="$nextTick(() => setTimeout(() => $refs.inputRadId?.focus(), 150))"
+                            x-on:focus-rad-desc.window="$nextTick(() => setTimeout(() => $refs.inputRadDesc?.focus(), 150))">
+                            <div class="p-5 space-y-5">
+
+                                {{-- Baris 1: ID Radiologis & Status Aktif --}}
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    {{-- RAD ID --}}
+                                    <div>
+                                        <x-input-label value="ID Radiologis" />
+                                        <x-text-input wire:model.live="radId" x-ref="inputRadId"
+                                            :disabled="$formMode === 'edit'" :error="$errors->has('radId')"
+                                            class="w-full mt-1"
+                                            x-on:keydown.enter.prevent="$refs.inputRadDesc?.focus()" />
+                                        <x-input-error :messages="$errors->get('radId')" class="mt-1" />
+                                    </div>
+
+                                    {{-- Status Aktif --}}
+                                    <div>
+                                        <x-input-label value="Status Aktif" />
+                                        <x-select-input wire:model.live="activeStatus"
+                                            :error="$errors->has('activeStatus')" class="w-full mt-1">
+                                            <option value="1">Aktif</option>
+                                            <option value="0">Tidak Aktif</option>
+                                        </x-select-input>
+                                        <x-input-error :messages="$errors->get('activeStatus')" class="mt-1" />
+                                    </div>
                                 </div>
 
-                                {{-- Status Aktif --}}
+                                {{-- Nama Tindakan Radiologi --}}
                                 <div>
-                                    <x-input-label value="Status Aktif" />
-                                    <x-select-input wire:model.live="activeStatus" :error="$errors->has('activeStatus')"
-                                        class="w-full mt-1">
-                                        <option value="1">Aktif</option>
-                                        <option value="0">Tidak Aktif</option>
-                                    </x-select-input>
-                                    <x-input-error :messages="$errors->get('activeStatus')" class="mt-1" />
+                                    <x-input-label value="Nama Tindakan" />
+                                    <x-text-input wire:model.live="radDesc" x-ref="inputRadDesc"
+                                        :error="$errors->has('radDesc')" class="w-full mt-1"
+                                        x-on:keydown.enter.prevent="$refs.inputRadPrice?.focus()"
+                                        placeholder="Contoh: Foto Thorax, CT Scan Kepala, MRI Lumbal" />
+                                    <x-input-error :messages="$errors->get('radDesc')" class="mt-1" />
                                 </div>
-                            </div>
 
-                            {{-- Nama Tindakan Radiologi --}}
-                            <div>
-                                <x-input-label value="Nama Tindakan" />
-                                <x-text-input wire:model.live="radDesc" :error="$errors->has('radDesc')"
-                                    class="w-full mt-1" placeholder="Contoh: Foto Thorax, CT Scan Kepala, MRI Lumbal" />
-                                <x-input-error :messages="$errors->get('radDesc')" class="mt-1" />
-                            </div>
-
-                            {{-- Harga --}}
-                            <div>
-                                <x-input-label value="Harga" />
-                                <x-text-input wire:model.live="radPrice" :error="$errors->has('radPrice')"
-                                    class="w-full mt-1" placeholder="0" />
-                                <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                                    Harga dalam Rupiah (tanpa titik atau koma)
-                                </p>
-                                <x-input-error :messages="$errors->get('radPrice')" class="mt-1" />
-                            </div>
-
-                            {{-- Baris 2: RAD JD & RAD JM --}}
-                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                {{-- RAD JD --}}
+                                {{-- Harga --}}
                                 <div>
-                                    <x-input-label value="Jam Dokter (RAD JD)" />
-                                    <x-text-input wire:model.live="radJd" :error="$errors->has('radJd')"
-                                        class="w-full mt-1" placeholder="Opsional" />
+                                    <x-input-label value="Harga" />
+                                    <x-text-input wire:model.live="radPrice" x-ref="inputRadPrice"
+                                        :error="$errors->has('radPrice')" class="w-full mt-1"
+                                        x-on:keydown.enter.prevent="$refs.inputRadJd?.focus()" placeholder="0" />
                                     <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                                        Informasi jam dokter jika diperlukan
+                                        Harga dalam Rupiah (tanpa titik atau koma)
                                     </p>
-                                    <x-input-error :messages="$errors->get('radJd')" class="mt-1" />
+                                    <x-input-error :messages="$errors->get('radPrice')" class="mt-1" />
                                 </div>
 
-                                {{-- RAD JM --}}
-                                <div>
-                                    <x-input-label value="Jam Mulai (RAD JM)" />
-                                    <x-text-input wire:model.live="radJm" :error="$errors->has('radJm')"
-                                        class="w-full mt-1" placeholder="Opsional" />
-                                    <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                                        Informasi jam mulai jika diperlukan
-                                    </p>
-                                    <x-input-error :messages="$errors->get('radJm')" class="mt-1" />
+                                {{-- Baris 2: RAD JD & RAD JM --}}
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    {{-- RAD JD --}}
+                                    <div>
+                                        <x-input-label value="Jam Dokter (RAD JD)" />
+                                        <x-text-input wire:model.live="radJd" x-ref="inputRadJd"
+                                            :error="$errors->has('radJd')" class="w-full mt-1"
+                                            x-on:keydown.enter.prevent="$refs.inputRadJm?.focus()"
+                                            placeholder="Opsional" />
+                                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                            Informasi jam dokter jika diperlukan
+                                        </p>
+                                        <x-input-error :messages="$errors->get('radJd')" class="mt-1" />
+                                    </div>
+
+                                    {{-- RAD JM --}}
+                                    <div>
+                                        <x-input-label value="Jam Mulai (RAD JM)" />
+                                        <x-text-input wire:model.live="radJm" x-ref="inputRadJm"
+                                            :error="$errors->has('radJm')" class="w-full mt-1"
+                                            x-on:keydown.enter.prevent="$wire.save()" placeholder="Opsional" />
+                                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                            Informasi jam mulai jika diperlukan
+                                        </p>
+                                        <x-input-error :messages="$errors->get('radJm')" class="mt-1" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {{-- ==================== FOOTER ==================== --}}
-            <div
-                class="sticky bottom-0 z-10 px-6 py-4 mt-auto bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700">
-                <div class="flex items-center justify-between gap-3">
-                    <div class="text-xs text-gray-500 dark:text-gray-400">
-                        Pastikan data sudah benar sebelum menyimpan.
-                    </div>
+                {{-- ==================== FOOTER ==================== --}}
+                <div
+                    class="sticky bottom-0 z-10 px-6 py-4 mt-auto bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                            Pastikan data sudah benar sebelum menyimpan.
+                        </div>
 
-                    <div class="flex justify-end gap-2">
-                        <x-secondary-button type="button" wire:click="closeModal">
-                            Batal
-                        </x-secondary-button>
+                        <div class="flex justify-end gap-2">
+                            <x-secondary-button type="button" wire:click="closeModal">
+                                Batal
+                            </x-secondary-button>
 
-                        <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
-                            <span wire:loading.remove>Simpan</span>
-                            <span wire:loading>Saving...</span>
-                        </x-primary-button>
+                            <x-primary-button type="button" wire:click="save" wire:loading.attr="disabled">
+                                <span wire:loading.remove>Simpan</span>
+                                <span wire:loading>Saving...</span>
+                            </x-primary-button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
     </x-modal>
 </div>
