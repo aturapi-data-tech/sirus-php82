@@ -92,13 +92,13 @@ new class extends Component {
 
                     {{-- SEARCH + FILTER --}}
                     <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
-                        <div class="w-full sm:w-64">
+                        <div class="w-full lg:max-w-xl">
                             <x-input-label for="searchKeyword" value="Cari" class="sr-only" />
                             <x-text-input id="searchKeyword" type="text"
                                 wire:model.live.debounce.300ms="searchKeyword"
                                 placeholder="No. Rawat, Reg, Paket..." class="block w-full" />
                         </div>
-                        <div class="w-full sm:w-36">
+                        <div class="w-full sm:w-56">
                             <x-input-label for="filterStatus" value="Status" class="sr-only" />
                             <x-select-input id="filterStatus" wire:model.live="filterStatus" class="w-full">
                                 <option value="">Semua Status</option>
@@ -190,17 +190,18 @@ new class extends Component {
                                     </td>
                                     <td class="px-4 py-3">
                                         <div class="flex flex-wrap gap-2">
-                                            <x-outline-button type="button"
-                                                wire:click="openEdit('{{ $row->no_rawat }}')">
+                                            <x-secondary-button type="button"
+                                                wire:click="openEdit('{{ $row->no_rawat }}')" class="px-2 py-1 text-xs">
                                                 Edit
-                                            </x-outline-button>
+                                            </x-secondary-button>
                                             <x-confirm-button
                                                 variant="danger"
                                                 :action="'requestDelete(\'' . $row->no_rawat . '\')'"
                                                 title="Hapus Jadwal Operasi"
                                                 message="Yakin hapus jadwal {{ $row->reg_no }} – {{ $row->nm_paket }}?"
                                                 confirmText="Ya, hapus"
-                                                cancelText="Batal">
+                                                cancelText="Batal"
+                                                class="px-2 py-1 text-xs">
                                                 Hapus
                                             </x-confirm-button>
                                         </div>

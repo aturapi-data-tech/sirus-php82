@@ -266,12 +266,13 @@ new class extends Component {
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 bg-gray-50/70 dark:bg-gray-950/20">
                 <div class="max-w-4xl">
-                    <div x-data
+                    <x-border-form title="Data Pengeluaran Kas (Cash-Out)"
+                        x-data
                         x-on:focus-tucashk-co-date.window="$nextTick(() => setTimeout(() => $refs.inputTucashkCoDate?.focus(), 150))"
                         x-on:focus-tucashk-co-desc.window="$nextTick(() => setTimeout(() => $refs.inputTucashkCoDesc?.focus(), 150))"
                         x-on:focus-lov-kas-co.window="$nextTick(() => setTimeout(() => $refs.lovKasCoWrapper?.querySelector('input:not([disabled])')?.focus(), 150))"
                         x-on:focus-btn-save-co.window="$nextTick(() => setTimeout(() => $refs.btnSaveCo?.focus(), 150))">
-                        <div class="p-5 space-y-5">
+                        <div class="space-y-5">
 
                             {{-- Tanggal --}}
                             <div>
@@ -318,7 +319,7 @@ new class extends Component {
                             </div>
 
                         </div>
-                    </div>
+                    </x-border-form>
                 </div>
             </div>
 
