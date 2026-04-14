@@ -21,11 +21,8 @@ new class extends Component {
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-rujukan-rs'];
 
-    // List spesialistik & faskes dari BPJS
+    // List spesialistik dari BPJS
     public array $listSpesialistik = [];
-    public array $listFaskes = [];
-    public string $searchFaskes = '';
-    public bool $showFaskesLov = false;
 
     /* ===============================
      | OPEN
@@ -91,54 +88,19 @@ new class extends Component {
     }
 
     /* ===============================
-     | CARI FASKES dari BPJS
+     | TINDAK LANJUT CHANGED — reactive dari perencanaan
      =============================== */
-    public function cariFaskes(): void
+    #[On('tindak-lanjut-changed')]
+    public function onTindakLanjutChanged(string $tindakLanjut): void
     {
-        if (strlen($this->searchFaskes) < 3) {
-            $this->dispatch('toast', type: 'warning', message: 'Keyword minimal 3 karakter.');
-            return;
-        }
+        $this->dataDaftarUGD['perencanaan']['tindakLanjut']['tindakLanjut'] = $tindakLanjut;
 
-        try {
-            $response = VclaimTrait::ref_faskes($this->searchFaskes, '2')->getOriginalContent();
-            $code = $response['metadata']['code'] ?? 500;
-
-            if ($code == 200) {
-                $this->listFaskes = $response['response']['faskes'] ?? [];
-                $this->showFaskesLov = true;
-
-                if (empty($this->listFaskes)) {
-                    $this->dispatch('toast', type: 'warning', message: 'Faskes tidak ditemukan.');
-                }
-            } else {
-                $this->listFaskes = [];
-                $this->dispatch('toast', type: 'warning', message: 'Cari faskes: ' . ($response['metadata']['message'] ?? '-'));
-            }
-        } catch (\Exception $e) {
-            $this->dispatch('toast', type: 'error', message: 'Error cari faskes: ' . $e->getMessage());
+        // Init default rujukan jika belum ada dan tindakLanjut = Rujuk
+        if ($tindakLanjut === 'Rujuk' && empty($this->dataDaftarUGD['rujukanAntarRS']['tglRujukan'])) {
+            $this->dataDaftarUGD['rujukanAntarRS'] = $this->getDefaultRujukanAntarRS();
         }
 
         $this->incrementVersion('modal-rujukan-rs');
-    }
-
-    public function pilihFaskes(int $index): void
-    {
-        $faskes = $this->listFaskes[$index] ?? null;
-        if (!$faskes) {
-            return;
-        }
-
-        $this->dataDaftarUGD['rujukanAntarRS']['ppkDirujuk'] = $faskes['kode'] ?? '';
-        $this->dataDaftarUGD['rujukanAntarRS']['ppkDirujukNama'] = $faskes['nama'] ?? '';
-        $this->showFaskesLov = false;
-        $this->listFaskes = [];
-
-        // Auto-load list spesialistik setelah pilih faskes
-        $this->fetchListSpesialistik();
-
-        $this->incrementVersion('modal-rujukan-rs');
-        $this->dispatch('toast', type: 'success', message: 'Faskes dipilih: ' . ($faskes['nama'] ?? ''));
     }
 
     /* ===============================
@@ -220,15 +182,27 @@ new class extends Component {
      | SAVE — dipanggil dari event parent (save EMR)
      |
      | Alur:
-     | 1. Validasi form
-     | 2. Simpan rujukanAntarRS ke DB
-     | 3. TIDAK push ke BPJS — user klik tombol terpisah
+     | 1. Re-fetch DB → cek tindakLanjut fresh
+     | 2. Jika bukan 'Rujuk' → skip
+     | 3. Validasi & simpan rujukanAntarRS ke DB
+     | 4. TIDAK push ke BPJS — user klik tombol terpisah
      =============================== */
+    #[On('save-rm-rujukan-ugd')]
     public function save(): void
     {
         if ($this->isFormLocked) {
-            $this->dispatch('toast', type: 'error', message: 'Form dalam mode read-only.');
             return;
+        }
+
+        // Re-fetch dari DB untuk cek tindakLanjut fresh
+        $freshData = $this->findDataUGD($this->rjNo);
+
+        $this->dataDaftarUGD['perencanaan'] = $freshData['perencanaan'] ?? [];
+
+        // Init rujukanAntarRS jika belum ada
+        if (empty($this->dataDaftarUGD['rujukanAntarRS']['tglRujukan'])) {
+            $this->dataDaftarUGD = $freshData;
+            $this->dataDaftarUGD['rujukanAntarRS'] ??= $this->getDefaultRujukanAntarRS();
         }
 
         $this->validate();
@@ -372,7 +346,7 @@ new class extends Component {
 
     protected function resetForm(): void
     {
-        $this->reset(['listSpesialistik', 'listFaskes', 'searchFaskes', 'showFaskesLov']);
+        $this->reset(['listSpesialistik']);
         $this->resetVersion();
         $this->isFormLocked = false;
     }
@@ -460,54 +434,14 @@ new class extends Component {
 
                             {{-- PPK Tujuan --}}
                             <div>
-                                <x-input-label value="PPK Tujuan Rujukan *" class="mb-1" />
+                                <x-input-label value="PPK Tujuan Rujukan * (Kode 8 digit)" class="mb-1" />
                                 <div class="flex gap-2">
                                     <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.ppkDirujuk"
-                                        class="w-40" :disabled="true" placeholder="Kode PPK"
-                                        :error="$errors->has('dataDaftarUGD.rujukanAntarRS.ppkDirujuk')" />
+                                        class="w-40" :disabled="$isFormLocked" placeholder="Kode PPK" :error="$errors->has('dataDaftarUGD.rujukanAntarRS.ppkDirujuk')" />
                                     <x-text-input wire:model="dataDaftarUGD.rujukanAntarRS.ppkDirujukNama"
-                                        class="flex-1" :disabled="true" placeholder="Pilih faskes via tombol Cari" />
+                                        class="flex-1" :disabled="true" placeholder="Nama faskes" />
                                 </div>
                                 <x-input-error :messages="$errors->get('dataDaftarUGD.rujukanAntarRS.ppkDirujuk')" class="mt-1" />
-
-                                {{-- Cari Faskes BPJS --}}
-                                @if (!$isFormLocked)
-                                    <div class="flex gap-2 mt-2">
-                                        <x-text-input wire:model="searchFaskes" class="flex-1"
-                                            placeholder="Ketik nama RS tujuan (min 3 huruf)..."
-                                            x-on:keyup.enter="$wire.cariFaskes()" />
-                                        <x-secondary-button type="button" wire:click="cariFaskes"
-                                            wire:loading.attr="disabled" class="shrink-0">
-                                            <span wire:loading.remove wire:target="cariFaskes">Cari Faskes</span>
-                                            <span wire:loading wire:target="cariFaskes"><x-loading /></span>
-                                        </x-secondary-button>
-                                    </div>
-
-                                    {{-- List Faskes --}}
-                                    @if ($showFaskesLov && !empty($listFaskes))
-                                        <div class="mt-2 overflow-y-auto border border-gray-200 rounded-lg max-h-48 dark:border-gray-700">
-                                            <table class="w-full text-xs">
-                                                <thead class="sticky top-0 bg-gray-50 dark:bg-gray-800">
-                                                    <tr>
-                                                        <th class="px-2 py-1 text-left">Kode</th>
-                                                        <th class="px-2 py-1 text-left">Nama Faskes</th>
-                                                        <th class="px-2 py-1"></th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach ($listFaskes as $idx => $faskes)
-                                                        <tr class="border-t border-gray-100 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:border-gray-700"
-                                                            wire:click="pilihFaskes({{ $idx }})">
-                                                            <td class="px-2 py-1 font-mono">{{ $faskes['kode'] ?? '' }}</td>
-                                                            <td class="px-2 py-1">{{ $faskes['nama'] ?? '' }}</td>
-                                                            <td class="px-2 py-1 text-blue-500">Pilih</td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    @endif
-                                @endif
                             </div>
 
                             {{-- Jenis Pelayanan --}}
