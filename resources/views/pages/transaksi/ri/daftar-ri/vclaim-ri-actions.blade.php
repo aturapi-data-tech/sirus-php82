@@ -153,7 +153,6 @@ new class extends Component {
                 $kdpolibpjs = $fresh['kdpolibpjs'];
             }
         }
-
         /* ---- Restore DPJP dari reqSep (edit mode) ---- */
         $tSep = $sepData['reqSep']['request']['t_sep'] ?? [];
         if (!empty($tSep['dpjpLayan'])) {
@@ -489,11 +488,13 @@ new class extends Component {
                 $noSep = $sepData['noSep'] ?? '';
 
                 // Persist SEP langsung ke JSON DB
-                $this->syncVclaimJson(sepData: [
-                    'noSep' => $noSep,
-                    'reqSep' => $request,
-                    'resSep' => $sepData,
-                ]);
+                $this->syncVclaimJson(
+                    sepData: [
+                        'noSep' => $noSep,
+                        'reqSep' => $request,
+                        'resSep' => $sepData,
+                    ],
+                );
 
                 $this->dispatch('sep-generated-ri', reqSep: $request, noSep: $noSep, resSep: $sepData);
                 $this->dispatch('toast', type: 'success', message: "SEP RI berhasil dibuat: {$noSep}");
@@ -513,20 +514,20 @@ new class extends Component {
     {
         $this->validate(
             [
-                'SEPForm.noKartu'              => 'required',
-                'SEPForm.tglSep'               => 'required|date_format:d/m/Y',
-                'SEPForm.noMR'                 => 'required',
-                'SEPForm.diagAwal'             => 'required',
+                'SEPForm.noKartu' => 'required',
+                'SEPForm.tglSep' => 'required|date_format:d/m/Y',
+                'SEPForm.noMR' => 'required',
+                'SEPForm.diagAwal' => 'required',
                 'SEPForm.klsRawat.klsRawatHak' => 'required',
-                'SEPForm.noTelp'               => 'required',
+                'SEPForm.noTelp' => 'required',
             ],
             [
-                'SEPForm.noKartu.required'              => 'Nomor Kartu BPJS harus diisi.',
-                'SEPForm.tglSep.required'               => 'Tanggal SEP wajib diisi.',
-                'SEPForm.tglSep.date_format'            => 'Format Tanggal SEP harus dd/mm/yyyy.',
-                'SEPForm.diagAwal.required'             => 'Diagnosa awal harus diisi.',
+                'SEPForm.noKartu.required' => 'Nomor Kartu BPJS harus diisi.',
+                'SEPForm.tglSep.required' => 'Tanggal SEP wajib diisi.',
+                'SEPForm.tglSep.date_format' => 'Format Tanggal SEP harus dd/mm/yyyy.',
+                'SEPForm.diagAwal.required' => 'Diagnosa awal harus diisi.',
                 'SEPForm.klsRawat.klsRawatHak.required' => 'Kelas rawat hak belum dimuat. Klik tombol "↺ Muat Kelas Rawat".',
-                'SEPForm.noTelp.required'               => 'No. telepon pasien harus diisi.',
+                'SEPForm.noTelp.required' => 'No. telepon pasien harus diisi.',
             ],
         );
     }
@@ -679,11 +680,13 @@ new class extends Component {
 
             if ($code == 200) {
                 // Persist update SEP ke JSON DB
-                $this->syncVclaimJson(sepData: [
-                    'noSep' => $this->sepData['noSep'],
-                    'reqSep' => $request,
-                    'resSep' => $this->sepData['resSep'] ?? [],
-                ]);
+                $this->syncVclaimJson(
+                    sepData: [
+                        'noSep' => $this->sepData['noSep'],
+                        'reqSep' => $request,
+                        'resSep' => $this->sepData['resSep'] ?? [],
+                    ],
+                );
 
                 $this->dispatch('sep-generated-ri', reqSep: $request, noSep: $this->sepData['noSep'], resSep: $this->sepData['resSep'] ?? []);
                 $this->dispatch('toast', type: 'success', message: "SEP berhasil diupdate ({$code}): {$msg}");
@@ -1281,8 +1284,7 @@ new class extends Component {
                                     <div class="lg:col-span-2">
                                         <x-input-label value="Kelas Rawat Hak *" />
                                         <x-select-input wire:model="SEPForm.klsRawat.klsRawatHak" class="w-full"
-                                            :disabled="true"
-                                            :error="$errors->has('SEPForm.klsRawat.klsRawatHak')">
+                                            :disabled="true" :error="$errors->has('SEPForm.klsRawat.klsRawatHak')">
                                             <option value="">-- Memuat... --</option>
                                             <option value="1">Kelas 1</option>
                                             <option value="2">Kelas 2</option>
@@ -1290,8 +1292,10 @@ new class extends Component {
                                         </x-select-input>
                                         @if (empty($SEPForm['klsRawat']['klsRawatHak']))
                                             <p class="mt-1 text-xs text-amber-500">
-                                                <span wire:loading wire:target="fetchKlasRawat">Sedang memuat kelas rawat...</span>
-                                                <span wire:loading.remove wire:target="fetchKlasRawat">Belum termuat. Klik tombol "↺ Muat Kelas Rawat".</span>
+                                                <span wire:loading wire:target="fetchKlasRawat">Sedang memuat kelas
+                                                    rawat...</span>
+                                                <span wire:loading.remove wire:target="fetchKlasRawat">Belum termuat.
+                                                    Klik tombol "↺ Muat Kelas Rawat".</span>
                                             </p>
                                         @endif
                                         <x-input-error :messages="$errors->get('SEPForm.klsRawat.klsRawatHak')" class="mt-1" />
@@ -1339,8 +1343,7 @@ new class extends Component {
                                     <div class="lg:col-span-2">
                                         <x-input-label value="No. Telepon *" />
                                         <x-text-input wire:model="SEPForm.noTelp" class="w-full" :disabled="$isFormLocked"
-                                            placeholder="08xxxx"
-                                            :error="$errors->has('SEPForm.noTelp')" />
+                                            placeholder="08xxxx" :error="$errors->has('SEPForm.noTelp')" />
                                         <x-input-error :messages="$errors->get('SEPForm.noTelp')" class="mt-1" />
                                     </div>
 
@@ -1563,18 +1566,18 @@ new class extends Component {
                             @else
                                 @if (!empty($sepData['noSep']))
                                     {{-- Mode edit SEP: update ke BPJS --}}
-                                    <x-primary-button type="button" wire:click="updateSEP" wire:loading.attr="disabled"
-                                        x-ref="btnSimpanSEP">
+                                    <x-primary-button type="button" wire:click="updateSEP"
+                                        wire:loading.attr="disabled" x-ref="btnSimpanSEP">
                                         <span wire:loading.remove>Update SEP ke BPJS</span>
                                         <span wire:loading><x-loading /> Mengupdate...</span>
                                     </x-primary-button>
                                 @else
                                     {{-- Belum ada SEP: buat baru --}}
-                                    <x-primary-button type="button" wire:click="generateSEP" wire:loading.attr="disabled"
-                                        x-ref="btnSimpanSEP">
+                                    <x-primary-button type="button" wire:click="generateSEP"
+                                        wire:loading.attr="disabled" x-ref="btnSimpanSEP">
                                         <span wire:loading.remove>
-                                            <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
+                                            <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                     d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
                                             </svg>
