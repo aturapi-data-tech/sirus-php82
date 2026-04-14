@@ -615,6 +615,11 @@ new class extends Component {
             $this->dataDaftarRi['noReferensi'] = $spriData['noSPRIBPJS'];
         }
 
+        // Simpan ke JSON agar SPRI tidak hilang saat modal ditutup/dibuka ulang
+        if ($this->riHdrNo) {
+            $this->updateJsonData($this->riHdrNo);
+        }
+
         $this->incrementVersion('modal');
     }
 
@@ -686,6 +691,7 @@ new class extends Component {
 
     private function syncFromDataDaftarRI(): void
     {
+        $this->riHdrNo = isset($this->dataDaftarRi['riHdrNo']) ? (string) $this->dataDaftarRi['riHdrNo'] : null;
         $this->klaimId = $this->dataDaftarRi['klaimId'] ?? 'UM';
         $this->entryId = $this->dataDaftarRi['entryId'] ?? '1';
         $this->bangsalId = $this->dataDaftarRi['bangsalId'] ?? '';

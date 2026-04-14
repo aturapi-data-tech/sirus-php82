@@ -6,11 +6,11 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\BPJS\VclaimTrait;
+use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 
 new class extends Component {
-    // VclaimTrait di-use → semua call pakai $this->method() bukan VclaimTrait::method()
-    use VclaimTrait, WithRenderVersioningTrait;
+    use VclaimTrait, EmrRITrait, WithRenderVersioningTrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal', 'form-sep', 'form-spri', 'info-pasien'];
@@ -48,12 +48,12 @@ new class extends Component {
         ],
         'noMR' => '',
         'rujukan' => [
-            'asalRujukan' => '1',
-            'asalRujukanNama' => 'Faskes Tingkat 1 (FKTP)',
+            'asalRujukan' => '2', // RI: default FKTL (RS sendiri)
+            'asalRujukanNama' => 'Faskes Tingkat 2 (RS)',
             'tglRujukan' => '', // format d/m/Y untuk display
             'noRujukan' => '',
-            'ppkRujukan' => '',
-            'ppkRujukanNama' => '',
+            'ppkRujukan' => '0184R006', // RI: default RS sendiri
+            'ppkRujukanNama' => 'RSI Madinah',
         ],
         'catatan' => '',
         'diagAwal' => '',
@@ -116,7 +116,7 @@ new class extends Component {
     public function mount(): void
     {
         $this->SEPForm['tglSep'] = Carbon::now()->format('d/m/Y');
-        $this->SPRIForm['tglKontrol'] = Carbon::now()->addDays(7)->format('d/m/Y');
+        $this->SPRIForm['tglKontrol'] = Carbon::now()->format('d/m/Y');
         $this->registerAreas(['modal', 'form-sep', 'form-spri', 'info-pasien']);
     }
 
@@ -126,6 +126,9 @@ new class extends Component {
     #[On('open-vclaim-modal-ri')]
     public function handleOpenVclaimModal(?string $riHdrNo = null, ?string $regNo = null, ?string $drId = null, ?string $drDesc = null, ?string $poliId = null, ?string $poliDesc = null, ?string $kdpolibpjs = null, ?string $noReferensi = null, array $sepData = [], array $spriData = []): void
     {
+        // Reset form dulu agar tidak ada sisa state dari sesi sebelumnya
+        $this->resetFormData();
+
         $this->riHdrNo = $riHdrNo;
         $this->regNo = $regNo;
         $this->poliId = $poliId;
@@ -133,6 +136,23 @@ new class extends Component {
         $this->noReferensi = $noReferensi;
         $this->formMode = $riHdrNo ? 'edit' : 'create';
 
+        // Baca fresh dari DB — agar data SPRI/SEP yang sudah tersimpan selalu ter-load
+        if ($riHdrNo) {
+            $fresh = $this->findDataRI($riHdrNo);
+            if (!empty($fresh['spri'])) {
+                $spriData = $fresh['spri'];
+            }
+            if (!empty($fresh['sep'])) {
+                $sepData = $fresh['sep'];
+            }
+            if (!empty($fresh['noReferensi']) && empty($noReferensi)) {
+                $this->noReferensi = $fresh['noReferensi'];
+                $noReferensi = $fresh['noReferensi'];
+            }
+            if (!empty($fresh['kdpolibpjs']) && empty($kdpolibpjs)) {
+                $kdpolibpjs = $fresh['kdpolibpjs'];
+            }
+        }
         /* ---- Restore DPJP dari reqSep (edit mode) ---- */
         $tSep = $sepData['reqSep']['request']['t_sep'] ?? [];
         if (!empty($tSep['dpjpLayan'])) {
@@ -184,11 +204,29 @@ new class extends Component {
             $this->SEPForm['rujukan']['noRujukan'] = $noReferensi;
         }
 
-        /* ---- Sync SKDP dari SPRI yang sudah ada ---- */
-        if (!empty($spriData['noSPRIBPJS'])) {
+        /* ---- Sync SKDP & SEP dari SPRI yang sudah ada ---- */
+        // Hanya sync jika SEP belum terbit — kalau SEP sudah ada, data sudah tersimpan di reqSep
+        if (!empty($spriData['noSPRIBPJS']) && empty($sepData['noSep'])) {
             $this->SEPForm['skdp']['noSurat'] = $spriData['noSPRIBPJS'];
             $this->SEPForm['skdp']['kodeDPJP'] = $spriData['drKontrolBPJS'] ?? '';
             $this->SEPForm['rujukan']['noRujukan'] = $spriData['noSPRIBPJS'];
+            $this->SEPForm['rujukan']['tglRujukan'] = $spriData['tglKontrol'] ?? '';
+            // tglSep = tglKontrol SPRI
+            if (!empty($spriData['tglKontrol'])) {
+                $this->SEPForm['tglSep'] = $spriData['tglKontrol'];
+            }
+
+            if (empty($this->SEPForm['rujukan']['ppkRujukan'])) {
+                $this->SEPForm['rujukan']['ppkRujukan'] = '0184R006';
+                $this->SEPForm['rujukan']['ppkRujukanNama'] = 'RSI Madinah';
+            }
+
+            if (empty($this->SEPForm['dpjpLayan']) && !empty($spriData['drKontrolBPJS'])) {
+                $this->SEPForm['dpjpLayan'] = $spriData['drKontrolBPJS'];
+            }
+            if (empty($this->SEPForm['poli']['tujuan']) && !empty($spriData['poliKontrolBPJS'])) {
+                $this->SEPForm['poli']['tujuan'] = $spriData['poliKontrolBPJS'];
+            }
         }
 
         $this->activeTab = !empty($spriData['noSPRIBPJS']) ? 'sep' : 'spri';
@@ -371,6 +409,13 @@ new class extends Component {
                 $this->SEPForm['rujukan']['noRujukan'] = $this->SPRIForm['noSPRIBPJS'];
                 // Simpan d/m/Y — buildSEPRequest() convert ke Y-m-d
                 $this->SEPForm['rujukan']['tglRujukan'] = $this->SPRIForm['tglKontrol'];
+                // tglSep = tglKontrol SPRI (RI: SPRI dulu → SEP, tanggal harus sama)
+                $this->SEPForm['tglSep'] = $this->SPRIForm['tglKontrol'];
+
+                if (empty($this->SEPForm['rujukan']['ppkRujukan'])) {
+                    $this->SEPForm['rujukan']['ppkRujukan'] = '0184R006';
+                    $this->SEPForm['rujukan']['ppkRujukanNama'] = 'RSI Madinah';
+                }
 
                 if (empty($this->SEPForm['dpjpLayan']) && !empty($this->SPRIForm['drKontrolBPJS'])) {
                     $this->SEPForm['dpjpLayan'] = $this->SPRIForm['drKontrolBPJS'];
@@ -378,6 +423,9 @@ new class extends Component {
                 if (empty($this->SEPForm['poli']['tujuan']) && !empty($this->SPRIForm['poliKontrolBPJS'])) {
                     $this->SEPForm['poli']['tujuan'] = $this->SPRIForm['poliKontrolBPJS'];
                 }
+
+                // Persist SPRI langsung ke JSON DB
+                $this->syncVclaimJson(spriData: $this->SPRIForm);
 
                 $this->dispatch('spri-generated-ri', spriData: $this->SPRIForm);
                 $this->dispatch('toast', type: 'success', message: ($isUpdate ? 'Update' : 'Insert') . " SPRI berhasil ({$code}): {$msg}");
@@ -442,11 +490,24 @@ new class extends Component {
         try {
             $response = $this->sep_insert($request)->getOriginalContent();
             $code = $response['metadata']['code'] ?? 500;
-            if ($code == 200) {
+            if ($code == 200 || ($code == 201 && !empty($response['response']['sep']['noSep']))) {
                 $sepData = $response['response']['sep'] ?? [];
                 $noSep = $sepData['noSep'] ?? '';
+
+                // Persist SEP langsung ke JSON DB
+                $this->syncVclaimJson(
+                    sepData: [
+                        'noSep' => $noSep,
+                        'reqSep' => $request,
+                        'resSep' => $sepData,
+                    ],
+                );
+
                 $this->dispatch('sep-generated-ri', reqSep: $request, noSep: $noSep, resSep: $sepData);
                 $this->dispatch('toast', type: 'success', message: "SEP RI berhasil dibuat: {$noSep}");
+                if ($code == 201) {
+                    $this->dispatch('toast', type: 'info', message: $response['metadata']['message'] ?? '');
+                }
                 $this->closeModal();
             } else {
                 $this->dispatch('toast', type: 'error', message: "Buat SEP gagal ({$code}): " . ($response['metadata']['message'] ?? '-'));
@@ -460,22 +521,20 @@ new class extends Component {
     {
         $this->validate(
             [
-                'SEPForm.noKartu'              => 'required',
-                'SEPForm.tglSep'               => 'required|date_format:d/m/Y',
-                'SEPForm.noMR'                 => 'required',
-                'SEPForm.diagAwal'             => 'required',
-                'SEPForm.poli.tujuan'          => 'required',
+                'SEPForm.noKartu' => 'required',
+                'SEPForm.tglSep' => 'required|date_format:d/m/Y',
+                'SEPForm.noMR' => 'required',
+                'SEPForm.diagAwal' => 'required',
                 'SEPForm.klsRawat.klsRawatHak' => 'required',
-                'SEPForm.noTelp'               => 'required',
+                'SEPForm.noTelp' => 'required',
             ],
             [
-                'SEPForm.noKartu.required'              => 'Nomor Kartu BPJS harus diisi.',
-                'SEPForm.tglSep.required'               => 'Tanggal SEP wajib diisi.',
-                'SEPForm.tglSep.date_format'            => 'Format Tanggal SEP harus dd/mm/yyyy.',
-                'SEPForm.diagAwal.required'             => 'Diagnosa awal harus diisi.',
-                'SEPForm.poli.tujuan.required'          => 'Kode poli BPJS harus diisi.',
+                'SEPForm.noKartu.required' => 'Nomor Kartu BPJS harus diisi.',
+                'SEPForm.tglSep.required' => 'Tanggal SEP wajib diisi.',
+                'SEPForm.tglSep.date_format' => 'Format Tanggal SEP harus dd/mm/yyyy.',
+                'SEPForm.diagAwal.required' => 'Diagnosa awal harus diisi.',
                 'SEPForm.klsRawat.klsRawatHak.required' => 'Kelas rawat hak belum dimuat. Klik tombol "↺ Muat Kelas Rawat".',
-                'SEPForm.noTelp.required'               => 'No. telepon pasien harus diisi.',
+                'SEPForm.noTelp.required' => 'No. telepon pasien harus diisi.',
             ],
         );
     }
@@ -504,16 +563,16 @@ new class extends Component {
                     ],
                     'noMR' => $this->SEPForm['noMR'] ?? '',
                     'rujukan' => [
-                        'asalRujukan' => $this->SEPForm['rujukan']['asalRujukan'] ?? '1',
+                        'asalRujukan' => $this->SEPForm['rujukan']['asalRujukan'] ?? '2',
                         'tglRujukan' => $tglRujukan,
                         'noRujukan' => $this->SEPForm['rujukan']['noRujukan'] ?? '',
-                        'ppkRujukan' => $this->SEPForm['rujukan']['ppkRujukan'] ?? '',
-                        'ppkRujukanNama' => $this->SEPForm['rujukan']['ppkRujukanNama'] ?? '',
+                        'ppkRujukan' => $this->SEPForm['rujukan']['ppkRujukan'] ?: '0184R006',
+                        'ppkRujukanNama' => $this->SEPForm['rujukan']['ppkRujukanNama'] ?: 'RSI Madinah',
                     ],
                     'catatan' => $this->SEPForm['catatan'] ?: '-',
                     'diagAwal' => $this->SEPForm['diagAwal'] ?? '',
                     'poli' => [
-                        'tujuan' => $this->SEPForm['poli']['tujuan'] ?? '',
+                        'tujuan' => '', // kosong untuk RANAP (jnsPelayanan=1)
                         'eksekutif' => $this->SEPForm['poli']['eksekutif'] ?? '0',
                     ],
                     'cob' => ['cob' => $this->SEPForm['cob']['cob'] ?? '0'],
@@ -589,6 +648,10 @@ new class extends Component {
             if (in_array($code, [200, 201])) {
                 $this->sepData = ['noSep' => '', 'reqSep' => [], 'resSep' => []];
                 $this->isFormLocked = false;
+
+                // Persist hapus SEP ke JSON DB
+                $this->syncVclaimJson(sepData: ['noSep' => '', 'reqSep' => [], 'resSep' => []]);
+
                 $this->dispatch('sep-generated-ri', reqSep: []);
                 $this->dispatch('toast', type: 'success', message: "SEP berhasil dihapus ({$code}): {$msg}");
                 $this->incrementVersion('form-sep');
@@ -623,6 +686,15 @@ new class extends Component {
             $msg = $response['metadata']['message'] ?? '-';
 
             if ($code == 200) {
+                // Persist update SEP ke JSON DB
+                $this->syncVclaimJson(
+                    sepData: [
+                        'noSep' => $this->sepData['noSep'],
+                        'reqSep' => $request,
+                        'resSep' => $this->sepData['resSep'] ?? [],
+                    ],
+                );
+
                 $this->dispatch('sep-generated-ri', reqSep: $request, noSep: $this->sepData['noSep'], resSep: $this->sepData['resSep'] ?? []);
                 $this->dispatch('toast', type: 'success', message: "SEP berhasil diupdate ({$code}): {$msg}");
                 $this->isFormLocked = true;
@@ -682,6 +754,34 @@ new class extends Component {
     }
 
     /* ===============================
+     | PERSIST JSON — simpan langsung ke DB via EmrRITrait
+     =============================== */
+    private function syncVclaimJson(array $spriData = [], array $sepData = []): void
+    {
+        if (!$this->riHdrNo) {
+            return;
+        }
+
+        DB::transaction(function () use ($spriData, $sepData) {
+            $this->lockRIRow($this->riHdrNo);
+
+            $fresh = $this->findDataRI($this->riHdrNo);
+
+            if (!empty($spriData)) {
+                $fresh['spri'] = $spriData;
+            }
+            if (!empty($sepData)) {
+                $fresh['sep'] = array_merge($fresh['sep'] ?? [], $sepData);
+            }
+            if (!empty($this->noReferensi)) {
+                $fresh['noReferensi'] = $this->noReferensi;
+            }
+
+            $this->updateJsonRI((int) $this->riHdrNo, $fresh);
+        });
+    }
+
+    /* ===============================
      | Reset & Close
      =============================== */
     private function resetFormData(): void
@@ -689,7 +789,7 @@ new class extends Component {
         $this->reset(['SEPForm', 'SPRIForm', 'diagnosaId', 'dataPasien', 'sepData', 'spriData']);
         $this->SEPForm['tglSep'] = Carbon::now()->format('d/m/Y');
         $this->SEPForm['jnsPelayanan'] = '1';
-        $this->SPRIForm['tglKontrol'] = Carbon::now()->addDays(7)->format('d/m/Y');
+        $this->SPRIForm['tglKontrol'] = Carbon::now()->format('d/m/Y');
         $this->isFormLocked = false;
         $this->activeTab = 'spri';
     }
@@ -975,24 +1075,32 @@ new class extends Component {
                                         <p class="mt-1 text-xs text-gray-400">jnsPelayanan = 1 (fixed untuk RI)</p>
                                     </div>
 
-                                    {{-- 3. No. Surat Kontrol (No. SPRI RS) --}}
+                                    {{-- 3. No. Surat Kontrol (No. SPRI BPJS) --}}
                                     <div>
                                         <x-input-label value="No. Surat Kontrol (No. SPRI BPJS)" />
                                         <div class="flex gap-2 mt-1">
                                             <x-text-input wire:model="SPRIForm.noSPRIBPJS" class="flex-1"
-                                                placeholder="Kosong = Insert baru" />
-                                            <x-secondary-button type="button" wire:click="fetchDataSPRI"
-                                                title="Fetch data SPRI dari BPJS" class="shrink-0 px-2">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                                </svg>
-                                            </x-secondary-button>
+                                                :disabled="true"
+                                                placeholder="Otomatis terisi setelah Insert SPRI" />
+                                            @if (!empty($SPRIForm['noSPRIBPJS']))
+                                                <x-secondary-button type="button" wire:click="fetchDataSPRI"
+                                                    title="Fetch data SPRI dari BPJS" class="shrink-0 px-2">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                    </svg>
+                                                </x-secondary-button>
+                                            @endif
                                         </div>
-                                        <p class="mt-1 text-xs text-gray-400">Kosongkan untuk insert baru. Isi + klik ↺
-                                            untuk fetch existing.</p>
+                                        <p class="mt-1 text-xs text-gray-400">
+                                            @if (empty($SPRIForm['noSPRIBPJS']))
+                                                Kosong — klik "Insert SPRI ke BPJS" untuk membuat baru.
+                                            @else
+                                                SPRI sudah terbit. Klik ↺ untuk refresh data dari BPJS.
+                                            @endif
+                                        </p>
                                     </div>
 
                                     {{-- No Kartu (hidden tapi penting) --}}
@@ -1115,7 +1223,7 @@ new class extends Component {
                                     <div class="lg:col-span-2">
                                         <x-input-label value="PPK Asal Rujukan *" />
                                         <x-text-input wire:model="SEPForm.rujukan.ppkRujukan" class="w-full"
-                                            :disabled="$isFormLocked" placeholder="Kode PPK perujuk" />
+                                            :disabled="true" placeholder="Kode PPK perujuk" />
                                         @if (!empty($SEPForm['rujukan']['ppkRujukanNama']))
                                             <p class="mt-1 text-xs font-medium text-blue-600 dark:text-blue-400">
                                                 {{ $SEPForm['rujukan']['ppkRujukanNama'] }}</p>
@@ -1177,12 +1285,15 @@ new class extends Component {
                                         <div class="flex items-center gap-3 mt-1">
                                             <x-text-input wire:model="SEPForm.noMR" class="flex-1"
                                                 :disabled="true" />
-                                            <label class="flex items-center gap-2 cursor-pointer whitespace-nowrap">
-                                                <input type="checkbox" wire:model="SEPForm.cob.cob" value="1"
-                                                    @checked($SEPForm['cob']['cob'] == '1') {{ $isFormLocked ? 'disabled' : '' }}
-                                                    class="w-4 h-4 text-blue-600 rounded border-gray-300" />
-                                                <span class="text-sm text-gray-700 dark:text-gray-300">Peserta
-                                                    COB</span>
+                                            <label class="inline-flex items-center gap-2 cursor-pointer whitespace-nowrap">
+                                                <span class="text-sm text-gray-700 dark:text-gray-300">Peserta COB</span>
+                                                <button type="button" role="switch"
+                                                    aria-checked="{{ $SEPForm['cob']['cob'] == '1' ? 'true' : 'false' }}"
+                                                    wire:click="$set('SEPForm.cob.cob', '{{ $SEPForm['cob']['cob'] == '1' ? '0' : '1' }}')"
+                                                    {{ $isFormLocked ? 'disabled' : '' }}
+                                                    class="relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 {{ $SEPForm['cob']['cob'] == '1' ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-600' }} {{ $isFormLocked ? 'opacity-50 cursor-not-allowed' : '' }}">
+                                                    <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {{ $SEPForm['cob']['cob'] == '1' ? 'translate-x-5' : 'translate-x-0' }}"></span>
+                                                </button>
                                             </label>
                                         </div>
                                     </div>
@@ -1191,8 +1302,7 @@ new class extends Component {
                                     <div class="lg:col-span-2">
                                         <x-input-label value="Kelas Rawat Hak *" />
                                         <x-select-input wire:model="SEPForm.klsRawat.klsRawatHak" class="w-full"
-                                            :disabled="true"
-                                            :error="$errors->has('SEPForm.klsRawat.klsRawatHak')">
+                                            :disabled="true" :error="$errors->has('SEPForm.klsRawat.klsRawatHak')">
                                             <option value="">-- Memuat... --</option>
                                             <option value="1">Kelas 1</option>
                                             <option value="2">Kelas 2</option>
@@ -1200,8 +1310,10 @@ new class extends Component {
                                         </x-select-input>
                                         @if (empty($SEPForm['klsRawat']['klsRawatHak']))
                                             <p class="mt-1 text-xs text-amber-500">
-                                                <span wire:loading wire:target="fetchKlasRawat">Sedang memuat kelas rawat...</span>
-                                                <span wire:loading.remove wire:target="fetchKlasRawat">Belum termuat. Klik tombol "↺ Muat Kelas Rawat".</span>
+                                                <span wire:loading wire:target="fetchKlasRawat">Sedang memuat kelas
+                                                    rawat...</span>
+                                                <span wire:loading.remove wire:target="fetchKlasRawat">Belum termuat.
+                                                    Klik tombol "↺ Muat Kelas Rawat".</span>
                                             </p>
                                         @endif
                                         <x-input-error :messages="$errors->get('SEPForm.klsRawat.klsRawatHak')" class="mt-1" />
@@ -1249,8 +1361,7 @@ new class extends Component {
                                     <div class="lg:col-span-2">
                                         <x-input-label value="No. Telepon *" />
                                         <x-text-input wire:model="SEPForm.noTelp" class="w-full" :disabled="$isFormLocked"
-                                            placeholder="08xxxx"
-                                            :error="$errors->has('SEPForm.noTelp')" />
+                                            placeholder="08xxxx" :error="$errors->has('SEPForm.noTelp')" />
                                         <x-input-error :messages="$errors->get('SEPForm.noTelp')" class="mt-1" />
                                     </div>
 
@@ -1473,18 +1584,18 @@ new class extends Component {
                             @else
                                 @if (!empty($sepData['noSep']))
                                     {{-- Mode edit SEP: update ke BPJS --}}
-                                    <x-primary-button type="button" wire:click="updateSEP" wire:loading.attr="disabled"
-                                        x-ref="btnSimpanSEP">
+                                    <x-primary-button type="button" wire:click="updateSEP"
+                                        wire:loading.attr="disabled" x-ref="btnSimpanSEP">
                                         <span wire:loading.remove>Update SEP ke BPJS</span>
                                         <span wire:loading><x-loading /> Mengupdate...</span>
                                     </x-primary-button>
                                 @else
                                     {{-- Belum ada SEP: buat baru --}}
-                                    <x-primary-button type="button" wire:click="generateSEP" wire:loading.attr="disabled"
-                                        x-ref="btnSimpanSEP">
+                                    <x-primary-button type="button" wire:click="generateSEP"
+                                        wire:loading.attr="disabled" x-ref="btnSimpanSEP">
                                         <span wire:loading.remove>
-                                            <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
+                                            <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                     d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
                                             </svg>
