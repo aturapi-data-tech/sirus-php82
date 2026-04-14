@@ -116,7 +116,7 @@ new class extends Component {
     public function mount(): void
     {
         $this->SEPForm['tglSep'] = Carbon::now()->format('d/m/Y');
-        $this->SPRIForm['tglKontrol'] = Carbon::now()->addDays(7)->format('d/m/Y');
+        $this->SPRIForm['tglKontrol'] = Carbon::now()->format('d/m/Y');
         $this->registerAreas(['modal', 'form-sep', 'form-spri', 'info-pasien']);
     }
 
@@ -758,7 +758,7 @@ new class extends Component {
         $this->reset(['SEPForm', 'SPRIForm', 'diagnosaId', 'dataPasien', 'sepData', 'spriData']);
         $this->SEPForm['tglSep'] = Carbon::now()->format('d/m/Y');
         $this->SEPForm['jnsPelayanan'] = '1';
-        $this->SPRIForm['tglKontrol'] = Carbon::now()->addDays(7)->format('d/m/Y');
+        $this->SPRIForm['tglKontrol'] = Carbon::now()->format('d/m/Y');
         $this->isFormLocked = false;
         $this->activeTab = 'spri';
     }
