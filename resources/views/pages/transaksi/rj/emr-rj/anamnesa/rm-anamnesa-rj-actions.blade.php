@@ -110,6 +110,9 @@ new class extends Component {
             'alergiTab' => 'Alergi',
             'alergi' => [
                 'alergi' => '',
+                'snomedCode' => '',
+                'snomedDisplayEn' => '',
+                'snomedDisplayId' => '',
             ],
 
             // 'rekonsiliasiObatTab' => 'Rekonsiliasi Obat',
@@ -429,6 +432,25 @@ new class extends Component {
         $this->dataDaftarPoliRJ['anamnesa']['keluhanUtama']['snomedCode'] = '';
         $this->dataDaftarPoliRJ['anamnesa']['keluhanUtama']['snomedDisplayEn'] = '';
         $this->dataDaftarPoliRJ['anamnesa']['keluhanUtama']['snomedDisplayId'] = '';
+    }
+
+    /* ===============================
+     | LOV SNOMED — Alergi
+     =============================== */
+    #[On('lov.selected.alergiSnomed')]
+    public function onAlergiSnomedSelected(string $target, array $payload): void
+    {
+        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedCode'] = $payload['snomed_code'] ?? '';
+        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedDisplayEn'] = $payload['display_en'] ?? '';
+        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedDisplayId'] = $payload['display_id'] ?? '';
+    }
+
+    #[On('lov.cleared.alergiSnomed')]
+    public function onAlergiSnomedCleared(string $target): void
+    {
+        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedCode'] = '';
+        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedDisplayEn'] = '';
+        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedDisplayId'] = '';
     }
 
     protected function resetForm(): void
