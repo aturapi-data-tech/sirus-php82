@@ -651,7 +651,6 @@ new class extends Component {
             ->join('rsmst_doctors as d', 'd.kd_dr_bpjs', '=', 'b.kodedokter')
             ->where('d.dr_id', $drId)
             ->where('b.tanggalperiksa', $rjDateCarbon->format('Y-m-d'))
-            ->where('b.status', 'Belum')
             ->max('b.angkaantrean');
 
         return max($maxAntrianRjhdrs, $maxAntrianBooking) + 1;
