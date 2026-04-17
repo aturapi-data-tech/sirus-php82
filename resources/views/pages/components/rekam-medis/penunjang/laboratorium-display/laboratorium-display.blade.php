@@ -541,7 +541,7 @@ new class extends Component {
                                                     </div>
 
                                                     {{-- Actions --}}
-                                                    @role(['Dokter', 'Admin', 'Perawat', 'Laborat'])
+                                                    @role(['Dokter', 'Admin', 'Perawat', 'Laboratorium'])
                                                         <div class="flex items-center gap-2 mt-3">
                                                             {{-- Tombol Hasil Laboratorium --}}
                                                             <x-info-button type="button"
@@ -1008,7 +1008,7 @@ new class extends Component {
                             </x-info-button>
                         @endif
 
-                        @role(['Dokter', 'Admin', 'Laborat'])
+                        @role(['Dokter', 'Admin', 'Laboratorium'])
                             @if (!empty($selectedCheckupNo))
                                 <x-primary-button type="button" wire:click="cetakLaborat('{{ $selectedCheckupNo }}')"
                                     wire:loading.attr="disabled">
