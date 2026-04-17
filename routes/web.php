@@ -122,6 +122,12 @@ Route::middleware(['auth'])->group(function () {
         ->name('keuangan.pengeluaran-kas-tu');
 
     // ===========================================
+    // GUDANG - PENERIMAAN MEDIS
+    // ===========================================
+    Route::livewire('/gudang/penerimaan-medis', 'pages::transaksi.gudang.penerimaan-medis.penerimaan-medis')
+        ->name('gudang.penerimaan-medis');
+
+    // ===========================================
     // TRANSAKSI PENUNJANG - LABORATORIUM
     // ===========================================
     Route::livewire('/transaksi/penunjang/laborat', 'pages::transaksi.penunjang.laborat.daftar-laborat')
@@ -144,6 +150,12 @@ Route::middleware(['auth'])->group(function () {
     // ===========================================
     Route::livewire('/database-monitor/user-control', 'pages::database-monitor.user-control.user-control')
         ->name('database-monitor.user-control');
+
+    // ===========================================
+    // DATABASE MONITOR - ROLE CONTROL
+    // ===========================================
+    Route::livewire('/database-monitor/role-control', 'pages::database-monitor.role-control.role-control')
+        ->name('database-monitor.role-control');
 });
 
 

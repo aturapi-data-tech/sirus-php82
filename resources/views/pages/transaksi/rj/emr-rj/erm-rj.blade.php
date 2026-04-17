@@ -226,7 +226,7 @@ new class extends Component {
                             @endrole
 
                             {{-- Administrasi --}}
-                            @hasanyrole('Admin|Perawat|Casemix')
+                            @hasanyrole('Admin|Perawat|Casmix')
                                 <x-outline-button type="button" wire:click="openAdministrasiPasien('{{ $rjNo }}')"
                                     wire:loading.attr="disabled" wire:target="openAdministrasiPasien">
                                     <span wire:loading.remove wire:target="openAdministrasiPasien"
