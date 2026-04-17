@@ -645,7 +645,7 @@ new class extends Component {
                                                                 </x-dropdown-link>
                                                             @endhasanyrole
 
-                                                            @hasanyrole('Admin|Perawat|Casemix')
+                                                            @hasanyrole('Admin|Perawat|Casmix')
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="openModulDokumen('{{ $row->rihdr_no }}')"
                                                                     class="px-3 py-2 text-sm rounded-lg bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20">
@@ -665,7 +665,7 @@ new class extends Component {
                                                                 </x-dropdown-link>
                                                             @endhasanyrole
 
-                                                            @hasanyrole('Admin|Perawat|Casemix')
+                                                            @hasanyrole('Admin|Perawat|Casmix')
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="openAdministrasiPasien('{{ $row->rihdr_no }}')"
                                                                     class="px-3 py-2 text-sm rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20">

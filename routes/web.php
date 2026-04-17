@@ -150,6 +150,12 @@ Route::middleware(['auth'])->group(function () {
     // ===========================================
     Route::livewire('/database-monitor/user-control', 'pages::database-monitor.user-control.user-control')
         ->name('database-monitor.user-control');
+
+    // ===========================================
+    // DATABASE MONITOR - ROLE CONTROL
+    // ===========================================
+    Route::livewire('/database-monitor/role-control', 'pages::database-monitor.role-control.role-control')
+        ->name('database-monitor.role-control');
 });
 
 
