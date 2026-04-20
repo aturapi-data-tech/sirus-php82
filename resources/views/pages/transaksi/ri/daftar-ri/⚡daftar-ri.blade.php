@@ -449,25 +449,27 @@ new class extends Component {
                                             {{ $row->room_name ?? '-' }}
                                             / Bed: <span class="font-semibold">{{ $row->bed_no ?? '-' }}</span>
                                         </div>
-                                        <div class="text-base text-gray-600 dark:text-gray-400">
-                                            Dr. {{ $row->dr_name ?? '-' }}
-                                        </div>
-
                                         @if (!empty($row->leveling_dokter_list))
                                             <div class="space-y-0.5">
+                                                <div class="text-xs text-gray-400">DPJP:</div>
                                                 @foreach ($row->leveling_dokter_list as $ld)
-                                                    @if (!empty($ld['drDesc']))
-                                                        <div class="text-xs text-gray-500 dark:text-gray-400">
-                                                            {{ $ld['drDesc'] }}
-                                                            @if (!empty($ld['levelingDesc']))
-                                                                <span
-                                                                    class="text-gray-400">({{ $ld['levelingDesc'] }})</span>
+                                                    @if (!empty($ld['drName']))
+                                                        <div class="text-base text-gray-700 dark:text-gray-200">
+                                                            {{ $ld['drName'] }}
+                                                            @if (!empty($ld['levelDokter']))
+                                                                <span class="text-xs text-gray-500">
+                                                                    ({{ $ld['levelDokter'] === 'RawatGabung' ? 'Rawat Gabung' : $ld['levelDokter'] }})
+                                                                </span>
                                                             @endif
                                                         </div>
                                                     @endif
                                                 @endforeach
                                             </div>
                                         @endif
+
+                                        <div class="text-xs italic text-gray-500 dark:text-gray-400">
+                                            Penerima: {{ $row->dr_name ?? '-' }}
+                                        </div>
 
                                         <x-badge :variant="$row->klaim_badge_variant">{{ $row->klaim_id ?? '-' }}</x-badge>
 
