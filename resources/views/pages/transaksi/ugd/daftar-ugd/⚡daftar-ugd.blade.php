@@ -191,10 +191,10 @@ new class extends Component {
             /* E-Resep */
             $row->eresep_percent = isset($json['eresep']) || isset($json['eresepRacikan']) ? 100 : 0;
 
-            /* Task ID */
-            $row->task_id3 = $json['taskIdPelayanan']['taskId3'] ?? null;
-            $row->task_id4 = $json['taskIdPelayanan']['taskId4'] ?? null;
-            $row->task_id5 = $json['taskIdPelayanan']['taskId5'] ?? null;
+            /* Task ID (UGD: 6, 7, 99) */
+            $row->task_id6 = $json['taskIdPelayanan']['taskId6'] ?? null;
+            $row->task_id7 = $json['taskIdPelayanan']['taskId7'] ?? null;
+            $row->task_id99 = $json['taskIdPelayanan']['taskId99'] ?? null;
 
             /* No Referensi */
             $row->no_referensi = $json['noReferensi'] ?? null;
@@ -540,14 +540,14 @@ new class extends Component {
                                         </div>
 
                                         <div class="grid grid-cols-1 space-y-1">
-                                            @if ($row->task_id3)
-                                                <x-badge variant="success">TaskId3 {{ $row->task_id3 }}</x-badge>
+                                            @if ($row->task_id6)
+                                                <x-badge variant="success">TaskId6 {{ $row->task_id6 }}</x-badge>
                                             @endif
-                                            @if ($row->task_id4)
-                                                <x-badge variant="brand">TaskId4 {{ $row->task_id4 }}</x-badge>
+                                            @if ($row->task_id7)
+                                                <x-badge variant="brand">TaskId7 {{ $row->task_id7 }}</x-badge>
                                             @endif
-                                            @if ($row->task_id5)
-                                                <x-badge variant="warning">TaskId5 {{ $row->task_id5 }}</x-badge>
+                                            @if ($row->task_id99)
+                                                <x-badge variant="danger">Batal {{ $row->task_id99 }}</x-badge>
                                             @endif
                                         </div>
 

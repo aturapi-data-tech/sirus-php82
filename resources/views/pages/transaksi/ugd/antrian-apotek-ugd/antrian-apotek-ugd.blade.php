@@ -61,7 +61,7 @@ new class extends Component {
         $this->resetPage();
     }
 
-    public function openTelaahResep(int $hasEresep, string $rjNo): void
+    public function openTelaah(int $hasEresep, string $rjNo): void
     {
         if (!$hasEresep) {
             $this->dispatch('toast', type: 'error', message: 'E-Resep tidak ditemukan untuk pasien ini.');
@@ -70,13 +70,9 @@ new class extends Component {
         $this->dispatch('antrian-apotek.telaah-resep.open', rjNo: $rjNo);
     }
 
-    public function openTelaahObat(int $hasEresep, string $rjNo): void
+    public function openAdministrasiPasien(string $rjNo): void
     {
-        if (!$hasEresep) {
-            $this->dispatch('toast', type: 'error', message: 'E-Resep tidak ditemukan untuk pasien ini.');
-            return;
-        }
-        $this->dispatch('antrian-apotek.telaah-obat.open', rjNo: $rjNo);
+        $this->dispatch('emr-ugd.administrasi.open', rjNo: $rjNo);
     }
 
     #[On('refresh-after-apotek.saved')]
@@ -105,7 +101,7 @@ new class extends Component {
             ->join('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
-            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.poli_id', 'po.poli_desc', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.vno_sep', 'h.nobooking', 'h.datadaftarugd_json', 'k.klaim_desc', 'k.klaim_status', 'po.spesialis_status', 'h.waktu_masuk_apt', 'h.waktu_selesai_pelayanan'])
+            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.vno_sep', 'h.nobooking', 'h.datadaftarugd_json', 'k.klaim_desc', 'k.klaim_status', 'h.waktu_masuk_apt', 'h.waktu_selesai_pelayanan'])
             ->whereBetween('h.rj_date', [$start, $end])
             ->where(DB::raw("NVL(h.rj_status,'A')"), $this->filterStatus)
             ->where('h.klaim_id', '!=', 'KR');
@@ -159,7 +155,6 @@ new class extends Component {
             $row->telaah_resep_ttd = $json['telaahResep']['penanggungJawab']['userLog'] ?? null;
             $row->telaah_obat_ttd = $json['telaahObat']['penanggungJawab']['userLog'] ?? null;
 
-            $row->task_id5 = $json['taskIdPelayanan']['taskId5'] ?? null;
             $row->task_id6 = $json['taskIdPelayanan']['taskId6'] ?? null;
             $row->task_id7 = $json['taskIdPelayanan']['taskId7'] ?? null;
 
@@ -357,7 +352,7 @@ new class extends Component {
                             <tr
                                 class="text-xs font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300">
                                 <th class="px-4 py-3">Antrian & Pasien</th>
-                                <th class="px-4 py-3">Poli / Dokter</th>
+                                <th class="px-4 py-3">Dokter</th>
                                 <th class="px-4 py-3">Status Layanan</th>
                                 <th class="px-4 py-3">Waktu Apotek</th>
                                 <th class="px-4 py-3 text-center">Aksi</th>
@@ -413,13 +408,11 @@ new class extends Component {
                                         </div>
                                     </td>
 
-                                    {{-- POLI / DOKTER --}}
+                                    {{-- DOKTER --}}
                                     <td class="px-4 py-4 space-y-1 align-top">
                                         <div class="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                                            {{ $row->poli_desc ?? '-' }}
+                                            {{ $row->dr_name ?? '-' }}
                                         </div>
-                                        <div class="text-sm text-gray-700 dark:text-gray-300">
-                                            {{ $row->dr_name ?? '-' }}</div>
                                         <x-badge :variant="$row->klaim_variant">{{ $row->klaim_label }}</x-badge>
                                         @if ($row->vno_sep)
                                             <div class="font-mono text-xs text-gray-500 dark:text-gray-400">
@@ -469,7 +462,8 @@ new class extends Component {
                                                     class="w-2 h-2 rounded-full {{ $row->telaah_resep_done ? 'bg-emerald-500' : 'bg-gray-300' }}"></span>
                                                 <span
                                                     class="{{ $row->telaah_resep_done ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500' }}">
-                                                    Telaah Resep@if ($row->telaah_resep_ttd)
+                                                    Telaah Resep
+                                                    @if ($row->telaah_resep_ttd)
                                                         &mdash; {{ $row->telaah_resep_ttd }}
                                                     @endif
                                                 </span>
@@ -479,7 +473,8 @@ new class extends Component {
                                                     class="w-2 h-2 rounded-full {{ $row->telaah_obat_done ? 'bg-emerald-500' : 'bg-gray-300' }}"></span>
                                                 <span
                                                     class="{{ $row->telaah_obat_done ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500' }}">
-                                                    Telaah Obat@if ($row->telaah_obat_ttd)
+                                                    Telaah Obat
+                                                    @if ($row->telaah_obat_ttd)
                                                         &mdash; {{ $row->telaah_obat_ttd }}
                                                     @endif
                                                 </span>
@@ -490,14 +485,6 @@ new class extends Component {
                                     {{-- WAKTU APOTEK --}}
                                     <td class="px-4 py-4 space-y-2 align-top">
                                         <div class="text-xs space-y-1">
-                                            <div class="flex items-center gap-1.5">
-                                                <span
-                                                    class="w-2 h-2 rounded-full {{ $row->task_id5 ? 'bg-blue-500' : 'bg-gray-300' }}"></span>
-                                                <span class="text-gray-600 dark:text-gray-400">
-                                                    Keluar UGD: <span
-                                                        class="font-medium">{{ $row->task_id5 ?? '—' }}</span>
-                                                </span>
-                                            </div>
                                             <div class="flex items-center gap-1.5">
                                                 <span
                                                     class="w-2 h-2 rounded-full {{ $row->task_id6 ? 'bg-emerald-500' : 'bg-gray-300' }}"></span>
@@ -531,68 +518,57 @@ new class extends Component {
                                     <td class="px-4 py-4 align-top">
                                         <div class="flex flex-col gap-2">
 
-                                            <div class="flex space-x-1">
-                                                <livewire:pages::transaksi.ugd.task-id-pelayanan.task-id-6
-                                                    :rjNo="$row->rj_no" wire:key="'taskid6--'.{{ $row->rj_no }}" />
-                                                <livewire:pages::transaksi.ugd.task-id-pelayanan.task-id-7
-                                                    :rjNo="$row->rj_no" wire:key="'taskid7--'.{{ $row->rj_no }}" />
-                                                <livewire:pages::transaksi.ugd.task-id-pelayanan.get-task-id
-                                                    :rjNo="$row->rj_no" wire:key="'gettaskid--'.{{ $row->rj_no }}" />
+                                            <div class="flex items-center justify-between gap-2">
+                                                <div class="flex space-x-1">
+                                                    <livewire:pages::transaksi.ugd.task-id-pelayanan.task-id-6
+                                                        :rjNo="$row->rj_no" wire:key="'taskid6--'.{{ $row->rj_no }}" />
+                                                    <livewire:pages::transaksi.ugd.task-id-pelayanan.task-id-7
+                                                        :rjNo="$row->rj_no" wire:key="'taskid7--'.{{ $row->rj_no }}" />
+                                                </div>
+                                                @role('Admin')
+                                                    <livewire:pages::transaksi.ugd.task-id-pelayanan.task-id-99
+                                                        :rjNo="$row->rj_no" wire:key="'taskid99--'.{{ $row->rj_no }}" />
+                                                @endrole
                                             </div>
 
-                                            <div class="grid grid-cols-2 gap-1.5">
-                                                @if ($row->telaah_resep_done)
-                                                    <x-success-button
-                                                        wire:click="openTelaahResep({{ $row->has_eresep }}, '{{ $row->rj_no }}')"
-                                                        class="text-xs whitespace-nowrap justify-center">
-                                                        <svg class="w-3.5 h-3.5 mr-1" fill="none"
-                                                            stroke="currentColor" viewBox="0 0 24 24"
-                                                            stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        Telaah Resep ✓
-                                                    </x-success-button>
-                                                @else
-                                                    <x-secondary-button
-                                                        wire:click="openTelaahResep({{ $row->has_eresep }}, '{{ $row->rj_no }}')"
-                                                        class="text-xs whitespace-nowrap justify-center">
-                                                        <svg class="w-3.5 h-3.5 mr-1" fill="none"
-                                                            stroke="currentColor" viewBox="0 0 24 24"
-                                                            stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                                        </svg>
-                                                        Telaah Resep
-                                                    </x-secondary-button>
-                                                @endif
+                                            {{-- Telaah Resep & Obat (unified) --}}
+                                            @if ($row->telaah_resep_done && $row->telaah_obat_done)
+                                                <x-success-button
+                                                    wire:click="openTelaah({{ $row->has_eresep }}, '{{ $row->rj_no }}')"
+                                                    class="text-xs whitespace-nowrap justify-center">
+                                                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    Telaah Resep &amp; Obat ✓
+                                                </x-success-button>
+                                            @else
+                                                <x-secondary-button
+                                                    wire:click="openTelaah({{ $row->has_eresep }}, '{{ $row->rj_no }}')"
+                                                    class="text-xs whitespace-nowrap justify-center">
+                                                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                                    </svg>
+                                                    Telaah Resep &amp; Obat
+                                                </x-secondary-button>
+                                            @endif
 
-                                                @if ($row->telaah_obat_done)
-                                                    <x-primary-button
-                                                        wire:click="openTelaahObat({{ $row->has_eresep }}, '{{ $row->rj_no }}')"
-                                                        class="text-xs whitespace-nowrap justify-center">
-                                                        <svg class="w-3.5 h-3.5 mr-1" fill="none"
-                                                            stroke="currentColor" viewBox="0 0 24 24"
-                                                            stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        Telaah Obat ✓
-                                                    </x-primary-button>
-                                                @else
-                                                    <x-secondary-button
-                                                        wire:click="openTelaahObat({{ $row->has_eresep }}, '{{ $row->rj_no }}')"
-                                                        class="text-xs whitespace-nowrap justify-center">
-                                                        <svg class="w-3.5 h-3.5 mr-1" fill="none"
-                                                            stroke="currentColor" viewBox="0 0 24 24"
-                                                            stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                                                        </svg>
-                                                        Telaah Obat
-                                                    </x-secondary-button>
-                                                @endif
-                                            </div>
+                                            {{-- Administrasi — Admin | Perawat | Casmix --}}
+                                            @hasanyrole('Admin|Perawat|Casmix')
+                                                <x-secondary-button
+                                                    wire:click="openAdministrasiPasien('{{ $row->rj_no }}')"
+                                                    class="text-xs whitespace-nowrap justify-center !bg-purple-50 hover:!bg-purple-100 dark:!bg-purple-900/20">
+                                                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
+                                                    </svg>
+                                                    Administrasi
+                                                </x-secondary-button>
+                                            @endhasanyrole
 
                                             <x-info-button wire:click="cetakEresep('{{ $row->rj_no }}')"
                                                 wire:loading.attr="disabled" wire:target="cetakEresep"
@@ -648,6 +624,9 @@ new class extends Component {
 
             <livewire:pages::transaksi.ugd.antrian-apotek-ugd.antrian-apotek-ugd-actions
                 wire:key="antrian-apotek-ugd-actions" />
+
+            <livewire:pages::transaksi.ugd.administrasi-ugd.administrasi-ugd
+                wire:key="administrasi-ugd-actions" />
 
         </div>
     </div>

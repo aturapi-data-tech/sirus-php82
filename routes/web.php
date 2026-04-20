@@ -93,6 +93,13 @@ Route::middleware(['auth'])->group(function () {
 
 
     // ===========================================
+    // TRANSAKSI APOTEK - GABUNGAN RJ & UGD (tab)
+    // ===========================================
+    Route::livewire('/transaksi/apotek', 'pages::transaksi.apotek.apotek')
+        ->name('transaksi.apotek');
+
+
+    // ===========================================
     // RI - DAFTAR RI
     // ===========================================
     Route::livewire('/ri/daftar', 'pages::transaksi.ri.daftar-ri.daftar-ri')

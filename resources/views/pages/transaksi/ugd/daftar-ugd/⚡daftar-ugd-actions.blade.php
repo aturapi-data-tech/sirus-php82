@@ -271,10 +271,6 @@ new class extends Component {
         }
 
         $data['taskIdPelayanan'] ??= [];
-
-        if (empty($data['taskIdPelayanan']['taskId3']) && !empty($data['rjDate'])) {
-            $data['taskIdPelayanan']['taskId3'] = $data['rjDate'];
-        }
     }
 
     /* ===============================

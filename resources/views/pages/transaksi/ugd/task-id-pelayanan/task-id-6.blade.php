@@ -16,7 +16,7 @@ new class extends Component {
      | PROSES TASKID6 — Masuk Apotek
      |
      | Pola:
-     |   1. Guard awal (empty rjNo, taskId5)
+     |   1. Guard awal (empty rjNo)
      |   2. DB::transaction: lockUGDRow → findDataUGD → update waktu_masuk_apt
      |      + noAntrianApotek (atomik, cegah race condition) → updateJsonUGD
      |   3. dispatch + isLoading = false DI LUAR transaksi
@@ -45,12 +45,7 @@ new class extends Component {
                     throw new \RuntimeException('Data UGD tidak ditemukan.');
                 }
 
-                // 3. Guard taskId5 harus ada
-                if (empty($data['taskIdPelayanan']['taskId5'] ?? null)) {
-                    throw new \RuntimeException('TaskId5 (Panggil Antrian) harus dilakukan terlebih dahulu.');
-                }
-
-                // 4. Guard idempoten — jika taskId6 sudah ada, skip update
+                // 3. Guard idempoten — jika taskId6 sudah ada, skip update
                 if (!empty($data['taskIdPelayanan']['taskId6'])) {
                     $message = "TaskId6 sudah dicatat pada {$data['taskIdPelayanan']['taskId6']}.";
                     return;
