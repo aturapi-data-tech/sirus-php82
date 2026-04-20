@@ -85,6 +85,7 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\BPJS\AplicaresTrait;
 use App\Http\Traits\SIRS\SirsTrait;
@@ -120,6 +121,71 @@ new class extends Component {
     public string $sirsError            = '';
     public array  $sirsData             = [];
     public bool   $sudahTarikSirs       = false;
+
+    /* ═══════════════════════════════════════════════════════════════════
+       STATUS OVERVIEW (Section 1) — computed dari state + DB
+       ═══════════════════════════════════════════════════════════════════ */
+
+    /** Rekap status Aplicares — lokal aktif vs online, belum terdaftar, mismatch kapasitas */
+    #[Computed]
+    public function rekapStatusAplicares(): array
+    {
+        $lokalAktif = DB::table('rsmst_rooms as r')
+            ->leftJoin('rsmst_beds as bd', 'r.room_id', '=', 'bd.room_id')
+            ->selectRaw('r.room_id, COUNT(bd.bed_no) AS jumlah_bed')
+            ->where('r.active_status', '1')
+            ->groupBy('r.room_id')
+            ->pluck('jumlah_bed', 'room_id')
+            ->toArray();
+
+        $koderuangOnline = collect($this->aplicaresData)
+            ->map(fn($r) => (string) ($r['koderuang'] ?? ($r['kode_ruang'] ?? '')))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $totalLokal    = count($lokalAktif);
+        $totalOnline   = count($this->aplicaresData);
+        $belumDaftar   = count(array_diff(array_keys($lokalAktif), $koderuangOnline));
+        $mismatchKap   = collect($this->aplicaresData)->filter(function ($r) use ($lokalAktif) {
+            $kr = (string) ($r['koderuang'] ?? ($r['kode_ruang'] ?? ''));
+            $online = (int) ($r['kapasitas'] ?? 0);
+            $lokal  = (int) ($lokalAktif[$kr] ?? 0);
+            return $kr !== '' && $online !== $lokal;
+        })->count();
+
+        return [
+            'totalLokal'  => $totalLokal,
+            'totalOnline' => $totalOnline,
+            'belumDaftar' => $belumDaftar,
+            'mismatchKap' => $mismatchKap,
+        ];
+    }
+
+    /** Rekap status SIRS — lokal aktif vs online, belum terdaftar (pakai sirs_id_t_tt) */
+    #[Computed]
+    public function rekapStatusSirs(): array
+    {
+        $totalLokal = (int) DB::table('rsmst_rooms')->where('active_status', '1')->count();
+
+        // Kamar yang punya sirs_id_t_tt dianggap terdaftar (bukti sudah upload ke SIRS)
+        $terdaftarLokal = (int) DB::table('rsmst_rooms')
+            ->where('active_status', '1')
+            ->whereNotNull('sirs_id_t_tt')
+            ->where('sirs_id_t_tt', '!=', '')
+            ->count();
+
+        $totalOnline = count($this->sirsData);
+        $belumDaftar = max(0, $totalLokal - $terdaftarLokal);
+
+        return [
+            'totalLokal'     => $totalLokal,
+            'terdaftarLokal' => $terdaftarLokal,
+            'totalOnline'    => $totalOnline,
+            'belumDaftar'    => $belumDaftar,
+        ];
+    }
 
     /* --- Buka modal terpadu Kelola Aplicares & SIRS (dipanggil dari header) --- */
     #[On('registrasi.openKelolaAplicaresSirs')]
@@ -594,11 +660,56 @@ new class extends Component {
             {{-- Tab content: APLICARES --}}
             <div x-show="tab === 'aplicares'" class="flex flex-col flex-1 overflow-hidden">
 
-                {{-- SECTION 1 — Status (Aplicares) — TODO step 5 --}}
+                {{-- SECTION 1 — Status Aplicares --}}
+                @php $statApl = $this->rekapStatusAplicares; @endphp
                 <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 shrink-0">
-                    <div class="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 italic">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2a4 4 0 00-4-4H3m0 0l3-3m-3 3l3 3m8-8V5a4 4 0 014 4v2m0 0l3 3m-3-3l-3 3"/></svg>
-                        <span>Section 1 — Status ringkas (akan diisi di step 5)</span>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {{-- Kamar Aktif Lokal --}}
+                        <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                            <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 00-2 2H6a2 2 0 00-2-2V6zM14 14a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z"/>
+                            </svg>
+                            <div>
+                                <div class="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 font-semibold">Lokal Aktif</div>
+                                <div class="text-lg font-bold text-gray-700 dark:text-gray-200 leading-tight">{{ $statApl['totalLokal'] }}</div>
+                            </div>
+                        </div>
+                        {{-- Terdaftar Online --}}
+                        <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                            </svg>
+                            <div>
+                                <div class="text-[10px] uppercase tracking-wider text-blue-600 dark:text-blue-400 font-semibold">Terdaftar Online</div>
+                                <div class="text-lg font-bold text-blue-700 dark:text-blue-300 leading-tight">
+                                    @if ($sudahTarikAplicares){{ $statApl['totalOnline'] }}@else<span class="text-xs italic font-normal text-blue-400">belum ditarik</span>@endif
+                                </div>
+                            </div>
+                        </div>
+                        {{-- Belum Terdaftar --}}
+                        <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg {{ $sudahTarikAplicares && $statApl['belumDaftar'] > 0 ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' : 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800' }}">
+                            <svg class="w-5 h-5 {{ $sudahTarikAplicares && $statApl['belumDaftar'] > 0 ? 'text-red-500 dark:text-red-400' : 'text-emerald-500 dark:text-emerald-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            <div>
+                                <div class="text-[10px] uppercase tracking-wider {{ $sudahTarikAplicares && $statApl['belumDaftar'] > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400' }} font-semibold">Belum Terdaftar</div>
+                                <div class="text-lg font-bold {{ $sudahTarikAplicares && $statApl['belumDaftar'] > 0 ? 'text-red-700 dark:text-red-300' : 'text-emerald-700 dark:text-emerald-300' }} leading-tight">
+                                    @if ($sudahTarikAplicares){{ $statApl['belumDaftar'] }}@else<span class="text-xs italic font-normal text-gray-400">—</span>@endif
+                                </div>
+                            </div>
+                        </div>
+                        {{-- Mismatch Kapasitas --}}
+                        <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg {{ $sudahTarikAplicares && $statApl['mismatchKap'] > 0 ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800' : 'bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700' }}">
+                            <svg class="w-5 h-5 {{ $sudahTarikAplicares && $statApl['mismatchKap'] > 0 ? 'text-amber-500' : 'text-gray-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                            </svg>
+                            <div>
+                                <div class="text-[10px] uppercase tracking-wider {{ $sudahTarikAplicares && $statApl['mismatchKap'] > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400' }} font-semibold">Mismatch Kapasitas</div>
+                                <div class="text-lg font-bold {{ $sudahTarikAplicares && $statApl['mismatchKap'] > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-gray-600 dark:text-gray-300' }} leading-tight">
+                                    @if ($sudahTarikAplicares){{ $statApl['mismatchKap'] }}@else<span class="text-xs italic font-normal text-gray-400">—</span>@endif
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -974,11 +1085,52 @@ new class extends Component {
             {{-- Tab content: SIRS --}}
             <div x-show="tab === 'sirs'" class="flex flex-col flex-1 overflow-hidden">
 
-                {{-- SECTION 1 — Status (SIRS) — TODO step 5 --}}
+                {{-- SECTION 1 — Status SIRS --}}
+                @php $statSirs = $this->rekapStatusSirs; @endphp
                 <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 shrink-0">
-                    <div class="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 italic">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2a4 4 0 00-4-4H3m0 0l3-3m-3 3l3 3m8-8V5a4 4 0 014 4v2m0 0l3 3m-3-3l-3 3"/></svg>
-                        <span>Section 1 — Status ringkas (akan diisi di step 5)</span>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {{-- Kamar Aktif Lokal --}}
+                        <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                            <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 00-2 2H6a2 2 0 00-2-2V6zM14 14a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z"/>
+                            </svg>
+                            <div>
+                                <div class="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 font-semibold">Lokal Aktif</div>
+                                <div class="text-lg font-bold text-gray-700 dark:text-gray-200 leading-tight">{{ $statSirs['totalLokal'] }}</div>
+                            </div>
+                        </div>
+                        {{-- Terdaftar (punya sirs_id_t_tt) --}}
+                        <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                            <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                            </svg>
+                            <div>
+                                <div class="text-[10px] uppercase tracking-wider text-green-600 dark:text-green-400 font-semibold" title="Kamar yang punya sirs_id_t_tt di rsmst_rooms">Terdaftar (punya id_t_tt)</div>
+                                <div class="text-lg font-bold text-green-700 dark:text-green-300 leading-tight">{{ $statSirs['terdaftarLokal'] }}</div>
+                            </div>
+                        </div>
+                        {{-- Belum Terdaftar --}}
+                        <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg {{ $statSirs['belumDaftar'] > 0 ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' : 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800' }}">
+                            <svg class="w-5 h-5 {{ $statSirs['belumDaftar'] > 0 ? 'text-red-500 dark:text-red-400' : 'text-emerald-500 dark:text-emerald-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            <div>
+                                <div class="text-[10px] uppercase tracking-wider {{ $statSirs['belumDaftar'] > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400' }} font-semibold">Belum Terdaftar</div>
+                                <div class="text-lg font-bold {{ $statSirs['belumDaftar'] > 0 ? 'text-red-700 dark:text-red-300' : 'text-emerald-700 dark:text-emerald-300' }} leading-tight">{{ $statSirs['belumDaftar'] }}</div>
+                            </div>
+                        </div>
+                        {{-- Data Online --}}
+                        <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                            <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                            </svg>
+                            <div>
+                                <div class="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 font-semibold">Data Online</div>
+                                <div class="text-lg font-bold text-gray-700 dark:text-gray-200 leading-tight">
+                                    @if ($sudahTarikSirs){{ $statSirs['totalOnline'] }}@else<span class="text-xs italic font-normal text-gray-400">belum ditarik</span>@endif
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
