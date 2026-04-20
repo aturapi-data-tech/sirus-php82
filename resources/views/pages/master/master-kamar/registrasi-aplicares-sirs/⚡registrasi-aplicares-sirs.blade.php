@@ -115,6 +115,12 @@ new class extends Component {
     /** map room_id => jumlah bed lokal, untuk deteksi mismatch kapasitas Aplicares */
     public array  $bedCountLokal        = [];
 
+    /* --- Data Terdaftar SIRS (Section 3 tab SIRS) --- */
+    public bool   $loadingSirs          = false;
+    public string $sirsError            = '';
+    public array  $sirsData             = [];
+    public bool   $sudahTarikSirs       = false;
+
     /* --- Buka modal terpadu Kelola Aplicares & SIRS (dipanggil dari header) --- */
     #[On('registrasi.openKelolaAplicaresSirs')]
     public function openKelolaAplicaresSirs(): void
@@ -309,6 +315,58 @@ new class extends Component {
             }
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Error: ' . $e->getMessage());
+        }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       DATA TERDAFTAR SIRS (Section 3, tab SIRS)
+       Dipindah dari ⚡sirs-actions.blade.php saat refactor unified.
+       ═══════════════════════════════════════════════════════════════════ */
+    public function muatDaftarTempatTidurTerdaftarSirs(): void
+    {
+        $this->loadingSirs = true;
+        $this->sirsError   = '';
+
+        try {
+            $res  = $this->sirsGetTempaTidur()->getOriginalContent();
+            $list = $res['fasyankes'] ?? ($res['response'] ?? ($res['data'] ?? []));
+            $this->sirsData = is_array($list) ? array_values($list) : [];
+
+            $jumlah = count($this->sirsData);
+            if ($jumlah === 0) {
+                $this->dispatch('toast', type: 'info', message: 'Berhasil menarik data, tapi belum ada tempat tidur yang terdaftar di SIRS Kemenkes.');
+            } else {
+                $this->dispatch('toast', type: 'success', message: "Berhasil menarik {$jumlah} data tempat tidur dari SIRS.");
+            }
+        } catch (\Throwable $e) {
+            $this->sirsError = $e->getMessage();
+            $this->dispatch('toast', type: 'error', message: 'Gagal menarik data SIRS: ' . $e->getMessage());
+        }
+
+        $this->sudahTarikSirs = true;
+        $this->loadingSirs    = false;
+    }
+
+    public function hapusTempatTidurDariSirs(string $idTTt): void
+    {
+        try {
+            $res    = $this->sirsHapusTempaTidur($idTTt)->getOriginalContent();
+            $first  = $res['fasyankes'][0] ?? [];
+            $status = (string) ($first['status'] ?? '500');
+            $msg    = $first['message'] ?? '-';
+
+            if ($status === '200') {
+                DB::table('rsmst_rooms')
+                    ->where('sirs_id_t_tt', $idTTt)
+                    ->update(['sirs_id_t_tt' => null]);
+
+                $this->dispatch('toast', type: 'success', message: $msg ?: "Data TT {$idTTt} berhasil dihapus dari SIRS.");
+                $this->muatDaftarTempatTidurTerdaftarSirs();
+            } else {
+                $this->dispatch('toast', type: 'error', message: "Gagal hapus SIRS: {$msg}");
+            }
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Error SIRS: ' . $e->getMessage());
         }
     }
 
@@ -1060,11 +1118,168 @@ new class extends Component {
                     </div>
                 </div>
 
-                {{-- SECTION 3 — Data Terdaftar Online — TODO step 4 --}}
+                {{-- SECTION 3 — Data Terdaftar SIRS Online --}}
                 <div class="flex-1 overflow-hidden flex flex-col">
-                    <div class="px-5 py-8 text-xs italic text-gray-400 dark:text-gray-500">
-                        TODO step 4 — migrate konten sirs-actions.blade.php ke sini (tabel data terdaftar SIRS + Hapus).
+                    {{-- Toolbar: Ambil Data SIRS --}}
+                    <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
+                        <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">Data Tempat Tidur Terdaftar di SIRS Kemenkes</span>
+                        <x-secondary-button wire:click="muatDaftarTempatTidurTerdaftarSirs" wire:loading.attr="disabled" wire:target="muatDaftarTempatTidurTerdaftarSirs,hapusTempatTidurDariSirs">
+                            <x-loading size="xs" wire:loading wire:target="muatDaftarTempatTidurTerdaftarSirs,hapusTempatTidurDariSirs" class="mr-1" />
+                            <svg wire:loading.remove wire:target="muatDaftarTempatTidurTerdaftarSirs,hapusTempatTidurDariSirs" class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.001 7.001 0 0112 5c2.276 0 4.293.965 5.71 2.5M19.418 15A7.001 7.001 0 0112 19c-2.276 0-4.293-.965-5.71-2.5" />
+                            </svg>
+                            <span wire:loading.remove wire:target="muatDaftarTempatTidurTerdaftarSirs,hapusTempatTidurDariSirs">
+                                {{ empty($sirsData) ? 'Ambil Data SIRS' : 'Perbarui Data' }}
+                            </span>
+                            <span wire:loading wire:target="muatDaftarTempatTidurTerdaftarSirs,hapusTempatTidurDariSirs">Mengambil data…</span>
+                        </x-secondary-button>
                     </div>
+
+                    @if ($sirsError)
+                        <div class="px-5 py-4 bg-red-50 dark:bg-red-900/20 shrink-0 border-l-4 border-red-500">
+                            <div class="flex items-start gap-3">
+                                <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-sm font-semibold text-red-700 dark:text-red-300">Gagal menarik data dari SIRS Kemenkes</div>
+                                    <div class="mt-1 text-xs text-red-600 dark:text-red-400 break-words">{{ $sirsError }}</div>
+                                    <div class="mt-2 text-xs text-red-500/80 dark:text-red-400/80">Cek koneksi ke API SIRS, kredensial, atau coba klik <strong>Ambil Data SIRS</strong> lagi.</div>
+                                </div>
+                            </div>
+                        </div>
+                    @else
+                        {{-- Loading --}}
+                        <div wire:loading wire:target="muatDaftarTempatTidurTerdaftarSirs,hapusTempatTidurDariSirs" class="flex-1 flex flex-col items-center justify-center text-sm text-gray-400">
+                            <x-loading size="md" class="block mb-2" />
+                            Memuat data dari SIRS Kemenkes…
+                        </div>
+
+                        {{-- Rekap Total --}}
+                        @if (!empty($sirsData))
+                            @php
+                                $sirsTotalRuang    = collect($sirsData)->sum('jumlah_ruang');
+                                $sirsTotalJumlah   = collect($sirsData)->sum('jumlah');
+                                $sirsTotalKosong   = collect($sirsData)->sum('kosong');
+                                $sirsTotalTerpakai = collect($sirsData)->sum('terpakai');
+                            @endphp
+                            <div wire:loading.remove wire:target="muatDaftarTempatTidurTerdaftarSirs,hapusTempatTidurDariSirs"
+                                class="px-5 py-2.5 border-b border-green-100 dark:border-green-900/40 bg-green-50/60 dark:bg-green-900/10 shrink-0 flex items-center justify-end">
+                                <div class="flex items-center gap-1.5 bg-green-600 dark:bg-green-700 rounded-lg px-2.5 py-1 text-[11px] text-white font-semibold">
+                                    <span>Total:</span>
+                                    <span>{{ $sirsTotalRuang }} ruang</span>
+                                    <span class="opacity-60">·</span>
+                                    <span>Jml: {{ $sirsTotalJumlah }}</span>
+                                    <span class="opacity-60">·</span>
+                                    <span>Kosong: {{ $sirsTotalKosong }}</span>
+                                    <span class="opacity-60">·</span>
+                                    <span>Pakai: {{ $sirsTotalTerpakai }}</span>
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- Tabel --}}
+                        @php
+                            $sirsDataSorted = collect($sirsData)->sortBy('ruang')->values()->all();
+                        @endphp
+                        <div wire:loading.remove wire:target="muatDaftarTempatTidurTerdaftarSirs,hapusTempatTidurDariSirs" class="flex-1 overflow-auto">
+                            <table class="min-w-full text-sm">
+                                <thead class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 text-xs uppercase text-gray-500 dark:text-gray-400">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left font-semibold">Tipe TT</th>
+                                        <th class="px-4 py-3 text-left font-semibold">Ruang</th>
+                                        <th class="px-4 py-3 text-center font-semibold">Jml Ruang</th>
+                                        <th class="px-4 py-3 text-center font-semibold">Jumlah</th>
+                                        <th class="px-4 py-3 text-center font-semibold">Kosong</th>
+                                        <th class="px-4 py-3 text-center font-semibold">Terpakai</th>
+                                        <th class="px-4 py-3 text-center font-semibold">COVID</th>
+                                        <th class="px-4 py-3 text-left font-semibold">Update</th>
+                                        <th class="px-4 py-3 text-center font-semibold">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700 text-gray-700 dark:text-gray-200">
+                                    @forelse ($sirsDataSorted as $sirs)
+                                        @php
+                                            $idTTt    = (string) ($sirs['id_t_tt'] ?? '');
+                                            $kosong   = (int) ($sirs['kosong'] ?? 0);
+                                            $terpakai = (int) ($sirs['terpakai'] ?? 0);
+                                        @endphp
+                                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                            <td class="px-4 py-3">
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
+                                                        {{ $sirs['id_tt'] ?? '-' }}
+                                                    </span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]" title="{{ $sirs['tt'] ?? '' }}">
+                                                        {{ $sirs['tt'] ?? '-' }}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-3 font-medium">{{ $sirs['ruang'] ?? '-' }}</td>
+                                            <td class="px-4 py-3 text-center font-mono text-gray-500 dark:text-gray-400">{{ $sirs['jumlah_ruang'] ?? '-' }}</td>
+                                            <td class="px-4 py-3 text-center font-mono font-semibold">{{ $sirs['jumlah'] ?? '-' }}</td>
+                                            <td class="px-4 py-3 text-center font-mono font-semibold {{ $kosong > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500' }}">{{ $kosong }}</td>
+                                            <td class="px-4 py-3 text-center font-mono font-semibold {{ $terpakai > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400 dark:text-gray-500' }}">{{ $terpakai }}</td>
+                                            <td class="px-4 py-3 text-center">
+                                                @if (!empty($sirs['covid']))
+                                                    <x-badge variant="danger">COVID</x-badge>
+                                                @else
+                                                    <x-badge variant="gray">Non</x-badge>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-3 text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">{{ $sirs['tglupdate'] ?? '-' }}</td>
+                                            <td class="px-4 py-3 text-center">
+                                                @if ($idTTt !== '')
+                                                    <x-confirm-button variant="danger"
+                                                        :action="'hapusTempatTidurDariSirs(\'' . $idTTt . '\')'"
+                                                        title="Hapus Data SIRS"
+                                                        :message="'Hapus data TT ' . $idTTt . ' dari SIRS Kemenkes?'"
+                                                        confirmText="Ya, hapus" cancelText="Batal"
+                                                        class="text-xs">
+                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                        Hapus
+                                                    </x-confirm-button>
+                                                @else
+                                                    <span class="text-[10px] text-gray-400 dark:text-gray-500 italic">Belum terdaftar</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="9" class="px-5 py-16">
+                                                @if ($sudahTarikSirs)
+                                                    <div class="flex flex-col items-center gap-2 text-center">
+                                                        <svg class="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                        </svg>
+                                                        <div class="text-sm font-semibold text-amber-700 dark:text-amber-400">Data tidak tersedia</div>
+                                                        <p class="text-xs text-gray-500 dark:text-gray-400 max-w-md">
+                                                            Berhasil terhubung ke SIRS Kemenkes, tapi belum ada tempat tidur yang terdaftar.
+                                                            Buka <strong>Section Daftarkan Massal</strong> di atas untuk mulai mendaftarkan.
+                                                        </p>
+                                                    </div>
+                                                @else
+                                                    <div class="flex flex-col items-center gap-2 text-center text-gray-400 dark:text-gray-500 italic text-sm">
+                                                        Belum ada data. Klik <strong>Ambil Data SIRS</strong> untuk memuat.
+                                                    </div>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+
+                        @if (!empty($sirsData))
+                            <div class="px-5 py-2 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-400 dark:text-gray-500 shrink-0">
+                                {{ count($sirsData) }} data tempat tidur
+                            </div>
+                        @endif
+                    @endif
                 </div>
             </div>
 
