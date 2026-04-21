@@ -36,8 +36,14 @@ new class extends Component {
             ->orderBy('r.room_name')
             ->orderBy('c.class_id')
             ->get()
-            ->map(
-                fn($r) => [
+            ->map(function ($r) {
+                $kapasitas = (int) $r->kapasitas;
+                $terpakaiRaw = (int) $r->terpakai;
+                // Clamp terpakai ke kapasitas supaya SIRS/Aplicares tidak dapat data inkonsisten
+                // (anomali: pasien pulang dibalikkan ke I sementara pasien lain masih I).
+                $terpakai = min($kapasitas, $terpakaiRaw);
+                $anomaliSelisih = $terpakaiRaw - $kapasitas; // >0 = ada anomali
+                return [
                     'room_id' => (string) $r->room_id,
                     'rs_namabangsal' => (string) ($r->bangsal_name ?? ''),
                     'rs_namakamar' => (string) ($r->room_name ?? ''),
@@ -46,15 +52,17 @@ new class extends Component {
                     'aplic_kodekelas' => (string) ($r->aplic_kodekelas ?? ''),
                     'sirs_id_tt' => (string) ($r->sirs_id_tt ?? ''),
                     'id_t_tt_sirs' => $r->sirs_id_t_tt ?? null ?: null,
-                    'kapasitas' => (int) $r->kapasitas,
-                    'terpakai' => (int) $r->terpakai,
-                    'tersedia' => max(0, (int) $r->kapasitas - (int) $r->terpakai),
+                    'kapasitas' => $kapasitas,
+                    'terpakai' => $terpakai,
+                    'terpakai_raw' => $terpakaiRaw,
+                    'anomali_selisih' => max(0, $anomaliSelisih),
+                    'tersedia' => max(0, $kapasitas - $terpakai),
                     'status_aplic' => null,
                     'pesan_aplic' => '',
                     'status_sirs' => null,
                     'pesan_sirs' => '',
-                ],
-            )
+                ];
+            })
             ->values()
             ->all();
     }
@@ -296,12 +304,12 @@ new class extends Component {
                         </div>
                         <span class="text-gray-200 dark:text-gray-700">·</span>
                         <div class="flex items-center gap-1.5">
-                            <span class="text-xs text-gray-400 dark:text-gray-500">Tersedia</span>
+                            <span class="text-xs text-gray-400 dark:text-gray-500">Sisa</span>
                             <span class="font-bold text-emerald-600 dark:text-emerald-400">{{ $totalTers }}</span>
                         </div>
                         <span class="text-gray-200 dark:text-gray-700">·</span>
                         <div class="flex items-center gap-1.5">
-                            <span class="text-xs text-gray-400 dark:text-gray-500">Occ</span>
+                            <span class="text-xs text-gray-400 dark:text-gray-500">Hunian</span>
                             <span class="font-bold text-blue-600 dark:text-blue-400">{{ $totalOcc }}%</span>
                         </div>
 
@@ -388,39 +396,44 @@ new class extends Component {
                     <thead class="bg-gray-50 dark:bg-gray-800 text-xs uppercase text-gray-500 dark:text-gray-400">
                         <tr>
                             <th class="px-4 py-3 text-left" rowspan="2">Kamar</th>
-                            <th class="px-4 py-3 text-center" rowspan="2">Kap</th>
-                            <th class="px-4 py-3 text-center" rowspan="2">Terpakai</th>
-                            <th class="px-4 py-3 text-center" rowspan="2">Tersedia</th>
-                            <th class="px-4 py-3 text-center" rowspan="2">Occ%</th>
+                            <th class="px-4 py-3 text-center" rowspan="2" title="Jumlah total tempat tidur di kamar">
+                                Kapasitas</th>
+                            <th class="px-4 py-3 text-center" rowspan="2" title="Jumlah pasien yang sedang dirawat">
+                                Terisi</th>
+                            <th class="px-4 py-3 text-center" rowspan="2" title="Tempat tidur yang masih kosong">
+                                Sisa</th>
+                            <th class="px-4 py-3 text-center" rowspan="2" title="Persentase hunian (terisi / kapasitas)">
+                                Hunian %</th>
                             <th colspan="3"
                                 class="px-4 py-2 text-center border-l border-blue-200 dark:border-blue-800
-                               bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold normal-case text-[11px]">
-                                BPJS Aplicares
+                               bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold normal-case text-[11px]"
+                                title="Kirim ketersediaan kamar ke Aplicares BPJS">
+                                Ketersediaan Kamar — BPJS Aplicares
                             </th>
                             <th colspan="3"
                                 class="px-4 py-2 text-center border-l border-green-200 dark:border-green-800
-                               bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 font-bold normal-case text-[11px]">
-                                SIRS Kemenkes
+                               bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 font-bold normal-case text-[11px]"
+                                title="Kirim data tempat tidur ke SIRS Kemenkes">
+                                Tempat Tidur — SIRS Kemenkes
                             </th>
                         </tr>
                         <tr>
-                            <th
-                                class="px-3 py-2 text-center border-l border-blue-100 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-900/10 font-medium normal-case">
+                            <th class="px-3 py-2 text-center border-l border-blue-100 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-900/10 font-medium normal-case"
+                                title="Kode kelas ruangan di Aplicares BPJS">
                                 Kode Kelas</th>
+                            <th class="px-3 py-2 text-center bg-blue-50/60 dark:bg-blue-900/10 font-medium normal-case"
+                                title="Hasil pengiriman terakhir ke Aplicares">
+                                Status Kirim</th>
                             <th class="px-3 py-2 text-center bg-blue-50/60 dark:bg-blue-900/10 font-medium normal-case">
-                                Status</th>
-                            <th
-                                class="px-3 py-2 text-center bg-blue-50/60 dark:bg-blue-900/10 font-medium normal-case">
-                                Aksi</th>
-                            <th
-                                class="px-3 py-2 text-center border-l border-green-100 dark:border-green-900 bg-green-50/60 dark:bg-green-900/10 font-medium normal-case">
-                                id_tt</th>
-                            <th
-                                class="px-3 py-2 text-center bg-green-50/60 dark:bg-green-900/10 font-medium normal-case">
-                                Status</th>
-                            <th
-                                class="px-3 py-2 text-center bg-green-50/60 dark:bg-green-900/10 font-medium normal-case">
-                                Aksi</th>
+                                Kirim</th>
+                            <th class="px-3 py-2 text-center border-l border-green-100 dark:border-green-900 bg-green-50/60 dark:bg-green-900/10 font-medium normal-case"
+                                title="ID TT (dari master) dan ID T_TT (dari SIRS Kemenkes setelah terdaftar)">
+                                ID TT / T_TT</th>
+                            <th class="px-3 py-2 text-center bg-green-50/60 dark:bg-green-900/10 font-medium normal-case"
+                                title="Hasil pengiriman terakhir ke SIRS">
+                                Status Kirim</th>
+                            <th class="px-3 py-2 text-center bg-green-50/60 dark:bg-green-900/10 font-medium normal-case">
+                                Kirim / Perbarui</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
@@ -454,6 +467,23 @@ new class extends Component {
                                              bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300">
                                             {{ $row['rs_namakelas'] }}
                                         </span>
+                                    @endif
+                                    @if ($row['anomali_selisih'] > 0)
+                                        <div class="mt-1 flex items-start gap-1 px-1.5 py-1 rounded bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50"
+                                            title="Jumlah pasien ri_status='I' melebihi kapasitas bed. Cek rstxn_rihdrs & tutup pasien yang sudah pulang.">
+                                            <svg class="w-3 h-3 mt-0.5 shrink-0 text-red-600 dark:text-red-400"
+                                                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                                stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                                            </svg>
+                                            <div class="text-[10px] leading-tight text-red-700 dark:text-red-300">
+                                                <div class="font-bold">Anomali data</div>
+                                                <div>Pasien 'I' = {{ $row['terpakai_raw'] }}, kapasitas
+                                                    {{ $row['kapasitas'] }} (selisih
+                                                    +{{ $row['anomali_selisih'] }}). Cek rstxn_rihdrs.</div>
+                                            </div>
+                                        </div>
                                     @endif
                                 </td>
 
