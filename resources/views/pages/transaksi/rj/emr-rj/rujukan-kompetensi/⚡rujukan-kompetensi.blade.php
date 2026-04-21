@@ -30,6 +30,7 @@ new class extends Component {
     public string $jnsPelayanan = '2';        // 1=RI, 2=RJ (default)
     public string $tipeRujukan = '0';         // 0=Penuh, 1=Partial, 2=Rujuk Balik
     public string $poliRujukan = '';       // kd_poli_bpjs yang dikirim ke Sisrute (input manual 3-digit)
+    public string $kodeSarana = '';        // Sarana khusus yang dibutuhkan di faskes tujuan (opsional, parameter GetFaskesRujukan)
 
     // ── Kriteria rujukan — default 3 item dari dokumentasi, akan di-overwrite
     //    oleh response GetKriteriaRujukan (dinamis per diagnosa + faskes).
@@ -68,34 +69,21 @@ new class extends Component {
 
     /**
      * Trigger tampilkan modal — reload fresh data + state rujukan sebelum render.
+     * Kriteria TIDAK di-fetch otomatis — user klik tombol "Ambil Kriteria" di
+     * Section C saat siap, supaya flow lebih deliberate (hindari call API saat
+     * user cuma buka modal untuk lihat ringkasan).
      */
     public function openModal(): void
     {
         $this->loadContext();
         $this->restoreState();
         $this->faskesList = [];   // hasil search sesi sebelumnya tidak di-persist
-
-        // Auto muat kriteria dinamis dari server kalau diagnosa & faskes ready
-        if ($this->kodeDiagnosa && $this->kodeFaskesSatuSehat) {
-            $this->muatKriteria(silent: true);
-        }
-
         $this->dispatch('open-modal', name: 'rujukan-kompetensi-rj');
     }
 
     /**
-     * Auto refetch kriteria kalau user ganti diagnosa.
-     */
-    public function updatedKodeDiagnosa($value): void
-    {
-        if ($value && $this->kodeFaskesSatuSehat) {
-            $this->muatKriteria(silent: true);
-        }
-    }
-
-    /**
      * GET /Rujukan/GetKriteriaRujukan — ambil daftar pertanyaan kriteria + jejaring wilayah.
-     * Dipanggil saat modal open / ganti diagnosa / klik "Muat Ulang Kriteria".
+     * Trigger manual via tombol "Ambil Kriteria" / "Muat Ulang" di Section C.
      */
     public function muatKriteria(bool $silent = false): void
     {
@@ -240,6 +228,7 @@ new class extends Component {
             'kodeFaskesSatuSehat' => $this->kodeFaskesSatuSehat,
             'kodeDiagnosa'        => $this->kodeDiagnosa,
             'kodeSpesialis'       => $this->kodeSpesialis,
+            'kodeSarana'          => $this->kodeSarana, // opsional
             'tglRencanaKunjungan' => Carbon::parse($this->tglRencanaKunjungan)->format('d-m-Y'),
             'kriteriaRujukan'     => ['item' => $this->buildKriteriaPayload()],
             'codeJejaringWilayah' => [
@@ -353,6 +342,7 @@ new class extends Component {
                     'jnsPelayanan'        => $this->jnsPelayanan,
                     'tipeRujukan'         => $this->tipeRujukan,
                     'poliRujukan'         => $this->poliRujukan,
+                    'kodeSarana'          => $this->kodeSarana,
                     'kriteriaItems'       => $this->kriteriaItems,
                     'kriteriaSource'      => $this->kriteriaSource,
                 ],
@@ -389,6 +379,7 @@ new class extends Component {
         $this->jnsPelayanan        = $form['jnsPelayanan']        ?? '2';
         $this->tipeRujukan         = $form['tipeRujukan']         ?? '0';
         $this->poliRujukan         = $form['poliRujukan']         ?? '';
+        $this->kodeSarana          = $form['kodeSarana']           ?? '';
         if (!empty($form['kriteriaItems'])) {
             $this->kriteriaItems = $form['kriteriaItems'];
         }
@@ -486,13 +477,13 @@ new class extends Component {
 
                 @php
                     $guide = [
-                        ['key' => 'A', 'title' => 'A. Data Rujukan', 'items' => [
+                        ['key' => 'A', 'title' => 'A. Data Rujukan (langkah 1)', 'items' => [
                             ['n' => '1', 'head' => 'Tgl Rencana Kunjungan', 'body' => 'Default = besok. Tanggal pasien datang ke RS tujuan. Ubah kalau perlu.'],
-                            ['n' => '2', 'head' => 'Diagnosa (ICD-10)', 'body' => 'Otomatis terisi dari diagnosis pertama di EMR. Kalau ada >1 diagnosa, pilih yang jadi alasan rujuk.'],
-                            ['n' => '3', 'head' => 'Kode Spesialis', 'body' => 'Otomatis terisi dari kode poli BPJS pasien yang sedang dilayani (kdpolibpjs di dataRJ). User bisa override kalau rujuk ke spesialis berbeda.'],
-                            ['n' => '6', 'head' => 'Poli Rujukan', 'body' => 'Input manual kode poli BPJS 3-digit di faskes tujuan (mis. 005). Kalau kosong, fallback pakai Kode Spesialis. Docs resmi tidak spec sumber — rencana upgrade: panggil rujukan_list_spesialistik(kdppkTujuan, tgl) VClaim setelah faskes dipilih.'],
-                            ['n' => '4', 'head' => 'Jenis & Tipe Rujukan', 'body' => 'Jenis: 2=RJ (default), 1=RI. Tipe: 0=Penuh, 1=Partial, 2=Rujuk Balik.'],
-                            ['n' => '5', 'head' => 'Provinsi/Kabupaten Tujuan', 'body' => 'Wilayah jejaring faskes tujuan. Provinsi wajib (mis. "31 · DKI Jakarta"). Kabupaten opsional untuk persempit.'],
+                            ['n' => '2', 'head' => 'Diagnosa (ICD-10)', 'body' => 'Otomatis terisi dari diagnosis pertama di EMR. Memicu auto fetch Kriteria + Jejaring Wilayah saat diubah.'],
+                            ['n' => '3', 'head' => 'Kode Spesialis', 'body' => 'Otomatis dari kdpolibpjs pasien saat ini. User bisa override kalau rujuk ke spesialis berbeda. Dipakai untuk field "Spesialis/Sub Spesialis" di GetFaskesRujukan.'],
+                            ['n' => '4', 'head' => 'Poli Rujukan', 'body' => 'Input manual kode poli BPJS 3-digit di faskes tujuan (mis. 005). Kalau kosong, fallback pakai Kode Spesialis.'],
+                            ['n' => '5', 'head' => 'Kode Sarana (opsional)', 'body' => 'Parameter GetFaskesRujukan untuk filter faskes berdasarkan sarana khusus (mis. alat CT scan, MRI). Kosongkan kalau tidak perlu.'],
+                            ['n' => '6', 'head' => 'Jenis & Tipe Rujukan', 'body' => 'Jenis: 2=RJ (default), 1=RI. Tipe: 0=Penuh, 1=Partial, 2=Rujuk Balik.'],
                         ]],
                         ['key' => 'B', 'title' => 'B. Data Satu Sehat (auto)', 'items' => [
                             ['n' => '1', 'head' => 'Kode Faskes Satu Sehat', 'body' => 'Dari env SATUSEHAT_ORGANIZATION_ID — kode Satu Sehat RS sendiri. Tetap per instance RS.'],
@@ -500,22 +491,25 @@ new class extends Component {
                             ['n' => '3', 'head' => 'Kd Dokter Satu Sehat', 'body' => 'Dari rsmst_doctors.dr_uuid untuk dokter DPJP. Kalau kosong — isi dulu di master dokter.'],
                             ['n' => '4', 'head' => 'Encounter Reference', 'body' => 'Dari dataRJ.satuSehat.encounterId. Kalau kosong — kirim Encounter Satu Sehat dulu (modul kirim-encounter di Satu Sehat RJ).'],
                         ]],
-                        ['key' => 'C', 'title' => 'C. Kriteria Rujukan', 'items' => [
-                            ['n' => '1', 'head' => 'Dinamis dari server', 'body' => 'Otomatis GET /Rujukan/GetKriteriaRujukan (VClaim-Sisrute) saat modal dibuka & setiap diagnosa diganti. Server kasih daftar pertanyaan kriteria spesifik per diagnosa + faskes.'],
-                            ['n' => '2', 'head' => 'Fallback default', 'body' => 'Kalau server error / kosong, pakai 3 kriteria default: 3216 Terapy/Pengobatan (boolean), 3215 Tindakan Medis (ICD-9 string), 3214 Upaya Diagnosis (boolean). Badge "⚠ Default" muncul di header.'],
-                            ['n' => '3', 'head' => 'Muat Ulang manual', 'body' => 'Tombol "🔄 Muat Ulang" di sebelah kanan header Section C untuk refetch (mis. kalau diagnosa sudah diganti tapi tidak auto ter-refresh).'],
-                            ['n' => '4', 'head' => 'Bonus auto-fill wilayah', 'body' => 'Response GetKriteriaRujukan juga bawa jejaring wilayah. Kalau field Propinsi/Kabupaten di Section A masih kosong, otomatis terisi dari server.'],
-                            ['n' => '5', 'head' => 'Cara isi', 'body' => 'Boolean = toggle Ya/Tidak. String = input kode (biasanya ICD-9 untuk Tindakan Medis). Field boleh kosong — tidak semua pertanyaan wajib.'],
+                        ['key' => 'C', 'title' => 'C. Kriteria Rujukan + Wilayah (langkah 2)', 'items' => [
+                            ['n' => '1', 'head' => 'Klik tombol "⬇ Ambil Kriteria"', 'body' => 'Trigger manual — sistem POST ke GET /Rujukan/GetKriteriaRujukan dengan diagnosa + kode faskes RS kita. Server balas: daftar pertanyaan kriteria (dinamis per diagnosa) + rekomendasi jejaring wilayah.'],
+                            ['n' => '2', 'head' => 'Fallback kalau belum dimuat', 'body' => 'Sebelum user klik tombol, Section C tampil 3 kriteria default (3216 Terapy/Pengobatan boolean, 3215 Tindakan Medis ICD-9 string, 3214 Upaya Diagnosis boolean) sebagai fallback. Badge "⚠ Belum dimuat" di header.'],
+                            ['n' => '3', 'head' => 'Muat Ulang saat ganti diagnosa', 'body' => 'Setelah kriteria pernah dimuat, ubah diagnosa di Section A → klik "🔄 Muat Ulang" supaya kriteria refetch sesuai diagnosa baru (auto-refresh tidak aktif — biar user kontrol timing).'],
+                            ['n' => '4', 'head' => 'Isi jawaban kriteria', 'body' => 'Boolean = toggle Ya/Tidak. String = input kode (biasanya ICD-9 untuk Tindakan Medis). Field boleh kosong — tidak semua pertanyaan wajib.'],
+                            ['n' => '5', 'head' => 'Jejaring Wilayah (auto-fill)', 'body' => 'Kode & nama Provinsi/Kabupaten auto-fill dari response server saat Ambil Kriteria. Boleh override kalau mau rujuk ke wilayah lain.'],
                         ]],
-                        ['key' => 'D', 'title' => 'D. Cari Faskes & Kirim', 'items' => [
-                            ['n' => '1', 'head' => 'Klik "Cari Faskes"', 'body' => 'POST /Rujukan/GetFaskesRujukan ke VClaim-Sisrute dengan diagnosa + kompetensi + kriteria + wilayah + encounter. Hasil: list faskes dengan kapasitas rujukan, jarak, jadwal praktek spesialis.'],
-                            ['n' => '2', 'head' => 'Pilih 1 Faskes', 'body' => 'Klik tombol "Pilih" di baris. kdppk (kode BPJS) + kodeFaskesSatuSehat faskes tujuan tersimpan di state. Card konfirmasi muncul.'],
-                            ['n' => '3', 'head' => 'Klik "Kirim Rujukan"', 'body' => 'POST /Rujukan/Insert — VClaim-Sisrute teruskan ke Satu Sehat Rujukan. Output: noRujukan BPJS + noRujukanSatuSehat.'],
+                        ['key' => 'D', 'title' => 'D. Cari & Pilih Faskes (langkah 3)', 'items' => [
+                            ['n' => '1', 'head' => 'Klik "Cari Faskes"', 'body' => 'POST /Rujukan/GetFaskesRujukan ke VClaim-Sisrute dengan diagnosa + kompetensi + sarana + kriteria + wilayah + encounter.'],
+                            ['n' => '2', 'head' => 'Tabel hasil', 'body' => 'Per baris tampilkan: Nama PPK, Kode PPK, Kelas, Kota, Jadwal Praktek Spesialis, Jarak (meter), Kapasitas %.'],
+                            ['n' => '3', 'head' => 'Pilih 1 Faskes', 'body' => 'Klik tombol "Pilih" di baris. kdppk + kodeFaskesSatuSehat tujuan tersimpan. Card konfirmasi + tombol Kirim muncul.'],
+                            ['n' => '4', 'head' => 'Klik "Kirim Rujukan"', 'body' => 'POST /Rujukan/Insert (langkah 4). VClaim-Sisrute teruskan ke Satu Sehat. Output: noRujukan BPJS + noRujukanSatuSehat + serviceRequestId FHIR.'],
                         ]],
-                        ['key' => 'E', 'title' => 'E. Hasil & Persistensi', 'items' => [
-                            ['n' => '1', 'head' => 'noRujukan', 'body' => 'Nomor rujukan resmi dari Sisrute, dipakai pasien saat datang ke RS tujuan (dicetak bersama SEP).'],
-                            ['n' => '2', 'head' => 'noRujukanSatuSehat', 'body' => 'Nomor rujukan versi Satu Sehat (FHIR ServiceRequest ID), untuk rekam jejak di platform Kemenkes.'],
-                            ['n' => '3', 'head' => 'Persistensi', 'body' => 'Hasil otomatis disimpan di rstxn_rjhdrs.datadaftarpolirj_json pada key rujukanKompetensi. Buka modal lagi → state form + hasil otomatis ter-restore.'],
+                        ['key' => 'E', 'title' => 'E. Hasil & Persistensi (langkah 4)', 'items' => [
+                            ['n' => '1', 'head' => 'noRujukan BPJS', 'body' => 'Nomor rujukan resmi BPJS, dipakai pasien saat datang ke RS tujuan (dicetak bersama SEP).'],
+                            ['n' => '2', 'head' => 'noRujukanSatuSehat', 'body' => 'Nomor rujukan versi Satu Sehat Kemenkes.'],
+                            ['n' => '3', 'head' => 'serviceRequestId', 'body' => 'FHIR ServiceRequest ID di Satu Sehat — reference ke resource rujukan di platform Kemenkes.'],
+                            ['n' => '4', 'head' => 'Detail lengkap', 'body' => 'Panel hasil tampilkan: asal rujukan (RS kita), tujuan rujukan, poli tujuan, diagnosa, data peserta BPJS, tgl rujukan.'],
+                            ['n' => '5', 'head' => 'Persistensi', 'body' => 'Hasil otomatis disimpan di rstxn_rjhdrs.datadaftarpolirj_json pada key rujukanKompetensi. Buka modal lagi → state form + hasil otomatis ter-restore.'],
                         ]],
                         ['key' => '!', 'title' => '⚠ Penting', 'items' => [
                             ['n' => '—', 'head' => 'Scope RJ (Rawat Jalan)', 'body' => 'Flow ini khusus RJ antar-faskes lewat gateway VClaim-Sisrute BPJS. UGD & Inap langsung ke Satu Sehat FHIR (trait lain, belum dibuat).'],
@@ -602,22 +596,16 @@ new class extends Component {
                         </div>
 
                         <div>
-                            <x-input-label value="Kode Provinsi *" />
-                            <x-text-input wire:model="kodePropinsi" placeholder="mis. 31" class="mt-1 w-full" />
+                            <x-input-label value="Kode Sarana (opsional)" />
+                            <x-text-input wire:model="kodeSarana" placeholder="kode sarana khusus"
+                                class="mt-1 w-full font-mono" />
+                            <p class="mt-1 text-[11px] text-gray-500">
+                                Sarana khusus yang dibutuhkan di faskes tujuan (mis. alat CT scan,
+                                MRI). Kosongkan kalau tidak perlu.
+                            </p>
                         </div>
-                        <div>
-                            <x-input-label value="Nama Provinsi *" />
-                            <x-text-input wire:model="namaPropinsi" placeholder="mis. DKI Jakarta"
-                                class="mt-1 w-full" />
-                        </div>
-                        <div>
-                            <x-input-label value="Kode Kabupaten (opsional)" />
-                            <x-text-input wire:model="kodeKabupaten" class="mt-1 w-full" />
-                        </div>
-                        <div>
-                            <x-input-label value="Nama Kabupaten (opsional)" />
-                            <x-text-input wire:model="namaKabupaten" class="mt-1 w-full" />
-                        </div>
+
+                        {{-- Wilayah auto-fill setelah GetKriteriaRujukan — ditampilkan di Section C --}}
 
                         <div class="md:col-span-2">
                             <x-input-label value="Catatan" />
@@ -678,19 +666,24 @@ new class extends Component {
                             <h3 class="font-semibold text-gray-800 dark:text-gray-100">C. Kriteria Rujukan</h3>
                             <p class="text-xs text-gray-500 mt-1">
                                 @if ($kriteriaSource === 'server')
-                                    <span class="text-emerald-600 dark:text-emerald-400 font-semibold">✓ Dinamis</span> —
-                                    dimuat dari Satu Sehat Rujukan sesuai diagnosa &amp; faskes.
+                                    <span class="text-emerald-600 dark:text-emerald-400 font-semibold">✓ Dari Server</span>
+                                    — kriteria &amp; jejaring wilayah sudah dimuat dari Satu Sehat Rujukan.
+                                    Klik "Muat Ulang" kalau diagnosa diubah.
                                 @else
-                                    <span class="text-amber-600 dark:text-amber-400 font-semibold">⚠ Default</span> —
-                                    pakai 3 kriteria fallback. Klik "Muat Ulang" untuk fetch dari server.
+                                    <span class="text-amber-600 dark:text-amber-400 font-semibold">⚠ Belum dimuat</span>
+                                    — klik tombol <strong>Ambil Kriteria</strong> untuk fetch dari server sesuai
+                                    diagnosa. Sementara tampil 3 kriteria default sebagai fallback.
                                 @endif
                             </p>
                         </div>
-                        <x-secondary-button type="button" wire:click="muatKriteria" wire:loading.attr="disabled"
-                            wire:target="muatKriteria" class="shrink-0 text-xs">
-                            <span wire:loading.remove wire:target="muatKriteria">🔄 Muat Ulang</span>
+                        <x-primary-button type="button" wire:click="muatKriteria" wire:loading.attr="disabled"
+                            wire:target="muatKriteria"
+                            class="shrink-0 {{ $kriteriaSource === 'server' ? '!bg-gray-500 hover:!bg-gray-600' : '!bg-indigo-600 hover:!bg-indigo-700' }}">
+                            <span wire:loading.remove wire:target="muatKriteria">
+                                {{ $kriteriaSource === 'server' ? '🔄 Muat Ulang' : '⬇ Ambil Kriteria' }}
+                            </span>
                             <span wire:loading wire:target="muatKriteria"><x-loading /> Memuat…</span>
-                        </x-secondary-button>
+                        </x-primary-button>
                     </div>
                     <div class="p-5 space-y-3">
                         @foreach ($kriteriaItems as $idx => $item)
@@ -711,6 +704,35 @@ new class extends Component {
                                 </div>
                             </div>
                         @endforeach
+
+                        {{-- Jejaring Wilayah — datang dari response GetKriteriaRujukan (auto-fill), user bisa override --}}
+                        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">Jejaring Wilayah</h4>
+                            <p class="text-xs text-gray-500 mb-3">
+                                Otomatis dari response Satu Sehat (berdasarkan jejaring faskes kita). Boleh override
+                                kalau mau rujuk ke wilayah lain.
+                            </p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <x-input-label value="Kode Provinsi *" />
+                                    <x-text-input wire:model="kodePropinsi" placeholder="mis. 31"
+                                        class="mt-1 w-full font-mono" />
+                                </div>
+                                <div>
+                                    <x-input-label value="Nama Provinsi *" />
+                                    <x-text-input wire:model="namaPropinsi" placeholder="mis. DKI Jakarta"
+                                        class="mt-1 w-full" />
+                                </div>
+                                <div>
+                                    <x-input-label value="Kode Kabupaten (opsional)" />
+                                    <x-text-input wire:model="kodeKabupaten" class="mt-1 w-full font-mono" />
+                                </div>
+                                <div>
+                                    <x-input-label value="Nama Kabupaten (opsional)" />
+                                    <x-text-input wire:model="namaKabupaten" class="mt-1 w-full" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -803,6 +825,7 @@ new class extends Component {
                                             <th class="px-3 py-2 text-left">Kode PPK</th>
                                             <th class="px-3 py-2 text-left">Kelas</th>
                                             <th class="px-3 py-2 text-left">Kota</th>
+                                            <th class="px-3 py-2 text-left">Jadwal Praktek</th>
                                             <th class="px-3 py-2 text-right">Jarak (m)</th>
                                             <th class="px-3 py-2 text-right">Kap %</th>
                                             <th class="px-3 py-2 text-center">Aksi</th>
@@ -811,12 +834,14 @@ new class extends Component {
                                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                                         @foreach ($faskesList as $idx => $fk)
                                             @php $isSelected = $faskesTerpilih && ($faskesTerpilih['kdppk'] ?? '') === ($fk['kdppk'] ?? ''); @endphp
-                                            <tr
-                                                class="{{ $isSelected ? 'bg-emerald-50 dark:bg-emerald-900/20' : '' }}">
+                                            <tr class="{{ $isSelected ? 'bg-emerald-50 dark:bg-emerald-900/20' : '' }}">
                                                 <td class="px-3 py-2 font-semibold">{{ $fk['nmppk'] ?? '-' }}</td>
                                                 <td class="px-3 py-2 font-mono text-xs">{{ $fk['kdppk'] ?? '-' }}</td>
                                                 <td class="px-3 py-2">{{ $fk['kelas'] ?? '-' }}</td>
                                                 <td class="px-3 py-2">{{ $fk['nmkc'] ?? '-' }}</td>
+                                                <td class="px-3 py-2 text-xs max-w-[240px] text-gray-600 dark:text-gray-400">
+                                                    {{ $fk['jadwal'] ?? '-' }}
+                                                </td>
                                                 <td class="px-3 py-2 text-right font-mono">
                                                     {{ number_format($fk['distance'] ?? 0, 0) }}</td>
                                                 <td class="px-3 py-2 text-right">{{ $fk['persentase'] ?? 0 }}%</td>
@@ -865,28 +890,109 @@ new class extends Component {
                 @if ($rujukanResult)
                     <div
                         class="bg-white border-2 border-brand/40 dark:border-brand-lime/40 rounded-xl shadow-sm dark:bg-gray-900">
-                        <div class="px-5 py-3 border-b border-brand/20 dark:border-brand-lime/20">
+                        <div class="px-5 py-3 border-b border-brand/20 dark:border-brand-lime/20 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-brand dark:text-brand-lime" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
                             <h3 class="font-semibold text-brand dark:text-brand-lime">E. Hasil Rujukan</h3>
                         </div>
-                        <div class="p-5 space-y-2 text-sm">
-                            <div><span class="text-gray-500">No Rujukan:</span>
-                                <span class="font-mono font-bold">{{ $rujukanResult['noRujukan'] ?? '-' }}</span>
+                        <div class="p-5 space-y-4">
+                            {{-- Nomor-nomor rujukan --}}
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div class="p-3 rounded-lg bg-brand/10 dark:bg-brand-lime/10">
+                                    <div class="text-[10px] uppercase tracking-wider text-brand dark:text-brand-lime font-semibold">
+                                        No Rujukan BPJS</div>
+                                    <div class="mt-1 font-mono font-bold text-gray-900 dark:text-gray-100 break-all">
+                                        {{ $rujukanResult['noRujukan'] ?? '-' }}
+                                    </div>
+                                </div>
+                                <div class="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20">
+                                    <div class="text-[10px] uppercase tracking-wider text-indigo-600 dark:text-indigo-400 font-semibold">
+                                        No Rujukan Satu Sehat</div>
+                                    <div class="mt-1 font-mono font-bold text-gray-900 dark:text-gray-100 break-all">
+                                        {{ $rujukanResult['noRujukanSatuSehat'] ?? '-' }}
+                                    </div>
+                                </div>
+                                <div class="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20">
+                                    <div class="text-[10px] uppercase tracking-wider text-purple-600 dark:text-purple-400 font-semibold">
+                                        Service Request ID (FHIR)</div>
+                                    <div class="mt-1 font-mono text-xs text-gray-900 dark:text-gray-100 break-all">
+                                        {{ $rujukanResult['serviceRequestId'] ?? '-' }}
+                                    </div>
+                                </div>
                             </div>
-                            @if (!empty($rujukanResult['noRujukanSatuSehat']))
-                                <div><span class="text-gray-500">No Rujukan Satu Sehat:</span>
-                                    <span class="font-mono">{{ $rujukanResult['noRujukanSatuSehat'] }}</span>
-                                </div>
-                            @endif
-                            @if (!empty($rujukanResult['tujuanRujukan']))
-                                <div><span class="text-gray-500">Tujuan:</span>
-                                    {{ $rujukanResult['tujuanRujukan']['nama'] ?? '-' }}
-                                    ({{ $rujukanResult['tujuanRujukan']['kode'] ?? '-' }})
-                                </div>
-                            @endif
-                            @if (!empty($rujukanResult['tglRujukan']))
-                                <div><span class="text-gray-500">Tgl Rujukan:</span>
-                                    {{ $rujukanResult['tglRujukan'] }}</div>
-                            @endif
+
+                            {{-- Detail --}}
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                @if (!empty($rujukanResult['asalRujukan']) || !empty($rujukanResult['AsalRujukan']))
+                                    @php $asal = $rujukanResult['asalRujukan'] ?? ($rujukanResult['AsalRujukan'] ?? []); @endphp
+                                    <div>
+                                        <div class="text-xs text-gray-500 mb-1">Asal Rujukan (RS Kita)</div>
+                                        <div class="text-gray-800 dark:text-gray-200">{{ $asal['nama'] ?? '-' }}</div>
+                                        <div class="text-xs text-gray-500 font-mono">{{ $asal['kode'] ?? '-' }}</div>
+                                    </div>
+                                @endif
+                                @if (!empty($rujukanResult['tujuanRujukan']))
+                                    <div>
+                                        <div class="text-xs text-gray-500 mb-1">Tujuan Rujukan</div>
+                                        <div class="text-gray-800 dark:text-gray-200 font-semibold">
+                                            {{ $rujukanResult['tujuanRujukan']['nama'] ?? '-' }}</div>
+                                        <div class="text-xs text-gray-500 font-mono">
+                                            {{ $rujukanResult['tujuanRujukan']['kode'] ?? '-' }}</div>
+                                    </div>
+                                @endif
+                                @if (!empty($rujukanResult['poliTujuan']))
+                                    <div>
+                                        <div class="text-xs text-gray-500 mb-1">Poli Tujuan</div>
+                                        <div class="text-gray-800 dark:text-gray-200">
+                                            {{ $rujukanResult['poliTujuan']['nama'] ?? '-' }}</div>
+                                        <div class="text-xs text-gray-500 font-mono">
+                                            {{ $rujukanResult['poliTujuan']['kode'] ?? '-' }}</div>
+                                    </div>
+                                @endif
+                                @if (!empty($rujukanResult['diagnosa']))
+                                    <div>
+                                        <div class="text-xs text-gray-500 mb-1">Diagnosa</div>
+                                        <div class="text-gray-800 dark:text-gray-200">
+                                            {{ $rujukanResult['diagnosa']['nama'] ?? '-' }}</div>
+                                        <div class="text-xs text-gray-500 font-mono">
+                                            {{ $rujukanResult['diagnosa']['kode'] ?? '-' }}</div>
+                                    </div>
+                                @endif
+                                @if (!empty($rujukanResult['peserta']))
+                                    <div class="md:col-span-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                        <div class="text-xs text-gray-500 mb-1">Data Peserta (BPJS)</div>
+                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                                            <div>
+                                                <div class="text-gray-500">Nama</div>
+                                                <div class="font-semibold">
+                                                    {{ $rujukanResult['peserta']['nama'] ?? '-' }}</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-gray-500">No Kartu</div>
+                                                <div class="font-mono">
+                                                    {{ $rujukanResult['peserta']['noKartu'] ?? '-' }}</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-gray-500">Jenis Peserta</div>
+                                                <div>{{ $rujukanResult['peserta']['jnsPeserta'] ?? '-' }}</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-gray-500">Tgl Lahir</div>
+                                                <div>{{ $rujukanResult['peserta']['tglLahir'] ?? '-' }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                                @if (!empty($rujukanResult['tglRujukan']))
+                                    <div>
+                                        <div class="text-xs text-gray-500 mb-1">Tgl Rujukan</div>
+                                        <div class="text-gray-800 dark:text-gray-200">
+                                            {{ $rujukanResult['tglRujukan'] }}</div>
+                                    </div>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 @endif
