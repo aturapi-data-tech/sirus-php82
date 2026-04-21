@@ -48,5 +48,13 @@
             </div>
         @endif
 
+        {{-- Rujukan Berbasis Kompetensi (Sisrute + Satu Sehat) — tampil hanya jika Tindak Lanjut = Rujuk --}}
+        @if (($dataDaftarPoliRJ['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '') === 'Rujuk')
+            <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
+                <livewire:pages::transaksi.rj.emr-rj.rujukan-kompetensi.rujukan-kompetensi :rjNo="$rjNo"
+                    wire:key="rujukan-kompetensi-rj-{{ $rjNo }}" />
+            </div>
+        @endif
+
     </div>
 </x-border-form>
