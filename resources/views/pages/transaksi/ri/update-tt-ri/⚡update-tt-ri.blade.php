@@ -8,6 +8,45 @@ use App\Http\Traits\SIRS\SirsTrait;
 new class extends Component {
     use AplicaresTrait, SirsTrait;
 
+    /**
+     * Mapping id_tt → jenis tempat tidur SIRS Kemenkes (referensi resmi).
+     * Sumber: LOV SIRS /Referensi/tempat_tidur yang dipakai di form master kamar.
+     */
+    private const SIRS_TT_LABEL = [
+        '1'  => 'VVIP/ Super VIP',
+        '2'  => 'VIP',
+        '3'  => 'Kelas I',
+        '4'  => 'Kelas II',
+        '5'  => 'Kelas III',
+        '6'  => 'ICU Tanpa Ventilator',
+        '7'  => 'HCU',
+        '8'  => 'ICCU/ICVCU Tanpa Ventilator',
+        '9'  => 'RICU Tanpa Ventilator',
+        '10' => 'NICU Tanpa Ventilator',
+        '11' => 'PICU Tanpa Ventilator',
+        '12' => 'Isolasi',
+        '14' => 'Perinatologi',
+        '24' => 'ICU Tekanan Negatif dengan Ventilator',
+        '25' => 'ICU Tekanan Negatif tanpa Ventilator',
+        '26' => 'ICU Tanpa Tekanan Negatif Dengan Ventilator',
+        '27' => 'ICU Tanpa Tekanan Negatif Tanpa Ventilator',
+        '28' => 'Isolasi Tekanan Negatif',
+        '29' => 'Isolasi Tanpa Tekanan Negatif',
+        '30' => 'NICU Khusus Covid',
+        '31' => 'PICU Khusus Covid',
+        '32' => 'IGD Khusus Covid',
+        '33' => 'VK (TT Observasi di R Bersalin) Khusus Covid',
+        '34' => 'Isolasi Perinatologi Khusus Covid',
+        '36' => 'VK (TT Observasi di R Bersalin) Non Covid',
+        '37' => 'Intermediate Ward (IGD)',
+        '38' => 'ICU Dengan Ventilator',
+        '39' => 'NICU Dengan Ventilator',
+        '40' => 'PICU Dengan Ventilator',
+        '50' => 'RICU Dengan Ventilator',
+        '51' => 'ICCU/ICVCU Dengan Ventilator',
+        '52' => 'KRIS JKN',
+    ];
+
     /* -------------------------
      | State
      * ------------------------- */
@@ -51,6 +90,7 @@ new class extends Component {
                     'class_id' => $r->class_id,
                     'aplic_kodekelas' => (string) ($r->aplic_kodekelas ?? ''),
                     'sirs_id_tt' => (string) ($r->sirs_id_tt ?? ''),
+                    'sirs_tt_label' => self::SIRS_TT_LABEL[(string) ($r->sirs_id_tt ?? '')] ?? '',
                     'id_t_tt_sirs' => $r->sirs_id_t_tt ?? null ?: null,
                     'kapasitas' => $kapasitas,
                     'terpakai' => $terpakai,
@@ -550,12 +590,15 @@ new class extends Component {
                                     @if ($row['sirs_id_tt'])
                                         <div class="flex flex-col items-center gap-0.5">
                                             <span
-                                                class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300">
-                                                {{ $row['sirs_id_tt'] }}
+                                                class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300"
+                                                title="id_tt = {{ $row['sirs_id_tt'] }}">
+                                                {{ $row['sirs_id_tt'] }}{{ $row['sirs_tt_label'] ? ' — ' . $row['sirs_tt_label'] : '' }}
                                             </span>
                                             @if ($row['id_t_tt_sirs'])
-                                                <span
-                                                    class="text-[10px] font-mono text-gray-400 dark:text-gray-500">{{ $row['id_t_tt_sirs'] }}</span>
+                                                <span class="text-[10px] font-mono text-gray-400 dark:text-gray-500"
+                                                    title="id_t_tt (auto dari SIRS setelah terdaftar)">
+                                                    T_TT: {{ $row['id_t_tt_sirs'] }}
+                                                </span>
                                             @else
                                                 <span class="text-[10px] text-gray-300 dark:text-gray-600 italic">belum
                                                     ada id_t_tt</span>
