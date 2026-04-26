@@ -53,10 +53,44 @@ new class extends Component {
             return;
         }
         $idrg = $data['idrg'] ?? [];
+
+        // Auto-sync dari EMR pertama kali modal dibuka (idempotent, dipandu syncedAt flag).
+        // Dengan ini coder tidak perlu klik "Sync dari EMR" manual setiap pasien baru.
+        if (empty($idrg['coderDiagnosaSyncedAt']) && empty($idrg['coderDiagnosa']) && !empty($data['diagnosis'])) {
+            $this->persistEmrSync();
+            $data = $this->findDataRJ($this->rjNo);
+            $idrg = $data['idrg'] ?? [];
+        }
+
         $this->coderDiagnosa = $idrg['coderDiagnosa'] ?? [];
         $this->idrgDiagnosaString = $idrg['idrgDiagnosaString'] ?? null;
         $this->idrgFinal = !empty($idrg['idrgFinal']);
         $this->hasClaim = !empty($idrg['nomorSep']);
+    }
+
+    private function persistEmrSync(): void
+    {
+        DB::transaction(function () {
+            $this->lockRJRow($this->rjNo);
+            $data = $this->findDataRJ($this->rjNo);
+            $emrDiag = $data['diagnosis'] ?? [];
+            $coder = [];
+            foreach ($emrDiag as $d) {
+                $code = trim((string) ($d['icdX'] ?? $d['diagId'] ?? ''));
+                if ($code === '') {
+                    continue;
+                }
+                $coder[] = [
+                    'code' => $code,
+                    'desc' => (string) ($d['diagDesc'] ?? ''),
+                    'kategori' => (string) ($d['kategoriDiagnosa'] ?? 'Secondary'),
+                    'validcode' => null,
+                ];
+            }
+            $data['idrg']['coderDiagnosa'] = $coder;
+            $data['idrg']['coderDiagnosaSyncedAt'] = Carbon::now()->format('Y-m-d H:i:s');
+            $this->updateJsonRJ($this->rjNo, $data);
+        });
     }
 
     /* ===============================
@@ -126,27 +160,7 @@ new class extends Component {
         if (empty($this->rjNo)) {
             return;
         }
-        DB::transaction(function () {
-            $this->lockRJRow($this->rjNo);
-            $data = $this->findDataRJ($this->rjNo);
-            $emrDiag = $data['diagnosis'] ?? [];
-            $coder = [];
-            foreach ($emrDiag as $d) {
-                $code = trim((string) ($d['icdX'] ?? $d['diagId'] ?? ''));
-                if ($code === '') {
-                    continue;
-                }
-                $coder[] = [
-                    'code' => $code,
-                    'desc' => (string) ($d['diagDesc'] ?? ''),
-                    'kategori' => (string) ($d['kategoriDiagnosa'] ?? 'Secondary'),
-                    'validcode' => null,
-                ];
-            }
-            $data['idrg']['coderDiagnosa'] = $coder;
-            $data['idrg']['coderDiagnosaSyncedAt'] = Carbon::now()->format('Y-m-d H:i:s');
-            $this->updateJsonRJ($this->rjNo, $data);
-        });
+        $this->persistEmrSync();
         $this->reloadState();
         $this->dispatch('toast', type: 'success', message: 'Coder diagnosa di-sync dari EMR.');
         $this->dispatch('idrg-state-updated', rjNo: (string) $this->rjNo);

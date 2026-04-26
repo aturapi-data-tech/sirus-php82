@@ -55,11 +55,68 @@ new class extends Component {
             return;
         }
         $idrg = $data['idrg'] ?? [];
+
+        // Auto-sync pertama kali: prefer dari idrg.coderProsedur, fallback EMR.
+        $sourceCount = count($idrg['coderProsedur'] ?? []);
+        $emrCount = count($data['procedure'] ?? []);
+        if (empty($idrg['coderInacbgProsedurSyncedAt']) && empty($idrg['coderInacbgProsedur']) && ($sourceCount > 0 || $emrCount > 0)) {
+            $this->persistAutoSync($data);
+            $data = $this->findDataRJ($this->rjNo);
+            $idrg = $data['idrg'] ?? [];
+        }
+
         $this->coderInacbgProsedur = $idrg['coderInacbgProsedur'] ?? [];
         $this->inacbgProsedurString = $idrg['inacbgProsedurString'] ?? null;
         $this->inacbgFinal = !empty($idrg['inacbgFinal']);
         $this->idrgFinal = !empty($idrg['idrgFinal']);
         $this->hasClaim = !empty($idrg['nomorSep']);
+    }
+
+    /**
+     * Persist auto-sync: prefer idrg.coderProsedur (iDRG editor), fallback EMR procedure[].
+     */
+    private function persistAutoSync(array $data): void
+    {
+        DB::transaction(function () use ($data) {
+            $this->lockRJRow($this->rjNo);
+            $fresh = $this->findDataRJ($this->rjNo);
+            $idrg = $fresh['idrg'] ?? [];
+            $sourceFromIdrg = $idrg['coderProsedur'] ?? [];
+            $coder = [];
+            if (!empty($sourceFromIdrg)) {
+                foreach ($sourceFromIdrg as $p) {
+                    $code = trim((string) ($p['code'] ?? ''));
+                    if ($code === '') {
+                        continue;
+                    }
+                    $coder[] = [
+                        'code' => $code,
+                        'desc' => (string) ($p['desc'] ?? ''),
+                        'multiplicity' => max(1, (int) ($p['multiplicity'] ?? 1)),
+                        'settingGroup' => max(1, (int) ($p['settingGroup'] ?? 1)),
+                        'validcode' => null,
+                    ];
+                }
+            } else {
+                foreach (($fresh['procedure'] ?? []) as $p) {
+                    $code = trim((string) ($p['procedureId'] ?? ''));
+                    if ($code === '') {
+                        continue;
+                    }
+                    $coder[] = [
+                        'code' => $code,
+                        'desc' => (string) ($p['procedureDesc'] ?? ''),
+                        'multiplicity' => max(1, (int) ($p['multiplicity'] ?? 1)),
+                        'settingGroup' => max(1, (int) ($p['settingGroup'] ?? 1)),
+                        'validcode' => null,
+                    ];
+                }
+            }
+            $idrg['coderInacbgProsedur'] = $coder;
+            $idrg['coderInacbgProsedurSyncedAt'] = Carbon::now()->format('Y-m-d H:i:s');
+            $fresh['idrg'] = $idrg;
+            $this->updateJsonRJ($this->rjNo, $fresh);
+        });
     }
 
     /* ===============================
@@ -150,46 +207,11 @@ new class extends Component {
         if (empty($this->rjNo)) {
             return;
         }
-        DB::transaction(function () {
-            $this->lockRJRow($this->rjNo);
-            $data = $this->findDataRJ($this->rjNo);
-            $idrg = $data['idrg'] ?? [];
-            $sourceFromIdrg = $idrg['coderProsedur'] ?? [];
-            $coder = [];
-            if (!empty($sourceFromIdrg)) {
-                foreach ($sourceFromIdrg as $p) {
-                    $code = trim((string) ($p['code'] ?? ''));
-                    if ($code === '') {
-                        continue;
-                    }
-                    $coder[] = [
-                        'code' => $code,
-                        'desc' => (string) ($p['desc'] ?? ''),
-                        'multiplicity' => max(1, (int) ($p['multiplicity'] ?? 1)),
-                        'settingGroup' => max(1, (int) ($p['settingGroup'] ?? 1)),
-                        'validcode' => null,
-                    ];
-                }
-            } else {
-                foreach (($data['procedure'] ?? []) as $p) {
-                    $code = trim((string) ($p['procedureId'] ?? ''));
-                    if ($code === '') {
-                        continue;
-                    }
-                    $coder[] = [
-                        'code' => $code,
-                        'desc' => (string) ($p['procedureDesc'] ?? ''),
-                        'multiplicity' => max(1, (int) ($p['multiplicity'] ?? 1)),
-                        'settingGroup' => max(1, (int) ($p['settingGroup'] ?? 1)),
-                        'validcode' => null,
-                    ];
-                }
-            }
-            $idrg['coderInacbgProsedur'] = $coder;
-            $idrg['coderInacbgProsedurSyncedAt'] = Carbon::now()->format('Y-m-d H:i:s');
-            $data['idrg'] = $idrg;
-            $this->updateJsonRJ($this->rjNo, $data);
-        });
+        $data = $this->findDataRJ($this->rjNo);
+        if (empty($data)) {
+            return;
+        }
+        $this->persistAutoSync($data);
         $this->reloadState();
         $this->dispatch('toast', type: 'success', message: 'Coder INACBG prosedur di-sync dari iDRG.');
         $this->dispatch('idrg-state-updated', rjNo: (string) $this->rjNo);
