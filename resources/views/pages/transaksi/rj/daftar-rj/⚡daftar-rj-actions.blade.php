@@ -1354,12 +1354,8 @@ new class extends Component {
     {{-- Cetak SEP --}}
     <livewire:pages::components.modul-dokumen.b-p-j-s.cetak-sep.cetak-sep wire:key="cetak-sep-rj" />
 
-    {{-- Satu Sehat Modal — pindah ke komponen sendiri satu-sehat-rj-actions --}}
-    <livewire:pages::transaksi.rj.daftar-rj.satu-sehat-rj-actions :initialRjNo="$rjNo ?? null"
-        wire:key="satu-sehat-rj-actions-{{ $rjNo ?? 'new' }}" />
-
-    {{-- iDRG (E-Klaim) Modal — pindah ke komponen sendiri idrg-rj-actions --}}
-    <livewire:pages::transaksi.rj.daftar-rj.idrg-rj-actions :initialRjNo="$rjNo ?? null"
-        wire:key="idrg-rj-actions-{{ $rjNo ?? 'new' }}" />
+    {{-- Satu Sehat & iDRG modal embed pindah ke ⚡daftar-rj.blade.php (page level)
+         supaya pola konsisten dengan openRekamMedis/openSatuSehat/openIdrg dispatcher
+         yang sudah ada di daftar-rj. --}}
 
 </div>
