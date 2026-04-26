@@ -205,6 +205,9 @@ new class extends Component {
             $data['idrg'] = $idrg;
             $this->updateJsonRJ($rjNo, $data);
         });
+
+        // Notify parent component (daftar-rj-actions) to reload state & re-render modal.
+        $this->dispatch('idrg-state-updated', rjNo: (string) $rjNo);
     }
 
     private function parseBirth(string $str): string

@@ -1120,6 +1120,21 @@ new class extends Component {
         $this->incrementVersion('modal');
     }
 
+    // Reload state setelah SFC iDRG selesai (set/group/final/import/dll) supaya modal auto re-render
+    // tanpa user perlu tutup-buka modal.
+    #[On('idrg-state-updated')]
+    public function onIdrgStateUpdated(string $rjNo): void
+    {
+        if ((string) $this->rjNo !== $rjNo) {
+            return;
+        }
+        $data = $this->findDataRJ($rjNo);
+        if (!empty($data)) {
+            $this->dataDaftarPoliRJ = $data;
+            $this->incrementVersion('modal');
+        }
+    }
+
     /* ===============================
      | UPDATED HOOKS
      =============================== */

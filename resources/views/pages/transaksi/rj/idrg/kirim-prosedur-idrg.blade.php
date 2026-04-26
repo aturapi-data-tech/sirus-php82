@@ -127,6 +127,8 @@ new class extends Component {
             $data['idrg'] = $idrg;
             $this->updateJsonRJ($rjNo, $data);
         });
+
+        $this->dispatch('idrg-state-updated', rjNo: (string) $rjNo);
     }
 };
 ?>
