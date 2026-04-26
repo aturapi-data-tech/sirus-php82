@@ -406,35 +406,31 @@ new class extends Component {
                                 {{ $p['code'] ?? '' }}</td>
                             <td class="px-2 py-1.5 text-gray-700 dark:text-gray-300">{{ $p['desc'] ?? '' }}</td>
                             <td class="px-2 py-1.5 text-center">
-                                <input type="number" min="1" value="{{ $p['multiplicity'] ?? 1 }}"
+                                <x-text-input type="number" min="1" value="{{ $p['multiplicity'] ?? 1 }}"
                                     wire:change="setMultiplicity({{ $i }}, $event.target.value)"
-                                    @disabled($idrgFinal)
-                                    class="w-16 px-2 py-0.5 text-xs text-center border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700">
+                                    :disabled="$idrgFinal" class="w-16 text-xs text-center" />
                             </td>
                             <td class="px-2 py-1.5 text-center">
-                                <input type="number" min="1" value="{{ $p['settingGroup'] ?? 1 }}"
+                                <x-text-input type="number" min="1" value="{{ $p['settingGroup'] ?? 1 }}"
                                     wire:change="setSettingGroup({{ $i }}, $event.target.value)"
-                                    @disabled($idrgFinal)
-                                    class="w-16 px-2 py-0.5 text-xs text-center border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700">
+                                    :disabled="$idrgFinal" class="w-16 text-xs text-center" />
                             </td>
                             <td class="px-2 py-1.5 text-center">
                                 @php $vc = $p['validcode'] ?? null; @endphp
                                 @if ($vc === '1')
-                                    <span
-                                        class="px-2 py-0.5 text-xs font-medium rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">Valid</span>
+                                    <x-badge variant="success">Valid</x-badge>
                                 @elseif ($vc === '0')
-                                    <span
-                                        class="px-2 py-0.5 text-xs font-medium rounded bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">Tidak
-                                        Valid</span>
+                                    <x-badge variant="danger">Tidak Valid</x-badge>
                                 @else
                                     <span class="text-gray-400">-</span>
                                 @endif
                             </td>
                             @if (!$idrgFinal)
                                 <td class="px-2 py-1.5">
-                                    <button type="button" wire:click="remove({{ $i }})"
-                                        wire:confirm="Hapus prosedur {{ $p['code'] ?? '' }} dari coder?"
-                                        class="text-base font-bold leading-none text-rose-600 hover:text-rose-800 dark:text-rose-400">×</button>
+                                    <x-icon-button color="red" wire:click="remove({{ $i }})"
+                                        wire:confirm="Hapus prosedur {{ $p['code'] ?? '' }} dari coder?">
+                                        <span class="text-base font-bold leading-none">×</span>
+                                    </x-icon-button>
                                 </td>
                             @endif
                         </tr>

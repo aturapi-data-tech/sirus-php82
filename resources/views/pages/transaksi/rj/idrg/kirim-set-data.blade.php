@@ -123,7 +123,10 @@ new class extends Component {
             ?: data_get($dataRJ, 'sep.reqSep.t_sep.noKartu')
             ?: '';
 
-        $this->claimData['nomor_sep'] = $idrg['nomorSep'] ?? '';
+        // Fallback: idrg.nomorSep (set saat new-claim) → idrg.claimNumber (generated) → SEP BPJS
+        $this->claimData['nomor_sep'] = $idrg['nomorSep']
+            ?? $idrg['claimNumber']
+            ?? data_get($dataRJ, 'sep.noSep', '');
         $this->claimData['nomor_kartu'] = $nomorKartu;
         $this->claimData['tgl_masuk'] = $rjDate;
         $this->claimData['tgl_pulang'] = $rjDate;
@@ -270,19 +273,16 @@ new class extends Component {
         </legend>
         <div class="grid grid-cols-2 gap-3 md:grid-cols-3">
             <div>
-                <label class="text-xs text-gray-600 dark:text-gray-400">Nomor SEP</label>
-                <input type="text" wire:model="claimData.nomor_sep" readonly
-                    class="w-full px-2 py-1 text-xs font-mono bg-gray-50 border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700">
+                <x-input-label value="Nomor SEP" class="text-xs" />
+                <x-text-input wire:model="claimData.nomor_sep" readonly class="font-mono text-xs bg-gray-50 dark:bg-gray-800" />
             </div>
             <div>
-                <label class="text-xs text-gray-600 dark:text-gray-400">Nomor Kartu BPJS</label>
-                <input type="text" wire:model="claimData.nomor_kartu" readonly
-                    class="w-full px-2 py-1 text-xs font-mono bg-gray-50 border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700">
+                <x-input-label value="Nomor Kartu BPJS" class="text-xs" />
+                <x-text-input wire:model="claimData.nomor_kartu" readonly class="font-mono text-xs bg-gray-50 dark:bg-gray-800" />
             </div>
             <div>
-                <label class="text-xs text-gray-600 dark:text-gray-400">Jenis Kartu</label>
-                <select wire:model="claimData.nomor_kartu_t" @disabled($idrgFinal)
-                    class="w-full px-2 py-1 text-xs border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700">
+                <x-input-label value="Jenis Kartu" class="text-xs" />
+                <x-select-input wire:model="claimData.nomor_kartu_t" :disabled="$idrgFinal" class="text-xs">
                     <option value="kartu_jkn">JKN (BPJS)</option>
                     <option value="nik">NIK</option>
                     <option value="kitas">KITAS</option>
@@ -292,57 +292,51 @@ new class extends Component {
                     <option value="sjp">SJP</option>
                     <option value="klaim_ibu">Klaim Ibu (Bayi Baru Lahir)</option>
                     <option value="lainnya">Lainnya</option>
-                </select>
+                </x-select-input>
             </div>
             <div>
-                <label class="text-xs text-gray-600 dark:text-gray-400">Tgl Masuk</label>
-                <input type="text" wire:model="claimData.tgl_masuk" placeholder="yyyy-mm-dd HH:MM:SS"
-                    @disabled($idrgFinal)
-                    class="w-full px-2 py-1 text-xs font-mono border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700">
+                <x-input-label value="Tgl Masuk" class="text-xs" />
+                <x-text-input wire:model="claimData.tgl_masuk" placeholder="yyyy-mm-dd HH:MM:SS"
+                    :disabled="$idrgFinal" class="font-mono text-xs" />
             </div>
             <div>
-                <label class="text-xs text-gray-600 dark:text-gray-400">Tgl Pulang</label>
-                <input type="text" wire:model="claimData.tgl_pulang" placeholder="yyyy-mm-dd HH:MM:SS"
-                    @disabled($idrgFinal)
-                    class="w-full px-2 py-1 text-xs font-mono border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700">
+                <x-input-label value="Tgl Pulang" class="text-xs" />
+                <x-text-input wire:model="claimData.tgl_pulang" placeholder="yyyy-mm-dd HH:MM:SS"
+                    :disabled="$idrgFinal" class="font-mono text-xs" />
             </div>
             <div>
-                <label class="text-xs text-gray-600 dark:text-gray-400">Cara Masuk</label>
-                <select wire:model="claimData.cara_masuk" @disabled($idrgFinal)
-                    class="w-full px-2 py-1 text-xs border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700">
+                <x-input-label value="Cara Masuk" class="text-xs" />
+                <x-select-input wire:model="claimData.cara_masuk" :disabled="$idrgFinal" class="text-xs">
                     <option value="gp">GP (referral umum)</option>
                     <option value="sp">Spesialis</option>
                     <option value="fl">Datang Sendiri</option>
-                </select>
+                </x-select-input>
             </div>
             <div>
-                <label class="text-xs text-gray-600 dark:text-gray-400">Jenis Rawat</label>
-                <select wire:model="claimData.jenis_rawat" @disabled($idrgFinal)
-                    class="w-full px-2 py-1 text-xs border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700">
+                <x-input-label value="Jenis Rawat" class="text-xs" />
+                <x-select-input wire:model="claimData.jenis_rawat" :disabled="$idrgFinal" class="text-xs">
                     <option value="1">1 — Rawat Inap</option>
                     <option value="2">2 — Rawat Jalan</option>
                     <option value="3">3 — IGD</option>
-                </select>
+                </x-select-input>
             </div>
             <div>
-                <label class="text-xs text-gray-600 dark:text-gray-400">Kelas Rawat</label>
-                <select wire:model="claimData.kelas_rawat" @disabled($idrgFinal)
-                    class="w-full px-2 py-1 text-xs border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700">
+                <x-input-label value="Kelas Rawat" class="text-xs" />
+                <x-select-input wire:model="claimData.kelas_rawat" :disabled="$idrgFinal" class="text-xs">
                     <option value="1">Kelas 1</option>
                     <option value="2">Kelas 2</option>
                     <option value="3">Kelas 3</option>
-                </select>
+                </x-select-input>
             </div>
             <div>
-                <label class="text-xs text-gray-600 dark:text-gray-400">Discharge Status</label>
-                <select wire:model="claimData.discharge_status" @disabled($idrgFinal)
-                    class="w-full px-2 py-1 text-xs border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700">
+                <x-input-label value="Discharge Status" class="text-xs" />
+                <x-select-input wire:model="claimData.discharge_status" :disabled="$idrgFinal" class="text-xs">
                     <option value="1">1 — Atas Persetujuan Dokter</option>
                     <option value="2">2 — Pulang Paksa (APS)</option>
                     <option value="3">3 — Meninggal</option>
                     <option value="4">4 — Lainnya</option>
                     <option value="5">5 — Dirujuk</option>
-                </select>
+                </x-select-input>
             </div>
         </div>
     </fieldset>
@@ -381,9 +375,9 @@ new class extends Component {
         <div class="grid grid-cols-2 gap-2 md:grid-cols-3">
             @foreach ($tarifFields as $key => $label)
                 <div>
-                    <label class="text-xs text-gray-600 dark:text-gray-400">{{ $label }}</label>
-                    <input type="number" min="0" wire:model="claimData.tarif_rs.{{ $key }}" @disabled($idrgFinal)
-                        class="w-full px-2 py-1 text-xs text-right font-mono border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700">
+                    <x-input-label :value="$label" class="text-xs" />
+                    <x-text-input-number wire:model="claimData.tarif_rs.{{ $key }}"
+                        :disabled="$idrgFinal" />
                 </div>
             @endforeach
         </div>

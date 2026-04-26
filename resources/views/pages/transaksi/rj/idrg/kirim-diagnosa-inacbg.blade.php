@@ -355,33 +355,30 @@ new class extends Component {
                                 {{ $d['code'] ?? '' }}</td>
                             <td class="px-2 py-1.5 text-gray-700 dark:text-gray-300">{{ $d['desc'] ?? '' }}</td>
                             <td class="px-2 py-1.5">
-                                <select wire:change="setKategori({{ $i }}, $event.target.value)"
-                                    @disabled($inacbgFinal)
-                                    class="text-xs px-2 py-0.5 border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700">
+                                <x-select-input wire:change="setKategori({{ $i }}, $event.target.value)"
+                                    :disabled="$inacbgFinal" class="text-xs">
                                     <option value="Primary" @selected(($d['kategori'] ?? 'Secondary') === 'Primary')>
                                         Primary</option>
                                     <option value="Secondary" @selected(($d['kategori'] ?? 'Secondary') === 'Secondary')>
                                         Secondary</option>
-                                </select>
+                                </x-select-input>
                             </td>
                             <td class="px-2 py-1.5 text-center">
                                 @php $vc = $d['validcode'] ?? null; @endphp
                                 @if ($vc === '1')
-                                    <span
-                                        class="px-2 py-0.5 text-xs font-medium rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">Valid</span>
+                                    <x-badge variant="success">Valid</x-badge>
                                 @elseif ($vc === '0')
-                                    <span
-                                        class="px-2 py-0.5 text-xs font-medium rounded bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">Tidak
-                                        Valid</span>
+                                    <x-badge variant="danger">Tidak Valid</x-badge>
                                 @else
                                     <span class="text-gray-400">-</span>
                                 @endif
                             </td>
                             @if (!$inacbgFinal)
                                 <td class="px-2 py-1.5">
-                                    <button type="button" wire:click="remove({{ $i }})"
-                                        wire:confirm="Hapus diagnosa {{ $d['code'] ?? '' }} dari coder INACBG?"
-                                        class="text-base font-bold leading-none text-rose-600 hover:text-rose-800 dark:text-rose-400">×</button>
+                                    <x-icon-button color="red" wire:click="remove({{ $i }})"
+                                        wire:confirm="Hapus diagnosa {{ $d['code'] ?? '' }} dari coder INACBG?">
+                                        <span class="text-base font-bold leading-none">×</span>
+                                    </x-icon-button>
                                 </td>
                             @endif
                         </tr>
