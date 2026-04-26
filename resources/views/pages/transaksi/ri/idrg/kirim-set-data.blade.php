@@ -5,7 +5,6 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
@@ -95,7 +94,7 @@ new class extends Component {
     }
 
     /* ===============================
-     | AUTO-BUILD dari Kasir RJ
+     | AUTO-BUILD dari Kasir RI (mapping konfirmasi user 2026-04-21)
      =============================== */
     public function syncFromKasir(): void
     {
@@ -107,14 +106,34 @@ new class extends Component {
             return;
         }
         $this->autoBuildFromKasir($data);
-        $this->dispatch('toast', type: 'success', message: 'Tarif & data klaim di-sync dari kasir RJ.');
+        $this->dispatch('toast', type: 'success', message: 'Tarif & data klaim di-sync dari kasir RI.');
     }
 
+    /**
+     * Mapping tarif_rs RI sesuai keputusan user (konfirmasi 2026-04-21):
+     *   - room + commonService + perawatan     → kamar
+     *   - ok                                   → prosedur_bedah
+     *   - jasaMedis                            → prosedur_non_bedah
+     *   - konsul + adminAge + adminStatus
+     *     + trfUgdRj                           → konsultasi
+     *   - jasaDokter                           → tenaga_ahli
+     *   - lainLain                             → penunjang
+     *   - rad                                  → radiologi
+     *   - lab                                  → laboratorium
+     *   - obatPinjam + bonResep − rtnObat      → obat
+     *
+     * jenis_rawat = '1' (inap).
+     * kelas_rawat = class_id kamar terakhir pasien (fallback '3').
+     * discharge_status default '1', user bisa override via dropdown form
+     * (saved ke $idrg['dischargeStatus']).
+     */
     private function autoBuildFromKasir(array $dataRI): void
     {
         $cost = $this->calculateRICosts((int) $this->riHdrNo);
-        $riDate = $this->parseRiDate($dataRI['riDate'] ?? '');
+        $dates = $this->riClaimDates((int) $this->riHdrNo);
+        $kelas = $this->lastKamarClassIdRI((int) $this->riHdrNo) ?: '3';
         $idrg = $dataRI['idrg'] ?? [];
+        $discharge = (string) ($idrg['dischargeStatus'] ?? '1');
         $pasienData = $this->findDataMasterPasien($dataRI['regNo'] ?? '');
         $pasien = $pasienData['pasien'] ?? [];
 
@@ -123,55 +142,39 @@ new class extends Component {
             ?: data_get($dataRI, 'sep.reqSep.t_sep.noKartu')
             ?: '';
 
-        // Fallback: idrg.nomorSep (set saat buat klaim) → idrg.claimNumber (generated) → SEP BPJS
+        // Fallback: idrg.nomorSep (set saat buat klaim) → idrg.claimNumber → SEP BPJS
         $this->claimData['nomor_sep'] = $idrg['nomorSep']
             ?? $idrg['claimNumber']
             ?? data_get($dataRI, 'sep.noSep', '');
         $this->claimData['nomor_kartu'] = $nomorKartu;
-        $this->claimData['tgl_masuk'] = $riDate;
-        $this->claimData['tgl_pulang'] = $riDate;
-        // Klasifikasi default RJ — biarkan user override kalau perlu
+        $this->claimData['tgl_masuk'] = $dates['tglMasuk'];
+        $this->claimData['tgl_pulang'] = $dates['tglPulang'];
         $this->claimData['cara_masuk'] = 'gp';
-        $this->claimData['jenis_rawat'] = '2';
-        $this->claimData['kelas_rawat'] = '3';
-        $this->claimData['discharge_status'] = '1';
+        $this->claimData['jenis_rawat'] = '1';
+        $this->claimData['kelas_rawat'] = (string) $kelas;
+        $this->claimData['discharge_status'] = $discharge;
         $this->claimData['nomor_kartu_t'] = 'kartu_jkn';
 
-        // Mapping tarif sesuai keputusan user (lihat Manual hal. 19-20):
-        $this->claimData['tarif_rs']['prosedur_non_bedah'] = (string) $cost['actePrice'];
-        $this->claimData['tarif_rs']['prosedur_bedah'] = '0';
-        $this->claimData['tarif_rs']['konsultasi'] = (string) ($cost['poliPrice'] + $cost['rsAdmin'] + $cost['rjAdmin']);
-        $this->claimData['tarif_rs']['tenaga_ahli'] = (string) $cost['actdPrice'];
-        $this->claimData['tarif_rs']['keperawatan'] = '0';
-        $this->claimData['tarif_rs']['penunjang'] = (string) ($cost['actpPrice'] + $cost['other']);
-        $this->claimData['tarif_rs']['radiologi'] = (string) $cost['rad'];
-        $this->claimData['tarif_rs']['laboratorium'] = (string) $cost['lab'];
-        $this->claimData['tarif_rs']['pelayanan_darah'] = '0';
-        $this->claimData['tarif_rs']['rehabilitasi'] = '0';
-        $this->claimData['tarif_rs']['kamar'] = '0';
-        $this->claimData['tarif_rs']['rawat_intensif'] = '0';
-        $this->claimData['tarif_rs']['obat'] = (string) $cost['obat'];
-        $this->claimData['tarif_rs']['obat_kronis'] = '0';
-        $this->claimData['tarif_rs']['obat_kemoterapi'] = '0';
-        $this->claimData['tarif_rs']['alkes'] = '0';
-        $this->claimData['tarif_rs']['bmhp'] = '0';
-        $this->claimData['tarif_rs']['sewa_alat'] = '0';
-    }
+        $obatTotal = max(0, ($cost['obatPinjam'] ?? 0) + ($cost['bonResep'] ?? 0) - ($cost['rtnObat'] ?? 0));
 
-    private function parseRiDate(string $str): string
-    {
-        if (empty($str)) {
-            return Carbon::now()->format('Y-m-d H:i:s');
-        }
-        try {
-            return Carbon::createFromFormat('d/m/Y H:i:s', $str)->format('Y-m-d H:i:s');
-        } catch (\Throwable) {
-            try {
-                return Carbon::parse($str)->format('Y-m-d H:i:s');
-            } catch (\Throwable) {
-                return Carbon::now()->format('Y-m-d H:i:s');
-            }
-        }
+        $this->claimData['tarif_rs']['prosedur_non_bedah'] = (string) ($cost['jasaMedis'] ?? 0);
+        $this->claimData['tarif_rs']['prosedur_bedah']     = (string) ($cost['ok'] ?? 0);
+        $this->claimData['tarif_rs']['konsultasi']         = (string) (($cost['konsul'] ?? 0) + ($cost['adminAge'] ?? 0) + ($cost['adminStatus'] ?? 0) + ($cost['trfUgdRj'] ?? 0));
+        $this->claimData['tarif_rs']['tenaga_ahli']        = (string) ($cost['jasaDokter'] ?? 0);
+        $this->claimData['tarif_rs']['keperawatan']        = '0';
+        $this->claimData['tarif_rs']['penunjang']          = (string) ($cost['lainLain'] ?? 0);
+        $this->claimData['tarif_rs']['radiologi']          = (string) ($cost['rad'] ?? 0);
+        $this->claimData['tarif_rs']['laboratorium']       = (string) ($cost['lab'] ?? 0);
+        $this->claimData['tarif_rs']['pelayanan_darah']    = '0';
+        $this->claimData['tarif_rs']['rehabilitasi']       = '0';
+        $this->claimData['tarif_rs']['kamar']              = (string) (($cost['room'] ?? 0) + ($cost['commonService'] ?? 0) + ($cost['perawatan'] ?? 0));
+        $this->claimData['tarif_rs']['rawat_intensif']     = '0';
+        $this->claimData['tarif_rs']['obat']               = (string) $obatTotal;
+        $this->claimData['tarif_rs']['obat_kronis']        = '0';
+        $this->claimData['tarif_rs']['obat_kemoterapi']    = '0';
+        $this->claimData['tarif_rs']['alkes']              = '0';
+        $this->claimData['tarif_rs']['bmhp']               = '0';
+        $this->claimData['tarif_rs']['sewa_alat']          = '0';
     }
 
     /* ===============================
