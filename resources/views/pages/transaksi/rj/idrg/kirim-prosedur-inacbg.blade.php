@@ -60,7 +60,7 @@ new class extends Component {
         $sourceCount = count($idrg['coderProsedur'] ?? []);
         $emrCount = count($data['procedure'] ?? []);
         if (empty($idrg['coderInacbgProsedurSyncedAt']) && empty($idrg['coderInacbgProsedur']) && ($sourceCount > 0 || $emrCount > 0)) {
-            $this->persistAutoSync($data);
+            $this->persistAutoSync();
             $data = $this->findDataRJ($this->rjNo);
             $idrg = $data['idrg'] ?? [];
         }
@@ -75,9 +75,9 @@ new class extends Component {
     /**
      * Persist auto-sync: prefer idrg.coderProsedur (iDRG editor), fallback EMR procedure[].
      */
-    private function persistAutoSync(array $data): void
+    private function persistAutoSync(): void
     {
-        DB::transaction(function () use ($data) {
+        DB::transaction(function () {
             $this->lockRJRow($this->rjNo);
             $fresh = $this->findDataRJ($this->rjNo);
             $idrg = $fresh['idrg'] ?? [];
@@ -207,11 +207,7 @@ new class extends Component {
         if (empty($this->rjNo)) {
             return;
         }
-        $data = $this->findDataRJ($this->rjNo);
-        if (empty($data)) {
-            return;
-        }
-        $this->persistAutoSync($data);
+        $this->persistAutoSync();
         $this->reloadState();
         $this->dispatch('toast', type: 'success', message: 'Coder INACBG prosedur di-sync dari iDRG.');
         $this->dispatch('idrg-state-updated', rjNo: (string) $this->rjNo);
