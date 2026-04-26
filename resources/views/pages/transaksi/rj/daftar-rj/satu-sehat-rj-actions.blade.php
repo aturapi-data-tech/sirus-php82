@@ -1,7 +1,7 @@
 <?php
 // Komponen Modal Satu Sehat RJ.
 // Dipisah dari daftar-rj-actions supaya orchestrator tetap ramping.
-// Trigger dari parent: dispatch event 'daftar-rj.openSatuSehat' dengan rjNo.
+// Trigger dari parent: dispatch event 'daftar-rj.satu-sehat.open' dengan rjNo.
 
 use Livewire\Component;
 use Livewire\Attributes\On;
@@ -21,7 +21,7 @@ new class extends Component {
         }
     }
 
-    #[On('daftar-rj.openSatuSehat')]
+    #[On('daftar-rj.satu-sehat.open')]
     public function handleOpenSatuSehat(string $rjNo): void
     {
         $this->rjNo = $rjNo;

@@ -1,7 +1,7 @@
 <?php
 // Komponen Modal Bridging iDRG / INACBG (E-Klaim Kemenkes) RJ.
 // Dipisah dari daftar-rj-actions supaya orchestrator daftar-rj-actions tetap ramping.
-// Trigger dari parent: dispatch event 'daftar-rj.openIdrg' dengan rjNo.
+// Trigger dari parent: dispatch event 'daftar-rj.idrg.open' dengan rjNo.
 
 use Livewire\Component;
 use Livewire\Attributes\On;
@@ -23,7 +23,7 @@ new class extends Component {
         }
     }
 
-    #[On('daftar-rj.openIdrg')]
+    #[On('daftar-rj.idrg.open')]
     public function handleOpenIdrg(string $rjNo): void
     {
         $this->rjNo = $rjNo;

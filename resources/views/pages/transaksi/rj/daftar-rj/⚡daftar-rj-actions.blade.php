@@ -55,7 +55,7 @@ new class extends Component {
     /* ===============================
      | OPEN CREATE
      =============================== */
-    #[On('daftar-rj.openCreate')]
+    #[On('daftar-rj.create.open')]
     public function openCreate(): void
     {
         $this->resetForm();
@@ -76,7 +76,7 @@ new class extends Component {
     /* ===============================
      | OPEN EDIT
      =============================== */
-    #[On('daftar-rj.openEdit')]
+    #[On('daftar-rj.edit.open')]
     public function openEdit(string $rjNo): void
     {
         $this->resetForm();
@@ -971,14 +971,14 @@ new class extends Component {
      | SATU SEHAT
      =============================== */
     // Modal Satu Sehat pindah ke komponen sendiri satu-sehat-rj-actions.
-    // Trigger dispatch event 'daftar-rj.openSatuSehat' yang ditangkap
+    // Trigger dispatch event 'daftar-rj.satu-sehat.open' yang ditangkap
     // oleh komponen tersebut (lihat embed di bawah).
 
     /* ===============================
      | iDRG (E-Klaim Kemenkes)
      =============================== */
     // Modal iDRG/INACBG full pindah ke SFC idrg-rj-actions (sibling component).
-    // Trigger lewat dispatch event 'daftar-rj.openIdrg' yang ditangkap oleh
+    // Trigger lewat dispatch event 'daftar-rj.idrg.open' yang ditangkap oleh
     // idrg-rj-actions di file ini paling bawah.
 
 

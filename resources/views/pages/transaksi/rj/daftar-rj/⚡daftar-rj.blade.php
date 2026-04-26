@@ -77,12 +77,12 @@ new class extends Component {
      * ------------------------- */
     public function openCreate(): void
     {
-        $this->dispatch('daftar-rj.openCreate');
+        $this->dispatch('daftar-rj.create.open');
     }
 
     public function openEdit(string $rjNo): void
     {
-        $this->dispatch('daftar-rj.openEdit', rjNo: $rjNo);
+        $this->dispatch('daftar-rj.edit.open', rjNo: $rjNo);
     }
 
     public function openRekamMedis(string $rjNo): void
@@ -102,12 +102,12 @@ new class extends Component {
 
     public function openSatuSehat(string $rjNo): void
     {
-        $this->dispatch('daftar-rj.openSatuSehat', rjNo: $rjNo);
+        $this->dispatch('daftar-rj.satu-sehat.open', rjNo: $rjNo);
     }
 
     public function openIdrg(string $rjNo): void
     {
-        $this->dispatch('daftar-rj.openIdrg', rjNo: $rjNo);
+        $this->dispatch('daftar-rj.idrg.open', rjNo: $rjNo);
     }
 
     /* -------------------------
@@ -1037,7 +1037,7 @@ new class extends Component {
             <livewire:pages::transaksi.rj.emr-rj.erm-rj wire:key="rm-perawat-rj-actions" />
             <livewire:pages::transaksi.rj.administrasi-rj.administrasi-rj wire:key="administrasi-rj-actions" />
 
-            {{-- Modal Satu Sehat & iDRG/INACBG (sibling, listen ke event daftar-rj.openSatuSehat / openIdrg) --}}
+            {{-- Modal Satu Sehat & iDRG/INACBG (sibling, listen ke event daftar-rj.satu-sehat.open / openIdrg) --}}
             <livewire:pages::transaksi.rj.daftar-rj.satu-sehat-rj-actions wire:key="satu-sehat-rj-actions" />
             <livewire:pages::transaksi.rj.daftar-rj.idrg-rj-actions wire:key="idrg-rj-actions" />
 
