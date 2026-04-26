@@ -67,12 +67,12 @@ new class extends Component {
      * ------------------------- */
     public function openCreate(): void
     {
-        $this->dispatch('daftar-ugd.openCreate');
+        $this->dispatch('daftar-ugd.create.open');
     }
 
     public function openEdit(string $rjNo): void
     {
-        $this->dispatch('daftar-ugd.openEdit', rjNo: $rjNo);
+        $this->dispatch('daftar-ugd.edit.open', rjNo: $rjNo);
     }
 
     public function openRekamMedis(string $rjNo): void
@@ -92,7 +92,7 @@ new class extends Component {
 
     public function openIdrg(string $rjNo): void
     {
-        $this->dispatch('daftar-ugd.openIdrg', rjNo: $rjNo);
+        $this->dispatch('daftar-ugd.idrg.open', rjNo: $rjNo);
     }
 
     public function requestDelete(string $rjNo): void
@@ -770,6 +770,10 @@ new class extends Component {
             <livewire:pages::transaksi.ugd.daftar-ugd.daftar-ugd-actions wire:key="daftar-ugd-actions" />
             <livewire:pages::transaksi.ugd.emr-ugd.erm-ugd wire:key="emr-ugd-actions" />
             <livewire:pages::transaksi.ugd.administrasi-ugd.administrasi-ugd wire:key="administrasi-ugd-actions" />
+
+            {{-- iDRG/INACBG Modal (sibling, listen ke event daftar-ugd.idrg.open) --}}
+            <livewire:pages::transaksi.ugd.daftar-ugd.idrg-ugd-actions wire:key="idrg-ugd-actions" />
+
             <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.modul-dokumen-ugd wire:key="modul-dokumen-ugd" />
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-ugd" />
 
