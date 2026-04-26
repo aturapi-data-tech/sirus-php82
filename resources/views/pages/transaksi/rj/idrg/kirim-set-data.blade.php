@@ -123,7 +123,7 @@ new class extends Component {
             ?: data_get($dataRJ, 'sep.reqSep.t_sep.noKartu')
             ?: '';
 
-        // Fallback: idrg.nomorSep (set saat new-claim) → idrg.claimNumber (generated) → SEP BPJS
+        // Fallback: idrg.nomorSep (set saat buat klaim) → idrg.claimNumber (generated) → SEP BPJS
         $this->claimData['nomor_sep'] = $idrg['nomorSep']
             ?? $idrg['claimNumber']
             ?? data_get($dataRJ, 'sep.noSep', '');
