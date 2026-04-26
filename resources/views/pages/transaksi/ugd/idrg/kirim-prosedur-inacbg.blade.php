@@ -1,7 +1,7 @@
 <?php
-// resources/views/pages/transaksi/ugd/idrg/kirim-prosedur-idrg.blade.php
-// Coder Editor + Set/Get Prosedur iDRG (ICD-9-CM 2010 IM, support multiplicity & setting).
-// Manual hal. 26-27: format "86.22+3#86.22+2" = debridement 3x di operasi 1, 2x di operasi 2.
+// resources/views/pages/transaksi/ugd/idrg/kirim-prosedur-inacbg.blade.php
+// Step 10: Coder Editor + Set Prosedur INACBG.
+// Override koder casemix kalau ada kode iDRG yang IM-only tidak berlaku di INACBG.
 
 use Livewire\Component;
 use Livewire\Attributes\On;
@@ -15,9 +15,10 @@ new class extends Component {
 
     public ?string $rjNo = null;
 
-    // State (mirror dari $idrg di JSON DB) — supaya UI Livewire reactive.
-    public array $coderProsedur = [];
-    public ?string $idrgProsedurString = null;
+    // State (mirror dari $idrg di JSON DB).
+    public array $coderInacbgProsedur = [];
+    public ?string $inacbgProsedurString = null;
+    public bool $inacbgFinal = false;
     public bool $idrgFinal = false;
     public bool $hasClaim = false;
 
@@ -42,8 +43,9 @@ new class extends Component {
     private function reloadState(): void
     {
         if (empty($this->rjNo)) {
-            $this->coderProsedur = [];
-            $this->idrgProsedurString = null;
+            $this->coderInacbgProsedur = [];
+            $this->inacbgProsedurString = null;
+            $this->inacbgFinal = false;
             $this->idrgFinal = false;
             $this->hasClaim = false;
             return;
@@ -54,42 +56,66 @@ new class extends Component {
         }
         $idrg = $data['idrg'] ?? [];
 
-        // Auto-sync dari EMR pertama kali modal dibuka (idempotent, dipandu syncedAt flag).
-        if (empty($idrg['coderProsedurSyncedAt']) && empty($idrg['coderProsedur']) && !empty($data['procedure'])) {
-            $this->persistEmrSync();
+        // Auto-sync pertama kali: prefer dari idrg.coderProsedur, fallback EMR.
+        $sourceCount = count($idrg['coderProsedur'] ?? []);
+        $emrCount = count($data['procedure'] ?? []);
+        if (empty($idrg['coderInacbgProsedurSyncedAt']) && empty($idrg['coderInacbgProsedur']) && ($sourceCount > 0 || $emrCount > 0)) {
+            $this->persistAutoSync();
             $data = $this->findDataUGD($this->rjNo);
             $idrg = $data['idrg'] ?? [];
         }
 
-        $this->coderProsedur = $idrg['coderProsedur'] ?? [];
-        $this->idrgProsedurString = $idrg['idrgProsedurString'] ?? null;
+        $this->coderInacbgProsedur = $idrg['coderInacbgProsedur'] ?? [];
+        $this->inacbgProsedurString = $idrg['inacbgProsedurString'] ?? null;
+        $this->inacbgFinal = !empty($idrg['inacbgFinal']);
         $this->idrgFinal = !empty($idrg['idrgFinal']);
         $this->hasClaim = !empty($idrg['nomorSep']);
     }
 
-    private function persistEmrSync(): void
+    /**
+     * Persist auto-sync: prefer idrg.coderProsedur (iDRG editor), fallback EMR procedure[].
+     */
+    private function persistAutoSync(): void
     {
         DB::transaction(function () {
             $this->lockUGDRow($this->rjNo);
-            $data = $this->findDataUGD($this->rjNo);
-            $emrProc = $data['procedure'] ?? [];
+            $fresh = $this->findDataUGD($this->rjNo);
+            $idrg = $fresh['idrg'] ?? [];
+            $sourceFromIdrg = $idrg['coderProsedur'] ?? [];
             $coder = [];
-            foreach ($emrProc as $p) {
-                $code = trim((string) ($p['procedureId'] ?? ''));
-                if ($code === '') {
-                    continue;
+            if (!empty($sourceFromIdrg)) {
+                foreach ($sourceFromIdrg as $p) {
+                    $code = trim((string) ($p['code'] ?? ''));
+                    if ($code === '') {
+                        continue;
+                    }
+                    $coder[] = [
+                        'code' => $code,
+                        'desc' => (string) ($p['desc'] ?? ''),
+                        'multiplicity' => max(1, (int) ($p['multiplicity'] ?? 1)),
+                        'settingGroup' => max(1, (int) ($p['settingGroup'] ?? 1)),
+                        'validcode' => null,
+                    ];
                 }
-                $coder[] = [
-                    'code' => $code,
-                    'desc' => (string) ($p['procedureDesc'] ?? ''),
-                    'multiplicity' => max(1, (int) ($p['multiplicity'] ?? 1)),
-                    'settingGroup' => max(1, (int) ($p['settingGroup'] ?? 1)),
-                    'validcode' => null,
-                ];
+            } else {
+                foreach (($fresh['procedure'] ?? []) as $p) {
+                    $code = trim((string) ($p['procedureId'] ?? ''));
+                    if ($code === '') {
+                        continue;
+                    }
+                    $coder[] = [
+                        'code' => $code,
+                        'desc' => (string) ($p['procedureDesc'] ?? ''),
+                        'multiplicity' => max(1, (int) ($p['multiplicity'] ?? 1)),
+                        'settingGroup' => max(1, (int) ($p['settingGroup'] ?? 1)),
+                        'validcode' => null,
+                    ];
+                }
             }
-            $data['idrg']['coderProsedur'] = $coder;
-            $data['idrg']['coderProsedurSyncedAt'] = Carbon::now()->format('Y-m-d H:i:s');
-            $this->updateJsonUGD($this->rjNo, $data);
+            $idrg['coderInacbgProsedur'] = $coder;
+            $idrg['coderInacbgProsedurSyncedAt'] = Carbon::now()->format('Y-m-d H:i:s');
+            $fresh['idrg'] = $idrg;
+            $this->updateJsonUGD($this->rjNo, $fresh);
         });
     }
 
@@ -97,7 +123,7 @@ new class extends Component {
      | EDITOR (CODER) — CRUD
      =============================== */
 
-    #[On('lov.selected.ugdFormProsedurIdrgCoder')]
+    #[On('lov.selected.ugdFormProsedurInacbgCoder')]
     public function onLov(string $target, array $payload): void
     {
         if (empty($this->rjNo)) {
@@ -172,14 +198,18 @@ new class extends Component {
         });
     }
 
-    public function syncFromEmr(): void
+    /**
+     * Sync dari iDRG coder editor (idrg.coderProsedur) sebagai starting point.
+     * Fallback ke EMR procedure[] kalau iDRG coder belum diisi.
+     */
+    public function syncFromIdrg(): void
     {
         if (empty($this->rjNo)) {
             return;
         }
-        $this->persistEmrSync();
+        $this->persistAutoSync();
         $this->reloadState();
-        $this->dispatch('toast', type: 'success', message: 'Coder prosedur di-sync dari EMR.');
+        $this->dispatch('toast', type: 'success', message: 'Coder INACBG prosedur di-sync dari iDRG.');
         $this->dispatch('idrg-state-updated-ugd', rjNo: (string) $this->rjNo);
     }
 
@@ -188,9 +218,9 @@ new class extends Component {
         DB::transaction(function () use ($fn) {
             $this->lockUGDRow($this->rjNo);
             $data = $this->findDataUGD($this->rjNo);
-            $coder = $data['idrg']['coderProsedur'] ?? [];
+            $coder = $data['idrg']['coderInacbgProsedur'] ?? [];
             $coder = $fn($coder);
-            $data['idrg']['coderProsedur'] = $coder;
+            $data['idrg']['coderInacbgProsedur'] = $coder;
             $this->updateJsonUGD($this->rjNo, $data);
         });
         $this->reloadState();
@@ -198,48 +228,44 @@ new class extends Component {
     }
 
     /* ===============================
-     | API ACTIONS — Set / Get / Search
+     | API ACTION — set_prosedur_inacbg
      =============================== */
 
-    #[On('idrg-prosedur-ugd.set')]
+    #[On('idrg-prosedur-inacbg-ugd.set')]
     public function set(string $rjNo, ?string $procedure = null): void
     {
         try {
-            [$dataUGD, $idrg] = $this->loadData($rjNo);
+            $data = $this->findDataUGD($rjNo);
+            if (empty($data)) {
+                throw new \RuntimeException('Data RJ tidak ditemukan.');
+            }
+            $idrg = $data['idrg'] ?? [];
             $nomorSep = $idrg['nomorSep'] ?? null;
             if (empty($nomorSep)) {
                 $this->dispatch('toast', type: 'error', message: 'Klaim belum dibuat.');
                 return;
             }
 
-            // Prioritas: coderProsedur (editor coder) → fallback EMR procedure[]
             if ($procedure === null || $procedure === '') {
-                $coder = $idrg['coderProsedur'] ?? [];
-                $procedure = !empty($coder)
-                    ? $this->buildString($coder, 'code')
-                    : $this->buildString($dataUGD['procedure'] ?? [], 'procedureId');
-                if (empty($procedure)) {
-                    // Manual hal. 26: kirim "#" untuk hapus semua, "" malah berarti no-change.
-                    $procedure = '#';
-                }
+                $coder = $idrg['coderInacbgProsedur'] ?? [];
+                $procedure = !empty($coder) ? $this->buildString($coder) : '#';
             }
 
-            $res = $this->setProsedurIdrg($nomorSep, $procedure)->getOriginalContent();
+            $res = $this->setProsedurInacbg($nomorSep, $procedure)->getOriginalContent();
             if (($res['metadata']['code'] ?? 0) != 200) {
-                $this->dispatch('toast', type: 'error', message: self::describeEklaimError($res['metadata'] ?? [], 'Set Prosedur iDRG'));
+                $this->dispatch('toast', type: 'error', message: self::describeEklaimError($res['metadata'] ?? [], 'Set Prosedur INACBG'));
                 return;
             }
 
             $response = $res['response'] ?? [];
-            $idrg['idrgProsedur'] = $response;
-            $idrg['idrgProsedurString'] = $procedure;
+            $idrg['inacbgProsedur'] = $response;
+            $idrg['inacbgProsedurString'] = $procedure;
 
-            // Update validcode di coderProsedur berdasarkan expanded[] response
-            // (validcode adalah property kode, bukan setting — same code = same validcode di setting manapun)
+            // Update validcode
             $expanded = $response['expanded'] ?? $response['data']['expanded'] ?? [];
-            if (!empty($idrg['coderProsedur']) && !empty($expanded)) {
+            if (!empty($idrg['coderInacbgProsedur']) && !empty($expanded)) {
                 $byCode = collect($expanded)->keyBy('code');
-                foreach ($idrg['coderProsedur'] as &$c) {
+                foreach ($idrg['coderInacbgProsedur'] as &$c) {
                     $code = $c['code'] ?? '';
                     if (isset($byCode[$code])) {
                         $c['validcode'] = (string) ($byCode[$code]['validcode'] ?? '');
@@ -249,9 +275,9 @@ new class extends Component {
             }
 
             $this->saveResult($rjNo, $idrg);
-            $this->dispatch('toast', type: 'success', message: "Prosedur iDRG tersimpan: {$procedure}");
+            $this->dispatch('toast', type: 'success', message: "Prosedur INACBG tersimpan: {$procedure}");
         } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Set prosedur iDRG gagal: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: 'Set prosedur INACBG gagal: ' . $e->getMessage());
         }
     }
 
@@ -263,24 +289,19 @@ new class extends Component {
         $this->set($this->rjNo);
     }
 
-    /**
-     * Build "code+mult#code+mult#code...". Group by settingGroup ascending, lalu join semua dengan '#'.
-     * Manual hal. 26: setting beda = kode muncul lagi di string, multiplicity = "+N" di belakang kode.
-     * $codeKey: 'code' utk coder array, 'procedureId' utk EMR procedure[] array.
-     */
-    private function buildString(array $items, string $codeKey): string
+    private function buildString(array $coder): string
     {
-        if (empty($items)) {
+        if (empty($coder)) {
             return '';
         }
         $groups = [];
-        foreach ($items as $i) {
-            $code = trim((string) ($i[$codeKey] ?? ''));
+        foreach ($coder as $c) {
+            $code = trim((string) ($c['code'] ?? ''));
             if ($code === '') {
                 continue;
             }
-            $mult = max(1, (int) ($i['multiplicity'] ?? 1));
-            $groupKey = max(1, (int) ($i['settingGroup'] ?? 1));
+            $mult = max(1, (int) ($c['multiplicity'] ?? 1));
+            $groupKey = max(1, (int) ($c['settingGroup'] ?? 1));
             $token = $mult > 1 ? "{$code}+{$mult}" : $code;
             $groups[$groupKey][] = $token;
         }
@@ -290,55 +311,6 @@ new class extends Component {
             $parts[] = implode('#', $tokens);
         }
         return implode('#', $parts);
-    }
-
-    #[On('idrg-prosedur-ugd.get')]
-    public function get(string $rjNo): void
-    {
-        try {
-            [, $idrg] = $this->loadData($rjNo);
-            $nomorSep = $idrg['nomorSep'] ?? null;
-            if (empty($nomorSep)) {
-                $this->dispatch('toast', type: 'error', message: 'Klaim belum dibuat.');
-                return;
-            }
-
-            $res = $this->getProsedurIdrg($nomorSep)->getOriginalContent();
-            if (($res['metadata']['code'] ?? 0) != 200) {
-                $this->dispatch('toast', type: 'error', message: self::describeEklaimError($res['metadata'] ?? [], 'Ambil Prosedur iDRG'));
-                return;
-            }
-
-            $idrg['idrgProsedur'] = $res['response'] ?? [];
-            $this->saveResult($rjNo, $idrg);
-            $this->dispatch('idrg-prosedur-ugd.loaded', $idrg['idrgProsedur']);
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Get prosedur iDRG gagal: ' . $e->getMessage());
-        }
-    }
-
-    #[On('idrg-prosedur-ugd.search')]
-    public function search(string $keyword): void
-    {
-        try {
-            $res = $this->searchProsedurIdrg($keyword)->getOriginalContent();
-            if (($res['metadata']['code'] ?? 0) != 200) {
-                $this->dispatch('toast', type: 'error', message: self::describeEklaimError($res['metadata'] ?? [], 'Cari Prosedur di iDRG'));
-                return;
-            }
-            $this->dispatch('idrg-prosedur-ugd.search-result', $res['response']['data'] ?? []);
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Search prosedur iDRG gagal: ' . $e->getMessage());
-        }
-    }
-
-    private function loadData(string $rjNo): array
-    {
-        $dataUGD = $this->findDataUGD($rjNo);
-        if (empty($dataUGD)) {
-            throw new \RuntimeException('Data RJ tidak ditemukan.');
-        }
-        return [$dataUGD, $dataUGD['idrg'] ?? []];
     }
 
     private function saveResult(string $rjNo, array $idrg): void
@@ -360,44 +332,42 @@ new class extends Component {
     <div class="flex items-start justify-between gap-3">
         <div class="flex items-center gap-3">
             <div
-                class="flex items-center justify-center w-8 h-8 rounded-full {{ !empty($idrgProsedurString) ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500' }}">
-                <span class="text-sm font-bold">5</span>
+                class="flex items-center justify-center w-8 h-8 rounded-full {{ !empty($inacbgProsedurString) ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500' }}">
+                <span class="text-sm font-bold">10</span>
             </div>
             <div>
-                <div class="font-semibold text-gray-800 dark:text-gray-100">Set Prosedur iDRG</div>
+                <div class="font-semibold text-gray-800 dark:text-gray-100">Set Prosedur INACBG</div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">
-                    Mult = jumlah dalam 1 operasi (notasi "+N"). Setting = operasi berbeda (kode muncul lagi di string).
+                    Override jika ada kode iDRG dengan "IM tidak berlaku" di INACBG.
                 </div>
             </div>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-            <button type="button" wire:click="syncFromEmr" wire:loading.attr="disabled" @disabled($idrgFinal)
+            <button type="button" wire:click="syncFromIdrg" wire:loading.attr="disabled" @disabled($inacbgFinal)
                 class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
-                <span wire:loading.remove wire:target="syncFromEmr">↻ Sync dari EMR</span>
-                <span wire:loading wire:target="syncFromEmr"><x-loading />...</span>
+                <span wire:loading.remove wire:target="syncFromIdrg">↻ Sync dari iDRG</span>
+                <span wire:loading wire:target="syncFromIdrg"><x-loading />...</span>
             </button>
             <x-primary-button type="button" wire:click="setForCurrent" wire:loading.attr="disabled"
-                :disabled="$idrgFinal || !$hasClaim"
-                class="!bg-brand hover:!bg-brand/90 {{ !empty($idrgProsedurString) ? '!bg-emerald-600' : '' }}">
+                :disabled="$inacbgFinal || !$hasClaim"
+                class="!bg-brand hover:!bg-brand/90 {{ !empty($inacbgProsedurString) ? '!bg-emerald-600' : '' }}">
                 <span wire:loading.remove wire:target="setForCurrent">
-                    {{ !empty($idrgProsedurString) ? 'Set Ulang' : 'Set Prosedur iDRG' }}
+                    {{ !empty($inacbgProsedurString) ? 'Set Ulang' : 'Set Prosedur INACBG' }}
                 </span>
                 <span wire:loading wire:target="setForCurrent"><x-loading />...</span>
             </x-primary-button>
         </div>
     </div>
 
-    {{-- LOV tambah --}}
-    @if (!$idrgFinal)
-        <div wire:key="lov-procedure-idrg-coder-{{ $rjNo ?? 'none' }}">
-            <livewire:lov.procedure.lov-procedure label="Cari Prosedur (untuk klaim iDRG)"
-                target="ugdFormProsedurIdrgCoder"
-                wire:key="lov-procedure-idrg-coder-inner-{{ $rjNo ?? 'none' }}" />
+    @if (!$inacbgFinal)
+        <div wire:key="lov-procedure-inacbg-coder-{{ $rjNo ?? 'none' }}">
+            <livewire:lov.procedure.lov-procedure label="Cari Prosedur (untuk INACBG)"
+                target="ugdFormProsedurInacbgCoder"
+                wire:key="lov-procedure-inacbg-coder-inner-{{ $rjNo ?? 'none' }}" />
         </div>
     @endif
 
-    {{-- Tabel coder --}}
-    @if (!empty($coderProsedur))
+    @if (!empty($coderInacbgProsedur))
         <div class="overflow-x-auto border border-gray-200 rounded-lg dark:border-gray-700">
             <table class="w-full text-xs text-left">
                 <thead class="text-gray-600 bg-gray-50 dark:bg-gray-800 dark:text-gray-300">
@@ -407,26 +377,27 @@ new class extends Component {
                         <th class="px-2 py-1.5 font-medium text-center" title="Multiplicity: berapa kali dalam 1 operasi (+N)">Mult.</th>
                         <th class="px-2 py-1.5 font-medium text-center" title="Setting: operasi ke-berapa (1, 2, 3...)">Setting</th>
                         <th class="px-2 py-1.5 font-medium text-center">Valid IM</th>
-                        @if (!$idrgFinal)
+                        @if (!$inacbgFinal)
                             <th class="px-2 py-1.5 w-8"></th>
                         @endif
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                    @foreach ($coderProsedur as $i => $p)
-                        <tr wire:key="coder-proc-{{ $i }}-{{ $p['code'] ?? 'x' }}" class="bg-white dark:bg-gray-900">
+                    @foreach ($coderInacbgProsedur as $i => $p)
+                        <tr wire:key="coder-inacbg-proc-{{ $i }}-{{ $p['code'] ?? 'x' }}"
+                            class="bg-white dark:bg-gray-900">
                             <td class="px-2 py-1.5 font-mono font-semibold text-gray-800 dark:text-gray-100">
                                 {{ $p['code'] ?? '' }}</td>
                             <td class="px-2 py-1.5 text-gray-700 dark:text-gray-300">{{ $p['desc'] ?? '' }}</td>
                             <td class="px-2 py-1.5 text-center">
                                 <x-text-input type="number" min="1" value="{{ $p['multiplicity'] ?? 1 }}"
                                     wire:change="setMultiplicity({{ $i }}, $event.target.value)"
-                                    :disabled="$idrgFinal" class="w-16 text-xs text-center" />
+                                    :disabled="$inacbgFinal" class="w-16 text-xs text-center" />
                             </td>
                             <td class="px-2 py-1.5 text-center">
                                 <x-text-input type="number" min="1" value="{{ $p['settingGroup'] ?? 1 }}"
                                     wire:change="setSettingGroup({{ $i }}, $event.target.value)"
-                                    :disabled="$idrgFinal" class="w-16 text-xs text-center" />
+                                    :disabled="$inacbgFinal" class="w-16 text-xs text-center" />
                             </td>
                             <td class="px-2 py-1.5 text-center">
                                 @php $vc = $p['validcode'] ?? null; @endphp
@@ -438,10 +409,10 @@ new class extends Component {
                                     <span class="text-gray-400">-</span>
                                 @endif
                             </td>
-                            @if (!$idrgFinal)
+                            @if (!$inacbgFinal)
                                 <td class="px-2 py-1.5">
                                     <x-icon-button color="red" wire:click="remove({{ $i }})"
-                                        wire:confirm="Hapus prosedur {{ $p['code'] ?? '' }} dari coder?">
+                                        wire:confirm="Hapus prosedur {{ $p['code'] ?? '' }} dari coder INACBG?">
                                         <span class="text-base font-bold leading-none">×</span>
                                     </x-icon-button>
                                 </td>
@@ -453,14 +424,13 @@ new class extends Component {
         </div>
     @else
         <p class="py-2 text-xs text-center text-gray-400 dark:text-gray-500">
-            Belum ada prosedur coder. Tambah via LOV atau klik "Sync dari EMR" (boleh kosong jika tidak ada tindakan).
+            Belum ada prosedur INACBG. Klik "Sync dari iDRG" atau tambah via LOV (boleh kosong jika tidak ada tindakan).
         </p>
     @endif
 
-    {{-- Response string yang terkirim --}}
-    @if (!empty($idrgProsedurString))
+    @if (!empty($inacbgProsedurString))
         <div class="px-2 py-1.5 text-xs font-mono text-gray-600 bg-gray-50 rounded dark:bg-gray-800 dark:text-gray-400">
-            <span class="text-gray-500">Terkirim:</span> {{ $idrgProsedurString }}
+            <span class="text-gray-500">Terkirim:</span> {{ $inacbgProsedurString }}
         </div>
     @endif
 </div>

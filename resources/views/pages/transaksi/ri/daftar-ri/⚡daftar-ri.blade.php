@@ -62,11 +62,11 @@ new class extends Component {
 
     public function openCreate(): void
     {
-        $this->dispatch('daftar-ri.openCreate');
+        $this->dispatch('daftar-ri.create.open');
     }
     public function openEdit(string $riHdrNo): void
     {
-        $this->dispatch('daftar-ri.openEdit', riHdrNo: $riHdrNo);
+        $this->dispatch('daftar-ri.edit.open', riHdrNo: $riHdrNo);
     }
     public function openRekamMedis(string $riHdrNo): void
     {
@@ -90,7 +90,7 @@ new class extends Component {
     }
     public function openIdrg(string $riHdrNo): void
     {
-        $this->dispatch('daftar-ri.openIdrg', riHdrNo: $riHdrNo);
+        $this->dispatch('daftar-ri.idrg.open', riHdrNo: $riHdrNo);
     }
 
     #[On('refresh-after-ri.saved')]
@@ -799,6 +799,10 @@ new class extends Component {
             <livewire:pages::transaksi.ri.emr-ri.erm-ri wire:key="emr-ri-actions" />
             <livewire:pages::transaksi.ri.administrasi-ri.administrasi-ri wire:key="administrasi-ri-actions" />
             <livewire:pages::transaksi.ri.administrasi-ri.pindah-kamar-ri wire:key="pindah-kamar-ri" />
+
+            {{-- iDRG/INACBG Modal (sibling, listen ke event daftar-ri.idrg.open) --}}
+            <livewire:pages::transaksi.ri.daftar-ri.idrg-ri-actions wire:key="idrg-ri-actions" />
+
             <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.modul-dokumen-ri wire:key="modul-dokumen-ri" />
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-ri" />
 

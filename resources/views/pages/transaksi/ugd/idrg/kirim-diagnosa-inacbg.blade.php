@@ -1,7 +1,7 @@
 <?php
-// resources/views/pages/transaksi/ugd/idrg/kirim-diagnosa-idrg.blade.php
-// Coder Editor + Set/Get Diagnosa iDRG (ICD-10 2010 IM).
-// Coder Casemix bisa edit array $idrg['coderDiagnosa'] tanpa mengubah EMR (hak RM).
+// resources/views/pages/transaksi/ugd/idrg/kirim-diagnosa-inacbg.blade.php
+// Step 9: Coder Editor + Set Diagnosa INACBG.
+// Override koder casemix kalau ada kode iDRG yang IM-only tidak berlaku di INACBG.
 
 use Livewire\Component;
 use Livewire\Attributes\On;
@@ -15,9 +15,10 @@ new class extends Component {
 
     public ?string $rjNo = null;
 
-    // State (mirror dari $idrg di JSON DB) — supaya UI Livewire reactive.
-    public array $coderDiagnosa = [];
-    public ?string $idrgDiagnosaString = null;
+    // State (mirror dari $idrg di JSON DB).
+    public array $coderInacbgDiagnosa = [];
+    public ?string $inacbgDiagnosaString = null;
+    public bool $inacbgFinal = false;
     public bool $idrgFinal = false;
     public bool $hasClaim = false;
 
@@ -42,8 +43,9 @@ new class extends Component {
     private function reloadState(): void
     {
         if (empty($this->rjNo)) {
-            $this->coderDiagnosa = [];
-            $this->idrgDiagnosaString = null;
+            $this->coderInacbgDiagnosa = [];
+            $this->inacbgDiagnosaString = null;
+            $this->inacbgFinal = false;
             $this->idrgFinal = false;
             $this->hasClaim = false;
             return;
@@ -54,42 +56,65 @@ new class extends Component {
         }
         $idrg = $data['idrg'] ?? [];
 
-        // Auto-sync dari EMR pertama kali modal dibuka (idempotent, dipandu syncedAt flag).
-        // Dengan ini coder tidak perlu klik "Sync dari EMR" manual setiap pasien baru.
-        if (empty($idrg['coderDiagnosaSyncedAt']) && empty($idrg['coderDiagnosa']) && !empty($data['diagnosis'])) {
-            $this->persistEmrSync();
+        // Auto-sync pertama kali: prefer dari idrg.coderDiagnosa, fallback EMR.
+        $sourceCount = count($idrg['coderDiagnosa'] ?? []);
+        $emrCount = count($data['diagnosis'] ?? []);
+        if (empty($idrg['coderInacbgDiagnosaSyncedAt']) && empty($idrg['coderInacbgDiagnosa']) && ($sourceCount > 0 || $emrCount > 0)) {
+            $this->persistAutoSync();
             $data = $this->findDataUGD($this->rjNo);
             $idrg = $data['idrg'] ?? [];
         }
 
-        $this->coderDiagnosa = $idrg['coderDiagnosa'] ?? [];
-        $this->idrgDiagnosaString = $idrg['idrgDiagnosaString'] ?? null;
+        $this->coderInacbgDiagnosa = $idrg['coderInacbgDiagnosa'] ?? [];
+        $this->inacbgDiagnosaString = $idrg['inacbgDiagnosaString'] ?? null;
+        $this->inacbgFinal = !empty($idrg['inacbgFinal']);
         $this->idrgFinal = !empty($idrg['idrgFinal']);
         $this->hasClaim = !empty($idrg['nomorSep']);
     }
 
-    private function persistEmrSync(): void
+    /**
+     * Persist auto-sync: prefer idrg.coderDiagnosa (iDRG editor), fallback EMR diagnosis[].
+     * Dipanggil reloadState saat first-open dan syncFromIdrg saat user klik tombol.
+     */
+    private function persistAutoSync(): void
     {
         DB::transaction(function () {
             $this->lockUGDRow($this->rjNo);
-            $data = $this->findDataUGD($this->rjNo);
-            $emrDiag = $data['diagnosis'] ?? [];
+            $fresh = $this->findDataUGD($this->rjNo);
+            $idrg = $fresh['idrg'] ?? [];
+            $sourceFromIdrg = $idrg['coderDiagnosa'] ?? [];
             $coder = [];
-            foreach ($emrDiag as $d) {
-                $code = trim((string) ($d['icdX'] ?? $d['diagId'] ?? ''));
-                if ($code === '') {
-                    continue;
+            if (!empty($sourceFromIdrg)) {
+                foreach ($sourceFromIdrg as $d) {
+                    $code = trim((string) ($d['code'] ?? ''));
+                    if ($code === '') {
+                        continue;
+                    }
+                    $coder[] = [
+                        'code' => $code,
+                        'desc' => (string) ($d['desc'] ?? ''),
+                        'kategori' => (string) ($d['kategori'] ?? 'Secondary'),
+                        'validcode' => null,
+                    ];
                 }
-                $coder[] = [
-                    'code' => $code,
-                    'desc' => (string) ($d['diagDesc'] ?? ''),
-                    'kategori' => (string) ($d['kategoriDiagnosa'] ?? 'Secondary'),
-                    'validcode' => null,
-                ];
+            } else {
+                foreach (($fresh['diagnosis'] ?? []) as $d) {
+                    $code = trim((string) ($d['icdX'] ?? $d['diagId'] ?? ''));
+                    if ($code === '') {
+                        continue;
+                    }
+                    $coder[] = [
+                        'code' => $code,
+                        'desc' => (string) ($d['diagDesc'] ?? ''),
+                        'kategori' => (string) ($d['kategoriDiagnosa'] ?? 'Secondary'),
+                        'validcode' => null,
+                    ];
+                }
             }
-            $data['idrg']['coderDiagnosa'] = $coder;
-            $data['idrg']['coderDiagnosaSyncedAt'] = Carbon::now()->format('Y-m-d H:i:s');
-            $this->updateJsonUGD($this->rjNo, $data);
+            $idrg['coderInacbgDiagnosa'] = $coder;
+            $idrg['coderInacbgDiagnosaSyncedAt'] = Carbon::now()->format('Y-m-d H:i:s');
+            $fresh['idrg'] = $idrg;
+            $this->updateJsonUGD($this->rjNo, $fresh);
         });
     }
 
@@ -97,7 +122,7 @@ new class extends Component {
      | EDITOR (CODER) — CRUD
      =============================== */
 
-    #[On('lov.selected.ugdFormDiagnosaIdrgCoder')]
+    #[On('lov.selected.ugdFormDiagnosaInacbgCoder')]
     public function onLov(string $target, array $payload): void
     {
         if (empty($this->rjNo)) {
@@ -155,14 +180,19 @@ new class extends Component {
         });
     }
 
-    public function syncFromEmr(): void
+    /**
+     * Sync dari iDRG coder editor (idrg.coderDiagnosa) sebagai starting point.
+     * Coder lalu identify kode IM-only (validcode=0) dan ganti ke kode non-IM.
+     * Fallback ke EMR diagnosis[] kalau iDRG coder belum diisi.
+     */
+    public function syncFromIdrg(): void
     {
         if (empty($this->rjNo)) {
             return;
         }
-        $this->persistEmrSync();
+        $this->persistAutoSync();
         $this->reloadState();
-        $this->dispatch('toast', type: 'success', message: 'Coder diagnosa di-sync dari EMR.');
+        $this->dispatch('toast', type: 'success', message: 'Coder INACBG diagnosa di-sync dari iDRG.');
         $this->dispatch('idrg-state-updated-ugd', rjNo: (string) $this->rjNo);
     }
 
@@ -171,9 +201,9 @@ new class extends Component {
         DB::transaction(function () use ($fn) {
             $this->lockUGDRow($this->rjNo);
             $data = $this->findDataUGD($this->rjNo);
-            $coder = $data['idrg']['coderDiagnosa'] ?? [];
+            $coder = $data['idrg']['coderInacbgDiagnosa'] ?? [];
             $coder = $fn($coder);
-            $data['idrg']['coderDiagnosa'] = $coder;
+            $data['idrg']['coderInacbgDiagnosa'] = $coder;
             $this->updateJsonUGD($this->rjNo, $data);
         });
         $this->reloadState();
@@ -181,47 +211,49 @@ new class extends Component {
     }
 
     /* ===============================
-     | API ACTIONS — Set / Get / Search
+     | API ACTION — set_diagnosa_inacbg
      =============================== */
 
-    #[On('idrg-diagnosa-ugd.set')]
+    #[On('idrg-diagnosa-inacbg-ugd.set')]
     public function set(string $rjNo, ?string $diagnosa = null): void
     {
         try {
-            [$dataUGD, $idrg] = $this->loadData($rjNo);
+            $data = $this->findDataUGD($rjNo);
+            if (empty($data)) {
+                throw new \RuntimeException('Data RJ tidak ditemukan.');
+            }
+            $idrg = $data['idrg'] ?? [];
             $nomorSep = $idrg['nomorSep'] ?? null;
             if (empty($nomorSep)) {
                 $this->dispatch('toast', type: 'error', message: 'Klaim belum dibuat.');
                 return;
             }
 
-            // Prioritas: coderDiagnosa (editor coder) → fallback EMR diagnosis[]
             if ($diagnosa === null || $diagnosa === '') {
-                $coder = $idrg['coderDiagnosa'] ?? [];
-                $diagnosa = !empty($coder)
-                    ? $this->buildString($coder, 'kategori', 'code')
-                    : $this->buildString($dataUGD['diagnosis'] ?? [], 'kategoriDiagnosa', null);
-                if (empty($diagnosa)) {
-                    $this->dispatch('toast', type: 'error', message: 'Tidak ada diagnosa untuk dikirim. Tambah via LOV atau Sync dari EMR.');
+                $coder = $idrg['coderInacbgDiagnosa'] ?? [];
+                if (!empty($coder)) {
+                    $diagnosa = $this->buildString($coder);
+                } else {
+                    $this->dispatch('toast', type: 'error', message: 'Belum ada coder diagnosa INACBG. Klik "Sync dari iDRG" atau tambah via LOV.');
                     return;
                 }
             }
 
-            $res = $this->setDiagnosaIdrg($nomorSep, $diagnosa)->getOriginalContent();
+            $res = $this->setDiagnosaInacbg($nomorSep, $diagnosa)->getOriginalContent();
             if (($res['metadata']['code'] ?? 0) != 200) {
-                $this->dispatch('toast', type: 'error', message: self::describeEklaimError($res['metadata'] ?? [], 'Set Diagnosa iDRG'));
+                $this->dispatch('toast', type: 'error', message: self::describeEklaimError($res['metadata'] ?? [], 'Set Diagnosa INACBG'));
                 return;
             }
 
             $response = $res['response'] ?? [];
-            $idrg['idrgDiagnosa'] = $response;
-            $idrg['idrgDiagnosaString'] = $diagnosa;
+            $idrg['inacbgDiagnosa'] = $response;
+            $idrg['inacbgDiagnosaString'] = $diagnosa;
 
-            // Update validcode di coderDiagnosa berdasarkan expanded[] response
+            // Update validcode di coderInacbgDiagnosa
             $expanded = $response['expanded'] ?? $response['data']['expanded'] ?? [];
-            if (!empty($idrg['coderDiagnosa']) && !empty($expanded)) {
+            if (!empty($idrg['coderInacbgDiagnosa']) && !empty($expanded)) {
                 $byCode = collect($expanded)->keyBy('code');
-                foreach ($idrg['coderDiagnosa'] as &$c) {
+                foreach ($idrg['coderInacbgDiagnosa'] as &$c) {
                     $code = $c['code'] ?? '';
                     if (isset($byCode[$code])) {
                         $c['validcode'] = (string) ($byCode[$code]['validcode'] ?? '');
@@ -231,9 +263,9 @@ new class extends Component {
             }
 
             $this->saveResult($rjNo, $idrg);
-            $this->dispatch('toast', type: 'success', message: "Diagnosa iDRG tersimpan: {$diagnosa}");
+            $this->dispatch('toast', type: 'success', message: "Diagnosa INACBG tersimpan: {$diagnosa}");
         } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Set diagnosa iDRG gagal: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: 'Set diagnosa INACBG gagal: ' . $e->getMessage());
         }
     }
 
@@ -245,83 +277,25 @@ new class extends Component {
         $this->set($this->rjNo);
     }
 
-    /**
-     * Build string "PRIMARY#PRIMARY#SECONDARY#SECONDARY".
-     * $kategoriKey: nama key kategori di item ('kategori' utk coder, 'kategoriDiagnosa' utk EMR).
-     * $codeKey: nama key code; null = pakai fallback icdX/diagId (struktur EMR).
-     */
-    private function buildString(array $items, string $kategoriKey, ?string $codeKey): string
+    private function buildString(array $coder): string
     {
-        if (empty($items)) {
+        if (empty($coder)) {
             return '';
         }
         $primary = [];
         $secondary = [];
-        foreach ($items as $i) {
-            if ($codeKey !== null) {
-                $code = trim((string) ($i[$codeKey] ?? ''));
-            } else {
-                $code = trim((string) ($i['icdX'] ?? $i['diagId'] ?? ''));
-            }
+        foreach ($coder as $c) {
+            $code = trim((string) ($c['code'] ?? ''));
             if ($code === '') {
                 continue;
             }
-            if (($i[$kategoriKey] ?? '') === 'Primary') {
+            if (($c['kategori'] ?? '') === 'Primary') {
                 $primary[] = $code;
             } else {
                 $secondary[] = $code;
             }
         }
         return implode('#', [...$primary, ...$secondary]);
-    }
-
-    #[On('idrg-diagnosa-ugd.get')]
-    public function get(string $rjNo): void
-    {
-        try {
-            [, $idrg] = $this->loadData($rjNo);
-            $nomorSep = $idrg['nomorSep'] ?? null;
-            if (empty($nomorSep)) {
-                $this->dispatch('toast', type: 'error', message: 'Klaim belum dibuat.');
-                return;
-            }
-
-            $res = $this->getDiagnosaIdrg($nomorSep)->getOriginalContent();
-            if (($res['metadata']['code'] ?? 0) != 200) {
-                $this->dispatch('toast', type: 'error', message: self::describeEklaimError($res['metadata'] ?? [], 'Ambil Diagnosa iDRG'));
-                return;
-            }
-
-            $idrg['idrgDiagnosa'] = $res['response'] ?? [];
-            $this->saveResult($rjNo, $idrg);
-            $this->dispatch('idrg-diagnosa-ugd.loaded', $idrg['idrgDiagnosa']);
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Get diagnosa iDRG gagal: ' . $e->getMessage());
-        }
-    }
-
-    #[On('idrg-diagnosa-ugd.search')]
-    public function search(string $keyword): void
-    {
-        try {
-            $res = $this->searchDiagnosaIdrg($keyword)->getOriginalContent();
-            if (($res['metadata']['code'] ?? 0) != 200) {
-                $this->dispatch('toast', type: 'error', message: self::describeEklaimError($res['metadata'] ?? [], 'Cari Diagnosa di iDRG'));
-                return;
-            }
-            $this->dispatch('idrg-diagnosa-ugd.search-result', $res['response']['data'] ?? []);
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Search diagnosa iDRG gagal: ' . $e->getMessage());
-        }
-    }
-
-    private function loadData(string $rjNo): array
-    {
-        $dataUGD = $this->findDataUGD($rjNo);
-        if (empty($dataUGD)) {
-            throw new \RuntimeException('Data RJ tidak ditemukan.');
-        }
-        return [$dataUGD, $dataUGD['idrg'] ?? []];
     }
 
     private function saveResult(string $rjNo, array $idrg): void
@@ -343,41 +317,41 @@ new class extends Component {
     <div class="flex items-start justify-between gap-3">
         <div class="flex items-center gap-3">
             <div
-                class="flex items-center justify-center w-8 h-8 rounded-full {{ !empty($idrgDiagnosaString) ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500' }}">
-                <span class="text-sm font-bold">4</span>
+                class="flex items-center justify-center w-8 h-8 rounded-full {{ !empty($inacbgDiagnosaString) ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500' }}">
+                <span class="text-sm font-bold">9</span>
             </div>
             <div>
-                <div class="font-semibold text-gray-800 dark:text-gray-100">Set Diagnosa iDRG</div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">Coder edit di sini, EMR tidak terganggu.</div>
+                <div class="font-semibold text-gray-800 dark:text-gray-100">Set Diagnosa INACBG</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">
+                    Override jika ada kode iDRG dengan "IM tidak berlaku" di INACBG.
+                </div>
             </div>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-            <button type="button" wire:click="syncFromEmr" wire:loading.attr="disabled" @disabled($idrgFinal)
+            <button type="button" wire:click="syncFromIdrg" wire:loading.attr="disabled" @disabled($inacbgFinal)
                 class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
-                <span wire:loading.remove wire:target="syncFromEmr">↻ Sync dari EMR</span>
-                <span wire:loading wire:target="syncFromEmr"><x-loading />...</span>
+                <span wire:loading.remove wire:target="syncFromIdrg">↻ Sync dari iDRG</span>
+                <span wire:loading wire:target="syncFromIdrg"><x-loading />...</span>
             </button>
             <x-primary-button type="button" wire:click="setForCurrent" wire:loading.attr="disabled"
-                :disabled="$idrgFinal || !$hasClaim || empty($coderDiagnosa)"
-                class="!bg-brand hover:!bg-brand/90 {{ !empty($idrgDiagnosaString) ? '!bg-emerald-600' : '' }}">
+                :disabled="$inacbgFinal || !$hasClaim || empty($coderInacbgDiagnosa)"
+                class="!bg-brand hover:!bg-brand/90 {{ !empty($inacbgDiagnosaString) ? '!bg-emerald-600' : '' }}">
                 <span wire:loading.remove wire:target="setForCurrent">
-                    {{ !empty($idrgDiagnosaString) ? 'Set Ulang' : 'Set Diagnosa iDRG' }}
+                    {{ !empty($inacbgDiagnosaString) ? 'Set Ulang' : 'Set Diagnosa INACBG' }}
                 </span>
                 <span wire:loading wire:target="setForCurrent"><x-loading />...</span>
             </x-primary-button>
         </div>
     </div>
 
-    {{-- LOV tambah --}}
-    @if (!$idrgFinal)
-        <div wire:key="lov-diagnosa-idrg-coder-{{ $rjNo ?? 'none' }}">
-            <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosa (untuk klaim iDRG)" target="ugdFormDiagnosaIdrgCoder"
-                wire:key="lov-diagnosa-idrg-coder-inner-{{ $rjNo ?? 'none' }}" />
+    @if (!$inacbgFinal)
+        <div wire:key="lov-diagnosa-inacbg-coder-{{ $rjNo ?? 'none' }}">
+            <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosa (untuk INACBG)" target="ugdFormDiagnosaInacbgCoder"
+                wire:key="lov-diagnosa-inacbg-coder-inner-{{ $rjNo ?? 'none' }}" />
         </div>
     @endif
 
-    {{-- Tabel coder --}}
-    @if (!empty($coderDiagnosa))
+    @if (!empty($coderInacbgDiagnosa))
         <div class="overflow-x-auto border border-gray-200 rounded-lg dark:border-gray-700">
             <table class="w-full text-xs text-left">
                 <thead class="text-gray-600 bg-gray-50 dark:bg-gray-800 dark:text-gray-300">
@@ -386,20 +360,21 @@ new class extends Component {
                         <th class="px-2 py-1.5 font-medium">Deskripsi</th>
                         <th class="px-2 py-1.5 font-medium">Kategori</th>
                         <th class="px-2 py-1.5 font-medium text-center">Valid IM</th>
-                        @if (!$idrgFinal)
+                        @if (!$inacbgFinal)
                             <th class="px-2 py-1.5 w-8"></th>
                         @endif
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                    @foreach ($coderDiagnosa as $i => $d)
-                        <tr wire:key="coder-diag-{{ $i }}-{{ $d['code'] ?? 'x' }}" class="bg-white dark:bg-gray-900">
+                    @foreach ($coderInacbgDiagnosa as $i => $d)
+                        <tr wire:key="coder-inacbg-diag-{{ $i }}-{{ $d['code'] ?? 'x' }}"
+                            class="bg-white dark:bg-gray-900">
                             <td class="px-2 py-1.5 font-mono font-semibold text-gray-800 dark:text-gray-100">
                                 {{ $d['code'] ?? '' }}</td>
                             <td class="px-2 py-1.5 text-gray-700 dark:text-gray-300">{{ $d['desc'] ?? '' }}</td>
                             <td class="px-2 py-1.5">
                                 <x-select-input wire:change="setKategori({{ $i }}, $event.target.value)"
-                                    :disabled="$idrgFinal" class="text-xs">
+                                    :disabled="$inacbgFinal" class="text-xs">
                                     <option value="Primary" @selected(($d['kategori'] ?? 'Secondary') === 'Primary')>
                                         Primary</option>
                                     <option value="Secondary" @selected(($d['kategori'] ?? 'Secondary') === 'Secondary')>
@@ -416,10 +391,10 @@ new class extends Component {
                                     <span class="text-gray-400">-</span>
                                 @endif
                             </td>
-                            @if (!$idrgFinal)
+                            @if (!$inacbgFinal)
                                 <td class="px-2 py-1.5">
                                     <x-icon-button color="red" wire:click="remove({{ $i }})"
-                                        wire:confirm="Hapus diagnosa {{ $d['code'] ?? '' }} dari coder?">
+                                        wire:confirm="Hapus diagnosa {{ $d['code'] ?? '' }} dari coder INACBG?">
                                         <span class="text-base font-bold leading-none">×</span>
                                     </x-icon-button>
                                 </td>
@@ -431,14 +406,13 @@ new class extends Component {
         </div>
     @else
         <p class="py-2 text-xs text-center text-gray-400 dark:text-gray-500">
-            Belum ada diagnosa coder. Tambah via LOV atau klik "Sync dari EMR".
+            Belum ada diagnosa INACBG. Klik "Sync dari iDRG" atau tambah via LOV.
         </p>
     @endif
 
-    {{-- Response string yang terkirim --}}
-    @if (!empty($idrgDiagnosaString))
+    @if (!empty($inacbgDiagnosaString))
         <div class="px-2 py-1.5 text-xs font-mono text-gray-600 bg-gray-50 rounded dark:bg-gray-800 dark:text-gray-400">
-            <span class="text-gray-500">Terkirim:</span> {{ $idrgDiagnosaString }}
+            <span class="text-gray-500">Terkirim:</span> {{ $inacbgDiagnosaString }}
         </div>
     @endif
 </div>
