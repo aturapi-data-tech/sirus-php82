@@ -20,6 +20,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/master/poli', 'pages::master.master-poli.master-poli')
         ->name('master.poli');
 
+    Route::livewire('/master/karyawan', 'pages::master.master-karyawan.master-karyawan')
+        ->name('master.karyawan');
+
     // ===========================================
     // MASTER - SETUP JADWAL PELAYANAN DOKTER BPJS
     // ===========================================
