@@ -1,14 +1,19 @@
 {{-- resources/views/components/toggle.blade.php --}}
 {{--
     Pemakaian:
-      <x-toggle wire:model.live="passStatus" trueValue="N" falseValue="O" label="Pasien Baru" :disabled="$isFormLocked" />
-      <x-toggle wire:model.live="dataDaftarUGD.passStatus" trueValue="N" falseValue="O" label="Pasien Baru" />
-      <x-toggle wire:model.live="activeStatus" trueValue="1" falseValue="0">Status Aktif</x-toggle>
+      Mode 1 (model binding):
+        <x-toggle wire:model.live="passStatus" trueValue="N" falseValue="O" label="Pasien Baru" :disabled="$isFormLocked" />
+        <x-toggle wire:model.live="dataDaftarUGD.passStatus" trueValue="N" falseValue="O" label="Pasien Baru" />
+        <x-toggle wire:model.live="activeStatus" trueValue="1" falseValue="0">Status Aktif</x-toggle>
+
+      Mode 2 (per-row di table — pakai `current` + `wireClick`):
+        <x-toggle :current="$row->active_record" trueValue="1" falseValue="0"
+                  wireClick="toggleActive('{{ $row->emp_id }}')">Aktif</x-toggle>
 
     Catatan:
       - Mendukung nested array (dataDaftarXxx.field) tanpa @entangle
-      - Nilai awal diambil via data_get($__livewire, $wireModel)
-      - Toggle via $wire.set() saat klik
+      - Nilai awal diambil via $current (jika diisi) atau data_get($__livewire, $wireModel)
+      - Toggle via $wire.set() (Mode 1) atau $wire.{method}(...) (Mode 2)
 --}}
 
 @props([
@@ -16,15 +21,19 @@
     'falseValue' => 'N',
     'label' => null,
     'disabled' => false,
+    'current' => null,    // override initial value (untuk Mode 2 / per-row)
+    'wireClick' => null,  // alt wire:model — panggil method server saat klik (Mode 2)
 ])
 
 @php
     // Ambil nama model dari wire:model
     $wireModel = $attributes->whereStartsWith('wire:model')->first();
 
-    // Ambil nilai awal dari Livewire instance — support nested array
+    // Initial value: prioritas $current → wire:model lookup → falseValue
     $currentValue = null;
-    if ($wireModel && isset($__livewire)) {
+    if ($current !== null) {
+        $currentValue = $current;
+    } elseif ($wireModel && isset($__livewire)) {
         try {
             $currentValue = data_get($__livewire, $wireModel);
         } catch (\Throwable) {
@@ -45,6 +54,7 @@
         if (this.disabled) return;
         this.value = (this.value == this.trueValue) ? this.falseValue : this.trueValue;
         @if ($wireModel) $wire.set('{{ $wireModel }}', this.value); @endif
+        @if ($wireClick) $wire.{{ $wireClick }}; @endif
     }
 }" class="flex items-center space-x-2"
     :class="{
