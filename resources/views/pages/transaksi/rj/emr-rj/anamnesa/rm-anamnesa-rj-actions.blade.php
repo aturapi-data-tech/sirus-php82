@@ -3,12 +3,13 @@
 use Livewire\Component;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use Livewire\Attributes\On;
 
 new class extends Component {
-    use EmrRJTrait, MasterPasienTrait, WithRenderVersioningTrait;
+    use EmrRJTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
@@ -85,6 +86,9 @@ new class extends Component {
             'keluhanUtamaTab' => 'Keluhan Utama',
             'keluhanUtama' => [
                 'keluhanUtama' => '',
+                'snomedCode' => '',
+                'snomedDisplayEn' => '',
+                'snomedDisplayId' => '',
             ],
 
             'anamnesaDiperolehTab' => 'Anamnesa Diperoleh',
@@ -107,6 +111,9 @@ new class extends Component {
             'alergiTab' => 'Alergi',
             'alergi' => [
                 'alergi' => '',
+                'snomedCode' => '',
+                'snomedDisplayEn' => '',
+                'snomedDisplayId' => '',
             ],
 
             // 'rekonsiliasiObatTab' => 'Rekonsiliasi Obat',
@@ -313,7 +320,7 @@ new class extends Component {
         }
 
         // 3. Validasi Livewire rules
-        $this->validate();
+        $this->validateWithToast();
 
         try {
             DB::transaction(function () {
@@ -407,6 +414,44 @@ new class extends Component {
         $this->incrementVersion('modal-anamnesa-rj');
 
         $this->dispatch('toast', type: 'success', message: $message);
+    }
+
+    /* ===============================
+     | LOV SNOMED — Keluhan Utama
+     =============================== */
+    #[On('lov.selected.keluhanUtamaSnomed')]
+    public function onKeluhanUtamaSnomedSelected(string $target, array $payload): void
+    {
+        $this->dataDaftarPoliRJ['anamnesa']['keluhanUtama']['snomedCode'] = $payload['snomed_code'] ?? '';
+        $this->dataDaftarPoliRJ['anamnesa']['keluhanUtama']['snomedDisplayEn'] = $payload['display_en'] ?? '';
+        $this->dataDaftarPoliRJ['anamnesa']['keluhanUtama']['snomedDisplayId'] = $payload['display_id'] ?? '';
+    }
+
+    #[On('lov.cleared.keluhanUtamaSnomed')]
+    public function onKeluhanUtamaSnomedCleared(string $target): void
+    {
+        $this->dataDaftarPoliRJ['anamnesa']['keluhanUtama']['snomedCode'] = '';
+        $this->dataDaftarPoliRJ['anamnesa']['keluhanUtama']['snomedDisplayEn'] = '';
+        $this->dataDaftarPoliRJ['anamnesa']['keluhanUtama']['snomedDisplayId'] = '';
+    }
+
+    /* ===============================
+     | LOV SNOMED — Alergi
+     =============================== */
+    #[On('lov.selected.alergiSnomed')]
+    public function onAlergiSnomedSelected(string $target, array $payload): void
+    {
+        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedCode'] = $payload['snomed_code'] ?? '';
+        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedDisplayEn'] = $payload['display_en'] ?? '';
+        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedDisplayId'] = $payload['display_id'] ?? '';
+    }
+
+    #[On('lov.cleared.alergiSnomed')]
+    public function onAlergiSnomedCleared(string $target): void
+    {
+        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedCode'] = '';
+        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedDisplayEn'] = '';
+        $this->dataDaftarPoliRJ['anamnesa']['alergi']['snomedDisplayId'] = '';
     }
 
     protected function resetForm(): void

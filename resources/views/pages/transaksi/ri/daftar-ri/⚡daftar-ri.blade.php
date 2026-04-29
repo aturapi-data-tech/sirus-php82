@@ -62,11 +62,11 @@ new class extends Component {
 
     public function openCreate(): void
     {
-        $this->dispatch('daftar-ri.openCreate');
+        $this->dispatch('daftar-ri.create.open');
     }
     public function openEdit(string $riHdrNo): void
     {
-        $this->dispatch('daftar-ri.openEdit', riHdrNo: $riHdrNo);
+        $this->dispatch('daftar-ri.edit.open', riHdrNo: $riHdrNo);
     }
     public function openRekamMedis(string $riHdrNo): void
     {
@@ -87,6 +87,10 @@ new class extends Component {
     public function requestDelete(string $riHdrNo): void
     {
         $this->dispatch('toast', type: 'warning', message: 'Modul RI - Fitur Hapus dalam Pengembangan');
+    }
+    public function openIdrg(string $riHdrNo): void
+    {
+        $this->dispatch('daftar-ri.idrg.open', riHdrNo: $riHdrNo);
     }
 
     #[On('refresh-after-ri.saved')]
@@ -113,6 +117,7 @@ new class extends Component {
         $radSub = DB::table('rstxn_riradiologs')->select('rihdr_no', DB::raw('COUNT(*) as rad_status'))->groupBy('rihdr_no');
 
         $query = DB::table('rsview_rihdrs as rv')
+            ->leftJoin('rsmst_klaimtypes as kt', 'kt.klaim_id', '=', 'rv.klaim_id')
             ->leftJoinSub($labSub, 'lab', fn($j) => $j->on('lab.ref_no', '=', 'rv.rihdr_no'))
             ->leftJoinSub($radSub, 'rad', fn($j) => $j->on('rad.rihdr_no', '=', 'rv.rihdr_no'))
             ->select([
@@ -134,6 +139,7 @@ new class extends Component {
                 'rv.dr_id',
                 'rv.dr_name',
                 'rv.klaim_id',
+                'kt.klaim_status',
                 'rv.ri_status',
                 'rv.erm_status',
                 'rv.vno_sep',
@@ -250,8 +256,8 @@ new class extends Component {
                 $row->status_text = $statusMap[$row->erm_status] ?? 'Pelayanan';
                 $row->status_variant = $statusVariant[$row->erm_status] ?? 'gray';
             } else {
-                $statusMap = ['I' => 'Dirawat', 'L' => 'Pulang', 'P' => 'Pindah Kamar'];
-                $statusVariant = ['I' => 'brand', 'L' => 'success', 'P' => 'warning'];
+                $statusMap = ['I' => 'Dirawat', 'P' => 'Pulang'];
+                $statusVariant = ['I' => 'brand', 'P' => 'success'];
                 $row->status_text = $statusMap[$row->ri_status] ?? 'RI';
                 $row->status_variant = $statusVariant[$row->ri_status] ?? 'gray';
             }
@@ -449,25 +455,27 @@ new class extends Component {
                                             {{ $row->room_name ?? '-' }}
                                             / Bed: <span class="font-semibold">{{ $row->bed_no ?? '-' }}</span>
                                         </div>
-                                        <div class="text-base text-gray-600 dark:text-gray-400">
-                                            Dr. {{ $row->dr_name ?? '-' }}
-                                        </div>
-
                                         @if (!empty($row->leveling_dokter_list))
                                             <div class="space-y-0.5">
+                                                <div class="text-xs text-gray-400">DPJP:</div>
                                                 @foreach ($row->leveling_dokter_list as $ld)
-                                                    @if (!empty($ld['drDesc']))
-                                                        <div class="text-xs text-gray-500 dark:text-gray-400">
-                                                            {{ $ld['drDesc'] }}
-                                                            @if (!empty($ld['levelingDesc']))
-                                                                <span
-                                                                    class="text-gray-400">({{ $ld['levelingDesc'] }})</span>
+                                                    @if (!empty($ld['drName']))
+                                                        <div class="text-base text-gray-700 dark:text-gray-200">
+                                                            {{ $ld['drName'] }}
+                                                            @if (!empty($ld['levelDokter']))
+                                                                <span class="text-xs text-gray-500">
+                                                                    ({{ $ld['levelDokter'] === 'RawatGabung' ? 'Rawat Gabung' : $ld['levelDokter'] }})
+                                                                </span>
                                                             @endif
                                                         </div>
                                                     @endif
                                                 @endforeach
                                             </div>
                                         @endif
+
+                                        <div class="text-xs italic text-gray-500 dark:text-gray-400">
+                                            Penerima: {{ $row->dr_name ?? '-' }}
+                                        </div>
 
                                         <x-badge :variant="$row->klaim_badge_variant">{{ $row->klaim_id ?? '-' }}</x-badge>
 
@@ -707,6 +715,32 @@ new class extends Component {
                                                                 </x-dropdown-link>
                                                             @endhasanyrole
 
+                                                            {{-- Kirim iDRG — Admin & Casemix, BPJS + ri_status=Pulang --}}
+                                                            @hasanyrole('Admin|Casemix')
+                                                                @if (($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM') && $row->ri_status === 'P')
+                                                                    <x-dropdown-link href="#"
+                                                                        wire:click.prevent="openIdrg('{{ $row->rihdr_no }}')"
+                                                                        class="px-3 py-2 text-sm rounded-lg bg-brand/5 hover:bg-brand/10 dark:bg-brand-lime/10 dark:hover:bg-brand-lime/20">
+                                                                        <div class="flex items-start gap-2">
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-brand dark:text-brand-lime"
+                                                                                fill="none" stroke="currentColor"
+                                                                                viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round"
+                                                                                    stroke-linejoin="round"
+                                                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                            </svg>
+                                                                            <span
+                                                                                class="text-brand dark:text-brand-lime font-semibold">Kirim
+                                                                                iDRG / INACBG<br>
+                                                                                <span
+                                                                                    class="text-xs font-normal opacity-80">E-Klaim
+                                                                                    Kemenkes</span>
+                                                                            </span>
+                                                                        </div>
+                                                                    </x-dropdown-link>
+                                                                @endif
+                                                            @endhasanyrole
+
                                                         </div>
 
                                                         <div
@@ -765,6 +799,10 @@ new class extends Component {
             <livewire:pages::transaksi.ri.emr-ri.erm-ri wire:key="emr-ri-actions" />
             <livewire:pages::transaksi.ri.administrasi-ri.administrasi-ri wire:key="administrasi-ri-actions" />
             <livewire:pages::transaksi.ri.administrasi-ri.pindah-kamar-ri wire:key="pindah-kamar-ri" />
+
+            {{-- iDRG/INACBG Modal (sibling, listen ke event daftar-ri.idrg.open) --}}
+            <livewire:pages::transaksi.ri.daftar-ri.idrg-ri-actions wire:key="idrg-ri-actions" />
+
             <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.modul-dokumen-ri wire:key="modul-dokumen-ri" />
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-ri" />
 

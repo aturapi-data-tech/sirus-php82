@@ -65,7 +65,7 @@ new class extends Component {
     /* ===============================
      | OPEN CREATE
      =============================== */
-    #[On('daftar-ugd.openCreate')]
+    #[On('daftar-ugd.create.open')]
     public function openCreate(): void
     {
         $this->resetForm();
@@ -76,17 +76,7 @@ new class extends Component {
 
         $now = Carbon::now();
         $this->dataDaftarUGD['rjDate'] = $now->format('d/m/Y H:i:s');
-
-        $findShift = DB::table('rstxn_shiftctls')
-            ->select('shift')
-            ->whereNotNull('shift_start')
-            ->whereNotNull('shift_end')
-            ->where('shift_start', '!=', '')
-            ->where('shift_end', '!=', '')
-            ->whereRaw('? BETWEEN shift_start AND shift_end', [$now->format('H:i:s')])
-            ->first();
-
-        $this->dataDaftarUGD['shift'] = (string) ($findShift?->shift ?? 1);
+        $this->dataDaftarUGD['shift'] = $this->resolveShiftByTime($now->format('H:i:s'));
         $this->dataDaftarUGD['entryId'] = $this->entryId;
         $this->dataDaftarUGD['entryDesc'] = collect($this->entryOptions)->firstWhere('entryId', $this->entryId)['entryDesc'] ?? '';
 
@@ -98,7 +88,7 @@ new class extends Component {
     /* ===============================
      | OPEN EDIT
      =============================== */
-    #[On('daftar-ugd.openEdit')]
+    #[On('daftar-ugd.edit.open')]
     public function openEdit(string $rjNo): void
     {
         $this->resetForm();
@@ -281,10 +271,6 @@ new class extends Component {
         }
 
         $data['taskIdPelayanan'] ??= [];
-
-        if (empty($data['taskIdPelayanan']['taskId3']) && !empty($data['rjDate'])) {
-            $data['taskIdPelayanan']['taskId3'] = $data['rjDate'];
-        }
     }
 
     /* ===============================
@@ -533,7 +519,55 @@ new class extends Component {
             $this->dataDaftarUGD['klaimStatus'] = DB::table('rsmst_klaimtypes')->where('klaim_id', $value)->value('klaim_status') ?? 'UMUM';
             $this->incrementVersion('modal');
         }
+
+        if ($name === 'dataDaftarUGD.rjDate' && !empty($value)) {
+            try {
+                $time = Carbon::createFromFormat('d/m/Y H:i:s', $value)->format('H:i:s');
+                $this->dataDaftarUGD['shift'] = $this->resolveShiftByTime($time);
+            } catch (\Throwable $e) {
+                // Format belum valid (user masih mengetik) — biarkan shift apa adanya
+            }
+        }
     }
+
+    public function shiftMismatchMessage(): ?string
+    {
+        $rjDate = $this->dataDaftarUGD['rjDate'] ?? '';
+        $shift = (string) ($this->dataDaftarUGD['shift'] ?? '');
+        if (empty($rjDate) || empty($shift)) return null;
+
+        try {
+            $time = Carbon::createFromFormat('d/m/Y H:i:s', $rjDate)->format('H:i:s');
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        $expected = $this->resolveShiftByTime($time);
+        if ($expected === $shift) return null;
+
+        return "Jam {$time} seharusnya Shift {$expected}, bukan Shift {$shift}.";
+    }
+
+    private function resolveShiftByTime(string $time): string
+    {
+        // Oracle treats '' as NULL, jadi whereNotNull sudah cukup — jangan tambah where('!=',''),
+        // karena `col != NULL` selalu unknown/false → semua row ter-filter habis.
+        $row = DB::table('rstxn_shiftctls')
+            ->select('shift')
+            ->whereNotNull('shift_start')
+            ->whereNotNull('shift_end')
+            ->whereRaw('? BETWEEN shift_start AND shift_end', [$time])
+            ->first();
+
+        return (string) ($row?->shift ?? '1');
+    }
+
+    /* ===============================
+     | iDRG (E-Klaim Kemenkes)
+     =============================== */
+    // Modal iDRG/INACBG full pindah ke SFC idrg-ugd-actions (sibling component
+    // di-embed di ⚡daftar-ugd.blade.php). Trigger lewat dispatch event
+    // 'daftar-ugd.idrg.open'.
 
     /* ===============================
      | HELPERS
@@ -612,6 +646,9 @@ new class extends Component {
                                 <option value="3">Shift 3</option>
                             </x-select-input>
                             <x-input-error :messages="$errors->get('dataDaftarUGD.shift')" class="mt-1" />
+                            @if ($shiftMsg = $this->shiftMismatchMessage())
+                                <p class="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{{ $shiftMsg }}</p>
+                            @endif
                         </div>
                     </div>
 
@@ -794,4 +831,6 @@ new class extends Component {
 
     {{-- Cetak SEP --}}
     <livewire:pages::components.modul-dokumen.b-p-j-s.cetak-sep.cetak-sep wire:key="cetak-sep-ugd" />
+
+    {{-- iDRG (E-Klaim) Modal --}}
 </div>

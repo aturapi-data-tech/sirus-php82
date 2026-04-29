@@ -30,18 +30,21 @@ new class extends Component {
             ['group' => 'Master', 'groupOrder' => 1, 'order' => 9, 'title' => 'Master Kelas Rawat', 'desc' => 'Kelola kelas kamar & mapping Aplicares / SIRS', 'href' => route('master.kelas'), 'roles' => ['admin'], 'badge' => 'Master'],
             ['group' => 'Master', 'groupOrder' => 1, 'order' => 10, 'title' => 'Pemetaan Jadwal Dokter', 'desc' => 'Ambil & terapkan jadwal praktek dokter dari BPJS ke data RS', 'href' => route('master.setup-jadwal-bpjs'), 'roles' => ['admin', 'mr'], 'badge' => 'BPJS'],
             ['group' => 'Master', 'groupOrder' => 1, 'order' => 11, 'title' => 'Master Diagnosis Keperawatan', 'desc' => 'Kelola data SDKI, SLKI, SIKI asuhan keperawatan', 'href' => route('master.diag-keperawatan'), 'roles' => ['admin', 'perawat'], 'badge' => 'Master'],
+            ['group' => 'Master', 'groupOrder' => 1, 'order' => 12, 'title' => 'Master Laboratorium', 'desc' => 'Kelola kategori lab & item pemeriksaan', 'href' => route('master.laborat'), 'roles' => ['admin', 'laboratorium'], 'badge' => 'Master'],
+            ['group' => 'Master', 'groupOrder' => 1, 'order' => 13, 'title' => 'Master Karyawan', 'desc' => 'Kelola NIK karyawan untuk login user & coder iDRG (E-Klaim)', 'href' => route('master.karyawan'), 'roles' => ['admin'], 'badge' => 'Master'],
 
             // ── Rawat Jalan ─────────────────────────────────────────────
-            ['group' => 'Rawat Jalan', 'groupOrder' => 2, 'order' => 1, 'title' => 'Daftar Rawat Jalan', 'desc' => 'Pendaftaran & manajemen pasien rawat jalan', 'href' => route('rawat-jalan.daftar'), 'roles' => ['admin', 'mr', 'perawat', 'dokter'], 'badge' => 'RJ'],
+            ['group' => 'Rawat Jalan', 'groupOrder' => 2, 'order' => 1, 'title' => 'Daftar Rawat Jalan', 'desc' => 'Pendaftaran & manajemen pasien rawat jalan', 'href' => route('rawat-jalan.daftar'), 'roles' => ['admin', 'mr', 'perawat', 'dokter', 'casemix'], 'badge' => 'RJ'],
             ['group' => 'Rawat Jalan', 'groupOrder' => 2, 'order' => 2, 'title' => 'Booking RJ', 'desc' => 'Daftar pasien booking rawat jalan via Mobile JKN', 'href' => route('rawat-jalan.booking'), 'roles' => ['admin', 'mr'], 'badge' => 'BKG'],
-            ['group' => 'Rawat Jalan', 'groupOrder' => 2, 'order' => 3, 'title' => 'Antrian Apotek', 'desc' => 'Telaah resep & pelayanan kefarmasian rawat jalan', 'href' => route('transaksi.rj.antrian-apotek-rj'), 'roles' => ['admin', 'apotek'], 'badge' => 'APT'],
 
             // ── UGD ─────────────────────────────────────────────────────
-            ['group' => 'UGD', 'groupOrder' => 3, 'order' => 1, 'title' => 'Daftar UGD', 'desc' => 'Pendaftaran & manajemen pasien UGD', 'href' => route('ugd.daftar'), 'roles' => ['admin', 'mr', 'perawat', 'dokter'], 'badge' => 'UGD'],
-            ['group' => 'UGD', 'groupOrder' => 3, 'order' => 2, 'title' => 'Antrian Apotek UGD', 'desc' => 'Telaah resep & pelayanan kefarmasian UGD', 'href' => route('transaksi.ugd.antrian-apotek-ugd'), 'roles' => ['admin', 'apotek'], 'badge' => 'APT'],
+            ['group' => 'UGD', 'groupOrder' => 3, 'order' => 1, 'title' => 'Daftar UGD', 'desc' => 'Pendaftaran & manajemen pasien UGD', 'href' => route('ugd.daftar'), 'roles' => ['admin', 'mr', 'perawat', 'dokter', 'casemix'], 'badge' => 'UGD'],
+
+            // ── Apotek ─────────────────────────────────────────────────
+            ['group' => 'Apotek', 'groupOrder' => 6, 'order' => 1, 'title' => 'Antrian Apotek', 'desc' => 'Telaah resep & pelayanan kefarmasian — tab RJ & UGD', 'href' => route('transaksi.apotek'), 'roles' => ['admin', 'apotek'], 'badge' => 'APT'],
 
             // ── RI ─────────────────────────────────────────────────────
-            ['group' => 'RI', 'groupOrder' => 2, 'order' => 1, 'title' => 'Daftar RI', 'desc' => 'Pendaftaran & manajemen pasien Rawat Inap', 'href' => route('ri.daftar'), 'roles' => ['admin', 'mr', 'perawat', 'dokter'], 'badge' => 'RI'],
+            ['group' => 'RI', 'groupOrder' => 2, 'order' => 1, 'title' => 'Daftar RI', 'desc' => 'Pendaftaran & manajemen pasien Rawat Inap', 'href' => route('ri.daftar'), 'roles' => ['admin', 'mr', 'perawat', 'dokter', 'casemix'], 'badge' => 'RI'],
             ['group' => 'RI', 'groupOrder' => 2, 'order' => 2, 'title' => 'Update Tempat Tidur RI', 'desc' => 'Sync ketersediaan kamar RI ke Aplicares & SIRS Kemenkes', 'href' => route('ri.update-tt-ri'), 'roles' => ['admin', 'mr', 'perawat', 'dokter'], 'badge' => 'TT'],
             //['group' => 'RI', 'groupOrder' => 2, 'order' => 3, 'title' => 'Antrian Apotek RI', 'desc' => 'Telaah resep & pelayanan kefarmasian RI', 'href' => route('transaksi.ri.antrian-apotek-ri'), 'roles' => ['admin', 'apotek'], 'badge' => 'APT'],
 
@@ -49,16 +52,20 @@ new class extends Component {
             ['group' => 'Keuangan', 'groupOrder' => 4, 'order' => 1, 'title' => 'Penerimaan Kas TU', 'desc' => 'Catat penerimaan kas di luar transaksi pelayanan RS', 'href' => route('keuangan.penerimaan-kas-tu'), 'roles' => ['admin', 'tu'], 'badge' => 'CI'],
             ['group' => 'Keuangan', 'groupOrder' => 4, 'order' => 2, 'title' => 'Pengeluaran Kas TU', 'desc' => 'Catat pengeluaran kas di luar transaksi pelayanan RS', 'href' => route('keuangan.pengeluaran-kas-tu'), 'roles' => ['admin', 'tu'], 'badge' => 'CO'],
 
+            // ── Gudang ────────────────────────────────────────────────
+            ['group' => 'Gudang', 'groupOrder' => 5, 'order' => 1, 'title' => 'Obat dari PBF', 'desc' => 'Penerimaan obat dari PBF / Supplier (Gudang Medis)', 'href' => route('gudang.penerimaan-medis'), 'roles' => ['admin', 'apotek'], 'badge' => 'RCV'],
+
             // ── Penunjang ──────────────────────────────────────────────
-            ['group' => 'Penunjang', 'groupOrder' => 5, 'order' => 1, 'title' => 'Transaksi Laboratorium', 'desc' => 'Input hasil pemeriksaan laboratorium pasien', 'href' => route('transaksi.penunjang.laborat'), 'roles' => ['admin'], 'badge' => 'LAB'],
+            ['group' => 'Penunjang', 'groupOrder' => 5, 'order' => 1, 'title' => 'Transaksi Laboratorium', 'desc' => 'Input hasil pemeriksaan laboratorium pasien', 'href' => route('transaksi.penunjang.laborat'), 'roles' => ['admin', 'laboratorium'], 'badge' => 'LAB'],
 
             // ── Operasi ─────────────────────────────────────────────────
-            ['group' => 'Operasi', 'groupOrder' => 6, 'order' => 1, 'title' => 'Jadwal Operasi', 'desc' => 'Booking & manajemen jadwal operasi pasien', 'href' => route('operasi.jadwal-operasi'), 'roles' => ['admin', 'mr', 'perawat'], 'badge' => 'OK'],
+            ['group' => 'Operasi', 'groupOrder' => 7, 'order' => 1, 'title' => 'Jadwal Operasi', 'desc' => 'Booking & manajemen jadwal operasi pasien', 'href' => route('operasi.jadwal-operasi'), 'roles' => ['admin', 'mr', 'perawat'], 'badge' => 'OK'],
 
             // ── Database & Infrastruktur ─────────────────────────────────
-            ['group' => 'Sistem', 'groupOrder' => 7, 'order' => 1, 'title' => 'Oracle Session Monitor', 'desc' => 'Locks, long-running SQL & kill session', 'href' => route('database-monitor.monitoring-dashboard'), 'roles' => ['admin'], 'badge' => 'DB'],
-            ['group' => 'Sistem', 'groupOrder' => 7, 'order' => 2, 'title' => 'Mounting Control', 'desc' => 'Mount/unmount share folder jaringan (CIFS/SMB)', 'href' => route('database-monitor.monitoring-mount-control'), 'roles' => ['admin'], 'badge' => 'MNT'],
-            ['group' => 'Sistem', 'groupOrder' => 7, 'order' => 3, 'title' => 'User Control', 'desc' => 'Kelola user & hak akses sistem', 'href' => route('database-monitor.user-control'), 'roles' => ['admin'], 'badge' => 'USR'],
+            ['group' => 'Sistem', 'groupOrder' => 8, 'order' => 1, 'title' => 'Oracle Session Monitor', 'desc' => 'Locks, long-running SQL & kill session', 'href' => route('database-monitor.monitoring-dashboard'), 'roles' => ['admin'], 'badge' => 'DB'],
+            ['group' => 'Sistem', 'groupOrder' => 8, 'order' => 2, 'title' => 'Mounting Control', 'desc' => 'Mount/unmount share folder jaringan (CIFS/SMB)', 'href' => route('database-monitor.monitoring-mount-control'), 'roles' => ['admin'], 'badge' => 'MNT'],
+            ['group' => 'Sistem', 'groupOrder' => 8, 'order' => 3, 'title' => 'User Control', 'desc' => 'Kelola user & hak akses sistem', 'href' => route('database-monitor.user-control'), 'roles' => ['admin'], 'badge' => 'USR'],
+            ['group' => 'Sistem', 'groupOrder' => 8, 'order' => 4, 'title' => 'Role Control', 'desc' => 'Kelola role & permission sistem', 'href' => route('database-monitor.role-control'), 'roles' => ['admin'], 'badge' => 'ROL'],
         ];
     }
 

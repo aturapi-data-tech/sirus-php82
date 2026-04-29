@@ -6,10 +6,11 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
 use App\Http\Traits\BPJS\VclaimTrait;
 
 new class extends Component {
-    use EmrRJTrait, WithRenderVersioningTrait;
+    use EmrRJTrait, WithRenderVersioningTrait, WithValidationToastTrait;
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
@@ -76,7 +77,7 @@ new class extends Component {
         // 2. Belum ada → pakai default
         $this->formKontrol = !empty($dataDaftarPoliRJ['kontrol']) && is_array($dataDaftarPoliRJ['kontrol']) ? $dataDaftarPoliRJ['kontrol'] : $this->getDefaultKontrol();
 
-        if ($this->checkRJStatus($rjNo)) {
+        if ($this->checkEmrRJStatus($rjNo)) {
             $this->isFormLocked = true;
         }
 
@@ -252,7 +253,7 @@ new class extends Component {
 
         // 6. Auto-generate noKontrolRS + validasi
         $this->setNoKontrolRS();
-        $this->validate();
+        $this->validateWithToast();
 
         // 7. Push ke BPJS — DI LUAR transaksi DB
         $this->pushSuratKontrolBPJS();
@@ -353,11 +354,12 @@ new class extends Component {
 
                                 {{-- Tgl Kontrol — Enter → fokus ke LOV dokter via ref --}}
                                 <div>
-                                    <x-input-label value="Tanggal Kontrol" class="mb-1" />
+                                    <x-input-label value="Tanggal Kontrol *" class="mb-1" />
                                     <x-text-input wire:model.live="formKontrol.tglKontrol" placeholder="dd/mm/yyyy"
                                         :disabled="$isFormLocked" x-ref="inputTglKontrol" x-init="$nextTick(() => $refs.inputTglKontrol?.focus())"
                                         x-on:keyup.enter="$nextTick(() => $refs.lovDokterInput?.querySelector('input')?.focus())"
                                         class="w-full" />
+                                    <p class="mt-1 text-xs text-gray-400">Format: dd/mm/yyyy contoh: 02/05/2026 (tahun harus 4 digit)</p>
                                     <x-input-error :messages="$errors->get('formKontrol.tglKontrol')" class="mt-1" />
                                 </div>
 

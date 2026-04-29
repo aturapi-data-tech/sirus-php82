@@ -549,7 +549,7 @@ new class extends Component {
             return false;
         }
 
-        return $user->hasAnyRole(['Admin', 'Laborat']);
+        return $user->hasAnyRole(['Admin', 'Laboratorium']);
     }
 };
 ?>

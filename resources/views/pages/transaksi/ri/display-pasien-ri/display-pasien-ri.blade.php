@@ -177,13 +177,13 @@ new class extends Component {
                             </thead>
                             <tbody>
                                 @forelse ($levelingDokter as $ld)
-                                    @if (!empty($ld['drDesc']))
+                                    @if (!empty($ld['drName']))
                                         <tr>
                                             <td class="py-0.5 pr-2 font-semibold text-brand">
-                                                {{ $ld['drDesc'] }}
+                                                {{ $ld['drName'] }}
                                             </td>
                                             <td class="py-0.5 text-gray-500">
-                                                {{ $ld['levelingDesc'] ?? '-' }}
+                                                {{ ($ld['levelDokter'] ?? '') === 'RawatGabung' ? 'Rawat Gabung' : ($ld['levelDokter'] ?? '-') }}
                                             </td>
                                         </tr>
                                     @endif

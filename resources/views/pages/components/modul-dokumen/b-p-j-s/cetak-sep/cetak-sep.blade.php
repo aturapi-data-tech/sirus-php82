@@ -79,6 +79,23 @@ new class extends Component {
         // Identitas RS
         $identitasRs = DB::table('rsmst_identitases')->select('int_name', 'int_phone1', 'int_address', 'int_city')->first();
 
+        // Resolve nama DPJP: resSep.dpjp.nmDPJP (BPJS) → lookup kode DPJP di reqSep ke rsmst_doctors
+        // (kasus RI: dpjpLayan dikirim kosong, kode DPJP riil ada di skdp.kodeDPJP;
+        //  drDesc di rihdrs = dokter penerima/umum, bukan DPJP spesialis) → dataTxn.drDesc.
+        $dokterDpjp = $resSep['dpjp']['nmDPJP'] ?? null;
+        $kodeDpjpReq = $reqSep['dpjpLayan'] ?? '';
+        if (empty($kodeDpjpReq)) {
+            $kodeDpjpReq = $reqSep['skdp']['kodeDPJP'] ?? '';
+        }
+        if (empty($dokterDpjp) && !empty($kodeDpjpReq)) {
+            $dokterDpjp = DB::table('rsmst_doctors')
+                ->where('kd_dr_bpjs', $kodeDpjpReq)
+                ->value('dr_name');
+        }
+        if (empty($dokterDpjp)) {
+            $dokterDpjp = $dataTxn['drDesc'] ?? '-';
+        }
+
         $data = [
             'sep' => $sep,
             'reqSep' => $reqSep,
@@ -89,6 +106,7 @@ new class extends Component {
             'identitasRs' => $identitasRs,
             'namaRs' => $identitasRs->int_name ?? 'RSI MADINAH',
             'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d-m-Y H:i:s'),
+            'dokterDpjp' => $dokterDpjp,
         ];
 
         set_time_limit(300);

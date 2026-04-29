@@ -67,12 +67,12 @@ new class extends Component {
      * ------------------------- */
     public function openCreate(): void
     {
-        $this->dispatch('daftar-ugd.openCreate');
+        $this->dispatch('daftar-ugd.create.open');
     }
 
     public function openEdit(string $rjNo): void
     {
-        $this->dispatch('daftar-ugd.openEdit', rjNo: $rjNo);
+        $this->dispatch('daftar-ugd.edit.open', rjNo: $rjNo);
     }
 
     public function openRekamMedis(string $rjNo): void
@@ -88,6 +88,11 @@ new class extends Component {
     public function openAdministrasiPasien(string $rjNo): void
     {
         $this->dispatch('emr-ugd.administrasi.open', rjNo: $rjNo);
+    }
+
+    public function openIdrg(string $rjNo): void
+    {
+        $this->dispatch('daftar-ugd.idrg.open', rjNo: $rjNo);
     }
 
     public function requestDelete(string $rjNo): void
@@ -191,10 +196,10 @@ new class extends Component {
             /* E-Resep */
             $row->eresep_percent = isset($json['eresep']) || isset($json['eresepRacikan']) ? 100 : 0;
 
-            /* Task ID */
-            $row->task_id3 = $json['taskIdPelayanan']['taskId3'] ?? null;
-            $row->task_id4 = $json['taskIdPelayanan']['taskId4'] ?? null;
-            $row->task_id5 = $json['taskIdPelayanan']['taskId5'] ?? null;
+            /* Task ID (UGD: 6, 7, 99) */
+            $row->task_id6 = $json['taskIdPelayanan']['taskId6'] ?? null;
+            $row->task_id7 = $json['taskIdPelayanan']['taskId7'] ?? null;
+            $row->task_id99 = $json['taskIdPelayanan']['taskId99'] ?? null;
 
             /* No Referensi */
             $row->no_referensi = $json['noReferensi'] ?? null;
@@ -540,14 +545,14 @@ new class extends Component {
                                         </div>
 
                                         <div class="grid grid-cols-1 space-y-1">
-                                            @if ($row->task_id3)
-                                                <x-badge variant="success">TaskId3 {{ $row->task_id3 }}</x-badge>
+                                            @if ($row->task_id6)
+                                                <x-badge variant="success">TaskId6 {{ $row->task_id6 }}</x-badge>
                                             @endif
-                                            @if ($row->task_id4)
-                                                <x-badge variant="brand">TaskId4 {{ $row->task_id4 }}</x-badge>
+                                            @if ($row->task_id7)
+                                                <x-badge variant="brand">TaskId7 {{ $row->task_id7 }}</x-badge>
                                             @endif
-                                            @if ($row->task_id5)
-                                                <x-badge variant="warning">TaskId5 {{ $row->task_id5 }}</x-badge>
+                                            @if ($row->task_id99)
+                                                <x-badge variant="danger">Batal {{ $row->task_id99 }}</x-badge>
                                             @endif
                                         </div>
 
@@ -683,6 +688,30 @@ new class extends Component {
                                                                 </x-dropdown-link>
                                                             @endhasanyrole
 
+                                                            {{-- Kirim iDRG — Admin & Casemix, BPJS + rj_status=Selesai --}}
+                                                            @hasanyrole('Admin|Casemix')
+                                                                @if (($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM') && $row->rj_status === 'L')
+                                                                    <x-dropdown-link href="#"
+                                                                        wire:click.prevent="openIdrg('{{ $row->rj_no }}')"
+                                                                        class="px-3 py-2 text-sm rounded-lg bg-brand/5 hover:bg-brand/10 dark:bg-brand-lime/10 dark:hover:bg-brand-lime/20">
+                                                                        <div class="flex items-start gap-2">
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0"
+                                                                                fill="none" stroke="currentColor"
+                                                                                viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round"
+                                                                                    stroke-linejoin="round"
+                                                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                            </svg>
+                                                                            <span>
+                                                                                Kirim iDRG / INACBG <br>
+                                                                                <span
+                                                                                    class="font-semibold">{{ $row->reg_name }}</span>
+                                                                            </span>
+                                                                        </div>
+                                                                    </x-dropdown-link>
+                                                                @endif
+                                                            @endhasanyrole
+
                                                         </div>
 
                                                         {{-- DIVIDER --}}
@@ -741,6 +770,10 @@ new class extends Component {
             <livewire:pages::transaksi.ugd.daftar-ugd.daftar-ugd-actions wire:key="daftar-ugd-actions" />
             <livewire:pages::transaksi.ugd.emr-ugd.erm-ugd wire:key="emr-ugd-actions" />
             <livewire:pages::transaksi.ugd.administrasi-ugd.administrasi-ugd wire:key="administrasi-ugd-actions" />
+
+            {{-- iDRG/INACBG Modal (sibling, listen ke event daftar-ugd.idrg.open) --}}
+            <livewire:pages::transaksi.ugd.daftar-ugd.idrg-ugd-actions wire:key="idrg-ugd-actions" />
+
             <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.modul-dokumen-ugd wire:key="modul-dokumen-ugd" />
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-ugd" />
 

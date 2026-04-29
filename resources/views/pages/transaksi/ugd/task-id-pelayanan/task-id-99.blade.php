@@ -17,7 +17,7 @@ new class extends Component {
      |
      | Pola:
      |   1. Guard awal (empty rjNo)
-     |   2. DB::transaction: lockUGDRow → findDataUGD → guard taskId4/5/99
+     |   2. DB::transaction: lockUGDRow → findDataUGD → guard taskId6/7/99
      |      → set taskId99 → updateJsonUGD
      |   3. dispatch DI LUAR transaksi
      =============================== */
@@ -44,13 +44,13 @@ new class extends Component {
                     throw new \RuntimeException('Data UGD tidak ditemukan.');
                 }
 
-                // 3. Hard stop — tidak bisa batalkan jika taskId4/5 sudah ada
-                if (!empty($data['taskIdPelayanan']['taskId4'] ?? null)) {
-                    throw new \RuntimeException('Tidak dapat membatalkan antrian karena TaskId4 (Selesai Pelayanan) sudah tercatat.');
+                // 3. Hard stop — tidak bisa batalkan jika taskId6/7 sudah ada
+                if (!empty($data['taskIdPelayanan']['taskId6'] ?? null)) {
+                    throw new \RuntimeException('Tidak dapat membatalkan antrian karena TaskId6 (Masuk Apotek) sudah tercatat.');
                 }
 
-                if (!empty($data['taskIdPelayanan']['taskId5'] ?? null)) {
-                    throw new \RuntimeException('Tidak dapat membatalkan antrian karena TaskId5 (Panggil Antrian) sudah tercatat.');
+                if (!empty($data['taskIdPelayanan']['taskId7'] ?? null)) {
+                    throw new \RuntimeException('Tidak dapat membatalkan antrian karena TaskId7 (Keluar Apotek) sudah tercatat.');
                 }
 
                 // 4. Guard idempoten — jika taskId99 sudah ada, skip update
@@ -84,7 +84,7 @@ new class extends Component {
 
 <div class="inline-block">
     <x-danger-button wire:click="prosesTaskId99" wire:loading.attr="disabled" wire:target="prosesTaskId99"
-        class="!px-2 !py-1 text-xs" title="Klik untuk membatalkan antrian (hanya bisa sebelum TaskId4/5)">
+        class="!px-2 !py-1 text-xs" title="Klik untuk membatalkan antrian (hanya bisa sebelum TaskId6/7)">
         <span wire:loading.remove wire:target="prosesTaskId99">Batal</span>
         <span wire:loading wire:target="prosesTaskId99"><x-loading /></span>
     </x-danger-button>

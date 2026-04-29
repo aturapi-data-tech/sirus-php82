@@ -7,9 +7,10 @@ use Carbon\Carbon;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
 
 new class extends Component {
-    use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait;
+    use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
@@ -134,7 +135,7 @@ new class extends Component {
             return;
         }
 
-        $this->validate();
+        $this->validateWithToast();
 
         try {
             DB::transaction(function () {

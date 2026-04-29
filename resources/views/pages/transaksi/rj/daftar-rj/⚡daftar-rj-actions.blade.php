@@ -49,13 +49,13 @@ new class extends Component {
      =============================== */
     public function mount(): void
     {
-        $this->registerAreas(['modal', 'pasien', 'dokter']);
+        $this->registerAreas(['modal', 'pasien', 'dokter', 'satu-sehat']);
     }
 
     /* ===============================
      | OPEN CREATE
      =============================== */
-    #[On('daftar-rj.openCreate')]
+    #[On('daftar-rj.create.open')]
     public function openCreate(): void
     {
         $this->resetForm();
@@ -66,17 +66,7 @@ new class extends Component {
 
         $now = Carbon::now();
         $this->dataDaftarPoliRJ['rjDate'] = $now->format('d/m/Y H:i:s');
-
-        $findShift = DB::table('rstxn_shiftctls')
-            ->select('shift')
-            ->whereNotNull('shift_start')
-            ->whereNotNull('shift_end')
-            ->where('shift_start', '!=', '')
-            ->where('shift_end', '!=', '')
-            ->whereRaw('? BETWEEN shift_start AND shift_end', [$now->format('H:i:s')])
-            ->first();
-
-        $this->dataDaftarPoliRJ['shift'] = (string) ($findShift?->shift ?? 1);
+        $this->dataDaftarPoliRJ['shift'] = $this->resolveShiftByTime($now->format('H:i:s'));
 
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'rj-actions');
@@ -86,7 +76,7 @@ new class extends Component {
     /* ===============================
      | OPEN EDIT
      =============================== */
-    #[On('daftar-rj.openEdit')]
+    #[On('daftar-rj.edit.open')]
     public function openEdit(string $rjNo): void
     {
         $this->resetForm();
@@ -158,16 +148,12 @@ new class extends Component {
             // 1b. CEK KUOTA — hanya untuk poli spesialis, warning saja
             // ============================================================
             if ($isPoliSpesialis && $this->formMode === 'create') {
-                $jadwal = $this->getJadwalPraktek(
-                    Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate'])
-                );
+                $jadwal = $this->getJadwalPraktek(Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate']));
 
                 if ($jadwal['_not_found'] ?? false) {
-                    $this->dispatch('toast', type: 'warning',
-                        message: 'Jadwal praktek dokter tidak ditemukan untuk hari ini. Data tetap disimpan.',
-                        title: 'Jadwal Tidak Ditemukan', position: 'top-end', duration: 7000);
+                    $this->dispatch('toast', type: 'warning', message: 'Jadwal praktek dokter tidak ditemukan untuk hari ini. Data tetap disimpan.', title: 'Jadwal Tidak Ditemukan', position: 'top-end', duration: 7000);
                 } else {
-                    $rjDateCarbon  = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate']);
+                    $rjDateCarbon = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarPoliRJ['rjDate']);
 
                     $jumlahRjhdrs = DB::table('rstxn_rjhdrs')
                         ->where('dr_id', $this->dataDaftarPoliRJ['drId'])
@@ -176,19 +162,12 @@ new class extends Component {
                         ->whereRaw("to_char(rj_date,'ddmmyyyy') = ?", [$rjDateCarbon->format('dmY')])
                         ->count();
 
-                    $jumlahBooking = DB::table('referensi_mobilejkn_bpjs as b')
-                        ->join('rsmst_doctors as d', 'd.kd_dr_bpjs', '=', 'b.kodedokter')
-                        ->where('d.dr_id', $this->dataDaftarPoliRJ['drId'])
-                        ->where('b.tanggalperiksa', $rjDateCarbon->format('Y-m-d'))
-                        ->where('b.status', 'Belum')
-                        ->count();
+                    $jumlahBooking = DB::table('referensi_mobilejkn_bpjs as b')->join('rsmst_doctors as d', 'd.kd_dr_bpjs', '=', 'b.kodedokter')->where('d.dr_id', $this->dataDaftarPoliRJ['drId'])->where('b.tanggalperiksa', $rjDateCarbon->format('Y-m-d'))->where('b.status', 'Belum')->count();
 
                     $jumlahTerdaftar = $jumlahRjhdrs + $jumlahBooking;
 
                     if ($jumlahTerdaftar >= $jadwal['kuota']) {
-                        $this->dispatch('toast', type: 'warning',
-                            message: "Kuota praktek penuh! (Kuota: {$jadwal['kuota']}, Terdaftar: {$jumlahTerdaftar}). Data tetap disimpan.",
-                            title: 'Kuota Penuh', position: 'top-end', duration: 7000);
+                        $this->dispatch('toast', type: 'warning', message: "Kuota praktek penuh! (Kuota: {$jadwal['kuota']}, Terdaftar: {$jumlahTerdaftar}). Data tetap disimpan.", title: 'Kuota Penuh', position: 'top-end', duration: 7000);
                     }
                 }
             }
@@ -208,8 +187,7 @@ new class extends Component {
             if ($isBpjs) {
                 $statusTambahPendaftaran = $this->dataDaftarPoliRJ['taskIdPelayanan']['tambahPendaftaran'] ?? '';
                 $statusTaskId3 = $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3Status'] ?? '';
-                $antrianSudahOk = $statusTambahPendaftaran == 200 || $statusTambahPendaftaran == 208
-                    || $statusTaskId3 == 200 || $statusTaskId3 == 208;
+                $antrianSudahOk = $statusTambahPendaftaran == 200 || $statusTambahPendaftaran == 208 || $statusTaskId3 == 200 || $statusTaskId3 == 208;
 
                 // SEP diblok HANYA jika poli spesialis DAN antrian belum berhasil
                 if ($isPoliSpesialis && !$antrianSudahOk) {
@@ -283,8 +261,7 @@ new class extends Component {
         // Skip jika sudah berhasil sebelumnya (cek tambahPendaftaran ATAU taskId3Status)
         $statusTambahPendaftaran = $this->dataDaftarPoliRJ['taskIdPelayanan']['tambahPendaftaran'] ?? '';
         $statusTaskId3 = $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3Status'] ?? '';
-        if ($statusTambahPendaftaran == 200 || $statusTambahPendaftaran == 208
-            || $statusTaskId3 == 200 || $statusTaskId3 == 208) {
+        if ($statusTambahPendaftaran == 200 || $statusTambahPendaftaran == 208 || $statusTaskId3 == 200 || $statusTaskId3 == 208) {
             return;
         }
 
@@ -594,6 +571,38 @@ new class extends Component {
         return ['mulai_praktek' => $jadwal->mulai_praktek, 'selesai_praktek' => $jadwal->selesai_praktek, 'kuota' => (int) $jadwal->kuota, '_not_found' => false];
     }
 
+    public function shiftMismatchMessage(): ?string
+    {
+        $rjDate = $this->dataDaftarPoliRJ['rjDate'] ?? '';
+        $shift = (string) ($this->dataDaftarPoliRJ['shift'] ?? '');
+        if (empty($rjDate) || empty($shift)) return null;
+
+        try {
+            $time = Carbon::createFromFormat('d/m/Y H:i:s', $rjDate)->format('H:i:s');
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        $expected = $this->resolveShiftByTime($time);
+        if ($expected === $shift) return null;
+
+        return "Jam {$time} seharusnya Shift {$expected}, bukan Shift {$shift}.";
+    }
+
+    private function resolveShiftByTime(string $time): string
+    {
+        // Oracle treats '' as NULL, jadi whereNotNull sudah cukup — jangan tambah where('!=',''),
+        // karena `col != NULL` selalu unknown/false → semua row ter-filter habis.
+        $row = DB::table('rstxn_shiftctls')
+            ->select('shift')
+            ->whereNotNull('shift_start')
+            ->whereNotNull('shift_end')
+            ->whereRaw('? BETWEEN shift_start AND shift_end', [$time])
+            ->first();
+
+        return (string) ($row?->shift ?? '1');
+    }
+
     private function getJenisPasien(): string
     {
         return $this->dataDaftarPoliRJ['klaimId'] === 'JM' ? 'JKN' : 'NON JKN';
@@ -626,33 +635,33 @@ new class extends Component {
 
     private function resolveNoReferensi(array $reqSep): ?string
     {
-        $kunjunganId = $this->dataDaftarPoliRJ['kunjunganId'] ?? $this->kunjunganId ?? '1';
+        $kunjunganId = $this->dataDaftarPoliRJ['kunjunganId'] ?? ($this->kunjunganId ?? '1');
 
         if ($kunjunganId === '3') {
-            return $reqSep['request']['t_sep']['skdp']['noSurat']
-                ?? $this->dataDaftarPoliRJ['noReferensi']
-                ?? null;
+            return $reqSep['request']['t_sep']['skdp']['noSurat'] ?? ($this->dataDaftarPoliRJ['noReferensi'] ?? null);
         }
 
-        return $reqSep['request']['t_sep']['rujukan']['noRujukan']
-            ?? $this->dataDaftarPoliRJ['noReferensi']
-            ?? null;
+        return $reqSep['request']['t_sep']['rujukan']['noRujukan'] ?? ($this->dataDaftarPoliRJ['noReferensi'] ?? null);
     }
 
     private function hitungNoAntrian(string $drId, Carbon $rjDateCarbon): int
     {
+        $poliId = $this->dataDaftarPoliRJ['poliId'] ?? null;
+
         $maxAntrianRjhdrs = (int) DB::table('rstxn_rjhdrs')
             ->where('dr_id', $drId)
+            ->when($poliId, fn($q) => $q->where('poli_id', $poliId))
             ->where('klaim_id', '!=', 'KR')
             ->whereRaw("to_char(rj_date, 'ddmmyyyy') = ?", [$rjDateCarbon->format('dmY')])
             ->max('no_antrian');
 
+        // angkaantrean bertipe VARCHAR2 — pakai to_number agar max numeric (bukan lex sort).
         $maxAntrianBooking = (int) DB::table('referensi_mobilejkn_bpjs as b')
             ->join('rsmst_doctors as d', 'd.kd_dr_bpjs', '=', 'b.kodedokter')
             ->where('d.dr_id', $drId)
             ->where('b.tanggalperiksa', $rjDateCarbon->format('Y-m-d'))
-            ->where('b.status', 'Belum')
-            ->max('b.angkaantrean');
+            ->selectRaw("nvl(max(to_number(b.angkaantrean)), 0) as maxq")
+            ->value('maxq');
 
         return max($maxAntrianRjhdrs, $maxAntrianBooking) + 1;
     }
@@ -959,10 +968,34 @@ new class extends Component {
     }
 
     /* ===============================
+     | SATU SEHAT
+     =============================== */
+    // Modal Satu Sehat pindah ke komponen sendiri satu-sehat-rj-actions.
+    // Trigger dispatch event 'daftar-rj.satu-sehat.open' yang ditangkap
+    // oleh komponen tersebut (lihat embed di bawah).
+
+    /* ===============================
+     | iDRG (E-Klaim Kemenkes)
+     =============================== */
+    // Modal iDRG/INACBG full pindah ke SFC idrg-rj-actions (sibling component).
+    // Trigger lewat dispatch event 'daftar-rj.idrg.open' yang ditangkap oleh
+    // idrg-rj-actions di file ini paling bawah.
+
+
+    /* ===============================
      | UPDATED HOOKS
      =============================== */
     public function updated($name, $value): void
     {
+        if ($name === 'dataDaftarPoliRJ.rjDate' && !empty($value)) {
+            try {
+                $time = Carbon::createFromFormat('d/m/Y H:i:s', $value)->format('H:i:s');
+                $this->dataDaftarPoliRJ['shift'] = $this->resolveShiftByTime($time);
+            } catch (\Throwable $e) {
+                // Format belum valid (user masih mengetik) — biarkan shift apa adanya
+            }
+        }
+
         if (in_array($name, ['dataDaftarPoliRJ.regNo'])) {
             $this->incrementVersion('pasien');
             $this->incrementVersion('modal');
@@ -1106,6 +1139,9 @@ new class extends Component {
                                 <option value="3">Shift 3</option>
                             </x-select-input>
                             <x-input-error :messages="$errors->get('dataDaftarPoliRJ.shift')" class="mt-1" />
+                            @if ($shiftMsg = $this->shiftMismatchMessage())
+                                <p class="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{{ $shiftMsg }}</p>
+                            @endif
                         </div>
                     </div>
                     <x-icon-button color="gray" type="button" wire:click="closeModal">
@@ -1317,4 +1353,9 @@ new class extends Component {
 
     {{-- Cetak SEP --}}
     <livewire:pages::components.modul-dokumen.b-p-j-s.cetak-sep.cetak-sep wire:key="cetak-sep-rj" />
+
+    {{-- Satu Sehat & iDRG modal embed pindah ke ⚡daftar-rj.blade.php (page level)
+         supaya pola konsisten dengan openRekamMedis/openSatuSehat/openIdrg dispatcher
+         yang sudah ada di daftar-rj. --}}
+
 </div>

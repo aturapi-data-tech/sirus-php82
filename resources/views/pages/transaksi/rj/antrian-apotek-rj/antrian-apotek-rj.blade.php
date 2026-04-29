@@ -78,7 +78,7 @@ new class extends Component {
      | Dispatch ke child actions
      * ------------------------- */
 
-    public function openTelaahResep(int $hasEresep, string $rjNo): void
+    public function openTelaah(int $hasEresep, string $rjNo): void
     {
         if (!$hasEresep) {
             $this->dispatch('toast', type: 'error', message: 'E-Resep tidak ditemukan untuk pasien ini.');
@@ -87,13 +87,9 @@ new class extends Component {
         $this->dispatch('antrian-apotek.telaah-resep.open', rjNo: $rjNo);
     }
 
-    public function openTelaahObat(int $hasEresep, string $rjNo): void
+    public function openAdministrasiPasien(string $rjNo): void
     {
-        if (!$hasEresep) {
-            $this->dispatch('toast', type: 'error', message: 'E-Resep tidak ditemukan untuk pasien ini.');
-            return;
-        }
-        $this->dispatch('antrian-apotek.telaah-obat.open', rjNo: $rjNo);
+        $this->dispatch('emr-rj.administrasi.open', rjNo: $rjNo);
     }
 
     /* -------------------------
@@ -616,64 +612,50 @@ new class extends Component {
                                                     :rjNo="$row->rj_no" wire:key="'taskid7--'.{{ $row->rj_no }}" />
                                                 <livewire:pages::transaksi.rj.task-id-pelayanan.get-task-id
                                                     :rjNo="$row->rj_no" wire:key="'gettaskid--'.{{ $row->rj_no }}" />
+                                                @role('Admin')
+                                                    <livewire:pages::transaksi.rj.task-id-pelayanan.task-id-99
+                                                        :rjNo="$row->rj_no" wire:key="'taskid99--'.{{ $row->rj_no }}" />
+                                                @endrole
                                             </div>
 
-                                            {{-- Telaah Resep & Telaah Obat --}}
-                                            <div class="grid grid-cols-2 gap-1.5">
-                                                {{-- Telaah Resep: sudah TTD → success, belum → secondary --}}
-                                                @if ($row->telaah_resep_done)
-                                                    <x-success-button
-                                                        wire:click="openTelaahResep({{ $row->has_eresep }}, '{{ $row->rj_no }}')"
-                                                        class="text-xs whitespace-nowrap justify-center">
-                                                        <svg class="w-3.5 h-3.5 mr-1" fill="none"
-                                                            stroke="currentColor" viewBox="0 0 24 24"
-                                                            stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        Telaah Resep ✓
-                                                    </x-success-button>
-                                                @else
-                                                    <x-secondary-button
-                                                        wire:click="openTelaahResep({{ $row->has_eresep }}, '{{ $row->rj_no }}')"
-                                                        class="text-xs whitespace-nowrap justify-center">
-                                                        <svg class="w-3.5 h-3.5 mr-1" fill="none"
-                                                            stroke="currentColor" viewBox="0 0 24 24"
-                                                            stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                                        </svg>
-                                                        Telaah Resep
-                                                    </x-secondary-button>
-                                                @endif
+                                            {{-- Telaah Resep & Obat (unified) --}}
+                                            @if ($row->telaah_resep_done && $row->telaah_obat_done)
+                                                <x-success-button
+                                                    wire:click="openTelaah({{ $row->has_eresep }}, '{{ $row->rj_no }}')"
+                                                    class="text-xs whitespace-nowrap justify-center">
+                                                    <svg class="w-3.5 h-3.5 mr-1" fill="none"
+                                                        stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    Telaah Resep &amp; Obat ✓
+                                                </x-success-button>
+                                            @else
+                                                <x-secondary-button
+                                                    wire:click="openTelaah({{ $row->has_eresep }}, '{{ $row->rj_no }}')"
+                                                    class="text-xs whitespace-nowrap justify-center">
+                                                    <svg class="w-3.5 h-3.5 mr-1" fill="none"
+                                                        stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                                    </svg>
+                                                    Telaah Resep &amp; Obat
+                                                </x-secondary-button>
+                                            @endif
 
-                                                {{-- Telaah Obat: sudah TTD → info, belum → secondary --}}
-                                                @if ($row->telaah_obat_done)
-                                                    <x-primary-button
-                                                        wire:click="openTelaahObat({{ $row->has_eresep }}, '{{ $row->rj_no }}')"
-                                                        class="text-xs whitespace-nowrap justify-center">
-                                                        <svg class="w-3.5 h-3.5 mr-1" fill="none"
-                                                            stroke="currentColor" viewBox="0 0 24 24"
-                                                            stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        Telaah Obat ✓
-                                                    </x-primary-button>
-                                                @else
-                                                    <x-secondary-button
-                                                        wire:click="openTelaahObat({{ $row->has_eresep }}, '{{ $row->rj_no }}')"
-                                                        class="text-xs whitespace-nowrap justify-center">
-                                                        <svg class="w-3.5 h-3.5 mr-1" fill="none"
-                                                            stroke="currentColor" viewBox="0 0 24 24"
-                                                            stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                                                        </svg>
-                                                        Telaah Obat
-                                                    </x-secondary-button>
-                                                @endif
-                                            </div>
+                                            {{-- Administrasi — Admin | Perawat | Casemix --}}
+                                            @hasanyrole('Admin|Perawat|Casemix')
+                                                <x-secondary-button
+                                                    wire:click="openAdministrasiPasien('{{ $row->rj_no }}')"
+                                                    class="text-xs whitespace-nowrap justify-center !bg-purple-50 hover:!bg-purple-100 dark:!bg-purple-900/20">
+                                                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
+                                                    </svg>
+                                                    Administrasi
+                                                </x-secondary-button>
+                                            @endhasanyrole
 
                                             <x-info-button wire:click="cetakEresep('{{ $row->rj_no }}')"
                                                 wire:loading.attr="disabled" wire:target="cetakEresep"
@@ -731,6 +713,8 @@ new class extends Component {
 
         <livewire:pages::transaksi.rj.antrian-apotek-rj.antrian-apotek-rj-actions
             wire:key="antrian-apotek-rj-actions" />
+
+        <livewire:pages::transaksi.rj.administrasi-rj.administrasi-rj wire:key="administrasi-rj-actions" />
 
     </div>
 </div>

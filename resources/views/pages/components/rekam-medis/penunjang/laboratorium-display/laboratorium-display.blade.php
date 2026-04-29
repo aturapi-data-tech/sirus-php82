@@ -127,7 +127,8 @@ new class extends Component {
                     AND a.price IS NOT NULL
                 ) AS checkup_dtl_pasien"),
             )
-            ->where('reg_no', $this->regNo);
+            ->where('reg_no', $this->regNo)
+            ->where('checkup_status', '!=', 'F'); // Sembunyikan transaksi yang dibatalkan
 
         if ($this->filterTahun) {
             $query->whereYear('checkup_date', $this->filterTahun);
@@ -172,7 +173,7 @@ new class extends Component {
             return ['total' => 0, 'selesai' => 0, 'proses' => 0, 'terdaftar' => 0];
         }
 
-        $stats = DB::table('rsview_checkups')->select(DB::raw('COUNT(*) as total'), DB::raw("SUM(CASE WHEN checkup_status = 'H' THEN 1 ELSE 0 END) as selesai"), DB::raw("SUM(CASE WHEN checkup_status = 'C' THEN 1 ELSE 0 END) as proses"), DB::raw("SUM(CASE WHEN checkup_status = 'P' THEN 1 ELSE 0 END) as terdaftar"))->where('reg_no', $this->regNo)->first();
+        $stats = DB::table('rsview_checkups')->select(DB::raw('COUNT(*) as total'), DB::raw("SUM(CASE WHEN checkup_status = 'H' THEN 1 ELSE 0 END) as selesai"), DB::raw("SUM(CASE WHEN checkup_status = 'C' THEN 1 ELSE 0 END) as proses"), DB::raw("SUM(CASE WHEN checkup_status = 'P' THEN 1 ELSE 0 END) as terdaftar"))->where('reg_no', $this->regNo)->where('checkup_status', '!=', 'F')->first();
 
         return [
             'total' => $stats->total ?? 0,
@@ -540,37 +541,37 @@ new class extends Component {
                                                         @endif
                                                     </div>
 
-                                                    {{-- Actions --}}
-                                                    @role(['Dokter', 'Admin', 'Perawat', 'Laborat'])
-                                                        <div class="flex items-center gap-2 mt-3">
-                                                            {{-- Tombol Hasil Laboratorium --}}
-                                                            <x-info-button type="button"
-                                                                wire:click="openDetail('{{ $row->checkup_no }}', '{{ $row->checkup_rjri }}')"
-                                                                wire:loading.attr="disabled"
-                                                                wire:target="openDetail('{{ $row->checkup_no }}', '{{ $row->checkup_rjri }}')">
-                                                                <span wire:loading.remove
-                                                                    wire:target="openDetail('{{ $row->checkup_no }}', '{{ $row->checkup_rjri }}')"
-                                                                    class="flex items-center gap-1">
-                                                                    <svg class="w-4 h-4" fill="none"
-                                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                                            stroke-width="2"
-                                                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                                            stroke-width="2"
-                                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                                    </svg>
-                                                                    Hasil Laboratorium
-                                                                </span>
-                                                                <span wire:loading
-                                                                    wire:target="openDetail('{{ $row->checkup_no }}', '{{ $row->checkup_rjri }}')"
-                                                                    class="flex items-center gap-1">
-                                                                    <x-loading /> Memuat...
-                                                                </span>
-                                                                </x-yellow-button>
+                                                    {{-- Actions — hanya tampil jika status Selesai (H) --}}
+                                                    @role(['Dokter', 'Admin', 'Perawat', 'Laboratorium'])
+                                                        @if ($isSelesai)
+                                                            <div class="flex items-center gap-2 mt-3">
+                                                                {{-- Tombol Hasil Laboratorium --}}
+                                                                <x-info-button type="button"
+                                                                    wire:click="openDetail('{{ $row->checkup_no }}', '{{ $row->checkup_rjri }}')"
+                                                                    wire:loading.attr="disabled"
+                                                                    wire:target="openDetail('{{ $row->checkup_no }}', '{{ $row->checkup_rjri }}')">
+                                                                    <span wire:loading.remove
+                                                                        wire:target="openDetail('{{ $row->checkup_no }}', '{{ $row->checkup_rjri }}')"
+                                                                        class="flex items-center gap-1">
+                                                                        <svg class="w-4 h-4" fill="none"
+                                                                            stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round"
+                                                                                stroke-linejoin="round" stroke-width="2"
+                                                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                            <path stroke-linecap="round"
+                                                                                stroke-linejoin="round" stroke-width="2"
+                                                                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                                        </svg>
+                                                                        Hasil Laboratorium
+                                                                    </span>
+                                                                    <span wire:loading
+                                                                        wire:target="openDetail('{{ $row->checkup_no }}', '{{ $row->checkup_rjri }}')"
+                                                                        class="flex items-center gap-1">
+                                                                        <x-loading /> Memuat...
+                                                                    </span>
+                                                                </x-info-button>
 
-                                                                {{-- Tombol Cetak (hanya jika Selesai) --}}
-                                                                @if ($isSelesai)
+                                                                {{-- Tombol Cetak --}}
                                                                     <x-primary-button type="button"
                                                                         wire:click="cetakLaborat('{{ $row->checkup_no }}')"
                                                                         wire:loading.attr="disabled"
@@ -592,9 +593,9 @@ new class extends Component {
                                                                             class="flex items-center gap-1">
                                                                             <x-loading /> Mencetak...
                                                                         </span>
-                                                                    </x-primary-button>
-                                                                @endif
-                                                        </div>
+                                                                </x-primary-button>
+                                                            </div>
+                                                        @endif
                                                     @endrole
 
                                                 </td>
@@ -1008,7 +1009,7 @@ new class extends Component {
                             </x-info-button>
                         @endif
 
-                        @role(['Dokter', 'Admin', 'Laborat'])
+                        @role(['Dokter', 'Admin', 'Laboratorium'])
                             @if (!empty($selectedCheckupNo))
                                 <x-primary-button type="button" wire:click="cetakLaborat('{{ $selectedCheckupNo }}')"
                                     wire:loading.attr="disabled">

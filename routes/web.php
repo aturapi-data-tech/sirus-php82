@@ -20,6 +20,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/master/poli', 'pages::master.master-poli.master-poli')
         ->name('master.poli');
 
+    Route::livewire('/master/karyawan', 'pages::master.master-karyawan.master-karyawan')
+        ->name('master.karyawan');
+
     // ===========================================
     // MASTER - SETUP JADWAL PELAYANAN DOKTER BPJS
     // ===========================================
@@ -40,6 +43,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::livewire('/master/kamar', 'pages::master.master-kamar.bangsal.master-bangsal')
         ->name('master.kamar');
+
+    Route::livewire('/master/laborat', 'pages::master.master-laborat.clab.master-clab')
+        ->name('master.laborat');
 
     Route::livewire('/master/kelas', 'pages::master.master-kelas-rawat.master-kelas-rawat')
         ->name('master.kelas');
@@ -90,6 +96,13 @@ Route::middleware(['auth'])->group(function () {
 
 
     // ===========================================
+    // TRANSAKSI APOTEK - GABUNGAN RJ & UGD (tab)
+    // ===========================================
+    Route::livewire('/transaksi/apotek', 'pages::transaksi.apotek.apotek')
+        ->name('transaksi.apotek');
+
+
+    // ===========================================
     // RI - DAFTAR RI
     // ===========================================
     Route::livewire('/ri/daftar', 'pages::transaksi.ri.daftar-ri.daftar-ri')
@@ -119,6 +132,12 @@ Route::middleware(['auth'])->group(function () {
         ->name('keuangan.pengeluaran-kas-tu');
 
     // ===========================================
+    // GUDANG - PENERIMAAN MEDIS
+    // ===========================================
+    Route::livewire('/gudang/penerimaan-medis', 'pages::transaksi.gudang.penerimaan-medis.penerimaan-medis')
+        ->name('gudang.penerimaan-medis');
+
+    // ===========================================
     // TRANSAKSI PENUNJANG - LABORATORIUM
     // ===========================================
     Route::livewire('/transaksi/penunjang/laborat', 'pages::transaksi.penunjang.laborat.daftar-laborat')
@@ -141,6 +160,12 @@ Route::middleware(['auth'])->group(function () {
     // ===========================================
     Route::livewire('/database-monitor/user-control', 'pages::database-monitor.user-control.user-control')
         ->name('database-monitor.user-control');
+
+    // ===========================================
+    // DATABASE MONITOR - ROLE CONTROL
+    // ===========================================
+    Route::livewire('/database-monitor/role-control', 'pages::database-monitor.role-control.role-control')
+        ->name('database-monitor.role-control');
 });
 
 

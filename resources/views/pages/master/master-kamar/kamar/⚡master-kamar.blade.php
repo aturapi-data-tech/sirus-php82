@@ -9,6 +9,50 @@ use Illuminate\Support\Facades\DB;
 new class extends Component {
     use WithPagination;
 
+    /**
+     * Mapping id_tt → jenis tempat tidur SIRS Kemenkes (referensi resmi).
+     * Sumber: LOV SIRS /Referensi/tempat_tidur.
+     */
+    private const SIRS_TT_LABEL = [
+        '1'  => 'VVIP/ Super VIP',
+        '2'  => 'VIP',
+        '3'  => 'Kelas I',
+        '4'  => 'Kelas II',
+        '5'  => 'Kelas III',
+        '6'  => 'ICU Tanpa Ventilator',
+        '7'  => 'HCU',
+        '8'  => 'ICCU/ICVCU Tanpa Ventilator',
+        '9'  => 'RICU Tanpa Ventilator',
+        '10' => 'NICU Tanpa Ventilator',
+        '11' => 'PICU Tanpa Ventilator',
+        '12' => 'Isolasi',
+        '14' => 'Perinatologi',
+        '24' => 'ICU Tekanan Negatif dengan Ventilator',
+        '25' => 'ICU Tekanan Negatif tanpa Ventilator',
+        '26' => 'ICU Tanpa Tekanan Negatif Dengan Ventilator',
+        '27' => 'ICU Tanpa Tekanan Negatif Tanpa Ventilator',
+        '28' => 'Isolasi Tekanan Negatif',
+        '29' => 'Isolasi Tanpa Tekanan Negatif',
+        '30' => 'NICU Khusus Covid',
+        '31' => 'PICU Khusus Covid',
+        '32' => 'IGD Khusus Covid',
+        '33' => 'VK (TT Observasi di R Bersalin) Khusus Covid',
+        '34' => 'Isolasi Perinatologi Khusus Covid',
+        '36' => 'VK (TT Observasi di R Bersalin) Non Covid',
+        '37' => 'Intermediate Ward (IGD)',
+        '38' => 'ICU Dengan Ventilator',
+        '39' => 'NICU Dengan Ventilator',
+        '40' => 'PICU Dengan Ventilator',
+        '50' => 'RICU Dengan Ventilator',
+        '51' => 'ICCU/ICVCU Dengan Ventilator',
+        '52' => 'KRIS JKN',
+    ];
+
+    public function sirsTtLabelOf(?string $id): string
+    {
+        return self::SIRS_TT_LABEL[(string) ($id ?? '')] ?? '';
+    }
+
     /* --- Bangsal terpilih (dari event) --- */
     public ?string $selectedBangsalId = null;
     public string $selectedBangsalName = '';
@@ -86,8 +130,12 @@ new class extends Component {
             $this->resetPage('pageKamar');
         }
         if ($entity === 'bed' && $roomId) {
-            unset($this->bedsCache[$roomId]);
-            $this->expandedRooms = array_values(array_filter($this->expandedRooms, fn($id) => $id !== $roomId));
+            $beds = DB::table('rsmst_beds')->select('bed_no', 'bed_desc')->where('room_id', $roomId)->orderBy('bed_no')->get();
+            $this->bedsCache[$roomId] = $beds->map(fn($b) => (array) $b)->toArray();
+            if (!in_array($roomId, $this->expandedRooms)) {
+                $this->expandedRooms[] = $roomId;
+            }
+            unset($this->computedPropertyCache);
         }
     }
 
@@ -107,6 +155,8 @@ new class extends Component {
                 r.class_id,
                 c.class_desc,
                 r.aplic_kodekelas,
+                r.sirs_id_tt,
+                r.sirs_id_t_tt,
                 r.room_price,
                 r.perawatan_price,
                 r.common_service,
@@ -117,7 +167,8 @@ new class extends Component {
             ->leftJoin(DB::raw('rsmst_class c'), 'r.class_id', '=', 'c.class_id')
             ->leftJoin(DB::raw('rsmst_beds bd'), 'r.room_id', '=', 'bd.room_id')
             ->where('r.bangsal_id', $this->selectedBangsalId)
-            ->groupBy('r.room_id', 'r.room_name', 'r.class_id', 'c.class_desc', 'r.aplic_kodekelas', 'r.room_price', 'r.perawatan_price', 'r.common_service', 'r.active_status')
+            ->groupBy('r.room_id', 'r.room_name', 'r.class_id', 'c.class_desc', 'r.aplic_kodekelas', 'r.sirs_id_tt', 'r.sirs_id_t_tt', 'r.room_price', 'r.perawatan_price', 'r.common_service', 'r.active_status')
+            ->orderByDesc('r.active_status')
             ->orderBy('r.room_name');
 
         if (trim($this->searchKamar) !== '') {
@@ -177,27 +228,54 @@ new class extends Component {
 
             {{-- Rekap Kamar --}}
             @php
-                $rekapRooms  = $this->rooms;
-                $totalKamar  = $rekapRooms->total();
-                $aktifKamar  = collect($rekapRooms->items())->where('active_status', '1')->count();
-                $nonAktif    = collect($rekapRooms->items())->where('active_status', '0')->count();
+                $rekapRooms    = $this->rooms;
+                $totalKamar    = $rekapRooms->total();
+                $itemsAktif    = collect($rekapRooms->items())->where('active_status', '1');
+                $itemsNonAktif = collect($rekapRooms->items())->where('active_status', '0');
+                $aktifKamar    = $itemsAktif->count();
+                $nonAktif      = $itemsNonAktif->count();
+                $bedAktif      = (int) $itemsAktif->sum('jumlah_bed');
+                $bedNonAktif   = (int) $itemsNonAktif->sum('jumlah_bed');
             @endphp
-            <div class="flex items-center gap-3 px-5 py-2 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40 text-xs flex-wrap">
-                <div class="flex items-center gap-1.5">
-                    <span class="text-gray-400 dark:text-gray-500">Total</span>
-                    <span class="font-bold text-gray-700 dark:text-gray-200">{{ $totalKamar }} kamar</span>
+            <div class="flex items-center gap-4 px-5 py-2 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40 text-xs flex-wrap">
+                {{-- Kelompok: Kamar --}}
+                <div class="flex items-center gap-2">
+                    <span class="px-1.5 py-0.5 rounded bg-gray-200/70 dark:bg-gray-700/60 font-semibold text-[10px] uppercase tracking-wider text-gray-600 dark:text-gray-300">Kamar</span>
+                    <div class="flex items-center gap-1.5" title="Total kamar di bangsal ini">
+                        <span class="text-gray-500 dark:text-gray-400">Total</span>
+                        <span class="font-bold text-gray-700 dark:text-gray-200">{{ $totalKamar }}</span>
+                    </div>
+                    <span class="text-gray-300 dark:text-gray-600">|</span>
+                    <div class="flex items-center gap-1.5" title="Kamar berstatus Aktif">
+                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span class="text-gray-500 dark:text-gray-400">Aktif</span>
+                        <span class="font-bold text-emerald-600 dark:text-emerald-400">{{ $aktifKamar }}</span>
+                    </div>
+                    <span class="text-gray-300 dark:text-gray-600">|</span>
+                    <div class="flex items-center gap-1.5" title="Kamar berstatus Non-Aktif">
+                        <span class="inline-block w-2 h-2 rounded-full bg-red-400"></span>
+                        <span class="text-gray-500 dark:text-gray-400">Non-Aktif</span>
+                        <span class="font-bold text-red-500 dark:text-red-400">{{ $nonAktif }}</span>
+                    </div>
                 </div>
-                <span class="text-gray-200 dark:text-gray-700">&middot;</span>
-                <div class="flex items-center gap-1.5">
-                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-                    <span class="text-gray-500 dark:text-gray-400">Aktif</span>
-                    <span class="font-bold text-emerald-600 dark:text-emerald-400">{{ $aktifKamar }}</span>
-                </div>
-                <span class="text-gray-200 dark:text-gray-700">&middot;</span>
-                <div class="flex items-center gap-1.5">
-                    <span class="inline-block w-2 h-2 rounded-full bg-red-400"></span>
-                    <span class="text-gray-500 dark:text-gray-400">Non Aktif</span>
-                    <span class="font-bold text-red-500 dark:text-red-400">{{ $nonAktif }}</span>
+
+                {{-- Pemisah vertikal --}}
+                <span class="hidden sm:inline-block h-4 w-px bg-gray-300 dark:bg-gray-600"></span>
+
+                {{-- Kelompok: Tempat Tidur (Bed) --}}
+                <div class="flex items-center gap-2">
+                    <span class="px-1.5 py-0.5 rounded bg-gray-200/70 dark:bg-gray-700/60 font-semibold text-[10px] uppercase tracking-wider text-gray-600 dark:text-gray-300">Tempat Tidur</span>
+                    <div class="flex items-center gap-1.5" title="Jumlah bed di kamar yang Aktif">
+                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span class="text-gray-500 dark:text-gray-400">Aktif</span>
+                        <span class="font-bold text-emerald-600 dark:text-emerald-400">{{ $bedAktif }}</span>
+                    </div>
+                    <span class="text-gray-300 dark:text-gray-600">|</span>
+                    <div class="flex items-center gap-1.5" title="Jumlah bed di kamar yang Non-Aktif">
+                        <span class="inline-block w-2 h-2 rounded-full bg-red-400"></span>
+                        <span class="text-gray-500 dark:text-gray-400">Non-Aktif</span>
+                        <span class="font-bold text-red-500 dark:text-red-400">{{ $bedNonAktif }}</span>
+                    </div>
                 </div>
             </div>
 
@@ -213,8 +291,7 @@ new class extends Component {
                                     <span class="font-normal text-brand dark:text-brand-lime ml-1">&mdash;
                                         {{ $selectedBangsalName }}</span>
                                 </th>
-                                <th class="px-5 py-3 font-semibold">TARIF</th>
-                                <th class="px-5 py-3 font-semibold">AKSI</th>
+                                <th class="px-5 py-3 font-semibold">TARIF &amp; AKSI</th>
                             </tr>
                         </thead>
                         <tbody class="text-gray-700 divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-200">
@@ -229,7 +306,7 @@ new class extends Component {
                                 <tr wire:key="room-{{ $room->room_id }}"
                                     wire:click="toggleRoom('{{ $room->room_id }}')"
                                     class="cursor-pointer transition
-                                       {{ $isExpanded ? 'bg-indigo-50 dark:bg-indigo-900/10' : 'hover:bg-gray-50 dark:hover:bg-gray-800/60' }}">
+                                       {{ !$isActive ? 'bg-red-50/70 dark:bg-red-900/15 hover:bg-red-100/70 dark:hover:bg-red-900/25' : ($isExpanded ? 'bg-indigo-50 dark:bg-indigo-900/10' : 'hover:bg-gray-50 dark:hover:bg-gray-800/60') }}">
 
                                     {{-- Chevron --}}
                                     <td class="px-4 py-4 text-center text-gray-400 align-top">
@@ -245,14 +322,26 @@ new class extends Component {
                                         <div class="font-semibold text-base text-gray-800 dark:text-gray-100">
                                             {{ $room->room_name }}
                                         </div>
-                                        <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
                                             <span class="font-mono">{{ $room->room_id }}</span>
                                             <span>{{ $room->class_desc ?? 'Kelas ' . $room->class_id }}</span>
+
                                             @if ($room->aplic_kodekelas)
-                                                <span
-                                                    class="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold
-                                                             bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
-                                                    BPJS: {{ $room->aplic_kodekelas }}
+                                                <span class="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold
+                                                             bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"
+                                                      title="Kode kelas Aplicares BPJS">
+                                                    BPJS {{ $room->aplic_kodekelas }}
+                                                </span>
+                                            @endif
+
+                                            @if ($room->sirs_id_tt || $room->sirs_id_t_tt)
+                                                @php $ttLabel = $room->sirs_id_tt ? $this->sirsTtLabelOf($room->sirs_id_tt) : ''; @endphp
+                                                <span class="px-1.5 py-0.5 rounded font-mono text-[10px] font-bold
+                                                             bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                                                      title="SIRS Kemenkes — id_tt{{ $room->sirs_id_t_tt ? ' · id_t_tt' : '' }}">
+                                                    SIRS
+                                                    @if ($room->sirs_id_tt) {{ $room->sirs_id_tt }}{{ $ttLabel ? ' — ' . $ttLabel : '' }} @endif
+                                                    @if ($room->sirs_id_t_tt)<span class="opacity-60 font-normal">· #{{ $room->sirs_id_t_tt }}</span>@endif
                                                 </span>
                                             @endif
                                         </div>
@@ -264,7 +353,7 @@ new class extends Component {
                                         </div>
                                     </td>
 
-                                    {{-- TARIF --}}
+                                    {{-- TARIF & AKSI --}}
                                     <td class="px-5 py-4 align-top">
                                         <div class="flex items-start gap-6">
                                             <div>
@@ -284,24 +373,20 @@ new class extends Component {
                                                 <div class="font-mono text-gray-600 dark:text-gray-300">
                                                     {{ number_format($room->common_service ?? 0, 0, ',', '.') }}
                                                 </div>
+                                                <div class="flex flex-wrap gap-2 mt-2" wire:click.stop>
+                                                    <x-secondary-button type="button"
+                                                        wire:click="openEditKamar('{{ $room->room_id }}')" class="px-2 py-1 text-xs">
+                                                        Edit
+                                                    </x-secondary-button>
+                                                    <x-confirm-button variant="danger" :action="'requestDeleteKamar(\'' . $room->room_id . '\')'"
+                                                        title="Hapus Kamar"
+                                                        message="Yakin hapus kamar {{ $room->room_name }}?"
+                                                        confirmText="Ya, hapus" cancelText="Batal"
+                                                        class="px-2 py-1 text-xs">
+                                                        Hapus
+                                                    </x-confirm-button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </td>
-
-                                    {{-- AKSI --}}
-                                    <td class="px-5 py-4 align-top" wire:click.stop>
-                                        <div class="flex flex-wrap gap-2">
-                                            <x-secondary-button type="button"
-                                                wire:click="openEditKamar('{{ $room->room_id }}')" class="px-2 py-1 text-xs">
-                                                Edit
-                                            </x-secondary-button>
-                                            <x-confirm-button variant="danger" :action="'requestDeleteKamar(\'' . $room->room_id . '\')'"
-                                                title="Hapus Kamar"
-                                                message="Yakin hapus kamar {{ $room->room_name }}?"
-                                                confirmText="Ya, hapus" cancelText="Batal"
-                                                class="px-2 py-1 text-xs">
-                                                Hapus
-                                            </x-confirm-button>
                                         </div>
                                     </td>
                                 </tr>
@@ -310,7 +395,7 @@ new class extends Component {
                                 @if ($isExpanded)
                                     <tr wire:key="beds-{{ $room->room_id }}"
                                         class="bg-indigo-50/60 dark:bg-indigo-900/5">
-                                        <td colspan="4" class="px-8 py-3">
+                                        <td colspan="3" class="px-8 py-3">
                                             <div class="flex flex-wrap gap-2">
                                                 {{-- Tambah bed --}}
                                                 <x-ghost-button
@@ -391,7 +476,7 @@ new class extends Component {
 
                             @empty
                                 <tr>
-                                    <td colspan="4"
+                                    <td colspan="3"
                                         class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
                                         Tidak ada kamar untuk bangsal ini.
                                     </td>
