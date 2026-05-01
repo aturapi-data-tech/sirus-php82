@@ -132,10 +132,58 @@ Route::middleware(['auth'])->group(function () {
         ->name('keuangan.pengeluaran-kas-tu');
 
     // ===========================================
+    // KEUANGAN - PEMBAYARAN HUTANG PBF (medis)
+    // ===========================================
+    Route::livewire('/keuangan/pembayaran-hutang-pbf', 'pages::transaksi.keuangan.pembayaran-hutang-pbf.pembayaran-hutang-pbf')
+        ->name('keuangan.pembayaran-hutang-pbf');
+
+    // ===========================================
+    // KEUANGAN - PEMBAYARAN HUTANG NON-MEDIS
+    // ===========================================
+    Route::livewire('/keuangan/pembayaran-hutang-non-medis', 'pages::transaksi.keuangan.pembayaran-hutang-non-medis.pembayaran-hutang-non-medis')
+        ->name('keuangan.pembayaran-hutang-non-medis');
+
+    // ===========================================
+    // KEUANGAN - TOPUP SUPPLIER PBF (medis)
+    // ===========================================
+    Route::livewire('/keuangan/topup-supplier-pbf', 'pages::transaksi.keuangan.topup-supplier-pbf.topup-supplier-pbf')
+        ->name('keuangan.topup-supplier-pbf');
+
+    // ===========================================
+    // KEUANGAN - TOPUP SUPPLIER NON-MEDIS
+    // ===========================================
+    Route::livewire('/keuangan/topup-supplier-non-medis', 'pages::transaksi.keuangan.topup-supplier-non-medis.topup-supplier-non-medis')
+        ->name('keuangan.topup-supplier-non-medis');
+
+    // ===========================================
     // GUDANG - PENERIMAAN MEDIS
     // ===========================================
     Route::livewire('/gudang/penerimaan-medis', 'pages::transaksi.gudang.penerimaan-medis.penerimaan-medis')
         ->name('gudang.penerimaan-medis');
+
+    // ===========================================
+    // GUDANG - PENERIMAAN NON-MEDIS
+    // ===========================================
+    Route::livewire('/gudang/penerimaan-non-medis', 'pages::transaksi.gudang.penerimaan-non-medis.penerimaan-non-medis')
+        ->name('gudang.penerimaan-non-medis');
+
+    // ===========================================
+    // GUDANG - KARTU STOCK GUDANG (warehouse)
+    // ===========================================
+    Route::livewire('/gudang/kartu-stock', 'pages::transaksi.gudang.kartu-stock.kartu-stock')
+        ->name('gudang.kartu-stock');
+
+    // ===========================================
+    // GUDANG - KARTU STOCK APOTEK
+    // ===========================================
+    Route::livewire('/gudang/kartu-stock-apt', 'pages::transaksi.gudang.kartu-stock-apt.kartu-stock-apt')
+        ->name('gudang.kartu-stock-apt');
+
+    // ===========================================
+    // GUDANG - KARTU STOCK NON-MEDIS
+    // ===========================================
+    Route::livewire('/gudang/kartu-stock-non', 'pages::transaksi.gudang.kartu-stock-non.kartu-stock-non')
+        ->name('gudang.kartu-stock-non');
 
     // ===========================================
     // TRANSAKSI PENUNJANG - LABORATORIUM
