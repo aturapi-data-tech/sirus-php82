@@ -144,6 +144,12 @@ Route::middleware(['auth'])->group(function () {
         ->name('gudang.penerimaan-medis');
 
     // ===========================================
+    // GUDANG - PENERIMAAN NON-MEDIS
+    // ===========================================
+    Route::livewire('/gudang/penerimaan-non-medis', 'pages::transaksi.gudang.penerimaan-non-medis.penerimaan-non-medis')
+        ->name('gudang.penerimaan-non-medis');
+
+    // ===========================================
     // GUDANG - KARTU STOCK GUDANG (warehouse)
     // ===========================================
     Route::livewire('/gudang/kartu-stock', 'pages::transaksi.gudang.kartu-stock.kartu-stock')
