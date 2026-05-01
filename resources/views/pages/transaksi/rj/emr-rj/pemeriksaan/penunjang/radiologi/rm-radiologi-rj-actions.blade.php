@@ -49,18 +49,15 @@ new class extends Component {
         $this->selectedItems = [];
         $this->searchItem = '';
         $this->resetPage();
-        //$this->incrementVersion('radiologi-order-modal');
+        $this->incrementVersion('radiologi-order-modal');
 
-        $version = $this->renderVersions['radiologi-order-modal'] ?? 0;
-        $this->dispatch('open-modal', name: "radiologi-order-{$version}");
+        $this->dispatch('open-modal', name: "radiologi-order-rj-{$this->rjNo}");
     }
 
     public function closeModal(): void
     {
-        $version = $this->renderVersions['radiologi-order-modal'] ?? 0;
-        $this->dispatch('close-modal', name: "radiologi-order-{$version}");
+        $this->dispatch('close-modal', name: "radiologi-order-rj-{$this->rjNo}");
         $this->reset(['selectedItems', 'searchItem']);
-        $this->incrementVersion('radiologi-order-modal');
     }
 
     /* ===============================
@@ -209,7 +206,7 @@ new class extends Component {
     </div>
 
     {{-- Modal Order Radiologi --}}
-    <x-modal name="radiologi-order-{{ $renderVersions['radiologi-order-modal'] ?? 0 }}" size="full" height="full"
+    <x-modal name="radiologi-order-rj-{{ $rjNo }}" size="full" height="full"
         focusable>
         <div class="flex flex-col h-full"
             wire:key="{{ $this->renderKey('radiologi-order-modal', [$rjNo ?: 'empty']) }}">

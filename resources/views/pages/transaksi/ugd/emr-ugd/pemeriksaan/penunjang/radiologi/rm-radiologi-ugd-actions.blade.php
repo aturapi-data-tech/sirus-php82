@@ -43,17 +43,15 @@ new class extends Component {
         $this->selectedItems = [];
         $this->searchItem = '';
         $this->resetPage();
-        //$this->incrementVersion('radiologi-order-modal-ugd');
-        $version = $this->renderVersions['radiologi-order-modal-ugd'] ?? 0;
-        $this->dispatch('open-modal', name: "radiologi-ugd-order-{$version}");
+        $this->incrementVersion('radiologi-order-modal-ugd');
+
+        $this->dispatch('open-modal', name: "radiologi-order-ugd-{$this->rjNo}");
     }
 
     public function closeModal(): void
     {
-        $version = $this->renderVersions['radiologi-order-modal-ugd'] ?? 0;
-        $this->dispatch('close-modal', name: "radiologi-ugd-order-{$version}");
+        $this->dispatch('close-modal', name: "radiologi-order-ugd-{$this->rjNo}");
         $this->reset(['selectedItems', 'searchItem']);
-        $this->incrementVersion('radiologi-order-modal-ugd');
     }
 
     /* ===============================
@@ -179,7 +177,7 @@ new class extends Component {
         </x-primary-button>
     </div>
 
-    <x-modal name="radiologi-ugd-order-{{ $renderVersions['radiologi-order-modal-ugd'] ?? 0 }}" size="full"
+    <x-modal name="radiologi-order-ugd-{{ $rjNo }}" size="full"
         height="full" focusable>
         <div class="flex flex-col h-full"
             wire:key="{{ $this->renderKey('radiologi-order-modal-ugd', [$rjNo ?: 'empty']) }}">

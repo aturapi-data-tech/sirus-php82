@@ -49,18 +49,15 @@ new class extends Component {
         $this->selectedItems = [];
         $this->searchItem = '';
         $this->resetPage();
-        //$this->incrementVersion('laborat-order-modal');
+        $this->incrementVersion('laborat-order-modal');
 
-        $version = $this->renderVersions['laborat-order-modal'] ?? 0;
-        $this->dispatch('open-modal', name: "laborat-order-{$version}");
+        $this->dispatch('open-modal', name: "laborat-order-rj-{$this->rjNo}");
     }
 
     public function closeModal(): void
     {
-        $version = $this->renderVersions['laborat-order-modal'] ?? 0;
-        $this->dispatch('close-modal', name: "laborat-order-{$version}");
+        $this->dispatch('close-modal', name: "laborat-order-rj-{$this->rjNo}");
         $this->reset(['selectedItems', 'searchItem']);
-        $this->incrementVersion('laborat-order-modal');
     }
 
     /* ===============================
@@ -245,7 +242,7 @@ new class extends Component {
     </div>
 
     {{-- Modal Order Laboratorium --}}
-    <x-modal name="laborat-order-{{ $renderVersions['laborat-order-modal'] ?? 0 }}" size="full" height="full"
+    <x-modal name="laborat-order-rj-{{ $rjNo }}" size="full" height="full"
         focusable>
         <div class="flex flex-col h-full" wire:key="{{ $this->renderKey('laborat-order-modal', [$rjNo ?: 'empty']) }}">
 
