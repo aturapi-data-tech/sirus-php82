@@ -144,10 +144,22 @@ Route::middleware(['auth'])->group(function () {
         ->name('gudang.penerimaan-medis');
 
     // ===========================================
-    // GUDANG - KARTU STOCK
+    // GUDANG - KARTU STOCK GUDANG (warehouse)
     // ===========================================
     Route::livewire('/gudang/kartu-stock', 'pages::transaksi.gudang.kartu-stock.kartu-stock')
         ->name('gudang.kartu-stock');
+
+    // ===========================================
+    // GUDANG - KARTU STOCK APOTEK
+    // ===========================================
+    Route::livewire('/gudang/kartu-stock-apt', 'pages::transaksi.gudang.kartu-stock-apt.kartu-stock-apt')
+        ->name('gudang.kartu-stock-apt');
+
+    // ===========================================
+    // GUDANG - KARTU STOCK NON-MEDIS
+    // ===========================================
+    Route::livewire('/gudang/kartu-stock-non', 'pages::transaksi.gudang.kartu-stock-non.kartu-stock-non')
+        ->name('gudang.kartu-stock-non');
 
     // ===========================================
     // TRANSAKSI PENUNJANG - LABORATORIUM
