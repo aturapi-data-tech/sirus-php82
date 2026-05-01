@@ -132,10 +132,22 @@ Route::middleware(['auth'])->group(function () {
         ->name('keuangan.pengeluaran-kas-tu');
 
     // ===========================================
+    // KEUANGAN - PEMBAYARAN HUTANG PBF
+    // ===========================================
+    Route::livewire('/keuangan/pembayaran-hutang-pbf', 'pages::transaksi.keuangan.pembayaran-hutang-pbf.pembayaran-hutang-pbf')
+        ->name('keuangan.pembayaran-hutang-pbf');
+
+    // ===========================================
     // GUDANG - PENERIMAAN MEDIS
     // ===========================================
     Route::livewire('/gudang/penerimaan-medis', 'pages::transaksi.gudang.penerimaan-medis.penerimaan-medis')
         ->name('gudang.penerimaan-medis');
+
+    // ===========================================
+    // GUDANG - KARTU STOCK
+    // ===========================================
+    Route::livewire('/gudang/kartu-stock', 'pages::transaksi.gudang.kartu-stock.kartu-stock')
+        ->name('gudang.kartu-stock');
 
     // ===========================================
     // TRANSAKSI PENUNJANG - LABORATORIUM
