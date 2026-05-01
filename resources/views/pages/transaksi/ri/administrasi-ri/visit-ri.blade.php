@@ -30,6 +30,18 @@ new class extends Component {
     }
 
     /* ===============================
+     | LISTENER — sync lock saat parent broadcast (post/batal transaksi)
+     =============================== */
+    #[On('ri.administrasi-selesai')]
+    public function onAdministrasiSelesai(int $riHdrNo): void
+    {
+        // Re-check status DB — lock kalau completed, unlock kalau di-batal-kan.
+        if ((int) ($this->riHdrNo ?? 0) === $riHdrNo) {
+            $this->isFormLocked = $this->checkRIStatus($this->riHdrNo);
+        }
+    }
+
+    /* ===============================
      | MOUNT
      =============================== */
     public function mount(): void

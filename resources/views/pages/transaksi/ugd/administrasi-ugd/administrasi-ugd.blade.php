@@ -356,6 +356,11 @@ new class extends Component {
             $this->isFormLocked = false;
         }
 
+        // Single dispatcher ke siblings (jasa-medis/jasa-dokter/jasa-karyawan/lab/radiologi/obat/lain-lain/transfer)
+        // — re-check status & sync lock state. Cegah cross-talk antar sibling.
+        $this->dispatch('ugd.administrasi-selesai', rjNo: $this->rjNo);
+
+        // Refresh data (3 child yg butuh re-fetch listing setelah update)
         $this->dispatch('administrasi-obat-ugd.updated');
         $this->dispatch('administrasi-lain-lain-ugd.updated');
         $this->dispatch('administrasi-kasir-ugd.updated');

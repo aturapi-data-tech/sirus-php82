@@ -27,6 +27,18 @@ new class extends Component {
         'jasaDokterPrice' => '',
     ];
 
+    /* ===============================
+     | LISTENER — sync lock saat parent broadcast (post/batal transaksi)
+     =============================== */
+    #[On('ugd.administrasi-selesai')]
+    public function onAdministrasiSelesai(int $rjNo): void
+    {
+        // Re-check status DB — lock kalau completed, unlock kalau di-batal-kan.
+        if ((int) ($this->rjNo ?? 0) === $rjNo) {
+            $this->isFormLocked = $this->checkUGDStatus($this->rjNo);
+        }
+    }
+
     public function mount(): void
     {
         $this->registerAreas($this->renderAreas);
