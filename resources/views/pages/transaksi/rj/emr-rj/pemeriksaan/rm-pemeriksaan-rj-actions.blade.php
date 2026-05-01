@@ -641,9 +641,9 @@ new class extends Component {
                                 <div x-data="{ activeTab: 'Umum' }">
 
                                     {{-- TAB NAVIGATION --}}
-                                    <div class="px-2 border-b border-gray-200 dark:border-gray-700">
+                                    <x-scrollable-tabs class="px-2 border-b border-gray-200 dark:border-gray-700">
                                         <ul
-                                            class="flex flex-wrap -mb-px text-xs font-medium text-center text-gray-500 dark:text-gray-400">
+                                            class="flex flex-nowrap whitespace-nowrap -mb-px text-xs font-medium text-center text-gray-500 dark:text-gray-400">
 
                                             {{-- UMUM --}}
                                             <li class="mr-2">
@@ -708,7 +708,7 @@ new class extends Component {
                                             </li>
 
                                         </ul>
-                                    </div>
+                                    </x-scrollable-tabs>
 
                                     {{-- TAB CONTENTS --}}
                                     <div class="p-2 rounded-lg bg-gray-50 dark:bg-gray-800"

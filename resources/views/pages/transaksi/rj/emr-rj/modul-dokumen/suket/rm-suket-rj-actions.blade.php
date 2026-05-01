@@ -233,9 +233,9 @@ new class extends Component {
                         <div id="SuketRawatJalan" x-data="{ activeTab: '{{ $dataDaftarPoliRJ['suket']['suketSehatTab'] ?? 'Suket Sehat' }}' }" class="w-full">
 
                             {{-- TAB NAVIGATION --}}
-                            <div class="w-full px-2 mb-2 border-b border-gray-200 dark:border-gray-700">
+                            <x-scrollable-tabs class="w-full px-2 mb-2 border-b border-gray-200 dark:border-gray-700">
                                 <ul
-                                    class="flex flex-wrap w-full -mb-px text-xs font-medium text-center text-gray-500 dark:text-gray-400">
+                                    class="flex flex-nowrap whitespace-nowrap w-full -mb-px text-xs font-medium text-center text-gray-500 dark:text-gray-400">
 
                                     {{-- SUKET SEHAT TAB --}}
                                     <li class="mr-2">
@@ -262,7 +262,7 @@ new class extends Component {
                                     </li>
 
                                 </ul>
-                            </div>
+                            </x-scrollable-tabs>
 
                             {{-- TAB CONTENTS --}}
                             <div class="w-full p-4">

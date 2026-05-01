@@ -413,9 +413,9 @@ new class extends Component {
                     <div x-data="{ activeTab: 'pengkajian' }" class="w-full">
 
                         {{-- TAB NAVIGATION --}}
-                        <div class="w-full px-2 mb-2 border-b border-gray-200 dark:border-gray-700">
+                        <x-scrollable-tabs class="w-full px-2 mb-2 border-b border-gray-200 dark:border-gray-700">
                             <ul
-                                class="flex flex-wrap -mb-px text-xs font-medium text-center text-gray-500 dark:text-gray-400">
+                                class="flex flex-nowrap whitespace-nowrap -mb-px text-xs font-medium text-center text-gray-500 dark:text-gray-400">
 
                                 <li class="mr-1">
                                     <button type="button"
@@ -466,7 +466,7 @@ new class extends Component {
                                 </li>
 
                             </ul>
-                        </div>
+                        </x-scrollable-tabs>
 
                         {{-- TAB CONTENTS --}}
                         <div class="w-full p-4">
