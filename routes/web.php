@@ -144,6 +144,18 @@ Route::middleware(['auth'])->group(function () {
         ->name('keuangan.pembayaran-hutang-non-medis');
 
     // ===========================================
+    // KEUANGAN - TOPUP SUPPLIER PBF (medis)
+    // ===========================================
+    Route::livewire('/keuangan/topup-supplier-pbf', 'pages::transaksi.keuangan.topup-supplier-pbf.topup-supplier-pbf')
+        ->name('keuangan.topup-supplier-pbf');
+
+    // ===========================================
+    // KEUANGAN - TOPUP SUPPLIER NON-MEDIS
+    // ===========================================
+    Route::livewire('/keuangan/topup-supplier-non-medis', 'pages::transaksi.keuangan.topup-supplier-non-medis.topup-supplier-non-medis')
+        ->name('keuangan.topup-supplier-non-medis');
+
+    // ===========================================
     // GUDANG - PENERIMAAN MEDIS
     // ===========================================
     Route::livewire('/gudang/penerimaan-medis', 'pages::transaksi.gudang.penerimaan-medis.penerimaan-medis')
