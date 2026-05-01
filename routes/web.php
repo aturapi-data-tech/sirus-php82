@@ -132,10 +132,16 @@ Route::middleware(['auth'])->group(function () {
         ->name('keuangan.pengeluaran-kas-tu');
 
     // ===========================================
-    // KEUANGAN - PEMBAYARAN HUTANG PBF
+    // KEUANGAN - PEMBAYARAN HUTANG PBF (medis)
     // ===========================================
     Route::livewire('/keuangan/pembayaran-hutang-pbf', 'pages::transaksi.keuangan.pembayaran-hutang-pbf.pembayaran-hutang-pbf')
         ->name('keuangan.pembayaran-hutang-pbf');
+
+    // ===========================================
+    // KEUANGAN - PEMBAYARAN HUTANG NON-MEDIS
+    // ===========================================
+    Route::livewire('/keuangan/pembayaran-hutang-non-medis', 'pages::transaksi.keuangan.pembayaran-hutang-non-medis.pembayaran-hutang-non-medis')
+        ->name('keuangan.pembayaran-hutang-non-medis');
 
     // ===========================================
     // GUDANG - PENERIMAAN MEDIS
