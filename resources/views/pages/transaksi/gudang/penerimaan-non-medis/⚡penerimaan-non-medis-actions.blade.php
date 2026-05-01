@@ -62,7 +62,7 @@ new class extends Component {
     /* ══════════════════════════════
      | OPEN CREATE
      ══════════════════════════════ */
-    #[On('penerimaan-medis.openCreate')]
+    #[On('penerimaan-non-medis.openCreate')]
     public function openCreate(): void
     {
         $this->resetFormFields();
@@ -71,20 +71,20 @@ new class extends Component {
         $this->details = [];
         $this->detailCounter = 0;
         $this->incrementVersion('modal');
-        $this->dispatch('open-modal', name: 'penerimaan-medis-actions');
+        $this->dispatch('open-modal', name: 'penerimaan-non-medis-actions');
         $this->dispatch('focus-rcv-date');
     }
 
     /* ══════════════════════════════
      | OPEN EDIT
      ══════════════════════════════ */
-    #[On('penerimaan-medis.openEdit')]
+    #[On('penerimaan-non-medis.openEdit')]
     public function openEdit(string $rcvNo): void
     {
         $this->resetFormFields();
         $this->formMode = 'edit';
 
-        $hdr = DB::table('imtxn_receivehdrs')->where('rcv_no', $rcvNo)->first();
+        $hdr = DB::table('imtxn_receivehdrsnon')->where('rcv_no', $rcvNo)->first();
         if (!$hdr) {
             $this->dispatch('toast', type: 'error', message: 'Data tidak ditemukan.');
             return;
@@ -106,7 +106,7 @@ new class extends Component {
         $this->loadDetailsFromDb();
         $this->hitungSemua();
         $this->incrementVersion('modal');
-        $this->dispatch('open-modal', name: 'penerimaan-medis-actions');
+        $this->dispatch('open-modal', name: 'penerimaan-non-medis-actions');
         $this->dispatch('focus-rcv-desc');
     }
 
@@ -245,7 +245,7 @@ new class extends Component {
 
     private function cekHargaBeli(string $productId, string $productName, int $newPrice): void
     {
-        $masterPrice = (int) (DB::table('immst_products')->where('product_id', $productId)->value('cost_price') ?? 0);
+        $masterPrice = (int) (DB::table('immst_productsnon')->where('product_id', $productId)->value('cost_price') ?? 0);
 
         if ($newPrice === $masterPrice) {
             return;
@@ -265,7 +265,7 @@ new class extends Component {
 
         if ($autoUpdate === '1') {
             // Auto update harga di master
-            DB::table('immst_products')
+            DB::table('immst_productsnon')
                 ->where('product_id', $productId)
                 ->update(['cost_price' => $newPrice]);
             $this->dispatch('toast', type: 'success', message: "Harga master {$productName} otomatis diupdate.");
@@ -286,7 +286,7 @@ new class extends Component {
             return;
         }
 
-        DB::table('immst_products')
+        DB::table('immst_productsnon')
             ->where('product_id', $this->pendingPriceUpdate['product_id'])
             ->update(['cost_price' => $this->pendingPriceUpdate['new_price']]);
 
@@ -310,8 +310,8 @@ new class extends Component {
      ══════════════════════════════ */
     private function loadDetailsFromDb(): void
     {
-        $rows = DB::table('imtxn_receivedtls as a')
-            ->leftJoin('immst_products as b', 'a.product_id', '=', 'b.product_id')
+        $rows = DB::table('imtxn_receivedtlsnon as a')
+            ->leftJoin('immst_productsnon as b', 'a.product_id', '=', 'b.product_id')
             ->where('a.rcv_no', $this->rcvNo)
             ->select(['a.rcv_dtl', 'a.product_id', 'b.product_name', 'a.qty', 'a.cost_price', 'a.dtl_persen', 'a.dtl_diskon', 'a.dtl_persen1', 'a.dtl_diskon1', 'a.rcv_bath', 'a.rcv_ed'])
             ->orderBy('a.rcv_dtl')
@@ -441,7 +441,7 @@ new class extends Component {
     {
         // Guard edit mode: status selain 'A' (Daftar Tunggu) sudah final — tidak boleh disimpan ulang.
         if ($this->formMode === 'edit' && $this->rcvNo) {
-            $currentStatus = (string) (DB::table('imtxn_receivehdrs')->where('rcv_no', $this->rcvNo)->value('rcv_status') ?? '');
+            $currentStatus = (string) (DB::table('imtxn_receivehdrsnon')->where('rcv_no', $this->rcvNo)->value('rcv_status') ?? '');
             if ($currentStatus !== 'A') {
                 $this->dispatch('toast', type: 'error', message: "Status '{$currentStatus}' — transaksi sudah final, tidak bisa diubah. Batalkan dulu untuk mengembalikan ke Daftar Tunggu.");
                 return;
@@ -496,10 +496,10 @@ new class extends Component {
 
                 if ($this->formMode === 'create') {
                     // Generate rcv_no
-                    $rcvNo = (int) DB::selectOne('SELECT NVL(MAX(rcv_no),0)+1 AS val FROM imtxn_receivehdrs')->val;
+                    $rcvNo = (int) DB::selectOne('SELECT NVL(MAX(rcv_no),0)+1 AS val FROM imtxn_receivehdrsnon')->val;
                     $this->rcvNo = $rcvNo;
 
-                    DB::table('imtxn_receivehdrs')->insert([
+                    DB::table('imtxn_receivehdrsnon')->insert([
                         'rcv_no' => $rcvNo,
                         'rcv_date' => DB::raw("to_date('{$this->rcvDate}','dd/mm/yyyy hh24:mi:ss')"),
                         'supp_id' => $this->suppId,
@@ -519,7 +519,7 @@ new class extends Component {
 
                     // Insert all details
                     foreach ($this->details as $dtl) {
-                        DB::table('imtxn_receivedtls')->insert([
+                        DB::table('imtxn_receivedtlsnon')->insert([
                             'rcv_no' => $rcvNo,
                             'rcv_dtl' => DB::raw('rcvdtl_seq.nextval'),
                             'product_id' => $dtl['product_id'],
@@ -535,7 +535,7 @@ new class extends Component {
                     }
                 } else {
                     // Update header
-                    DB::table('imtxn_receivehdrs')
+                    DB::table('imtxn_receivehdrsnon')
                         ->where('rcv_no', $this->rcvNo)
                         ->update([
                             'rcv_date' => DB::raw("to_date('{$this->rcvDate}','dd/mm/yyyy hh24:mi:ss')"),
@@ -555,10 +555,10 @@ new class extends Component {
                         ]);
 
                     // Delete old details & re-insert
-                    DB::table('imtxn_receivedtls')->where('rcv_no', $this->rcvNo)->delete();
+                    DB::table('imtxn_receivedtlsnon')->where('rcv_no', $this->rcvNo)->delete();
 
                     foreach ($this->details as $dtl) {
-                        DB::table('imtxn_receivedtls')->insert([
+                        DB::table('imtxn_receivedtlsnon')->insert([
                             'rcv_no' => $this->rcvNo,
                             'rcv_dtl' => DB::raw('rcvdtl_seq.nextval'),
                             'product_id' => $dtl['product_id'],
@@ -574,11 +574,11 @@ new class extends Component {
                     }
 
                     // Hapus pembayaran lama (edit mode) supaya tidak double insert
-                    DB::table('imtxn_receivepayments')->where('rcv_no', $this->rcvNo)->delete();
-                    $oldCashoutNos = DB::table('imtxn_cashoutdtls')->where('rcv_no', $this->rcvNo)->pluck('cashout_no')->all();
-                    DB::table('imtxn_cashoutdtls')->where('rcv_no', $this->rcvNo)->delete();
+                    DB::table('imtxn_receivepaymentsnon')->where('rcv_no', $this->rcvNo)->delete();
+                    $oldCashoutNos = DB::table('imtxn_cashoutdtlsnon')->where('rcv_no', $this->rcvNo)->pluck('cashout_no')->all();
+                    DB::table('imtxn_cashoutdtlsnon')->where('rcv_no', $this->rcvNo)->delete();
                     if (!empty($oldCashoutNos)) {
-                        DB::table('imtxn_cashouthdrs')->whereIn('cashout_no', $oldCashoutNos)->delete();
+                        DB::table('imtxn_cashouthdrsnon')->whereIn('cashout_no', $oldCashoutNos)->delete();
                     }
                 }
 
@@ -587,7 +587,7 @@ new class extends Component {
                     $cashoutNo = (int) DB::selectOne('SELECT cashout_seq.nextval AS val FROM dual')->val;
                     $desc = 'Angsuran Awal, Atas Nama :"' . $suppName . '" Nota No "' . $this->rcvNo . '".';
 
-                    DB::table('imtxn_cashouthdrs')->insert([
+                    DB::table('imtxn_cashouthdrsnon')->insert([
                         'shift' => $shift,
                         'acc_id' => $this->accId,
                         'cashout_no' => $cashoutNo,
@@ -598,13 +598,13 @@ new class extends Component {
                         'supp_id' => $this->suppId,
                     ]);
 
-                    DB::table('imtxn_cashoutdtls')->insert([
+                    DB::table('imtxn_cashoutdtlsnon')->insert([
                         'cashout_no' => $cashoutNo,
                         'rcv_no' => $this->rcvNo,
                         'cashout_dtl' => DB::raw('codtl_seq.nextval'),
                     ]);
 
-                    DB::table('imtxn_receivepayments')->insert([
+                    DB::table('imtxn_receivepaymentsnon')->insert([
                         'rcvp_no' => DB::raw('rcvp_seq.nextval'),
                         'rcv_no' => $this->rcvNo,
                         'rcvp_date' => DB::raw("to_date('{$this->rcvDate}','dd/mm/yyyy hh24:mi:ss')"),
@@ -615,12 +615,12 @@ new class extends Component {
             });
 
             $msg = $rcvStatus === 'L'
-                ? 'Obat dari PBF — lunas, disimpan & diposting.'
-                : 'Obat dari PBF — status Hutang, disimpan & diposting.';
+                ? 'Barang Non-Medis dari Supplier — lunas, disimpan & diposting.'
+                : 'Barang Non-Medis dari Supplier — status Hutang, disimpan & diposting.';
             $this->dispatch('toast', type: 'success', message: $msg);
             $this->closeBayar();
             $this->closeModal();
-            $this->dispatch('penerimaan-medis.saved');
+            $this->dispatch('penerimaan-non-medis.saved');
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan: ' . $e->getMessage());
         }
@@ -629,7 +629,7 @@ new class extends Component {
     /* ══════════════════════════════
      | DELETE
      ══════════════════════════════ */
-    #[On('penerimaan-medis.requestDelete')]
+    #[On('penerimaan-non-medis.requestDelete')]
     public function deleteFromGrid(string $rcvNo): void
     {
         if (
@@ -643,12 +643,12 @@ new class extends Component {
 
         try {
             DB::transaction(function () use ($rcvNo) {
-                DB::table('imtxn_receivedtls')->where('rcv_no', $rcvNo)->delete();
-                DB::table('imtxn_receivehdrs')->where('rcv_no', $rcvNo)->delete();
+                DB::table('imtxn_receivedtlsnon')->where('rcv_no', $rcvNo)->delete();
+                DB::table('imtxn_receivehdrsnon')->where('rcv_no', $rcvNo)->delete();
             });
 
             $this->dispatch('toast', type: 'success', message: 'Data penerimaan berhasil dihapus.');
-            $this->dispatch('penerimaan-medis.saved');
+            $this->dispatch('penerimaan-non-medis.saved');
         } catch (QueryException $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal menghapus: ' . $e->getMessage());
         }
@@ -671,7 +671,7 @@ new class extends Component {
         $this->closeModal();
     }
 
-    #[On('penerimaan-medis.requestBatal')]
+    #[On('penerimaan-non-medis.requestBatal')]
     public function batalFromGrid(string $rcvNo): void
     {
         if (
@@ -684,7 +684,7 @@ new class extends Component {
         }
 
         try {
-            $hdr = DB::table('imtxn_receivehdrs')->where('rcv_no', $rcvNo)->first();
+            $hdr = DB::table('imtxn_receivehdrsnon')->where('rcv_no', $rcvNo)->first();
             if (!$hdr) {
                 $this->dispatch('toast', type: 'error', message: 'Data transaksi tidak ditemukan.');
                 return;
@@ -699,30 +699,30 @@ new class extends Component {
 
             if ($status === 'A') {
                 DB::transaction(function () use ($rcvNo) {
-                    DB::table('imtxn_receivehdrs')->where('rcv_no', $rcvNo)->update(['rcv_status' => 'F']);
+                    DB::table('imtxn_receivehdrsnon')->where('rcv_no', $rcvNo)->update(['rcv_status' => 'F']);
                 });
                 $this->dispatch('toast', type: 'success', message: 'Transaksi berhasil dibatalkan.');
-                $this->dispatch('penerimaan-medis.saved');
+                $this->dispatch('penerimaan-non-medis.saved');
                 return;
             }
 
             if (in_array($status, ['H', 'L'], true)) {
-                $cekPembayaran = (int) DB::table('imtxn_cashoutdtls')->where('rcv_no', $rcvNo)->count();
+                $cekPembayaran = (int) DB::table('imtxn_cashoutdtlsnon')->where('rcv_no', $rcvNo)->count();
                 if ($cekPembayaran > 1) {
                     $this->dispatch('toast', type: 'error', message: 'Tidak bisa membatalkan — status pembayaran terkunci dengan nota lain.');
                     return;
                 }
 
                 DB::transaction(function () use ($rcvNo) {
-                    DB::table('imtxn_receivepayments')->where('rcv_no', $rcvNo)->delete();
+                    DB::table('imtxn_receivepaymentsnon')->where('rcv_no', $rcvNo)->delete();
 
-                    $cashoutNos = DB::table('imtxn_cashoutdtls')->where('rcv_no', $rcvNo)->pluck('cashout_no')->all();
-                    DB::table('imtxn_cashoutdtls')->where('rcv_no', $rcvNo)->delete();
+                    $cashoutNos = DB::table('imtxn_cashoutdtlsnon')->where('rcv_no', $rcvNo)->pluck('cashout_no')->all();
+                    DB::table('imtxn_cashoutdtlsnon')->where('rcv_no', $rcvNo)->delete();
                     if (!empty($cashoutNos)) {
-                        DB::table('imtxn_cashouthdrs')->whereIn('cashout_no', $cashoutNos)->delete();
+                        DB::table('imtxn_cashouthdrsnon')->whereIn('cashout_no', $cashoutNos)->delete();
                     }
 
-                    DB::table('imtxn_receivehdrs')->where('rcv_no', $rcvNo)->update([
+                    DB::table('imtxn_receivehdrsnon')->where('rcv_no', $rcvNo)->update([
                         'rcv_status' => 'A',
                         'rcv_bayar' => 0,
                         'pay_date' => null,
@@ -730,7 +730,7 @@ new class extends Component {
                 });
 
                 $this->dispatch('toast', type: 'success', message: 'Pembayaran di-rollback. Status kembali ke Daftar Tunggu (A).');
-                $this->dispatch('penerimaan-medis.saved');
+                $this->dispatch('penerimaan-non-medis.saved');
                 return;
             }
 
@@ -764,7 +764,7 @@ new class extends Component {
 
         $this->hitungSemua();
         $this->incrementVersion('bayar');
-        $this->dispatch('open-modal', name: 'penerimaan-medis-bayar');
+        $this->dispatch('open-modal', name: 'penerimaan-non-medis-bayar');
     }
 
     public function closeBayar(): void
@@ -776,7 +776,7 @@ new class extends Component {
         // Bump versi area 'bayar' supaya LOV kas remount (state bersih) tanpa
         // ganggu LOV lain di main modal.
         $this->incrementVersion('bayar');
-        $this->dispatch('close-modal', name: 'penerimaan-medis-bayar');
+        $this->dispatch('close-modal', name: 'penerimaan-non-medis-bayar');
     }
 
     /* ══════════════════════════════
@@ -785,7 +785,7 @@ new class extends Component {
     public function closeModal(): void
     {
         $this->resetFormFields();
-        $this->dispatch('close-modal', name: 'penerimaan-medis-actions');
+        $this->dispatch('close-modal', name: 'penerimaan-non-medis-actions');
         // JANGAN resetVersion — open berikutnya tinggal incrementVersion dapat angka baru.
         // Kalau di-reset ke 0, open kedua balik ke v1 → wire:key LOV sama → state persist.
         $this->incrementVersion('modal');
@@ -807,7 +807,7 @@ new class extends Component {
 ?>
 
 <div>
-    <x-modal name="penerimaan-medis-actions" size="full" height="full" focusable>
+    <x-modal name="penerimaan-non-medis-actions" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
             wire:key="{{ $this->renderKey('modal', [$formMode, $rcvNo]) }}">
 
@@ -828,10 +828,10 @@ new class extends Component {
                             </div>
                             @php
                                 [$modalTitle, $modalSubtitle, $modeBadgeLabel, $modeBadgeVariant] = match (true) {
-                                    $formMode === 'create' => ['Tambah Obat dari PBF', 'Catat penerimaan obat baru dari PBF / Supplier.', 'Tambah Baru', 'success'],
-                                    in_array($rcvStatus, ['H', 'L'], true) => ["Lihat Obat dari PBF #{$rcvNo}", 'Transaksi sudah diposting — data hanya bisa dilihat. Gunakan "Batalkan Transaksi" kalau perlu revisi.', 'Lihat (Final)', 'alternative'],
-                                    $rcvStatus === 'F' => ["Lihat Obat dari PBF #{$rcvNo}", 'Transaksi sudah dibatalkan — hanya untuk riwayat.', 'Batal', 'danger'],
-                                    default => ["Edit Obat dari PBF #{$rcvNo}", 'Ubah data penerimaan obat (Daftar Tunggu).', 'Edit', 'warning'],
+                                    $formMode === 'create' => ['Tambah Barang Non-Medis dari Supplier', 'Catat penerimaan obat baru dari PBF / Supplier.', 'Tambah Baru', 'success'],
+                                    in_array($rcvStatus, ['H', 'L'], true) => ["Lihat Barang Non-Medis dari Supplier #{$rcvNo}", 'Transaksi sudah diposting — data hanya bisa dilihat. Gunakan "Batalkan Transaksi" kalau perlu revisi.', 'Lihat (Final)', 'alternative'],
+                                    $rcvStatus === 'F' => ["Lihat Barang Non-Medis dari Supplier #{$rcvNo}", 'Transaksi sudah dibatalkan — hanya untuk riwayat.', 'Batal', 'danger'],
+                                    default => ["Edit Barang Non-Medis dari Supplier #{$rcvNo}", 'Ubah data penerimaan obat (Daftar Tunggu).', 'Edit', 'warning'],
                                 };
                             @endphp
                             <div>
@@ -882,7 +882,7 @@ new class extends Component {
                             </div>
                             <div x-ref="lovSupplierWrapper">
                                 <livewire:lov.supplier.lov-supplier target="supplier-rcv" label="Supplier"
-                                    jenisSupplier="medis" :initialSuppId="$suppId" :readonly="$isReadOnly"
+                                    jenisSupplier="nonmedis" :initialSuppId="$suppId" :readonly="$isReadOnly"
                                     wire:key="lov-supp-{{ $rcvNo ?? 'new' }}-{{ $renderVersions['modal'] ?? 0 }}" />
                             </div>
                             <div>
@@ -918,7 +918,7 @@ new class extends Component {
                                 {{-- Barang --}}
                                 <div class="col-span-2 sm:col-span-1" x-ref="entryProductWrapper">
                                     <div>
-                                        <livewire:lov.product.lov-product target="product-rcv" label="Barang"
+                                        <livewire:lov.product-non.lov-product-non target="product-rcv" label="Barang"
                                             :initialProductId="$entryProductId"
                                             wire:key="lov-prod-{{ $rcvNo ?? 'new' }}-{{ $renderVersions['entry'] ?? 0 }}" />
                                     </div>
@@ -1237,7 +1237,7 @@ new class extends Component {
     {{-- ═══════════════════════════════════════════════════════════════
          MODAL PEMBAYARAN — input diskon/PPN/materai/bayar + summary
          ═══════════════════════════════════════════════════════════════ --}}
-    <x-modal name="penerimaan-medis-bayar" size="2xl" focusable>
+    <x-modal name="penerimaan-non-medis-bayar" size="2xl" focusable>
         <div class="flex flex-col" wire:key="{{ $this->renderKey('bayar', [$rcvNo]) }}">
             {{-- Header --}}
             <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
