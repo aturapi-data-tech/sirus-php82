@@ -156,6 +156,48 @@ Route::middleware(['auth'])->group(function () {
         ->name('keuangan.topup-supplier-non-medis');
 
     // ===========================================
+    // KEUANGAN - SALDO KAS
+    // ===========================================
+    Route::livewire('/keuangan/saldo-kas', 'pages::transaksi.keuangan.saldo-kas.saldo-kas')
+        ->name('keuangan.saldo-kas');
+
+    // ===========================================
+    // KEUANGAN - BUKU BESAR
+    // ===========================================
+    Route::livewire('/keuangan/buku-besar', 'pages::transaksi.keuangan.buku-besar.buku-besar')
+        ->name('keuangan.buku-besar');
+
+    // ===========================================
+    // KEUANGAN - LAPORAN LABA RUGI
+    // ===========================================
+    Route::livewire('/keuangan/laba-rugi', 'pages::transaksi.keuangan.laba-rugi.laba-rugi')
+        ->name('keuangan.laba-rugi');
+
+    // ===========================================
+    // KEUANGAN - LAPORAN NERACA
+    // ===========================================
+    Route::livewire('/keuangan/neraca', 'pages::transaksi.keuangan.neraca.neraca')
+        ->name('keuangan.neraca');
+
+    // ===========================================
+    // MASTER AKUNTANSI - GROUP AKUN
+    // ===========================================
+    Route::livewire('/master/group-akun', 'pages::master.master-akuntansi.master-group-akun.master-group-akun')
+        ->name('master.group-akun');
+
+    // ===========================================
+    // MASTER AKUNTANSI - AKUN
+    // ===========================================
+    Route::livewire('/master/akun', 'pages::master.master-akuntansi.master-akun.master-akun')
+        ->name('master.akun');
+
+    // ===========================================
+    // MASTER AKUNTANSI - KONFIGURASI AKUN TRANSAKSI
+    // ===========================================
+    Route::livewire('/master/konf-akun-trans', 'pages::master.master-akuntansi.master-konf-akun-trans.master-konf-akun-trans')
+        ->name('master.konf-akun-trans');
+
+    // ===========================================
     // GUDANG - PENERIMAAN MEDIS
     // ===========================================
     Route::livewire('/gudang/penerimaan-medis', 'pages::transaksi.gudang.penerimaan-medis.penerimaan-medis')
