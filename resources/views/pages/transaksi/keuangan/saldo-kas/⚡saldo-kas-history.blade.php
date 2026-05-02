@@ -1,0 +1,388 @@
+<?php
+
+use Livewire\Component;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
+use Illuminate\Support\Facades\DB;
+use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+
+new class extends Component {
+    use WithRenderVersioningTrait;
+
+    public string $accId       = '';
+    public string $accDesc     = '';
+    public string $accDkStatus = 'D';
+
+    /** Format internal: 'YYYY-MM' */
+    public string $periode = '';
+    /** Format input user: 'MM/YYYY' */
+    public string $periodeInput = '';
+
+    public array $renderVersions = [];
+    protected array $renderAreas = ['modal'];
+
+    #[Computed]
+    public function dariTanggal(): string
+    {
+        return $this->periode === '' ? '' : $this->periode . '-01';
+    }
+
+    #[Computed]
+    public function sampaiTanggal(): string
+    {
+        if ($this->periode === '') return '';
+        return \Carbon\Carbon::parse($this->periode . '-01')->endOfMonth()->toDateString();
+    }
+
+    public function prevMonth(): void
+    {
+        if ($this->periode === '') return;
+        $this->setPeriode(\Carbon\Carbon::parse($this->periode . '-01')->subMonth()->format('Y-m'));
+    }
+
+    public function nextMonth(): void
+    {
+        if ($this->periode === '') return;
+        $this->setPeriode(\Carbon\Carbon::parse($this->periode . '-01')->addMonth()->format('Y-m'));
+    }
+
+    /**
+     * User mengubah text "MM/YYYY" → parse → set internal YYYY-MM.
+     * Kalau format invalid, biarin saja (tabel jadi kosong sampai dikoreksi).
+     */
+    public function updatedPeriodeInput(string $value): void
+    {
+        $value = trim($value);
+        if (!preg_match('/^(0[1-9]|1[0-2])\/(\d{4})$/', $value, $m)) {
+            $this->periode = '';
+            return;
+        }
+        [$_, $bulan, $tahun] = $m;
+        $this->periode = "{$tahun}-{$bulan}";
+    }
+
+    private function setPeriode(string $ym): void
+    {
+        $this->periode = $ym;
+        $this->periodeInput = \Carbon\Carbon::parse($ym . '-01')->format('m/Y');
+    }
+
+    public function mount(): void
+    {
+        $this->registerAreas(['modal']);
+    }
+
+    #[On('keuangan.saldo-kas.openHistory')]
+    public function openHistory(string $accId, string $tanggal): void
+    {
+        $row = DB::table('acmst_accounts')
+            ->select('acc_id', 'acc_name', 'acc_dk_status')
+            ->where('acc_id', $accId)
+            ->first();
+
+        if (!$row) {
+            $this->dispatch('toast', type: 'error', message: 'Akun kas tidak ditemukan.');
+            return;
+        }
+
+        $this->accId       = (string) $row->acc_id;
+        $this->accDesc     = (string) ($row->acc_name ?? '');
+        $this->accDkStatus = (string) ($row->acc_dk_status ?? 'D');
+
+        // Default: bulan dari tanggal terpilih di parent
+        $this->setPeriode(substr($tanggal, 0, 7));
+
+        $this->incrementVersion('modal');
+        $this->dispatch('open-modal', name: 'saldo-kas-history');
+    }
+
+    /**
+     * Saldo per tanggal (sama formula dgn parent).
+     */
+    private function hitungSaldoTanggal(string $tanggal): float
+    {
+        $tahun = (int) substr($tanggal, 0, 4);
+
+        $sa = DB::table('tktxn_saldoawalakuns')
+            ->where('acc_id', $this->accId)->where('sa_year', (string) $tahun)->first();
+
+        $saldoAwalTahun = $this->accDkStatus === 'D'
+            ? (float) ($sa->sa_acc_d ?? 0)
+            : (float) ($sa->sa_acc_k ?? 0);
+
+        if ($this->accDkStatus === 'D') {
+            $arus = (float) DB::table('tkview_accounts')
+                ->where('txn_acc_k', $this->accId)
+                ->whereBetween(DB::raw("TO_CHAR(txn_date,'YYYY-MM-DD')"), [
+                    sprintf('%04d-01-01', $tahun), $tanggal,
+                ])
+                ->sum(DB::raw('NVL(txn_k,0) - NVL(txn_d,0)'));
+        } else {
+            $arus = (float) DB::table('tkview_accounts')
+                ->where('txn_acc', $this->accId)
+                ->whereBetween(DB::raw("TO_CHAR(txn_date,'YYYY-MM-DD')"), [
+                    sprintf('%04d-01-01', $tahun), $tanggal,
+                ])
+                ->sum(DB::raw('NVL(txn_d,0) - NVL(txn_k,0)'));
+        }
+
+        return $saldoAwalTahun + $arus;
+    }
+
+    /**
+     * Saldo awal periode = saldo per (dari_tanggal - 1 hari).
+     */
+    #[Computed]
+    public function saldoAwalPeriode(): float
+    {
+        if ($this->periode === '') return 0;
+        $prev = \Carbon\Carbon::parse($this->dariTanggal)->subDay()->toDateString();
+        return $this->hitungSaldoTanggal($prev);
+    }
+
+    #[Computed]
+    public function totalDebit(): float
+    {
+        return (float) $this->rows->sum('debit_kita');
+    }
+
+    #[Computed]
+    public function totalKredit(): float
+    {
+        return (float) $this->rows->sum('kredit_kita');
+    }
+
+    #[Computed]
+    public function saldoAkhir(): float
+    {
+        return $this->saldoAwalPeriode + $this->totalDebit - $this->totalKredit;
+    }
+
+    /**
+     * Daftar transaksi dalam rentang dgn running saldo.
+     */
+    #[Computed]
+    public function rows()
+    {
+        if ($this->accId === '' || $this->periode === '') {
+            return collect();
+        }
+
+        // Untuk D-acc: filter txn_acc_k = acc, "counter row" → txn_acc = lawan, txn_d = lawan didebit (kita dikredit), txn_k = lawan dikredit (kita didebit)
+        // Untuk K-acc: filter txn_acc = acc, langsung "row tentang akun kita".
+        if ($this->accDkStatus === 'D') {
+            $q = DB::table('tkview_accounts as v')
+                ->leftJoin('acmst_accounts as a', 'a.acc_id', '=', 'v.txn_acc')
+                ->select(
+                    'v.txn_date', 'v.txn_name',
+                    'v.txn_acc as lawan_acc_id', 'a.acc_name as lawan_acc_name',
+                    DB::raw('NVL(v.txn_k,0) AS debit_kita'),
+                    DB::raw('NVL(v.txn_d,0) AS kredit_kita'),
+                )
+                ->where('v.txn_acc_k', $this->accId);
+        } else {
+            $q = DB::table('tkview_accounts as v')
+                ->leftJoin('acmst_accounts as a', 'a.acc_id', '=', 'v.txn_acc_k')
+                ->select(
+                    'v.txn_date', 'v.txn_name',
+                    'v.txn_acc_k as lawan_acc_id', 'a.acc_name as lawan_acc_name',
+                    DB::raw('NVL(v.txn_d,0) AS debit_kita'),
+                    DB::raw('NVL(v.txn_k,0) AS kredit_kita'),
+                )
+                ->where('v.txn_acc', $this->accId);
+        }
+
+        $rows = $q->whereBetween(DB::raw("TO_CHAR(v.txn_date,'YYYY-MM-DD')"), [
+                    $this->dariTanggal, $this->sampaiTanggal,
+                ])
+                ->orderBy('v.txn_date')
+                ->get();
+
+        // Hitung running saldo
+        $saldo = $this->saldoAwalPeriode;
+        return $rows->map(function ($r) use (&$saldo) {
+            $mutasi = (float) $r->debit_kita - (float) $r->kredit_kita;
+            $saldo += $mutasi;
+            $r->saldo_berjalan = $saldo;
+            $r->mutasi = $mutasi;
+            return $r;
+        });
+    }
+
+    public function closeModal(): void
+    {
+        $this->reset(['accId', 'accDesc', 'accDkStatus', 'periode', 'periodeInput']);
+        $this->dispatch('close-modal', name: 'saldo-kas-history');
+        $this->resetVersion();
+    }
+};
+?>
+
+<div>
+    <x-modal name="saldo-kas-history" size="full" height="full" focusable>
+        <div class="flex flex-col min-h-[calc(100vh-8rem)]"
+             wire:key="{{ $this->renderKey('modal', [$accId, $periode]) }}">
+
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                            Riwayat Transaksi — {{ $accDesc }}
+                        </h2>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Akun <span class="font-mono">{{ $accId }}</span>
+                        </p>
+                    </div>
+                    <x-icon-button color="gray" type="button" wire:click="closeModal">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                    </x-icon-button>
+                </div>
+            </div>
+
+            <div class="px-4 py-3 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <x-input-label for="periodeInput" value="Periode (mm/yyyy)" class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400" />
+                        <div class="flex items-stretch gap-1">
+                            <x-secondary-button type="button" wire:click="prevMonth"
+                                class="px-3" title="Bulan sebelumnya">
+                                ◀
+                            </x-secondary-button>
+                            <x-text-input id="periodeInput" type="text"
+                                wire:model.live.debounce.500ms="periodeInput"
+                                placeholder="01/2026" maxlength="7"
+                                class="w-28 text-center font-mono" />
+                            <x-secondary-button type="button" wire:click="nextMonth"
+                                class="px-3" title="Bulan berikutnya">
+                                ▶
+                            </x-secondary-button>
+                        </div>
+                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                            @if ($periode !== '')
+                                {{ \Carbon\Carbon::parse("{$periode}-01")->format('d/m/Y') }}
+                                — {{ \Carbon\Carbon::parse("{$periode}-01")->endOfMonth()->format('d/m/Y') }}
+                            @else
+                                <span class="text-rose-600">Format: mm/yyyy (mis. 04/2026)</span>
+                            @endif
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-3 text-right">
+                        <div class="px-3 py-2 border rounded-lg bg-gray-50 border-gray-200 dark:bg-gray-800/40 dark:border-gray-700">
+                            <div class="text-[10px] tracking-wider text-gray-500 uppercase">Saldo Awal</div>
+                            <div class="font-mono text-sm font-semibold">
+                                {{ number_format($this->saldoAwalPeriode, 0, ',', '.') }}
+                            </div>
+                        </div>
+                        <div class="px-3 py-2 border rounded-lg bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+                            <div class="text-[10px] tracking-wider text-blue-700 uppercase dark:text-blue-300">Debit</div>
+                            <div class="font-mono text-sm font-semibold text-blue-700 dark:text-blue-300">
+                                {{ number_format($this->totalDebit, 0, ',', '.') }}
+                            </div>
+                        </div>
+                        <div class="px-3 py-2 border rounded-lg bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800">
+                            <div class="text-[10px] tracking-wider text-rose-700 uppercase dark:text-rose-300">Kredit</div>
+                            <div class="font-mono text-sm font-semibold text-rose-700 dark:text-rose-300">
+                                {{ number_format($this->totalKredit, 0, ',', '.') }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 px-4 py-3 overflow-hidden bg-gray-50/70 dark:bg-gray-950/20">
+                <div class="h-full overflow-y-auto bg-white border border-gray-200 rounded-xl dark:border-gray-700 dark:bg-gray-900">
+                    <table class="min-w-full text-sm">
+                        <thead class="sticky top-0 z-10 text-gray-600 bg-gray-50 dark:bg-gray-800 dark:text-gray-200">
+                            <tr class="text-left">
+                                <th class="px-3 py-2 font-semibold w-28">TANGGAL</th>
+                                <th class="px-3 py-2 font-semibold">DESKRIPSI</th>
+                                <th class="px-3 py-2 font-semibold w-56">LAWAN AKUN</th>
+                                <th class="px-3 py-2 font-semibold w-28 text-right">DEBIT</th>
+                                <th class="px-3 py-2 font-semibold w-28 text-right">KREDIT</th>
+                                <th class="px-3 py-2 font-semibold w-36 text-right">SALDO</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-700 divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-200">
+                            @if ($this->dariTanggal !== '')
+                                <tr class="bg-gray-50 dark:bg-gray-800/40">
+                                    <td colspan="5" class="px-3 py-2 text-xs italic text-gray-500">
+                                        Saldo per {{ \Carbon\Carbon::parse($this->dariTanggal)->subDay()->format('d/m/Y') }}
+                                    </td>
+                                    <td class="px-3 py-2 font-mono text-sm font-semibold text-right">
+                                        {{ number_format($this->saldoAwalPeriode, 0, ',', '.') }}
+                                    </td>
+                                </tr>
+                            @endif
+
+                            @forelse ($this->rows as $i => $row)
+                                <tr wire:key="hist-{{ $i }}-{{ $row->txn_date }}"
+                                    class="hover:bg-gray-50 dark:hover:bg-gray-800/60">
+                                    <td class="px-3 py-2 font-mono text-xs leading-tight align-top">
+                                        <div>{{ \Carbon\Carbon::parse($row->txn_date)->format('d/m/Y') }}</div>
+                                        <div class="text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($row->txn_date)->format('H:i') }}</div>
+                                    </td>
+                                    <td class="px-3 py-2 text-xs align-top">{{ $row->txn_name }}</td>
+                                    <td class="px-3 py-2 text-xs text-gray-500 align-top dark:text-gray-400">
+                                        <div class="font-mono">{{ $row->lawan_acc_id }}</div>
+                                        @if (!empty($row->lawan_acc_name))
+                                            <div class="text-[10px] truncate">{{ $row->lawan_acc_name }}</div>
+                                        @endif
+                                    </td>
+                                    <td class="px-3 py-2 font-mono text-sm text-right align-top text-blue-700 dark:text-blue-300">
+                                        @if ((float) $row->debit_kita > 0)
+                                            {{ number_format((float) $row->debit_kita, 0, ',', '.') }}
+                                        @else
+                                            <span class="text-gray-300">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-3 py-2 font-mono text-sm text-right align-top text-rose-700 dark:text-rose-300">
+                                        @if ((float) $row->kredit_kita > 0)
+                                            {{ number_format((float) $row->kredit_kita, 0, ',', '.') }}
+                                        @else
+                                            <span class="text-gray-300">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-3 py-2 font-mono text-sm font-semibold text-right align-top {{ (float) $row->saldo_berjalan < 0 ? 'text-red-600' : '' }}">
+                                        {{ number_format((float) $row->saldo_berjalan, 0, ',', '.') }}
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
+                                        Tidak ada transaksi pada periode ini.
+                                    </td>
+                                </tr>
+                            @endforelse
+
+                            @if ($this->rows->count() > 0)
+                                <tr class="font-semibold bg-emerald-50 dark:bg-emerald-900/20">
+                                    <td colspan="3" class="px-3 py-2 text-xs uppercase">
+                                        Saldo per {{ \Carbon\Carbon::parse($this->sampaiTanggal)->format('d/m/Y') }}
+                                    </td>
+                                    <td class="px-3 py-2 font-mono text-sm text-right text-blue-700 dark:text-blue-300">
+                                        {{ number_format($this->totalDebit, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-3 py-2 font-mono text-sm text-right text-rose-700 dark:text-rose-300">
+                                        {{ number_format($this->totalKredit, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-3 py-2 font-mono text-base text-right text-emerald-700 dark:text-emerald-300">
+                                        {{ number_format($this->saldoAkhir, 0, ',', '.') }}
+                                    </td>
+                                </tr>
+                            @endif
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="sticky bottom-0 z-10 px-6 py-3 bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700">
+                <div class="flex justify-end">
+                    <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                </div>
+            </div>
+        </div>
+    </x-modal>
+</div>
