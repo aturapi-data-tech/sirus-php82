@@ -818,7 +818,7 @@ trait VclaimTrait
             "tglSep" => "required",
             "ppkPelayanan" => "required",
             "jnsPelayanan" => "required",
-            "klsRawatHak" => "required",
+            // "klsRawatHak" => "required", // boleh kosong utk kasus bayi (SEP RANAP)
             "asalRujukan" => "required",
             "tglRujukan" => "required",
             // "noRujukan" => "required", // dikomentari

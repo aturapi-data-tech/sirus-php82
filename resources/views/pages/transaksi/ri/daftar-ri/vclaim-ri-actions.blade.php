@@ -494,8 +494,10 @@ new class extends Component {
         try {
             $response = $this->sep_insert($request)->getOriginalContent();
             $code = $response['metadata']['code'] ?? 500;
-            if ($code == 200 || ($code == 201 && !empty($response['response']['sep']['noSep']))) {
-                $sepData = $response['response']['sep'] ?? [];
+            $resp = $response['response'] ?? null;
+            // Guard: saat validator VclaimTrait fail, $resp adalah MessageBag — bukan array
+            if ($code == 200 || ($code == 201 && is_array($resp) && !empty($resp['sep']['noSep']))) {
+                $sepData = $resp['sep'] ?? [];
                 $noSep = $sepData['noSep'] ?? '';
 
                 // Persist SEP langsung ke JSON DB
