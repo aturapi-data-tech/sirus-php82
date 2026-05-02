@@ -626,8 +626,8 @@ new class extends Component {
                                                                 </x-dropdown-link>
                                                             @endhasanyrole
 
-                                                            {{-- Rekam Medis — Perawat | Dokter | Admin --}}
-                                                            @hasanyrole('Perawat|Dokter|Admin')
+                                                            {{-- Rekam Medis — Perawat | Dokter | Admin | Casemix (view) --}}
+                                                            @hasanyrole('Perawat|Dokter|Admin|Casemix')
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="openRekamMedis('{{ $row->rj_no }}')"
                                                                     class="px-3 py-2 text-sm rounded-lg bg-green-50 hover:bg-green-100 dark:bg-green-900/20">
