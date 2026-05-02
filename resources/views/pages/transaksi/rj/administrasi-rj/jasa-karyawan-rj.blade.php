@@ -168,7 +168,7 @@ new class extends Component {
                 $this->syncJasaKaryawanJson();
 
                 // 6. Audit log
-                $this->appendAdminLog($this->rjNo, 'Tambah Jasa Karyawan: ' . $this->formEntryJasaKaryawan['jasaKaryawanDesc']);
+                $this->appendAdminLogRJ($this->rjNo, 'Tambah Jasa Karyawan: ' . $this->formEntryJasaKaryawan['jasaKaryawanDesc']);
             });
 
             $this->resetFormEntry();
@@ -211,7 +211,7 @@ new class extends Component {
                 $this->syncJasaKaryawanJson();
 
                 // 6. Audit log
-                $this->appendAdminLog($this->rjNo, 'Hapus Jasa Karyawan #' . $rjActeDtl);
+                $this->appendAdminLogRJ($this->rjNo, 'Hapus Jasa Karyawan #' . $rjActeDtl);
             });
 
             $this->dispatch('administrasi-rj.updated');

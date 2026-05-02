@@ -262,7 +262,7 @@ new class extends Component {
                             'emp_id' => $empId,
                         ]);
                     $newTxnStatus = 'H';
-                    $this->appendAdminLog($this->rjNo, 'Bayar Cicilan: Rp ' . number_format($bayar, 0, ',', '.') . ' (sisa Rp ' . number_format($dspTotalAll - $bayar, 0, ',', '.') . ')');
+                    $this->appendAdminLogRJ($this->rjNo, 'Bayar Cicilan: Rp ' . number_format($bayar, 0, ',', '.') . ' (sisa Rp ' . number_format($dspTotalAll - $bayar, 0, ',', '.') . ')');
                 } else {
                     // LUNAS
                     if ($this->rjTotal > 0) {
@@ -283,7 +283,7 @@ new class extends Component {
                     DB::table('rsmst_pasiens')
                         ->where('reg_no', $rjHdr->reg_no)
                         ->update(['lockstatus' => null]);
-                    $this->appendAdminLog($this->rjNo, 'Bayar Lunas: Rp ' . number_format($dspTotalAll, 0, ',', '.'));
+                    $this->appendAdminLogRJ($this->rjNo, 'Bayar Lunas: Rp ' . number_format($dspTotalAll, 0, ',', '.'));
                 }
             });
 
@@ -355,7 +355,7 @@ new class extends Component {
                         ->update(['lockstatus' => null]);
                 }
 
-                $this->appendAdminLog($this->rjNo, 'Batal Transaksi Pembayaran');
+                $this->appendAdminLogRJ($this->rjNo, 'Batal Transaksi Pembayaran');
             });
 
             $this->txnStatus = null;
@@ -506,7 +506,7 @@ new class extends Component {
                     ->where('reg_no', $rjHdr->reg_no)
                     ->update(['lockstatus' => 'UGD']);
 
-                $this->appendAdminLog($this->rjNo, 'Transfer ke UGD #' . $ugdRjNo . ' (total biaya RJ Rp ' . number_format($totalBiayaRJ, 0, ',', '.') . ')');
+                $this->appendAdminLogRJ($this->rjNo, 'Transfer ke UGD #' . $ugdRjNo . ' (total biaya RJ Rp ' . number_format($totalBiayaRJ, 0, ',', '.') . ')');
             });
 
             $this->isFormLocked = true;
@@ -608,7 +608,7 @@ new class extends Component {
                     ->where('reg_no', $rjHdr->reg_no)
                     ->update(['lockstatus' => 'RJ']);
 
-                $this->appendAdminLog($this->rjNo, 'Batal Transfer ke UGD #' . $ugdRjNo);
+                $this->appendAdminLogRJ($this->rjNo, 'Batal Transfer ke UGD #' . $ugdRjNo);
             });
 
             $this->isFormLocked = false;

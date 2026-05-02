@@ -172,7 +172,7 @@ new class extends Component {
                 $this->syncJasaMedisJson();
 
                 // 6. Audit log
-                $this->appendAdminLog($this->rjNo, 'Tambah Jasa Medis: ' . $this->formEntryJasaMedis['jasaMedisDesc']);
+                $this->appendAdminLogUGD($this->rjNo, 'Tambah Jasa Medis: ' . $this->formEntryJasaMedis['jasaMedisDesc']);
             });
 
             // 6. Notify + reset — di luar transaksi
@@ -214,7 +214,7 @@ new class extends Component {
                 $this->syncJasaMedisJson();
 
                 // 5. Audit log
-                $this->appendAdminLog($this->rjNo, 'Hapus Jasa Medis #' . $rjpactDtl);
+                $this->appendAdminLogUGD($this->rjNo, 'Hapus Jasa Medis #' . $rjpactDtl);
             });
 
             // 5. Notify — di luar transaksi

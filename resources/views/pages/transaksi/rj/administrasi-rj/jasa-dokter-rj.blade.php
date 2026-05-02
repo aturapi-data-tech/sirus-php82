@@ -201,7 +201,7 @@ new class extends Component {
                 $this->syncJasaDokterJson();
 
                 // 6. Audit log
-                $this->appendAdminLog($this->rjNo, 'Tambah Jasa Dokter: ' . $this->formEntryJasaDokter['jasaDokterDesc']);
+                $this->appendAdminLogRJ($this->rjNo, 'Tambah Jasa Dokter: ' . $this->formEntryJasaDokter['jasaDokterDesc']);
             });
 
             $this->resetFormEntry();
@@ -244,7 +244,7 @@ new class extends Component {
                 $this->syncJasaDokterJson();
 
                 // 6. Audit log
-                $this->appendAdminLog($this->rjNo, 'Hapus Jasa Dokter #' . $rjaccdocDtl);
+                $this->appendAdminLogRJ($this->rjNo, 'Hapus Jasa Dokter #' . $rjaccdocDtl);
             });
 
             $this->dispatch('administrasi-rj.updated');

@@ -265,7 +265,7 @@ trait EmrRITrait
      * Append satu entry ke AdministrasiRI.userLogs di JSON.
      * Panggil DI DALAM DB::transaction setelah lockRIRow().
      */
-    protected function appendAdminLog(int $riHdrNo, string $keterangan): void
+    protected function appendAdminLogRI(int $riHdrNo, string $keterangan): void
     {
         $data = $this->findDataRI($riHdrNo);
 

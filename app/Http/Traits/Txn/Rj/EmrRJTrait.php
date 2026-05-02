@@ -127,7 +127,7 @@ trait EmrRJTrait
      * Append satu entry ke AdministrasiRJ.userLogs di JSON.
      * Panggil DI DALAM DB::transaction setelah lockRJRow().
      */
-    protected function appendAdminLog(int $rjNo, string $keterangan): void
+    protected function appendAdminLogRJ(int $rjNo, string $keterangan): void
     {
         $data = $this->findDataRJ($rjNo);
 

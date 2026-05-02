@@ -150,7 +150,7 @@ new class extends Component {
                     'lainLainPrice' => $this->formEntryLainLain['lainLainPrice'],
                 ];
 
-                $this->appendAdminLog($this->rjNo, 'Tambah Lain-Lain: ' . $this->formEntryLainLain['lainLainDesc']);
+                $this->appendAdminLogUGD($this->rjNo, 'Tambah Lain-Lain: ' . $this->formEntryLainLain['lainLainDesc']);
             });
 
             // Notify + reset — di luar transaksi
@@ -215,7 +215,7 @@ new class extends Component {
 
                 $this->rjLainLain = collect($this->rjLainLain)->map(fn($item) => $item['rjotherDtl'] !== $this->editingDtl ? $item : array_merge($item, ['lainLainPrice' => $this->editRow['lainLainPrice']]))->toArray();
 
-                $this->appendAdminLog($this->rjNo, 'Edit Lain-Lain #' . $this->editingDtl . ' tarif jadi ' . $this->editRow['lainLainPrice']);
+                $this->appendAdminLogUGD($this->rjNo, 'Edit Lain-Lain #' . $this->editingDtl . ' tarif jadi ' . $this->editRow['lainLainPrice']);
             });
 
             // Reset edit state + notify — di luar transaksi
@@ -248,7 +248,7 @@ new class extends Component {
 
                 $this->rjLainLain = collect($this->rjLainLain)->where('rjotherDtl', '!=', $rjotherDtl)->values()->toArray();
 
-                $this->appendAdminLog($this->rjNo, 'Hapus Lain-Lain #' . $rjotherDtl);
+                $this->appendAdminLogUGD($this->rjNo, 'Hapus Lain-Lain #' . $rjotherDtl);
             });
 
             // cancelEdit + notify — di luar transaksi
