@@ -154,6 +154,8 @@ new class extends Component {
                     'radDesc' => $this->formEntryRad['radDesc'],
                     'radPrice' => $this->formEntryRad['radPrice'],
                 ];
+
+                $this->appendAdminLog($this->rjNo, 'Tambah Radiologi: ' . $this->formEntryRad['radDesc']);
             });
 
             $this->resetFormEntry();
@@ -226,6 +228,8 @@ new class extends Component {
                         return array_merge($item, ['radPrice' => $this->editRow['radPrice']]);
                     })
                     ->toArray();
+
+                $this->appendAdminLog($this->rjNo, 'Edit Radiologi #' . $this->editingDtl . ' tarif jadi ' . $this->editRow['radPrice']);
             });
 
             $this->editingDtl = null;
@@ -257,6 +261,8 @@ new class extends Component {
                 DB::table('rstxn_rjrads')->where('rad_dtl', $radDtl)->delete();
 
                 $this->rjRad = collect($this->rjRad)->where('radDtl', '!=', $radDtl)->values()->toArray();
+
+                $this->appendAdminLog($this->rjNo, 'Hapus Radiologi #' . $radDtl);
             });
 
             if ($this->editingDtl === $radDtl) {

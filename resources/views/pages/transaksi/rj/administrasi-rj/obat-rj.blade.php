@@ -206,6 +206,8 @@ new class extends Component {
                     'catatanKhusus' => $this->formEntryObat['catatanKhusus'],
                     'etiketStatus' => $this->formEntryObat['etiketStatus'],
                 ];
+
+                $this->appendAdminLog($this->rjNo, 'Tambah Obat: ' . $this->formEntryObat['productName'] . ' x' . $this->formEntryObat['qty']);
             });
 
             $this->resetFormEntry();
@@ -303,6 +305,8 @@ new class extends Component {
                         ]);
                     })
                     ->toArray();
+
+                $this->appendAdminLog($this->rjNo, 'Edit Obat #' . $this->editingDtl);
             });
 
             $this->editingDtl = null;
@@ -334,6 +338,8 @@ new class extends Component {
                 DB::table('rstxn_rjobats')->where('rjobat_dtl', $rjobatDtl)->delete();
 
                 $this->rjObat = collect($this->rjObat)->where('rjobatDtl', '!=', $rjobatDtl)->values()->toArray();
+
+                $this->appendAdminLog($this->rjNo, 'Hapus Obat #' . $rjobatDtl);
             });
 
             if ($this->editingDtl === $rjobatDtl) {
