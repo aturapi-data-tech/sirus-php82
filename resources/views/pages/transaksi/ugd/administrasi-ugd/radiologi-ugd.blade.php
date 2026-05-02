@@ -150,7 +150,7 @@ new class extends Component {
                     'radPrice' => $this->formEntryRad['radPrice'],
                 ];
 
-                $this->appendAdminLog($this->rjNo, 'Tambah Radiologi: ' . $this->formEntryRad['radDesc']);
+                $this->appendAdminLogUGD($this->rjNo, 'Tambah Radiologi: ' . $this->formEntryRad['radDesc']);
             });
 
             // Notify + reset — di luar transaksi
@@ -215,7 +215,7 @@ new class extends Component {
 
                 $this->rjRad = collect($this->rjRad)->map(fn($item) => $item['radDtl'] !== $this->editingDtl ? $item : array_merge($item, ['radPrice' => $this->editRow['radPrice']]))->toArray();
 
-                $this->appendAdminLog($this->rjNo, 'Edit Radiologi #' . $this->editingDtl . ' tarif jadi ' . $this->editRow['radPrice']);
+                $this->appendAdminLogUGD($this->rjNo, 'Edit Radiologi #' . $this->editingDtl . ' tarif jadi ' . $this->editRow['radPrice']);
             });
 
             // Reset edit state + notify — di luar transaksi
@@ -248,7 +248,7 @@ new class extends Component {
 
                 $this->rjRad = collect($this->rjRad)->where('radDtl', '!=', $radDtl)->values()->toArray();
 
-                $this->appendAdminLog($this->rjNo, 'Hapus Radiologi #' . $radDtl);
+                $this->appendAdminLogUGD($this->rjNo, 'Hapus Radiologi #' . $radDtl);
             });
 
             // cancelEdit + notify — di luar transaksi

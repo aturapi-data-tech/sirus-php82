@@ -143,7 +143,7 @@ new class extends Component {
                     'riobat_price' => $this->formEntry['productPrice'],
                     'riobat_qty'   => $this->formEntry['productQty'],
                 ]);
-                $this->appendAdminLog($this->riHdrNo, 'Tambah Obat Pinjam: ' . $this->formEntry['productName']);
+                $this->appendAdminLogRI($this->riHdrNo, 'Tambah Obat Pinjam: ' . $this->formEntry['productName']);
             });
 
             $this->resetFormEntry();
@@ -171,7 +171,7 @@ new class extends Component {
             DB::transaction(function () use ($riobatNo) {
                 $this->lockRIRow($this->riHdrNo);
                 DB::table('rstxn_riobats')->where('riobat_no', $riobatNo)->delete();
-                $this->appendAdminLog($this->riHdrNo, 'Hapus Obat Pinjam #' . $riobatNo);
+                $this->appendAdminLogRI($this->riHdrNo, 'Hapus Obat Pinjam #' . $riobatNo);
             });
 
             $this->findData($this->riHdrNo);

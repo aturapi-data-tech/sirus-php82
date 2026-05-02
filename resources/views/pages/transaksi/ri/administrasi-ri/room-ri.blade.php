@@ -101,7 +101,7 @@ new class extends Component {
             DB::transaction(function () use ($trfrNo) {
                 $this->lockRIRow($this->riHdrNo);
                 DB::table('rsmst_trfrooms')->where('trfr_no', $trfrNo)->delete();
-                $this->appendAdminLog($this->riHdrNo, "Hapus Kamar #{$trfrNo}");
+                $this->appendAdminLogRI($this->riHdrNo, "Hapus Kamar #{$trfrNo}");
             });
 
             $this->findData($this->riHdrNo);
