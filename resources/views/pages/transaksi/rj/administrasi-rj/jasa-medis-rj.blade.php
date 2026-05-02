@@ -170,6 +170,9 @@ new class extends Component {
 
                 // 5. Sync JSON — row sudah di-lock
                 $this->syncJasaMedisJson();
+
+                // 6. Audit log
+                $this->appendAdminLog($this->rjNo, 'Tambah Jasa Medis: ' . $this->formEntryJasaMedis['jasaMedisDesc']);
             });
 
             $this->resetFormEntry();
@@ -210,6 +213,9 @@ new class extends Component {
 
                 // 5. Sync JSON
                 $this->syncJasaMedisJson();
+
+                // 6. Audit log
+                $this->appendAdminLog($this->rjNo, 'Hapus Jasa Medis #' . $rjpactDtl);
             });
 
             $this->dispatch('administrasi-rj.updated');

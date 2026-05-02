@@ -2,6 +2,7 @@
 
 namespace App\Http\Traits\Txn\Rj;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -120,6 +121,23 @@ trait EmrRJTrait
                     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
                 ),
             ]);
+    }
+
+    /**
+     * Append satu entry ke AdministrasiRJ.userLogs di JSON.
+     * Panggil DI DALAM DB::transaction setelah lockRJRow().
+     */
+    protected function appendAdminLog(int $rjNo, string $keterangan): void
+    {
+        $data = $this->findDataRJ($rjNo);
+
+        $data['AdministrasiRJ']['userLogs'][] = [
+            'userLog'     => auth()->user()->myuser_name ?? auth()->user()->name ?? 'SYSTEM',
+            'userLogDate' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
+            'userLogDesc' => $keterangan,
+        ];
+
+        $this->updateJsonRJ($rjNo, $data);
     }
 
     /**

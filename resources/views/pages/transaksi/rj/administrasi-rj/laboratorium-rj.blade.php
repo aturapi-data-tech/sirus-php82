@@ -116,6 +116,8 @@ new class extends Component {
                     'labDesc' => $this->formEntryLab['labDesc'],
                     'labPrice' => $this->formEntryLab['labPrice'],
                 ];
+
+                $this->appendAdminLog($this->rjNo, 'Tambah Lab: ' . $this->formEntryLab['labDesc']);
             });
 
             $this->reset(['formEntryLab']);
@@ -202,6 +204,8 @@ new class extends Component {
                         ]);
                     })
                     ->toArray();
+
+                $this->appendAdminLog($this->rjNo, 'Edit Lab #' . $this->editingDtl . ': ' . $this->editRow['labDesc']);
             });
 
             $this->editingDtl = null;
@@ -233,6 +237,8 @@ new class extends Component {
                 DB::table('rstxn_rjlabs')->where('lab_dtl', $labDtl)->delete();
 
                 $this->rjLab = collect($this->rjLab)->where('labDtl', '!=', $labDtl)->values()->toArray();
+
+                $this->appendAdminLog($this->rjNo, 'Hapus Lab #' . $labDtl);
             });
 
             if ($this->editingDtl === $labDtl) {
