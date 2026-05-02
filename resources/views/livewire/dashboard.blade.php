@@ -32,6 +32,9 @@ new class extends Component {
             ['group' => 'Master', 'groupOrder' => 1, 'order' => 11, 'title' => 'Master Diagnosis Keperawatan', 'desc' => 'Kelola data SDKI, SLKI, SIKI asuhan keperawatan', 'href' => route('master.diag-keperawatan'), 'roles' => ['admin', 'perawat'], 'badge' => 'Master'],
             ['group' => 'Master', 'groupOrder' => 1, 'order' => 12, 'title' => 'Master Laboratorium', 'desc' => 'Kelola kategori lab & item pemeriksaan', 'href' => route('master.laborat'), 'roles' => ['admin', 'laboratorium'], 'badge' => 'Master'],
             ['group' => 'Master', 'groupOrder' => 1, 'order' => 13, 'title' => 'Master Karyawan', 'desc' => 'Kelola NIK karyawan untuk login user & coder iDRG (E-Klaim)', 'href' => route('master.karyawan'), 'roles' => ['admin'], 'badge' => 'Master'],
+            ['group' => 'Master', 'groupOrder' => 1, 'order' => 14, 'title' => 'Master Group Akun', 'desc' => 'Kelola group akun (Aktiva, Kewajiban, Modal, Pendapatan, Beban)', 'href' => route('master.group-akun'), 'roles' => ['admin'], 'badge' => 'AKN'],
+            ['group' => 'Master', 'groupOrder' => 1, 'order' => 15, 'title' => 'Master Akun', 'desc' => 'Kelola COA (Chart of Account) — daftar akun & saldo awal', 'href' => route('master.akun'), 'roles' => ['admin'], 'badge' => 'AKN'],
+            ['group' => 'Master', 'groupOrder' => 1, 'order' => 16, 'title' => 'Master Konfigurasi Akun Transaksi', 'desc' => 'Mapping akun debit/kredit untuk tiap jenis transaksi (RJ, UGD, RI, Resep, dll.)', 'href' => route('master.konf-akun-trans'), 'roles' => ['admin'], 'badge' => 'AKN'],
 
             // ── Rawat Jalan ─────────────────────────────────────────────
             ['group' => 'Rawat Jalan', 'groupOrder' => 2, 'order' => 1, 'title' => 'Daftar Rawat Jalan', 'desc' => 'Pendaftaran & manajemen pasien rawat jalan', 'href' => route('rawat-jalan.daftar'), 'roles' => ['admin', 'mr', 'perawat', 'dokter', 'casemix'], 'badge' => 'RJ'],
@@ -51,6 +54,10 @@ new class extends Component {
             // ── Keuangan ──────────────────────────────────────────────
             ['group' => 'Keuangan', 'groupOrder' => 4, 'order' => 1, 'title' => 'Penerimaan Kas TU', 'desc' => 'Catat penerimaan kas di luar transaksi pelayanan RS', 'href' => route('keuangan.penerimaan-kas-tu'), 'roles' => ['admin', 'tu'], 'badge' => 'CI'],
             ['group' => 'Keuangan', 'groupOrder' => 4, 'order' => 2, 'title' => 'Pengeluaran Kas TU', 'desc' => 'Catat pengeluaran kas di luar transaksi pelayanan RS', 'href' => route('keuangan.pengeluaran-kas-tu'), 'roles' => ['admin', 'tu'], 'badge' => 'CO'],
+            ['group' => 'Keuangan', 'groupOrder' => 4, 'order' => 3, 'title' => 'Saldo Kas', 'desc' => 'Posisi saldo kas/bank per tanggal — riwayat transaksi & edit saldo awal tahun (admin)', 'href' => route('keuangan.saldo-kas'), 'roles' => ['admin', 'tu'], 'badge' => 'SK'],
+            ['group' => 'Keuangan', 'groupOrder' => 4, 'order' => 4, 'title' => 'Buku Besar', 'desc' => 'Mutasi & saldo per akun dalam periode tertentu', 'href' => route('keuangan.buku-besar'), 'roles' => ['admin', 'tu'], 'badge' => 'BB'],
+            ['group' => 'Keuangan', 'groupOrder' => 4, 'order' => 5, 'title' => 'Laporan Laba Rugi', 'desc' => 'Pendapatan vs beban — laba/rugi periode berjalan', 'href' => route('keuangan.laba-rugi'), 'roles' => ['admin', 'tu'], 'badge' => 'LR'],
+            ['group' => 'Keuangan', 'groupOrder' => 4, 'order' => 6, 'title' => 'Laporan Neraca', 'desc' => 'Posisi aktiva, kewajiban & modal per tanggal', 'href' => route('keuangan.neraca'), 'roles' => ['admin', 'tu'], 'badge' => 'NRC'],
 
             // ── Gudang ────────────────────────────────────────────────
             ['group' => 'Gudang', 'groupOrder' => 5, 'order' => 1, 'title' => 'Obat dari PBF', 'desc' => 'Penerimaan obat dari PBF / Supplier (Gudang Medis)', 'href' => route('gudang.penerimaan-medis'), 'roles' => ['admin', 'apotek'], 'badge' => 'RCV'],
