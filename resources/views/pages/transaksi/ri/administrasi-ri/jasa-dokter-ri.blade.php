@@ -178,7 +178,7 @@ new class extends Component {
                     'actd_price' => $this->formEntry['jasaDokterPrice'],
                     'actd_qty'   => $this->formEntry['jasaDokterQty'],
                 ]);
-                $this->appendAdminLog($this->riHdrNo, 'Tambah Jasa Dokter: ' . $this->formEntry['jasaDokterDesc']);
+                $this->appendAdminLogRI($this->riHdrNo, 'Tambah Jasa Dokter: ' . $this->formEntry['jasaDokterDesc']);
             });
 
             $this->resetFormEntry();
@@ -206,7 +206,7 @@ new class extends Component {
             DB::transaction(function () use ($actdNo) {
                 $this->lockRIRow($this->riHdrNo);
                 DB::table('rstxn_riactdocs')->where('actd_no', $actdNo)->delete();
-                $this->appendAdminLog($this->riHdrNo, 'Hapus Jasa Dokter #' . $actdNo);
+                $this->appendAdminLogRI($this->riHdrNo, 'Hapus Jasa Dokter #' . $actdNo);
             });
 
             $this->findData($this->riHdrNo);

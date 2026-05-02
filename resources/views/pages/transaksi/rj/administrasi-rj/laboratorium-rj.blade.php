@@ -117,7 +117,7 @@ new class extends Component {
                     'labPrice' => $this->formEntryLab['labPrice'],
                 ];
 
-                $this->appendAdminLog($this->rjNo, 'Tambah Lab: ' . $this->formEntryLab['labDesc']);
+                $this->appendAdminLogRJ($this->rjNo, 'Tambah Lab: ' . $this->formEntryLab['labDesc']);
             });
 
             $this->reset(['formEntryLab']);
@@ -205,7 +205,7 @@ new class extends Component {
                     })
                     ->toArray();
 
-                $this->appendAdminLog($this->rjNo, 'Edit Lab #' . $this->editingDtl . ': ' . $this->editRow['labDesc']);
+                $this->appendAdminLogRJ($this->rjNo, 'Edit Lab #' . $this->editingDtl . ': ' . $this->editRow['labDesc']);
             });
 
             $this->editingDtl = null;
@@ -238,7 +238,7 @@ new class extends Component {
 
                 $this->rjLab = collect($this->rjLab)->where('labDtl', '!=', $labDtl)->values()->toArray();
 
-                $this->appendAdminLog($this->rjNo, 'Hapus Lab #' . $labDtl);
+                $this->appendAdminLogRJ($this->rjNo, 'Hapus Lab #' . $labDtl);
             });
 
             if ($this->editingDtl === $labDtl) {

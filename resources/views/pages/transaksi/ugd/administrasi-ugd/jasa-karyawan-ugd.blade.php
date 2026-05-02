@@ -168,7 +168,7 @@ new class extends Component {
                 $this->syncJasaKaryawanJson();
 
                 // 6. Audit log
-                $this->appendAdminLog($this->rjNo, 'Tambah Jasa Karyawan: ' . $this->formEntryJasaKaryawan['jasaKaryawanDesc']);
+                $this->appendAdminLogUGD($this->rjNo, 'Tambah Jasa Karyawan: ' . $this->formEntryJasaKaryawan['jasaKaryawanDesc']);
             });
 
             // 6. Notify + reset — di luar transaksi
@@ -210,7 +210,7 @@ new class extends Component {
                 $this->syncJasaKaryawanJson();
 
                 // 5. Audit log
-                $this->appendAdminLog($this->rjNo, 'Hapus Jasa Karyawan #' . $rjActeDtl);
+                $this->appendAdminLogUGD($this->rjNo, 'Hapus Jasa Karyawan #' . $rjActeDtl);
             });
 
             // 5. Notify — di luar transaksi

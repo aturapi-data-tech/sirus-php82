@@ -116,7 +116,7 @@ new class extends Component {
                     'labPrice' => $this->formEntryLab['labPrice'],
                 ];
 
-                $this->appendAdminLog($this->rjNo, 'Tambah Lab: ' . $this->formEntryLab['labDesc']);
+                $this->appendAdminLogUGD($this->rjNo, 'Tambah Lab: ' . $this->formEntryLab['labDesc']);
             });
 
             // Notify + reset — di luar transaksi
@@ -201,7 +201,7 @@ new class extends Component {
                     )
                     ->toArray();
 
-                $this->appendAdminLog($this->rjNo, 'Edit Lab #' . $this->editingDtl . ': ' . $this->editRow['labDesc']);
+                $this->appendAdminLogUGD($this->rjNo, 'Edit Lab #' . $this->editingDtl . ': ' . $this->editRow['labDesc']);
             });
 
             // Reset edit state + notify — di luar transaksi
@@ -234,7 +234,7 @@ new class extends Component {
 
                 $this->rjLab = collect($this->rjLab)->where('labDtl', '!=', $labDtl)->values()->toArray();
 
-                $this->appendAdminLog($this->rjNo, 'Hapus Lab #' . $labDtl);
+                $this->appendAdminLogUGD($this->rjNo, 'Hapus Lab #' . $labDtl);
             });
 
             // cancelEdit + notify — di luar transaksi

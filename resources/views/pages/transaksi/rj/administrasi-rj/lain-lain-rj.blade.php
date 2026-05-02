@@ -155,7 +155,7 @@ new class extends Component {
                     'lainLainPrice' => $this->formEntryLainLain['lainLainPrice'],
                 ];
 
-                $this->appendAdminLog($this->rjNo, 'Tambah Lain-Lain: ' . $this->formEntryLainLain['lainLainDesc']);
+                $this->appendAdminLogRJ($this->rjNo, 'Tambah Lain-Lain: ' . $this->formEntryLainLain['lainLainDesc']);
             });
 
             $this->resetFormEntry();
@@ -229,7 +229,7 @@ new class extends Component {
                     })
                     ->toArray();
 
-                $this->appendAdminLog($this->rjNo, 'Edit Lain-Lain #' . $this->editingDtl . ' tarif jadi ' . $this->editRow['lainLainPrice']);
+                $this->appendAdminLogRJ($this->rjNo, 'Edit Lain-Lain #' . $this->editingDtl . ' tarif jadi ' . $this->editRow['lainLainPrice']);
             });
 
             $this->editingDtl = null;
@@ -262,7 +262,7 @@ new class extends Component {
 
                 $this->rjLainLain = collect($this->rjLainLain)->where('rjotherDtl', '!=', $rjotherDtl)->values()->toArray();
 
-                $this->appendAdminLog($this->rjNo, 'Hapus Lain-Lain #' . $rjotherDtl);
+                $this->appendAdminLogRJ($this->rjNo, 'Hapus Lain-Lain #' . $rjotherDtl);
             });
 
             if ($this->editingDtl === $rjotherDtl) {

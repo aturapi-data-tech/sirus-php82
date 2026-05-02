@@ -127,7 +127,7 @@ trait EmrUGDTrait
      * Append satu entry ke AdministrasiUGD.userLogs di JSON.
      * Panggil DI DALAM DB::transaction setelah lockUGDRow().
      */
-    protected function appendAdminLog(int $rjNo, string $keterangan): void
+    protected function appendAdminLogUGD(int $rjNo, string $keterangan): void
     {
         $data = $this->findDataUGD($rjNo);
 
