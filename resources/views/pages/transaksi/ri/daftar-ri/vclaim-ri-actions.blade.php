@@ -1320,12 +1320,13 @@ new class extends Component {
                                         </div>
                                     </div>
 
-                                    {{-- 9. Kelas Rawat (auto dari BPJS) — opsional, kosongkan untuk kasus bayi --}}
+                                    {{-- 9. Kelas Rawat (auto dari BPJS, fallback manual untuk bayi) --}}
                                     <div class="lg:col-span-2">
                                         <x-input-label value="Kelas Rawat Hak" />
                                         <x-select-input wire:model="SEPForm.klsRawat.klsRawatHak" class="w-full"
-                                            :disabled="true" :error="$errors->has('SEPForm.klsRawat.klsRawatHak')">
-                                            <option value="">-- Memuat... --</option>
+                                            :disabled="$isFormLocked || !empty($SEPForm['klsRawat']['klsRawatHak'])"
+                                            :error="$errors->has('SEPForm.klsRawat.klsRawatHak')">
+                                            <option value="">-- Pilih Kelas --</option>
                                             <option value="1">Kelas 1</option>
                                             <option value="2">Kelas 2</option>
                                             <option value="3">Kelas 3</option>
@@ -1334,8 +1335,9 @@ new class extends Component {
                                             <p class="mt-1 text-xs text-amber-500">
                                                 <span wire:loading wire:target="fetchKlasRawat">Sedang memuat kelas
                                                     rawat...</span>
-                                                <span wire:loading.remove wire:target="fetchKlasRawat">Belum termuat.
-                                                    Klik tombol "↺ Muat Kelas Rawat".</span>
+                                                <span wire:loading.remove wire:target="fetchKlasRawat">Belum termuat
+                                                    dari BPJS — klik "↺ Muat Kelas Rawat" atau pilih manual (kasus
+                                                    bayi).</span>
                                             </p>
                                         @endif
                                         <x-input-error :messages="$errors->get('SEPForm.klsRawat.klsRawatHak')" class="mt-1" />
