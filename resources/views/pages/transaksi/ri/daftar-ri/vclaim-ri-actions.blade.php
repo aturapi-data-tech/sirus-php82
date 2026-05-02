@@ -529,7 +529,6 @@ new class extends Component {
                 'SEPForm.tglSep' => 'required|date_format:d/m/Y',
                 'SEPForm.noMR' => 'required',
                 'SEPForm.diagAwal' => 'required',
-                'SEPForm.klsRawat.klsRawatHak' => 'required',
                 'SEPForm.noTelp' => 'required',
             ],
             [
@@ -537,7 +536,6 @@ new class extends Component {
                 'SEPForm.tglSep.required' => 'Tanggal SEP wajib diisi.',
                 'SEPForm.tglSep.date_format' => 'Format Tanggal SEP harus dd/mm/yyyy.',
                 'SEPForm.diagAwal.required' => 'Diagnosa awal harus diisi.',
-                'SEPForm.klsRawat.klsRawatHak.required' => 'Kelas rawat hak belum dimuat. Klik tombol "↺ Muat Kelas Rawat".',
                 'SEPForm.noTelp.required' => 'No. telepon pasien harus diisi.',
             ],
         );
@@ -1320,9 +1318,9 @@ new class extends Component {
                                         </div>
                                     </div>
 
-                                    {{-- 9. Kelas Rawat (auto dari BPJS) --}}
+                                    {{-- 9. Kelas Rawat (auto dari BPJS) — opsional, kosongkan untuk kasus bayi --}}
                                     <div class="lg:col-span-2">
-                                        <x-input-label value="Kelas Rawat Hak *" />
+                                        <x-input-label value="Kelas Rawat Hak" />
                                         <x-select-input wire:model="SEPForm.klsRawat.klsRawatHak" class="w-full"
                                             :disabled="true" :error="$errors->has('SEPForm.klsRawat.klsRawatHak')">
                                             <option value="">-- Memuat... --</option>
