@@ -149,6 +149,8 @@ new class extends Component {
                     'lainLainDesc' => $this->formEntryLainLain['lainLainDesc'],
                     'lainLainPrice' => $this->formEntryLainLain['lainLainPrice'],
                 ];
+
+                $this->appendAdminLog($this->rjNo, 'Tambah Lain-Lain: ' . $this->formEntryLainLain['lainLainDesc']);
             });
 
             // Notify + reset — di luar transaksi
@@ -212,6 +214,8 @@ new class extends Component {
                     ->update(['other_price' => $this->editRow['lainLainPrice']]);
 
                 $this->rjLainLain = collect($this->rjLainLain)->map(fn($item) => $item['rjotherDtl'] !== $this->editingDtl ? $item : array_merge($item, ['lainLainPrice' => $this->editRow['lainLainPrice']]))->toArray();
+
+                $this->appendAdminLog($this->rjNo, 'Edit Lain-Lain #' . $this->editingDtl . ' tarif jadi ' . $this->editRow['lainLainPrice']);
             });
 
             // Reset edit state + notify — di luar transaksi
@@ -243,6 +247,8 @@ new class extends Component {
                 DB::table('rstxn_ugdothers')->where('rjo_dtl', $rjotherDtl)->delete();
 
                 $this->rjLainLain = collect($this->rjLainLain)->where('rjotherDtl', '!=', $rjotherDtl)->values()->toArray();
+
+                $this->appendAdminLog($this->rjNo, 'Hapus Lain-Lain #' . $rjotherDtl);
             });
 
             // cancelEdit + notify — di luar transaksi
