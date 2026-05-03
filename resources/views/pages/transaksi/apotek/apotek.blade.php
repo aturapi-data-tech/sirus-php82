@@ -9,7 +9,7 @@ new class extends Component {
 
     public function setTab(string $tab): void
     {
-        if (!in_array($tab, ['rj', 'ugd'])) {
+        if (!in_array($tab, ['rj', 'ugd', 'ri'])) {
             return;
         }
         $this->activeTab = $tab;
@@ -23,9 +23,9 @@ new class extends Component {
         {{-- HEADER --}}
         <div class="flex items-center justify-between mb-4">
             <div>
-                <h1 class="text-xl font-bold text-gray-900 dark:text-white">Antrian Apotek</h1>
+                <h1 class="text-xl font-bold text-gray-900 dark:text-white">Apotek</h1>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
-                    Telaah resep &amp; pelayanan kefarmasian — Rawat Jalan &amp; UGD
+                    Telaah resep, pelayanan kefarmasian, &amp; kasir resep
                 </p>
             </div>
         </div>
@@ -40,6 +40,10 @@ new class extends Component {
                 class="px-4 py-2 -mb-px text-sm font-medium transition border-b-2 {{ $activeTab === 'ugd' ? 'text-rose-700 border-rose-600 dark:text-rose-300 dark:border-rose-400' : 'text-gray-500 border-transparent hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200' }}">
                 UGD
             </button>
+            <button type="button" wire:click="setTab('ri')"
+                class="px-4 py-2 -mb-px text-sm font-medium transition border-b-2 {{ $activeTab === 'ri' ? 'text-blue-700 border-blue-600 dark:text-blue-300 dark:border-blue-400' : 'text-gray-500 border-transparent hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200' }}">
+                Kasir Resep Rawat Inap
+            </button>
         </div>
 
         {{-- TAB CONTENT --}}
@@ -50,6 +54,9 @@ new class extends Component {
             @elseif ($activeTab === 'ugd')
                 <livewire:pages::transaksi.ugd.antrian-apotek-ugd.antrian-apotek-ugd
                     wire:key="antrian-apotek-ugd-wrapper" />
+            @elseif ($activeTab === 'ri')
+                <livewire:pages::transaksi.apotek.kasir-resep-ri.kasir-resep-ri
+                    wire:key="kasir-resep-ri-wrapper" />
             @endif
         </div>
 
