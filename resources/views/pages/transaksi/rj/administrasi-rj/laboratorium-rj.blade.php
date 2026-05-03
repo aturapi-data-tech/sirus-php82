@@ -22,6 +22,18 @@ new class extends Component {
     ];
 
     /* ===============================
+     | LISTENER — sync lock saat parent broadcast (post/batal transaksi)
+     =============================== */
+    #[On('rj.administrasi-selesai')]
+    public function onAdministrasiSelesai(int $rjNo): void
+    {
+        // Re-check status DB — lock kalau completed, unlock kalau di-batal-kan.
+        if ((int) ($this->rjNo ?? 0) === $rjNo) {
+            $this->isFormLocked = $this->checkRJStatus($this->rjNo);
+        }
+    }
+
+    /* ===============================
      | MOUNT
      =============================== */
     public function mount(): void
@@ -104,6 +116,8 @@ new class extends Component {
                     'labDesc' => $this->formEntryLab['labDesc'],
                     'labPrice' => $this->formEntryLab['labPrice'],
                 ];
+
+                $this->appendAdminLogRJ($this->rjNo, 'Tambah Lab: ' . $this->formEntryLab['labDesc']);
             });
 
             $this->reset(['formEntryLab']);
@@ -190,6 +204,8 @@ new class extends Component {
                         ]);
                     })
                     ->toArray();
+
+                $this->appendAdminLogRJ($this->rjNo, 'Edit Lab #' . $this->editingDtl . ': ' . $this->editRow['labDesc']);
             });
 
             $this->editingDtl = null;
@@ -221,6 +237,8 @@ new class extends Component {
                 DB::table('rstxn_rjlabs')->where('lab_dtl', $labDtl)->delete();
 
                 $this->rjLab = collect($this->rjLab)->where('labDtl', '!=', $labDtl)->values()->toArray();
+
+                $this->appendAdminLogRJ($this->rjNo, 'Hapus Lab #' . $labDtl);
             });
 
             if ($this->editingDtl === $labDtl) {

@@ -25,6 +25,18 @@ new class extends Component {
     ];
 
     /* ===============================
+     | LISTENER — sync lock saat parent broadcast (post/batal transaksi)
+     =============================== */
+    #[On('rj.administrasi-selesai')]
+    public function onAdministrasiSelesai(int $rjNo): void
+    {
+        // Re-check status DB — lock kalau completed, unlock kalau di-batal-kan.
+        if ((int) ($this->rjNo ?? 0) === $rjNo) {
+            $this->isFormLocked = $this->checkRJStatus($this->rjNo);
+        }
+    }
+
+    /* ===============================
      | MOUNT
      =============================== */
     public function mount(): void
@@ -158,6 +170,9 @@ new class extends Component {
 
                 // 5. Sync JSON — row sudah di-lock
                 $this->syncJasaMedisJson();
+
+                // 6. Audit log
+                $this->appendAdminLogRJ($this->rjNo, 'Tambah Jasa Medis: ' . $this->formEntryJasaMedis['jasaMedisDesc']);
             });
 
             $this->resetFormEntry();
@@ -198,6 +213,9 @@ new class extends Component {
 
                 // 5. Sync JSON
                 $this->syncJasaMedisJson();
+
+                // 6. Audit log
+                $this->appendAdminLogRJ($this->rjNo, 'Hapus Jasa Medis #' . $rjpactDtl);
             });
 
             $this->dispatch('administrasi-rj.updated');

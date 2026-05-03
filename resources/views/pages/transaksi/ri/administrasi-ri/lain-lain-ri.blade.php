@@ -30,6 +30,18 @@ new class extends Component {
     }
 
     /* ===============================
+     | LISTENER — sync lock saat parent broadcast (post/batal transaksi)
+     =============================== */
+    #[On('ri.administrasi-selesai')]
+    public function onAdministrasiSelesai(int $riHdrNo): void
+    {
+        // Re-check status DB — lock kalau completed, unlock kalau di-batal-kan.
+        if ((int) ($this->riHdrNo ?? 0) === $riHdrNo) {
+            $this->isFormLocked = $this->checkRIStatus($this->riHdrNo);
+        }
+    }
+
+    /* ===============================
      | MOUNT
      =============================== */
     public function mount(): void
@@ -125,7 +137,7 @@ new class extends Component {
                     'other_date'  => DB::raw("TO_DATE('" . $this->formEntry['otherDate'] . "','dd/mm/yyyy hh24:mi:ss')"),
                     'other_price' => $this->formEntry['lainPrice'],
                 ]);
-                $this->appendAdminLog($this->riHdrNo, 'Tambah Lain-Lain: ' . $this->formEntry['lainDesc']);
+                $this->appendAdminLogRI($this->riHdrNo, 'Tambah Lain-Lain: ' . $this->formEntry['lainDesc']);
             });
 
             $this->resetFormEntry();
@@ -153,7 +165,7 @@ new class extends Component {
             DB::transaction(function () use ($otherNo) {
                 $this->lockRIRow($this->riHdrNo);
                 DB::table('rstxn_riothers')->where('other_no', $otherNo)->delete();
-                $this->appendAdminLog($this->riHdrNo, 'Hapus Lain-Lain #' . $otherNo);
+                $this->appendAdminLogRI($this->riHdrNo, 'Hapus Lain-Lain #' . $otherNo);
             });
 
             $this->findData($this->riHdrNo);

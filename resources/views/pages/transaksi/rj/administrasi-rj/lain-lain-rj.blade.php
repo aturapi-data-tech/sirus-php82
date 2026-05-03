@@ -27,6 +27,18 @@ new class extends Component {
     ];
 
     /* ===============================
+     | LISTENER — sync lock saat parent broadcast (post/batal transaksi)
+     =============================== */
+    #[On('rj.administrasi-selesai')]
+    public function onAdministrasiSelesai(int $rjNo): void
+    {
+        // Re-check status DB — lock kalau completed, unlock kalau di-batal-kan.
+        if ((int) ($this->rjNo ?? 0) === $rjNo) {
+            $this->isFormLocked = $this->checkRJStatus($this->rjNo);
+        }
+    }
+
+    /* ===============================
      | MOUNT
      =============================== */
     public function mount(): void
@@ -142,6 +154,8 @@ new class extends Component {
                     'lainLainDesc' => $this->formEntryLainLain['lainLainDesc'],
                     'lainLainPrice' => $this->formEntryLainLain['lainLainPrice'],
                 ];
+
+                $this->appendAdminLogRJ($this->rjNo, 'Tambah Lain-Lain: ' . $this->formEntryLainLain['lainLainDesc']);
             });
 
             $this->resetFormEntry();
@@ -214,6 +228,8 @@ new class extends Component {
                         return array_merge($item, ['lainLainPrice' => $this->editRow['lainLainPrice']]);
                     })
                     ->toArray();
+
+                $this->appendAdminLogRJ($this->rjNo, 'Edit Lain-Lain #' . $this->editingDtl . ' tarif jadi ' . $this->editRow['lainLainPrice']);
             });
 
             $this->editingDtl = null;
@@ -245,6 +261,8 @@ new class extends Component {
                 DB::table('rstxn_rjothers')->where('rjo_dtl', $rjotherDtl)->delete();
 
                 $this->rjLainLain = collect($this->rjLainLain)->where('rjotherDtl', '!=', $rjotherDtl)->values()->toArray();
+
+                $this->appendAdminLogRJ($this->rjNo, 'Hapus Lain-Lain #' . $rjotherDtl);
             });
 
             if ($this->editingDtl === $rjotherDtl) {

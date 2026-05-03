@@ -36,6 +36,18 @@ new class extends Component {
     ];
 
     /* ===============================
+     | LISTENER — sync lock saat parent broadcast (post/batal transaksi)
+     =============================== */
+    #[On('ugd.administrasi-selesai')]
+    public function onAdministrasiSelesai(int $rjNo): void
+    {
+        // Re-check status DB — lock kalau completed, unlock kalau di-batal-kan.
+        if ((int) ($this->rjNo ?? 0) === $rjNo) {
+            $this->isFormLocked = $this->checkUGDStatus($this->rjNo);
+        }
+    }
+
+    /* ===============================
      | MOUNT
      =============================== */
     public function mount(): void
@@ -179,6 +191,8 @@ new class extends Component {
                     'catatanKhusus' => $this->formEntryObat['catatanKhusus'],
                     'etiketStatus' => $this->formEntryObat['etiketStatus'],
                 ];
+
+                $this->appendAdminLogUGD($this->rjNo, 'Tambah Obat: ' . $this->formEntryObat['productName'] . ' x' . $this->formEntryObat['qty']);
             });
             $this->resetFormEntry();
             $this->dispatch('focus-lov-obat-ugd');
@@ -263,6 +277,8 @@ new class extends Component {
                             ]),
                     )
                     ->toArray();
+
+                $this->appendAdminLogUGD($this->rjNo, 'Edit Obat #' . $this->editingDtl);
             });
             $this->editingDtl = null;
             $this->editRow = [];
@@ -289,6 +305,7 @@ new class extends Component {
                 $this->lockUGDRow($this->rjNo);
                 DB::table('rstxn_ugdobats')->where('rjobat_dtl', $rjobatDtl)->delete();
                 $this->rjObat = collect($this->rjObat)->where('rjobatDtl', '!=', $rjobatDtl)->values()->toArray();
+                $this->appendAdminLogUGD($this->rjNo, 'Hapus Obat #' . $rjobatDtl);
             });
             if ($this->editingDtl === $rjobatDtl) {
                 $this->cancelEdit();

@@ -60,17 +60,15 @@ new class extends Component {
         $this->selectedItems = [];
         $this->searchItem = '';
         $this->resetPage();
+        $this->incrementVersion('radiologi-order-modal-ri');
 
-        $version = $this->renderVersions['radiologi-order-modal-ri'] ?? 0;
-        $this->dispatch('open-modal', name: "radiologi-order-ri-{$version}");
+        $this->dispatch('open-modal', name: "radiologi-order-ri-{$this->riHdrNo}");
     }
 
     public function closeModal(): void
     {
-        $version = $this->renderVersions['radiologi-order-modal-ri'] ?? 0;
-        $this->dispatch('close-modal', name: "radiologi-order-ri-{$version}");
+        $this->dispatch('close-modal', name: "radiologi-order-ri-{$this->riHdrNo}");
         $this->reset(['selectedItems', 'searchItem']);
-        $this->incrementVersion('radiologi-order-modal-ri');
     }
 
     /* ═══════════════════════════════════════
@@ -253,7 +251,7 @@ new class extends Component {
     @endif
 
     {{-- ═══════════ MODAL ORDER RADIOLOGI RI ═══════════ --}}
-    <x-modal name="radiologi-order-ri-{{ $renderVersions['radiologi-order-modal-ri'] ?? 0 }}" size="full"
+    <x-modal name="radiologi-order-ri-{{ $riHdrNo ?? 'new' }}" size="full"
         height="full" focusable>
         <div class="flex flex-col h-full"
             wire:key="{{ $this->renderKey('radiologi-order-modal-ri', [$riHdrNo ?? 'new']) }}">

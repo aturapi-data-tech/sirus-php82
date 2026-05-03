@@ -27,6 +27,18 @@ new class extends Component {
         'jasaDokterPrice' => '',
     ];
 
+    /* ===============================
+     | LISTENER — sync lock saat parent broadcast (post/batal transaksi)
+     =============================== */
+    #[On('ugd.administrasi-selesai')]
+    public function onAdministrasiSelesai(int $rjNo): void
+    {
+        // Re-check status DB — lock kalau completed, unlock kalau di-batal-kan.
+        if ((int) ($this->rjNo ?? 0) === $rjNo) {
+            $this->isFormLocked = $this->checkUGDStatus($this->rjNo);
+        }
+    }
+
     public function mount(): void
     {
         $this->registerAreas($this->renderAreas);
@@ -146,6 +158,7 @@ new class extends Component {
                 $this->paketLainLainJasaDokter($this->formEntryJasaDokter['jasaDokterId'], $this->rjNo, $lastInserted->rjhn_dtl_max);
                 $this->paketObatJasaDokter($this->formEntryJasaDokter['jasaDokterId'], $this->rjNo, $lastInserted->rjhn_dtl_max);
                 $this->syncJasaDokterJson();
+                $this->appendAdminLogUGD($this->rjNo, 'Tambah Jasa Dokter: ' . $this->formEntryJasaDokter['jasaDokterDesc']);
             });
             $this->resetFormEntry();
             $this->dispatch('focus-lov-dokter');
@@ -172,6 +185,7 @@ new class extends Component {
                 DB::table('rstxn_ugdaccdocs')->where('rjhn_dtl', $rjaccdocDtl)->delete();
                 $this->dataDaftarUGD['JasaDokter'] = collect($this->dataDaftarUGD['JasaDokter'])->where('rjaccdocDtl', '!=', $rjaccdocDtl)->values()->toArray();
                 $this->syncJasaDokterJson();
+                $this->appendAdminLogUGD($this->rjNo, 'Hapus Jasa Dokter #' . $rjaccdocDtl);
             });
             $this->dispatch('administrasi-ugd.updated');
             $this->dispatch('administrasi-obat-ugd.updated');

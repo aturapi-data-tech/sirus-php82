@@ -22,6 +22,18 @@ new class extends Component {
     ];
 
     /* ===============================
+     | LISTENER — sync lock saat parent broadcast (post/batal transaksi)
+     =============================== */
+    #[On('ugd.administrasi-selesai')]
+    public function onAdministrasiSelesai(int $rjNo): void
+    {
+        // Re-check status DB — lock kalau completed, unlock kalau di-batal-kan.
+        if ((int) ($this->rjNo ?? 0) === $rjNo) {
+            $this->isFormLocked = $this->checkUGDStatus($this->rjNo);
+        }
+    }
+
+    /* ===============================
      | MOUNT
      =============================== */
     public function mount(): void
@@ -103,6 +115,8 @@ new class extends Component {
                     'labDesc' => $this->formEntryLab['labDesc'],
                     'labPrice' => $this->formEntryLab['labPrice'],
                 ];
+
+                $this->appendAdminLogUGD($this->rjNo, 'Tambah Lab: ' . $this->formEntryLab['labDesc']);
             });
 
             // Notify + reset — di luar transaksi
@@ -186,6 +200,8 @@ new class extends Component {
                             ]),
                     )
                     ->toArray();
+
+                $this->appendAdminLogUGD($this->rjNo, 'Edit Lab #' . $this->editingDtl . ': ' . $this->editRow['labDesc']);
             });
 
             // Reset edit state + notify — di luar transaksi
@@ -217,6 +233,8 @@ new class extends Component {
                 DB::table('rstxn_ugdlabs')->where('lab_dtl', $labDtl)->delete();
 
                 $this->rjLab = collect($this->rjLab)->where('labDtl', '!=', $labDtl)->values()->toArray();
+
+                $this->appendAdminLogUGD($this->rjNo, 'Hapus Lab #' . $labDtl);
             });
 
             // cancelEdit + notify — di luar transaksi

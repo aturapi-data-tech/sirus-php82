@@ -26,6 +26,18 @@ new class extends Component {
     ];
 
     /* ===============================
+     | LISTENER — sync lock saat parent broadcast (post/batal transaksi)
+     =============================== */
+    #[On('ugd.administrasi-selesai')]
+    public function onAdministrasiSelesai(int $rjNo): void
+    {
+        // Re-check status DB — lock kalau completed, unlock kalau di-batal-kan.
+        if ((int) ($this->rjNo ?? 0) === $rjNo) {
+            $this->isFormLocked = $this->checkUGDStatus($this->rjNo);
+        }
+    }
+
+    /* ===============================
      | MOUNT
      =============================== */
     public function mount(): void
@@ -158,6 +170,9 @@ new class extends Component {
 
                 // 5. Sync JSON — row sudah di-lock
                 $this->syncJasaMedisJson();
+
+                // 6. Audit log
+                $this->appendAdminLogUGD($this->rjNo, 'Tambah Jasa Medis: ' . $this->formEntryJasaMedis['jasaMedisDesc']);
             });
 
             // 6. Notify + reset — di luar transaksi
@@ -197,6 +212,9 @@ new class extends Component {
 
                 // 4. Sync JSON — row sudah di-lock
                 $this->syncJasaMedisJson();
+
+                // 5. Audit log
+                $this->appendAdminLogUGD($this->rjNo, 'Hapus Jasa Medis #' . $rjpactDtl);
             });
 
             // 5. Notify — di luar transaksi

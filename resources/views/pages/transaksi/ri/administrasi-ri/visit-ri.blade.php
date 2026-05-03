@@ -30,6 +30,18 @@ new class extends Component {
     }
 
     /* ===============================
+     | LISTENER — sync lock saat parent broadcast (post/batal transaksi)
+     =============================== */
+    #[On('ri.administrasi-selesai')]
+    public function onAdministrasiSelesai(int $riHdrNo): void
+    {
+        // Re-check status DB — lock kalau completed, unlock kalau di-batal-kan.
+        if ((int) ($this->riHdrNo ?? 0) === $riHdrNo) {
+            $this->isFormLocked = $this->checkRIStatus($this->riHdrNo);
+        }
+    }
+
+    /* ===============================
      | MOUNT
      =============================== */
     public function mount(): void
@@ -158,7 +170,7 @@ new class extends Component {
                     'visit_date'  => DB::raw("to_date('" . $this->formEntry['visitDate'] . "','dd/mm/yyyy hh24:mi:ss')"),
                     'visit_price' => $this->formEntry['visitPrice'],
                 ]);
-                $this->appendAdminLog($this->riHdrNo, 'Tambah Visit: Dr. ' . $this->formEntry['drName']);
+                $this->appendAdminLogRI($this->riHdrNo, 'Tambah Visit: Dr. ' . $this->formEntry['drName']);
             });
 
             $this->resetFormEntry();
@@ -186,7 +198,7 @@ new class extends Component {
             DB::transaction(function () use ($visitNo) {
                 $this->lockRIRow($this->riHdrNo);
                 DB::table('rstxn_rivisits')->where('visit_no', $visitNo)->delete();
-                $this->appendAdminLog($this->riHdrNo, "Hapus Visit #{$visitNo}");
+                $this->appendAdminLogRI($this->riHdrNo, "Hapus Visit #{$visitNo}");
             });
 
             $this->findData($this->riHdrNo);

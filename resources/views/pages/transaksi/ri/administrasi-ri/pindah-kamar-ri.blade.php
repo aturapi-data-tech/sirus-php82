@@ -176,7 +176,7 @@ new class extends Component {
                     ]);
 
                 $from = $this->activeRoom ? $this->activeRoom['room_id'] : '-';
-                $this->appendAdminLog(
+                $this->appendAdminLogRI(
                     $this->riHdrNo,
                     "Pindah Kamar: {$from} → {$this->formEntry['roomName']} Bed {$this->formEntry['roomBedNo']}"
                 );

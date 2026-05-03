@@ -27,6 +27,18 @@ new class extends Component {
     ];
 
     /* ===============================
+     | LISTENER — sync lock saat parent broadcast (post/batal transaksi)
+     =============================== */
+    #[On('ugd.administrasi-selesai')]
+    public function onAdministrasiSelesai(int $rjNo): void
+    {
+        // Re-check status DB — lock kalau completed, unlock kalau di-batal-kan.
+        if ((int) ($this->rjNo ?? 0) === $rjNo) {
+            $this->isFormLocked = $this->checkUGDStatus($this->rjNo);
+        }
+    }
+
+    /* ===============================
      | MOUNT
      =============================== */
     public function mount(): void
@@ -137,6 +149,8 @@ new class extends Component {
                     'radDesc' => $this->formEntryRad['radDesc'],
                     'radPrice' => $this->formEntryRad['radPrice'],
                 ];
+
+                $this->appendAdminLogUGD($this->rjNo, 'Tambah Radiologi: ' . $this->formEntryRad['radDesc']);
             });
 
             // Notify + reset — di luar transaksi
@@ -200,6 +214,8 @@ new class extends Component {
                     ->update(['rad_price' => $this->editRow['radPrice']]);
 
                 $this->rjRad = collect($this->rjRad)->map(fn($item) => $item['radDtl'] !== $this->editingDtl ? $item : array_merge($item, ['radPrice' => $this->editRow['radPrice']]))->toArray();
+
+                $this->appendAdminLogUGD($this->rjNo, 'Edit Radiologi #' . $this->editingDtl . ' tarif jadi ' . $this->editRow['radPrice']);
             });
 
             // Reset edit state + notify — di luar transaksi
@@ -231,6 +247,8 @@ new class extends Component {
                 DB::table('rstxn_ugdrads')->where('rad_dtl', $radDtl)->delete();
 
                 $this->rjRad = collect($this->rjRad)->where('radDtl', '!=', $radDtl)->values()->toArray();
+
+                $this->appendAdminLogUGD($this->rjNo, 'Hapus Radiologi #' . $radDtl);
             });
 
             // cancelEdit + notify — di luar transaksi

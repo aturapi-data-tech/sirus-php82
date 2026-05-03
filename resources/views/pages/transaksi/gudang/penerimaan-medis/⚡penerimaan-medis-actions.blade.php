@@ -131,8 +131,8 @@ new class extends Component {
         $this->dispatch('focus-entry-qty');
     }
 
-    #[On('lov.selected.akun-co-rcv')]
-    public function onAkunCoSelected(string $target, ?array $payload): void
+    #[On('lov.selected.kas-rcv')]
+    public function onKasSelected(string $target, ?array $payload): void
     {
         $this->accId = $payload['acc_id'] ?? null;
         $this->accName = $payload['acc_name'] ?? null;
@@ -773,7 +773,7 @@ new class extends Component {
         $this->reset(['rcvDiskon', 'rcvPpn', 'rcvMaterai', 'bayar', 'accId', 'accName']);
         $this->resetErrorBag('accId');
         $this->hitungSemua();
-        // Bump versi area 'bayar' supaya LOV akun-co remount (state bersih) tanpa
+        // Bump versi area 'bayar' supaya LOV kas remount (state bersih) tanpa
         // ganggu LOV lain di main modal.
         $this->incrementVersion('bayar');
         $this->dispatch('close-modal', name: 'penerimaan-medis-bayar');
@@ -1276,9 +1276,9 @@ new class extends Component {
                     {{-- Kiri: input --}}
                     <div class="space-y-3">
                         <div>
-                            <livewire:lov.akun-co.lov-akun-co target="akun-co-rcv" label="Cara Bayar (Akun Kas)"
+                            <livewire:lov.kas.lov-kas target="kas-rcv" tipe="" label="Cara Bayar (Akun Kas)"
                                 :initialAccId="$accId"
-                                wire:key="lov-akun-co-{{ $rcvNo ?? 'new' }}-{{ $renderVersions['bayar'] ?? 0 }}" />
+                                wire:key="lov-kas-rcv-{{ $rcvNo ?? 'new' }}-{{ $renderVersions['bayar'] ?? 0 }}" />
                             <x-input-error :messages="$errors->get('accId')" class="mt-1" />
                         </div>
                         <div class="flex items-center gap-3">

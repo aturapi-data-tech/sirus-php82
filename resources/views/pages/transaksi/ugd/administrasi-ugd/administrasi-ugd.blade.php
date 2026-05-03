@@ -44,7 +44,7 @@ new class extends Component {
 
     // ── Sub-Tab ──
     public string $activeTabAdministrasi = 'JasaKaryawan';
-    public array $EmrMenuAdministrasi = [['ermMenuId' => 'JasaKaryawan', 'ermMenuName' => 'Jasa Karyawan'], ['ermMenuId' => 'JasaDokter', 'ermMenuName' => 'Jasa Dokter'], ['ermMenuId' => 'JasaMedis', 'ermMenuName' => 'Jasa Medis'], ['ermMenuId' => 'Obat', 'ermMenuName' => 'Obat'], ['ermMenuId' => 'Laboratorium', 'ermMenuName' => 'Laboratorium'], ['ermMenuId' => 'Radiologi', 'ermMenuName' => 'Radiologi'], ['ermMenuId' => 'LainLain', 'ermMenuName' => 'Lain-Lain'], ['ermMenuId' => 'Transfer', 'ermMenuName' => 'Transfer'], ['ermMenuId' => 'Kasir', 'ermMenuName' => 'Kasir']];
+    public array $EmrMenuAdministrasi = [['ermMenuId' => 'JasaKaryawan', 'ermMenuName' => 'Jasa Karyawan'], ['ermMenuId' => 'JasaDokter', 'ermMenuName' => 'Jasa Dokter'], ['ermMenuId' => 'JasaMedis', 'ermMenuName' => 'Jasa Medis'], ['ermMenuId' => 'Obat', 'ermMenuName' => 'Obat'], ['ermMenuId' => 'Laboratorium', 'ermMenuName' => 'Laboratorium'], ['ermMenuId' => 'Radiologi', 'ermMenuName' => 'Radiologi'], ['ermMenuId' => 'LainLain', 'ermMenuName' => 'Lain-Lain'], ['ermMenuId' => 'Transfer', 'ermMenuName' => 'Transfer'], ['ermMenuId' => 'AdminLog', 'ermMenuName' => 'Admin Log'], ['ermMenuId' => 'Kasir', 'ermMenuName' => 'Kasir']];
 
     /* ===============================
      | MOUNT
@@ -356,6 +356,11 @@ new class extends Component {
             $this->isFormLocked = false;
         }
 
+        // Single dispatcher ke siblings (jasa-medis/jasa-dokter/jasa-karyawan/lab/radiologi/obat/lain-lain/transfer)
+        // — re-check status & sync lock state. Cegah cross-talk antar sibling.
+        $this->dispatch('ugd.administrasi-selesai', rjNo: $this->rjNo);
+
+        // Refresh data (3 child yg butuh re-fetch listing setelah update)
         $this->dispatch('administrasi-obat-ugd.updated');
         $this->dispatch('administrasi-lain-lain-ugd.updated');
         $this->dispatch('administrasi-kasir-ugd.updated');
@@ -572,6 +577,13 @@ new class extends Component {
                                     x-transition:enter-end="opacity-100 translate-y-0">
                                     <livewire:pages::transaksi.ugd.administrasi-ugd.transfer-ugd :rjNo="$rjNo"
                                         wire:key="tab-transfer-{{ $rjNo }}" />
+                                </div>
+                                <div x-show="tab === 'AdminLog'" x-cloak
+                                    x-transition:enter="transition ease-out duration-150"
+                                    x-transition:enter-start="opacity-0 translate-y-1"
+                                    x-transition:enter-end="opacity-100 translate-y-0">
+                                    <livewire:pages::transaksi.ugd.administrasi-ugd.admin-log-ugd :rjNo="$rjNo"
+                                        wire:key="tab-admin-log-{{ $rjNo }}" />
                                 </div>
                                 <div x-show="tab === 'Kasir'" x-cloak
                                     x-transition:enter="transition ease-out duration-150"

@@ -208,6 +208,10 @@ new class extends Component {
         } else {
             $this->isFormLocked = false;
         }
+
+        // Single dispatcher ke siblings (visit/konsul/jasa-medis/jasa-dokter/room/lain-lain/obat-pinjam)
+        // — re-check status & sync lock state. Cegah cross-talk antar sibling.
+        $this->dispatch('ri.administrasi-selesai', riHdrNo: $this->riHdrNo);
     }
 
     /* ===============================

@@ -31,6 +31,18 @@ new class extends Component {
     }
 
     /* ===============================
+     | LISTENER — sync lock saat parent broadcast (post/batal transaksi)
+     =============================== */
+    #[On('ri.administrasi-selesai')]
+    public function onAdministrasiSelesai(int $riHdrNo): void
+    {
+        // Re-check status DB — lock kalau completed, unlock kalau di-batal-kan.
+        if ((int) ($this->riHdrNo ?? 0) === $riHdrNo) {
+            $this->isFormLocked = $this->checkRIStatus($this->riHdrNo);
+        }
+    }
+
+    /* ===============================
      | MOUNT
      =============================== */
     public function mount(): void
@@ -131,7 +143,7 @@ new class extends Component {
                     'riobat_price' => $this->formEntry['productPrice'],
                     'riobat_qty'   => $this->formEntry['productQty'],
                 ]);
-                $this->appendAdminLog($this->riHdrNo, 'Tambah Obat Pinjam: ' . $this->formEntry['productName']);
+                $this->appendAdminLogRI($this->riHdrNo, 'Tambah Obat Pinjam: ' . $this->formEntry['productName']);
             });
 
             $this->resetFormEntry();
@@ -159,7 +171,7 @@ new class extends Component {
             DB::transaction(function () use ($riobatNo) {
                 $this->lockRIRow($this->riHdrNo);
                 DB::table('rstxn_riobats')->where('riobat_no', $riobatNo)->delete();
-                $this->appendAdminLog($this->riHdrNo, 'Hapus Obat Pinjam #' . $riobatNo);
+                $this->appendAdminLogRI($this->riHdrNo, 'Hapus Obat Pinjam #' . $riobatNo);
             });
 
             $this->findData($this->riHdrNo);

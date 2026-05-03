@@ -36,6 +36,18 @@ new class extends Component {
     ];
 
     /* ===============================
+     | LISTENER — sync lock saat parent broadcast (post/batal transaksi)
+     =============================== */
+    #[On('rj.administrasi-selesai')]
+    public function onAdministrasiSelesai(int $rjNo): void
+    {
+        // Re-check status DB — lock kalau completed, unlock kalau di-batal-kan.
+        if ((int) ($this->rjNo ?? 0) === $rjNo) {
+            $this->isFormLocked = $this->checkRJStatus($this->rjNo);
+        }
+    }
+
+    /* ===============================
      | MOUNT
      =============================== */
     public function mount(): void
@@ -194,6 +206,8 @@ new class extends Component {
                     'catatanKhusus' => $this->formEntryObat['catatanKhusus'],
                     'etiketStatus' => $this->formEntryObat['etiketStatus'],
                 ];
+
+                $this->appendAdminLogRJ($this->rjNo, 'Tambah Obat: ' . $this->formEntryObat['productName'] . ' x' . $this->formEntryObat['qty']);
             });
 
             $this->resetFormEntry();
@@ -291,6 +305,8 @@ new class extends Component {
                         ]);
                     })
                     ->toArray();
+
+                $this->appendAdminLogRJ($this->rjNo, 'Edit Obat #' . $this->editingDtl);
             });
 
             $this->editingDtl = null;
@@ -322,6 +338,8 @@ new class extends Component {
                 DB::table('rstxn_rjobats')->where('rjobat_dtl', $rjobatDtl)->delete();
 
                 $this->rjObat = collect($this->rjObat)->where('rjobatDtl', '!=', $rjobatDtl)->values()->toArray();
+
+                $this->appendAdminLogRJ($this->rjNo, 'Hapus Obat #' . $rjobatDtl);
             });
 
             if ($this->editingDtl === $rjobatDtl) {

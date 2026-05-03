@@ -14,6 +14,18 @@ new class extends Component {
     public ?array $activeRoom  = null;
 
     /* ===============================
+     | LISTENER — sync lock saat parent broadcast (post/batal transaksi)
+     =============================== */
+    #[On('ri.administrasi-selesai')]
+    public function onAdministrasiSelesai(int $riHdrNo): void
+    {
+        // Re-check status DB — lock kalau completed, unlock kalau di-batal-kan.
+        if ((int) ($this->riHdrNo ?? 0) === $riHdrNo) {
+            $this->isFormLocked = $this->checkRIStatus($this->riHdrNo);
+        }
+    }
+
+    /* ===============================
      | MOUNT
      =============================== */
     public function mount(): void
@@ -89,7 +101,7 @@ new class extends Component {
             DB::transaction(function () use ($trfrNo) {
                 $this->lockRIRow($this->riHdrNo);
                 DB::table('rsmst_trfrooms')->where('trfr_no', $trfrNo)->delete();
-                $this->appendAdminLog($this->riHdrNo, "Hapus Kamar #{$trfrNo}");
+                $this->appendAdminLogRI($this->riHdrNo, "Hapus Kamar #{$trfrNo}");
             });
 
             $this->findData($this->riHdrNo);

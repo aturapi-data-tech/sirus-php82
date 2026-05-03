@@ -280,6 +280,7 @@ new class extends Component {
                             'emp_id' => $empId,
                         ]);
                     $newTxnStatus = 'H';
+                    $this->appendAdminLogUGD($this->rjNo, 'Bayar Cicilan: Rp ' . number_format($bayar, 0, ',', '.') . ' (sisa Rp ' . number_format($dspTotalAll - $bayar, 0, ',', '.') . ')');
                 } else {
                     // LUNAS
                     if ($this->rjTotal > 0) {
@@ -300,6 +301,7 @@ new class extends Component {
                     DB::table('rsmst_pasiens')
                         ->where('reg_no', $rjHdr->reg_no)
                         ->update(['lockstatus' => null]);
+                    $this->appendAdminLogUGD($this->rjNo, 'Bayar Lunas: Rp ' . number_format($dspTotalAll, 0, ',', '.'));
                 }
             });
 
@@ -369,6 +371,8 @@ new class extends Component {
                         ->where('reg_no', $hdr->reg_no)
                         ->update(['lockstatus' => null]);
                 }
+
+                $this->appendAdminLogUGD($this->rjNo, 'Batal Transaksi Pembayaran');
             });
 
             $this->txnStatus = null;
@@ -607,6 +611,8 @@ new class extends Component {
                 DB::table('rsmst_pasiens')
                     ->where('reg_no', $ugdHdr->reg_no)
                     ->update(['lockstatus' => 'RI']);
+
+                $this->appendAdminLogUGD($this->rjNo, 'Transfer ke RI #' . $riHdrNo . ' (total biaya UGD Rp ' . number_format($totalBiayaUGD, 0, ',', '.') . ')');
             });
 
             $this->isFormLocked = true;
@@ -735,6 +741,8 @@ new class extends Component {
                 DB::table('rsmst_pasiens')
                     ->where('reg_no', $ugdHdr->reg_no)
                     ->update(['lockstatus' => 'UGD']);
+
+                $this->appendAdminLogUGD($this->rjNo, 'Batal Transfer ke RI #' . $riHdrNo);
             });
 
             $this->isFormLocked = false;

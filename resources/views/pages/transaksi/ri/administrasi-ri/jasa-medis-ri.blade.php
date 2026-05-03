@@ -31,6 +31,18 @@ new class extends Component {
     }
 
     /* ===============================
+     | LISTENER — sync lock saat parent broadcast (post/batal transaksi)
+     =============================== */
+    #[On('ri.administrasi-selesai')]
+    public function onAdministrasiSelesai(int $riHdrNo): void
+    {
+        // Re-check status DB — lock kalau completed, unlock kalau di-batal-kan.
+        if ((int) ($this->riHdrNo ?? 0) === $riHdrNo) {
+            $this->isFormLocked = $this->checkRIStatus($this->riHdrNo);
+        }
+    }
+
+    /* ===============================
      | MOUNT
      =============================== */
     public function mount(): void
@@ -137,7 +149,7 @@ new class extends Component {
                     'actp_price' => $this->formEntry['jasaMedisPrice'],
                     'actp_qty'   => $this->formEntry['jasaMedisQty'],
                 ]);
-                $this->appendAdminLog($this->riHdrNo, 'Tambah Jasa Medis: ' . $this->formEntry['jasaMedisDesc']);
+                $this->appendAdminLogRI($this->riHdrNo, 'Tambah Jasa Medis: ' . $this->formEntry['jasaMedisDesc']);
             });
 
             $this->resetFormEntry();
@@ -165,7 +177,7 @@ new class extends Component {
             DB::transaction(function () use ($actpNo) {
                 $this->lockRIRow($this->riHdrNo);
                 DB::table('rstxn_riactparams')->where('actp_no', $actpNo)->delete();
-                $this->appendAdminLog($this->riHdrNo, 'Hapus Jasa Medis #' . $actpNo);
+                $this->appendAdminLogRI($this->riHdrNo, 'Hapus Jasa Medis #' . $actpNo);
             });
 
             $this->findData($this->riHdrNo);

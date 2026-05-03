@@ -60,17 +60,15 @@ new class extends Component {
         $this->selectedItems = [];
         $this->searchItem = '';
         $this->resetPage();
+        $this->incrementVersion('laborat-order-modal-ri');
 
-        $version = $this->renderVersions['laborat-order-modal-ri'] ?? 0;
-        $this->dispatch('open-modal', name: "laborat-order-ri-{$version}");
+        $this->dispatch('open-modal', name: "laborat-order-ri-{$this->riHdrNo}");
     }
 
     public function closeModal(): void
     {
-        $version = $this->renderVersions['laborat-order-modal-ri'] ?? 0;
-        $this->dispatch('close-modal', name: "laborat-order-ri-{$version}");
+        $this->dispatch('close-modal', name: "laborat-order-ri-{$this->riHdrNo}");
         $this->reset(['selectedItems', 'searchItem']);
-        $this->incrementVersion('laborat-order-modal-ri');
     }
 
     /* ═══════════════════════════════════════
@@ -275,7 +273,7 @@ new class extends Component {
     @endif
 
     {{-- ═══════════ MODAL ORDER LAB RI ═══════════ --}}
-    <x-modal name="laborat-order-ri-{{ $renderVersions['laborat-order-modal-ri'] ?? 0 }}" size="full" height="full"
+    <x-modal name="laborat-order-ri-{{ $riHdrNo ?? 'new' }}" size="full" height="full"
         focusable>
         <div class="flex flex-col h-full"
             wire:key="{{ $this->renderKey('laborat-order-modal-ri', [$riHdrNo ?? 'new']) }}">

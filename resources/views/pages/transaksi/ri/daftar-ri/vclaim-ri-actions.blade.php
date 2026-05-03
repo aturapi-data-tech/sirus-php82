@@ -494,8 +494,10 @@ new class extends Component {
         try {
             $response = $this->sep_insert($request)->getOriginalContent();
             $code = $response['metadata']['code'] ?? 500;
-            if ($code == 200 || ($code == 201 && !empty($response['response']['sep']['noSep']))) {
-                $sepData = $response['response']['sep'] ?? [];
+            $resp = $response['response'] ?? null;
+            // Guard: saat validator VclaimTrait fail, $resp adalah MessageBag — bukan array
+            if ($code == 200 || ($code == 201 && is_array($resp) && !empty($resp['sep']['noSep']))) {
+                $sepData = $resp['sep'] ?? [];
                 $noSep = $sepData['noSep'] ?? '';
 
                 // Persist SEP langsung ke JSON DB
@@ -529,7 +531,6 @@ new class extends Component {
                 'SEPForm.tglSep' => 'required|date_format:d/m/Y',
                 'SEPForm.noMR' => 'required',
                 'SEPForm.diagAwal' => 'required',
-                'SEPForm.klsRawat.klsRawatHak' => 'required',
                 'SEPForm.noTelp' => 'required',
             ],
             [
@@ -537,7 +538,6 @@ new class extends Component {
                 'SEPForm.tglSep.required' => 'Tanggal SEP wajib diisi.',
                 'SEPForm.tglSep.date_format' => 'Format Tanggal SEP harus dd/mm/yyyy.',
                 'SEPForm.diagAwal.required' => 'Diagnosa awal harus diisi.',
-                'SEPForm.klsRawat.klsRawatHak.required' => 'Kelas rawat hak belum dimuat. Klik tombol "↺ Muat Kelas Rawat".',
                 'SEPForm.noTelp.required' => 'No. telepon pasien harus diisi.',
             ],
         );
@@ -1320,12 +1320,13 @@ new class extends Component {
                                         </div>
                                     </div>
 
-                                    {{-- 9. Kelas Rawat (auto dari BPJS) --}}
+                                    {{-- 9. Kelas Rawat (auto dari BPJS, fallback manual untuk bayi) --}}
                                     <div class="lg:col-span-2">
-                                        <x-input-label value="Kelas Rawat Hak *" />
+                                        <x-input-label value="Kelas Rawat Hak" />
                                         <x-select-input wire:model="SEPForm.klsRawat.klsRawatHak" class="w-full"
-                                            :disabled="true" :error="$errors->has('SEPForm.klsRawat.klsRawatHak')">
-                                            <option value="">-- Memuat... --</option>
+                                            :disabled="$isFormLocked || !empty($SEPForm['klsRawat']['klsRawatHak'])"
+                                            :error="$errors->has('SEPForm.klsRawat.klsRawatHak')">
+                                            <option value="">-- Pilih Kelas --</option>
                                             <option value="1">Kelas 1</option>
                                             <option value="2">Kelas 2</option>
                                             <option value="3">Kelas 3</option>
@@ -1334,8 +1335,9 @@ new class extends Component {
                                             <p class="mt-1 text-xs text-amber-500">
                                                 <span wire:loading wire:target="fetchKlasRawat">Sedang memuat kelas
                                                     rawat...</span>
-                                                <span wire:loading.remove wire:target="fetchKlasRawat">Belum termuat.
-                                                    Klik tombol "↺ Muat Kelas Rawat".</span>
+                                                <span wire:loading.remove wire:target="fetchKlasRawat">Belum termuat
+                                                    dari BPJS — klik "↺ Muat Kelas Rawat" atau pilih manual (kasus
+                                                    bayi).</span>
                                             </p>
                                         @endif
                                         <x-input-error :messages="$errors->get('SEPForm.klsRawat.klsRawatHak')" class="mt-1" />

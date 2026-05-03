@@ -132,10 +132,100 @@ Route::middleware(['auth'])->group(function () {
         ->name('keuangan.pengeluaran-kas-tu');
 
     // ===========================================
+    // KEUANGAN - PEMBAYARAN HUTANG PBF (medis)
+    // ===========================================
+    Route::livewire('/keuangan/pembayaran-hutang-pbf', 'pages::transaksi.keuangan.pembayaran-hutang-pbf.pembayaran-hutang-pbf')
+        ->name('keuangan.pembayaran-hutang-pbf');
+
+    // ===========================================
+    // KEUANGAN - PEMBAYARAN HUTANG NON-MEDIS
+    // ===========================================
+    Route::livewire('/keuangan/pembayaran-hutang-non-medis', 'pages::transaksi.keuangan.pembayaran-hutang-non-medis.pembayaran-hutang-non-medis')
+        ->name('keuangan.pembayaran-hutang-non-medis');
+
+    // ===========================================
+    // KEUANGAN - TOPUP SUPPLIER PBF (medis)
+    // ===========================================
+    Route::livewire('/keuangan/topup-supplier-pbf', 'pages::transaksi.keuangan.topup-supplier-pbf.topup-supplier-pbf')
+        ->name('keuangan.topup-supplier-pbf');
+
+    // ===========================================
+    // KEUANGAN - TOPUP SUPPLIER NON-MEDIS
+    // ===========================================
+    Route::livewire('/keuangan/topup-supplier-non-medis', 'pages::transaksi.keuangan.topup-supplier-non-medis.topup-supplier-non-medis')
+        ->name('keuangan.topup-supplier-non-medis');
+
+    // ===========================================
+    // KEUANGAN - SALDO KAS
+    // ===========================================
+    Route::livewire('/keuangan/saldo-kas', 'pages::transaksi.keuangan.saldo-kas.saldo-kas')
+        ->name('keuangan.saldo-kas');
+
+    // ===========================================
+    // KEUANGAN - BUKU BESAR
+    // ===========================================
+    Route::livewire('/keuangan/buku-besar', 'pages::transaksi.keuangan.buku-besar.buku-besar')
+        ->name('keuangan.buku-besar');
+
+    // ===========================================
+    // KEUANGAN - LAPORAN LABA RUGI
+    // ===========================================
+    Route::livewire('/keuangan/laba-rugi', 'pages::transaksi.keuangan.laba-rugi.laba-rugi')
+        ->name('keuangan.laba-rugi');
+
+    // ===========================================
+    // KEUANGAN - LAPORAN NERACA
+    // ===========================================
+    Route::livewire('/keuangan/neraca', 'pages::transaksi.keuangan.neraca.neraca')
+        ->name('keuangan.neraca');
+
+    // ===========================================
+    // MASTER AKUNTANSI - GROUP AKUN
+    // ===========================================
+    Route::livewire('/master/group-akun', 'pages::master.master-akuntansi.master-group-akun.master-group-akun')
+        ->name('master.group-akun');
+
+    // ===========================================
+    // MASTER AKUNTANSI - AKUN
+    // ===========================================
+    Route::livewire('/master/akun', 'pages::master.master-akuntansi.master-akun.master-akun')
+        ->name('master.akun');
+
+    // ===========================================
+    // MASTER AKUNTANSI - KONFIGURASI AKUN TRANSAKSI
+    // ===========================================
+    Route::livewire('/master/konf-akun-trans', 'pages::master.master-akuntansi.master-konf-akun-trans.master-konf-akun-trans')
+        ->name('master.konf-akun-trans');
+
+    // ===========================================
     // GUDANG - PENERIMAAN MEDIS
     // ===========================================
     Route::livewire('/gudang/penerimaan-medis', 'pages::transaksi.gudang.penerimaan-medis.penerimaan-medis')
         ->name('gudang.penerimaan-medis');
+
+    // ===========================================
+    // GUDANG - PENERIMAAN NON-MEDIS
+    // ===========================================
+    Route::livewire('/gudang/penerimaan-non-medis', 'pages::transaksi.gudang.penerimaan-non-medis.penerimaan-non-medis')
+        ->name('gudang.penerimaan-non-medis');
+
+    // ===========================================
+    // GUDANG - KARTU STOCK GUDANG (warehouse)
+    // ===========================================
+    Route::livewire('/gudang/kartu-stock', 'pages::transaksi.gudang.kartu-stock.kartu-stock')
+        ->name('gudang.kartu-stock');
+
+    // ===========================================
+    // GUDANG - KARTU STOCK APOTEK
+    // ===========================================
+    Route::livewire('/gudang/kartu-stock-apt', 'pages::transaksi.gudang.kartu-stock-apt.kartu-stock-apt')
+        ->name('gudang.kartu-stock-apt');
+
+    // ===========================================
+    // GUDANG - KARTU STOCK NON-MEDIS
+    // ===========================================
+    Route::livewire('/gudang/kartu-stock-non', 'pages::transaksi.gudang.kartu-stock-non.kartu-stock-non')
+        ->name('gudang.kartu-stock-non');
 
     // ===========================================
     // TRANSAKSI PENUNJANG - LABORATORIUM
