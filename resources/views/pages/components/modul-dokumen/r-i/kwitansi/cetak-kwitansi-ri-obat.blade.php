@@ -34,7 +34,7 @@ new class extends Component {
                 r.klaim_id,
                 k.klaim_desc,
                 a.acc_name,
-                rm.room_desc
+                rm.room_name
             FROM imtxn_slshdrs s
             JOIN rsmst_pasiens p ON p.reg_no = s.reg_no
             LEFT JOIN rsmst_doctors d ON d.dr_id = s.dr_id
@@ -106,7 +106,7 @@ new class extends Component {
             'slsNo' => $slsNo,
             'slsDate' => $hdr->sls_date ?? '-',
             'rihdrNo' => $hdr->rihdr_no,
-            'roomDesc' => $hdr->room_desc ?? '-',
+            'roomDesc' => $hdr->room_name ?? '-',  // dari kolom rsmst_rooms.room_name
             'drName' => $drName,
             'klaimName' => $klaimName,
             'accName' => $hdr->acc_name ?? ($hdr->acc_id ?? '-'),
