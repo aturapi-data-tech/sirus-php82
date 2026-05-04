@@ -96,10 +96,14 @@ Route::middleware(['auth'])->group(function () {
 
 
     // ===========================================
-    // TRANSAKSI APOTEK - GABUNGAN RJ & UGD (tab)
+    // TRANSAKSI APOTEK - GABUNGAN RJ + UGD + RI (tab)
     // ===========================================
     Route::livewire('/transaksi/apotek', 'pages::transaksi.apotek.apotek')
         ->name('transaksi.apotek');
+
+    // Direct route — Antrian Apotek RI (tanpa wrapper tab)
+    Route::livewire('/transaksi/apotek/antrian-apotek-ri', 'pages::transaksi.apotek.antrian-apotek-ri.antrian-apotek-ri')
+        ->name('transaksi.apotek.antrian-apotek-ri');
 
 
     // ===========================================
