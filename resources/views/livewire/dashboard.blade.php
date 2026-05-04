@@ -42,7 +42,8 @@ new class extends Component {
             $entry(['group' => 'Master Laboratorium', 'groupOrder' => 2, 'order' => 1, 'route' => 'master.laborat', 'title' => 'Master Laboratorium', 'desc' => 'Kelola kategori lab & item pemeriksaan', 'roles' => ['admin', 'laboratorium'], 'badge' => 'Lab']),
 
             // ── Master Apotek (master obat / produk farmasi) ─────────
-            $entry(['group' => 'Master Apotek', 'groupOrder' => 3, 'order' => 1, 'route' => 'master.obat', 'title' => 'Master Obat', 'desc' => 'Kelola data obat & farmasi', 'roles' => ['admin', 'apoteker'], 'badge' => 'Apotek']),
+            $entry(['group' => 'Master Apotek', 'groupOrder' => 3, 'order' => 1, 'route' => 'master.obat',        'title' => 'Master Obat',        'desc' => 'Kelola data obat & farmasi',                                'roles' => ['admin', 'apoteker'], 'badge' => 'Apotek']),
+            $entry(['group' => 'Master Apotek', 'groupOrder' => 3, 'order' => 2, 'route' => 'master.obat-kronis', 'title' => 'Master Obat Kronis', 'desc' => 'Daftar obat kronis BPJS — max qty per resep & tarif klaim', 'roles' => ['admin', 'apoteker'], 'badge' => 'Kronis']),
 
             // ── Master Akuntansi ──────────────────────────────────────
             $entry(['group' => 'Master Akuntansi', 'groupOrder' => 4, 'order' => 1, 'route' => 'master.group-akun',      'title' => 'Master Group Akun',                'desc' => 'Kelola group akun (Aktiva, Kewajiban, Modal, Pendapatan, Beban)',                  'roles' => ['admin'], 'badge' => 'Akuntansi']),
