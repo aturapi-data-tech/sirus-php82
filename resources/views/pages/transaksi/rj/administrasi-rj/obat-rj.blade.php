@@ -84,6 +84,7 @@ new class extends Component {
                     'takar' => $r->rj_takar,
                     'ket' => $r->rj_ket,
                     'expDate' => $r->exp_date,
+                    'expDateDisplay' => $r->exp_date ? Carbon::parse($r->exp_date)->format('d/m/Y') : '-',
                     'catatanKhusus' => $r->catatan_khusus,
                     'etiketStatus' => $r->etiket_status,
                 ],
@@ -640,7 +641,7 @@ new class extends Component {
                                     @enderror
                                 @else
                                     <span
-                                        class="text-xs text-gray-500 dark:text-gray-400">{{ $item['expDate'] ?? '-' }}</span>
+                                        class="text-xs text-gray-500 dark:text-gray-400">{{ $item['expDateDisplay'] ?? '-' }}</span>
                                 @endif
                             </td>
                             {{-- Catatan --}}

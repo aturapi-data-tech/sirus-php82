@@ -83,6 +83,7 @@ new class extends Component {
                     'takar' => $r->ugd_takar,
                     'ket' => $r->ugd_ket,
                     'expDate' => $r->exp_date,
+                    'expDateDisplay' => $r->exp_date ? Carbon::parse($r->exp_date)->format('d/m/Y') : '-',
                     'catatanKhusus' => $r->catatan_khusus,
                     'etiketStatus' => $r->etiket_status,
                 ],
@@ -580,7 +581,7 @@ new class extends Component {
                                     <x-input-error :messages="$errors->get('editRow.expDate')" class="mt-0.5 text-xs" />
                                 @else
                                     <span
-                                        class="text-xs text-gray-500 dark:text-gray-400">{{ $item['expDate'] ?? '-' }}</span>
+                                        class="text-xs text-gray-500 dark:text-gray-400">{{ $item['expDateDisplay'] ?? '-' }}</span>
                                 @endif
                             </td>
 
