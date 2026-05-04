@@ -38,6 +38,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/master/obat', 'pages::master.master-obat.master-obat')
         ->name('master.obat');
 
+    Route::livewire('/master/obat-kronis', 'pages::master.master-obat-kronis.master-obat-kronis')
+        ->name('master.obat-kronis');
+
     Route::livewire('/master/diagnosa', 'pages::master.master-diagnosa.master-diagnosa')
         ->name('master.diagnosa');
 
