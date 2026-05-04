@@ -61,9 +61,10 @@ new class extends Component {
             $entry(['group' => 'RI', 'groupOrder' => 7, 'order' => 2, 'route' => 'ri.update-tt-ri', 'title' => 'Update Tempat Tidur RI', 'desc' => 'Sync ketersediaan kamar RI ke Aplicares & SIRS Kemenkes', 'roles' => ['admin', 'mr', 'perawat', 'dokter'],            'badge' => 'TT']),
 
             // ── Apotek (transaksi) ────────────────────────────────────
-            $entry(['group' => 'Apotek', 'groupOrder' => 8, 'order' => 1, 'route' => 'transaksi.apotek',                'title' => 'Antrian Apotek',     'desc' => 'Telaah resep & pelayanan kefarmasian — tab RJ & UGD', 'roles' => ['admin', 'apotek'], 'badge' => 'APT']),
-            $entry(['group' => 'Apotek', 'groupOrder' => 8, 'order' => 2, 'route' => 'transaksi.rj.antrian-apotek-rj', 'title' => 'Antrian Apotek RJ', 'desc' => 'Antrian apotek khusus pasien rawat jalan',           'roles' => ['admin', 'apotek'], 'badge' => 'APT-RJ']),
-            $entry(['group' => 'Apotek', 'groupOrder' => 8, 'order' => 3, 'route' => 'transaksi.ugd.antrian-apotek-ugd','title' => 'Antrian Apotek UGD','desc' => 'Antrian apotek khusus pasien UGD',                   'roles' => ['admin', 'apotek'], 'badge' => 'APT-UGD']),
+            $entry(['group' => 'Apotek', 'groupOrder' => 8, 'order' => 1, 'route' => 'transaksi.apotek',                       'title' => 'Antrian Apotek',     'desc' => 'Telaah resep & pelayanan kefarmasian — tab RJ, UGD, RI', 'roles' => ['admin', 'apotek'], 'badge' => 'APT']),
+            $entry(['group' => 'Apotek', 'groupOrder' => 8, 'order' => 2, 'route' => 'transaksi.rj.antrian-apotek-rj',        'title' => 'Antrian Apotek RJ', 'desc' => 'Antrian apotek khusus pasien rawat jalan',                'roles' => ['admin', 'apotek'], 'badge' => 'APT-RJ']),
+            $entry(['group' => 'Apotek', 'groupOrder' => 8, 'order' => 3, 'route' => 'transaksi.ugd.antrian-apotek-ugd',      'title' => 'Antrian Apotek UGD','desc' => 'Antrian apotek khusus pasien UGD',                        'roles' => ['admin', 'apotek'], 'badge' => 'APT-UGD']),
+            $entry(['group' => 'Apotek', 'groupOrder' => 8, 'order' => 4, 'route' => 'transaksi.apotek.antrian-apotek-ri',    'title' => 'Antrian Apotek RI', 'desc' => 'Telaah resep & pelayanan kefarmasian rawat inap',         'roles' => ['admin', 'apotek'], 'badge' => 'APT-RI']),
 
             // ── Penunjang ──────────────────────────────────────────────
             $entry(['group' => 'Penunjang', 'groupOrder' => 9, 'order' => 1, 'route' => 'transaksi.penunjang.laborat', 'title' => 'Transaksi Laboratorium', 'desc' => 'Input hasil pemeriksaan laboratorium pasien', 'roles' => ['admin', 'laboratorium'], 'badge' => 'LAB']),
