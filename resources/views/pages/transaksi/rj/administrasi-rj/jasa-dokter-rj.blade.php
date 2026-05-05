@@ -63,6 +63,56 @@ new class extends Component {
         $this->dataDaftarPoliRJ = $this->findDataRJ($rjNo) ?? [];
         $this->dataDaftarPoliRJ['JasaDokter'] ??= [];
         $this->dataDaftarPoliRJ['LainLain'] ??= [];
+
+        // Rebuild dari line table — supaya entry dari Oradev 6i (legacy) ikut tampil
+        $this->rebuildJasaDokterFromDb();
+    }
+
+    /* ===============================
+     | REBUILD FROM DB — gabungkan entry sirus-php82 + Oradev 6i
+     | Line table = source of truth. JSON cache dipakai untuk preserve
+     | metadata user (userLog/userLogDate) dari entry sirus-php82.
+     =============================== */
+    private function rebuildJasaDokterFromDb(): void
+    {
+        if (!$this->rjNo || $this->rjNo === 'new') {
+            return;
+        }
+
+        // Skip rebuild kalau RJ sudah lunas/terkunci — data tidak akan berubah lagi.
+        if ($this->checkRJStatus($this->rjNo)) {
+            return;
+        }
+
+        $cached = collect($this->dataDaftarPoliRJ['JasaDokter'] ?? [])->keyBy('rjaccdocDtl');
+
+        $rows = DB::table('rstxn_rjaccdocs as rja')
+            ->leftJoin('rsmst_accdocs as rsm', 'rsm.accdoc_id', '=', 'rja.accdoc_id')
+            ->leftJoin('rsmst_doctors as dok', 'dok.dr_id', '=', 'rja.dr_id')
+            ->where('rja.rj_no', $this->rjNo)
+            ->select('rja.rjhn_dtl', 'rja.dr_id', 'rja.accdoc_id', 'rja.accdoc_price', 'rsm.accdoc_desc', 'dok.dr_name')
+            ->orderBy('rja.rjhn_dtl')
+            ->get();
+
+        $merged = $rows->map(function ($r) use ($cached) {
+            $ctx = $cached[$r->rjhn_dtl] ?? null;
+            $source = ($ctx && !empty($ctx['userLog'])) ? 'sirus' : 'oradev';
+
+            return [
+                'DokterId' => $r->dr_id,
+                'DokterName' => $r->dr_name ?? '-',
+                'JasaDokterId' => $r->accdoc_id,
+                'JasaDokterDesc' => $r->accdoc_desc ?? '-',
+                'JasaDokterPrice' => (int) $r->accdoc_price,
+                'rjaccdocDtl' => (int) $r->rjhn_dtl,
+                'rjNo' => $this->rjNo,
+                'userLog' => $ctx['userLog'] ?? '',
+                'userLogDate' => $ctx['userLogDate'] ?? '',
+                '_source' => $source,
+            ];
+        })->toArray();
+
+        $this->dataDaftarPoliRJ['JasaDokter'] = $merged;
     }
 
     /* ===============================
@@ -191,6 +241,7 @@ new class extends Component {
                     'rjNo' => $this->rjNo,
                     'userLog' => auth()->user()->myuser_name,
                     'userLogDate' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
+                    '_source' => 'sirus',
                 ];
 
                 // 4. Paket lain-lain + obat (insert ke tabel + update array lokal)
@@ -225,8 +276,14 @@ new class extends Component {
             return;
         }
 
+        // Lookup sumber & deskripsi item — untuk diberi label di audit log
+        $itemEntry = collect($this->dataDaftarPoliRJ['JasaDokter'] ?? [])->firstWhere('rjaccdocDtl', $rjaccdocDtl);
+        $itemSource = $itemEntry['_source'] ?? 'sirus';
+        $itemDesc = $itemEntry['JasaDokterDesc'] ?? '-';
+        $sourceLabel = $itemSource === 'oradev' ? ' (sumber: Oradev 6i)' : '';
+
         try {
-            DB::transaction(function () use ($rjaccdocDtl) {
+            DB::transaction(function () use ($rjaccdocDtl, $itemDesc, $sourceLabel) {
                 // 1. Lock row dulu
                 $this->lockRJRow($this->rjNo);
 
@@ -244,7 +301,7 @@ new class extends Component {
                 $this->syncJasaDokterJson();
 
                 // 6. Audit log
-                $this->appendAdminLogRJ($this->rjNo, 'Hapus Jasa Dokter #' . $rjaccdocDtl);
+                $this->appendAdminLogRJ($this->rjNo, 'Hapus Jasa Dokter: ' . $itemDesc . ' #' . $rjaccdocDtl . $sourceLabel);
             });
 
             $this->dispatch('administrasi-rj.updated');
@@ -530,7 +587,8 @@ new class extends Component {
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                     @forelse ($dataDaftarPoliRJ['JasaDokter'] ?? [] as $item)
-                        <tr class="transition group hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                        @php $isLegacy = ($item['_source'] ?? 'sirus') === 'oradev'; @endphp
+                        <tr class="transition group hover:bg-gray-50 dark:hover:bg-gray-800/40 {{ $isLegacy ? 'bg-amber-50/40 dark:bg-amber-900/10' : '' }}">
                             <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                 {{ $item['DokterName'] ?? '-' }}
                             </td>
@@ -538,7 +596,21 @@ new class extends Component {
                                 {{ $item['JasaDokterId'] }}
                             </td>
                             <td class="px-4 py-3 text-gray-800 dark:text-gray-200 whitespace-nowrap">
-                                {{ $item['JasaDokterDesc'] }}
+                                <div class="flex items-center gap-2">
+                                    <span>{{ $item['JasaDokterDesc'] }}</span>
+                                    @if ($isLegacy)
+                                        <span
+                                            class="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700"
+                                            title="Entry dari sistem lama (Oradev 6i) — tidak ada riwayat user di sistem ini">
+                                            <svg class="w-3 h-3 mr-0.5" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Sistem Lama
+                                        </span>
+                                    @endif
+                                </div>
                             </td>
                             <td
                                 class="px-4 py-3 font-semibold text-right text-gray-800 dark:text-gray-200 whitespace-nowrap">

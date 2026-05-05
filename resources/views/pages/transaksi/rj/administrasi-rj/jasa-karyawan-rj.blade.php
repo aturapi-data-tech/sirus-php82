@@ -61,6 +61,58 @@ new class extends Component {
         $this->dataDaftarPoliRJ = $this->findDataRJ($rjNo) ?? [];
         $this->dataDaftarPoliRJ['JasaKaryawan'] ??= [];
         $this->dataDaftarPoliRJ['LainLain'] ??= [];
+
+        // Rebuild dari line table — supaya entry dari Oradev 6i (legacy) ikut tampil
+        $this->rebuildJasaKaryawanFromDb();
+    }
+
+    /* ===============================
+     | REBUILD FROM DB — gabungkan entry sirus-php82 + Oradev 6i
+     | Line table = source of truth. JSON cache dipakai untuk preserve
+     | metadata user (userLog/userLogDate) dari entry sirus-php82.
+     =============================== */
+    private function rebuildJasaKaryawanFromDb(): void
+    {
+        if (!$this->rjNo || $this->rjNo === 'new') {
+            return;
+        }
+
+        // Skip rebuild kalau RJ sudah lunas/terkunci — data tidak akan berubah lagi.
+        // Display pakai snapshot JSON cache saat transaksi ditutup.
+        if ($this->checkRJStatus($this->rjNo)) {
+            return;
+        }
+
+        // Cache existing entries by acte_dtl untuk preserve user metadata
+        $cached = collect($this->dataDaftarPoliRJ['JasaKaryawan'] ?? [])->keyBy('rjActeDtl');
+
+        // Query line table — gabungan dari kedua sistem
+        $rows = DB::table('rstxn_rjactemps as rja')
+            ->leftJoin('rsmst_actemps as rsm', 'rsm.acte_id', '=', 'rja.acte_id')
+            ->where('rja.rj_no', $this->rjNo)
+            ->select('rja.acte_dtl', 'rja.acte_id', 'rja.acte_price', 'rsm.acte_desc')
+            ->orderBy('rja.acte_dtl')
+            ->get();
+
+        $merged = $rows->map(function ($r) use ($cached) {
+            $ctx = $cached[$r->acte_dtl] ?? null;
+            // Heuristik sumber: kalau JSON cache punya entry ini dengan userLog → sirus.
+            // Kalau tidak ada di cache atau tidak punya userLog → oradev (legacy).
+            $source = ($ctx && !empty($ctx['userLog'])) ? 'sirus' : 'oradev';
+
+            return [
+                'JasaKaryawanId' => $r->acte_id,
+                'JasaKaryawanDesc' => $r->acte_desc ?? '-',
+                'JasaKaryawanPrice' => (int) $r->acte_price,
+                'rjActeDtl' => (int) $r->acte_dtl,
+                'rjNo' => $this->rjNo,
+                'userLog' => $ctx['userLog'] ?? '',
+                'userLogDate' => $ctx['userLogDate'] ?? '',
+                '_source' => $source,
+            ];
+        })->toArray();
+
+        $this->dataDaftarPoliRJ['JasaKaryawan'] = $merged;
     }
 
     /* ===============================
@@ -158,6 +210,7 @@ new class extends Component {
                     'rjNo' => $this->rjNo,
                     'userLog' => auth()->user()->myuser_name,
                     'userLogDate' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
+                    '_source' => 'sirus',
                 ];
 
                 // 4. Paket lain-lain + obat
@@ -192,8 +245,14 @@ new class extends Component {
             return;
         }
 
+        // Lookup sumber & deskripsi item — untuk diberi label di audit log
+        $itemEntry = collect($this->dataDaftarPoliRJ['JasaKaryawan'] ?? [])->firstWhere('rjActeDtl', $rjActeDtl);
+        $itemSource = $itemEntry['_source'] ?? 'sirus';
+        $itemDesc = $itemEntry['JasaKaryawanDesc'] ?? '-';
+        $sourceLabel = $itemSource === 'oradev' ? ' (sumber: Oradev 6i)' : '';
+
         try {
-            DB::transaction(function () use ($rjActeDtl) {
+            DB::transaction(function () use ($rjActeDtl, $itemDesc, $sourceLabel) {
                 // 1. Lock row dulu
                 $this->lockRJRow($this->rjNo);
 
@@ -210,8 +269,8 @@ new class extends Component {
                 // 5. Sync JSON
                 $this->syncJasaKaryawanJson();
 
-                // 6. Audit log
-                $this->appendAdminLogRJ($this->rjNo, 'Hapus Jasa Karyawan #' . $rjActeDtl);
+                // 6. Audit log — di dalam transaksi (atomic)
+                $this->appendAdminLogRJ($this->rjNo, 'Hapus Jasa Karyawan: ' . $itemDesc . ' #' . $rjActeDtl . $sourceLabel);
             });
 
             $this->dispatch('administrasi-rj.updated');
@@ -481,12 +540,27 @@ new class extends Component {
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                     @forelse ($dataDaftarPoliRJ['JasaKaryawan'] ?? [] as $item)
-                        <tr class="transition group hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                        @php $isLegacy = ($item['_source'] ?? 'sirus') === 'oradev'; @endphp
+                        <tr class="transition group hover:bg-gray-50 dark:hover:bg-gray-800/40 {{ $isLegacy ? 'bg-amber-50/40 dark:bg-amber-900/10' : '' }}">
                             <td class="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                 {{ $item['JasaKaryawanId'] }}
                             </td>
                             <td class="px-4 py-3 text-gray-800 dark:text-gray-200 whitespace-nowrap">
-                                {{ $item['JasaKaryawanDesc'] }}
+                                <div class="flex items-center gap-2">
+                                    <span>{{ $item['JasaKaryawanDesc'] }}</span>
+                                    @if ($isLegacy)
+                                        <span
+                                            class="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700"
+                                            title="Entry dari sistem lama (Oradev 6i) — tidak ada riwayat user di sistem ini">
+                                            <svg class="w-3 h-3 mr-0.5" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Sistem Lama
+                                        </span>
+                                    @endif
+                                </div>
                             </td>
                             <td
                                 class="px-4 py-3 font-semibold text-right text-gray-800 dark:text-gray-200 whitespace-nowrap">
