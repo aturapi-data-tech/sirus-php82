@@ -192,27 +192,31 @@ new class extends Component {
                     </div>
                 </div>
                 @if (!$isFormLocked)
-                    <button type="button" wire:click="openPindahKamar"
-                        class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition shrink-0 shadow-sm">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                        </svg>
-                        Pindah Kamar
-                    </button>
+                    @hasanyrole('Mr|Admin|Perawat|Tu')
+                        <button type="button" wire:click="openPindahKamar"
+                            class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition shrink-0 shadow-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                            </svg>
+                            Pindah Kamar
+                        </button>
+                    @endhasanyrole
                 @endif
             </div>
         </div>
     @elseif (!$isFormLocked)
         <div class="p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl text-center">
             <div class="text-sm text-gray-500 dark:text-gray-400 mb-3">Pasien belum di-assign ke kamar</div>
-            <button type="button" wire:click="openPindahKamar"
-                class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 transition shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                Assign Kamar
-            </button>
+            @hasanyrole('Mr|Admin|Perawat|Tu')
+                <button type="button" wire:click="openPindahKamar"
+                    class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 transition shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Assign Kamar
+                </button>
+            @endhasanyrole
         </div>
     @endif
 

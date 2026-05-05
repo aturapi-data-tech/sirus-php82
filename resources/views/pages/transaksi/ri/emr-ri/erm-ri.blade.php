@@ -228,7 +228,7 @@ new class extends Component {
                             @endrole
 
                             {{-- Pindah Kamar --}}
-                            @hasanyrole('Mr|Admin')
+                            @hasanyrole('Mr|Admin|Perawat|Tu')
                                 <x-secondary-button type="button" class="text-xs !py-1"
                                     wire:click="openPindahKamar('{{ $riHdrNo }}')" wire:loading.attr="disabled"
                                     wire:target="openPindahKamar">
@@ -549,7 +549,7 @@ new class extends Component {
                         ──────────────────────────────────────────── --}}
                         <div x-show="activeTab === 'riwayat'" x-transition.opacity.duration.200ms>
                             <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
-                                :regNo="$dataDaftarRi['regNo'] ?? ''" :rjNoRefCopyTo="0"
+                                :regNo="$dataDaftarRi['regNo'] ?? ''" :rjNoRefCopyTo="0" :contextRI="true"
                                 wire:key="emr-ri.rekam-medis-display-{{ $dataDaftarRi['regNo'] ?? 'new' }}" />
                         </div>
 
