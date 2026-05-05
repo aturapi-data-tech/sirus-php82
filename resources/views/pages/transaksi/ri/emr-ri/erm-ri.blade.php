@@ -228,7 +228,7 @@ new class extends Component {
                             @endrole
 
                             {{-- Pindah Kamar --}}
-                            @hasanyrole('Mr|Admin')
+                            @hasanyrole('Mr|Admin|Perawat|Tu')
                                 <x-secondary-button type="button" class="text-xs !py-1"
                                     wire:click="openPindahKamar('{{ $riHdrNo }}')" wire:loading.attr="disabled"
                                     wire:target="openPindahKamar">
