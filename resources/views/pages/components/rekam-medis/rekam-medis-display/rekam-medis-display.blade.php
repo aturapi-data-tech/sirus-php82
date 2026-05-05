@@ -539,7 +539,7 @@ new class extends Component {
                                                     </div>
 
                                                     {{-- Actions --}}
-                                                    @role(['Dokter', 'Admin', 'Perawat'])
+                                                    @role(['Dokter', 'Admin', 'Perawat', 'Casemix', 'Mr'])
                                                         <div class="grid grid-cols-2 gap-2 mt-3">
                                                             <div class="grid grid-cols-1 gap-2">
                                                                 @if ($isRJ)
