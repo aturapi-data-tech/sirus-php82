@@ -3,13 +3,14 @@
 
 use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
+use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
 
 new class extends Component {
-    use EmrRITrait, WithRenderVersioningTrait;
+    use EmrRITrait, EmrUGDTrait, WithRenderVersioningTrait;
 
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
@@ -89,6 +90,76 @@ new class extends Component {
     public function mount(): void
     {
         $this->registerAreas(['modal-pengkajian-awal-ri']);
+    }
+
+    /**
+     * Copy fields perawat dari kunjungan UGD (sumber) ke Pengkajian Awal RI ini.
+     * Triggered dari rekam-medis-display saat user klik "Copy Asesmen Perawat" di row UGD.
+     *
+     * Yang di-copy:
+     * - Keluhan Utama → bagian4PemeriksaanFisik.keluhanUtama
+     * - Tanda Vital (sistolik/distolik/nadi/nafas/suhu/spo2/gda) → bagian4PemeriksaanFisik.tandaVital.*
+     * - BB & TB (dari pemeriksaan.nutrisi) → bagian4PemeriksaanFisik.tandaVital.{bb,tb}
+     *
+     * Catatan: hasil copy hanya update memory state — user wajib klik tombol "Simpan"
+     * untuk persist ke datadaftarri_json.
+     */
+    #[On('request-copy-assessment-from-ugd-perawat')]
+    public function copyFromUGDPerawat(int $rjNoUGD): void
+    {
+        if (!$this->riHdrNo) {
+            $this->dispatch('toast', type: 'error', message: 'Buka Pengkajian Awal terlebih dahulu sebelum copy.');
+            return;
+        }
+
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, form terkunci.');
+            return;
+        }
+
+        // Fetch data UGD via trait helper
+        $ugd = $this->findDataUGD($rjNoUGD);
+        if (empty($ugd)) {
+            $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.');
+            return;
+        }
+
+        // Pastikan target struct sudah init
+        $this->dataDaftarRi['pengkajianAwalPasienRawatInap'] ??= $this->pengkajianAwalDefault;
+        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian4PemeriksaanFisik'] ??= [];
+        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian4PemeriksaanFisik']['tandaVital'] ??= [];
+
+        $b4 = &$this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian4PemeriksaanFisik'];
+
+        // 1) Keluhan Utama
+        $keluhan = trim((string) data_get($ugd, 'anamnesa.keluhanUtama.keluhanUtama', ''));
+        if ($keluhan !== '') {
+            $b4['keluhanUtama'] = $keluhan;
+        }
+
+        // 2) Tanda Vital
+        $ttv = data_get($ugd, 'pemeriksaan.tandaVital', []);
+        foreach (['sistolik', 'distolik', 'frekuensiNadi', 'frekuensiNafas', 'suhu', 'spo2', 'gda'] as $field) {
+            $val = trim((string) data_get($ttv, $field, ''));
+            if ($val !== '') {
+                $b4['tandaVital'][$field] = $val;
+            }
+        }
+
+        // 3) BB & TB dari nutrisi
+        $bb = trim((string) data_get($ugd, 'pemeriksaan.nutrisi.bb', ''));
+        $tb = trim((string) data_get($ugd, 'pemeriksaan.nutrisi.tb', ''));
+        if ($bb !== '') {
+            $b4['tandaVital']['bb'] = $bb;
+        }
+        if ($tb !== '') {
+            $b4['tandaVital']['tb'] = $tb;
+        }
+
+        unset($b4);
+
+        $this->incrementVersion('modal-pengkajian-awal-ri');
+        $this->dispatch('toast', type: 'success', message: 'Asesmen perawat dari UGD berhasil disalin. Klik Simpan untuk persist.');
     }
 
     #[On('open-rm-pengkajian-awal-ri')]
