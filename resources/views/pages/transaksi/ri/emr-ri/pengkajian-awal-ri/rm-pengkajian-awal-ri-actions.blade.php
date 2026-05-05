@@ -101,6 +101,10 @@ new class extends Component {
      * - Tanda Vital (sistolik/distolik/nadi/nafas/suhu/spo2/gda) → bagian4PemeriksaanFisik.tandaVital.*
      * - BB & TB (dari pemeriksaan.nutrisi) → bagian4PemeriksaanFisik.tandaVital.{bb,tb}
      *
+     * Mode: FILL-ONLY — hanya isi field yang masih KOSONG di RI.
+     * Field RI yang sudah ada nilainya TIDAK akan ditimpa (jaga kerja perawat sebelumnya).
+     * Kalau perawat mau ganti, edit manual.
+     *
      * Catatan: hasil copy hanya update memory state — user wajib klik tombol "Simpan"
      * untuk persist ke datadaftarri_json.
      */
@@ -131,35 +135,50 @@ new class extends Component {
 
         $b4 = &$this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian4PemeriksaanFisik'];
 
+        $copied = 0;
+        $skipped = 0;
+
+        // Helper closure: fill-only — hanya set kalau target masih kosong DAN source ada nilai
+        $fill = function (string &$target, string $sourceVal) use (&$copied, &$skipped): void {
+            $sourceVal = trim($sourceVal);
+            if ($sourceVal === '') {
+                return; // source kosong, skip
+            }
+            if (trim($target) !== '') {
+                $skipped++;
+                return; // target sudah ada nilai, jaga
+            }
+            $target = $sourceVal;
+            $copied++;
+        };
+
         // 1) Keluhan Utama
-        $keluhan = trim((string) data_get($ugd, 'anamnesa.keluhanUtama.keluhanUtama', ''));
-        if ($keluhan !== '') {
-            $b4['keluhanUtama'] = $keluhan;
-        }
+        $b4['keluhanUtama'] ??= '';
+        $fill($b4['keluhanUtama'], (string) data_get($ugd, 'anamnesa.keluhanUtama.keluhanUtama', ''));
 
         // 2) Tanda Vital
         $ttv = data_get($ugd, 'pemeriksaan.tandaVital', []);
         foreach (['sistolik', 'distolik', 'frekuensiNadi', 'frekuensiNafas', 'suhu', 'spo2', 'gda'] as $field) {
-            $val = trim((string) data_get($ttv, $field, ''));
-            if ($val !== '') {
-                $b4['tandaVital'][$field] = $val;
-            }
+            $b4['tandaVital'][$field] ??= '';
+            $fill($b4['tandaVital'][$field], (string) data_get($ttv, $field, ''));
         }
 
         // 3) BB & TB dari nutrisi
-        $bb = trim((string) data_get($ugd, 'pemeriksaan.nutrisi.bb', ''));
-        $tb = trim((string) data_get($ugd, 'pemeriksaan.nutrisi.tb', ''));
-        if ($bb !== '') {
-            $b4['tandaVital']['bb'] = $bb;
-        }
-        if ($tb !== '') {
-            $b4['tandaVital']['tb'] = $tb;
-        }
+        $b4['tandaVital']['bb'] ??= '';
+        $b4['tandaVital']['tb'] ??= '';
+        $fill($b4['tandaVital']['bb'], (string) data_get($ugd, 'pemeriksaan.nutrisi.bb', ''));
+        $fill($b4['tandaVital']['tb'], (string) data_get($ugd, 'pemeriksaan.nutrisi.tb', ''));
 
         unset($b4);
 
         $this->incrementVersion('modal-pengkajian-awal-ri');
-        $this->dispatch('toast', type: 'success', message: 'Asesmen perawat dari UGD berhasil disalin. Klik Simpan untuk persist.');
+
+        $msg = "Asesmen UGD: {$copied} field disalin";
+        if ($skipped > 0) {
+            $msg .= ", {$skipped} field di-skip (sudah ada nilai)";
+        }
+        $msg .= '. Klik Simpan untuk persist.';
+        $this->dispatch('toast', type: 'success', message: $msg);
     }
 
     #[On('open-rm-pengkajian-awal-ri')]
