@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/r-j/rekam-medis/cetak-rekam-medis-print.blade.php --}}
 
-<x-pdf.layout-a4 title="ASSESMENT AWAL RAWAT JALAN">
+<x-pdf.layout-a4-with-out-background title="ASSESMENT AWAL RAWAT JALAN">
 
     {{-- IDENTITAS PASIEN — sejajar dengan logo --}}
     <x-slot name="patientData">
@@ -420,4 +420,4 @@
 
     </table>
 
-</x-pdf.layout-a4>
+</x-pdf.layout-a4-with-out-background>

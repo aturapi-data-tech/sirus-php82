@@ -338,6 +338,11 @@ new class extends Component {
     {
         $this->dispatch('cetak-rekam-medis.open', rjNo: $rjNo);
     }
+
+    public function OpenRekamMedisUgd($rjNo): void
+    {
+        $this->dispatch('cetak-rekam-medis-ugd.open', rjNo: $rjNo);
+    }
 };
 
 ?>
@@ -578,6 +583,35 @@ new class extends Component {
                                                                     </div>
                                                                 @endif
 
+                                                                @if ($isUGD)
+                                                                    <div class="grid grid-cols-1 gap-2">
+                                                                        <x-info-button type="button"
+                                                                            wire:click="OpenRekamMedisUgd('{{ $myQData->txn_no }}')"
+                                                                            wire:loading.attr="disabled"
+                                                                            wire:target="OpenRekamMedisUgd('{{ $myQData->txn_no }}')">
+                                                                            <span wire:loading.remove
+                                                                                wire:target="OpenRekamMedisUgd('{{ $myQData->txn_no }}')"
+                                                                                class="flex items-center gap-1">
+                                                                                <svg class="w-4 h-4" fill="none"
+                                                                                    stroke="currentColor"
+                                                                                    viewBox="0 0 24 24">
+                                                                                    <path stroke-linecap="round"
+                                                                                        stroke-linejoin="round"
+                                                                                        stroke-width="2"
+                                                                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                                </svg>
+                                                                                Resume Medis
+                                                                            </span>
+                                                                            <span wire:loading
+                                                                                wire:target="OpenRekamMedisUgd('{{ $myQData->txn_no }}')"
+                                                                                class="flex items-center gap-1">
+                                                                                <x-loading />
+                                                                                Memuat...
+                                                                            </span>
+                                                                        </x-info-button>
+                                                                    </div>
+                                                                @endif
+
 
                                                             </div>
 
@@ -658,4 +692,7 @@ new class extends Component {
 
     <livewire:pages::components.rekam-medis.r-j.cetak-rekam-medis.cetak-rekam-medis-open
         wire:key="r-j.rekam-medis.cetak-rekam-medis-open" />
+
+    <livewire:pages::components.rekam-medis.u-g-d.cetak-rekam-medis.cetak-rekam-medis-open
+        wire:key="u-g-d.rekam-medis.cetak-rekam-medis-open" />
 </div>
