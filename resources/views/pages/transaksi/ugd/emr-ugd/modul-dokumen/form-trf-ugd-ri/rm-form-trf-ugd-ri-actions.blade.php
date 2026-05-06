@@ -992,40 +992,62 @@ new class extends Component {
                     @endif
                 </div>
 
-                {{-- ══ PETUGAS PENGIRIM & PENERIMA ══ --}}
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    @foreach ([['key' => 'petugasPengirim', 'dateKey' => 'petugasPengirimDate', 'label' => 'Petugas Pengirim', 'method' => 'setPetugasPengirim'], ['key' => 'petugasPenerima', 'dateKey' => 'petugasPenerimaDate', 'label' => 'Petugas Penerima', 'method' => 'setPetugasPenerima']] as $petugas)
-                        <div
-                            class="p-4 border border-gray-200 rounded-2xl dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40">
-                            <x-input-label value="{{ $petugas['label'] }}" class="mb-2" />
-                            @php
-                                $nama = $dataDaftarUGD['trfUgd'][$petugas['key']] ?? '';
-                                $tglTtd = $dataDaftarUGD['trfUgd'][$petugas['dateKey']] ?? '';
-                            @endphp
-                            @if (empty($nama))
-                                @if (!$isFormLocked)
-                                    <x-primary-button wire:click.prevent="{{ $petugas['method'] }}" class="gap-2">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a4 4 0 01-2.828 1.172H7v-2a4 4 0 011.172-2.828z" />
-                                        </svg>
-                                        TTD {{ $petugas['label'] }}
-                                    </x-primary-button>
-                                @else
-                                    <p class="text-sm italic text-gray-400">Belum ditandatangani.</p>
-                                @endif
-                            @else
+                {{-- ══ TANDA TANGAN ══ --}}
+                <section class="pt-6 space-y-4 border-t border-gray-200 dark:border-gray-700">
+                    <h3 class="text-base font-semibold text-gray-800 dark:text-gray-200">
+                        Tanda Tangan
+                    </h3>
+
+                    <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        @foreach ([['key' => 'petugasPengirim', 'dateKey' => 'petugasPengirimDate', 'label' => 'Petugas Pengirim', 'method' => 'setPetugasPengirim'], ['key' => 'petugasPenerima', 'dateKey' => 'petugasPenerimaDate', 'label' => 'Petugas Penerima', 'method' => 'setPetugasPenerima']] as $petugas)
+                            <div class="flex flex-col">
                                 <div
-                                    class="p-3 text-center bg-white border border-gray-200 rounded-xl dark:bg-gray-900 dark:border-gray-700">
-                                    <div class="font-semibold text-gray-800 dark:text-gray-200">{{ $nama }}
-                                    </div>
-                                    <div class="mt-1 text-xs text-gray-500">{{ $tglTtd }}</div>
+                                    class="mb-2 text-xs font-semibold tracking-wide text-center text-gray-500 uppercase dark:text-gray-400">
+                                    {{ $petugas['label'] }}
                                 </div>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
+                                @php
+                                    $nama = $dataDaftarUGD['trfUgd'][$petugas['key']] ?? '';
+                                    $tglTtd = $dataDaftarUGD['trfUgd'][$petugas['dateKey']] ?? '';
+                                @endphp
+                                @if (empty($nama))
+                                    @if (!$isFormLocked)
+                                        <div
+                                            class="flex items-center justify-center flex-1 p-6 border-2 border-gray-300 border-dashed rounded-xl dark:border-gray-700">
+                                            <x-primary-button wire:click.prevent="{{ $petugas['method'] }}"
+                                                wire:loading.attr="disabled" wire:target="{{ $petugas['method'] }}"
+                                                class="gap-2">
+                                                <span wire:loading.remove wire:target="{{ $petugas['method'] }}"
+                                                    class="flex items-center gap-1.5">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a4 4 0 01-2.828 1.172H7v-2a4 4 0 011.172-2.828z" />
+                                                    </svg>
+                                                    TTD {{ $petugas['label'] }}
+                                                </span>
+                                                <span wire:loading wire:target="{{ $petugas['method'] }}">
+                                                    <x-loading class="w-4 h-4" /> Menyimpan...
+                                                </span>
+                                            </x-primary-button>
+                                        </div>
+                                    @else
+                                        <p class="py-8 text-sm italic text-center text-gray-400">Belum
+                                            ditandatangani.</p>
+                                    @endif
+                                @else
+                                    <div
+                                        class="flex flex-col items-center justify-center flex-1 p-4 border border-gray-200 bg-gray-50 rounded-xl dark:bg-gray-800 dark:border-gray-700">
+                                        <div class="font-semibold text-center text-gray-800 dark:text-gray-200">
+                                            {{ $nama }}
+                                        </div>
+                                        <div class="mt-1 text-xs text-gray-500">{{ $tglTtd }}</div>
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </section>
 
                 {{-- ══ TOMBOL SIMPAN & CETAK ══ --}}
                 <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
