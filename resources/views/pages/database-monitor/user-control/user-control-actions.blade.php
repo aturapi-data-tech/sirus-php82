@@ -191,11 +191,11 @@ new class extends Component {
                 }
 
                 if ($this->myuser_ttd_image) {
-                    $path = $this->myuser_ttd_image->store('UserTtd');
+                    $path = $this->myuser_ttd_image->store('UserTtd', 'public');
                     $data['myuser_ttd_image'] = $path;
 
                     if ($this->formMode === 'edit' && $this->existing_ttd_image) {
-                        \Storage::delete($this->existing_ttd_image);
+                        \Storage::disk('public')->delete($this->existing_ttd_image);
                     }
                 } elseif ($this->formMode === 'edit') {
                     unset($data['myuser_ttd_image']);
@@ -236,7 +236,7 @@ new class extends Component {
             DB::transaction(function () {
                 $user = DB::table('users')->where('id', $this->userId)->first();
                 if ($user && $user->myuser_ttd_image) {
-                    \Storage::delete($user->myuser_ttd_image);
+                    \Storage::disk('public')->delete($user->myuser_ttd_image);
                 }
                 DB::table('user_kas')->where('user_id', $this->userId)->delete();
                 DB::table('users')->where('id', $this->userId)->delete();
