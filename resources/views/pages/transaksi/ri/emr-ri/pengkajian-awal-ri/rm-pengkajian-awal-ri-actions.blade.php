@@ -234,10 +234,11 @@ new class extends Component {
 
     public function setPetugasPengkaji(): void
     {
-        if (!auth()->user()->hasRole('Perawat')) {
-            $this->dispatch('toast', type: 'error', message: 'Hanya Perawat yang dapat melakukan TTD.');
+        if (!auth()->user()->hasAnyRole(['Perawat', 'Admin'])) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya Perawat / Admin yang dapat melakukan TTD.');
             return;
         }
+
         $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian5CatatanDanTandaTangan']['petugasPengkaji'] = auth()->user()->myuser_name;
         $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian5CatatanDanTandaTangan']['petugasPengkajiCode'] = auth()->user()->myuser_code;
         $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian5CatatanDanTandaTangan']['jamPengkaji'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
@@ -356,7 +357,7 @@ new class extends Component {
     {{-- ══════════════════════════════════════════
     | BAGIAN 1 — DATA UMUM
     ══════════════════════════════════════════ --}}
-    <x-border-form title="Bagian 1 — Data Umum" align="start" bgcolor="bg-gray-50">
+    <x-border-form title="Bagian 1 — Data Umum" align="start" bgcolor="bg-gray-50" :collapsible="true" :open="true">
         <div class="mt-3 grid grid-cols-4 gap-2">
 
             {{-- Kondisi Saat Masuk --}}
@@ -452,7 +453,7 @@ new class extends Component {
     {{-- ══════════════════════════════════════════
     | BAGIAN 2 — RIWAYAT PASIEN
     ══════════════════════════════════════════ --}}
-    <x-border-form title="Bagian 2 — Riwayat Pasien" align="start" bgcolor="bg-gray-50">
+    <x-border-form title="Bagian 2 — Riwayat Pasien" align="start" bgcolor="bg-gray-50" :collapsible="true" :open="false">
         <div class="mt-3 space-y-4">
 
             {{-- Riwayat Penyakit / Operasi / Cedera --}}
@@ -622,7 +623,7 @@ new class extends Component {
     {{-- ══════════════════════════════════════════
     | BAGIAN 3 — PSIKOSOSIAL & EKONOMI
     ══════════════════════════════════════════ --}}
-    <x-border-form title="Bagian 3 — Psikososial & Ekonomi" align="start" bgcolor="bg-gray-50">
+    <x-border-form title="Bagian 3 — Psikososial & Ekonomi" align="start" bgcolor="bg-gray-50" :collapsible="true" :open="false">
         <div class="mt-3 grid grid-cols-6 gap-2">
 
             {{-- Agama / Kepercayaan --}}
@@ -772,7 +773,7 @@ new class extends Component {
     {{-- ══════════════════════════════════════════
     | BAGIAN 4 — TTV & PEMERIKSAAN FISIK
     ══════════════════════════════════════════ --}}
-    <x-border-form title="Bagian 4 — Tanda Vital & Pemeriksaan Fisik" align="start" bgcolor="bg-gray-50">
+    <x-border-form title="Bagian 4 — Tanda Vital & Pemeriksaan Fisik" align="start" bgcolor="bg-gray-50" :collapsible="true" :open="false">
 
         {{-- TTV --}}
         <div class="mt-3 grid grid-cols-9 gap-2">
@@ -931,7 +932,7 @@ new class extends Component {
     {{-- ══════════════════════════════════════════
     | LEVELING DOKTER
     ══════════════════════════════════════════ --}}
-    <x-border-form title="Leveling Dokter (DPJP)" align="start" bgcolor="bg-gray-50">
+    <x-border-form title="Leveling Dokter (DPJP)" align="start" bgcolor="bg-gray-50" :collapsible="true" :open="false">
 
         {{-- Tabel Leveling Dokter --}}
         @php $levelingList = $dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? []; @endphp
@@ -1053,7 +1054,7 @@ new class extends Component {
     {{-- ══════════════════════════════════════════
     | BAGIAN 5 — CATATAN & TTD
     ══════════════════════════════════════════ --}}
-    <x-border-form title="Bagian 5 — Catatan & Tanda Tangan" align="start" bgcolor="bg-gray-50">
+    <x-border-form title="Bagian 5 — Catatan & Tanda Tangan" align="start" bgcolor="bg-gray-50" :collapsible="true" :open="false">
 
         {{-- Catatan Umum --}}
         <div class="mt-3">
@@ -1069,22 +1070,22 @@ new class extends Component {
                 <x-input-label value="Petugas Pengkaji" />
                 <x-text-input
                     value="{{ $dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian5CatatanDanTandaTangan']['petugasPengkaji'] ?? '-' }}"
-                    class="w-full mt-1" readonly />
+                    class="w-full mt-1" :disabled="true" readonly />
             </div>
             <div class="flex-1">
                 <x-input-label value="Jam Pengkajian" />
                 <x-text-input
                     value="{{ $dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian5CatatanDanTandaTangan']['jamPengkaji'] ?? '-' }}"
-                    class="w-full mt-1" readonly />
+                    class="w-full mt-1" :disabled="true" readonly />
             </div>
             @if (!$isFormLocked)
-                @role('Perawat')
+                @hasanyrole('Perawat|Admin')
                     <div class="pt-5">
                         <x-primary-button wire:click="setPetugasPengkaji" type="button">
                             TTD Saya
                         </x-primary-button>
                     </div>
-                @endrole
+                @endhasanyrole
             @endif
         </div>
     </x-border-form>

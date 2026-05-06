@@ -185,8 +185,8 @@ new class extends Component {
 
     public function setDokterPengkaji(): void
     {
-        if (!auth()->user()->hasRole('Dokter')) {
-            $this->dispatch('toast', type: 'error', message: 'Hanya Dokter yang dapat melakukan TTD.');
+        if (!auth()->user()->hasAnyRole(['Dokter', 'Admin'])) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya Dokter / Admin yang dapat melakukan TTD.');
             return;
         }
         $this->dataDaftarRi['pengkajianDokter']['tandaTanganDokter']['dokterPengkaji'] = auth()->user()->myuser_name;
@@ -314,7 +314,7 @@ new class extends Component {
     {{-- ══════════════════════════════════════
     | BAGIAN 1 — ANAMNESA
     ══════════════════════════════════════ --}}
-    <x-border-form title="Bagian 1 — Anamnesa" align="start" bgcolor="bg-gray-50">
+    <x-border-form title="Bagian 1 — Anamnesa" align="start" bgcolor="bg-gray-50" :collapsible="true" :open="true">
         <div class="mt-3 space-y-3">
 
             <div>
@@ -360,7 +360,7 @@ new class extends Component {
     {{-- ══════════════════════════════════════
     | BAGIAN 1B — REKONSILIASI OBAT
     ══════════════════════════════════════ --}}
-    <x-border-form title="Rekonsiliasi Obat" align="start" bgcolor="bg-gray-50">
+    <x-border-form title="Rekonsiliasi Obat" align="start" bgcolor="bg-gray-50" :collapsible="true" :open="false">
         <div class="mt-3 space-y-3">
 
             @if (!$isFormLocked)
@@ -435,7 +435,7 @@ new class extends Component {
     {{-- ══════════════════════════════════════
     | BAGIAN 2.1 — PEMERIKSAAN FISIK
     ══════════════════════════════════════ --}}
-    <x-border-form title="Bagian 2.1 — Pemeriksaan Fisik" align="start" bgcolor="bg-gray-50">
+    <x-border-form title="Bagian 2.1 — Pemeriksaan Fisik" align="start" bgcolor="bg-gray-50" :collapsible="true" :open="false">
         <div class="mt-3">
             <x-textarea wire:model.live="dataDaftarRi.pengkajianDokter.fisik" class="w-full" rows="5"
                 :disabled="$isFormLocked" placeholder="Deskripsi pemeriksaan fisik status generalis..." />
@@ -445,7 +445,7 @@ new class extends Component {
     {{-- ══════════════════════════════════════
     | BAGIAN 2.2 — PEMERIKSAAN ANATOMI
     ══════════════════════════════════════ --}}
-    <x-border-form title="Bagian 2.2 — Pemeriksaan Anatomi" align="start" bgcolor="bg-gray-50">
+    <x-border-form title="Bagian 2.2 — Pemeriksaan Anatomi" align="start" bgcolor="bg-gray-50" :collapsible="true" :open="false">
         @php
             $anatomiList = [
                 'kepala' => 'Kepala',
@@ -545,7 +545,7 @@ new class extends Component {
     {{-- ══════════════════════════════════════
     | BAGIAN 3 — STATUS LOKALIS
     ══════════════════════════════════════ --}}
-    <x-border-form title="Bagian 3 — Status Lokalis" align="start" bgcolor="bg-gray-50">
+    <x-border-form title="Bagian 3 — Status Lokalis" align="start" bgcolor="bg-gray-50" :collapsible="true" :open="false">
         <div class="mt-3">
             <x-textarea wire:model.live="dataDaftarRi.pengkajianDokter.statusLokalis.deskripsiGambar" class="w-full"
                 rows="4" :disabled="$isFormLocked" placeholder="Deskripsi status lokalis..." />
@@ -555,7 +555,7 @@ new class extends Component {
     {{-- ══════════════════════════════════════
     | BAGIAN 4 — HASIL PEMERIKSAAN PENUNJANG
     ══════════════════════════════════════ --}}
-    <x-border-form title="Bagian 4 — Hasil Pemeriksaan Penunjang" align="start" bgcolor="bg-gray-50">
+    <x-border-form title="Bagian 4 — Hasil Pemeriksaan Penunjang" align="start" bgcolor="bg-gray-50" :collapsible="true" :open="false">
         <div class="mt-3 grid grid-cols-3 gap-3">
             <div>
                 <x-input-label value="Laboratorium" />
@@ -578,7 +578,7 @@ new class extends Component {
     {{-- ══════════════════════════════════════
     | BAGIAN 5 — DIAGNOSA & RENCANA
     ══════════════════════════════════════ --}}
-    <x-border-form title="Bagian 5 — Diagnosa & Rencana Terapi" align="start" bgcolor="bg-gray-50">
+    <x-border-form title="Bagian 5 — Diagnosa & Rencana Terapi" align="start" bgcolor="bg-gray-50" :collapsible="true" :open="false">
         <div class="mt-3 space-y-3">
             <div>
                 <x-input-label value="Diagnosa Awal / Assessment" />
@@ -615,7 +615,7 @@ new class extends Component {
     {{-- ══════════════════════════════════════
     | BAGIAN 7 — RINGKASAN PASIEN PULANG
     ══════════════════════════════════════ --}}
-    <x-border-form title="Bagian 7 — Ringkasan Pasien Pulang" align="start" bgcolor="bg-gray-50">
+    <x-border-form title="Bagian 7 — Ringkasan Pasien Pulang" align="start" bgcolor="bg-gray-50" :collapsible="true" :open="false">
         <div class="mt-3 space-y-3">
             <div>
                 <x-input-label value="Kondisi Saat Pulang" />
@@ -640,26 +640,26 @@ new class extends Component {
     {{-- ══════════════════════════════════════
     | BAGIAN 6 — TANDA TANGAN DOKTER
     ══════════════════════════════════════ --}}
-    <x-border-form title="Bagian 6 — Tanda Tangan Dokter Pengkaji" align="start" bgcolor="bg-gray-50">
+    <x-border-form title="Bagian 6 — Tanda Tangan Dokter Pengkaji" align="start" bgcolor="bg-gray-50" :collapsible="true" :open="false">
         <div class="mt-3 flex items-center gap-4">
             <div class="flex-1">
                 <x-input-label value="Dokter Pengkaji" />
                 <x-text-input
                     value="{{ $dataDaftarRi['pengkajianDokter']['tandaTanganDokter']['dokterPengkaji'] ?? '-' }}"
-                    class="w-full mt-1" readonly />
+                    class="w-full mt-1" :disabled="true" readonly />
             </div>
             <div class="flex-1">
                 <x-input-label value="Jam TTD" />
                 <x-text-input
                     value="{{ $dataDaftarRi['pengkajianDokter']['tandaTanganDokter']['jamDokterPengkaji'] ?? '-' }}"
-                    class="w-full mt-1" readonly />
+                    class="w-full mt-1" :disabled="true" readonly />
             </div>
             @if (!$isFormLocked)
-                @role('Dokter')
+                @hasanyrole('Dokter|Admin')
                     <div class="pt-5">
                         <x-primary-button wire:click="setDokterPengkaji" type="button">TTD Saya</x-primary-button>
                     </div>
-                @endrole
+                @endhasanyrole
             @endif
         </div>
     </x-border-form>
