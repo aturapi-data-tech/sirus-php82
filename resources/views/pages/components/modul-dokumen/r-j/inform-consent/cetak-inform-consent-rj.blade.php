@@ -64,12 +64,28 @@ new class extends Component {
             }
         }
 
-        // TTD dokter dari storage
+        // TTD dokter penjelas dari storage
         $ttdDokterPath = null;
         if (!empty($consent['dokterCode'])) {
             $ttdPath = DB::table('users')->where('myuser_code', $consent['dokterCode'])->value('myuser_ttd_image');
             if (!empty($ttdPath) && file_exists(public_path('storage/' . $ttdPath))) {
                 $ttdDokterPath = public_path('storage/' . $ttdPath);
+            }
+        }
+
+        // TTD dokter tindakan dari storage (myuser_code == dr_id)
+        $ttdDokterTindakanPath = null;
+        $dokterTindakanName = null;
+        if (!empty($consent['petugasPemeriksaCode'])) {
+            $userRow = DB::table('users')->where('myuser_code', $consent['petugasPemeriksaCode'])->first(['myuser_ttd_image', 'myuser_name']);
+            if ($userRow) {
+                $dokterTindakanName = $userRow->myuser_name ?? null;
+                if (!empty($userRow->myuser_ttd_image) && file_exists(public_path('storage/' . $userRow->myuser_ttd_image))) {
+                    $ttdDokterTindakanPath = public_path('storage/' . $userRow->myuser_ttd_image);
+                }
+            }
+            if (empty($dokterTindakanName)) {
+                $dokterTindakanName = DB::table('rsmst_doctors')->where('dr_id', $consent['petugasPemeriksaCode'])->value('dr_name');
             }
         }
 
@@ -80,6 +96,8 @@ new class extends Component {
             'consent' => $consent,
             'identitasRs' => $identitasRs,
             'ttdDokterPath' => $ttdDokterPath,
+            'ttdDokterTindakanPath' => $ttdDokterTindakanPath,
+            'dokterTindakanName' => $dokterTindakanName ?? ($consent['petugasPemeriksa'] ?? null),
             'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
         ]);
 
