@@ -193,7 +193,7 @@ new class extends Component {
                 if ($this->myuser_ttd_image) {
                     $ext = $this->myuser_ttd_image->getClientOriginalExtension();
                     $fileName = 'ttd_' . $this->myuser_code . '_' . time() . '.' . $ext;
-                    $path = $this->myuser_ttd_image->storeAs('ttd', $fileName, 'public');
+                    $path = $this->myuser_ttd_image->storeAs('UserTtd', $fileName, 'public');
                     $data['myuser_ttd_image'] = $path;
 
                     if ($this->formMode === 'edit' && $this->existing_ttd_image) {
