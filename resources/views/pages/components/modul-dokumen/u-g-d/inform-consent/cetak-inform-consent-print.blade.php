@@ -55,6 +55,19 @@
         $rsCity = $identitasRs->int_city ?? 'Tulungagung';
         $agreementText = ($consent['agreement'] ?? '1') === '1' ? 'MENYETUJUI' : 'MENOLAK';
         $agreementClass = ($consent['agreement'] ?? '1') === '1' ? 'font-bold' : 'font-bold';
+
+        $hubunganMap = [
+            'pasien' => 'Pasien Sendiri',
+            'suami' => 'Suami',
+            'istri' => 'Istri',
+            'ayah' => 'Ayah',
+            'ibu' => 'Ibu',
+            'anak' => 'Anak',
+            'saudara' => 'Saudara',
+            'wali_hukum' => 'Wali Hukum',
+            'lainnya' => 'Lainnya',
+        ];
+        $hubunganText = $hubunganMap[$consent['waliHubungan'] ?? ''] ?? '-';
     @endphp
 
     <table class="w-full text-[10px] border-collapse">
@@ -103,17 +116,17 @@
                 <p>
                     Saya yang bertanda tangan di bawah ini,
                     <strong>{{ strtoupper($consent['wali'] ?? '-') }}</strong>
-                    @if (!empty($consent['hubunganWali']) && $consent['hubunganWali'] !== 'Pasien Sendiri')
-                        (selaku <strong>{{ $consent['hubunganWali'] }}</strong> dari pasien)
-                    @endif,
+                    (sebagai <strong>{{ $hubunganText }}</strong> pasien),
                     dengan ini menyatakan bahwa saya telah mendapatkan penjelasan yang cukup
-                    mengenai tindakan medis di atas dari dokter / petugas yang berwenang.
+                    mengenai tindakan medis di atas dari dokter / petugas yang berwenang,
+                    dengan bahasa yang saya pahami.
                 </p>
                 <br>
                 <p>
                     Setelah mempertimbangkan dengan seksama, saya dengan penuh kesadaran
                     <strong class="{{ $agreementClass }}">{{ $agreementText }}</strong>
-                    dilakukannya tindakan tersebut pada diri saya / pasien.
+                    dilakukannya tindakan tersebut pada diri saya / pasien. Apabila saya menolak, saya memahami risiko
+                    medis dari penolakan tersebut dan bersedia menandatangani dokumen ini sebagai bukti penolakan.
                 </p>
             </td>
         </tr>
@@ -142,6 +155,7 @@
                             <div
                                 style="border-top:1px solid #000;padding-top:3px;margin-top:4px;min-width:120px;display:inline-block;">
                                 <p class="font-bold">{{ strtoupper($consent['wali'] ?? '-') }}</p>
+                                <p class="text-[9px] text-gray-500">{{ $hubunganText }}</p>
                                 @if (!empty($consent['signatureDate']))
                                     <p class="text-[9px] text-gray-500">{{ $consent['signatureDate'] }}</p>
                                 @endif

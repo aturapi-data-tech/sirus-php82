@@ -14,6 +14,7 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
+    public bool $disabled = false;
     public array $dataDaftarPoliRJ = [];
 
     public array $renderVersions = [];
@@ -21,17 +22,41 @@ new class extends Component {
 
     // ── Form fields — top-level untuk wire:model ──
     public string $wali = '';
+    public string $waliHubungan = ''; // Hubungan wali dengan pasien — HPK 4.2
     public string $agreement = '1'; // 1=Setuju, 0=Tidak Setuju
+    public string $pesertaDidikSetuju = '1'; // Persetujuan keterlibatan peserta didik — HPK 4 EP-c
     public string $signature = ''; // base64 dari canvas/signpad
 
     public array $agreementOptions = [['value' => '1', 'label' => 'Setuju'], ['value' => '0', 'label' => 'Tidak Setuju']];
 
+    public array $waliHubunganOptions = [
+        ['value' => 'pasien', 'label' => 'Pasien Sendiri'],
+        ['value' => 'suami', 'label' => 'Suami'],
+        ['value' => 'istri', 'label' => 'Istri'],
+        ['value' => 'ayah', 'label' => 'Ayah'],
+        ['value' => 'ibu', 'label' => 'Ibu'],
+        ['value' => 'anak', 'label' => 'Anak'],
+        ['value' => 'saudara', 'label' => 'Saudara'],
+        ['value' => 'wali_hukum', 'label' => 'Wali Hukum'],
+        ['value' => 'lainnya', 'label' => 'Lainnya'],
+    ];
+
     /* ===============================
      | MOUNT
      =============================== */
-    public function mount(): void
+    public function mount(?int $rjNo = null, bool $disabled = false): void
     {
+        $this->rjNo = $rjNo ?: null;
+        $this->disabled = $disabled;
         $this->registerAreas(['modal-general-consent-rj']);
+
+        if ($this->rjNo) {
+            $data = $this->findDataRJ($this->rjNo);
+            if ($data) {
+                $this->dataDaftarPoliRJ = $data;
+                $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $disabled;
+            }
+        }
     }
 
     public function rendering(): void
@@ -42,38 +67,44 @@ new class extends Component {
     }
 
     /* ===============================
-     | OPEN
+     | OPEN MODAL
      =============================== */
-    #[On('open-rm-general-consent-rj')]
-    public function openGeneralConsent(int $rjNo): void
+    public function openModal(): void
     {
-        if (empty($rjNo)) {
+        if (!$this->rjNo || $this->disabled) {
             return;
         }
 
-        $this->rjNo = $rjNo;
-        $this->resetForm();
         $this->resetValidation();
 
-        $data = $this->findDataRJ($rjNo);
+        $data = $this->findDataRJ($this->rjNo);
         if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data RJ tidak ditemukan.');
             return;
         }
 
         $this->dataDaftarPoliRJ = $data;
-
-        // Inisialisasi default jika belum ada
         $this->dataDaftarPoliRJ['generalConsentPasienRJ'] ??= $this->getDefaultGeneralConsent();
 
-        // Populate form fields dari data tersimpan
         $consent = $this->dataDaftarPoliRJ['generalConsentPasienRJ'];
         $this->wali = $consent['wali'] ?? '';
+        $this->waliHubungan = $consent['waliHubungan'] ?? '';
         $this->agreement = $consent['agreement'] ?? '1';
+        $this->pesertaDidikSetuju = $consent['pesertaDidikSetuju'] ?? '1';
         $this->signature = $consent['signature'] ?? '';
 
-        $this->isFormLocked = $this->checkEmrRJStatus($rjNo);
+        $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-general-consent-rj');
+
+        $this->dispatch('open-modal', name: "rm-general-consent-rj-{$this->rjNo}");
+    }
+
+    /* ===============================
+     | CLOSE
+     =============================== */
+    public function closeModal(): void
+    {
+        $this->dispatch('close-modal', name: "rm-general-consent-rj-{$this->rjNo}");
     }
 
     /* ===============================
@@ -84,7 +115,9 @@ new class extends Component {
         return [
             'signature' => 'required|string',
             'wali' => 'required|string|max:200',
+            'waliHubungan' => 'required|string|max:50',
             'agreement' => 'required|in:0,1',
+            'pesertaDidikSetuju' => 'required|in:0,1',
         ];
     }
 
@@ -102,7 +135,9 @@ new class extends Component {
         return [
             'signature' => 'Tanda tangan pasien/wali',
             'wali' => 'Nama wali',
+            'waliHubungan' => 'Hubungan wali',
             'agreement' => 'Persetujuan',
+            'pesertaDidikSetuju' => 'Persetujuan keterlibatan peserta didik',
         ];
     }
 
@@ -111,8 +146,14 @@ new class extends Component {
      =============================== */
     public function updated(string $name, mixed $value): void
     {
-        if (in_array($name, ['wali', 'agreement'])) {
-            $this->dataDaftarPoliRJ['generalConsentPasienRJ'][$name] = $value;
+        $map = [
+            'wali' => 'wali',
+            'waliHubungan' => 'waliHubungan',
+            'agreement' => 'agreement',
+            'pesertaDidikSetuju' => 'pesertaDidikSetuju',
+        ];
+        if (isset($map[$name])) {
+            $this->dataDaftarPoliRJ['generalConsentPasienRJ'][$map[$name]] = $value;
         }
     }
 
@@ -252,7 +293,9 @@ new class extends Component {
             'signature' => '',
             'signatureDate' => '',
             'wali' => '',
+            'waliHubungan' => '',
             'agreement' => '1',
+            'pesertaDidikSetuju' => '1',
             'petugasPemeriksa' => '',
             'petugasPemeriksaCode' => '',
             'petugasPemeriksaDate' => '',
@@ -269,13 +312,140 @@ new class extends Component {
         $this->dataDaftarPoliRJ = [];
         $this->signature = '';
         $this->wali = '';
+        $this->waliHubungan = '';
         $this->agreement = '1';
+        $this->pesertaDidikSetuju = '1';
     }
 };
 ?>
 
 <div>
-    <div class="flex flex-col w-full" wire:key="{{ $this->renderKey('modal-general-consent-rj', [$rjNo ?? 'new']) }}">
+    {{-- ══ SUMMARY CARD (inline) ══ --}}
+    @php
+        $gc = $dataDaftarPoliRJ['generalConsentPasienRJ'] ?? [];
+        $gcSigned = !empty($gc['signature']);
+    @endphp
+
+    <div
+        class="p-5 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div class="flex-1 space-y-3">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-base font-semibold text-gray-800 dark:text-gray-200">
+                        General Consent
+                    </h3>
+                    @if ($gcSigned)
+                        <x-badge variant="success">Sudah ditandatangani</x-badge>
+                    @else
+                        <x-badge variant="warning">Belum ditandatangani</x-badge>
+                    @endif
+                </div>
+
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Persetujuan umum pasien terhadap pelayanan rawat jalan, hak & kewajiban, serta perlindungan data.
+                </p>
+
+                @if ($gcSigned)
+                    <dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3 text-gray-600 dark:text-gray-300">
+                        <div>
+                            <dt class="text-xs uppercase text-gray-400">Wali</dt>
+                            <dd class="font-medium">{{ $gc['wali'] ?? '-' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs uppercase text-gray-400">Persetujuan</dt>
+                            <dd class="font-medium">
+                                {{ ($gc['agreement'] ?? '1') === '1' ? 'Setuju' : 'Tidak Setuju' }}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs uppercase text-gray-400">Tanggal TTD</dt>
+                            <dd class="font-medium">{{ $gc['signatureDate'] ?? '-' }}</dd>
+                        </div>
+                    </dl>
+                @endif
+            </div>
+
+            <div class="flex shrink-0">
+                <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
+                    wire:target="openModal" :disabled="$disabled || !$rjNo" class="gap-2">
+                    <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                        Buka General Consent
+                    </span>
+                    <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
+                        <x-loading class="w-4 h-4" /> Memuat...
+                    </span>
+                </x-primary-button>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══ MODAL FORM ══ --}}
+    <x-modal name="rm-general-consent-rj-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
+        <div class="flex flex-col min-h-[calc(100vh-8rem)]"
+            wire:key="{{ $this->renderKey('modal-general-consent-rj', [$rjNo ?? 'new']) }}">
+
+            {{-- HEADER --}}
+            <div class="relative px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
+                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
+                </div>
+
+                <div class="relative flex items-start justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
+                                <svg class="w-6 h-6 text-brand-green dark:text-brand-lime" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+
+                            <div>
+                                <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                                    General Consent
+                                </h2>
+                                <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                                    Persetujuan umum pasien rawat jalan — tampilan ini dapat diputar ke arah pasien
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2 mt-3">
+                            <x-badge variant="success">Rawat Jalan</x-badge>
+                            @if ($isFormLocked)
+                                <x-badge variant="danger">Read Only</x-badge>
+                            @endif
+                        </div>
+                    </div>
+
+                    <x-icon-button color="gray" type="button" wire:click="closeModal">
+                        <span class="sr-only">Close</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20"
+                            fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </x-icon-button>
+                </div>
+            </div>
+
+            {{-- BODY --}}
+            <div class="flex-1 px-4 py-4 bg-gray-50/70 dark:bg-gray-950/20">
+                <div class="max-w-full mx-auto space-y-4">
+
+                    {{-- Display Pasien --}}
+                    <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
+                        wire:key="gc-rj-display-pasien-{{ $rjNo ?? 'init' }}" />
+
+                    <div
+                        class="p-4 space-y-4 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
         @if ($isFormLocked)
             <div
@@ -293,6 +463,9 @@ new class extends Component {
         @if (isset($dataDaftarPoliRJ['generalConsentPasienRJ']))
 
             @php $consent = $dataDaftarPoliRJ['generalConsentPasienRJ']; @endphp
+
+            {{-- ══ ISI PERSETUJUAN (read-only, ditampilkan ke pasien) ══ --}}
+            <x-consent.general-consent-body context="rj" />
 
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 
@@ -312,15 +485,43 @@ new class extends Component {
                         <x-input-error :messages="$errors->get('wali')" class="mt-1" />
                     </div>
 
+                    {{-- Hubungan wali --}}
+                    <div>
+                        <x-input-label value="Hubungan dengan Pasien *" class="mb-1" />
+                        <x-select-input wire:model.live="waliHubungan" :error="$errors->has('waliHubungan')" :disabled="$isFormLocked"
+                            class="w-full">
+                            <option value="">— Pilih hubungan —</option>
+                            @foreach ($waliHubunganOptions as $opt)
+                                <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
+                            @endforeach
+                        </x-select-input>
+                        <x-input-error :messages="$errors->get('waliHubungan')" class="mt-1" />
+                    </div>
+
                     {{-- Agreement --}}
                     <div>
-                        <x-input-label value="Persetujuan *" class="mb-1" />
+                        <x-input-label value="Persetujuan Pelayanan *" class="mb-1" />
                         <x-select-input wire:model.live="agreement" :error="$errors->has('agreement')" :disabled="$isFormLocked" class="w-full">
                             @foreach ($agreementOptions as $opt)
                                 <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
                             @endforeach
                         </x-select-input>
                         <x-input-error :messages="$errors->get('agreement')" class="mt-1" />
+                    </div>
+
+                    {{-- Peserta Didik --}}
+                    <div>
+                        <x-input-label value="Persetujuan Keterlibatan Peserta Didik *" class="mb-1" />
+                        <x-select-input wire:model.live="pesertaDidikSetuju" :error="$errors->has('pesertaDidikSetuju')" :disabled="$isFormLocked"
+                            class="w-full">
+                            @foreach ($agreementOptions as $opt)
+                                <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
+                            @endforeach
+                        </x-select-input>
+                        <x-input-error :messages="$errors->get('pesertaDidikSetuju')" class="mt-1" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Mahasiswa kedokteran/koas, perawat magang, residen, fellow di bawah supervisi.
+                        </p>
                     </div>
 
                     {{-- Petugas Pemeriksa --}}
@@ -384,36 +585,6 @@ new class extends Component {
                 </div>
             </div>
 
-            {{-- ══ FOOTER ACTIONS ══ --}}
-            <div class="flex items-center justify-end gap-3 mt-4">
-                @if (!$isFormLocked)
-                    <x-secondary-button wire:click="cetak" wire:loading.attr="disabled" wire:target="cetak"
-                        class="gap-2">
-                        <span wire:loading.remove wire:target="cetak">
-                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 9V4h12v5m-2 4h2a2 2 0 002-2v-1a2 2 0 00-2-2H6a2 2 0 00-2 2v1a2 2 0 002 2h2m8 0v5H8v-5h8z" />
-                            </svg>
-                            Cetak
-                        </span>
-                        <span wire:loading wire:target="cetak"><x-loading class="w-4 h-4" /></span>
-                    </x-secondary-button>
-
-                    <x-primary-button wire:click.prevent="save" wire:loading.attr="disabled" wire:target="save"
-                        class="gap-2 min-w-[120px] justify-center">
-                        <span wire:loading.remove wire:target="save">Simpan General Consent</span>
-                        <span wire:loading wire:target="save"><x-loading class="w-4 h-4" /> Menyimpan...</span>
-                    </x-primary-button>
-                @else
-                    <x-secondary-button wire:click="cetak" class="gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 9V4h12v5m-2 4h2a2 2 0 002-2v-1a2 2 0 00-2-2H6a2 2 0 00-2 2v1a2 2 0 002 2h2m8 0v5H8v-5h8z" />
-                        </svg>
-                        Cetak
-                    </x-secondary-button>
-                @endif
-            </div>
         @else
             {{-- Belum dimuat --}}
             <div class="flex flex-col items-center justify-center py-16 text-gray-300 dark:text-gray-600">
@@ -425,7 +596,46 @@ new class extends Component {
             </div>
         @endif
 
-    </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- FOOTER --}}
+            <div
+                class="sticky bottom-0 z-10 px-6 py-4 bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700">
+                <div class="flex flex-wrap items-center justify-end gap-3">
+                    <x-secondary-button wire:click="closeModal">
+                        Tutup
+                    </x-secondary-button>
+
+                    @if ($rjNo)
+                        <x-secondary-button wire:click="cetak" wire:loading.attr="disabled" wire:target="cetak"
+                            class="gap-2">
+                            <span wire:loading.remove wire:target="cetak">
+                                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 9V4h12v5m-2 4h2a2 2 0 002-2v-1a2 2 0 00-2-2H6a2 2 0 00-2 2v1a2 2 0 002 2h2m8 0v5H8v-5h8z" />
+                                </svg>
+                                Cetak
+                            </span>
+                            <span wire:loading wire:target="cetak"><x-loading class="w-4 h-4" /></span>
+                        </x-secondary-button>
+
+                        @if (!$isFormLocked)
+                            <x-primary-button wire:click.prevent="save" wire:loading.attr="disabled"
+                                wire:target="save" class="gap-2 min-w-[160px] justify-center">
+                                <span wire:loading.remove wire:target="save">Simpan General Consent</span>
+                                <span wire:loading wire:target="save"><x-loading class="w-4 h-4" />
+                                    Menyimpan...</span>
+                            </x-primary-button>
+                        @endif
+                    @endif
+                </div>
+            </div>
+
+        </div>
+    </x-modal>
 
     {{-- Cetak component --}}
     <livewire:pages::components.modul-dokumen.r-j.general-consent.cetak-general-consent-rj

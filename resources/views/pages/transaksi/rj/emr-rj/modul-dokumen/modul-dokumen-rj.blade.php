@@ -36,14 +36,12 @@ new class extends Component {
 
         $this->dataDaftarPoliRJ = $dataDaftarPoliRJ;
 
-        if ($this->checkRJStatus($rjNo)) {
+        if ($this->checkEmrRJStatus($rjNo)) {
             $this->isFormLocked = true;
         }
 
         $this->dispatch('open-modal', name: 'modul-dokumen-rj');
         $this->dispatch('open-rm-suket-rj', $rjNo);
-        $this->dispatch('open-rm-general-consent-rj', $rjNo);
-        $this->dispatch('open-rm-inform-consent-rj', $rjNo);
     }
 
     /* ===============================
@@ -231,13 +229,15 @@ new class extends Component {
                             {{-- Panel: General Consent --}}
                             <div x-show="activeTab === 'general-consent'" x-transition.opacity.duration.300ms>
                                 <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.general-consent.rm-general-consent-rj-actions
-                                    :rjNo="$rjNo" wire:key="general-consent-rj-{{ $rjNo }}" />
+                                    :rjNo="$rjNo" :disabled="$isFormLocked"
+                                    wire:key="general-consent-rj-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                             {{-- Panel: Inform Consent --}}
                             <div x-show="activeTab === 'inform-consent'" x-transition.opacity.duration.300ms>
                                 <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.inform-consent.rm-inform-consent-rj-actions
-                                    :rjNo="$rjNo" wire:key="inform-consent-rj-{{ $rjNo }}" />
+                                    :rjNo="$rjNo" :disabled="$isFormLocked"
+                                    wire:key="inform-consent-rj-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                         </div>
