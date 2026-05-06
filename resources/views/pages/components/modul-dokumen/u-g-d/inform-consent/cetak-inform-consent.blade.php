@@ -15,7 +15,7 @@ new class extends Component {
     public ?int $rjNo = null;
     public ?string $signatureDate = null;
 
-    #[On('cetak-inform-consent.open')]
+    #[On('cetak-inform-consent-ugd.open')]
     public function open(int $rjNo, ?string $signatureDate = null): mixed
     {
         $this->rjNo = $rjNo;
