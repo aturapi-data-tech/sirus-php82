@@ -3,13 +3,14 @@
 
 use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
+use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
 
 new class extends Component {
-    use EmrRITrait, WithRenderVersioningTrait;
+    use EmrRITrait, EmrUGDTrait, WithRenderVersioningTrait;
 
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
@@ -23,6 +24,93 @@ new class extends Component {
     public function mount(): void
     {
         $this->registerAreas(['modal-pengkajian-dokter-ri']);
+    }
+
+    /**
+     * Copy fields dokter dari kunjungan UGD ke Pengkajian Dokter RI ini.
+     * Triggered dari rekam-medis-display saat user klik "Copy Asesmen Dokter" di row UGD.
+     *
+     * Mapping (UGD → RI):
+     * - anamnesa.keluhanUtama.keluhanUtama → pengkajianDokter.anamnesa.keluhanUtama
+     * - anamnesa.riwayatPenyakitSekarangUmum.riwayatPenyakitSekarangUmum → ...riwayatPenyakit.sekarang
+     * - anamnesa.riwayatPenyakitDahulu.riwayatPenyakitDahulu → ...riwayatPenyakit.dahulu
+     * - anamnesa.alergi.alergi → ...jenisAlergi
+     * - pemeriksaan.fisik → pengkajianDokter.fisik
+     *
+     * Mode: FILL-ONLY — hanya isi field yang masih KOSONG di RI.
+     */
+    #[On('request-copy-assessment-from-ugd-dokter')]
+    public function copyFromUGDDokter(int $rjNoUGD): void
+    {
+        if (!$this->riHdrNo) {
+            $this->dispatch('toast', type: 'error', message: 'Buka Pengkajian Dokter terlebih dahulu sebelum copy.');
+            return;
+        }
+
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, form terkunci.');
+            return;
+        }
+
+        $ugd = $this->findDataUGD($rjNoUGD);
+        if (empty($ugd)) {
+            $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.');
+            return;
+        }
+
+        // Pastikan target struct sudah init
+        $this->dataDaftarRi['pengkajianDokter'] ??= [];
+        $this->dataDaftarRi['pengkajianDokter']['anamnesa'] ??= [];
+        $this->dataDaftarRi['pengkajianDokter']['anamnesa']['riwayatPenyakit'] ??= ['sekarang' => '', 'dahulu' => '', 'keluarga' => ''];
+
+        $pd = &$this->dataDaftarRi['pengkajianDokter'];
+
+        $copied = 0;
+        $skipped = 0;
+
+        $fill = function (string &$target, string $sourceVal) use (&$copied, &$skipped): void {
+            $sourceVal = trim($sourceVal);
+            if ($sourceVal === '') {
+                return;
+            }
+            if (trim($target) !== '') {
+                $skipped++;
+                return;
+            }
+            $target = $sourceVal;
+            $copied++;
+        };
+
+        // 1) Keluhan Utama
+        $pd['anamnesa']['keluhanUtama'] ??= '';
+        $fill($pd['anamnesa']['keluhanUtama'], (string) data_get($ugd, 'anamnesa.keluhanUtama.keluhanUtama', ''));
+
+        // 2) Riwayat Penyakit Sekarang
+        $pd['anamnesa']['riwayatPenyakit']['sekarang'] ??= '';
+        $fill($pd['anamnesa']['riwayatPenyakit']['sekarang'], (string) data_get($ugd, 'anamnesa.riwayatPenyakitSekarangUmum.riwayatPenyakitSekarangUmum', ''));
+
+        // 3) Riwayat Penyakit Dahulu
+        $pd['anamnesa']['riwayatPenyakit']['dahulu'] ??= '';
+        $fill($pd['anamnesa']['riwayatPenyakit']['dahulu'], (string) data_get($ugd, 'anamnesa.riwayatPenyakitDahulu.riwayatPenyakitDahulu', ''));
+
+        // 4) Jenis Alergi
+        $pd['anamnesa']['jenisAlergi'] ??= '';
+        $fill($pd['anamnesa']['jenisAlergi'], (string) data_get($ugd, 'anamnesa.alergi.alergi', ''));
+
+        // 5) Pemeriksaan Fisik
+        $pd['fisik'] ??= '';
+        $fill($pd['fisik'], (string) data_get($ugd, 'pemeriksaan.fisik', ''));
+
+        unset($pd);
+
+        $this->incrementVersion('modal-pengkajian-dokter-ri');
+
+        $msg = "Asesmen Dokter UGD: {$copied} field disalin";
+        if ($skipped > 0) {
+            $msg .= ", {$skipped} field di-skip (sudah ada nilai)";
+        }
+        $msg .= '. Klik Simpan untuk persist.';
+        $this->dispatch('toast', type: 'success', message: $msg);
     }
 
     #[On('open-rm-pengkajian-dokter-ri')]

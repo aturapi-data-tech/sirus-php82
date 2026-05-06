@@ -364,6 +364,20 @@ new class extends Component {
 
         $this->dispatch('request-copy-assessment-from-ugd-perawat', rjNoUGD: $txnNoUGD);
     }
+
+    /**
+     * Copy Asesmen Dokter dari kunjungan UGD ke Pengkajian Dokter RI.
+     * Listener di rm-pengkajian-dokter-ri-actions akan fetch data UGD & set fields.
+     */
+    public function copyAssessmentDokterUGD(int $txnNoUGD): void
+    {
+        if (!$this->contextRI) {
+            $this->dispatch('toast', type: 'error', message: 'Copy asesmen hanya tersedia di EMR Rawat Inap.');
+            return;
+        }
+
+        $this->dispatch('request-copy-assessment-from-ugd-dokter', rjNoUGD: $txnNoUGD);
+    }
 };
 
 ?>
@@ -660,6 +674,35 @@ new class extends Component {
                                                                                     </span>
                                                                                     <span wire:loading
                                                                                         wire:target="copyAssessmentPerawatUGD({{ $myQData->txn_no }})"
+                                                                                        class="flex items-center gap-1">
+                                                                                        <x-loading />
+                                                                                        Menyalin...
+                                                                                    </span>
+                                                                                </x-primary-button>
+                                                                            @endhasanyrole
+
+                                                                            @hasanyrole('Dokter|Admin')
+                                                                                <x-primary-button type="button"
+                                                                                    wire:click="copyAssessmentDokterUGD({{ $myQData->txn_no }})"
+                                                                                    wire:confirm="Copy asesmen dokter (keluhan utama, riwayat penyakit sekarang/dahulu, alergi, pemeriksaan fisik) dari kunjungan UGD ini ke Pengkajian Dokter Rawat Inap?"
+                                                                                    wire:loading.attr="disabled"
+                                                                                    wire:target="copyAssessmentDokterUGD({{ $myQData->txn_no }})"
+                                                                                    class="text-sm px-3 py-1.5">
+                                                                                    <span wire:loading.remove
+                                                                                        wire:target="copyAssessmentDokterUGD({{ $myQData->txn_no }})"
+                                                                                        class="flex items-center gap-1">
+                                                                                        <svg class="w-4 h-4" fill="none"
+                                                                                            stroke="currentColor"
+                                                                                            viewBox="0 0 24 24">
+                                                                                            <path stroke-linecap="round"
+                                                                                                stroke-linejoin="round"
+                                                                                                stroke-width="2"
+                                                                                                d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                                                                        </svg>
+                                                                                        Copy Asesmen Dokter
+                                                                                    </span>
+                                                                                    <span wire:loading
+                                                                                        wire:target="copyAssessmentDokterUGD({{ $myQData->txn_no }})"
                                                                                         class="flex items-center gap-1">
                                                                                         <x-loading />
                                                                                         Menyalin...
