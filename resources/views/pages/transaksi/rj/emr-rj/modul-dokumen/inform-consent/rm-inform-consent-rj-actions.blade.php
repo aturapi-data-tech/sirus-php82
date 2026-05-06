@@ -13,6 +13,7 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
+    public bool $disabled = false;
     public array $dataDaftarPoliRJ = [];
 
     public array $renderVersions = [];
@@ -44,26 +45,37 @@ new class extends Component {
     /* ===============================
      | MOUNT
      =============================== */
-    public function mount(): void
+    public function mount(?int $rjNo = null, bool $disabled = false): void
     {
+        $this->rjNo = $rjNo ?: null;
+        $this->disabled = $disabled;
         $this->registerAreas(['modal-inform-consent-rj']);
+
+        if ($this->rjNo) {
+            $data = $this->findDataRJ($this->rjNo);
+            if ($data) {
+                $this->dataDaftarPoliRJ = $data;
+                $this->consentList = $data['informConsentPasienRJ'] ?? [];
+                $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $disabled;
+            }
+        }
     }
 
     /* ===============================
-     | OPEN
+     | OPEN MODAL
      =============================== */
-    #[On('open-rm-inform-consent-rj')]
-    public function openInformConsent(int $rjNo): void
+    public function openModal(): void
     {
-        if (empty($rjNo)) {
+        if (!$this->rjNo || $this->disabled) {
             return;
         }
 
-        $this->rjNo = $rjNo;
-        $this->resetForm();
+        $this->resetNewConsent();
+        $this->signature = '';
+        $this->signatureSaksi = '';
         $this->resetValidation();
 
-        $data = $this->findDataRJ($rjNo);
+        $data = $this->findDataRJ($this->rjNo);
         if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data RJ tidak ditemukan.');
             return;
@@ -74,8 +86,18 @@ new class extends Component {
             $this->dataDaftarPoliRJ['informConsentPasienRJ'] = [];
         }
         $this->consentList = $this->dataDaftarPoliRJ['informConsentPasienRJ'];
-        $this->isFormLocked = $this->checkEmrRJStatus($rjNo);
+        $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-inform-consent-rj');
+
+        $this->dispatch('open-modal', name: "rm-inform-consent-rj-{$this->rjNo}");
+    }
+
+    /* ===============================
+     | CLOSE
+     =============================== */
+    public function closeModal(): void
+    {
+        $this->dispatch('close-modal', name: "rm-inform-consent-rj-{$this->rjNo}");
     }
 
     /* ===============================
@@ -372,7 +394,133 @@ new class extends Component {
 ?>
 
 <div>
-    <div class="flex flex-col w-full" wire:key="{{ $this->renderKey('modal-inform-consent-rj', [$rjNo ?? 'new']) }}">
+    {{-- ══ SUMMARY CARD (inline) ══ --}}
+    @php $icCount = count($consentList ?? []); @endphp
+
+    <div
+        class="p-5 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div class="flex-1 space-y-3">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-base font-semibold text-gray-800 dark:text-gray-200">
+                        Inform Consent
+                    </h3>
+                    @if ($icCount > 0)
+                        <x-badge variant="success">{{ $icCount }} tindakan</x-badge>
+                    @else
+                        <x-badge variant="warning">Belum ada</x-badge>
+                    @endif
+                </div>
+
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Persetujuan tindakan medis per-tindakan: tujuan, risiko, alternatif, serta tanda tangan
+                    pasien/wali, dokter penjelas, dan saksi.
+                </p>
+
+                @if ($icCount > 0)
+                    <ul class="space-y-1 text-sm text-gray-600 dark:text-gray-300 list-disc pl-5">
+                        @foreach (array_slice($consentList, 0, 3) as $ic)
+                            <li>
+                                <span
+                                    class="font-medium">{{ \Illuminate\Support\Str::limit($ic['tindakan'] ?? '-', 60) }}</span>
+                                @if (!empty($ic['signatureDate']))
+                                    <span class="text-xs text-gray-400">— {{ $ic['signatureDate'] }}</span>
+                                @endif
+                            </li>
+                        @endforeach
+                        @if ($icCount > 3)
+                            <li class="text-xs italic text-gray-400">
+                                +{{ $icCount - 3 }} lainnya…
+                            </li>
+                        @endif
+                    </ul>
+                @endif
+            </div>
+
+            <div class="flex shrink-0">
+                <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
+                    wire:target="openModal" :disabled="$disabled || !$rjNo" class="gap-2">
+                    <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                        Buka Inform Consent
+                    </span>
+                    <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
+                        <x-loading class="w-4 h-4" /> Memuat...
+                    </span>
+                </x-primary-button>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══ MODAL FORM ══ --}}
+    <x-modal name="rm-inform-consent-rj-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
+        <div class="flex flex-col min-h-[calc(100vh-8rem)]"
+            wire:key="{{ $this->renderKey('modal-inform-consent-rj', [$rjNo ?? 'new']) }}">
+
+            {{-- HEADER --}}
+            <div class="relative px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
+                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
+                </div>
+
+                <div class="relative flex items-start justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
+                                <svg class="w-6 h-6 text-brand-green dark:text-brand-lime" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                </svg>
+                            </div>
+
+                            <div>
+                                <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                                    Inform Consent
+                                </h2>
+                                <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                                    Persetujuan tindakan medis — tampilan ini dapat diputar ke arah pasien
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2 mt-3">
+                            <x-badge variant="success">Rawat Jalan</x-badge>
+                            @if (count($consentList) > 0)
+                                <x-badge variant="info">{{ count($consentList) }} tersimpan</x-badge>
+                            @endif
+                            @if ($isFormLocked)
+                                <x-badge variant="danger">Read Only</x-badge>
+                            @endif
+                        </div>
+                    </div>
+
+                    <x-icon-button color="gray" type="button" wire:click="closeModal">
+                        <span class="sr-only">Close</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20"
+                            fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </x-icon-button>
+                </div>
+            </div>
+
+            {{-- BODY --}}
+            <div class="flex-1 px-4 py-4 bg-gray-50/70 dark:bg-gray-950/20">
+                <div class="max-w-full mx-auto space-y-4">
+
+                    {{-- Display Pasien --}}
+                    <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
+                        wire:key="ic-rj-display-pasien-{{ $rjNo ?? 'init' }}" />
+
+                    <div
+                        class="p-4 space-y-4 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
         @if ($isFormLocked)
             <div
@@ -564,17 +712,6 @@ new class extends Component {
             </div>
         </div>
 
-        {{-- FOOTER ACTIONS --}}
-        <div class="flex items-center justify-end gap-3 mt-4">
-            @if (!$isFormLocked)
-                <x-primary-button wire:click.prevent="addConsent" wire:loading.attr="disabled"
-                    wire:target="addConsent" class="gap-2 min-w-[120px] justify-center">
-                    <span wire:loading.remove wire:target="addConsent">Simpan Inform Consent</span>
-                    <span wire:loading wire:target="addConsent"><x-loading class="w-4 h-4" /> Menyimpan...</span>
-                </x-primary-button>
-            @endif
-        </div>
-
         {{-- DAFTAR CONSENT TERSIMPAN --}}
         @if (count($consentList) > 0)
             <div class="mt-6 overflow-x-auto">
@@ -636,7 +773,31 @@ new class extends Component {
             </div>
         @endif
 
-    </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- FOOTER --}}
+            <div
+                class="sticky bottom-0 z-10 px-6 py-4 bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700">
+                <div class="flex flex-wrap items-center justify-end gap-3">
+                    <x-secondary-button wire:click="closeModal">
+                        Tutup
+                    </x-secondary-button>
+
+                    @if ($rjNo && !$isFormLocked)
+                        <x-primary-button wire:click.prevent="addConsent" wire:loading.attr="disabled"
+                            wire:target="addConsent" class="gap-2 min-w-[180px] justify-center">
+                            <span wire:loading.remove wire:target="addConsent">Simpan Inform Consent</span>
+                            <span wire:loading wire:target="addConsent"><x-loading class="w-4 h-4" />
+                                Menyimpan...</span>
+                        </x-primary-button>
+                    @endif
+                </div>
+            </div>
+
+        </div>
+    </x-modal>
 
     {{-- Cetak component --}}
     <livewire:pages::components.modul-dokumen.r-j.inform-consent.cetak-inform-consent-rj

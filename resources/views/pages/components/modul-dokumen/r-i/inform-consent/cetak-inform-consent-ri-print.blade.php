@@ -1,6 +1,6 @@
-{{-- resources/views/pages/components/modul-dokumen/r-j/inform-consent/cetak-inform-consent-rj-print.blade.php --}}
+{{-- resources/views/pages/components/modul-dokumen/r-i/inform-consent/cetak-inform-consent-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="FORMULIR PERSETUJUAN TINDAKAN MEDIS (INFORM CONSENT)">
+<x-pdf.layout-a4-with-out-background title="FORMULIR PERSETUJUAN TINDAKAN MEDIS (INFORM CONSENT) — RAWAT INAP">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">
@@ -44,6 +44,13 @@
                     @endphp
                 </td>
             </tr>
+            @if (!empty($data['dataRi']['riHdrNo']))
+                <tr>
+                    <td class="py-0.5 text-[11px] text-gray-500 whitespace-nowrap">No. Rawat Inap</td>
+                    <td class="py-0.5 text-[11px] px-1">:</td>
+                    <td class="py-0.5 text-[11px] font-bold">{{ $data['dataRi']['riHdrNo'] }}</td>
+                </tr>
+            @endif
         </table>
     </x-slot>
 
@@ -80,7 +87,6 @@
             </td>
         </tr>
 
-        {{-- Tujuan / Penjelasan --}}
         @if (!empty($consent['tujuan']))
             <tr>
                 <td class="border border-black px-1.5 py-0.5 font-bold align-top">TUJUAN / PENJELASAN</td>
@@ -90,7 +96,6 @@
             </tr>
         @endif
 
-        {{-- Risiko --}}
         @if (!empty($consent['resiko']))
             <tr>
                 <td class="border border-black px-1.5 py-0.5 font-bold align-top">RISIKO</td>
@@ -100,7 +105,6 @@
             </tr>
         @endif
 
-        {{-- Alternatif --}}
         @if (!empty($consent['alternatif']))
             <tr>
                 <td class="border border-black px-1.5 py-0.5 font-bold align-top">ALTERNATIF</td>

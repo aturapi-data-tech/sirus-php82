@@ -1,6 +1,6 @@
-{{-- resources/views/pages/components/modul-dokumen/r-j/general-consent/cetak-general-consent-rj-print.blade.php --}}
+{{-- resources/views/pages/components/modul-dokumen/r-i/general-consent/cetak-general-consent-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="FORMULIR PERSETUJUAN UMUM (GENERAL CONSENT)">
+<x-pdf.layout-a4-with-out-background title="FORMULIR PERSETUJUAN UMUM (GENERAL CONSENT) — RAWAT INAP">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">
@@ -44,6 +44,13 @@
                     @endphp
                 </td>
             </tr>
+            @if (!empty($data['dataRi']['riHdrNo']))
+                <tr>
+                    <td class="py-0.5 text-[11px] text-gray-500 whitespace-nowrap">No. Rawat Inap</td>
+                    <td class="py-0.5 text-[11px] px-1">:</td>
+                    <td class="py-0.5 text-[11px] font-bold">{{ $data['dataRi']['riHdrNo'] }}</td>
+                </tr>
+            @endif
         </table>
     </x-slot>
 
@@ -83,13 +90,14 @@
                     Saya yang bertanda tangan di bawah ini, <strong>{{ strtoupper($consent['wali'] ?? '-') }}</strong>
                     (sebagai <strong>{{ $hubunganText }}</strong> pasien), menyatakan bahwa saya telah mendapat
                     penjelasan yang cukup mengenai tujuan, prosedur, risiko, dan manfaat dari pelayanan medis yang
-                    akan diberikan di <strong>{{ $rsName }}</strong>, dengan bahasa yang saya pahami.
+                    akan diberikan selama rawat inap di <strong>{{ $rsName }}</strong>, dengan bahasa yang saya
+                    pahami.
                 </p>
                 <br>
                 <p>
                     Dengan ini saya menyatakan <strong class="{{ $agreementClass }}">{{ $agreementText }}</strong>
                     untuk menerima pelayanan kesehatan, pemeriksaan, dan tindakan yang diperlukan sesuai dengan
-                    standar pelayanan medis yang berlaku di rumah sakit ini.
+                    standar pelayanan medis yang berlaku di rumah sakit ini selama menjalani rawat inap.
                 </p>
                 <br>
                 <p>
@@ -98,13 +106,17 @@
                 <p style="padding-left: 12px;">
                     1. Saya berhak mendapat informasi yang jelas mengenai kondisi kesehatan, diagnosis, prosedur,
                     risiko, dan alternatif tindakan.<br>
-                    2. Saya berhak menolak/menghentikan tindakan, termasuk pelayanan resusitasi, setelah mendapat
-                    penjelasan.<br>
+                    2. Saya berhak menolak/menghentikan tindakan, termasuk pelayanan resusitasi dan terapi penunjang
+                    kehidupan, setelah mendapat penjelasan.<br>
                     3. Saya berhak meminta konsultasi dokter lain (<em>second opinion</em>) bila diperlukan.<br>
-                    4. Rumah sakit menjaga kerahasiaan informasi medis saya sesuai ketentuan yang berlaku.<br>
-                    5. Saya bertanggung jawab atas biaya pelayanan sesuai ketentuan rumah sakit.<br>
-                    6. Untuk tindakan invasif, pembedahan, anestesi, transfusi darah, dan tindakan berisiko tinggi
-                    akan diminta <em>persetujuan tindakan (informed consent)</em> tersendiri.
+                    4. Saya berhak didampingi keluarga, terutama dalam keadaan kritis.<br>
+                    5. Rumah sakit menjaga kerahasiaan informasi medis saya sesuai ketentuan yang berlaku.<br>
+                    6. Saya bertanggung jawab atas biaya pelayanan rawat inap sesuai ketentuan rumah sakit, termasuk
+                    biaya kamar dan tindakan yang dilakukan.<br>
+                    7. Untuk tindakan invasif, pembedahan, anestesi, transfusi darah, dan tindakan berisiko tinggi
+                    akan diminta <em>persetujuan tindakan (informed consent)</em> tersendiri.<br>
+                    8. Rumah sakit tidak bertanggung jawab atas kehilangan atau kerusakan barang berharga yang saya
+                    bawa sendiri.
                 </p>
                 <br>
                 <p>
@@ -116,6 +128,35 @@
                     <strong class="{{ $pesertaDidikClass }}">{{ $pesertaDidikText }}</strong>
                     atas keterlibatan peserta didik tersebut dalam proses perawatan saya.
                 </p>
+                <br>
+                <p>
+                    <strong>Pihak yang Diberi Akses Informasi Medis:</strong>
+                </p>
+                @php $pihakList = collect($consent['pihakInfoMedis'] ?? [])->filter(fn($r) => !empty(trim($r['nama'] ?? ''))); @endphp
+                @if ($pihakList->count() > 0)
+                    <table class="w-full mt-1 text-[9px] border-collapse">
+                        <thead>
+                            <tr>
+                                <th class="border border-black px-1 py-0.5 w-6">No</th>
+                                <th class="border border-black px-1 py-0.5">Nama</th>
+                                <th class="border border-black px-1 py-0.5">Hubungan</th>
+                                <th class="border border-black px-1 py-0.5">No. HP</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($pihakList as $i => $row)
+                                <tr>
+                                    <td class="border border-black px-1 py-0.5 text-center">{{ $i + 1 }}</td>
+                                    <td class="border border-black px-1 py-0.5">{{ $row['nama'] ?? '-' }}</td>
+                                    <td class="border border-black px-1 py-0.5">{{ $row['hubungan'] ?? '-' }}</td>
+                                    <td class="border border-black px-1 py-0.5">{{ $row['noHp'] ?? '-' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @else
+                    <p style="padding-left:12px;"><em>Belum ada pihak yang ditunjuk.</em></p>
+                @endif
             </td>
         </tr>
 
