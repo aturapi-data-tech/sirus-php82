@@ -82,24 +82,14 @@ new class extends Component {
      * ------------------------- */
     /*
      | NOTE: Modul ini untuk casemix/admin/tu — fokus ke administrasi BPJS &
-     | iDRG/INACBG. Tidak ada create RJ. Tidak ada Task ID, Rekam Medis,
-     | Modul Dokumen, atau Satu Sehat (itu modul pelayanan harian, bukan
-     | scope view bulanan). Aksi yang aktif: Pendaftaran Ubah, Administrasi,
-     | iDRG/INACBG, Berkas BPJS, Hapus.
+     | iDRG/INACBG. Aksi yang aktif: Kirim iDRG, Berkas BPJS, Hapus.
+     | Aksi pelayanan harian (Task ID, Rekam Medis, Modul Dokumen, Satu Sehat)
+     | dan aksi mutasi data (Create, Edit, Administrasi) sengaja dihilangkan
+     | dari scope bulanan.
      */
     private function openCreate(): void
     {
         $this->dispatch('daftar-rj.create.open');
-    }
-
-    public function openEdit(string $rjNo): void
-    {
-        $this->dispatch('daftar-rj.edit.open', rjNo: $rjNo);
-    }
-
-    public function openAdministrasiPasien(string $rjNo): void
-    {
-        $this->dispatch('emr-rj.administrasi.open', rjNo: $rjNo);
     }
 
     public function openIdrg(string $rjNo): void
@@ -108,43 +98,11 @@ new class extends Component {
     }
 
     /* -------------------------
-     | Berkas BPJS — modal preview list file uploadbpjs
-     |   seq_file 1=SEP, 2=GROUPING, 3=RM, 4=SKDP, 5=LAIN2
+     | Berkas BPJS — dispatch ke sibling daftar-rj-bulanan-actions
      * ------------------------- */
-    public ?int $berkasRjNo = null;
-    public array $berkasFiles = [];
-
     public function openBerkasBpjs(int $rjNo): void
     {
-        $this->berkasRjNo = $rjNo;
-        $rows = DB::table('rstxn_rjuploadbpjses')
-            ->select('seq_file', 'uploadbpjs', 'jenis_file')
-            ->where('rj_no', $rjNo)
-            ->orderBy('seq_file')
-            ->get();
-
-        $labels = [1 => 'SEP', 2 => 'GROUPING', 3 => 'REKAM MEDIS', 4 => 'SKDP', 5 => 'LAIN-LAIN'];
-        $bySlot = [];
-        foreach ([1, 2, 3, 4, 5] as $slot) {
-            $bySlot[$slot] = ['label' => $labels[$slot], 'file' => null];
-        }
-        foreach ($rows as $r) {
-            if (isset($bySlot[$r->seq_file])) {
-                $bySlot[$r->seq_file]['file'] = $r->uploadbpjs;
-            } else {
-                // slot custom > 5 → tampilkan as LAIN-LAIN extra
-                $bySlot[$r->seq_file] = ['label' => 'LAIN-LAIN (#' . $r->seq_file . ')', 'file' => $r->uploadbpjs];
-            }
-        }
-        $this->berkasFiles = $bySlot;
-        $this->dispatch('open-modal', name: 'berkas-bpjs-modal');
-    }
-
-    public function closeBerkasBpjs(): void
-    {
-        $this->dispatch('close-modal', name: 'berkas-bpjs-modal');
-        $this->berkasRjNo = null;
-        $this->berkasFiles = [];
+        $this->dispatch('berkas-bpjs.open', rjNo: $rjNo);
     }
 
     /* -------------------------
@@ -865,50 +823,6 @@ new class extends Component {
                                                             {{-- GRID 2 KOLOM --}}
                                                             <div class="grid grid-cols-2 gap-1">
 
-                                                                {{-- Ubah — Mr & Admin --}}
-                                                                @hasanyrole('Mr|Admin')
-                                                                    <x-dropdown-link href="#"
-                                                                        wire:click.prevent="openEdit('{{ $row->rj_no }}')"
-                                                                        class="px-3 py-2 text-sm rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40">
-                                                                        <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0"
-                                                                                fill="none" stroke="currentColor"
-                                                                                viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round"
-                                                                                    stroke-linejoin="round"
-                                                                                    d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2.5 2.5 0 113.536 3.536L12.536 16.536a4 4 0 01-1.414.95L7 19l1.514-4.122A4 4 0 019 13z" />
-                                                                            </svg>
-                                                                            <span>
-                                                                                Pendaftaran Ubah <br>
-                                                                                <span
-                                                                                    class="font-semibold">{{ $row->reg_name }}</span>
-                                                                            </span>
-                                                                        </div>
-                                                                    </x-dropdown-link>
-                                                                @endhasanyrole
-
-                                                                {{-- Administrasi — Admin, Perawat, Casemix --}}
-                                                                @hasanyrole('Admin|Perawat|Casemix')
-                                                                    <x-dropdown-link href="#"
-                                                                        wire:click.prevent="openAdministrasiPasien('{{ $row->rj_no }}')"
-                                                                        class="px-3 py-2 text-sm rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40">
-                                                                        <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0"
-                                                                                fill="none" stroke="currentColor"
-                                                                                viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round"
-                                                                                    stroke-linejoin="round"
-                                                                                    d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
-                                                                            </svg>
-                                                                            <span>
-                                                                                Administrasi <br>
-                                                                                <span
-                                                                                    class="font-semibold">{{ $row->reg_name }}</span>
-                                                                            </span>
-                                                                        </div>
-                                                                    </x-dropdown-link>
-                                                                @endhasanyrole
-
                                                                 {{-- Kirim iDRG — Admin & Casemix, BPJS + rj_status=Selesai --}}
                                                                 @hasanyrole('Admin|Casemix')
                                                                     @if (($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM') && $row->rj_status === 'L')
@@ -1007,84 +921,11 @@ new class extends Component {
 
             </div>
 
-            {{-- Child components — yang relevan untuk modul read-only bulanan saja --}}
-            <livewire:pages::transaksi.rj.daftar-rj.daftar-rj-actions wire:key="daftar-rj-actions" />
-            <livewire:pages::transaksi.rj.administrasi-rj.administrasi-rj wire:key="administrasi-rj-actions" />
+            {{-- Sibling action components — listen event dispatch dari main --}}
             <livewire:pages::transaksi.rj.daftar-rj.idrg-rj-actions wire:key="idrg-rj-actions" />
+            <livewire:pages::transaksi.rj.daftar-rj-bulanan.berkas-bpjs-rj-actions
+                wire:key="berkas-bpjs-rj-actions" />
 
         </div>
     </div>
-
-    {{-- ============================================ --}}
-    {{-- MODAL: BERKAS BPJS                           --}}
-    {{-- ============================================ --}}
-    <x-modal name="berkas-bpjs-modal" size="2xl" focusable>
-        <div>
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <div class="flex items-center justify-between gap-4">
-                    <div>
-                        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                            Berkas BPJS
-                        </h2>
-                        <p class="text-xs text-gray-500">No. RJ:
-                            <span class="font-mono font-medium">{{ $berkasRjNo ?? '-' }}</span>
-                        </p>
-                    </div>
-                    <x-icon-button color="gray" type="button" wire:click="closeBerkasBpjs">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
-            </div>
-
-            <div class="px-6 py-5">
-                <table class="w-full text-sm">
-                    <thead class="text-xs font-semibold text-gray-500 uppercase bg-gray-50 dark:bg-gray-800/50">
-                        <tr>
-                            <th class="px-3 py-2 text-left">Slot</th>
-                            <th class="px-3 py-2 text-left">Jenis Berkas</th>
-                            <th class="px-3 py-2 text-left">File</th>
-                            <th class="px-3 py-2 text-center">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                        @forelse ($berkasFiles as $slot => $info)
-                            <tr>
-                                <td class="px-3 py-2 font-mono text-xs text-gray-500">{{ $slot }}</td>
-                                <td class="px-3 py-2 font-medium text-gray-700 dark:text-gray-300">
-                                    {{ $info['label'] ?? '-' }}
-                                </td>
-                                <td class="px-3 py-2 font-mono text-xs text-gray-600 dark:text-gray-400">
-                                    {{ $info['file'] ?? '—' }}
-                                </td>
-                                <td class="px-3 py-2 text-center">
-                                    @if (!empty($info['file']))
-                                        <a href="{{ url('files/bpjs/' . $info['file']) }}" target="_blank"
-                                            class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-brand-green/10 text-brand-green border border-brand-green/20 hover:bg-brand-green/20">
-                                            Lihat
-                                        </a>
-                                    @else
-                                        <span class="text-xs text-gray-400">-</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="4" class="px-3 py-8 text-sm text-center text-gray-400">
-                                    Tidak ada berkas BPJS
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="flex items-center justify-end gap-2 px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
-                <x-secondary-button type="button" wire:click="closeBerkasBpjs">Tutup</x-secondary-button>
-            </div>
-        </div>
-    </x-modal>
 </div>
