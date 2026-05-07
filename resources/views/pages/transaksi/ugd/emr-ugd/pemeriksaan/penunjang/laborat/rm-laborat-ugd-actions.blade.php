@@ -179,7 +179,7 @@ new class extends Component {
 ?>
 
 <div>
-    <div class="grid grid-cols-1 my-2">
+    <div class="mb-3">
         <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled" wire:target="openModal"
             :disabled="$disabled">
             <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">

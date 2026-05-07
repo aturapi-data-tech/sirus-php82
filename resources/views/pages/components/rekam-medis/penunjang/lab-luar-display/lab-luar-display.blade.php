@@ -65,7 +65,7 @@ new class extends Component {
                                         <tr>
                                             <th scope="col" class="px-4 py-3">
                                                 <div class="flex items-center space-x-2">
-                                                    <span>Riwayat Pemeriksaan Lab Luar</span>
+                                                    <span>Riwayat Pemeriksaan Laboratorium Luar</span>
                                                     @if ($regNo && count($this->rows) > 0)
                                                         <span
                                                             class="px-2 py-0.5 text-sm bg-amber-100 rounded-full text-amber-700">
@@ -89,7 +89,7 @@ new class extends Component {
                                                 $statusText = $isSelesai
                                                     ? 'Selesai'
                                                     : ($isProses
-                                                        ? 'Proses'
+                                                        ? 'Menunggu Hasil'
                                                         : ($isTerdaftar
                                                             ? 'Terdaftar'
                                                             : '-'));
@@ -213,7 +213,7 @@ new class extends Component {
                                                                 stroke-width="2"
                                                                 d="M9 17v-2a4 4 0 014-4h4M5 7h14M5 11h6m-6 4h6m-6 4h6" />
                                                         </svg>
-                                                        <p class="mt-2 text-gray-500">Tidak ada data lab luar</p>
+                                                        <p class="mt-2 text-gray-500">Tidak ada data laboratorium luar</p>
                                                     @else
                                                         <p class="text-gray-500">Silakan pilih pasien terlebih dahulu</p>
                                                     @endif

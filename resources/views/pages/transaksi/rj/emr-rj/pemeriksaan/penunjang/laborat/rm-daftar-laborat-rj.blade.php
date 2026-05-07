@@ -42,6 +42,7 @@ new class extends Component {
             )
             ->where('h.ref_no', $this->rjNo)
             ->where('h.status_rjri', 'RJ')
+            ->whereNotNull('d.price')
             ->orderByDesc('h.checkup_date')
             ->orderBy('d.checkup_dtl')
             ->get();
@@ -63,7 +64,6 @@ new class extends Component {
     <table class="w-full text-sm text-left text-gray-500 table-auto">
         <thead class="text-xs text-gray-700 uppercase bg-gray-100">
             <tr>
-                <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase dark:text-gray-400">No Lab</th>
                 <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Tgl Lab</th>
                 <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Pemeriksaan Lab</th>
                 <th class="w-24 px-4 py-3 text-xs font-medium text-center text-gray-500 uppercase dark:text-gray-400">Status</th>
@@ -72,9 +72,6 @@ new class extends Component {
         <tbody class="bg-white">
             @forelse ($this->rows as $r)
                 <tr class="border-b group">
-                    <td class="px-2 py-2 font-mono text-xs text-gray-700 group-hover:bg-gray-50 whitespace-nowrap">
-                        {{ $r->checkup_no }}
-                    </td>
                     <td class="px-2 py-2 text-xs font-mono text-gray-500 group-hover:bg-gray-50 whitespace-nowrap">
                         {{ $r->checkup_date ? \Carbon\Carbon::parse($r->checkup_date)->format('d/m/Y H:i') : '-' }}
                     </td>
@@ -83,18 +80,18 @@ new class extends Component {
                     </td>
                     <td class="px-2 py-2 text-center group-hover:bg-gray-50">
                         @if ($r->checkup_status === 'H')
-                            <x-badge variant="success">SELESAI</x-badge>
+                            <x-badge variant="success">Selesai</x-badge>
                         @elseif ($r->checkup_status === 'C')
-                            <x-badge variant="info">PROSES</x-badge>
+                            <x-badge variant="info">Proses</x-badge>
                         @else
-                            <x-badge variant="warning">PENDING</x-badge>
+                            <x-badge variant="warning">Terdaftar</x-badge>
                         @endif
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="4" class="px-4 py-6 text-sm text-center text-gray-400">
-                        Belum ada order laboratorium
+                    <td colspan="3" class="px-4 py-6 text-sm text-center text-gray-400">
+                        Belum ada data laboratorium
                     </td>
                 </tr>
             @endforelse

@@ -138,7 +138,7 @@ new class extends Component {
             });
 
             $this->dispatch('lab-luar-ri.updated');
-            $this->dispatch('toast', type: 'success', message: 'Order Lab Luar berhasil dikirim.');
+            $this->dispatch('toast', type: 'success', message: 'Order Laboratorium Luar berhasil dikirim.');
             $this->closeModal();
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
@@ -150,15 +150,15 @@ new class extends Component {
 ?>
 
 <div>
-    <div class="grid grid-cols-1 my-2">
+    <div class="mb-3">
         <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled" wire:target="openModal"
-            :disabled="$disabled" color="amber">
+            :disabled="$disabled">
             <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 17v-2a4 4 0 014-4h4M5 7h14M5 11h6m-6 4h6m-6 4h6" />
+                        d="M12 4v16m8-8H4" />
                 </svg>
-                Order Lab Luar
+                Order Laboratorium Luar
             </span>
             <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
                 <x-loading /> Memuat...
@@ -181,7 +181,7 @@ new class extends Component {
                         </div>
                         <div>
                             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                                Order Pemeriksaan Lab Luar
+                                Order Pemeriksaan Laboratorium Luar
                             </h2>
                             <p class="text-xs text-gray-500">No. RI: <span
                                     class="font-mono font-medium">{{ $riHdrNo }}</span></p>

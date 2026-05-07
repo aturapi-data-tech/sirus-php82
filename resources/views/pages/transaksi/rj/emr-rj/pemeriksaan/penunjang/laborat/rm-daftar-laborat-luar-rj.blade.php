@@ -75,7 +75,7 @@ new class extends Component {
                         @if ($r->checkup_status === 'H')
                             <x-badge variant="success">Selesai</x-badge>
                         @elseif ($r->checkup_status === 'C')
-                            <x-badge variant="info">Proses</x-badge>
+                            <x-badge variant="info">Menunggu Hasil</x-badge>
                         @else
                             <x-badge variant="warning">Terdaftar</x-badge>
                         @endif
@@ -84,7 +84,7 @@ new class extends Component {
             @empty
                 <tr>
                     <td colspan="3" class="px-4 py-6 text-sm text-center text-gray-400">
-                        Belum ada order lab luar
+                        Belum ada data laboratorium luar
                     </td>
                 </tr>
             @endforelse

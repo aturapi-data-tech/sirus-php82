@@ -18,7 +18,6 @@ new class extends Component {
 
     public ?string $riHdrNo = null;
     public bool $disabled = false;
-    public array $radList = []; // dari JSON: pemeriksaan.pemeriksaanPenunjang.rad
 
     /* ── State Modal ── */
     public string $searchItem = '';
@@ -29,10 +28,6 @@ new class extends Component {
         $this->riHdrNo = $riHdrNo;
         $this->disabled = $disabled;
         $this->registerAreas(['radiologi-order-modal-ri']);
-
-        if ($riHdrNo) {
-            $this->loadRadList($riHdrNo);
-        }
     }
 
     /* ═══════════════════════════════════════
@@ -45,7 +40,6 @@ new class extends Component {
             return;
         }
         $this->riHdrNo = $riHdrNo;
-        $this->loadRadList($riHdrNo);
     }
 
     /* ═══════════════════════════════════════
@@ -162,12 +156,6 @@ new class extends Component {
         }
     }
 
-    /* ── helpers ── */
-    private function loadRadList(string $riHdrNo): void
-    {
-        $data = $this->findDataRI($riHdrNo);
-        $this->radList = $data['pemeriksaan']['pemeriksaanPenunjang']['rad'] ?? [];
-    }
 };
 ?>
 
@@ -190,44 +178,7 @@ new class extends Component {
         </div>
     @endif
 
-    {{-- Display dari JSON array --}}
-    @if (empty($radList))
-        <p class="py-6 text-sm text-center text-gray-400 italic">Belum ada data radiologi.</p>
-    @else
-        <div class="space-y-3">
-            @foreach ($radList as $batch)
-                @php $hdr = $batch['radHdr'] ?? []; @endphp
-                <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                    <div class="px-3 py-1.5 bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
-                        <span>{{ $hdr['radHdrDate'] ?? '-' }}</span>
-                        @if (!empty($hdr['riradNos']))
-                            <span class="font-mono">No: {{ implode(', ', $hdr['riradNos']) }}</span>
-                        @endif
-                    </div>
-                    <table class="w-full text-xs text-left">
-                        <thead class="bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                            <tr>
-                                <th class="px-3 py-2">Pemeriksaan</th>
-                                <th class="px-3 py-2 text-right">Harga</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                            @foreach ($hdr['radDtl'] ?? [] as $dtl)
-                                <tr class="bg-white dark:bg-gray-900">
-                                    <td class="px-3 py-2 font-medium text-gray-800 dark:text-gray-200">
-                                        {{ $dtl['rad_desc'] ?? '-' }}
-                                    </td>
-                                    <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400">
-                                        Rp {{ number_format($dtl['rad_price'] ?? 0, 0, ',', '.') }}
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @endforeach
-        </div>
-    @endif
+    {{-- Daftar Radiologi ditampilkan via rm-daftar-radiologi-ri (DB-direct) di parent --}}
 
     {{-- ═══════════ MODAL ORDER RADIOLOGI RI ═══════════ --}}
     <x-modal name="radiologi-order-ri-{{ $riHdrNo ?? 'new' }}" size="full"

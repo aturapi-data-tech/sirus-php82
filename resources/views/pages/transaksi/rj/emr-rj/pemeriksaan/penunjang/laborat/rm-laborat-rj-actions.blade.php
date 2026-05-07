@@ -199,7 +199,7 @@ new class extends Component {
 ?>
 
 <div>
-    <div class="grid grid-cols-1 my-2">
+    <div class="mb-3">
         {{-- Tombol trigger --}}
         <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled" wire:target="openModal"
             :disabled="$disabled">
