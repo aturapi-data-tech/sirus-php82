@@ -1,13 +1,13 @@
 <?php
-// resources/views/pages/transaksi/rj/daftar-rj-bulanan/⚡berkas-bpjs-rj-actions.blade.php
+// resources/views/pages/transaksi/rj/daftar-ri-bulanan/⚡berkas-bpjs-ri-actions.blade.php
 //
 // Sibling action component — Berkas BPJS untuk satu RJ.
-// Listen 'berkas-bpjs.open' → load list rstxn_rjuploadbpjses, normalize ke 5 slot
+// Listen 'berkas-bpjs.open' → load list rstxn_riuploadbpjses, normalize ke 5 slot
 // (1=SEP, 2=GROUPING, 3=REKAM MEDIS, 4=SKDP, 5=LAIN-LAIN).
 // Per slot: Lihat / Upload / Replace / Hapus. Mirror pola sirus-lite:
 //   - disk('local')->put('bpjs/' . filename, content)
 //   - filename = Carbon::now()->format('dmYhis') . '.pdf'
-//   - insert/update rstxn_rjuploadbpjses (rj_no, seq_file, uploadbpjs, jenis_file).
+//   - insert/update rstxn_riuploadbpjses (rihdr_no, seq_file, uploadbpjs, jenis_file).
 
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -16,13 +16,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
-use App\Http\Traits\Txn\Rj\EmrRJTrait;
+use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 
 new class extends Component {
-    use WithFileUploads, EmrRJTrait, MasterPasienTrait;
+    use WithFileUploads, EmrRITrait, MasterPasienTrait;
 
-    public ?int $berkasRjNo = null;
+    public ?string $berkasRiHdrNo = null;
     public array $berkasFiles = [];
 
     /* Upload state */
@@ -40,7 +40,7 @@ new class extends Component {
     #[On('berkas-bpjs.open')]
     public function open(int $rjNo): void
     {
-        $this->berkasRjNo = $rjNo;
+        $this->berkasRiHdrNo = $rjNo;
         $this->refreshFiles();
         $this->dispatch('open-modal', name: 'berkas-bpjs-modal');
     }
@@ -48,18 +48,18 @@ new class extends Component {
     public function closeModal(): void
     {
         $this->dispatch('close-modal', name: 'berkas-bpjs-modal');
-        $this->reset(['berkasRjNo', 'berkasFiles', 'uploadSlot', 'uploadFile']);
+        $this->reset(['berkasRiHdrNo', 'berkasFiles', 'uploadSlot', 'uploadFile']);
     }
 
     private function refreshFiles(): void
     {
-        if (!$this->berkasRjNo) {
+        if (!$this->berkasRiHdrNo) {
             $this->berkasFiles = [];
             return;
         }
-        $rows = DB::table('rstxn_rjuploadbpjses')
+        $rows = DB::table('rstxn_riuploadbpjses')
             ->select('seq_file', 'uploadbpjs', 'jenis_file')
-            ->where('rj_no', $this->berkasRjNo)
+            ->where('rihdr_no', $this->berkasRiHdrNo)
             ->orderBy('seq_file')
             ->get();
 
@@ -100,7 +100,7 @@ new class extends Component {
             [
                 'uploadFile' => 'required|file|mimes:pdf|max:10240',
                 'uploadSlot' => 'required|integer|min:1',
-                'berkasRjNo' => 'required|integer',
+                'berkasRiHdrNo' => 'required|integer',
             ],
             [
                 'uploadFile.required' => 'Pilih file PDF dulu.',
@@ -111,7 +111,7 @@ new class extends Component {
 
         try {
             $content = file_get_contents($this->uploadFile->getRealPath());
-            $this->saveBerkasBpjs($this->berkasRjNo, $this->uploadSlot, $content);
+            $this->saveBerkasBpjs($this->berkasRiHdrNo, $this->uploadSlot, $content);
 
             $label = $this->labels[$this->uploadSlot] ?? '';
             $this->cancelUpload();
@@ -128,13 +128,13 @@ new class extends Component {
      =============================== */
     public function generateSep(): void
     {
-        if (!$this->berkasRjNo) return;
-        $rjNo = $this->berkasRjNo;
+        if (!$this->berkasRiHdrNo) return;
+        $rjNo = $this->berkasRiHdrNo;
 
         try {
-            $dataRJ = $this->findDataRJ($rjNo);
+            $dataRJ = $this->findDataRI($rjNo);
             if (empty($dataRJ) || empty($dataRJ['sep']['noSep'])) {
-                $this->dispatch('toast', type: 'error', message: 'Data SEP tidak ditemukan untuk RJ ini.');
+                $this->dispatch('toast', type: 'error', message: 'Data SEP tidak ditemukan untuk RI ini.');
                 return;
             }
 
@@ -163,7 +163,7 @@ new class extends Component {
                 'resSep' => $resSep,
                 'dataTxn' => $dataRJ,
                 'pasien' => $pasien,
-                'jenis' => 'rj',
+                'jenis' => 'ri',
                 'identitasRs' => $identitasRs,
                 'namaRs' => $identitasRs->int_name ?? 'RSI MADINAH',
                 'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d-m-Y H:i:s'),
@@ -181,66 +181,25 @@ new class extends Component {
         }
     }
 
-    public function generateRm(): void
-    {
-        if (!$this->berkasRjNo) return;
-        $rjNo = $this->berkasRjNo;
-
-        try {
-            $dataRJ = $this->findDataRJ($rjNo);
-            if (empty($dataRJ)) {
-                $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
-                return;
-            }
-
-            $pasienData = $this->findDataMasterPasien($dataRJ['regNo'] ?? '');
-            if (empty($pasienData)) {
-                $this->dispatch('toast', type: 'error', message: 'Data pasien tidak ditemukan.');
-                return;
-            }
-
-            $pasien = $pasienData['pasien'];
-            if (!empty($pasien['tglLahir'])) {
-                $pasien['thn'] = Carbon::createFromFormat('d/m/Y', $pasien['tglLahir'])
-                    ->diff(Carbon::now(config('app.timezone')))
-                    ->format('%y Thn, %m Bln %d Hr');
-            }
-
-            $dokter = DB::table('rsmst_doctors')->where('dr_id', $dataRJ['drId'] ?? '')->select('dr_name')->first();
-
-            $data = array_merge($pasien, [
-                'dataDaftarTxn' => $dataRJ,
-                'namaDokter' => $dokter->dr_name ?? null,
-                'tglCetak' => $dataRJ['rjDate'] ?? Carbon::now()->format('d/m/Y'),
-            ]);
-
-            set_time_limit(300);
-            $pdf = Pdf::loadView('pages.components.rekam-medis.r-j.cetak-rekam-medis.cetak-rekam-medis-print', ['data' => $data])
-                ->setPaper('A4');
-
-            $this->saveBerkasBpjs($rjNo, 3, $pdf->output());
-            $this->dispatch('toast', type: 'success', message: 'PDF Rekam Medis berhasil di-generate & tersimpan.');
-        } catch (\Exception $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal generate RM: ' . $e->getMessage());
-        }
-    }
+    // generateRm() di-skip untuk RI — view template cetak-rekam-medis-r-i belum tersedia.
+    // Slot 3 (REKAM MEDIS) di RI tetap bisa upload manual via tombol Upload.
 
     public function generateSkdp(): void
     {
-        if (!$this->berkasRjNo) return;
-        $rjNo = $this->berkasRjNo;
+        if (!$this->berkasRiHdrNo) return;
+        $riHdrNo = $this->berkasRiHdrNo;
 
         try {
-            $dataRJ = $this->findDataRJ($rjNo);
-            if (empty($dataRJ) || empty($dataRJ['kontrol']['tglKontrol'])) {
+            $dataRI = $this->findDataRI($riHdrNo);
+            if (empty($dataRI) || empty($dataRI['kontrol']['tglKontrol'])) {
                 $this->dispatch('toast', type: 'error', message: 'Data surat kontrol (SKDP) belum tersedia.');
                 return;
             }
 
-            $kontrol = $dataRJ['kontrol'];
-            $sep = $dataRJ['sep'] ?? [];
+            $kontrol = $dataRI['kontrol'];
+            $sep = $dataRI['sep'] ?? [];
 
-            $regNo = $dataRJ['regNo'] ?? '';
+            $regNo = $dataRI['regNo'] ?? '';
             $pasienData = !empty($regNo) ? $this->findDataMasterPasien($regNo) : [];
             $pasien = $pasienData['pasien'] ?? [];
 
@@ -268,9 +227,9 @@ new class extends Component {
             $data = [
                 'kontrol' => $kontrol,
                 'pasien' => $pasien,
-                'dataTxn' => $dataRJ,
+                'dataTxn' => $dataRI,
                 'diagnosa' => $diagnosa,
-                'jenis' => 'rj',
+                'jenis' => 'ri',
                 'namaRs' => $identitasRs->int_name ?? 'RSI MADINAH',
                 'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d-m-Y H:i:s'),
             ];
@@ -279,7 +238,7 @@ new class extends Component {
             $pdf = Pdf::loadView('pages.components.modul-dokumen.b-p-j-s.cetak-skdp.cetak-skdp-print', ['data' => $data])
                 ->setPaper('A5', 'landscape');
 
-            $this->saveBerkasBpjs($rjNo, 4, $pdf->output());
+            $this->saveBerkasBpjs($riHdrNo, 4, $pdf->output());
             $this->dispatch('toast', type: 'success', message: 'PDF SKDP berhasil di-generate & tersimpan.');
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal generate SKDP: ' . $e->getMessage());
@@ -288,7 +247,7 @@ new class extends Component {
 
     /**
      * Helper: simpan PDF content ke disk('local') folder bpjs/ dan
-     * insert/update record rstxn_rjuploadbpjses.
+     * insert/update record rstxn_riuploadbpjses.
      */
     private function saveBerkasBpjs(int $rjNo, int $seqFile, string $pdfContent): void
     {
@@ -296,8 +255,8 @@ new class extends Component {
         $filename = Carbon::now(config('app.timezone'))->format('dmYHis') . '.pdf';
         $filePath = 'bpjs/' . $filename;
 
-        $cekFile = DB::table('rstxn_rjuploadbpjses')
-            ->where('rj_no', $rjNo)
+        $cekFile = DB::table('rstxn_riuploadbpjses')
+            ->where('rihdr_no', $rjNo)
             ->where('seq_file', $seqFile)
             ->first();
 
@@ -312,13 +271,13 @@ new class extends Component {
                 if (!empty($cekFile->uploadbpjs)) {
                     Storage::disk('local')->delete('bpjs/' . $cekFile->uploadbpjs);
                 }
-                DB::table('rstxn_rjuploadbpjses')
-                    ->where('rj_no', $rjNo)
+                DB::table('rstxn_riuploadbpjses')
+                    ->where('rihdr_no', $rjNo)
                     ->where('seq_file', $seqFile)
                     ->update(['uploadbpjs' => $filename, 'jenis_file' => 'pdf']);
             } else {
-                DB::table('rstxn_rjuploadbpjses')->insert([
-                    'rj_no' => $rjNo,
+                DB::table('rstxn_riuploadbpjses')->insert([
+                    'rihdr_no' => $rjNo,
                     'seq_file' => $seqFile,
                     'uploadbpjs' => $filename,
                     'jenis_file' => 'pdf',
@@ -334,12 +293,12 @@ new class extends Component {
      =============================== */
     public function hapusBerkas(int $slot): void
     {
-        if (!$this->berkasRjNo) {
+        if (!$this->berkasRiHdrNo) {
             return;
         }
 
-        $row = DB::table('rstxn_rjuploadbpjses')
-            ->where('rj_no', $this->berkasRjNo)
+        $row = DB::table('rstxn_riuploadbpjses')
+            ->where('rihdr_no', $this->berkasRiHdrNo)
             ->where('seq_file', $slot)
             ->first();
 
@@ -353,8 +312,8 @@ new class extends Component {
                 if (!empty($row->uploadbpjs)) {
                     Storage::disk('local')->delete('bpjs/' . $row->uploadbpjs);
                 }
-                DB::table('rstxn_rjuploadbpjses')
-                    ->where('rj_no', $row->rj_no)
+                DB::table('rstxn_riuploadbpjses')
+                    ->where('rihdr_no', $row->rihdr_no)
                     ->where('seq_file', $row->seq_file)
                     ->delete();
             });
@@ -377,8 +336,8 @@ new class extends Component {
                         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                             Berkas BPJS
                         </h2>
-                        <p class="text-xs text-gray-500">No. RJ:
-                            <span class="font-mono font-medium">{{ $berkasRjNo ?? '-' }}</span>
+                        <p class="text-xs text-gray-500">No. RI:
+                            <span class="font-mono font-medium">{{ $berkasRiHdrNo ?? '-' }}</span>
                         </p>
                     </div>
                     <x-icon-button color="gray" type="button" wire:click="closeModal">
@@ -436,18 +395,12 @@ new class extends Component {
                                                 </a>
                                             @endif
 
-                                            {{-- Generate auto untuk slot 1 (SEP), 3 (RM), 4 (SKDP) --}}
+                                            {{-- Generate auto: slot 1 (SEP) & slot 4 (SKDP). Slot 3 (RM) RI belum ada template, manual upload. --}}
                                             @if ($slot === 1)
                                                 <x-info-button type="button" wire:click="generateSep"
                                                     wire:loading.attr="disabled" wire:target="generateSep" class="text-xs">
                                                     <span wire:loading.remove wire:target="generateSep">Generate</span>
                                                     <span wire:loading wire:target="generateSep">...</span>
-                                                </x-info-button>
-                                            @elseif ($slot === 3)
-                                                <x-info-button type="button" wire:click="generateRm"
-                                                    wire:loading.attr="disabled" wire:target="generateRm" class="text-xs">
-                                                    <span wire:loading.remove wire:target="generateRm">Generate</span>
-                                                    <span wire:loading wire:target="generateRm">...</span>
                                                 </x-info-button>
                                             @elseif ($slot === 4)
                                                 <x-info-button type="button" wire:click="generateSkdp"

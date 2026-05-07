@@ -109,6 +109,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/ugd/daftar', 'pages::transaksi.ugd.daftar-ugd.daftar-ugd')
         ->name('ugd.daftar');
 
+    Route::livewire('/ugd/daftar-bulanan', 'pages::transaksi.ugd.daftar-ugd-bulanan.daftar-ugd-bulanan')
+        ->name('ugd.daftar-bulanan');
+
 
     // ===========================================
     // TRANSAKSI UGD - ANTRIAN APOTEK
@@ -133,6 +136,9 @@ Route::middleware(['auth'])->group(function () {
     // ===========================================
     Route::livewire('/ri/daftar', 'pages::transaksi.ri.daftar-ri.daftar-ri')
         ->name('ri.daftar');
+
+    Route::livewire('/ri/daftar-bulanan', 'pages::transaksi.ri.daftar-ri-bulanan.daftar-ri-bulanan')
+        ->name('ri.daftar-bulanan');
 
     // ===========================================
     // RI — UPDATE TEMPAT TIDUR (Aplicares + SIRS)

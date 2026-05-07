@@ -1,13 +1,13 @@
 <?php
-// resources/views/pages/transaksi/rj/daftar-rj-bulanan/⚡berkas-bpjs-rj-actions.blade.php
+// resources/views/pages/transaksi/rj/daftar-ugd-bulanan/⚡berkas-bpjs-ugd-actions.blade.php
 //
 // Sibling action component — Berkas BPJS untuk satu RJ.
-// Listen 'berkas-bpjs.open' → load list rstxn_rjuploadbpjses, normalize ke 5 slot
+// Listen 'berkas-bpjs.open' → load list rstxn_ugduploadbpjses, normalize ke 5 slot
 // (1=SEP, 2=GROUPING, 3=REKAM MEDIS, 4=SKDP, 5=LAIN-LAIN).
 // Per slot: Lihat / Upload / Replace / Hapus. Mirror pola sirus-lite:
 //   - disk('local')->put('bpjs/' . filename, content)
 //   - filename = Carbon::now()->format('dmYhis') . '.pdf'
-//   - insert/update rstxn_rjuploadbpjses (rj_no, seq_file, uploadbpjs, jenis_file).
+//   - insert/update rstxn_ugduploadbpjses (rj_no, seq_file, uploadbpjs, jenis_file).
 
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -16,11 +16,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
-use App\Http\Traits\Txn\Rj\EmrRJTrait;
+use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 
 new class extends Component {
-    use WithFileUploads, EmrRJTrait, MasterPasienTrait;
+    use WithFileUploads, EmrUGDTrait, MasterPasienTrait;
 
     public ?int $berkasRjNo = null;
     public array $berkasFiles = [];
@@ -57,7 +57,7 @@ new class extends Component {
             $this->berkasFiles = [];
             return;
         }
-        $rows = DB::table('rstxn_rjuploadbpjses')
+        $rows = DB::table('rstxn_ugduploadbpjses')
             ->select('seq_file', 'uploadbpjs', 'jenis_file')
             ->where('rj_no', $this->berkasRjNo)
             ->orderBy('seq_file')
@@ -132,7 +132,7 @@ new class extends Component {
         $rjNo = $this->berkasRjNo;
 
         try {
-            $dataRJ = $this->findDataRJ($rjNo);
+            $dataRJ = $this->findDataUGD($rjNo);
             if (empty($dataRJ) || empty($dataRJ['sep']['noSep'])) {
                 $this->dispatch('toast', type: 'error', message: 'Data SEP tidak ditemukan untuk RJ ini.');
                 return;
@@ -163,7 +163,7 @@ new class extends Component {
                 'resSep' => $resSep,
                 'dataTxn' => $dataRJ,
                 'pasien' => $pasien,
-                'jenis' => 'rj',
+                'jenis' => 'ugd',
                 'identitasRs' => $identitasRs,
                 'namaRs' => $identitasRs->int_name ?? 'RSI MADINAH',
                 'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d-m-Y H:i:s'),
@@ -187,7 +187,7 @@ new class extends Component {
         $rjNo = $this->berkasRjNo;
 
         try {
-            $dataRJ = $this->findDataRJ($rjNo);
+            $dataRJ = $this->findDataUGD($rjNo);
             if (empty($dataRJ)) {
                 $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
                 return;
@@ -215,7 +215,7 @@ new class extends Component {
             ]);
 
             set_time_limit(300);
-            $pdf = Pdf::loadView('pages.components.rekam-medis.r-j.cetak-rekam-medis.cetak-rekam-medis-print', ['data' => $data])
+            $pdf = Pdf::loadView('pages.components.rekam-medis.u-g-d.cetak-rekam-medis.cetak-rekam-medis-print', ['data' => $data])
                 ->setPaper('A4');
 
             $this->saveBerkasBpjs($rjNo, 3, $pdf->output());
@@ -231,16 +231,16 @@ new class extends Component {
         $rjNo = $this->berkasRjNo;
 
         try {
-            $dataRJ = $this->findDataRJ($rjNo);
-            if (empty($dataRJ) || empty($dataRJ['kontrol']['tglKontrol'])) {
+            $dataUGD = $this->findDataUGD($rjNo);
+            if (empty($dataUGD) || empty($dataUGD['kontrol']['tglKontrol'])) {
                 $this->dispatch('toast', type: 'error', message: 'Data surat kontrol (SKDP) belum tersedia.');
                 return;
             }
 
-            $kontrol = $dataRJ['kontrol'];
-            $sep = $dataRJ['sep'] ?? [];
+            $kontrol = $dataUGD['kontrol'];
+            $sep = $dataUGD['sep'] ?? [];
 
-            $regNo = $dataRJ['regNo'] ?? '';
+            $regNo = $dataUGD['regNo'] ?? '';
             $pasienData = !empty($regNo) ? $this->findDataMasterPasien($regNo) : [];
             $pasien = $pasienData['pasien'] ?? [];
 
@@ -268,9 +268,9 @@ new class extends Component {
             $data = [
                 'kontrol' => $kontrol,
                 'pasien' => $pasien,
-                'dataTxn' => $dataRJ,
+                'dataTxn' => $dataUGD,
                 'diagnosa' => $diagnosa,
-                'jenis' => 'rj',
+                'jenis' => 'ugd',
                 'namaRs' => $identitasRs->int_name ?? 'RSI MADINAH',
                 'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d-m-Y H:i:s'),
             ];
@@ -288,7 +288,7 @@ new class extends Component {
 
     /**
      * Helper: simpan PDF content ke disk('local') folder bpjs/ dan
-     * insert/update record rstxn_rjuploadbpjses.
+     * insert/update record rstxn_ugduploadbpjses.
      */
     private function saveBerkasBpjs(int $rjNo, int $seqFile, string $pdfContent): void
     {
@@ -296,7 +296,7 @@ new class extends Component {
         $filename = Carbon::now(config('app.timezone'))->format('dmYHis') . '.pdf';
         $filePath = 'bpjs/' . $filename;
 
-        $cekFile = DB::table('rstxn_rjuploadbpjses')
+        $cekFile = DB::table('rstxn_ugduploadbpjses')
             ->where('rj_no', $rjNo)
             ->where('seq_file', $seqFile)
             ->first();
@@ -312,12 +312,12 @@ new class extends Component {
                 if (!empty($cekFile->uploadbpjs)) {
                     Storage::disk('local')->delete('bpjs/' . $cekFile->uploadbpjs);
                 }
-                DB::table('rstxn_rjuploadbpjses')
+                DB::table('rstxn_ugduploadbpjses')
                     ->where('rj_no', $rjNo)
                     ->where('seq_file', $seqFile)
                     ->update(['uploadbpjs' => $filename, 'jenis_file' => 'pdf']);
             } else {
-                DB::table('rstxn_rjuploadbpjses')->insert([
+                DB::table('rstxn_ugduploadbpjses')->insert([
                     'rj_no' => $rjNo,
                     'seq_file' => $seqFile,
                     'uploadbpjs' => $filename,
@@ -338,7 +338,7 @@ new class extends Component {
             return;
         }
 
-        $row = DB::table('rstxn_rjuploadbpjses')
+        $row = DB::table('rstxn_ugduploadbpjses')
             ->where('rj_no', $this->berkasRjNo)
             ->where('seq_file', $slot)
             ->first();
@@ -353,7 +353,7 @@ new class extends Component {
                 if (!empty($row->uploadbpjs)) {
                     Storage::disk('local')->delete('bpjs/' . $row->uploadbpjs);
                 }
-                DB::table('rstxn_rjuploadbpjses')
+                DB::table('rstxn_ugduploadbpjses')
                     ->where('rj_no', $row->rj_no)
                     ->where('seq_file', $row->seq_file)
                     ->delete();

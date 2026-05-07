@@ -12,7 +12,7 @@ new class extends Component {
     use WithPagination, WithRenderVersioningTrait;
 
     public array $renderVersions = [];
-    protected array $renderAreas = ['daftar-rj-bulanan-toolbar'];
+    protected array $renderAreas = ['daftar-ugd-bulanan-toolbar'];
 
     /* -------------------------
      | Filter & Pagination state
@@ -34,43 +34,43 @@ new class extends Component {
     public function updatedFilterBulan(): void
     {
         $this->resetPage();
-        $this->incrementVersion('daftar-rj-bulanan-toolbar');
+        $this->incrementVersion('daftar-ugd-bulanan-toolbar');
     }
 
     public function updatedFilterKlaim(): void
     {
         $this->resetPage();
-        $this->incrementVersion('daftar-rj-bulanan-toolbar');
+        $this->incrementVersion('daftar-ugd-bulanan-toolbar');
     }
 
     public function updatedSearchKeyword(): void
     {
         $this->resetPage();
-        $this->incrementVersion('daftar-rj-bulanan-toolbar');
+        $this->incrementVersion('daftar-ugd-bulanan-toolbar');
     }
 
     public function updatedFilterStatus(): void
     {
         $this->resetPage();
-        $this->incrementVersion('daftar-rj-bulanan-toolbar');
+        $this->incrementVersion('daftar-ugd-bulanan-toolbar');
     }
 
     public function updatedFilterPoli(): void
     {
         $this->resetPage();
-        $this->incrementVersion('daftar-rj-bulanan-toolbar');
+        $this->incrementVersion('daftar-ugd-bulanan-toolbar');
     }
 
     public function updatedFilterDokter(): void
     {
         $this->resetPage();
-        $this->incrementVersion('daftar-rj-bulanan-toolbar');
+        $this->incrementVersion('daftar-ugd-bulanan-toolbar');
     }
 
     public function updatedItemsPerPage(): void
     {
         $this->resetPage();
-        $this->incrementVersion('daftar-rj-bulanan-toolbar');
+        $this->incrementVersion('daftar-ugd-bulanan-toolbar');
     }
 
     /* -------------------------
@@ -80,7 +80,7 @@ new class extends Component {
     {
         $this->reset(['searchKeyword', 'filterStatus', 'filterKlaim', 'filterPoli', 'filterDokter']);
         $this->filterBulan = Carbon::now()->format('m/Y');
-        $this->incrementVersion('daftar-rj-bulanan-toolbar');
+        $this->incrementVersion('daftar-ugd-bulanan-toolbar');
         $this->resetPage();
     }
 
@@ -96,16 +96,16 @@ new class extends Component {
      */
     private function openCreate(): void
     {
-        $this->dispatch('daftar-rj.create.open');
+        $this->dispatch('daftar-ugd.create.open');
     }
 
     public function openIdrg(string $rjNo): void
     {
-        $this->dispatch('daftar-rj.idrg.open', rjNo: $rjNo);
+        $this->dispatch('daftar-ugd.idrg.open', rjNo: $rjNo);
     }
 
     /* -------------------------
-     | Berkas BPJS — dispatch ke sibling daftar-rj-bulanan-actions
+     | Berkas BPJS — dispatch ke sibling daftar-ugd-bulanan-actions
      * ------------------------- */
     public function openBerkasBpjs(int $rjNo): void
     {
@@ -126,7 +126,7 @@ new class extends Component {
     #[On('refresh-after-rj.saved')]
     public function refreshAfterSaved(): void
     {
-        $this->incrementVersion('daftar-rj-bulanan-toolbar');
+        $this->incrementVersion('daftar-ugd-bulanan-toolbar');
         $this->resetPage();
     }
 
@@ -150,18 +150,18 @@ new class extends Component {
 
         $statusColumn = $this->isDokterOrPerawat() ? DB::raw("NVL(h.erm_status, 'A')") : DB::raw("NVL(h.rj_status, 'A')");
 
-        $labSub = DB::table('lbtxn_checkuphdrs')->select('ref_no', DB::raw('COUNT(*) as lab_status'))->where('status_rjri', 'RJ')->where('checkup_status', '!=', 'B')->groupBy('ref_no');
+        $labSub = DB::table('lbtxn_checkuphdrs')->select('ref_no', DB::raw('COUNT(*) as lab_status'))->where('status_rjri', 'UGD')->where('checkup_status', '!=', 'B')->groupBy('ref_no');
 
-        $radSub = DB::table('rstxn_rjrads')->select('rj_no', DB::raw('COUNT(*) as rad_status'))->groupBy('rj_no');
+        $radSub = DB::table('rstxn_ugdrads')->select('rj_no', DB::raw('COUNT(*) as rad_status'))->groupBy('rj_no');
 
-        $query = DB::table('rstxn_rjhdrs as h')
+        $query = DB::table('rstxn_ugdhdrs as h')
             ->join('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
             ->leftJoin('rsmst_polis as po', 'po.poli_id', '=', 'h.poli_id')
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
             ->leftJoinSub($labSub, 'lab', fn($j) => $j->on('lab.ref_no', '=', 'h.rj_no'))
             ->leftJoinSub($radSub, 'rad', fn($j) => $j->on('rad.rj_no', '=', 'h.rj_no'))
-            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.poli_id', 'po.poli_desc', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.erm_status', 'h.vno_sep', DB::raw('COALESCE(lab.lab_status, 0) as lab_status'), DB::raw('COALESCE(rad.rad_status, 0) as rad_status'), 'h.datadaftarpolirj_json', 'k.klaim_desc', 'k.klaim_status'])
+            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.poli_id', 'po.poli_desc', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.erm_status', 'h.vno_sep', DB::raw('COALESCE(lab.lab_status, 0) as lab_status'), DB::raw('COALESCE(rad.rad_status, 0) as rad_status'), 'h.datadaftarugd_json', 'k.klaim_desc', 'k.klaim_status'])
             ->whereBetween('h.rj_date', [$start, $end])
             ->orderBy('d.dr_name', 'desc')
             ->orderBy('h.rj_date', 'desc')
@@ -267,14 +267,14 @@ new class extends Component {
     {
         $search = trim($this->searchKeyword);
 
-        // ── 1. Fetch & transform rstxn_rjhdrs ────────────────────────────
+        // ── 1. Fetch & transform rstxn_ugdhdrs ────────────────────────────
         $isDokterOrPerawat = $this->isDokterOrPerawat();
         $rjRows = $this->baseQuery()
             ->get()
             ->map(function ($row) use ($isDokterOrPerawat) {
                 $row->is_booking_pending = false;
 
-                $json = json_decode($row->datadaftarpolirj_json ?? '{}', true);
+                $json = json_decode($row->datadaftarugd_json ?? '{}', true);
 
                 $fields = ['anamnesa', 'pemeriksaan', 'penilaian', 'procedure', 'diagnosis', 'perencanaan'];
                 $filled = 0;
@@ -437,10 +437,10 @@ new class extends Component {
     {
         // ✅ Range bulanan — gunakan whereBetween startOfMonth..endOfMonth
         [$start, $end] = $this->dateRange();
-        $query = DB::table('rstxn_rjhdrs')->select('rstxn_rjhdrs.dr_id', DB::raw('MAX(rsmst_doctors.dr_name) as dr_name'), 'rstxn_rjhdrs.poli_id', DB::raw('MAX(rsmst_polis.poli_desc) as poli_desc'), DB::raw('COUNT(DISTINCT rstxn_rjhdrs.rj_no) as total_pasien'))->join('rsmst_doctors', 'rsmst_doctors.dr_id', '=', 'rstxn_rjhdrs.dr_id')->join('rsmst_polis', 'rsmst_polis.poli_id', '=', 'rstxn_rjhdrs.poli_id')->whereBetween('rstxn_rjhdrs.rj_date', [$start, $end]);
+        $query = DB::table('rstxn_ugdhdrs')->select('rstxn_ugdhdrs.dr_id', DB::raw('MAX(rsmst_doctors.dr_name) as dr_name'), 'rstxn_ugdhdrs.poli_id', DB::raw('MAX(rsmst_polis.poli_desc) as poli_desc'), DB::raw('COUNT(DISTINCT rstxn_ugdhdrs.rj_no) as total_pasien'))->join('rsmst_doctors', 'rsmst_doctors.dr_id', '=', 'rstxn_ugdhdrs.dr_id')->join('rsmst_polis', 'rsmst_polis.poli_id', '=', 'rstxn_ugdhdrs.poli_id')->whereBetween('rstxn_ugdhdrs.rj_date', [$start, $end]);
 
         if (!empty($this->filterStatus)) {
-            $statusColumn = $this->isDokterOrPerawat() ? 'rstxn_rjhdrs.erm_status' : 'rstxn_rjhdrs.rj_status';
+            $statusColumn = $this->isDokterOrPerawat() ? 'rstxn_ugdhdrs.erm_status' : 'rstxn_ugdhdrs.rj_status';
             $query->where($statusColumn, $this->filterStatus);
         }
 
@@ -451,7 +451,7 @@ new class extends Component {
             });
         }
 
-        return $query->groupBy('rstxn_rjhdrs.dr_id', 'rstxn_rjhdrs.poli_id')->orderBy('poli_desc')->orderBy('dr_name')->get();
+        return $query->groupBy('rstxn_ugdhdrs.dr_id', 'rstxn_ugdhdrs.poli_id')->orderBy('poli_desc')->orderBy('dr_name')->get();
     }
 
     #[Computed]
@@ -473,10 +473,10 @@ new class extends Component {
     <header class="bg-white shadow dark:bg-gray-800">
         <div class="w-full px-4 py-2 sm:px-6 lg:px-8">
             <h2 class="text-2xl font-bold leading-tight text-gray-900 dark:text-gray-100">
-                Daftar Pasien Bulanan RJ
+                Daftar Pasien Bulanan UGD
             </h2>
             <p class="text-base text-gray-700 dark:text-gray-700">
-                List pasien rawat jalan dalam 1 bulan (filter mm/yyyy)
+                List pasien UGD dalam 1 bulan (filter mm/yyyy)
             </p>
         </div>
     </header>
@@ -487,7 +487,7 @@ new class extends Component {
             {{-- TOOLBAR --}}
             <div
                 class="sticky z-30 px-4 py-3 bg-white border-b border-gray-200 top-20 dark:bg-gray-900 dark:border-gray-700">
-                <div class="flex flex-wrap items-end gap-3" wire:key="{{ $this->renderKey('daftar-rj-bulanan-toolbar', []) }}">
+                <div class="flex flex-wrap items-end gap-3" wire:key="{{ $this->renderKey('daftar-ugd-bulanan-toolbar', []) }}">
 
                     {{-- SEARCH --}}
                     <div class="w-full sm:flex-1">
@@ -501,7 +501,7 @@ new class extends Component {
                                 </svg>
                             </div>
                             <x-text-input wire:model.live.debounce.300ms="searchKeyword" class="block w-full pl-10"
-                                placeholder="Cari No RJ / No RM / Nama Pasien..." />
+                                placeholder="Cari No UGD / No RM / Nama Pasien..." />
                         </div>
                     </div>
 
@@ -954,9 +954,9 @@ new class extends Component {
             </div>
 
             {{-- Sibling action components — listen event dispatch dari main --}}
-            <livewire:pages::transaksi.rj.daftar-rj.idrg-rj-actions wire:key="idrg-rj-actions" />
-            <livewire:pages::transaksi.rj.daftar-rj-bulanan.berkas-bpjs-rj-actions
-                wire:key="berkas-bpjs-rj-actions" />
+            <livewire:pages::transaksi.ugd.daftar-ugd.idrg-ugd-actions wire:key="idrg-ugd-actions" />
+            <livewire:pages::transaksi.rj.daftar-ugd-bulanan.berkas-bpjs-ugd-actions
+                wire:key="berkas-bpjs-ugd-actions" />
 
         </div>
     </div>
