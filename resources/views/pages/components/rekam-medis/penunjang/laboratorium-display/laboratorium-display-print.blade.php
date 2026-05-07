@@ -237,7 +237,11 @@
             ->where('poli_id', 22)
             ->where('active_status', '1')
             ->orderBy('dr_name', 'asc')
-            ->value('dr_name');
+            ->first(['dr_id', 'dr_name']);
+
+        $ttdDrJawab = !empty($drJawabLab->dr_id)
+            ? \App\Models\User::where('myuser_code', $drJawabLab->dr_id)->value('myuser_ttd_image')
+            : null;
     @endphp
 
     <table class="w-full text-[10px] mt-4 border-collapse">
@@ -251,7 +255,16 @@
             {{-- Tengah: Petugas Laboratorium --}}
             <td class="w-1/3 px-1 text-center" style="vertical-align: bottom;">
                 <p class="mb-1">Petugas Laboratorium,</p>
-                <div class="h-16"></div>
+                @php
+                    $ttdPetugas = !empty($header->emp_id)
+                        ? \App\Models\User::where('emp_id', $header->emp_id)->value('myuser_ttd_image')
+                        : null;
+                @endphp
+                @if (!empty($ttdPetugas))
+                    <img class="h-16 mx-auto" src="{{ 'storage/' . $ttdPetugas }}" alt="">
+                @else
+                    <div class="h-16"></div>
+                @endif
                 <div class="inline-block min-w-[130px] border-t border-black pt-0.5">
                     <p class="font-semibold">{{ strtoupper($header->emp_name ?? '-') }}</p>
                 </div>
@@ -260,9 +273,13 @@
             {{-- Kanan: Dokter Penanggung Jawab Lab (poli_id=22, aktif). --}}
             <td class="w-1/3 px-1 text-center" style="vertical-align: bottom;">
                 <p class="mb-1">Dokter Penanggung Jawab,</p>
-                <div class="h-16"></div>
+                @if (!empty($ttdDrJawab))
+                    <img class="h-16 mx-auto" src="{{ 'storage/' . $ttdDrJawab }}" alt="">
+                @else
+                    <div class="h-16"></div>
+                @endif
                 <div class="inline-block min-w-[130px] border-t border-black pt-0.5">
-                    <p class="font-semibold">{{ $drJawabLab ?? '-' }}</p>
+                    <p class="font-semibold">{{ $drJawabLab->dr_name ?? '-' }}</p>
                 </div>
             </td>
         </tr>

@@ -240,6 +240,12 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/transaksi/penunjang/laborat', 'pages::transaksi.penunjang.laborat.daftar-laborat')
         ->name('transaksi.penunjang.laborat');
 
+    Route::livewire('/transaksi/penunjang/laborat/lab-luar', 'pages::transaksi.penunjang.laborat.lab-luar.lab-luar')
+        ->name('transaksi.penunjang.laborat.lab-luar');
+
+    Route::livewire('/transaksi/penunjang/radiologi/upload', 'pages::transaksi.penunjang.radiologi.upload-radiologi')
+        ->name('transaksi.penunjang.radiologi.upload');
+
     // ===========================================
     // DATABASE MONITOR - MONITORING DASHBOARD
     // ===========================================

@@ -243,12 +243,33 @@ new class extends Component {
             <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Laboratorium</h3>
             <livewire:pages::transaksi.ri.emr-ri.pemeriksaan-ri.penunjang.laborat.rm-laborat-ri-actions
                 :riHdrNo="$riHdrNo" :disabled="$isFormLocked" wire:key="lab-order-ri-{{ $riHdrNo }}" />
+
+            <div class="mt-3">
+                <livewire:pages::transaksi.ri.emr-ri.pemeriksaan-ri.penunjang.laborat.rm-daftar-laborat-ri
+                    :riHdrNo="$riHdrNo" wire:key="daftar-lab-ri-{{ $riHdrNo }}" />
+            </div>
+        </div>
+
+        <div class="p-4 bg-white border border-gray-200 rounded-xl shadow-sm dark:bg-gray-900 dark:border-gray-700">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Laboratorium Luar</h3>
+            <livewire:pages::transaksi.ri.emr-ri.pemeriksaan-ri.penunjang.laborat.rm-laborat-luar-ri-actions
+                :riHdrNo="$riHdrNo" :disabled="$isFormLocked" wire:key="lab-luar-order-ri-{{ $riHdrNo }}" />
+
+            <div class="mt-3">
+                <livewire:pages::transaksi.ri.emr-ri.pemeriksaan-ri.penunjang.laborat.rm-daftar-laborat-luar-ri
+                    :riHdrNo="$riHdrNo" wire:key="daftar-lab-luar-ri-{{ $riHdrNo }}" />
+            </div>
         </div>
 
         <div class="p-4 bg-white border border-gray-200 rounded-xl shadow-sm dark:bg-gray-900 dark:border-gray-700">
             <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Radiologi</h3>
             <livewire:pages::transaksi.ri.emr-ri.pemeriksaan-ri.penunjang.radiologi.rm-radiologi-ri-actions
                 :riHdrNo="$riHdrNo" :disabled="$isFormLocked" wire:key="rad-order-ri-{{ $riHdrNo }}" />
+
+            <div class="mt-3">
+                <livewire:pages::transaksi.ri.emr-ri.pemeriksaan-ri.penunjang.radiologi.rm-daftar-radiologi-ri
+                    :riHdrNo="$riHdrNo" wire:key="daftar-rad-ri-{{ $riHdrNo }}" />
+            </div>
         </div>
 
     </div>
@@ -406,9 +427,13 @@ new class extends Component {
             </ul>
         </div>
 
-        <div x-show="subTab === 'laboratorium'" x-cloak>
+        <div x-show="subTab === 'laboratorium'" x-cloak class="space-y-4">
             <livewire:pages::components.rekam-medis.penunjang.laboratorium-display.laboratorium-display
                 :regNo="$dataDaftarRi['regNo'] ?? ''" wire:key="emr-ri.laboratorium-display-{{ $dataDaftarRi['regNo'] ?? 'new' }}" />
+
+            <livewire:pages::components.rekam-medis.penunjang.lab-luar-display.lab-luar-display
+                :regNo="$dataDaftarRi['regNo'] ?? ''"
+                wire:key="emr-ri.lab-luar-display-{{ $dataDaftarRi['regNo'] ?? 'new' }}" />
         </div>
 
         <div x-show="subTab === 'radiologi'" x-cloak>

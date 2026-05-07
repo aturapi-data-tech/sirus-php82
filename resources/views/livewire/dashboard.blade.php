@@ -69,6 +69,8 @@ new class extends Component {
 
             // ── Penunjang ──────────────────────────────────────────────
             $entry(['group' => 'Penunjang', 'groupOrder' => 9, 'order' => 1, 'route' => 'transaksi.penunjang.laborat', 'title' => 'Transaksi Laboratorium', 'desc' => 'Input hasil pemeriksaan laboratorium pasien', 'roles' => ['admin', 'laboratorium'], 'badge' => 'LAB']),
+            $entry(['group' => 'Penunjang', 'groupOrder' => 9, 'order' => 2, 'route' => 'transaksi.penunjang.laborat.lab-luar', 'title' => 'Upload Hasil Lab Luar', 'desc' => 'Upload PDF hasil lab luar yang sudah Selesai', 'roles' => ['admin', 'laboratorium'], 'badge' => 'LAB-LUAR']),
+            $entry(['group' => 'Penunjang', 'groupOrder' => 9, 'order' => 3, 'route' => 'transaksi.penunjang.radiologi.upload', 'title' => 'Upload Hasil Radiologi', 'desc' => 'Upload foto radiologi & hasil bacaan PDF', 'roles' => ['admin', 'radiologi'], 'badge' => 'RAD']),
 
             // ── Gudang ────────────────────────────────────────────────
             $entry(['group' => 'Gudang', 'groupOrder' => 10, 'order' => 1, 'route' => 'gudang.penerimaan-medis',     'title' => 'Obat dari PBF',          'desc' => 'Penerimaan obat dari PBF / Supplier (Gudang Medis)',                'roles' => ['admin', 'apoteker'], 'badge' => 'RCV']),
