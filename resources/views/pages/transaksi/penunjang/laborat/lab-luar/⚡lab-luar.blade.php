@@ -27,6 +27,7 @@ new class extends Component {
 
     public ?int $selectedCheckupNo = null;
     public ?int $selectedDtl = null;
+    public string $pdfKeterangan = '';
     public $pdfFile = null;
 
     public function updatedSearchKeyword(): void
@@ -58,7 +59,7 @@ new class extends Component {
             ->leftJoin('rsmst_doctors as d', 'h.dr_id', '=', 'd.dr_id')
             ->select(
                 'o.labout_dtl', 'o.checkup_no', 'o.labout_desc', 'o.labout_price', 'o.labout_result',
-                'o.pdf_path',
+                'o.pdf_path', 'o.keterangan',
                 'h.reg_no', 'p.reg_name',
                 'h.status_rjri', 'h.ref_no',
                 'h.checkup_status',
@@ -110,6 +111,7 @@ new class extends Component {
         $this->selectedCheckupNo = $checkupNo;
         $this->selectedDtl = $dtl;
         $this->pdfFile = null;
+        $this->pdfKeterangan = $row->keterangan ?? '';
         $this->resetValidation();
         $this->dispatch('open-modal', name: 'lab-luar-upload');
     }
@@ -120,6 +122,7 @@ new class extends Component {
         $this->selectedCheckupNo = null;
         $this->selectedDtl = null;
         $this->pdfFile = null;
+        $this->pdfKeterangan = '';
     }
 
     public function uploadHasil(): void
@@ -127,6 +130,7 @@ new class extends Component {
         $this->validate(
             [
                 'pdfFile' => 'required|file|mimes:pdf|max:5120',
+                'pdfKeterangan' => 'nullable|string|max:4000',
             ],
             [
                 'pdfFile.required' => 'File PDF harus dipilih.',
@@ -152,12 +156,14 @@ new class extends Component {
             $filename = $row->checkup_no . '_' . $row->labout_dtl . '_' . now()->format('YmdHis') . '.pdf';
             $path = $this->pdfFile->storeAs('LabLuar', $filename, 'public');
 
-            DB::transaction(function () use ($row, $path) {
+            $keterangan = trim($this->pdfKeterangan);
+            DB::transaction(function () use ($row, $path, $keterangan) {
                 DB::table('lbtxn_checkupoutdtls')
                     ->where('checkup_no', $row->checkup_no)
                     ->where('labout_dtl', $row->labout_dtl)
                     ->update([
                         'pdf_path' => $path,
+                        'keterangan' => $keterangan === '' ? null : $keterangan,
                     ]);
 
                 // Update checkup_status hdr → H (Selesai) saat PDF di-upload
@@ -255,6 +261,9 @@ new class extends Component {
                                 @if ($r->labout_result)
                                     <p class="text-xs italic text-gray-500">Catatan klinis: {{ $r->labout_result }}</p>
                                 @endif
+                                @if ($r->keterangan)
+                                    <p class="text-xs italic text-amber-700">Keterangan: {{ $r->keterangan }}</p>
+                                @endif
                             </td>
                             <td class="px-4 py-3 text-right whitespace-nowrap">
                                 @if ($r->labout_price !== null)
@@ -323,6 +332,16 @@ new class extends Component {
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
                     @enderror
                     <div wire:loading wire:target="pdfFile" class="mt-2 text-xs text-gray-500">Memuat file...</div>
+                </div>
+
+                <div>
+                    <x-input-label value="Keterangan (opsional)" />
+                    <textarea wire:model.defer="pdfKeterangan" rows="3"
+                        placeholder="contoh: PCR Covid-19 PRODIA / BTA — sample 2 dari 3 / Patologi Anatomi"
+                        class="block w-full mt-1 text-sm border-gray-300 rounded-md shadow-sm focus:border-brand-green focus:ring-brand-green dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"></textarea>
+                    @error('pdfKeterangan')
+                        <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                    @enderror
                 </div>
             </div>
             <div class="flex items-center justify-end gap-2 px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">

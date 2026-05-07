@@ -37,7 +37,7 @@ new class extends Component {
             ->join('lbtxn_checkuphdrs as h', 'o.checkup_no', '=', 'h.checkup_no')
             ->select(
                 'o.labout_dtl', 'o.checkup_no', 'o.labout_desc', 'o.labout_price',
-                'o.labout_result', 'o.labout_normal', 'o.pdf_path',
+                'o.labout_result', 'o.labout_normal', 'o.pdf_path', 'o.keterangan',
                 'h.checkup_date', 'h.checkup_status',
             )
             ->where('h.ref_no', $this->rjNo)
@@ -69,6 +69,9 @@ new class extends Component {
                         {{ $r->labout_desc }}
                         @if ($r->labout_result)
                             <p class="text-xs italic text-gray-500">Catatan: {{ $r->labout_result }}</p>
+                        @endif
+                        @if ($r->keterangan)
+                            <p class="text-xs italic text-amber-700">Keterangan: {{ $r->keterangan }}</p>
                         @endif
                     </td>
                     <td class="px-2 py-2 text-center group-hover:bg-gray-50">

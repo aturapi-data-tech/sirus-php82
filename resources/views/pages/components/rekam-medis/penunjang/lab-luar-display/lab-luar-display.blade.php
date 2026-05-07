@@ -35,7 +35,7 @@ new class extends Component {
             ->leftJoin('rsmst_pasiens as p', 'h.reg_no', '=', 'p.reg_no')
             ->select(
                 'o.labout_dtl', 'o.checkup_no', 'o.labout_desc', 'o.labout_price',
-                'o.labout_result', 'o.labout_normal', 'o.pdf_path',
+                'o.labout_result', 'o.labout_normal', 'o.pdf_path', 'o.keterangan',
                 'h.status_rjri', 'h.ref_no', 'h.checkup_status',
                 DB::raw("TO_CHAR(h.checkup_date, 'dd/mm/yyyy hh24:mi:ss') as checkup_date"),
                 'p.reg_name',
@@ -172,6 +172,11 @@ new class extends Component {
                                                         @if ($row->labout_result)
                                                             <p class="mt-1.5 text-xs italic text-gray-500">
                                                                 Catatan klinis: {{ $row->labout_result }}
+                                                            </p>
+                                                        @endif
+                                                        @if ($row->keterangan)
+                                                            <p class="mt-1 text-xs italic text-amber-700">
+                                                                Keterangan: {{ $row->keterangan }}
                                                             </p>
                                                         @endif
                                                         @if ($row->labout_normal)

@@ -6,6 +6,7 @@ use Livewire\WithFileUploads;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 new class extends Component {
     use WithPagination, WithFileUploads;
@@ -24,6 +25,7 @@ new class extends Component {
     public string $searchKeyword = '';
     public string $filterSource = 'RJ';
     public string $filterUpload = 'belum'; // '' | 'belum_foto' | 'belum_pdf' | 'belum' (any) | 'lengkap'
+    public string $filterBulan = ''; // format mm/yyyy, default = bulan ini
     public int $itemsPerPage = 15;
 
     public ?int $selectedDtl = null;
@@ -32,15 +34,23 @@ new class extends Component {
     public $fotoFile = null;
     public $pdfFile = null;
 
+    public function mount(): void
+    {
+        // Default bulan = bulan saat ini (mm/yyyy)
+        $this->filterBulan = Carbon::now()->format('m/Y');
+    }
+
     public function updatedSearchKeyword(): void { $this->resetPage(); }
     public function updatedFilterSource(): void { $this->resetPage(); }
     public function updatedFilterUpload(): void { $this->resetPage(); }
+    public function updatedFilterBulan(): void { $this->resetPage(); }
 
     public function resetFilters(): void
     {
         $this->reset(['searchKeyword']);
         $this->filterSource = 'RJ';
         $this->filterUpload = 'belum';
+        $this->filterBulan = Carbon::now()->format('m/Y');
         $this->resetPage();
     }
 
@@ -64,6 +74,7 @@ new class extends Component {
                     'm.rad_desc', 'r.rad_price',
                     'r.dr_pengirim', 'r.dr_radiologi',
                     'r.rad_upload_pdf', 'r.rad_upload_pdf_foto',
+                    'r.keterangan',
                     'r.waktu_entry',
                 );
         } elseif ($src === 'UGD') {
@@ -78,6 +89,7 @@ new class extends Component {
                     'm.rad_desc', 'r.rad_price',
                     'r.dr_pengirim', 'r.dr_radiologi',
                     'r.rad_upload_pdf', 'r.rad_upload_pdf_foto',
+                    'r.keterangan',
                     'r.waktu_entry',
                 );
         } else { // RI
@@ -92,6 +104,7 @@ new class extends Component {
                     'm.rad_desc', 'r.rirad_price as rad_price',
                     'r.dr_pengirim', 'r.dr_radiologi',
                     'r.rad_upload_pdf', 'r.rad_upload_pdf_foto',
+                    'r.keterangan',
                     'r.waktu_entry',
                 );
         }
@@ -117,6 +130,17 @@ new class extends Component {
                     ->orWhereRaw('TO_CHAR(p.reg_no) LIKE ?', ['%' . $kw . '%'])
                     ->orWhereRaw('UPPER(m.rad_desc) LIKE ?', [$up]);
             });
+        }
+
+        // Filter bulan (format mm/yyyy) → EXTRACT month + year dari waktu_entry
+        $bulan = trim($this->filterBulan);
+        if (preg_match('/^(\d{1,2})\/(\d{4})$/', $bulan, $m)) {
+            $bln = (int) $m[1];
+            $thn = (int) $m[2];
+            if ($bln >= 1 && $bln <= 12) {
+                $q->whereRaw('EXTRACT(MONTH FROM r.waktu_entry) = ?', [$bln])
+                  ->whereRaw('EXTRACT(YEAR FROM r.waktu_entry) = ?', [$thn]);
+            }
         }
 
         return $q->orderByDesc('r.waktu_entry')->orderByDesc('r.' . ($src === 'RI' ? 'rirad_no' : 'rad_dtl'))
@@ -232,6 +256,28 @@ new class extends Component {
         }
     }
 
+    /* ===============================
+     | UPDATE KETERANGAN — inline edit per row
+     =============================== */
+    public function updateKeterangan(string $source, int $dtlNo, int $refNo, string $value): void
+    {
+        $value = trim($value);
+        $payload = $value === '' ? null : $value;
+
+        try {
+            if ($source === 'RJ') {
+                DB::table('rstxn_rjrads')->where('rad_dtl', $dtlNo)->where('rj_no', $refNo)->update(['keterangan' => $payload]);
+            } elseif ($source === 'UGD') {
+                DB::table('rstxn_ugdrads')->where('rad_dtl', $dtlNo)->where('rj_no', $refNo)->update(['keterangan' => $payload]);
+            } elseif ($source === 'RI') {
+                DB::table('rstxn_riradiologs')->where('rirad_no', $dtlNo)->where('rihdr_no', $refNo)->update(['keterangan' => $payload]);
+            }
+            $this->dispatch('toast', type: 'success', message: 'Keterangan disimpan.');
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal simpan: ' . $e->getMessage());
+        }
+    }
+
     private function getSelectedRow(): ?object
     {
         if ($this->selectedSource === 'RJ') {
@@ -292,11 +338,16 @@ new class extends Component {
     <div class="px-6 pt-4 pb-6 bg-white dark:bg-gray-800 min-h-[calc(100vh-5rem-72px)]">
 
         <div class="p-4 mb-4 bg-white border border-gray-200 rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-            <div class="grid grid-cols-1 gap-3 md:grid-cols-4">
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-5">
                 <div>
                     <x-input-label value="Cari" />
                     <x-text-input wire:model.live.debounce.300ms="searchKeyword" class="block w-full mt-1"
                         placeholder="reg_no / nama / pemeriksaan" />
+                </div>
+                <div>
+                    <x-input-label value="Bulan (mm/yyyy)" />
+                    <x-text-input wire:model.live.debounce.500ms="filterBulan" class="block w-full mt-1"
+                        placeholder="contoh: 05/2026" maxlength="7" />
                 </div>
                 <div>
                     <x-input-label value="Sumber" />
@@ -334,6 +385,7 @@ new class extends Component {
                             <th class="px-4 py-3">Pasien</th>
                             <th class="px-4 py-3">Pemeriksaan</th>
                             <th class="px-4 py-3">Dr. Pengirim</th>
+                            <th class="px-4 py-3">Keterangan</th>
                             <th class="px-4 py-3 text-center">Foto</th>
                             <th class="px-4 py-3 text-center">Hasil Bacaan</th>
                         </tr>
@@ -357,6 +409,13 @@ new class extends Component {
                                 </td>
                                 <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
                                     {{ $r->dr_pengirim ?? '-' }}
+                                </td>
+                                <td class="px-4 py-3">
+                                    <input type="text"
+                                        value="{{ $r->keterangan }}"
+                                        wire:change="updateKeterangan('{{ $r->src }}', {{ $r->dtl_no }}, {{ $r->ref_no }}, $event.target.value)"
+                                        placeholder="contoh: AP/lateral, sebelum kontras"
+                                        class="block w-56 text-xs border-gray-300 rounded-md shadow-sm focus:border-brand-green focus:ring-brand-green dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100" />
                                 </td>
                                 <td class="px-4 py-3 text-center whitespace-nowrap">
                                     @if ($r->rad_upload_pdf_foto)
@@ -391,7 +450,7 @@ new class extends Component {
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-4 py-10 text-sm text-center text-gray-400 dark:text-gray-600">
+                                <td colspan="8" class="px-4 py-10 text-sm text-center text-gray-400 dark:text-gray-600">
                                     Tidak ada order radiologi.
                                 </td>
                             </tr>

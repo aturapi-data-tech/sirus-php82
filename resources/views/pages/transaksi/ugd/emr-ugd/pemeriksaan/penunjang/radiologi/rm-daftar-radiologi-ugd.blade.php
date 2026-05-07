@@ -37,7 +37,7 @@ new class extends Component {
 
         $items = DB::table('rstxn_ugdrads as r')
             ->join('rsmst_radiologis as m', 'r.rad_id', '=', 'm.rad_id')
-            ->select('r.rad_dtl', 'r.rj_no', 'r.waktu_entry', 'm.rad_desc', 'r.dr_pengirim')
+            ->select('r.rad_dtl', 'r.rj_no', 'r.waktu_entry', 'm.rad_desc', 'r.dr_pengirim', 'r.keterangan')
             ->where('r.rj_no', $this->rjNo)
             ->orderByDesc('r.waktu_entry')
             ->orderBy('r.rad_dtl')
@@ -51,7 +51,7 @@ new class extends Component {
                     'rj_no' => $first->rj_no,
                     'waktu_entry' => $first->waktu_entry,
                     'dr_pengirim' => $first->dr_pengirim,
-                    'items' => $group->pluck('rad_desc')->implode(', '),
+                    'items' => $group->map(fn($r) => $r->rad_desc . ($r->keterangan ? ' (' . $r->keterangan . ')' : ''))->implode(', '),
                 ];
             })
             ->values();
