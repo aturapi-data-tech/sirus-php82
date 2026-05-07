@@ -72,6 +72,25 @@ Route::middleware(['auth'])->group(function () {
         ->name('rawat-jalan.daftar');
 
     // ===========================================
+    // RAWAT JALAN (RJ) - DAFTAR PASIEN BULANAN
+    // ===========================================
+    Route::livewire('/rawat-jalan/daftar-bulanan', 'pages::transaksi.rj.daftar-rj-bulanan.daftar-rj-bulanan')
+        ->name('rawat-jalan.daftar-bulanan');
+
+    // Serve berkas BPJS dari disk local (storage/app/private/bpjs/{filename}).
+    // Sirus-lite legacy upload ke disk 'local' folder bpjs/. Akses via route ini
+    // supaya file private disk bisa di-stream oleh user yang sudah authenticated.
+    Route::get('/files/bpjs/{filename}', function (string $filename) {
+        $filename = basename($filename); // hard-coded basename to prevent traversal
+        $disk = \Illuminate\Support\Facades\Storage::disk('local');
+        $path = 'bpjs/' . $filename;
+        if (!$disk->exists($path)) {
+            abort(404, 'Berkas tidak ditemukan');
+        }
+        return $disk->response($path);
+    })->name('files.bpjs')->where('filename', '[A-Za-z0-9._-]+');
+
+    // ===========================================
     // RAWAT JALAN (RJ) - BOOKING RJ (Mobile JKN)
     // ===========================================
     Route::livewire('/rawat-jalan/booking', 'pages::transaksi.rj.booking-rj.booking-rj')
