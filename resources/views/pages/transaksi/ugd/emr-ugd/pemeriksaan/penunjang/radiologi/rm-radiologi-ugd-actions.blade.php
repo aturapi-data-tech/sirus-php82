@@ -111,10 +111,6 @@ new class extends Component {
 
         try {
             DB::transaction(function () use ($now) {
-                // 1. Lock row UGD dulu — JSON update harus atomik dengan insert radiologi
-                $this->lockUGDRow($this->rjNo);
-
-                // 2. Insert item radiologi
                 foreach ($this->selectedItems as $item) {
                     $radDtlNo = DB::scalar('SELECT NVL(MAX(TO_NUMBER(rad_dtl)) + 1, 1) FROM rstxn_ugdrads');
 
@@ -127,28 +123,8 @@ new class extends Component {
                         'waktu_entry' => DB::raw("TO_DATE('{$now}','dd/mm/yyyy hh24:mi:ss')"),
                     ]);
                 }
-
-                // 3. Update JSON UGD (row sudah di-lock)
-                $dataUGD = $this->findDataUGD($this->rjNo);
-
-                if (empty($dataUGD)) {
-                    throw new \RuntimeException('Data UGD tidak ditemukan saat update JSON.');
-                }
-
-                $radList = $dataUGD['pemeriksaan']['pemeriksaanPenunjang']['rad'] ?? [];
-                $radList[] = [
-                    'radHdr' => [
-                        'radHdrNo' => $this->rjNo,
-                        'radHdrDate' => $now,
-                        'radDtl' => array_values($this->selectedItems),
-                    ],
-                ];
-                $dataUGD['pemeriksaan']['pemeriksaanPenunjang']['rad'] = $radList;
-
-                $this->updateJsonUGD($this->rjNo, $dataUGD);
             });
 
-            // 4. Notify + dispatch — di luar transaksi
             $this->dispatch('toast', type: 'success', message: "{$itemCount} item radiologi berhasil dikirim.");
             $this->dispatch('radiologi-order-terkirim');
             $this->closeModal();

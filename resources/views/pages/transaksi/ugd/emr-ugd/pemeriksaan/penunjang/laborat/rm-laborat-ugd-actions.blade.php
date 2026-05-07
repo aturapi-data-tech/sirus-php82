@@ -119,10 +119,6 @@ new class extends Component {
 
         try {
             DB::transaction(function () use ($ugdData, $now) {
-                // 1. Lock row UGD dulu — JSON update harus atomik
-                $this->lockUGDRow($this->rjNo);
-
-                // 2. Insert header order laboratorium
                 $checkupNo = DB::scalar('SELECT NVL(MAX(TO_NUMBER(checkup_no)) + 1, 1) FROM lbtxn_checkuphdrs');
 
                 DB::table('lbtxn_checkuphdrs')->insert([
@@ -130,37 +126,16 @@ new class extends Component {
                     'reg_no' => $ugdData->reg_no,
                     'dr_id' => $ugdData->dr_id,
                     'checkup_date' => DB::raw("TO_DATE('{$now}','dd/mm/yyyy hh24:mi:ss')"),
-                    'status_rjri' => 'UGD', // UGD menggunakan status sama dengan RJ
+                    'status_rjri' => 'UGD',
                     'checkup_status' => 'P',
                     'ref_no' => $this->rjNo,
                 ]);
 
-                // 3. Insert item + children
                 foreach ($this->selectedItems as $item) {
                     $this->insertItemAndChildren($checkupNo, $item);
                 }
-
-                // 4. Update JSON UGD (row sudah di-lock)
-                $dataUGD = $this->findDataUGD($this->rjNo);
-
-                if (empty($dataUGD)) {
-                    throw new \RuntimeException('Data UGD tidak ditemukan saat update JSON.');
-                }
-
-                $labList = $dataUGD['pemeriksaan']['pemeriksaanPenunjang']['lab'] ?? [];
-                $labList[] = [
-                    'labHdr' => [
-                        'labHdrNo' => $checkupNo,
-                        'labHdrDate' => $now,
-                        'labDtl' => array_values($this->selectedItems),
-                    ],
-                ];
-                $dataUGD['pemeriksaan']['pemeriksaanPenunjang']['lab'] = $labList;
-
-                $this->updateJsonUGD($this->rjNo, $dataUGD);
             });
 
-            // 5. Notify + dispatch — di luar transaksi
             $this->dispatch('toast', type: 'success', message: "{$itemCount} item laboratorium berhasil dikirim.");
             $this->dispatch('laborat-order-terkirim');
             $this->closeModal();

@@ -1,5 +1,5 @@
 <?php
-// resources/views/pages/transaksi/rj/emr-rj/pemeriksaan/penunjang/laborat/daftar-lab-luar-rj.blade.php
+// resources/views/pages/transaksi/ugd/emr-ugd/pemeriksaan/penunjang/laborat/rm-daftar-laborat-luar-ugd.blade.php
 
 use Livewire\Component;
 use Livewire\Attributes\Computed;
@@ -8,9 +8,9 @@ use Illuminate\Support\Facades\DB;
 
 new class extends Component {
     /*
-     | Daftar Lab Luar untuk satu RJ — query langsung ke DB
-     | (lbtxn_checkupoutdtls JOIN lbtxn_checkuphdrs WHERE ref_no=rjNo AND status_rjri='RJ').
-     | Real-time: respon ke event 'lab-luar-rj.updated' (di-dispatch saat order baru).
+     | Daftar Lab Luar untuk satu UGD — query langsung ke DB
+     | (lbtxn_checkupoutdtls JOIN lbtxn_checkuphdrs WHERE ref_no=rjNo AND status_rjri='UGD').
+     | Real-time: respon ke event 'lab-luar-ugd.updated'.
      */
 
     public string $rjNo = '';
@@ -20,10 +20,10 @@ new class extends Component {
         $this->rjNo = $rjNo;
     }
 
-    #[On('lab-luar-rj.updated')]
+    #[On('lab-luar-ugd.updated')]
     public function refresh(): void
     {
-        // Computed property auto re-evaluate; method ini cuma trigger render.
+        // Computed property auto re-evaluate.
     }
 
     #[Computed]
@@ -41,7 +41,7 @@ new class extends Component {
                 'h.checkup_date', 'h.checkup_status',
             )
             ->where('h.ref_no', $this->rjNo)
-            ->where('h.status_rjri', 'RJ')
+            ->where('h.status_rjri', 'UGD')
             ->where('h.checkup_status', '!=', 'F')
             ->orderByDesc('h.checkup_date')
             ->orderByDesc('o.labout_dtl')

@@ -9,10 +9,10 @@ new class extends Component {
     /*
      | Display lab luar pasien — cross-kunjungan by reg_no.
      | Sumber: lbtxn_checkupoutdtls JOIN lbtxn_checkuphdrs JOIN rsmst_pasiens.
-     | Status:
-     |   labout_price NULL                    → Pending
-     |   labout_price NOT NULL & pdf_path NULL → Menunggu Hasil
-     |   pdf_path NOT NULL                    → Selesai
+     | Status (hdr.checkup_status, sama dengan lab internal):
+     |   P → Terdaftar (order baru)
+     |   C → Proses (tarif sudah di-post)
+     |   H → Selesai (PDF sudah di-upload)
      */
 
     #[Reactive]
@@ -36,11 +36,12 @@ new class extends Component {
             ->select(
                 'o.labout_dtl', 'o.checkup_no', 'o.labout_desc', 'o.labout_price',
                 'o.labout_result', 'o.labout_normal', 'o.pdf_path',
-                'h.status_rjri', 'h.ref_no',
+                'h.status_rjri', 'h.ref_no', 'h.checkup_status',
                 DB::raw("TO_CHAR(h.checkup_date, 'dd/mm/yyyy hh24:mi:ss') as checkup_date"),
                 'p.reg_name',
             )
             ->where('h.reg_no', $this->regNo)
+            ->where('h.checkup_status', '!=', 'F')
             ->orderByDesc('h.checkup_date')
             ->orderByDesc('o.labout_dtl')
             ->get();
@@ -79,24 +80,26 @@ new class extends Component {
                                     <tbody class="bg-white dark:bg-gray-800">
                                         @forelse ($this->rows as $row)
                                             @php
-                                                // Status: PDF ada → Selesai, price ada → Menunggu Hasil, kosong → Pending
-                                                $hasPdf = !empty($row->pdf_path);
-                                                $hasPrice = $row->labout_price !== null;
-                                                $isSelesai = $hasPdf;
-                                                $isMenunggu = !$hasPdf && $hasPrice;
-                                                $isPending = !$hasPrice;
+                                                // Status ngikut hdr.checkup_status (P=Terdaftar, C=Proses, H=Selesai)
+                                                $statusCode = $row->checkup_status ?? '';
+                                                $isSelesai = $statusCode === 'H';
+                                                $isProses = $statusCode === 'C';
+                                                $isTerdaftar = $statusCode === 'P';
 
                                                 $statusText = $isSelesai
                                                     ? 'Selesai'
-                                                    : ($isMenunggu
-                                                        ? 'Menunggu Hasil'
-                                                        : 'Pending');
+                                                    : ($isProses
+                                                        ? 'Proses'
+                                                        : ($isTerdaftar
+                                                            ? 'Terdaftar'
+                                                            : '-'));
                                                 $statusClass = $isSelesai
                                                     ? 'text-green-700 bg-green-100'
-                                                    : ($isMenunggu
+                                                    : ($isProses
                                                         ? 'text-amber-700 bg-amber-100'
                                                         : 'text-gray-600 bg-gray-100');
-                                                $statusIcon = $isSelesai ? '✓' : ($isMenunggu ? '⏳' : '📋');
+                                                $statusIcon = $isSelesai ? '✓' : ($isProses ? '⏳' : '📋');
+                                                $hasPdf = !empty($row->pdf_path);
 
                                                 // Layanan: RJ, UGD, RI
                                                 $layanan = $row->status_rjri ?? '';
