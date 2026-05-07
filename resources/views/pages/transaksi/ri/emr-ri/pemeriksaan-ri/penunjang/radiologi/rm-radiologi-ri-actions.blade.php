@@ -135,10 +135,7 @@ new class extends Component {
 
         try {
             DB::transaction(function () {
-                $this->lockRIRow($this->riHdrNo);
-
                 $now = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
-                $riradNos = [];
 
                 foreach ($this->selectedItems as $item) {
                     $riradNo = (int) DB::scalar('SELECT NVL(MAX(TO_NUMBER(rirad_no)) + 1, 1) FROM rstxn_riradiologs');
@@ -152,28 +149,10 @@ new class extends Component {
                         'waktu_entry' => DB::raw("TO_DATE('{$now}','dd/mm/yyyy hh24:mi:ss')"),
                         'rirad_date'  => DB::raw("TO_DATE('{$now}','dd/mm/yyyy hh24:mi:ss')"),
                     ]);
-
-                    $riradNos[] = $riradNo;
                 }
-
-                $data = $this->findDataRI($this->riHdrNo) ?? [];
-                if (empty($data)) {
-                    throw new \RuntimeException('Data RI tidak ditemukan saat akan disimpan.');
-                }
-
-                $radList = $data['pemeriksaan']['pemeriksaanPenunjang']['rad'] ?? [];
-                $radList[] = [
-                    'radHdr' => [
-                        'riradNos'   => $riradNos,
-                        'radHdrDate' => $now,
-                        'radDtl'     => array_values($this->selectedItems),
-                    ],
-                ];
-                $data['pemeriksaan']['pemeriksaanPenunjang']['rad'] = $radList;
-                $this->updateJsonRI($this->riHdrNo, $data);
             });
 
-            $this->loadRadList($this->riHdrNo);
+            $this->dispatch('radiologi-order-terkirim');
             $this->dispatch('toast', type: 'success', message: count($this->selectedItems) . ' item radiologi berhasil dikirim.');
             $this->closeModal();
         } catch (\RuntimeException $e) {

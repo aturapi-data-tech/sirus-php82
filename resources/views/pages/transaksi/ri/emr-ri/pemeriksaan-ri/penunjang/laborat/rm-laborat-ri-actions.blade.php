@@ -134,8 +134,6 @@ new class extends Component {
 
         try {
             DB::transaction(function () use ($riData) {
-                $this->lockRIRow($this->riHdrNo);
-
                 $now = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
                 $checkupNo = DB::scalar('SELECT NVL(MAX(TO_NUMBER(checkup_no)) + 1, 1) FROM lbtxn_checkuphdrs');
 
@@ -152,25 +150,9 @@ new class extends Component {
                 foreach ($this->selectedItems as $item) {
                     $this->insertItemAndChildren($checkupNo, $item);
                 }
-
-                $data = $this->findDataRI($this->riHdrNo) ?? [];
-                if (empty($data)) {
-                    throw new \RuntimeException('Data RI tidak ditemukan saat akan disimpan.');
-                }
-
-                $labList = $data['pemeriksaan']['pemeriksaanPenunjang']['lab'] ?? [];
-                $labList[] = [
-                    'labHdr' => [
-                        'labHdrNo' => $checkupNo,
-                        'labHdrDate' => $now,
-                        'labDtl' => array_values($this->selectedItems),
-                    ],
-                ];
-                $data['pemeriksaan']['pemeriksaanPenunjang']['lab'] = $labList;
-                $this->updateJsonRI($this->riHdrNo, $data);
             });
 
-            $this->loadLabList($this->riHdrNo);
+            $this->dispatch('laborat-order-terkirim');
             $this->dispatch('toast', type: 'success', message: count($this->selectedItems) . ' item lab berhasil dikirim.');
             $this->closeModal();
         } catch (\RuntimeException $e) {
