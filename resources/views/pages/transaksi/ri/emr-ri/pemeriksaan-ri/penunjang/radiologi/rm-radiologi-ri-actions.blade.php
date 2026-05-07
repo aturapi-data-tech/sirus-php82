@@ -22,6 +22,7 @@ new class extends Component {
     /* ── State Modal ── */
     public string $searchItem = '';
     public array $selectedItems = []; // [ rad_id => [...item] ]
+    public string $drId = ''; // dokter pengirim — picker dari relatedDoctors
 
     public function mount(?string $riHdrNo = null, bool $disabled = false): void
     {
@@ -53,6 +54,8 @@ new class extends Component {
 
         $this->selectedItems = [];
         $this->searchItem = '';
+        $this->drId = '';
+        $this->resetValidation();
         $this->resetPage();
         $this->incrementVersion('radiologi-order-modal-ri');
 
@@ -62,7 +65,32 @@ new class extends Component {
     public function closeModal(): void
     {
         $this->dispatch('close-modal', name: "radiologi-order-ri-{$this->riHdrNo}");
-        $this->reset(['selectedItems', 'searchItem']);
+        $this->reset(['selectedItems', 'searchItem', 'drId']);
+    }
+
+    /*
+     | Daftar dokter terkait kunjungan RI ini, sebagai LOV picker dokter pengirim.
+     | Sumber: DPJP (rstxn_rihdrs.dr_id) ∪ visite (rstxn_rivisits) ∪ jasa (rstxn_riactdocs).
+     */
+    #[Computed]
+    public function relatedDoctors()
+    {
+        if (empty($this->riHdrNo)) {
+            return collect();
+        }
+
+        $dpjp = DB::table('rstxn_rihdrs')->select('dr_id')->where('rihdr_no', $this->riHdrNo);
+        $visite = DB::table('rstxn_rivisits')->select('dr_id')->where('rihdr_no', $this->riHdrNo);
+        $jasa = DB::table('rstxn_riactdocs')->select('dr_id')->where('rihdr_no', $this->riHdrNo);
+        $unionIds = $dpjp->union($visite)->union($jasa);
+
+        return DB::table('rsmst_doctors as d')
+            ->joinSub($unionIds, 'u', 'u.dr_id', '=', 'd.dr_id')
+            ->select('d.dr_id', 'd.dr_name')
+            ->where('d.active_status', '1')
+            ->distinct()
+            ->orderBy('d.dr_name')
+            ->get();
     }
 
     /* ═══════════════════════════════════════
@@ -107,6 +135,12 @@ new class extends Component {
     ═══════════════════════════════════════ */
     public function kirimRadiologi(): void
     {
+        if (empty($this->drId)) {
+            $this->addError('drId', 'Dokter pengirim harus dipilih.');
+            $this->dispatch('toast', type: 'warning', message: 'Pilih dokter pengirim dulu.');
+            return;
+        }
+
         if (empty($this->selectedItems)) {
             $this->dispatch('toast', type: 'warning', message: 'Pilih minimal satu item pemeriksaan.');
             return;
@@ -117,18 +151,17 @@ new class extends Component {
             return;
         }
 
-        $riData = DB::table('rstxn_rihdrs')
-            ->select('reg_no', 'dr_id')
-            ->where('rihdr_no', $this->riHdrNo)
-            ->first();
-
+        $riData = DB::table('rstxn_rihdrs')->select('reg_no')->where('rihdr_no', $this->riHdrNo)->first();
         if (!$riData) {
             $this->dispatch('toast', type: 'error', message: 'Data RI tidak ditemukan.');
             return;
         }
 
+        // Resolve dr_name untuk simpan di kolom DR_PENGIRIM (VARCHAR2(1000))
+        $drPengirimName = DB::table('rsmst_doctors')->where('dr_id', $this->drId)->value('dr_name');
+
         try {
-            DB::transaction(function () {
+            DB::transaction(function () use ($drPengirimName) {
                 $now = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
 
                 foreach ($this->selectedItems as $item) {
@@ -139,6 +172,7 @@ new class extends Component {
                         'rad_id'      => $item['rad_id'],
                         'rihdr_no'    => $this->riHdrNo,
                         'rirad_price' => $item['rad_price'] ?? 0,
+                        'dr_pengirim' => $drPengirimName,
                         'dr_radiologi' => 'dr. M.A. Budi Purwito, Sp.Rad.',
                         'waktu_entry' => DB::raw("TO_DATE('{$now}','dd/mm/yyyy hh24:mi:ss')"),
                         'rirad_date'  => DB::raw("TO_DATE('{$now}','dd/mm/yyyy hh24:mi:ss')"),
@@ -247,6 +281,22 @@ new class extends Component {
                     </div>
                 </div>
             @endif
+
+            {{-- Picker Dokter Pengirim --}}
+            <div class="px-6 py-3 border-b border-gray-100 dark:border-gray-700 shrink-0">
+                <x-input-label value="Dokter Pengirim" required />
+                <select wire:model.defer="drId"
+                    class="block w-full mt-1 text-sm border-gray-300 rounded-lg shadow-sm focus:border-brand focus:ring-brand dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100">
+                    <option value="">— Pilih dokter pengirim —</option>
+                    @foreach ($this->relatedDoctors as $dr)
+                        <option value="{{ $dr->dr_id }}">{{ $dr->dr_name }}</option>
+                    @endforeach
+                </select>
+                @error('drId')
+                    <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                @enderror
+                <p class="mt-1 text-xs text-gray-500">Dokter terkait kunjungan (DPJP / visite / jasa).</p>
+            </div>
 
             {{-- Search --}}
             <div class="px-6 py-3 border-b border-gray-100 dark:border-gray-700 shrink-0">

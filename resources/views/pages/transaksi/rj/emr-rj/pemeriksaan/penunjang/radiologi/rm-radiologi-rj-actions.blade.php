@@ -121,8 +121,11 @@ new class extends Component {
             return;
         }
 
+        // Resolve nama dokter pengirim dari dr_id kunjungan RJ (dokter poli)
+        $drPengirimName = DB::table('rsmst_doctors')->where('dr_id', $rjData->dr_id)->value('dr_name');
+
         try {
-            DB::transaction(function () {
+            DB::transaction(function () use ($drPengirimName) {
                 $now = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
 
                 foreach ($this->selectedItems as $item) {
@@ -133,6 +136,7 @@ new class extends Component {
                         'rad_id' => $item['rad_id'],
                         'rj_no' => $this->rjNo,
                         'rad_price' => $item['rad_price'],
+                        'dr_pengirim' => $drPengirimName,
                         'dr_radiologi' => 'dr. M.A. Budi Purwito, Sp.Rad.',
                         'waktu_entry' => DB::raw("TO_DATE('{$now}','dd/mm/yyyy hh24:mi:ss')"),
                     ]);

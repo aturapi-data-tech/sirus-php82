@@ -106,11 +106,15 @@ new class extends Component {
             return;
         }
 
+        // Resolve nama dokter pengirim dari dr_id kunjungan UGD
+        $ugdData = DB::table('rstxn_ugdhdrs')->select('dr_id')->where('rj_no', $this->rjNo)->first();
+        $drPengirimName = $ugdData ? DB::table('rsmst_doctors')->where('dr_id', $ugdData->dr_id)->value('dr_name') : null;
+
         $now = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
         $itemCount = count($this->selectedItems);
 
         try {
-            DB::transaction(function () use ($now) {
+            DB::transaction(function () use ($now, $drPengirimName) {
                 foreach ($this->selectedItems as $item) {
                     $radDtlNo = DB::scalar('SELECT NVL(MAX(TO_NUMBER(rad_dtl)) + 1, 1) FROM rstxn_ugdrads');
 
@@ -119,6 +123,7 @@ new class extends Component {
                         'rad_id' => $item['rad_id'],
                         'rj_no' => $this->rjNo,
                         'rad_price' => $item['rad_price'],
+                        'dr_pengirim' => $drPengirimName,
                         'dr_radiologi' => 'dr. M.A. Budi Purwito, Sp.Rad.',
                         'waktu_entry' => DB::raw("TO_DATE('{$now}','dd/mm/yyyy hh24:mi:ss')"),
                     ]);

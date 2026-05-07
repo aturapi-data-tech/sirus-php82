@@ -37,7 +37,7 @@ new class extends Component {
 
         $items = DB::table('rstxn_rjrads as r')
             ->join('rsmst_radiologis as m', 'r.rad_id', '=', 'm.rad_id')
-            ->select('r.rad_dtl', 'r.rj_no', 'r.waktu_entry', 'm.rad_desc')
+            ->select('r.rad_dtl', 'r.rj_no', 'r.waktu_entry', 'm.rad_desc', 'r.dr_pengirim')
             ->where('r.rj_no', $this->rjNo)
             ->orderByDesc('r.waktu_entry')
             ->orderBy('r.rad_dtl')
@@ -50,6 +50,7 @@ new class extends Component {
                 return (object) [
                     'rj_no' => $first->rj_no,
                     'waktu_entry' => $first->waktu_entry,
+                    'dr_pengirim' => $first->dr_pengirim,
                     'items' => $group->pluck('rad_desc')->implode(', '),
                 ];
             })
@@ -64,6 +65,7 @@ new class extends Component {
             <tr>
                 <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Tgl Rad</th>
                 <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Pemeriksaan Rad</th>
+                <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase dark:text-gray-400">Dokter Pengirim</th>
                 <th class="w-24 px-4 py-3 text-xs font-medium text-center text-gray-500 uppercase dark:text-gray-400">Status</th>
             </tr>
         </thead>
@@ -76,13 +78,16 @@ new class extends Component {
                     <td class="px-2 py-2 text-gray-700 group-hover:bg-gray-50">
                         {{ $r->items }}
                     </td>
+                    <td class="px-2 py-2 text-gray-700 group-hover:bg-gray-50">
+                        {{ $r->dr_pengirim ?? '-' }}
+                    </td>
                     <td class="px-2 py-2 text-center text-gray-400 group-hover:bg-gray-50">
                         -
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="3" class="px-4 py-6 text-sm text-center text-gray-400">
+                    <td colspan="4" class="px-4 py-6 text-sm text-center text-gray-400">
                         Belum ada data radiologi
                     </td>
                 </tr>
