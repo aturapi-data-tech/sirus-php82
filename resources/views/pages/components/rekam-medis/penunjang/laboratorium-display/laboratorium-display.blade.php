@@ -128,7 +128,14 @@ new class extends Component {
                 ) AS checkup_dtl_pasien"),
             )
             ->where('reg_no', $this->regNo)
-            ->where('checkup_status', '!=', 'F'); // Sembunyikan transaksi yang dibatalkan
+            ->where('checkup_status', '!=', 'F') // Sembunyikan transaksi yang dibatalkan
+            ->whereExists(function ($q) {
+                // Hanya hdr lab internal — yang punya item di lbtxn_checkupdtls.
+                // Pure lab luar (cuma di lbtxn_checkupoutdtls) tampil di section "Riwayat Pemeriksaan Lab Luar".
+                $q->select(DB::raw(1))
+                    ->from('lbtxn_checkupdtls')
+                    ->whereColumn('lbtxn_checkupdtls.checkup_no', 'rsview_checkups.checkup_no');
+            });
 
         if ($this->filterTahun) {
             $query->whereYear('checkup_date', $this->filterTahun);
@@ -173,7 +180,21 @@ new class extends Component {
             return ['total' => 0, 'selesai' => 0, 'proses' => 0, 'terdaftar' => 0];
         }
 
-        $stats = DB::table('rsview_checkups')->select(DB::raw('COUNT(*) as total'), DB::raw("SUM(CASE WHEN checkup_status = 'H' THEN 1 ELSE 0 END) as selesai"), DB::raw("SUM(CASE WHEN checkup_status = 'C' THEN 1 ELSE 0 END) as proses"), DB::raw("SUM(CASE WHEN checkup_status = 'P' THEN 1 ELSE 0 END) as terdaftar"))->where('reg_no', $this->regNo)->where('checkup_status', '!=', 'F')->first();
+        $stats = DB::table('rsview_checkups')
+            ->select(
+                DB::raw('COUNT(*) as total'),
+                DB::raw("SUM(CASE WHEN checkup_status = 'H' THEN 1 ELSE 0 END) as selesai"),
+                DB::raw("SUM(CASE WHEN checkup_status = 'C' THEN 1 ELSE 0 END) as proses"),
+                DB::raw("SUM(CASE WHEN checkup_status = 'P' THEN 1 ELSE 0 END) as terdaftar"),
+            )
+            ->where('reg_no', $this->regNo)
+            ->where('checkup_status', '!=', 'F')
+            ->whereExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('lbtxn_checkupdtls')
+                    ->whereColumn('lbtxn_checkupdtls.checkup_no', 'rsview_checkups.checkup_no');
+            })
+            ->first();
 
         return [
             'total' => $stats->total ?? 0,
