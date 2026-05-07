@@ -37,6 +37,21 @@
             </li>
 
             <li class="mr-2">
+                <button type="button" @click="activeTab = 'lab-luar'"
+                    :class="activeTab === 'lab-luar'
+                        ?
+                        'text-brand border-brand bg-gray-100 dark:bg-gray-800 dark:text-brand dark:border-brand' :
+                        'border-transparent hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300'"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 border-b-2 rounded-t-lg transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 17v-2a4 4 0 014-4h4M5 7h14M5 11h6m-6 4h6m-6 4h6" />
+                    </svg>
+                    Lab Luar
+                </button>
+            </li>
+
+            <li class="mr-2">
                 <button type="button" @click="activeTab = 'upload'"
                     :class="activeTab === 'upload'
                         ?
@@ -64,6 +79,12 @@
     <div x-show="activeTab === 'radiologi'" x-cloak>
         <livewire:pages::components.rekam-medis.penunjang.radiologi-display.radiologi-display :regNo="$dataDaftarPoliRJ['regNo'] ?? ''"
             wire:key="emr-rj.radiologi-display-{{ $dataDaftarPoliRJ['regNo'] ?? 'new' }}" />
+    </div>
+
+    <div x-show="activeTab === 'lab-luar'" x-cloak>
+        <livewire:pages::components.rekam-medis.penunjang.lab-luar-display.lab-luar-display
+            :regNo="$dataDaftarPoliRJ['regNo'] ?? ''"
+            wire:key="emr-rj.lab-luar-display-{{ $dataDaftarPoliRJ['regNo'] ?? 'new' }}" />
     </div>
 
     <div x-show="activeTab === 'upload'" x-cloak>

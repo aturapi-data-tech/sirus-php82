@@ -123,12 +123,8 @@ new class extends Component {
 
         try {
             DB::transaction(function () {
-                // 4. Lock row JSON dulu — cegah race condition update JSON bersamaan
-                $this->lockRJRow($this->rjNo);
-
                 $now = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
 
-                // 5. Insert detail ke rstxn_rjrads (radiologi tidak punya header tersendiri)
                 foreach ($this->selectedItems as $item) {
                     $radDtlNo = DB::scalar('SELECT NVL(MAX(TO_NUMBER(rad_dtl)) + 1, 1) FROM rstxn_rjrads');
 
@@ -141,29 +137,8 @@ new class extends Component {
                         'waktu_entry' => DB::raw("TO_DATE('{$now}','dd/mm/yyyy hh24:mi:ss')"),
                     ]);
                 }
-
-                // 6. Ambil data terkini dari DB (setelah lock) + patch key rad
-                $data = $this->findDataRJ($this->rjNo) ?? [];
-
-                if (empty($data)) {
-                    throw new \RuntimeException('Data RJ tidak ditemukan saat akan disimpan.');
-                }
-
-                $radList = $data['pemeriksaan']['pemeriksaanPenunjang']['rad'] ?? [];
-                $radList[] = [
-                    'radHdr' => [
-                        'radHdrNo' => $this->rjNo,
-                        'radHdrDate' => $now,
-                        'radDtl' => array_values($this->selectedItems),
-                    ],
-                ];
-
-                $data['pemeriksaan']['pemeriksaanPenunjang']['rad'] = $radList;
-
-                $this->updateJsonRJ($this->rjNo, $data);
             });
 
-            // 7. Notify parent agar refresh dataDaftarPoliRJ — DI LUAR transaksi
             $this->dispatch('radiologi-order-terkirim');
             $this->dispatch('toast', type: 'success', message: count($this->selectedItems) . ' item radiologi berhasil dikirim.');
             $this->closeModal();
