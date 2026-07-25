@@ -40,7 +40,7 @@
                 wire:click="resetLockStatus"
                 wire:confirm="Yakin reset status kunci pasien ini menjadi bebas (null)?"
                 wire:loading.attr="disabled"
-                @disabled(!$isLocked)>
+                :disabled="!$isLocked">
                 <span wire:loading.remove wire:target="resetLockStatus">Reset Status Kunci</span>
                 <span wire:loading wire:target="resetLockStatus">
                     <x-loading />
