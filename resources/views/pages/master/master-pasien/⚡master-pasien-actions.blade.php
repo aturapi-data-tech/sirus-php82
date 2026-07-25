@@ -40,6 +40,9 @@ new class extends Component {
     public string $bpjspasienCode = '';
     public string $pasienUuid = '';
 
+    // Status kunci pasien (rsmst_pasiens.lockstatus): '' = bebas, 'RJ'/'UGD'/'RI' = terkunci di satu jalur
+    public string $lockStatus = '';
+
     public function mount(): void
     {
         $this->registerAreas(['modal', 'alamat_identitas', 'alamat_domisil']);
@@ -105,8 +108,37 @@ new class extends Component {
 
         // Menggunakan trait untuk mendapatkan data pasien
         $this->dataPasien = $this->findDataMasterPasien($regNo);
+
+        // Muat status kunci (lockstatus) langsung dari kolom DB — bukan dari JSON
+        $this->lockStatus = strtoupper((string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('lockstatus') ?? ''));
+
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'master-pasien-actions');
+    }
+
+    /**
+     * Reset status kunci pasien → null (bebaskan).
+     * Dipakai saat pasien "nyangkut" terkunci di satu jalur padahal tak ada kunjungan aktif,
+     * sehingga tak bisa didaftarkan lagi. Hanya mode edit.
+     */
+    public function resetLockStatus(): void
+    {
+        if ($this->formMode !== 'edit' || empty($this->regNo)) {
+            $this->dispatch('toast', type: 'error', message: 'Reset kunci hanya bisa dilakukan pada mode edit.');
+            return;
+        }
+
+        try {
+            DB::table('rsmst_pasiens')
+                ->where('reg_no', $this->regNo)
+                ->update(['lockstatus' => null]);
+
+            $this->lockStatus = '';
+            $this->dispatch('toast', type: 'success', message: 'Status kunci pasien berhasil di-reset (dibebaskan).');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal reset status kunci: ' . $e->getMessage());
+            \Log::error('Error resetLockStatus: ' . $e->getMessage());
+        }
     }
 
     public function closeModal(): void
@@ -117,7 +149,7 @@ new class extends Component {
 
     protected function resetFormFields(): void
     {
-        $this->reset(['dataPasien', 'regNo', 'bpjspasienCode', 'pasienUuid']);
+        $this->reset(['dataPasien', 'regNo', 'bpjspasienCode', 'pasienUuid', 'lockStatus']);
 
         $this->resetValidation();
     }
@@ -854,6 +886,7 @@ new class extends Component {
                         <x-tab active-expr="activeTab === 'kontak-keluarga'" x-on:click="activeTab = 'kontak-keluarga'">Kontak &amp; Keluarga</x-tab>
                         @if ($formMode === 'edit' && !empty($regNo))
                             <x-tab active-expr="activeTab === 'rekam-medis'" x-on:click="activeTab = 'rekam-medis'">Rekam Medis</x-tab>
+                            <x-tab active-expr="activeTab === 'status-kunci'" x-on:click="activeTab = 'status-kunci'">Status Kunci</x-tab>
                         @endif
                     </x-tabs>
 
@@ -898,6 +931,11 @@ new class extends Component {
                             <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
                                 :regNo="$regNo"
                                 wire:key="master-pasien-rekam-medis-display-{{ $regNo }}" />
+                        </div>
+
+                        {{-- TAB: STATUS KUNCI — rsmst_pasiens.lockstatus + tombol reset ke null --}}
+                        <div x-show="activeTab === 'status-kunci'" x-cloak x-transition.opacity.duration.200ms>
+                            @include('pages.master.master-pasien.master-pasien-actions-status-kunci')
                         </div>
                     @endif
 
