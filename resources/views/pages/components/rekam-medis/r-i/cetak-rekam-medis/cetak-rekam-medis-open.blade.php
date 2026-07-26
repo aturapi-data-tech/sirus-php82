@@ -684,6 +684,23 @@ new class extends Component {
                     {{-- ── Formulir Permintaan Darah — viewer (Lihat + Cetak dalam modal) ── --}}
                     <livewire:pages::components.rekam-medis.r-i.dokumen-view.permintaan-darah-view-ri :riHdrNo="(string) $riHdrNo"
                         :entries="$ri['permintaanDarahRI'] ?? []" wire:key="rm-view-permintaan-darah-{{ $riHdrNo }}" />
+
+                    {{-- ════ Surveilans HAIs — viewer per jenis infeksi (Lihat + Cetak dalam modal) ════ --}}
+                    <div class="pt-2 mt-2 text-xs font-semibold tracking-wide uppercase text-muted-soft border-t border-hairline dark:border-gray-700">
+                        Surveilans HAIs (Infeksi Terkait Pelayanan Kesehatan)
+                    </div>
+
+                    <livewire:pages::components.rekam-medis.r-i.dokumen-view.surveilans-plebitis-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['surveilansPlebitisRI'] ?? []" wire:key="rm-view-surveilans-plebitis-{{ $riHdrNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-i.dokumen-view.surveilans-isk-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['surveilansIskRI'] ?? []" wire:key="rm-view-surveilans-isk-{{ $riHdrNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-i.dokumen-view.surveilans-vap-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['surveilansVapRI'] ?? []" wire:key="rm-view-surveilans-vap-{{ $riHdrNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-i.dokumen-view.surveilans-ilo-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['surveilansIloRI'] ?? []" wire:key="rm-view-surveilans-ilo-{{ $riHdrNo }}" />
                 </div>
 
                 {{-- ════ TAB: HASIL PENUNJANG (lab / radiologi / upload — view-only) ════ --}}
