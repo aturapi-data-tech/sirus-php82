@@ -167,6 +167,22 @@ new class extends Component {
                         </div>
                     </a>
 
+                    <a href="{{ route('manajemen.rs.ri.laporan-surveilans-hais') }}" wire:navigate
+                        class="flex items-start gap-3 p-4 transition-colors bg-canvas border border-hairline group rounded-xl hover:bg-brand-green/10 dark:bg-gray-900 dark:border-gray-700 dark:hover:bg-brand-lime/15">
+                        <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-red-50 text-red-700 group-hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9 12l2 2 4-4m-8.165-5.303a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                            </svg>
+                        </span>
+                        <div class="min-w-0">
+                            <div class="font-semibold text-ink dark:text-gray-100">Laporan Surveilans HAIs</div>
+                            <div class="mt-0.5 text-xs text-muted dark:text-gray-400">
+                                Insiden rate bulanan IAD, Plebitis, ISK, VAP &amp; ILO &mdash; kasus / hari pemakaian alat
+                            </div>
+                        </div>
+                    </a>
+
                     <a href="{{ route('manajemen.transfer-antar-ruangan') }}" wire:navigate
                         class="flex items-start gap-3 p-4 transition-colors bg-canvas border border-hairline group rounded-xl hover:bg-brand-green/10 dark:bg-gray-900 dark:border-gray-700 dark:hover:bg-brand-lime/15">
                         <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-cyan-50 text-cyan-700 group-hover:bg-cyan-100 dark:bg-cyan-900/30 dark:text-cyan-300">

@@ -506,6 +506,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/manajemen/rs/ri/laporan-kunjungan-ri', 'pages::manajemen.rs.ri.laporan-kunjungan-ri.laporan-kunjungan-ri')
         ->name('manajemen.rs.ri.laporan-kunjungan-ri');
 
+    Route::livewire('/manajemen/rs/ri/laporan-surveilans-hais', 'pages::manajemen.rs.ri.laporan-surveilans-hais.laporan-surveilans-hais')
+        ->name('manajemen.rs.ri.laporan-surveilans-hais');
+
     Route::livewire('/manajemen/sirs/ri/laporan-rl-3-2-rawat-inap', 'pages::manajemen.sirs.ri.laporan-rl-3-2-rawat-inap.laporan-rl-3-2-rawat-inap')
         ->name('manajemen.sirs.ri.laporan-rl-3-2-rawat-inap');
 

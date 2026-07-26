@@ -1,8 +1,8 @@
 @props([
     // Baris antibiotik yang sudah tersimpan di form.
-    'rows' => [],
+    'barisList' => [],
     // Baris staging yang sedang disusun ($barisObat).
-    'baris' => [],
+    'barisBaru' => [],
     // Read-only (form terkunci / mode lihat).
     'formRO' => false,
     // Peta opsi dari App\Support\SurveilansHaisOptions.
@@ -15,7 +15,7 @@
      Komponen induk wajib punya method tambahAntibiotik() / hapusAntibiotik($index) /
      setNowObat($field) dan properti $barisObat. --}}
 <div>
-    @if (count($rows) > 0)
+    @if (count($barisList) > 0)
         <div class="mb-3 overflow-x-auto">
             <table class="w-full overflow-hidden text-sm border rounded-lg border-hairline dark:border-gray-700">
                 <thead class="uppercase bg-surface-soft dark:bg-gray-800 text-muted dark:text-gray-400">
@@ -32,17 +32,17 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                    @foreach ($rows as $idx => $row)
-                        <tr wire:key="obat-{{ $idx }}" class="bg-canvas dark:bg-gray-900">
-                            <td class="px-3 py-2 font-medium text-ink dark:text-gray-100">{{ $row['namaObat'] ?: '-' }}</td>
-                            <td class="px-3 py-2 font-mono text-muted">{{ $row['tglMulai'] ?: '-' }}</td>
-                            <td class="px-3 py-2 font-mono text-muted">{{ $row['tglSelesai'] ?: '-' }}</td>
-                            <td class="px-3 py-2 text-muted">{{ $row['dosis'] ?: '-' }}</td>
-                            <td class="px-3 py-2 text-muted">{{ $opsiRute[$row['rute'] ?? ''] ?? '-' }}</td>
-                            <td class="px-3 py-2 text-body dark:text-gray-300">{{ $opsiIndikasi[$row['indikasi'] ?? ''] ?? '-' }}</td>
+                    @foreach ($barisList as $indeks => $baris)
+                        <tr wire:key="obat-{{ $indeks }}" class="bg-canvas dark:bg-gray-900">
+                            <td class="px-3 py-2 font-medium text-ink dark:text-gray-100">{{ $baris['namaObat'] ?: '-' }}</td>
+                            <td class="px-3 py-2 font-mono text-muted">{{ $baris['tglMulai'] ?: '-' }}</td>
+                            <td class="px-3 py-2 font-mono text-muted">{{ $baris['tglSelesai'] ?: '-' }}</td>
+                            <td class="px-3 py-2 text-muted">{{ $baris['dosis'] ?: '-' }}</td>
+                            <td class="px-3 py-2 text-muted">{{ $opsiRute[$baris['rute'] ?? ''] ?? '-' }}</td>
+                            <td class="px-3 py-2 text-body dark:text-gray-300">{{ $opsiIndikasi[$baris['indikasi'] ?? ''] ?? '-' }}</td>
                             @unless ($formRO)
                                 <td class="px-3 py-2 text-center">
-                                    <x-outline-button type="button" wire:click.prevent="hapusAntibiotik({{ $idx }})"
+                                    <x-outline-button type="button" wire:click.prevent="hapusAntibiotik({{ $indeks }})"
                                         wire:confirm="Hapus antibiotik ini dari daftar?" wire:loading.attr="disabled"
                                         class="!px-2 !py-1 !text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30"
                                         title="Hapus dari daftar">

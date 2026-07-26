@@ -266,14 +266,14 @@ new class extends Component {
             }
 
             $list = $fresh[$this->jsonKey];
-            $idx = collect($list)->search(fn($item) => ($item['createdAt'] ?? '') === $key);
-            if ($idx === false) {
+            $indeks = collect($list)->search(fn($item) => ($item['createdAt'] ?? '') === $key);
+            if ($indeks === false) {
                 $list[] = $entry;
             } else {
-                if ($this->entryIsFinal($list[$idx])) {
+                if ($this->entryIsFinal($list[$indeks])) {
                     throw new \RuntimeException('Entri sudah terkunci, tidak dapat diubah.');
                 }
-                $list[$idx] = $entry;
+                $list[$indeks] = $entry;
             }
             $fresh[$this->jsonKey] = array_values($list);
 
@@ -427,15 +427,15 @@ new class extends Component {
 
                 $fresh = $this->findDataRI($this->riHdrNo) ?: [];
                 $list = $fresh[$this->jsonKey] ?? [];
-                $idx = collect($list)->search(fn($item) => ($item['createdAt'] ?? '') === $key);
-                if ($idx === false) {
+                $indeks = collect($list)->search(fn($item) => ($item['createdAt'] ?? '') === $key);
+                if ($indeks === false) {
                     throw new \RuntimeException('Entri tidak ditemukan.');
                 }
 
-                $list[$idx]['finalized'] = false;
-                $list[$idx]['ttd'] = '';
-                $list[$idx]['ttdCode'] = '';
-                $list[$idx]['ttdDate'] = '';
+                $list[$indeks]['finalized'] = false;
+                $list[$indeks]['ttd'] = '';
+                $list[$indeks]['ttdCode'] = '';
+                $list[$indeks]['ttdDate'] = '';
                 $fresh[$this->jsonKey] = array_values($list);
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
@@ -792,15 +792,15 @@ new class extends Component {
 ?>
 
 @php
-    $opsiCaraMasuk = App\Support\SurveilansHaisOptions::CARA_MASUK;
-    $opsiCaraKeluar = App\Support\SurveilansHaisOptions::CARA_KELUAR;
-    $opsiFaktorRisiko = App\Support\SurveilansHaisOptions::FAKTOR_RISIKO;
-    $opsiKelompokUsia = App\Support\SurveilansHaisOptions::KELOMPOK_USIA;
-    $opsiTandaBalita = App\Support\SurveilansHaisOptions::TANDA_IADP_BALITA;
-    $opsiTandaDewasa = App\Support\SurveilansHaisOptions::TANDA_IADP_DEWASA;
-    $opsiTujuan = App\Support\SurveilansHaisOptions::TUJUAN_PEMASANGAN;
-    $opsiRute = App\Support\SurveilansHaisOptions::RUTE_ANTIBIOTIK;
-    $opsiIndikasi = App\Support\SurveilansHaisOptions::INDIKASI_ANTIBIOTIK;
+    $opsiCaraMasuk = \App\Support\SurveilansHaisOptions::CARA_MASUK;
+    $opsiCaraKeluar = \App\Support\SurveilansHaisOptions::CARA_KELUAR;
+    $opsiFaktorRisiko = \App\Support\SurveilansHaisOptions::FAKTOR_RISIKO;
+    $opsiKelompokUsia = \App\Support\SurveilansHaisOptions::KELOMPOK_USIA;
+    $opsiTandaBalita = \App\Support\SurveilansHaisOptions::TANDA_IADP_BALITA;
+    $opsiTandaDewasa = \App\Support\SurveilansHaisOptions::TANDA_IADP_DEWASA;
+    $opsiTujuan = \App\Support\SurveilansHaisOptions::TUJUAN_PEMASANGAN;
+    $opsiRute = \App\Support\SurveilansHaisOptions::RUTE_ANTIBIOTIK;
+    $opsiIndikasi = \App\Support\SurveilansHaisOptions::INDIKASI_ANTIBIOTIK;
 @endphp
 
 <div>
@@ -891,6 +891,57 @@ new class extends Component {
                         </div>
                     @endif
 
+
+                    {{-- PANEL KRITERIA KASUS (gaya biru-info standar, default tertutup) --}}
+                    <div class="overflow-hidden border border-blue-200 rounded-2xl bg-blue-50 dark:bg-blue-900/20 dark:border-blue-700"
+                        x-data="{ showKriteria: false }">
+                        <button type="button" x-on:click="showKriteria = !showKriteria"
+                            class="flex items-center justify-between w-full px-4 py-2.5 text-left transition-colors hover:bg-blue-100 dark:hover:bg-blue-900/30">
+                            <span class="flex items-center gap-2 text-base font-semibold text-blue-900 dark:text-blue-200">
+                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Kriteria Kasus IAD &amp; Plebitis — Kapan Dihitung Insiden
+                            </span>
+                            <svg class="w-4 h-4 text-blue-600 transition-transform" :class="showKriteria && 'rotate-180'" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+
+                        <div x-show="showKriteria" x-collapse style="display:none" class="px-4 pb-4 space-y-3">
+                        <div>
+                            <p class="mb-1.5 text-sm font-semibold text-ink dark:text-gray-200">Definisi (HIPPII / Pedoman Surveilans PPI Kemenkes 2011):</p>
+                            <ul class="pl-5 space-y-1 text-sm list-disc text-body dark:text-gray-300">
+                                <li><b>IAD</b> = infeksi aliran darah akibat pemasangan <i>Central Line</i> / kateter umbilikal yang terjadi setelah alat terpasang <b>&gt; 2 hari kalender</b>.</li>
+                                <li><b>Plebitis</b> = inflamasi vena akibat trauma mekanik (jarum/kateter), trauma kimia (cairan infus), atau kontaminasi bakteri.</li>
+                            </ul>
+                        </div>
+                        <div class="pt-2 border-t border-blue-200/60 dark:border-blue-700/60">
+                            <p class="mb-1.5 text-sm font-semibold text-ink dark:text-gray-200">Kriteria klinis:</p>
+                            <ul class="pl-5 space-y-1 text-sm list-disc text-body dark:text-gray-300">
+                                <li><b>IAD</b> — ada patogen dari &ge;1 kultur darah <b>dan</b> minimal 1 tanda: pasien &gt;1 th (demam &gt;38&deg;C, menggigil, hipotensi); pasien &le;1 th (demam &gt;38&deg;C, hipotermi &lt;36&deg;C, apnoe/bradikardia).</li>
+                                <li><b>Plebitis</b> — bengkak, kemerahan, panas, dan nyeri pada area sekitar insersi kateter intravena.</li>
+                            </ul>
+                        </div>
+                        <div class="pt-2 border-t border-blue-200/60 dark:border-blue-700/60">
+                            <p class="mb-1.5 text-sm font-semibold text-ink dark:text-gray-200">Cara entri ini dihitung di Laporan Surveilans HAIs:</p>
+                            <ul class="pl-5 space-y-1 text-sm list-disc text-body dark:text-gray-300">
+                                <li><b>Insiden IAD</b> bila: kateter <b>vena sentral / umbilikal = Ya</b> + ada tanda sistemik dicentang (suhu &gt;38&deg;C, suhu &lt;37&deg;C, menggigil, sistolik &lt;90, apnu, nadi &gt;100) + <b>kultur darah = Ya</b>.</li>
+                                <li><b>Insiden Plebitis</b> bila: kateter <b>perifer</b> + ada tanda lokal dicentang (nyeri, merah, kalor, pus, bengkak).</li>
+                                <li>Hari pemasangan yang Anda isi jadi <b>penyebut</b>: IAD per 1000 hari CVL, Plebitis per 1000 hari IV line.</li>
+                            </ul>
+                        </div>
+                        <div class="pt-2 border-t border-blue-200/60 dark:border-blue-700/60">
+                            <p class="text-sm text-body dark:text-gray-300">
+                                <b>Penetapan kasus resmi</b> tetap gabungan <b>gejala klinis + pemeriksaan penunjang + diagnosis DPJP</b>.
+                                Isi formulir seapa adanya; angka insiden di laporan manajemen dihitung dari centangan ini dan
+                                tetap perlu diverifikasi IPCN sebelum dilaporkan keluar.
+                            </p>
+                        </div>
+                        </div>
+                    </div>
+
                     @php $formRO = $isFormLocked || $viewOnly; @endphp
 
                     <fieldset @disabled($formRO) class="space-y-4">
@@ -962,8 +1013,8 @@ new class extends Component {
                                                 </tr>
                                             </thead>
                                             <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                                                @foreach ($daftarRawat as $idx => $baris)
-                                                    <tr wire:key="rawat-{{ $idx }}" class="bg-canvas dark:bg-gray-900">
+                                                @foreach ($daftarRawat as $indeks => $baris)
+                                                    <tr wire:key="rawat-{{ $indeks }}" class="bg-canvas dark:bg-gray-900">
                                                         <td class="px-3 py-2 font-medium text-ink dark:text-gray-100">
                                                             {{ $baris['ruang'] ?: '-' }}{{ !empty($baris['bedNo']) ? ' — Bed ' . $baris['bedNo'] : '' }}
                                                         </td>
@@ -972,7 +1023,7 @@ new class extends Component {
                                                         <td class="px-3 py-2 text-body dark:text-gray-300">{{ $baris['dokter'] ?: '-' }}</td>
                                                         @unless ($formRO)
                                                             <td class="px-3 py-2 text-center">
-                                                                <x-outline-button type="button" wire:click.prevent="hapusTempatDirawat({{ $idx }})"
+                                                                <x-outline-button type="button" wire:click.prevent="hapusTempatDirawat({{ $indeks }})"
                                                                     wire:confirm="Hapus ruang perawatan ini dari daftar?" wire:loading.attr="disabled"
                                                                     class="!px-2 !py-1 !text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30"
                                                                     title="Hapus dari daftar">
@@ -1107,14 +1158,14 @@ new class extends Component {
                                                 </tr>
                                             </thead>
                                             <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                                                @foreach ($daftarPasang as $idx => $baris)
+                                                @foreach ($daftarPasang as $indeks => $baris)
                                                     @php
                                                         $tandaBaris = collect($opsiTanda ?: ($opsiTandaBalita + $opsiTandaDewasa))
                                                             ->filter(fn($lbl, $k) => !empty($baris['tanda'][$k]))
                                                             ->values()
                                                             ->implode(', ');
                                                     @endphp
-                                                    <tr wire:key="pasang-{{ $idx }}" class="align-top bg-canvas dark:bg-gray-900">
+                                                    <tr wire:key="pasang-{{ $indeks }}" class="align-top bg-canvas dark:bg-gray-900">
                                                         <td class="px-3 py-2 font-medium text-ink dark:text-gray-100">{{ $baris['lokasi'] ?: '-' }}</td>
                                                         <td class="px-3 py-2 font-mono text-muted">{{ $baris['tglMulai'] ?: '-' }}</td>
                                                         <td class="px-3 py-2 font-mono text-muted">{{ $baris['tglSelesai'] ?: '-' }}</td>
@@ -1122,7 +1173,7 @@ new class extends Component {
                                                         <td class="px-3 py-2 text-body dark:text-gray-300">{{ $tandaBaris ?: '-' }}</td>
                                                         @unless ($formRO)
                                                             <td class="px-3 py-2 text-center">
-                                                                <x-outline-button type="button" wire:click.prevent="hapusPemasangan({{ $idx }})"
+                                                                <x-outline-button type="button" wire:click.prevent="hapusPemasangan({{ $indeks }})"
                                                                     wire:confirm="Hapus baris pemasangan ini dari daftar?" wire:loading.attr="disabled"
                                                                     class="!px-2 !py-1 !text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30"
                                                                     title="Hapus dari daftar">
@@ -1218,8 +1269,8 @@ new class extends Component {
                                         <x-toggle wire:model="newForm.kulturDarah" trueValue="Ya" falseValue="Tidak"
                                             :label="filled($newForm['kulturDarah'] ?? null) ? $newForm['kulturDarah'] : 'Belum diisi'" :disabled="$formRO" />
                                     </div>
-                                    <x-surveilans.kultur-list list="kulturDarahHasil" title="Hasil Kultur Darah"
-                                        :rows="$newForm['kulturDarahHasil'] ?? []" :baris="$barisKultur['kulturDarahHasil'] ?? []"
+                                    <x-surveilans.kultur-list namaDaftar="kulturDarahHasil" title="Hasil Kultur Darah"
+                                        :barisList="$newForm['kulturDarahHasil'] ?? []" :barisBaru="$barisKultur['kulturDarahHasil'] ?? []"
                                         :formRO="$formRO" hasilLabel="Hasil" hasilPlaceholder="Hasil kultur darah"
                                         kosongTeks="Belum ada hasil kultur darah." />
                                 </div>
@@ -1229,8 +1280,8 @@ new class extends Component {
                                         <x-toggle wire:model="newForm.kulturPus" trueValue="Ya" falseValue="Tidak"
                                             :label="filled($newForm['kulturPus'] ?? null) ? $newForm['kulturPus'] : 'Belum diisi'" :disabled="$formRO" />
                                     </div>
-                                    <x-surveilans.kultur-list list="kulturPusHasil" title="Hasil Kultur Pus"
-                                        :rows="$newForm['kulturPusHasil'] ?? []" :baris="$barisKultur['kulturPusHasil'] ?? []"
+                                    <x-surveilans.kultur-list namaDaftar="kulturPusHasil" title="Hasil Kultur Pus"
+                                        :barisList="$newForm['kulturPusHasil'] ?? []" :barisBaru="$barisKultur['kulturPusHasil'] ?? []"
                                         :formRO="$formRO" hasilLabel="Hasil" hasilPlaceholder="Hasil kultur pus"
                                         kosongTeks="Belum ada hasil kultur pus." />
                                 </div>
@@ -1245,7 +1296,7 @@ new class extends Component {
                                     :label="filled($newForm['adaAntibiotik'] ?? null) ? $newForm['adaAntibiotik'] : 'Belum diisi'" :disabled="$formRO" />
                             </div>
                             <div class="mt-3">
-                                <x-surveilans.antibiotik-list :rows="$newForm['antibiotik'] ?? []" :baris="$barisObat"
+                                <x-surveilans.antibiotik-list :barisList="$newForm['antibiotik'] ?? []" :barisBaru="$barisObat"
                                     :formRO="$formRO" :opsiRute="$opsiRute" :opsiIndikasi="$opsiIndikasi" />
                             </div>
                         </x-border-form>

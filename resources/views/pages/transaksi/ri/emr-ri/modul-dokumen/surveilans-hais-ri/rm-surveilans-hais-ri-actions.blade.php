@@ -28,7 +28,7 @@ new class extends Component {
         ['key' => 'ilo', 'label' => 'Infeksi Luka Operasi', 'kelompok' => 'Infeksi daerah operasi', 'pengisi' => 'IPCLN / Perawat ruangan + tim OK', 'ket' => 'Data operasi (jenis, ASA, lama, implan), pemantauan luka hari ke-1 s/d 17, kultur', 'icon' => 'M13 10V3L4 14h7v7l9-11h-7z'],
     ];
 
-    $infoMap = collect($subForms)->keyBy('key')->map(fn($sub) => ['label' => $sub['label'], 'kelompok' => $sub['kelompok'], 'pengisi' => $sub['pengisi'], 'ket' => $sub['ket']]);
+    $infoMap = collect($subForms)->keyBy('key')->map(fn($subForm) => ['label' => $subForm['label'], 'kelompok' => $subForm['kelompok'], 'pengisi' => $subForm['pengisi'], 'ket' => $subForm['ket']]);
 @endphp
 
 <div x-data="{ subTab: 'plebitis', showGuide: false, info: @js($infoMap) }">
@@ -54,11 +54,11 @@ new class extends Component {
             <div>
                 <p class="mb-1.5 text-sm font-semibold text-ink dark:text-gray-200">Jenis surveilans (satu modul per jenis infeksi):</p>
                 <ol class="space-y-1 text-sm text-body dark:text-gray-300 list-decimal pl-5">
-                    @foreach ($subForms as $sub)
+                    @foreach ($subForms as $subForm)
                         <li>
-                            <button type="button" x-on:click="subTab = '{{ $sub['key'] }}'; showGuide = false"
-                                class="font-medium text-blue-700 underline-offset-2 hover:underline dark:text-blue-300">{{ $sub['label'] }}</button>
-                            <span class="text-muted dark:text-gray-400"> — {{ $sub['pengisi'] }} · <em>{{ $sub['kelompok'] }}</em>: {{ $sub['ket'] }}</span>
+                            <button type="button" x-on:click="subTab = '{{ $subForm['key'] }}'; showGuide = false"
+                                class="font-medium text-blue-700 underline-offset-2 hover:underline dark:text-blue-300">{{ $subForm['label'] }}</button>
+                            <span class="text-muted dark:text-gray-400"> — {{ $subForm['pengisi'] }} · <em>{{ $subForm['kelompok'] }}</em>: {{ $subForm['ket'] }}</span>
                         </li>
                     @endforeach
                 </ol>
@@ -73,6 +73,11 @@ new class extends Component {
                     <li>Klik <b>Simpan Draft</b> untuk mencicil; pantauan bisa dilanjutkan hari berikutnya lewat tombol <b>Lanjut Isi</b>.</li>
                     <li><b>Tanda Tangan Petugas</b> adalah aksi terakhir — sekaligus <b>mengunci</b> entri. Setelah terkunci hanya bisa Lihat / Cetak.</li>
                     <li>Satu pasien boleh punya lebih dari satu entri (mis. pemasangan ulang / operasi berulang).</li>
+                    <li>Ragu sebuah temuan dihitung insiden atau bukan? Buka panel <b>"Kriteria Kasus … — Kapan Dihitung Insiden"</b>
+                        di dalam formulir masing-masing; di situ ada definisi, kriteria klinis, dan centangan mana yang membuat
+                        entri terhitung sebagai insiden di laporan.</li>
+                    <li>Rekap angkanya (insiden rate per 1000 hari pemakaian alat) tampil di menu
+                        <b>Manajemen &rarr; Indikator Pelayanan &rarr; Laporan Surveilans HAIs</b>.</li>
                 </ul>
             </div>
         </div>
@@ -80,13 +85,13 @@ new class extends Component {
 
     {{-- ══ SUB-NAV ══ --}}
     <x-tabs variant="chip" class="mb-3">
-        @foreach ($subForms as $sub)
-            <x-tab active-expr="subTab === '{{ $sub['key'] }}'" x-on:click="subTab = '{{ $sub['key'] }}'"
+        @foreach ($subForms as $subForm)
+            <x-tab active-expr="subTab === '{{ $subForm['key'] }}'" x-on:click="subTab = '{{ $subForm['key'] }}'"
                 class="inline-flex items-center gap-2">
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="{{ $sub['icon'] }}" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="{{ $subForm['icon'] }}" />
                 </svg>
-                {{ $sub['label'] }}
+                {{ $subForm['label'] }}
             </x-tab>
         @endforeach
     </x-tabs>
