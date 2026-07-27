@@ -67,8 +67,8 @@
             <td class="lbl">Kelompok Usia</td><td>{{ $labelDari('kelompokUsia', $form['kelompokUsia'] ?? null) }}</td>
         </tr>
         <tr>
-            <td class="lbl">Cara Masuk RS</td><td>{{ $labelDari('caraMasuk', $form['caraMasuk'] ?? null) }}</td>
-            <td class="lbl">Cara Keluar RS</td><td>{{ $labelDari('caraKeluar', $form['caraKeluar'] ?? null) }}</td>
+            <td class="lbl">Cara Masuk RS</td><td>{{ \App\Support\AdmisiPulangRI::caraMasuk($data['dataRi'] ?? []) }}</td>
+            <td class="lbl">Cara Keluar RS</td><td>{{ \App\Support\AdmisiPulangRI::caraKeluar($data['dataRi'] ?? []) }}</td>
         </tr>
         <tr>
             <td class="lbl">Diagnosis Akhir</td><td colspan="3">{{ $nilai('diagnosisAkhir') }}</td>
@@ -110,14 +110,16 @@
     @if ($barisPasang->isNotEmpty())
         <table class="sv" style="margin-top:4px;">
             <tr>
-                <th style="width:22%">Lokasi</th>
-                <th style="width:19%">Tgl Pasang</th>
-                <th style="width:19%">s/d Tgl Lepas</th>
+                <th style="width:16%">Jenis Akses</th>
+                <th style="width:20%">Lokasi</th>
+                <th style="width:17%">Tgl Pasang</th>
+                <th style="width:17%">s/d Tgl Lepas</th>
                 <th style="width:8%">Hari Ke</th>
                 <th>Tanda Infeksi</th>
             </tr>
             @foreach ($barisPasang as $baris)
                 <tr>
+                    <td>{{ $labelDari('jenisAkses', $baris['jenisAkses'] ?? null) }}</td>
                     <td>{{ $baris['lokasi'] ?: '-' }}</td>
                     <td>{{ $baris['tglMulai'] ?: '-' }}</td>
                     <td>{{ $baris['tglSelesai'] ?: '-' }}</td>

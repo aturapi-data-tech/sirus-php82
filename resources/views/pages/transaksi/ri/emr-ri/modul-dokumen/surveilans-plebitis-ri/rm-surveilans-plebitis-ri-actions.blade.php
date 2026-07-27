@@ -83,8 +83,6 @@ new class extends Component {
             // ── Data dasar surveilans ──
             'tanggal' => '',
             'diagnosisAkhir' => '',
-            'caraMasuk' => '',
-            'caraKeluar' => '',
             'tempatDirawat' => [],
             'faktorRisiko' => array_fill_keys(array_keys(SurveilansHaisOptions::FAKTOR_RISIKO), false),
 
@@ -112,6 +110,23 @@ new class extends Component {
             'ttdCode' => '',
             'ttdDate' => '',
         ];
+    }
+
+    /**
+     * Lengkapi entri tersimpan dengan key yang belum ada saat record itu dibuat
+     * (mis. `jenisAkses` per baris pemasangan) — normalisasi di loader, bukan
+     * ditambal null-coalesce di blade.
+     */
+    private function normalisasiEntri(array $entri): array
+    {
+        $entri = array_replace_recursive($this->defaultForm(), $entri);
+
+        $entri['pemasangan'] = array_map(
+            fn($baris) => array_replace_recursive($this->defaultBarisPasang(), is_array($baris) ? $baris : []),
+            $entri['pemasangan'] ?? [],
+        );
+
+        return $entri;
     }
 
     /* ===============================
@@ -358,7 +373,7 @@ new class extends Component {
      =============================== */
     private function hydrateFormFromEntry(array $entri, string $key): void
     {
-        $this->newForm = array_replace_recursive($this->defaultForm(), $entri);
+        $this->newForm = $this->normalisasiEntri($entri);
         $this->editingKey = $key;
         $this->resetValidation();
         $this->incrementVersion('modal-surveilans-plebitis-ri');
@@ -576,6 +591,9 @@ new class extends Component {
     private function defaultBarisPasang(): array
     {
         return [
+            // Penentu penyebut di Laporan Surveilans HAIs: sentral/umbilikal → hari CVL
+            // (basis IAD), perifer → hari IV line (basis plebitis).
+            'jenisAkses' => '',
             'lokasi' => '',
             'tglMulai' => '',
             'tglSelesai' => '',
@@ -607,6 +625,11 @@ new class extends Component {
         }
         if (!filled($this->barisPasang['lokasi'] ?? null) && !filled($this->barisPasang['tglMulai'] ?? null)) {
             $this->dispatch('toast', type: 'error', message: 'Isi lokasi pemasangan terlebih dahulu.');
+            return;
+        }
+        // Wajib: jenis akses menentukan baris ini masuk penyebut IAD (hari CVL) atau plebitis (hari IV line).
+        if (!filled($this->barisPasang['jenisAkses'] ?? null)) {
+            $this->dispatch('toast', type: 'error', message: 'Pilih jenis akses (perifer / sentral / umbilikal) terlebih dahulu.');
             return;
         }
 
@@ -774,7 +797,7 @@ new class extends Component {
             $data = array_merge($pasien, [
                 'ttdPath' => $ttdPath,
                 'dataRi' => $this->dataDaftarRi,
-                'form' => array_replace_recursive($this->defaultForm(), $entri),
+                'form' => $this->normalisasiEntri($entri),
                 'opsiLabel' => SurveilansHaisOptions::labels(),
                 'identitasRs' => $identitasRs,
                 'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
@@ -792,10 +815,11 @@ new class extends Component {
 ?>
 
 @php
-    $opsiCaraMasuk = \App\Support\SurveilansHaisOptions::CARA_MASUK;
-    $opsiCaraKeluar = \App\Support\SurveilansHaisOptions::CARA_KELUAR;
+    $caraMasukRi = \App\Support\AdmisiPulangRI::caraMasuk($dataDaftarRi ?? []);
+    $caraKeluarRi = \App\Support\AdmisiPulangRI::caraKeluar($dataDaftarRi ?? []);
     $opsiFaktorRisiko = \App\Support\SurveilansHaisOptions::FAKTOR_RISIKO;
     $opsiKelompokUsia = \App\Support\SurveilansHaisOptions::KELOMPOK_USIA;
+    $opsiJenisAkses = \App\Support\SurveilansHaisOptions::JENIS_AKSES;
     $opsiTandaBalita = \App\Support\SurveilansHaisOptions::TANDA_IADP_BALITA;
     $opsiTandaDewasa = \App\Support\SurveilansHaisOptions::TANDA_IADP_DEWASA;
     $opsiTujuan = \App\Support\SurveilansHaisOptions::TUJUAN_PEMASANGAN;
@@ -927,9 +951,10 @@ new class extends Component {
                         <div class="pt-2 border-t border-blue-200/60 dark:border-blue-700/60">
                             <p class="mb-1.5 text-sm font-semibold text-ink dark:text-gray-200">Cara entri ini dihitung di Laporan Surveilans HAIs:</p>
                             <ul class="pl-5 space-y-1 text-sm list-disc text-body dark:text-gray-300">
-                                <li><b>Insiden IAD</b> bila: kateter <b>vena sentral / umbilikal = Ya</b> + ada tanda sistemik dicentang (suhu &gt;38&deg;C, suhu &lt;37&deg;C, menggigil, sistolik &lt;90, apnu, nadi &gt;100) + <b>kultur darah = Ya</b>.</li>
-                                <li><b>Insiden Plebitis</b> bila: kateter <b>perifer</b> + ada tanda lokal dicentang (nyeri, merah, kalor, pus, bengkak).</li>
-                                <li>Hari pemasangan yang Anda isi jadi <b>penyebut</b>: IAD per 1000 hari CVL, Plebitis per 1000 hari IV line.</li>
+                                <li>Yang dipakai adalah <b>Jenis Akses per baris pemasangan</b> (bukan toggle di atas): baris <b>sentral/umbilikal</b> masuk hitungan IAD &amp; hari CVL, baris <b>perifer</b> masuk hitungan plebitis &amp; hari IV line. Satu entri boleh memuat keduanya.</li>
+                                <li><b>Insiden IAD</b> bila: ada baris akses <b>sentral/umbilikal</b> yang terpasang <b>&ge; 3 hari kalender</b> (hari pasang = hari ke-1) + ada tanda sistemik dicentang (suhu &gt;38&deg;C, suhu &lt;37&deg;C, menggigil, sistolik &lt;90, apnu, nadi &gt;100) + <b>kultur darah = Ya</b>.</li>
+                                <li><b>Insiden Plebitis</b> bila: ada baris akses <b>perifer</b> dengan tanda lokal dicentang (nyeri, merah, kalor, pus, bengkak) — tanpa syarat lama pemasangan.</li>
+                                <li>Tanggal pasang/lepas di sini dipakai untuk <b>syarat &ge;3 hari</b> dan menentukan bulan kasus. <b>Penyebutnya</b> (hari CVL &amp; hari IV line) diambil dari <b>Observasi &rarr; Alat Invasif</b>, yang diisi perawat ruangan untuk semua pasien terpasang alat — pastikan entri di sana juga ada.</li>
                             </ul>
                         </div>
                         <div class="pt-2 border-t border-blue-200/60 dark:border-blue-700/60">
@@ -958,23 +983,21 @@ new class extends Component {
                                     </div>
                                     <x-input-error :messages="$errors->get('newForm.tanggal')" class="mt-1" />
                                 </div>
+                                {{-- Cara masuk & keluar TIDAK diketik ulang — diturunkan dari alur induk
+                                     (pendaftaran RI & Perencanaan → Tindak Lanjut). --}}
                                 <div>
                                     <x-input-label value="Cara Masuk RS" />
-                                    <x-select-input wire:model="newForm.caraMasuk" class="w-full mt-1">
-                                        <option value="">—</option>
-                                        @foreach ($opsiCaraMasuk as $key => $label)
-                                            <option value="{{ $key }}">{{ $label }}</option>
-                                        @endforeach
-                                    </x-select-input>
+                                    <div class="w-full px-3 py-2 mt-1 text-sm border rounded-lg bg-surface-soft border-hairline text-body dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
+                                        {{ $caraMasukRi }}
+                                    </div>
+                                    <p class="mt-1 text-xs text-muted dark:text-gray-400">Otomatis dari pendaftaran RI.</p>
                                 </div>
                                 <div>
                                     <x-input-label value="Cara Keluar RS" />
-                                    <x-select-input wire:model="newForm.caraKeluar" class="w-full mt-1">
-                                        <option value="">—</option>
-                                        @foreach ($opsiCaraKeluar as $key => $label)
-                                            <option value="{{ $key }}">{{ $label }}</option>
-                                        @endforeach
-                                    </x-select-input>
+                                    <div class="w-full px-3 py-2 mt-1 text-sm border rounded-lg bg-surface-soft border-hairline text-body dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
+                                        {{ $caraKeluarRi }}
+                                    </div>
+                                    <p class="mt-1 text-xs text-muted dark:text-gray-400">Otomatis dari Perencanaan &rarr; Tindak Lanjut saat pasien pulang.</p>
                                 </div>
                                 <div>
                                     <x-input-label value="Kelompok Usia *" />
@@ -1147,6 +1170,7 @@ new class extends Component {
                                         <table class="w-full overflow-hidden text-sm border rounded-lg border-hairline dark:border-gray-700">
                                             <thead class="uppercase bg-surface-soft dark:bg-gray-800 text-muted dark:text-gray-400">
                                                 <tr>
+                                                    <th class="px-3 py-2 text-left">Jenis Akses</th>
                                                     <th class="px-3 py-2 text-left">Lokasi</th>
                                                     <th class="px-3 py-2 text-left">Tgl Pasang</th>
                                                     <th class="px-3 py-2 text-left">s/d Tgl Lepas</th>
@@ -1166,6 +1190,7 @@ new class extends Component {
                                                             ->implode(', ');
                                                     @endphp
                                                     <tr wire:key="pasang-{{ $indeks }}" class="align-top bg-canvas dark:bg-gray-900">
+                                                        <td class="px-3 py-2 text-body dark:text-gray-300">{{ $opsiJenisAkses[$baris['jenisAkses']] ?? '-' }}</td>
                                                         <td class="px-3 py-2 font-medium text-ink dark:text-gray-100">{{ $baris['lokasi'] ?: '-' }}</td>
                                                         <td class="px-3 py-2 font-mono text-muted">{{ $baris['tglMulai'] ?: '-' }}</td>
                                                         <td class="px-3 py-2 font-mono text-muted">{{ $baris['tglSelesai'] ?: '-' }}</td>
@@ -1198,24 +1223,33 @@ new class extends Component {
                                         <p class="mb-3 text-sm font-semibold tracking-wide uppercase text-ink dark:text-white">Tambah Baris Pemasangan</p>
                                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-12">
                                             <div class="sm:col-span-4">
+                                                <x-input-label value="Jenis Akses" class="text-xs" />
+                                                <x-select-input wire:model="barisPasang.jenisAkses" class="w-full mt-1">
+                                                    <option value="">-- pilih --</option>
+                                                    @foreach ($opsiJenisAkses as $key => $label)
+                                                        <option value="{{ $key }}">{{ $label }}</option>
+                                                    @endforeach
+                                                </x-select-input>
+                                            </div>
+                                            <div class="sm:col-span-8">
                                                 <x-input-label value="Lokasi" class="text-xs" />
                                                 <x-text-input wire:model="barisPasang.lokasi" class="w-full mt-1" placeholder="mis. vena metacarpal dextra" />
                                             </div>
-                                            <div class="sm:col-span-3">
+                                            <div class="sm:col-span-4">
                                                 <x-input-label value="Tgl Pasang" class="text-xs" />
                                                 <div class="flex gap-1 mt-1">
                                                     <x-text-input wire:model="barisPasang.tglMulai" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
                                                     <x-now-button wire:click="setNowPasang('tglMulai')" />
                                                 </div>
                                             </div>
-                                            <div class="sm:col-span-3">
+                                            <div class="sm:col-span-4">
                                                 <x-input-label value="s/d Tgl Lepas" class="text-xs" />
                                                 <div class="flex gap-1 mt-1">
                                                     <x-text-input wire:model="barisPasang.tglSelesai" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
                                                     <x-now-button wire:click="setNowPasang('tglSelesai')" />
                                                 </div>
                                             </div>
-                                            <div class="sm:col-span-2">
+                                            <div class="sm:col-span-4">
                                                 <x-input-label value="Hari Ke" class="text-xs" />
                                                 <x-text-input wire:model="barisPasang.hariKe" class="w-full mt-1" placeholder="mis. 3" />
                                             </div>

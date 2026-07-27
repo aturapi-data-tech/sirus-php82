@@ -19,6 +19,7 @@ new class extends Component {
         'obat-cairan' => false,
         'pengeluaran' => false,
         'oksigen' => false,
+        'alat-invasif' => false,
         'ttv' => false,
     ];
 
@@ -62,6 +63,10 @@ new class extends Component {
             'pemakaianOksigenTab' => 'Pemakaian Oksigen',
             'pemakaianOksigenData' => [],
         ];
+        $this->dataDaftarRi['observasi']['alatInvasif'] ??= [
+            'alatInvasifTab' => 'Alat Invasif',
+            'alatInvasifData' => [],
+        ];
         $this->dataDaftarRi['observasi']['observasiLanjutan'] ??= [
             'tandaVitalTab' => 'Observasi Lanjutan',
             'tandaVital' => [],
@@ -74,6 +79,7 @@ new class extends Component {
         $this->dispatch('open-rm-obat-dan-cairan-ri', $riHdrNo);
         $this->dispatch('open-observasi-lanjutan-ri', $riHdrNo);
         $this->dispatch('open-pemakaian-oksigen-ri', $riHdrNo);
+        $this->dispatch('open-alat-invasif-ri', $riHdrNo);
         $this->dispatch('open-pengeluaran-cairan-ri', $riHdrNo);
 
         $this->incrementVersion('modal-observasi-ri');
@@ -84,7 +90,7 @@ new class extends Component {
         $this->resetVersion();
         $this->isFormLocked = false;
         $this->dataDaftarRi = [];
-        $this->subDirty = ['obat-cairan' => false, 'pengeluaran' => false, 'oksigen' => false, 'ttv' => false];
+        $this->subDirty = ['obat-cairan' => false, 'pengeluaran' => false, 'oksigen' => false, 'alat-invasif' => false, 'ttv' => false];
     }
 
     /**
@@ -100,6 +106,7 @@ new class extends Component {
             'obat-cairan' => 'save-rm-obat-dan-cairan-ri',
             'pengeluaran' => 'save-rm-pengeluaran-cairan-ri',
             'oksigen' => 'save-rm-pemakaian-oksigen-ri',
+            'alat-invasif' => 'save-rm-alat-invasif-ri',
             'ttv' => 'save-rm-observasi-lanjutan-ri',
         ];
 
@@ -129,6 +136,11 @@ new class extends Component {
     public function getCountOksigenProperty(): int
     {
         return count($this->dataDaftarRi['observasi']['pemakaianOksigen']['pemakaianOksigenData'] ?? []);
+    }
+
+    public function getCountAlatInvasifProperty(): int
+    {
+        return count($this->dataDaftarRi['observasi']['alatInvasif']['alatInvasifData'] ?? []);
     }
 
     public function getCountTTVProperty(): int
@@ -165,6 +177,7 @@ new class extends Component {
             'obat-cairan': 'Pemberian Obat & Cairan',
             'pengeluaran': 'Pengeluaran Cairan',
             'oksigen': 'Pemakaian Oksigen',
+            'alat-invasif': 'Alat Invasif',
             'ttv': 'Observasi Lanjutan',
         },
         markDirty() {
@@ -225,6 +238,13 @@ new class extends Component {
                                 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z',
                         ],
                         [
+                            'key' => 'alat-invasif',
+                            'label' => 'Alat Invasif',
+                            'count' => $this->countAlatInvasif,
+                            'icon' =>
+                                'M13 10V3L4 14h7v7l9-11h-7z',
+                        ],
+                        [
                             'key' => 'ttv',
                             'label' => 'Observasi Lanjutan',
                             'count' => $this->countTTV,
@@ -272,7 +292,13 @@ new class extends Component {
                 :riHdrNo="$riHdrNo" wire:key="oksigen-{{ $riHdrNo }}" />
         </div>
 
-        {{-- Tab 4: Observasi Lanjutan (Tanda Vital) --}}
+        {{-- Tab 4: Alat Invasif (penyebut Laporan Surveilans HAIs) --}}
+        <div x-show="tab === 'alat-invasif'" x-transition.opacity.duration.150ms class="pt-4" style="display:none">
+            <livewire:pages::transaksi.ri.emr-ri.observasi-ri.alat-invasif-ri.rm-alat-invasif-ri-actions
+                :riHdrNo="$riHdrNo" wire:key="alat-invasif-{{ $riHdrNo }}" />
+        </div>
+
+        {{-- Tab 5: Observasi Lanjutan (Tanda Vital) --}}
         <div x-show="tab === 'ttv'" x-transition.opacity.duration.150ms class="pt-4" style="display:none">
             <livewire:pages::transaksi.ri.emr-ri.observasi-ri.observasi-lanjutan-ri.rm-observasi-lanjutan-ri-actions
                 :riHdrNo="$riHdrNo" wire:key="ttv-{{ $riHdrNo }}" />

@@ -70,8 +70,6 @@ new class extends Component {
             // ── Data dasar surveilans ──
             'tanggal' => '',
             'diagnosisAkhir' => '',
-            'caraMasuk' => '',
-            'caraKeluar' => '',
             'tempatDirawat' => [],
             'faktorRisiko' => array_fill_keys(array_keys(SurveilansHaisOptions::FAKTOR_RISIKO), false),
 
@@ -727,8 +725,8 @@ new class extends Component {
 ?>
 
 @php
-    $opsiCaraMasuk = \App\Support\SurveilansHaisOptions::CARA_MASUK;
-    $opsiCaraKeluar = \App\Support\SurveilansHaisOptions::CARA_KELUAR;
+    $caraMasukRi = \App\Support\AdmisiPulangRI::caraMasuk($dataDaftarRi ?? []);
+    $caraKeluarRi = \App\Support\AdmisiPulangRI::caraKeluar($dataDaftarRi ?? []);
     $opsiFaktorRisiko = \App\Support\SurveilansHaisOptions::FAKTOR_RISIKO;
     $opsiJenisOperasi = \App\Support\SurveilansHaisOptions::JENIS_OPERASI;
     $opsiAsa = \App\Support\SurveilansHaisOptions::ASA_SCORE;
@@ -889,23 +887,21 @@ new class extends Component {
                                     </div>
                                     <x-input-error :messages="$errors->get('newForm.tanggal')" class="mt-1" />
                                 </div>
+                                {{-- Cara masuk & keluar TIDAK diketik ulang — diturunkan dari alur induk
+                                     (pendaftaran RI & Perencanaan → Tindak Lanjut). --}}
                                 <div>
                                     <x-input-label value="Cara Masuk RS" />
-                                    <x-select-input wire:model="newForm.caraMasuk" class="w-full mt-1">
-                                        <option value="">—</option>
-                                        @foreach ($opsiCaraMasuk as $key => $label)
-                                            <option value="{{ $key }}">{{ $label }}</option>
-                                        @endforeach
-                                    </x-select-input>
+                                    <div class="w-full px-3 py-2 mt-1 text-sm border rounded-lg bg-surface-soft border-hairline text-body dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
+                                        {{ $caraMasukRi }}
+                                    </div>
+                                    <p class="mt-1 text-xs text-muted dark:text-gray-400">Otomatis dari pendaftaran RI.</p>
                                 </div>
                                 <div>
                                     <x-input-label value="Cara Keluar RS" />
-                                    <x-select-input wire:model="newForm.caraKeluar" class="w-full mt-1">
-                                        <option value="">—</option>
-                                        @foreach ($opsiCaraKeluar as $key => $label)
-                                            <option value="{{ $key }}">{{ $label }}</option>
-                                        @endforeach
-                                    </x-select-input>
+                                    <div class="w-full px-3 py-2 mt-1 text-sm border rounded-lg bg-surface-soft border-hairline text-body dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
+                                        {{ $caraKeluarRi }}
+                                    </div>
+                                    <p class="mt-1 text-xs text-muted dark:text-gray-400">Otomatis dari Perencanaan &rarr; Tindak Lanjut saat pasien pulang.</p>
                                 </div>
                                 <div>
                                     <x-input-label value="Dilakukan Operasi" />
@@ -1135,9 +1131,10 @@ new class extends Component {
                                     <thead>
                                         <tr class="bg-surface-soft dark:bg-gray-800">
                                             <th class="sticky left-0 px-3 py-2 text-left border border-hairline bg-surface-soft dark:bg-gray-800 dark:border-gray-700 text-muted">Parameter</th>
-                                            @for ($h = 0; $h < count($newForm['pemantauan'] ?? []); $h++)
-                                                <th class="px-2 py-2 text-center border border-hairline dark:border-gray-700 text-muted">{{ $hariKe + 1 }}</th>
-                                            @endfor
+                                            {{-- Ditelusuri dengan key yang sama seperti baris di bawah supaya nomor hari selalu sejajar kolomnya. --}}
+                                            @foreach (array_keys($newForm['pemantauan'] ?? []) as $hariKe)
+                                                <th class="px-2 py-2 text-center border border-hairline dark:border-gray-700 text-muted">{{ (int) $hariKe + 1 }}</th>
+                                            @endforeach
                                         </tr>
                                     </thead>
                                     <tbody>

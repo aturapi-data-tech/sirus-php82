@@ -79,8 +79,6 @@ new class extends Component {
             // ── Data dasar surveilans ──
             'tanggal' => '',
             'diagnosisAkhir' => '',
-            'caraMasuk' => '',
-            'caraKeluar' => '',
             'tempatDirawat' => [],
             'faktorRisiko' => array_fill_keys(array_keys(SurveilansHaisOptions::FAKTOR_RISIKO), false),
 
@@ -782,8 +780,8 @@ new class extends Component {
 ?>
 
 @php
-    $opsiCaraMasuk = \App\Support\SurveilansHaisOptions::CARA_MASUK;
-    $opsiCaraKeluar = \App\Support\SurveilansHaisOptions::CARA_KELUAR;
+    $caraMasukRi = \App\Support\AdmisiPulangRI::caraMasuk($dataDaftarRi ?? []);
+    $caraKeluarRi = \App\Support\AdmisiPulangRI::caraKeluar($dataDaftarRi ?? []);
     $opsiFaktorRisiko = \App\Support\SurveilansHaisOptions::FAKTOR_RISIKO;
     $opsiKelompokUsia = \App\Support\SurveilansHaisOptions::KELOMPOK_USIA;
     $opsiJenisKateter = \App\Support\SurveilansHaisOptions::JENIS_KATETER_ISK;
@@ -915,8 +913,8 @@ new class extends Component {
                         <div class="pt-2 border-t border-blue-200/60 dark:border-blue-700/60">
                             <p class="mb-1.5 text-sm font-semibold text-ink dark:text-gray-200">Cara entri ini dihitung di Laporan Surveilans HAIs:</p>
                             <ul class="pl-5 space-y-1 text-sm list-disc text-body dark:text-gray-300">
-                                <li><b>Insiden ISK</b> bila: ada tanda klinis dicentang pada baris pemasangan + <b>biakan urin = Ya</b>.</li>
-                                <li>Hari pemasangan kateter yang Anda isi jadi <b>penyebut</b>: ISK per 1000 hari kateter urine.</li>
+                                <li><b>Insiden ISK</b> bila: ada tanda klinis dicentang pada baris pemasangan yang kateternya sudah terpasang <b>&ge; 3 hari kalender</b> (hari pasang = hari ke-1, sesuai syarat &gt;2 hari kalender) + <b>biakan urin = Ya</b>.</li>
+                                <li>Tanggal pasang/lepas di sini dipakai untuk <b>syarat &ge;3 hari</b> dan menentukan bulan kasus. <b>Penyebutnya</b> (hari kateter urine) diambil dari <b>Observasi &rarr; Alat Invasif</b>, yang diisi perawat ruangan untuk semua pasien terpasang kateter — pastikan entri di sana juga ada.</li>
                             </ul>
                         </div>
                         <div class="pt-2 border-t border-blue-200/60 dark:border-blue-700/60">
@@ -945,23 +943,21 @@ new class extends Component {
                                     </div>
                                     <x-input-error :messages="$errors->get('newForm.tanggal')" class="mt-1" />
                                 </div>
+                                {{-- Cara masuk & keluar TIDAK diketik ulang — diturunkan dari alur induk
+                                     (pendaftaran RI & Perencanaan → Tindak Lanjut). --}}
                                 <div>
                                     <x-input-label value="Cara Masuk RS" />
-                                    <x-select-input wire:model="newForm.caraMasuk" class="w-full mt-1">
-                                        <option value="">—</option>
-                                        @foreach ($opsiCaraMasuk as $key => $label)
-                                            <option value="{{ $key }}">{{ $label }}</option>
-                                        @endforeach
-                                    </x-select-input>
+                                    <div class="w-full px-3 py-2 mt-1 text-sm border rounded-lg bg-surface-soft border-hairline text-body dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
+                                        {{ $caraMasukRi }}
+                                    </div>
+                                    <p class="mt-1 text-xs text-muted dark:text-gray-400">Otomatis dari pendaftaran RI.</p>
                                 </div>
                                 <div>
                                     <x-input-label value="Cara Keluar RS" />
-                                    <x-select-input wire:model="newForm.caraKeluar" class="w-full mt-1">
-                                        <option value="">—</option>
-                                        @foreach ($opsiCaraKeluar as $key => $label)
-                                            <option value="{{ $key }}">{{ $label }}</option>
-                                        @endforeach
-                                    </x-select-input>
+                                    <div class="w-full px-3 py-2 mt-1 text-sm border rounded-lg bg-surface-soft border-hairline text-body dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
+                                        {{ $caraKeluarRi }}
+                                    </div>
+                                    <p class="mt-1 text-xs text-muted dark:text-gray-400">Otomatis dari Perencanaan &rarr; Tindak Lanjut saat pasien pulang.</p>
                                 </div>
                                 <div>
                                     <x-input-label value="Kelompok Usia *" />

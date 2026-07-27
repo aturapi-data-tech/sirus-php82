@@ -63,8 +63,8 @@
             <td class="lbl">Pemakaian Ventilator</td><td>{{ $nilai('ventilator') }}</td>
         </tr>
         <tr>
-            <td class="lbl">Cara Masuk RS</td><td>{{ $labelDari('caraMasuk', $form['caraMasuk'] ?? null) }}</td>
-            <td class="lbl">Cara Keluar RS</td><td>{{ $labelDari('caraKeluar', $form['caraKeluar'] ?? null) }}</td>
+            <td class="lbl">Cara Masuk RS</td><td>{{ \App\Support\AdmisiPulangRI::caraMasuk($data['dataRi'] ?? []) }}</td>
+            <td class="lbl">Cara Keluar RS</td><td>{{ \App\Support\AdmisiPulangRI::caraKeluar($data['dataRi'] ?? []) }}</td>
         </tr>
         <tr>
             <td class="lbl">Diagnosis Akhir</td><td colspan="3">{{ $nilai('diagnosisAkhir') }}</td>

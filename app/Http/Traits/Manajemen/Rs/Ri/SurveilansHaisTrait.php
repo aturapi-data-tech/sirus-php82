@@ -2,6 +2,7 @@
 
 namespace App\Http\Traits\Manajemen\Rs\Ri;
 
+use App\Support\AdmisiPulangRI;
 use App\Support\OracleLob;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -9,8 +10,18 @@ use Illuminate\Support\Facades\DB;
 /**
  * Rekap Surveilans HAIs (Healthcare-Associated Infections) Rawat Inap.
  *
- * Sumber data = entri modul dokumen Surveilans HAIs di `datadaftarri_json`
- * (key surveilansPlebitisRI / surveilansIskRI / surveilansVapRI / surveilansIloRI).
+ * DUA SUMBER, keduanya di `datadaftarri_json`:
+ *
+ *   PEMBILANG (kasus) ← modul dokumen Surveilans HAIs
+ *       key surveilansPlebitisRI / surveilansIskRI / surveilansVapRI / surveilansIloRI.
+ *   PENYEBUT (hari pemakaian alat) ← Observasi RI tab "Alat Invasif"
+ *       key observasi.alatInvasif.alatInvasifData.
+ *
+ * Sengaja dipisah: formulir surveilans hanya diisi saat ada dugaan infeksi, jadi kalau
+ * penyebut ikut diambil dari situ maka pembilang & penyebut sama-sama berasal dari
+ * pasien bermasalah saja dan rate-nya meledak. Entri Alat Invasif diisi perawat ruangan
+ * untuk SETIAP pasien terpasang alat, sehingga penyebutnya utuh. Pembagian tugas ini
+ * mengikuti materi IPCN: PJ pasien mencatat pemakaian alat, IPCN mengisi formulir kasus.
  *
  * Rumus insiden rate mengikuti Pedoman Surveilans PPI Kemenkes 2011 / materi
  * IPCN (HIPPII) — numerator = jumlah kasus, denominator = jumlah hari pemakaian alat:
@@ -28,6 +39,10 @@ use Illuminate\Support\Facades\DB;
  * DITURUNKAN dari tanda yang dicentang IPCLN pada formulir, memakai aturan di
  * konstanta di bawah. Aturan ini sengaja dibuat eksplisit & ditampilkan di
  * halaman laporan supaya IPCN bisa memverifikasi / meminta penyesuaian.
+ *
+ * IAD, ISK & VAP tambahan syarat alat terpasang "> 2 hari kalender"
+ * (self::MIN_HARI_ALAT) — infeksi yang muncul pada hari ke-1/ke-2 bukan HAIs
+ * menurut definisi HIPPII/NHSN. Plebitis & ILO tak memakai gate ini.
  */
 trait SurveilansHaisTrait
 {
@@ -39,6 +54,30 @@ trait SurveilansHaisTrait
 
     /** Tanda ILO pada pemantauan luka operasi hari ke-1 s/d 17. */
     private const TANDA_ILO = ['pus', 'drainase', 'perforasi', 'fistula'];
+
+    /**
+     * Minimal lama pemakaian alat sebelum infeksi boleh dihitung sebagai insiden.
+     *
+     * Definisi IAD, ISK (CAUTI) & VAP sama-sama mensyaratkan alat terpasang
+     * "> 2 hari kalender". Hari pemasangan = hari ke-1, jadi ambang lolosnya
+     * adalah hari ke-3 (3 hari kalender inklusif). Plebitis & ILO TIDAK memakai
+     * gate ini — definisinya tak mensyaratkan lama pemakaian alat.
+     */
+    private const MIN_HARI_ALAT = 3;
+
+    /** Nilai `jenisAkses` per baris pemasangan yang dihitung sebagai central line. */
+    private const AKSES_SENTRAL = ['sentral', 'umbilikal'];
+
+    /**
+     * Peta jenis alat pada entri Observasi RI → field penyebut di rekap.
+     * Kunci mengikuti App\Support\SurveilansHaisOptions::ALAT_INVASIF.
+     */
+    private const FIELD_HARI_ALAT = [
+        'ivPerifer' => 'ivlHari',
+        'cvcUmbilikal' => 'clHari',
+        'kateterUrine' => 'ucHari',
+        'ventilator' => 'ventHari',
+    ];
 
     /** Format tanggal baku repo pada JSON EMR. */
     private const FORMAT_TANGGAL = 'd/m/Y H:i:s';
@@ -82,12 +121,28 @@ trait SurveilansHaisTrait
                 continue;
             }
 
+            // caraMasuk/caraKeluar tidak ikut menghitung apa pun — dibawa ke tabel audit
+            // kasus supaya IPCN bisa menyaring infeksi bawaan (pasien kiriman RS lain,
+            // kandidat present-on-admission) dan melihat outcome kasusnya.
+            $caraMasuk = AdmisiPulangRI::caraMasuk($dataDaftarRi);
+            $caraKeluar = AdmisiPulangRI::caraKeluar($dataDaftarRi);
+
             $pasien = [
                 'rihdrNo' => $record->rihdr_no,
                 'regNo' => $record->reg_no,
                 'regName' => $record->reg_name,
                 'ruang' => $record->room_name,
+                'caraMasuk' => $caraMasuk,
+                'caraKeluar' => $caraKeluar,
+                // Pasien kiriman RS lain = kandidat infeksi bawaan (present on admission),
+                // yang menurut definisi HAIs harus dikeluarkan dari hitungan — perlu
+                // pemeriksaan manual IPCN, jadi ditandai alih-alih dibuang otomatis.
+                'kirimanRsLain' => str_contains(strtoupper($caraMasuk), 'RUMAH SAKIT LAIN'),
+                'meninggal' => $caraKeluar === 'Meninggal',
             ];
+
+            // Penyebut dulu — sumbernya terpisah dari formulir surveilans (lihat docblock kelas).
+            $this->kumpulkanHariAlat($dataDaftarRi['observasi']['alatInvasif']['alatInvasifData'] ?? [], $tahun, $hitunganBulan);
 
             $this->kumpulkanPlebitis($dataDaftarRi['surveilansPlebitisRI'] ?? [], $tahun, $pasien, $hitunganBulan, $kasusList);
             $this->kumpulkanIsk($dataDaftarRi['surveilansIskRI'] ?? [], $tahun, $pasien, $hitunganBulan, $kasusList);
@@ -127,19 +182,57 @@ trait SurveilansHaisTrait
      */
     private function ambilRecordSurveilans(Carbon $awalTahun, Carbon $akhirTahun): array
     {
-        return DB::table('rstxn_rihdrs')
-            ->select(['rihdr_no', 'reg_no', 'reg_name', 'room_name', 'datadaftarri_json'])
-            ->whereRaw("INSTR(datadaftarri_json, 'surveilans') > 0")
-            ->where('entry_date', '<=', $akhirTahun)
-            ->where(function ($subQuery) use ($awalTahun) {
-                $subQuery->whereNull('exit_date')->orWhere('exit_date', '>=', $awalTahun);
+        // rstxn_rihdrs hanya menyimpan room_id & reg_no — nama ruang dan nama pasien
+        // wajib di-join (lihat rsmst_rooms / rsmst_pasiens).
+        return DB::table('rstxn_rihdrs as h')
+            ->leftJoin('rsmst_rooms as r', 'r.room_id', '=', 'h.room_id')
+            ->leftJoin('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
+            ->select([
+                'h.rihdr_no',
+                'h.reg_no',
+                'p.reg_name',
+                'r.room_name',
+                'h.datadaftarri_json',
+            ])
+            // Pembilang datang dari key surveilans*, penyebut dari alatInvasif — record
+            // yang cuma punya salah satunya tetap harus ikut terbaca.
+            ->where(function ($subQuery) {
+                $subQuery->whereRaw("INSTR(h.datadaftarri_json, 'surveilans') > 0")
+                    ->orWhereRaw("INSTR(h.datadaftarri_json, 'alatInvasif') > 0");
             })
-            ->orderBy('rihdr_no')
+            ->where('h.entry_date', '<=', $akhirTahun)
+            ->where(function ($subQuery) use ($awalTahun) {
+                $subQuery->whereNull('h.exit_date')->orWhere('h.exit_date', '>=', $awalTahun);
+            })
+            ->orderBy('h.rihdr_no')
             ->get()
             ->all();
     }
 
-    /* ═══════════════ PENGUMPULAN PER MODUL ═══════════════ */
+    /* ═══════════════ PENYEBUT: HARI PEMAKAIAN ALAT ═══════════════ */
+
+    /**
+     * Hari pemakaian alat dari Observasi RI → tab "Alat Invasif".
+     * Satu pasien boleh punya banyak baris (alat berbeda / pemasangan ulang);
+     * semuanya diakumulasi dan dipecah ke bulan yang dilaluinya.
+     */
+    private function kumpulkanHariAlat(array $alatList, int $tahun, array &$hitunganBulan): void
+    {
+        foreach ($alatList as $baris) {
+            if (!is_array($baris)) {
+                continue;
+            }
+
+            $fieldHari = self::FIELD_HARI_ALAT[$baris['jenisAlat'] ?? ''] ?? null;
+            if ($fieldHari === null) {
+                continue;
+            }
+
+            $this->alokasiHari($baris['tanggalWaktuMulai'] ?? null, $baris['tanggalWaktuSelesai'] ?? null, $tahun, $hitunganBulan, $fieldHari);
+        }
+    }
+
+    /* ═══════════════ PEMBILANG: PENGUMPULAN PER MODUL ═══════════════ */
 
     private function kumpulkanPlebitis(array $entriList, int $tahun, array $pasien, array &$hitunganBulan, array &$kasusList): void
     {
@@ -148,47 +241,74 @@ trait SurveilansHaisTrait
                 continue;
             }
 
-            // Kateter sentral/umbilikal → hari CVL (basis IAD); selain itu → hari IV line perifer.
-            $kateterSentral = ($entri['kateterVCentral'] ?? '') === 'Ya' || ($entri['kateterUmbilikal'] ?? '') === 'Ya';
-            $fieldHari = $kateterSentral ? 'clHari' : 'ivlHari';
-
-            $adaTandaLokal = false;
-            $adaTandaSistemik = false;
-            $bulanKasus = null;
+            // Satu entri bisa memuat kateter sentral DAN perifer sekaligus, jadi
+            // hari alat maupun kasusnya dipilah PER BARIS pemasangan. Maksimal satu
+            // kasus per jenis per entri (baris ganda umumnya = pemasangan ulang
+            // akses yang sama pada episode rawat yang sama).
+            $iadBulan = null;
+            $plebitisBulan = null;
 
             foreach ($entri['pemasangan'] ?? [] as $barisPemasangan) {
                 if (!is_array($barisPemasangan)) {
                     continue;
                 }
-                $this->alokasiHari($barisPemasangan['tglMulai'] ?? null, $barisPemasangan['tglSelesai'] ?? null, $tahun, $hitunganBulan, $fieldHari);
+
+                $tglMulai = $barisPemasangan['tglMulai'] ?? null;
+                $tglSelesai = $barisPemasangan['tglSelesai'] ?? null;
+                // Jenis akses menentukan baris ini kandidat IAD atau plebitis. Tanggalnya
+                // dipakai untuk gate lama pemasangan & bulan kasus saja — hari alat
+                // (penyebut) diambil dari entri Alat Invasif, bukan dari sini.
+                $sentral = $this->barisKateterSentral($barisPemasangan, $entri);
 
                 $tanda = $barisPemasangan['tanda'] ?? [];
-                $tandaLokal = $this->adaTanda($tanda, self::TANDA_PLEBITIS);
-                $tandaSistemik = $this->adaTanda($tanda, self::TANDA_IAD);
-                if ($tandaLokal || $tandaSistemik) {
-                    $bulanKasus ??= $this->bulanDari($barisPemasangan['tglMulai'] ?? null, $tahun);
+
+                // IAD = kateter sentral terpasang >2 hari kalender + tanda sistemik + kultur darah.
+                if (
+                    $sentral
+                    && $this->adaTanda($tanda, self::TANDA_IAD)
+                    && $this->alatCukupLama($tglMulai, $tglSelesai)
+                    && ($entri['kulturDarah'] ?? '') === 'Ya'
+                ) {
+                    $iadBulan ??= $this->bulanDari($tglMulai, $tahun) ?? $this->bulanDari($entri['tanggal'] ?? null, $tahun);
                 }
-                $adaTandaLokal = $adaTandaLokal || $tandaLokal;
-                $adaTandaSistemik = $adaTandaSistemik || $tandaSistemik;
+
+                // Plebitis = tanda lokal pada area insersi kateter perifer (tanpa gate lama pemakaian).
+                if (!$sentral && $this->adaTanda($tanda, self::TANDA_PLEBITIS)) {
+                    $plebitisBulan ??= $this->bulanDari($tglMulai, $tahun) ?? $this->bulanDari($entri['tanggal'] ?? null, $tahun);
+                }
             }
 
-            $bulanKasus ??= $this->bulanDari($entri['tanggal'] ?? null, $tahun);
-            if ($bulanKasus === null) {
-                continue;
+            if ($iadBulan !== null) {
+                $hitunganBulan[$iadBulan]['iadKasus']++;
+                $kasusList[] = $this->barisKasus('IAD', $iadBulan, $pasien, $entri['tanggal'] ?? '', 'Kateter sentral >2 hari + tanda sistemik + kultur darah');
             }
 
-            // IAD = kateter sentral + tanda sistemik + kultur darah dilakukan (kriteria HIPPII).
-            if ($kateterSentral && $adaTandaSistemik && ($entri['kulturDarah'] ?? '') === 'Ya') {
-                $hitunganBulan[$bulanKasus]['iadKasus']++;
-                $kasusList[] = $this->barisKasus('IAD', $bulanKasus, $pasien, $entri['tanggal'] ?? '', 'Kateter sentral + tanda sistemik + kultur darah');
-            }
-
-            // Plebitis = tanda lokal pada area insersi kateter perifer.
-            if (!$kateterSentral && $adaTandaLokal) {
-                $hitunganBulan[$bulanKasus]['plebitisKasus']++;
-                $kasusList[] = $this->barisKasus('Plebitis', $bulanKasus, $pasien, $entri['tanggal'] ?? '', 'Tanda lokal: nyeri/merah/kalor/pus/bengkak');
+            if ($plebitisBulan !== null) {
+                $hitunganBulan[$plebitisBulan]['plebitisKasus']++;
+                $kasusList[] = $this->barisKasus('Plebitis', $plebitisBulan, $pasien, $entri['tanggal'] ?? '', 'Tanda lokal: nyeri/merah/kalor/pus/bengkak');
             }
         }
+    }
+
+    /**
+     * Baris pemasangan ini akses sentral/umbilikal atau perifer?
+     *
+     * Sumber utama = `jenisAkses` per baris. Entri lama (sebelum kolom itu ada)
+     * jatuh ke flag tingkat entri; bila di situ perifer DAN sentral sama-sama
+     * "Ya" barisnya tak bisa dipilah, jadi diperlakukan perifer — hari IV line
+     * tetap utuh, dan IAD tidak dihitung dari data yang ambigu.
+     */
+    private function barisKateterSentral(array $barisPemasangan, array $entri): bool
+    {
+        $jenisAkses = strtolower(trim((string) ($barisPemasangan['jenisAkses'] ?? '')));
+        if ($jenisAkses !== '') {
+            return in_array($jenisAkses, self::AKSES_SENTRAL, true);
+        }
+
+        $perifer = ($entri['kateterPerifer'] ?? '') === 'Ya';
+        $sentral = ($entri['kateterVCentral'] ?? '') === 'Ya' || ($entri['kateterUmbilikal'] ?? '') === 'Ya';
+
+        return $sentral && !$perifer;
     }
 
     private function kumpulkanIsk(array $entriList, int $tahun, array $pasien, array &$hitunganBulan, array &$kasusList): void
@@ -205,11 +325,13 @@ trait SurveilansHaisTrait
                 if (!is_array($barisPemasangan)) {
                     continue;
                 }
-                $this->alokasiHari($barisPemasangan['tglMulai'] ?? null, $barisPemasangan['tglSelesai'] ?? null, $tahun, $hitunganBulan, 'ucHari');
+                $tglMulai = $barisPemasangan['tglMulai'] ?? null;
+                $tglSelesai = $barisPemasangan['tglSelesai'] ?? null;
 
-                if ($this->adaTanda($barisPemasangan['tanda'] ?? [], null)) {
+                // Kriteria CAUTI: kateter sudah terpasang >2 hari kalender saat spesimen diambil.
+                if ($this->adaTanda($barisPemasangan['tanda'] ?? [], null) && $this->alatCukupLama($tglMulai, $tglSelesai)) {
                     $adaTandaIsk = true;
-                    $bulanKasus ??= $this->bulanDari($barisPemasangan['tglMulai'] ?? null, $tahun);
+                    $bulanKasus ??= $this->bulanDari($tglMulai, $tahun);
                 }
             }
 
@@ -233,7 +355,8 @@ trait SurveilansHaisTrait
                 continue;
             }
 
-            $this->alokasiHari($entri['tglPasang'] ?? null, $entri['tglLepas'] ?? null, $tahun, $hitunganBulan, 'ventHari');
+            $tglPasang = $entri['tglPasang'] ?? null;
+            $tglLepas = $entri['tglLepas'] ?? null;
 
             $bulanKasus = $this->bulanDari($entri['tglPasang'] ?? null, $tahun)
                 ?? $this->bulanDari($entri['tanggal'] ?? null, $tahun);
@@ -241,15 +364,16 @@ trait SurveilansHaisTrait
                 continue;
             }
 
-            // VAP = ventilator + minimal 2 dari (demam, sekresi purulen, gambaran foto toraks).
+            // VAP = ventilator terpasang >2 hari kalender + minimal 2 dari
+            // (demam, sekresi purulen, gambaran foto toraks).
             $jumlahTandaVap = 0;
             $jumlahTandaVap += ($entri['demam'] ?? '') === 'Ya' ? 1 : 0;
             $jumlahTandaVap += ($entri['sekresiPurulen'] ?? '') === 'Ya' ? 1 : 0;
             $jumlahTandaVap += $this->adaTanda($entri['fotoToraks'] ?? [], null) ? 1 : 0;
 
-            if (($entri['ventilator'] ?? '') === 'Ya' && $jumlahTandaVap >= 2) {
+            if (($entri['ventilator'] ?? '') === 'Ya' && $jumlahTandaVap >= 2 && $this->alatCukupLama($tglPasang, $tglLepas)) {
                 $hitunganBulan[$bulanKasus]['vapKasus']++;
-                $kasusList[] = $this->barisKasus('VAP', $bulanKasus, $pasien, $entri['tanggal'] ?? '', 'Ventilator + ≥2 tanda (demam/sekresi purulen/foto toraks)');
+                $kasusList[] = $this->barisKasus('VAP', $bulanKasus, $pasien, $entri['tanggal'] ?? '', 'Ventilator >2 hari + ≥2 tanda (demam/sekresi purulen/foto toraks)');
             }
         }
     }
@@ -330,6 +454,37 @@ trait SurveilansHaisTrait
             // +1 karena hari pertama & hari terakhir sama-sama dihitung sebagai hari pemakaian.
             $hitunganBulan[$bulanKe][$field] += (int) round($mulaiIrisan->diffInDays($akhirIrisan)) + 1;
         }
+    }
+
+    /**
+     * Lama pemakaian alat dalam hari kalender inklusif (hari pasang = hari ke-1).
+     * Tanggal lepas kosong = masih terpasang → dihitung s/d hari ini.
+     * Berbeda dari alokasiHari(): TIDAK dipotong batas tahun laporan, karena yang
+     * dinilai lama pakai alat pada pasien, bukan irisannya dengan periode laporan.
+     */
+    private function lamaHariAlat(?string $teksMulai, ?string $teksSelesai): ?int
+    {
+        $awal = $this->parseTanggal($teksMulai);
+        if (!$awal) {
+            return null;
+        }
+
+        $zonaWaktu = config('app.timezone');
+        $awal = $awal->copy()->setTimezone($zonaWaktu)->startOfDay();
+        $akhir = ($this->parseTanggal($teksSelesai) ?? Carbon::now($zonaWaktu))->copy()->setTimezone($zonaWaktu)->startOfDay();
+        if ($akhir->lessThan($awal)) {
+            return null;
+        }
+
+        return (int) round($awal->diffInDays($akhir)) + 1;
+    }
+
+    /** Alat sudah terpasang "> 2 hari kalender" (lihat MIN_HARI_ALAT)? */
+    private function alatCukupLama(?string $teksMulai, ?string $teksSelesai): bool
+    {
+        $lama = $this->lamaHariAlat($teksMulai, $teksSelesai);
+
+        return $lama !== null && $lama >= self::MIN_HARI_ALAT;
     }
 
     /** Bulan (1-12) dari tanggal JSON; null bila di luar tahun laporan / tak valid. */

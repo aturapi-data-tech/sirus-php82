@@ -15,20 +15,12 @@ class SurveilansHaisOptions
 {
     /* ═══ BAGIAN BERSAMA (dipakai keempat modul) ═══ */
 
-    public const CARA_MASUK = [
-        'ird' => 'IRD',
-        'irj' => 'IRJ',
-        'langsung' => 'Langsung',
-        'rujukan' => 'Rujukan',
-    ];
-
-    public const CARA_KELUAR = [
-        'hidup' => 'Hidup',
-        'meninggal' => 'Meninggal',
-        'pindahRs' => 'Pindah RS',
-        'pulangPaksa' => 'Pulang Paksa',
-        'kabur' => 'Kabur',
-    ];
+    /*
+     * Cara masuk & cara keluar RS TIDAK didaftar di sini: keduanya sudah terekam di alur
+     * induk (pendaftaran RI & Perencanaan → Tindak Lanjut), jadi form surveilans hanya
+     * menampilkannya lewat App\Support\AdmisiPulangRI. Jangan tambahkan kembali sebagai
+     * isian — nilainya akan berbeda dari data resmi episode rawat.
+     */
 
     public const FAKTOR_RISIKO = [
         'diabetesMelitus' => 'Diabetes melitus',
@@ -41,6 +33,21 @@ class SurveilansHaisOptions
         'gangguanFaalGinjal' => 'Gangguan faal ginjal',
         'perokok' => 'Perokok',
         'lanjutUsia' => 'Lanjut usia',
+    ];
+
+    /**
+     * Alat invasif yang lama pemakaiannya menjadi PENYEBUT insiden rate HAIs.
+     *
+     * Diisi perawat ruangan lewat Observasi RI → tab "Alat Invasif" untuk SETIAP
+     * pasien terpasang alat, bukan hanya yang dicurigai infeksi. Kalau hanya pasien
+     * bermasalah yang tercatat, penyebutnya timpang dan rate jadi meledak.
+     * Formulir surveilans tetap memasok PEMBILANG (kasus).
+     */
+    public const ALAT_INVASIF = [
+        'ivPerifer' => 'IV Line Perifer',
+        'cvcUmbilikal' => 'CVC / Kateter Umbilikal',
+        'kateterUrine' => 'Kateter Urine',
+        'ventilator' => 'Ventilator Mekanik',
     ];
 
     public const KELOMPOK_USIA = [
@@ -60,6 +67,19 @@ class SurveilansHaisOptions
     ];
 
     /* ═══ IADP & PLEBITIS ═══ */
+
+    /**
+     * Jenis akses vaskular per baris pemasangan.
+     *
+     * Penentu PENYEBUT di Laporan Surveilans HAIs: sentral/umbilikal → hari CVL
+     * (basis IAD), perifer → hari IV line (basis plebitis). Satu entri boleh
+     * memuat keduanya sekaligus, karena itu dipilih per baris, bukan per entri.
+     */
+    public const JENIS_AKSES = [
+        'perifer' => 'Kateter V Perifer',
+        'sentral' => 'Kateter V Sentral',
+        'umbilikal' => 'Kateter Umbilikal',
+    ];
 
     /** Tanda infeksi pada pasien usia < 1 tahun (IADP/plebitis). */
     public const TANDA_IADP_BALITA = [
@@ -191,12 +211,12 @@ class SurveilansHaisOptions
     public static function labels(): array
     {
         return [
-            'caraMasuk' => self::CARA_MASUK,
-            'caraKeluar' => self::CARA_KELUAR,
             'faktorRisiko' => self::FAKTOR_RISIKO,
+            'alatInvasif' => self::ALAT_INVASIF,
             'kelompokUsia' => self::KELOMPOK_USIA,
             'ruteAntibiotik' => self::RUTE_ANTIBIOTIK,
             'indikasiAntibiotik' => self::INDIKASI_ANTIBIOTIK,
+            'jenisAkses' => self::JENIS_AKSES,
             'tandaIadpBalita' => self::TANDA_IADP_BALITA,
             'tandaIadpDewasa' => self::TANDA_IADP_DEWASA,
             'tujuanPemasangan' => self::TUJUAN_PEMASANGAN,

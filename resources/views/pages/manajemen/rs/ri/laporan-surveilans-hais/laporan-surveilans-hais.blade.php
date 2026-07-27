@@ -58,6 +58,23 @@ new class extends Component {
     }
 
     /**
+     * Dampak & penyaringan kasus — dua angka yang perlu dilihat IPCN sebelum
+     * laporan dikirim keluar: berapa kasus berakhir meninggal, dan berapa yang
+     * pasiennya kiriman RS lain (kandidat infeksi bawaan, bukan HAIs kita).
+     */
+    #[Computed]
+    public function ringkasanKasus(): array
+    {
+        $kasusList = collect($this->kasusTersaring);
+
+        return [
+            'total' => $kasusList->count(),
+            'meninggal' => $kasusList->where('meninggal', true)->count(),
+            'kirimanRsLain' => $kasusList->where('kirimanRsLain', true)->count(),
+        ];
+    }
+
+    /**
      * Definisi kolom/kartu indikator: label, key numerator & denominator di hasil
      * rekap, satuan denominator, basis rate, dan kelas warna kartunya.
      */
@@ -194,7 +211,16 @@ new class extends Component {
                     <h3 class="text-sm font-semibold tracking-wider uppercase text-muted dark:text-gray-400">
                         Daftar Kasus {{ $filterTahun }}
                     </h3>
-                    <span class="text-xs text-muted dark:text-gray-400">{{ count($this->kasusTersaring) }} kasus</span>
+                    @php $ringkasanKasus = $this->ringkasanKasus; @endphp
+                    <span class="text-xs text-muted dark:text-gray-400">
+                        {{ $ringkasanKasus['total'] }} kasus
+                        @if ($ringkasanKasus['meninggal'] > 0)
+                            · <span class="font-semibold text-rose-700 dark:text-rose-400">{{ $ringkasanKasus['meninggal'] }} meninggal</span>
+                        @endif
+                        @if ($ringkasanKasus['kirimanRsLain'] > 0)
+                            · <span class="font-semibold text-amber-700 dark:text-amber-400">{{ $ringkasanKasus['kirimanRsLain'] }} kiriman RS lain</span>
+                        @endif
+                    </span>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
@@ -206,6 +232,8 @@ new class extends Component {
                                 <th class="px-3 py-2 text-left">Nama Pasien</th>
                                 <th class="px-3 py-2 text-left">Ruang</th>
                                 <th class="px-3 py-2 text-left">Tanggal</th>
+                                <th class="px-3 py-2 text-left">Asal Masuk</th>
+                                <th class="px-3 py-2 text-left">Cara Keluar</th>
                                 <th class="px-3 py-2 text-left">Dasar Penetapan</th>
                             </tr>
                         </thead>
@@ -220,11 +248,20 @@ new class extends Component {
                                     <td class="px-3 py-2 font-medium text-ink dark:text-gray-100">{{ $kasus['regName'] ?: '-' }}</td>
                                     <td class="px-3 py-2 text-muted">{{ $kasus['ruang'] ?: '-' }}</td>
                                     <td class="px-3 py-2 font-mono text-muted whitespace-nowrap">{{ $kasus['tanggal'] }}</td>
+                                    <td class="px-3 py-2 {{ $kasus['kirimanRsLain'] ? 'font-medium text-amber-700 dark:text-amber-400' : 'text-muted' }}">
+                                        {{ $kasus['caraMasuk'] ?: '-' }}
+                                        @if ($kasus['kirimanRsLain'])
+                                            <span class="block text-[11px]">periksa: mungkin infeksi bawaan</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-3 py-2 whitespace-nowrap {{ $kasus['meninggal'] ? 'font-semibold text-rose-700 dark:text-rose-400' : 'text-muted' }}">
+                                        {{ $kasus['caraKeluar'] ?: '-' }}
+                                    </td>
                                     <td class="px-3 py-2 text-body dark:text-gray-300">{{ $kasus['dasar'] }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="px-3 py-6 text-sm text-center text-muted-soft">
+                                    <td colspan="9" class="px-3 py-6 text-sm text-center text-muted-soft">
                                         Belum ada kasus HAIs pada periode ini.
                                     </td>
                                 </tr>
@@ -253,6 +290,15 @@ new class extends Component {
 
                 <div x-show="open" x-collapse style="display:none" class="px-4 pb-4 space-y-3 text-sm text-body dark:text-gray-300">
                     <div>
+                        <p class="mb-1.5 font-semibold text-ink dark:text-gray-200">Sumber data — pembilang &amp; penyebut sengaja dipisah:</p>
+                        <ul class="pl-5 space-y-1 list-disc">
+                            <li><b>Kasus (pembilang)</b> &larr; EMR RI &rarr; <b>Modul Dokumen &rarr; Surveilans HAIs</b>, diisi IPCLN/IPCN saat ada dugaan infeksi.</li>
+                            <li><b>Hari pemakaian alat (penyebut)</b> &larr; EMR RI &rarr; <b>Observasi &rarr; Alat Invasif</b>, diisi perawat ruangan untuk <b>setiap</b> pasien terpasang alat.</li>
+                            <li class="text-muted">Kalau penyebut ikut diambil dari formulir surveilans, pembilang dan penyebut sama-sama berasal dari pasien bermasalah saja dan rate-nya akan melonjak jauh di atas kenyataan — karena itu dipisah. Pembagian tugasnya juga mengikuti materi IPCN: PJ pasien mencatat pemakaian alat, IPCN mengisi formulir kasus.</li>
+                        </ul>
+                    </div>
+
+                    <div class="pt-2 border-t border-blue-200/60 dark:border-blue-700/60">
                         <p class="mb-1.5 font-semibold text-ink dark:text-gray-200">Rumus insiden rate (Pedoman Surveilans PPI Kemenkes 2011):</p>
                         <ul class="pl-5 space-y-1 list-disc">
                             <li><b>IAD</b> = jumlah IAD &divide; jumlah hari pemasangan CVL &times; 1000</li>
@@ -266,20 +312,23 @@ new class extends Component {
                     <div class="pt-2 border-t border-blue-200/60 dark:border-blue-700/60">
                         <p class="mb-1.5 font-semibold text-ink dark:text-gray-200">Penetapan kasus dari isian formulir:</p>
                         <ul class="pl-5 space-y-1 list-disc">
-                            <li><b>IAD</b> — entri IADP/Plebitis dengan kateter vena sentral / umbilikal, ada tanda sistemik (suhu &gt;38&deg;C, suhu &lt;37&deg;C, menggigil, sistolik &lt;90, apnu, nadi &gt;100) <b>dan</b> kultur darah dilakukan.</li>
-                            <li><b>Plebitis</b> — entri kateter perifer dengan tanda lokal di area insersi (nyeri, merah, kalor, pus, bengkak).</li>
-                            <li><b>ISK</b> — ada tanda klinis ISK pada baris pemasangan <b>dan</b> biakan urin dilakukan.</li>
-                            <li><b>VAP</b> — ventilator terpasang <b>dan</b> minimal 2 dari: demam &ge;38&deg;C, sekresi dahak purulen, gambaran foto toraks.</li>
+                            <li><b>IAD</b> — baris pemasangan berjenis akses sentral/umbilikal yang terpasang <b>&ge; 3 hari kalender</b>, ada tanda sistemik (suhu &gt;38&deg;C, suhu &lt;37&deg;C, menggigil, sistolik &lt;90, apnu, nadi &gt;100) <b>dan</b> kultur darah dilakukan.</li>
+                            <li><b>Plebitis</b> — baris pemasangan berjenis akses perifer dengan tanda lokal di area insersi (nyeri, merah, kalor, pus, bengkak); tanpa syarat lama pemasangan.</li>
+                            <li><b>ISK</b> — ada tanda klinis ISK pada baris pemasangan yang kateternya terpasang <b>&ge; 3 hari kalender</b> <b>dan</b> biakan urin dilakukan.</li>
+                            <li><b>VAP</b> — ventilator terpasang <b>&ge; 3 hari kalender</b> <b>dan</b> minimal 2 dari: demam &ge;38&deg;C, sekresi dahak purulen, gambaran foto toraks.</li>
                             <li><b>ILO</b> — pemantauan luka operasi hari ke-1 s/d 17 menemukan pus, drainase, perforasi, atau fistula.</li>
+                            <li><b>Asal masuk &amp; cara keluar</b> tidak ikut menghitung apa pun — keduanya diturunkan dari pendaftaran RI &amp; Perencanaan, lalu ditampilkan di tabel kasus sebagai alat verifikasi: pasien <b>kiriman RS lain</b> perlu diperiksa apakah infeksinya sudah ada sejak masuk (bila ya, keluarkan dari hitungan HAIs), dan kolom <b>Meninggal</b> memperlihatkan dampak kasusnya.</li>
+                            <li class="text-muted">Ambang <b>&ge; 3 hari kalender</b> = syarat "&gt; 2 hari kalender" pada definisi IAD/ISK/VAP, dengan hari pemasangan dihitung sebagai hari ke-1. Plebitis &amp; ILO tak memakai ambang ini.</li>
                         </ul>
                     </div>
 
                     <div class="pt-2 border-t border-blue-200/60 dark:border-blue-700/60">
                         <p class="mb-1.5 font-semibold text-ink dark:text-gray-200">Cara hitung hari alat &amp; batasan:</p>
                         <ul class="pl-5 space-y-1 list-disc">
-                            <li>Hari pemakaian alat dihitung per hari kalender dan <b>dipecah ke bulan yang dilaluinya</b> (pemasangan lintas bulan tidak menumpuk di satu bulan).</li>
-                            <li>Tanggal lepas kosong = alat dianggap masih terpasang, dihitung sampai hari ini atau akhir tahun laporan.</li>
-                            <li>Satu entri IADP/Plebitis dihitung sebagai <b>hari CVL</b> bila kateter sentral/umbilikal = Ya; selain itu dihitung sebagai <b>hari IV line perifer</b>.</li>
+                            <li>Hari pemakaian alat dihitung per hari kalender dan <b>dipecah ke bulan yang dilaluinya</b> (pemasangan lintas bulan tidak menumpuk di satu bulan); hari pasang dihitung sebagai hari ke-1.</li>
+                            <li>Waktu lepas kosong = alat dianggap masih terpasang, dihitung sampai hari ini atau akhir tahun laporan.</li>
+                            <li>Pemetaan jenis alat &rarr; penyebut: <b>IV line perifer</b> &rarr; plebitis, <b>CVC / kateter umbilikal</b> &rarr; IAD, <b>kateter urine</b> &rarr; ISK, <b>ventilator</b> &rarr; VAP. Penyebut ILO tetap jumlah operasi dari formulir ILO.</li>
+                            <li><b>Kasus muncul tapi penyebut 0</b> berarti entri Alat Invasif-nya belum diisi — rate ditampilkan 0 dan angkanya belum bisa dipakai. Lengkapi dulu tab Alat Invasif pada pasien terkait.</li>
                             <li><b>Penetapan kasus resmi</b> tetap gejala klinis + pemeriksaan penunjang + diagnosis DPJP. Angka di sini diturunkan dari centangan formulir, jadi wajib diverifikasi IPCN sebelum dilaporkan keluar.</li>
                         </ul>
                     </div>
