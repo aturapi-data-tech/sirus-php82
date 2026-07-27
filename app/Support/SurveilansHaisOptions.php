@@ -16,10 +16,11 @@ class SurveilansHaisOptions
     /* ═══ BAGIAN BERSAMA (dipakai keempat modul) ═══ */
 
     /*
-     * Cara masuk & cara keluar RS TIDAK didaftar di sini: keduanya sudah terekam di alur
-     * induk (pendaftaran RI & Perencanaan → Tindak Lanjut), jadi form surveilans hanya
-     * menampilkannya lewat App\Support\AdmisiPulangRI. Jangan tambahkan kembali sebagai
-     * isian — nilainya akan berbeda dari data resmi episode rawat.
+     * Cara masuk & cara keluar RS TIDAK didaftar di sini, dan sengaja TIDAK muncul di form
+     * maupun cetakan surveilans: keduanya sudah terekam di alur induk (pendaftaran RI &
+     * Perencanaan → Tindak Lanjut). Yang memakainya cuma tabel audit kasus di Laporan
+     * Surveilans HAIs, lewat App\Support\AdmisiPulangRI. Jangan dikembalikan sebagai isian —
+     * nilainya akan berbeda dari data resmi episode rawat.
      */
 
     public const FAKTOR_RISIKO = [

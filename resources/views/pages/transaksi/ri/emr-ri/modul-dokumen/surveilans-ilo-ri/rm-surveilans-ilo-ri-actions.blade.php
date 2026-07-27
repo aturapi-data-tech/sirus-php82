@@ -725,8 +725,6 @@ new class extends Component {
 ?>
 
 @php
-    $caraMasukRi = \App\Support\AdmisiPulangRI::caraMasuk($dataDaftarRi ?? []);
-    $caraKeluarRi = \App\Support\AdmisiPulangRI::caraKeluar($dataDaftarRi ?? []);
     $opsiFaktorRisiko = \App\Support\SurveilansHaisOptions::FAKTOR_RISIKO;
     $opsiJenisOperasi = \App\Support\SurveilansHaisOptions::JENIS_OPERASI;
     $opsiAsa = \App\Support\SurveilansHaisOptions::ASA_SCORE;
@@ -886,22 +884,6 @@ new class extends Component {
                                         <x-now-button wire:click="setNow('tanggal')" :disabled="$formRO" />
                                     </div>
                                     <x-input-error :messages="$errors->get('newForm.tanggal')" class="mt-1" />
-                                </div>
-                                {{-- Cara masuk & keluar TIDAK diketik ulang — diturunkan dari alur induk
-                                     (pendaftaran RI & Perencanaan → Tindak Lanjut). --}}
-                                <div>
-                                    <x-input-label value="Cara Masuk RS" />
-                                    <div class="w-full px-3 py-2 mt-1 text-sm border rounded-lg bg-surface-soft border-hairline text-body dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
-                                        {{ $caraMasukRi }}
-                                    </div>
-                                    <p class="mt-1 text-xs text-muted dark:text-gray-400">Otomatis dari pendaftaran RI.</p>
-                                </div>
-                                <div>
-                                    <x-input-label value="Cara Keluar RS" />
-                                    <div class="w-full px-3 py-2 mt-1 text-sm border rounded-lg bg-surface-soft border-hairline text-body dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
-                                        {{ $caraKeluarRi }}
-                                    </div>
-                                    <p class="mt-1 text-xs text-muted dark:text-gray-400">Otomatis dari Perencanaan &rarr; Tindak Lanjut saat pasien pulang.</p>
                                 </div>
                                 <div>
                                     <x-input-label value="Dilakukan Operasi" />
