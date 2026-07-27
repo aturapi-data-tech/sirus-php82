@@ -82,31 +82,25 @@ trait SurveilansHaisTrait
         'tirahBaring' => 'tirahBaringHari',
     ];
 
+    /** Label baris rekap untuk record yang room_id-nya kosong / tak ketemu di master. */
+    private const RUANG_TANPA_NAMA = '(Tanpa Ruang)';
+
     /** Format tanggal baku repo pada JSON EMR. */
     private const FORMAT_TANGGAL = 'd/m/Y H:i:s';
 
     /**
-     * Rekap satu tahun penuh: 12 baris bulan + total + daftar kasus (untuk audit).
+     * Rekap satu tahun penuh: 12 baris bulan + rekap per ruangan + total + daftar
+     * kasus (untuk audit).
      *
-     * @return array{bulan: array, total: array, kasus: array, jumlahRecord: int}
+     * @return array{bulan: array, ruangan: array, total: array, kasus: array, jumlahRecord: int}
      */
     protected function rekapSurveilansHais(int $tahun): array
     {
         $awalTahun = Carbon::create($tahun, 1, 1, 0, 0, 0, config('app.timezone'))->startOfDay();
         $akhirTahun = Carbon::create($tahun, 12, 31, 0, 0, 0, config('app.timezone'))->endOfDay();
 
-        $hitunganBulan = [];
-        for ($bulanKe = 1; $bulanKe <= 12; $bulanKe++) {
-            $hitunganBulan[$bulanKe] = [
-                'plebitisKasus' => 0, 'ivlHari' => 0,
-                'iadKasus' => 0, 'clHari' => 0,
-                'iskKasus' => 0, 'ucHari' => 0,
-                'vapKasus' => 0, 'ventHari' => 0,
-                'hapKasus' => 0, 'tirahBaringHari' => 0,
-                'iloKasus' => 0, 'operasi' => 0,
-            ];
-        }
-
+        $hitunganBulan = $this->hitunganDuaBelasBulanKosong();
+        $hitunganRuangan = [];
         $kasusList = [];
         $recordList = $this->ambilRecordSurveilans($awalTahun, $akhirTahun);
 
@@ -145,14 +139,21 @@ trait SurveilansHaisTrait
                 'meninggal' => $caraKeluar === 'Meninggal',
             ];
 
-            // Penyebut dulu — sumbernya terpisah dari formulir surveilans (lihat docblock kelas).
-            $this->kumpulkanHariAlat($dataDaftarRi['observasi']['alatInvasif']['alatInvasifData'] ?? [], $tahun, $hitunganBulan);
+            // Dihitung ke ember milik record ini dulu, baru dilipat ke agregat bulan
+            // DAN ruangan. Dengan begitu satu kali baca JSON melayani dua rekap dan
+            // angkanya dijamin konsisten (tak ada risiko rumus ganda).
+            $hitunganRecord = $this->hitunganDuaBelasBulanKosong();
 
-            $this->kumpulkanPlebitis($dataDaftarRi['surveilansPlebitisRI'] ?? [], $tahun, $pasien, $hitunganBulan, $kasusList);
-            $this->kumpulkanIsk($dataDaftarRi['surveilansIskRI'] ?? [], $tahun, $pasien, $hitunganBulan, $kasusList);
-            $this->kumpulkanVap($dataDaftarRi['surveilansVapRI'] ?? [], $tahun, $pasien, $hitunganBulan, $kasusList);
-            $this->kumpulkanHap($dataDaftarRi['surveilansHapRI'] ?? [], $tahun, $pasien, $hitunganBulan, $kasusList);
-            $this->kumpulkanIlo($dataDaftarRi['surveilansIloRI'] ?? [], $tahun, $pasien, $hitunganBulan, $kasusList);
+            // Penyebut dulu — sumbernya terpisah dari formulir surveilans (lihat docblock kelas).
+            $this->kumpulkanHariAlat($dataDaftarRi['observasi']['alatInvasif']['alatInvasifData'] ?? [], $tahun, $hitunganRecord);
+
+            $this->kumpulkanPlebitis($dataDaftarRi['surveilansPlebitisRI'] ?? [], $tahun, $pasien, $hitunganRecord, $kasusList);
+            $this->kumpulkanIsk($dataDaftarRi['surveilansIskRI'] ?? [], $tahun, $pasien, $hitunganRecord, $kasusList);
+            $this->kumpulkanVap($dataDaftarRi['surveilansVapRI'] ?? [], $tahun, $pasien, $hitunganRecord, $kasusList);
+            $this->kumpulkanHap($dataDaftarRi['surveilansHapRI'] ?? [], $tahun, $pasien, $hitunganRecord, $kasusList);
+            $this->kumpulkanIlo($dataDaftarRi['surveilansIloRI'] ?? [], $tahun, $pasien, $hitunganRecord, $kasusList);
+
+            $this->lipatKeAgregat($hitunganRecord, $hitunganBulan, $hitunganRuangan, $pasien['ruang'], $record->bangsal_name ?? null);
         }
 
         // Susun baris bulan + rate-nya
@@ -174,10 +175,76 @@ trait SurveilansHaisTrait
 
         return [
             'bulan' => $barisBulanList,
+            'ruangan' => $this->susunBarisRuangan($hitunganRuangan),
             'total' => $total,
             'kasus' => $kasusList,
             'jumlahRecord' => count($recordList),
         ];
+    }
+
+    /** Kerangka 12 bulan bernilai nol — dipakai agregat tahunan maupun ember per record. */
+    private function hitunganDuaBelasBulanKosong(): array
+    {
+        $kosong = [
+            'plebitisKasus' => 0, 'ivlHari' => 0,
+            'iadKasus' => 0, 'clHari' => 0,
+            'iskKasus' => 0, 'ucHari' => 0,
+            'vapKasus' => 0, 'ventHari' => 0,
+            'hapKasus' => 0, 'tirahBaringHari' => 0,
+            'iloKasus' => 0, 'operasi' => 0,
+        ];
+
+        return array_fill(1, 12, $kosong);
+    }
+
+    /**
+     * Lipat hitungan satu record ke agregat BULAN dan agregat RUANGAN sekaligus.
+     *
+     * Ruangan diambil dari header episode RI (rstxn_rihdrs.room_id). Konsekuensinya:
+     * pasien yang pindah kamar tercatat di ruang terakhirnya saja — sama seperti kolom
+     * Ruang di tabel audit kasus, jadi kedua tabel tak akan saling bertentangan.
+     */
+    private function lipatKeAgregat(array $hitunganRecord, array &$hitunganBulan, array &$hitunganRuangan, ?string $ruang, ?string $bangsal): void
+    {
+        $namaRuang = trim((string) $ruang) !== '' ? trim((string) $ruang) : self::RUANG_TANPA_NAMA;
+
+        if (!isset($hitunganRuangan[$namaRuang])) {
+            $hitunganRuangan[$namaRuang] = array_merge(
+                array_fill_keys(array_keys($hitunganRecord[1]), 0),
+                ['bangsal' => trim((string) $bangsal) ?: '-', 'jumlahRecord' => 0],
+            );
+        }
+        $hitunganRuangan[$namaRuang]['jumlahRecord']++;
+
+        for ($bulanKe = 1; $bulanKe <= 12; $bulanKe++) {
+            foreach ($hitunganRecord[$bulanKe] as $field => $nilai) {
+                if ($nilai === 0) {
+                    continue;
+                }
+                $hitunganBulan[$bulanKe][$field] += $nilai;
+                $hitunganRuangan[$namaRuang][$field] += $nilai;
+            }
+        }
+    }
+
+    /** Baris rekap per ruangan, diurutkan: yang ada kasusnya dulu, lalu abjad. */
+    private function susunBarisRuangan(array $hitunganRuangan): array
+    {
+        $barisList = [];
+        foreach ($hitunganRuangan as $namaRuang => $hitungan) {
+            $rate = $this->hitungSemuaRate($hitungan);
+            $totalKasus = $hitungan['plebitisKasus'] + $hitungan['iadKasus'] + $hitungan['iskKasus']
+                + $hitungan['vapKasus'] + $hitungan['hapKasus'] + $hitungan['iloKasus'];
+
+            $barisList[] = array_merge($hitungan, $rate, [
+                'ruang' => $namaRuang,
+                'totalKasus' => $totalKasus,
+            ]);
+        }
+
+        usort($barisList, fn($kiri, $kanan) => [$kanan['totalKasus'], $kiri['ruang']] <=> [$kiri['totalKasus'], $kanan['ruang']]);
+
+        return $barisList;
     }
 
     /**
@@ -191,12 +258,14 @@ trait SurveilansHaisTrait
         // wajib di-join (lihat rsmst_rooms / rsmst_pasiens).
         return DB::table('rstxn_rihdrs as h')
             ->leftJoin('rsmst_rooms as r', 'r.room_id', '=', 'h.room_id')
+            ->leftJoin('rsmst_bangsals as b', 'b.bangsal_id', '=', 'r.bangsal_id')
             ->leftJoin('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
             ->select([
                 'h.rihdr_no',
                 'h.reg_no',
                 'p.reg_name',
                 'r.room_name',
+                'b.bangsal_name',
                 'h.datadaftarri_json',
             ])
             // Pembilang datang dari key surveilans*, penyebut dari alatInvasif — record

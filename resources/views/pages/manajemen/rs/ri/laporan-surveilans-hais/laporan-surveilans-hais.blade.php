@@ -8,7 +8,6 @@ use Livewire\Component;
 use Livewire\Attributes\Computed;
 use App\Http\Traits\Manajemen\Rs\Ri\SurveilansHaisTrait;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Cache;
 
 new class extends Component {
     use SurveilansHaisTrait;
@@ -23,27 +22,25 @@ new class extends Component {
         $this->filterTahun = Carbon::now(config('app.timezone'))->year;
     }
 
-    /** Buang cache lalu hitung ulang (dipakai tombol Muat Ulang). */
-    public function refreshData(): void
+    /** Kembalikan filter ke kondisi awal — dipakai tombol Reset di toolbar. */
+    public function resetFilters(): void
     {
-        Cache::forget($this->cacheKey());
-        unset($this->rekap);
-        $this->dispatch('toast', type: 'success', message: 'Data surveilans dihitung ulang.');
-    }
-
-    private function cacheKey(): string
-    {
-        return 'laporan-surveilans-hais-' . $this->filterTahun;
+        $this->filterTahun = Carbon::now(config('app.timezone'))->year;
+        $this->filterJenis = '';
     }
 
     /**
-     * Rekap di-cache 10 menit: pembacaan CLOB datadaftarri_json per record RI
-     * cukup mahal, sementara data surveilans berubah harian (bukan detik-an).
+     * SENGAJA TANPA cache lintas-request. Dulu di-cache 10 menit karena diduga mahal,
+     * ternyata rekap setahun cuma ~0,3 detik (filter INSTR di Oracle menyempitkan
+     * kandidat sebelum CLOB dibaca). Cache itu justru bikin tombol Refresh standar
+     * ($refresh) tampak bekerja padahal menyajikan data lama. Atribut #[Computed]
+     * sudah memoize dalam satu request, jadi tabel bulanan/ruangan/kasus tetap
+     * dihitung sekali saja per render.
      */
     #[Computed]
     public function rekap(): array
     {
-        return Cache::remember($this->cacheKey(), now()->addMinutes(10), fn() => $this->rekapSurveilansHais($this->filterTahun));
+        return $this->rekapSurveilansHais($this->filterTahun);
     }
 
     #[Computed]
@@ -98,6 +95,7 @@ new class extends Component {
     // (skill naming-conventions §2: logika jangan ditaruh di @php template).
     $rekap = $this->rekap;
     $barisBulanList = $rekap['bulan'] ?? [];
+    $barisRuanganList = $rekap['ruangan'] ?? [];
     $total = $rekap['total'] ?? [];
     $daftarIndikator = $this->daftarIndikator;
 @endphp
@@ -110,11 +108,19 @@ new class extends Component {
         <div class="px-6 pt-4 pb-8 space-y-6">
 
             {{-- ── FILTER ── --}}
-            <div class="flex flex-wrap items-end gap-3">
+            <div class="flex flex-wrap items-end gap-2.5 pb-2">
                 <div>
                     <x-input-label value="Tahun" />
-                    <x-text-input type="number" wire:model.live.debounce.500ms="filterTahun" min="2000" max="2099"
-                        class="mt-1 !text-lg !font-bold w-32" />
+                    <div class="relative mt-1">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <x-text-input type="text" wire:model.live.debounce.500ms="filterTahun" class="block w-28 pl-10"
+                            placeholder="yyyy" maxlength="4" />
+                    </div>
                 </div>
                 <div>
                     <x-input-label value="Jenis Kasus (tabel audit)" />
@@ -125,29 +131,61 @@ new class extends Component {
                         @endforeach
                     </x-select-input>
                 </div>
-                <x-secondary-button type="button" wire:click="refreshData" wire:loading.attr="disabled" wire:target="refreshData">
-                    <span wire:loading.remove wire:target="refreshData">Muat Ulang</span>
-                    <span wire:loading wire:target="refreshData" class="flex items-center gap-1.5"><x-loading class="w-4 h-4" /> Menghitung...</span>
-                </x-secondary-button>
-                <p class="text-xs text-muted dark:text-gray-400">
-                    {{ number_format($rekap['jumlahRecord'] ?? 0) }} record RI dengan data surveilans · hasil di-cache 10 menit
-                </p>
+                <div class="ml-auto">
+                    <x-toolbar-refresh-reset :label="null" />
+                </div>
             </div>
 
-            {{-- ── KARTU RINGKAS (rate setahun) ── --}}
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                @foreach ($daftarIndikator as $indikator)
-                    <div class="p-4 border rounded-xl {{ $indikator['kelasKartu'] }}">
-                        <div class="text-xs font-semibold uppercase text-muted dark:text-gray-300">{{ $indikator['label'] }}</div>
-                        <div class="mt-1 text-3xl font-bold text-ink dark:text-gray-100">
-                            {{ number_format($total[$indikator['rate']] ?? 0, 2) }}<span class="ml-1 text-base font-medium text-muted">{{ $indikator['basis'] }}</span>
+            {{-- ── KARTU RINGKAS (rate setahun) — collapsible, default tutup ── --}}
+            @php
+                $totalKasusSetahun = collect($daftarIndikator)->sum(fn($indikator) => $total[$indikator['kasus']] ?? 0);
+            @endphp
+            <div class="bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900"
+                x-data="{ open: false }">
+
+                <button type="button" @click="open = !open"
+                    class="flex items-center w-full gap-3 px-4 py-3 text-left transition-colors rounded-2xl
+                           hover:bg-surface-soft dark:hover:bg-gray-800
+                           focus:outline-none focus:ring-1 focus:ring-gray-300">
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-semibold text-body dark:text-gray-200">
+                            Ringkasan Insiden Rate {{ $filterTahun }}
                         </div>
-                        <div class="mt-1 text-[11px] text-muted dark:text-gray-400">
-                            {{ number_format($total[$indikator['kasus']] ?? 0) }} kasus /
-                            {{ number_format($total[$indikator['penyebut']] ?? 0) }} {{ $indikator['satuan'] }}
+                        <div class="text-xs text-muted dark:text-gray-400">
+                            {{ number_format($rekap['jumlahRecord'] ?? 0) }} record RI ber-surveilans
+                            · {{ number_format($totalKasusSetahun) }} kasus
+                            · {{ count($daftarIndikator) }} indikator
                         </div>
                     </div>
-                @endforeach
+                    <span class="hidden text-xs sm:inline text-muted dark:text-gray-400">
+                        <span x-text="open ? 'Sembunyikan' : 'Lihat detail'"></span>
+                    </span>
+                    <svg class="w-4 h-4 transition-transform duration-200 text-muted-soft shrink-0"
+                        :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+
+                <div x-cloak x-show="open"
+                    class="px-4 pb-4 border-t border-hairline dark:border-gray-700"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 -translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0">
+                    <div class="grid grid-cols-1 gap-3 mt-3 sm:grid-cols-3 lg:grid-cols-6">
+                        @foreach ($daftarIndikator as $indikator)
+                            <div class="p-4 border rounded-xl {{ $indikator['kelasKartu'] }}">
+                                <div class="text-xs font-semibold uppercase text-muted dark:text-gray-300">{{ $indikator['label'] }}</div>
+                                <div class="mt-1 text-3xl font-bold text-ink dark:text-gray-100">
+                                    {{ number_format($total[$indikator['rate']] ?? 0, 2) }}<span class="ml-1 text-base font-medium text-muted">{{ $indikator['basis'] }}</span>
+                                </div>
+                                <div class="mt-1 text-[11px] text-muted dark:text-gray-400">
+                                    {{ number_format($total[$indikator['kasus']] ?? 0) }} kasus /
+                                    {{ number_format($total[$indikator['penyebut']] ?? 0) }} {{ $indikator['satuan'] }}
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
             </div>
 
             {{-- ── TABEL REKAP BULANAN ── --}}
@@ -204,6 +242,69 @@ new class extends Component {
                         </tfoot>
                     </table>
                 </div>
+            </div>
+
+            {{-- ── TABEL REKAP PER RUANGAN ── --}}
+            <div class="bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-hairline dark:border-gray-700">
+                    <h3 class="text-sm font-semibold tracking-wider uppercase text-muted dark:text-gray-400">
+                        Rekap per Ruangan {{ $filterTahun }}
+                    </h3>
+                    <span class="text-xs text-muted dark:text-gray-400">
+                        {{ count($barisRuanganList) }} ruangan · diurutkan dari yang kasusnya terbanyak
+                    </span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-surface-soft dark:bg-gray-800 text-muted dark:text-gray-400">
+                            <tr>
+                                <th rowspan="2" class="px-3 py-2 text-left align-bottom border-b border-hairline dark:border-gray-700">Ruangan</th>
+                                <th rowspan="2" class="px-3 py-2 text-left align-bottom border-b border-hairline dark:border-gray-700">Bangsal</th>
+                                <th rowspan="2" class="px-2 py-2 text-center align-bottom border-b border-hairline dark:border-gray-700">Episode RI</th>
+                                @foreach ($daftarIndikator as $indikator)
+                                    <th colspan="3" class="px-3 py-1.5 text-center border-b border-l border-hairline dark:border-gray-700">
+                                        {{ $indikator['label'] }}
+                                    </th>
+                                @endforeach
+                            </tr>
+                            <tr class="text-[11px]">
+                                @foreach ($daftarIndikator as $indikator)
+                                    <th class="px-2 py-1.5 text-center border-b border-l border-hairline dark:border-gray-700">Kasus</th>
+                                    <th class="px-2 py-1.5 text-center border-b border-hairline dark:border-gray-700">{{ $indikator['labelPenyebut'] }}</th>
+                                    <th class="px-2 py-1.5 text-center border-b border-hairline dark:border-gray-700">Rate {{ $indikator['basis'] }}</th>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
+                            @forelse ($barisRuanganList as $barisRuangan)
+                                <tr class="hover:bg-surface-soft dark:hover:bg-gray-800/50">
+                                    <td class="px-3 py-2 font-medium text-ink dark:text-gray-100 whitespace-nowrap">{{ $barisRuangan['ruang'] }}</td>
+                                    <td class="px-3 py-2 text-muted whitespace-nowrap">{{ $barisRuangan['bangsal'] }}</td>
+                                    <td class="px-2 py-2 text-center text-muted">{{ number_format($barisRuangan['jumlahRecord']) }}</td>
+                                    @foreach ($daftarIndikator as $indikator)
+                                        <td class="px-2 py-2 text-center border-l border-hairline dark:border-gray-700 text-body dark:text-gray-300">
+                                            {{ $barisRuangan[$indikator['kasus']] > 0 ? number_format($barisRuangan[$indikator['kasus']]) : '—' }}
+                                        </td>
+                                        <td class="px-2 py-2 text-center text-muted">{{ $barisRuangan[$indikator['penyebut']] > 0 ? number_format($barisRuangan[$indikator['penyebut']]) : '—' }}</td>
+                                        <td class="px-2 py-2 text-center font-semibold {{ $barisRuangan[$indikator['rate']] > 0 ? 'text-rose-700 dark:text-rose-300' : 'text-muted-soft' }}">
+                                            {{ $barisRuangan[$indikator['rate']] > 0 ? number_format($barisRuangan[$indikator['rate']], 2) : '—' }}
+                                        </td>
+                                    @endforeach
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="{{ 3 + count($daftarIndikator) * 3 }}" class="px-3 py-6 text-sm text-center text-muted-soft">
+                                        Belum ada data surveilans pada periode ini.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+                <p class="px-4 py-2 text-xs border-t text-muted border-hairline dark:border-gray-700 dark:text-gray-400">
+                    Ruangan diambil dari header episode RI, jadi pasien yang pindah kamar tercatat di ruang terakhirnya —
+                    konsisten dengan kolom Ruang pada tabel audit kasus di bawah.
+                </p>
             </div>
 
             {{-- ── DAFTAR KASUS (audit) ── --}}
