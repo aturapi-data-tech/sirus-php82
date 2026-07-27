@@ -78,7 +78,7 @@ new class extends Component {
         'persiapanSerius' => 'Melakukan persiapan serius (mengumpulkan obat, menulis pesan perpisahan)',
     ];
 
-    public array $tindakLanjutBunuhDiriOptions = ['Edukasi & monitoring', 'Safety plan', 'Observasi ketat', 'Rujukan segera / rawat inap'];
+    public array $tindakLanjutBunuhDiriOptions = ['Edukasi & monitoring', 'Safety plan', 'Observasi ketat', 'Konsul DPJP'];
 
     public function mount(): void
     {
