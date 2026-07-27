@@ -812,10 +812,12 @@ new class extends Component {
                         <x-border-form title="3. Tirah Baring & Tanda Klinis" :collapsible="true" :open="true">
                             {{-- Dikelompokkan mengikuti kriteria HAP: lama tirah baring (mewakili
                                  syarat >=48 jam sejak masuk) · tanda sistemik · sputum. --}}
-                            <div class="space-y-4">
+                            {{-- TANPA items-start: biarkan grid stretch supaya ketiga kotak
+                                 sama tinggi walau isinya beda (hint leukosit bikin kolom tengah lebih panjang). --}}
+                            <div class="grid grid-cols-1 gap-4 lg:grid-cols-12">
 
-                                <x-border-form title="Lama Tirah Baring" bgcolor="bg-surface-soft" class="!shadow-none" padding="p-3">
-                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <x-border-form title="Lama Tirah Baring" bgcolor="bg-surface-soft" class="!shadow-none lg:col-span-5" padding="p-3">
+                                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                         <div>
                                             <x-input-label value="Tanggal / Jam Mulai *" />
                                             <div class="flex gap-1 mt-1">
@@ -835,8 +837,8 @@ new class extends Component {
                                     </div>
                                 </x-border-form>
 
-                                <x-border-form title="Tanda Sistemik" bgcolor="bg-surface-soft" class="!shadow-none" padding="p-3">
-                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                <x-border-form title="Tanda Sistemik" bgcolor="bg-surface-soft" class="!shadow-none lg:col-span-4" padding="p-3">
+                                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                                         <div>
                                             <x-input-label value="Demam ≥ 38 °C" />
                                             <div class="mt-2">
@@ -845,7 +847,7 @@ new class extends Component {
                                             </div>
                                         </div>
                                         <div>
-                                            <x-input-label value="Demam Hari Ke (sejak tirah baring)" />
+                                            <x-input-label value="Demam Hari Ke" />
                                             <x-text-input wire:model="newForm.demamHariKe" class="w-full mt-1" placeholder="mis. 3" />
                                         </div>
                                         <div>
@@ -854,19 +856,17 @@ new class extends Component {
                                                 :error="$errors->has('newForm.leukosit')" />
                                             @php $leukositAbnormal = \App\Support\SurveilansHaisOptions::leukositAbnormal($newForm['leukosit'] ?? null); @endphp
                                             <p class="mt-1 text-xs {{ $leukositAbnormal ? 'font-semibold text-rose-700 dark:text-rose-400' : 'text-muted dark:text-gray-400' }}">
-                                                {{ $leukositAbnormal
-                                                    ? 'Memenuhi kriteria (leukopeni <4.000 / leukositosis >=12.000).'
-                                                    : 'Kriteria: leukopeni <4.000 atau leukositosis >=12.000 /mm3.' }}
+                                                {{ $leukositAbnormal ? 'Memenuhi kriteria.' : 'Kriteria: <4.000 atau ≥12.000.' }}
                                             </p>
                                             <x-input-error :messages="$errors->get('newForm.leukosit')" class="mt-1" />
                                         </div>
                                     </div>
                                 </x-border-form>
 
-                                <x-border-form title="Sputum" bgcolor="bg-surface-soft" class="!shadow-none" padding="p-3">
-                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <x-border-form title="Sputum" bgcolor="bg-surface-soft" class="!shadow-none lg:col-span-3" padding="p-3">
+                                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                         <div>
-                                            <x-input-label value="Onset Baru Sputum Purulen / Berubah Sifat" />
+                                            <x-input-label value="Sputum Purulen / Berubah Sifat" />
                                             <div class="mt-2">
                                                 <x-toggle wire:model="newForm.sputumPurulen" trueValue="Ya" falseValue="Tidak"
                                                     :label="filled($newForm['sputumPurulen'] ?? null) ? $newForm['sputumPurulen'] : 'Belum diisi'" :disabled="$formReadOnly" />
@@ -874,7 +874,7 @@ new class extends Component {
                                         </div>
                                         <div>
                                             <x-input-label value="Keterangan Sputum" />
-                                            <x-text-input wire:model="newForm.sputumKeterangan" class="w-full mt-1" placeholder="mis. kental kehijauan, sebelumnya jernih" />
+                                            <x-text-input wire:model="newForm.sputumKeterangan" class="w-full mt-1" placeholder="mis. kental kehijauan" />
                                         </div>
                                     </div>
                                 </x-border-form>
