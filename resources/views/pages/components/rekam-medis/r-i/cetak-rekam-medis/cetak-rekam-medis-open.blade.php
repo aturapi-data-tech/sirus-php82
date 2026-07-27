@@ -699,6 +699,9 @@ new class extends Component {
                     <livewire:pages::components.rekam-medis.r-i.dokumen-view.surveilans-vap-view-ri :riHdrNo="(string) $riHdrNo"
                         :entries="$ri['surveilansVapRI'] ?? []" wire:key="rm-view-surveilans-vap-{{ $riHdrNo }}" />
 
+                    <livewire:pages::components.rekam-medis.r-i.dokumen-view.surveilans-hap-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['surveilansHapRI'] ?? []" wire:key="rm-view-surveilans-hap-{{ $riHdrNo }}" />
+
                     <livewire:pages::components.rekam-medis.r-i.dokumen-view.surveilans-ilo-view-ri :riHdrNo="(string) $riHdrNo"
                         :entries="$ri['surveilansIloRI'] ?? []" wire:key="rm-view-surveilans-ilo-{{ $riHdrNo }}" />
                 </div>

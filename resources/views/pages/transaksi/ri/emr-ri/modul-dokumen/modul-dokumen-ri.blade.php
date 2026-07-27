@@ -249,7 +249,7 @@ new class extends Component {
                                     d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                             </svg>
                             Surveilans HAIs
-                            @if (collect(['surveilansPlebitisRI', 'surveilansIskRI', 'surveilansVapRI', 'surveilansIloRI'])->first(fn($k) => !empty($dataDaftarRi[$k])))
+                            @if (collect(['surveilansPlebitisRI', 'surveilansIskRI', 'surveilansVapRI', 'surveilansHapRI', 'surveilansIloRI'])->first(fn($k) => !empty($dataDaftarRi[$k])))
                                 <x-badge variant="success" class="text-[10px] px-1.5 py-0">&#10003;</x-badge>
                             @endif
                         </x-tab>

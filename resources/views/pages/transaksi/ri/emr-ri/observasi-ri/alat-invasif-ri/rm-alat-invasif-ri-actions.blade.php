@@ -88,7 +88,7 @@ new class extends Component {
 
         $this->validateWithToast(
             [
-                'formEntryAlat.jenisAlat' => 'required|in:' . implode(',', array_keys(SurveilansHaisOptions::ALAT_INVASIF)),
+                'formEntryAlat.jenisAlat' => 'required|in:' . implode(',', array_keys(SurveilansHaisOptions::PENYEBUT_HAIS)),
                 'formEntryAlat.lokasi' => 'nullable|string|max:100',
                 'formEntryAlat.tanggalWaktuMulai' => 'required|date_format:d/m/Y H:i:s',
                 'formEntryAlat.tanggalWaktuSelesai' => 'nullable|date_format:d/m/Y H:i:s|after:formEntryAlat.tanggalWaktuMulai',
@@ -100,7 +100,7 @@ new class extends Component {
                 'after' => 'Waktu lepas harus setelah waktu pasang.',
             ],
             [
-                'formEntryAlat.jenisAlat' => 'Jenis alat',
+                'formEntryAlat.jenisAlat' => 'Jenis',
                 'formEntryAlat.lokasi' => 'Lokasi pemasangan',
                 'formEntryAlat.tanggalWaktuMulai' => 'Waktu pasang',
                 'formEntryAlat.tanggalWaktuSelesai' => 'Waktu lepas',
@@ -124,7 +124,7 @@ new class extends Component {
                     ->contains(fn($baris) => ($baris['jenisAlat'] ?? '') === $this->formEntryAlat['jenisAlat']
                         && trim((string) ($baris['tanggalWaktuMulai'] ?? '')) === trim($this->formEntryAlat['tanggalWaktuMulai']));
                 if ($duplikat) {
-                    throw new \RuntimeException('Alat dengan waktu pasang tersebut sudah ada.');
+                    throw new \RuntimeException('Jenis dengan waktu mulai tersebut sudah ada.');
                 }
 
                 $data['observasi']['alatInvasif']['alatInvasifData'][] = array_merge($this->formEntryAlat, [
@@ -137,7 +137,7 @@ new class extends Component {
 
                 $this->appendAdminLogRI(
                     (int) $this->riHdrNo,
-                    'Tambah Alat Invasif — ' . SurveilansHaisOptions::label(SurveilansHaisOptions::ALAT_INVASIF, $this->formEntryAlat['jenisAlat'])
+                    'Tambah Alat Invasif — ' . SurveilansHaisOptions::label(SurveilansHaisOptions::PENYEBUT_HAIS, $this->formEntryAlat['jenisAlat'])
                         . ', pasang ' . ($this->formEntryAlat['tanggalWaktuMulai'] ?? '-'),
                     'MR',
                 );
@@ -147,7 +147,7 @@ new class extends Component {
             $this->setWaktuMulaiAlat();
             $this->incrementVersion('modal-alat-invasif-ri');
             $this->dispatch('refresh-after-ri.saved', tab: 'observasi', subTab: 'alat-invasif');
-            $this->dispatch('toast', type: 'success', message: 'Alat invasif berhasil ditambahkan.');
+            $this->dispatch('toast', type: 'success', message: 'Data berhasil ditambahkan.');
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Exception $e) {
@@ -257,7 +257,7 @@ new class extends Component {
 
             $this->incrementVersion('modal-alat-invasif-ri');
             $this->dispatch('refresh-after-ri.saved', tab: 'observasi', subTab: 'alat-invasif');
-            $this->dispatch('toast', type: 'success', message: 'Data alat invasif berhasil dihapus.');
+            $this->dispatch('toast', type: 'success', message: 'Data berhasil dihapus.');
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Exception $e) {
@@ -276,7 +276,7 @@ new class extends Component {
 ?>
 
 @php
-    $opsiAlatInvasif = \App\Support\SurveilansHaisOptions::ALAT_INVASIF;
+    $opsiPenyebutHais = \App\Support\SurveilansHaisOptions::PENYEBUT_HAIS;
 @endphp
 
 <div>
@@ -338,10 +338,10 @@ new class extends Component {
                         </div>
 
                         <div class="col-span-3">
-                            <x-input-label value="Jenis Alat *" class="mb-1" />
+                            <x-input-label value="Jenis *" class="mb-1" />
                             <x-select-input wire:model="formEntryAlat.jenisAlat" class="w-full"
                                 x-ref="alatJenis" x-on:keydown.enter.prevent="$refs.alatLokasi.focus()">
-                                @foreach ($opsiAlatInvasif as $kunciAlat => $labelAlat)
+                                @foreach ($opsiPenyebutHais as $kunciAlat => $labelAlat)
                                     <option value="{{ $kunciAlat }}">{{ $labelAlat }}</option>
                                 @endforeach
                             </x-select-input>
@@ -412,7 +412,7 @@ new class extends Component {
 
             <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                 <div class="flex items-center justify-between px-4 py-3 border-b border-hairline dark:border-gray-700">
-                    <h3 class="text-sm font-semibold text-body dark:text-gray-300">Riwayat Pemasangan Alat Invasif</h3>
+                    <h3 class="text-sm font-semibold text-body dark:text-gray-300">Riwayat Alat Invasif &amp; Tirah Baring</h3>
                     <x-badge variant="gray">{{ count($daftarAlat) }} item</x-badge>
                 </div>
                 <div class="overflow-x-auto">
@@ -420,7 +420,7 @@ new class extends Component {
                         <thead class="text-xs font-semibold text-muted uppercase bg-surface-soft dark:bg-gray-800/50 dark:text-gray-400">
                             <tr>
                                 <th class="px-4 py-3">No</th>
-                                <th class="px-4 py-3">Jenis Alat</th>
+                                <th class="px-4 py-3">Jenis</th>
                                 <th class="px-4 py-3">Lokasi</th>
                                 <th class="px-4 py-3">Waktu Pasang</th>
                                 <th class="px-4 py-3">Waktu Lepas</th>
@@ -444,7 +444,7 @@ new class extends Component {
                                     x-data="{ editing: false, val: '{{ $waktuLepas }}' }">
                                     <td class="px-4 py-3 text-muted dark:text-gray-400">{{ $loop->iteration }}</td>
                                     <td class="px-4 py-3 font-medium text-ink dark:text-gray-100">
-                                        {{ $opsiAlatInvasif[$jenisBaris] ?? $jenisBaris ?: '-' }}
+                                        {{ $opsiPenyebutHais[$jenisBaris] ?? $jenisBaris ?: '-' }}
                                     </td>
                                     <td class="px-4 py-3">{{ $baris['lokasi'] ?: '-' }}</td>
                                     <td class="px-4 py-3 font-mono whitespace-nowrap">{{ $waktuPasang ?: '-' }}</td>
@@ -493,7 +493,7 @@ new class extends Component {
                                         <td class="px-4 py-3 text-center">
                                             <x-outline-button type="button"
                                                 wire:click.prevent="removeAlatInvasif('{{ $jenisBaris }}', '{{ $waktuPasang }}')"
-                                                wire:confirm="Hapus data alat invasif ini?" wire:loading.attr="disabled"
+                                                wire:confirm="Hapus data ini?" wire:loading.attr="disabled"
                                                 class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300"
                                                 title="Hapus">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -512,7 +512,7 @@ new class extends Component {
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
-                                        Belum ada data alat invasif
+                                        Belum ada data alat invasif / tirah baring
                                     </td>
                                 </tr>
                             @endforelse

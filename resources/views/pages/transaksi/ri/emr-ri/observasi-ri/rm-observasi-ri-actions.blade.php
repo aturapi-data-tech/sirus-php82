@@ -177,7 +177,7 @@ new class extends Component {
             'obat-cairan': 'Pemberian Obat & Cairan',
             'pengeluaran': 'Pengeluaran Cairan',
             'oksigen': 'Pemakaian Oksigen',
-            'alat-invasif': 'Alat Invasif',
+            'alat-invasif': 'Alat Invasif & Tirah Baring',
             'ttv': 'Observasi Lanjutan',
         },
         markDirty() {
@@ -239,7 +239,7 @@ new class extends Component {
                         ],
                         [
                             'key' => 'alat-invasif',
-                            'label' => 'Alat Invasif',
+                            'label' => 'Alat Invasif & Tirah Baring',
                             'count' => $this->countAlatInvasif,
                             'icon' =>
                                 'M13 10V3L4 14h7v7l9-11h-7z',

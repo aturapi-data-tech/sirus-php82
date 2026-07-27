@@ -4,6 +4,7 @@ namespace App\Http\Traits\Manajemen\Rs\Ri;
 
 use App\Support\AdmisiPulangRI;
 use App\Support\OracleLob;
+use App\Support\SurveilansHaisOptions;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -30,6 +31,7 @@ use Illuminate\Support\Facades\DB;
  *   Plebitis = jumlah plebitis / jumlah hari pemasangan IV line perifer         x 1000
  *   ISK      = jumlah ISK      / jumlah hari pemakaian kateter urine            x 1000
  *   VAP      = jumlah VAP      / jumlah hari pemakaian ventilator               x 1000
+ *   HAP      = jumlah HAP      / jumlah hari tirah baring                       x 1000
  *   ILO      = jumlah ILO      / jumlah operasi                                 x 100
  *              (ILO memakai basis 100 operasi — konvensi IDO, tak ada di materi IPCN)
  *
@@ -58,7 +60,7 @@ trait SurveilansHaisTrait
     /**
      * Minimal lama pemakaian alat sebelum infeksi boleh dihitung sebagai insiden.
      *
-     * Definisi IAD, ISK (CAUTI) & VAP sama-sama mensyaratkan alat terpasang
+     * Definisi IAD, ISK (CAUTI), VAP & HAP sama-sama mensyaratkan alat terpasang
      * "> 2 hari kalender". Hari pemasangan = hari ke-1, jadi ambang lolosnya
      * adalah hari ke-3 (3 hari kalender inklusif). Plebitis & ILO TIDAK memakai
      * gate ini — definisinya tak mensyaratkan lama pemakaian alat.
@@ -70,13 +72,14 @@ trait SurveilansHaisTrait
 
     /**
      * Peta jenis alat pada entri Observasi RI → field penyebut di rekap.
-     * Kunci mengikuti App\Support\SurveilansHaisOptions::ALAT_INVASIF.
+     * Kunci mengikuti App\Support\SurveilansHaisOptions::PENYEBUT_HAIS.
      */
     private const FIELD_HARI_ALAT = [
         'ivPerifer' => 'ivlHari',
         'cvcUmbilikal' => 'clHari',
         'kateterUrine' => 'ucHari',
         'ventilator' => 'ventHari',
+        'tirahBaring' => 'tirahBaringHari',
     ];
 
     /** Format tanggal baku repo pada JSON EMR. */
@@ -99,6 +102,7 @@ trait SurveilansHaisTrait
                 'iadKasus' => 0, 'clHari' => 0,
                 'iskKasus' => 0, 'ucHari' => 0,
                 'vapKasus' => 0, 'ventHari' => 0,
+                'hapKasus' => 0, 'tirahBaringHari' => 0,
                 'iloKasus' => 0, 'operasi' => 0,
             ];
         }
@@ -147,6 +151,7 @@ trait SurveilansHaisTrait
             $this->kumpulkanPlebitis($dataDaftarRi['surveilansPlebitisRI'] ?? [], $tahun, $pasien, $hitunganBulan, $kasusList);
             $this->kumpulkanIsk($dataDaftarRi['surveilansIskRI'] ?? [], $tahun, $pasien, $hitunganBulan, $kasusList);
             $this->kumpulkanVap($dataDaftarRi['surveilansVapRI'] ?? [], $tahun, $pasien, $hitunganBulan, $kasusList);
+            $this->kumpulkanHap($dataDaftarRi['surveilansHapRI'] ?? [], $tahun, $pasien, $hitunganBulan, $kasusList);
             $this->kumpulkanIlo($dataDaftarRi['surveilansIloRI'] ?? [], $tahun, $pasien, $hitunganBulan, $kasusList);
         }
 
@@ -378,6 +383,47 @@ trait SurveilansHaisTrait
         }
     }
 
+    /**
+     * HAP (Hospital Acquired Pneumonia) — pneumonia NON-ventilator.
+     *
+     * Kriteria HIPPII: demam >=38 C tanpa penyebab lain ATAU leukosit abnormal
+     * (leukopeni <4.000 / leukositosis >=12.000), DAN disertai onset baru sputum
+     * purulen atau perubahan sifat sputum. Ditambah syarat waktu ">=48 jam setelah
+     * masuk", di sini diwakili lama tirah baring >= MIN_HARI_ALAT hari kalender.
+     *
+     * Penyebutnya (hari tirah baring) TIDAK diambil dari sini melainkan dari entri
+     * Observasi RI -> Alat Invasif & Tirah Baring, sama seperti indikator lain.
+     */
+    private function kumpulkanHap(array $entriList, int $tahun, array $pasien, array &$hitunganBulan, array &$kasusList): void
+    {
+        foreach ($entriList as $entri) {
+            if (!is_array($entri)) {
+                continue;
+            }
+
+            $tglMulai = $entri['tglMulaiTirahBaring'] ?? null;
+            $tglSelesai = $entri['tglSelesaiTirahBaring'] ?? null;
+
+            $bulanKasus = $this->bulanDari($tglMulai, $tahun)
+                ?? $this->bulanDari($entri['tanggal'] ?? null, $tahun);
+            if ($bulanKasus === null) {
+                continue;
+            }
+
+            $adaTandaSistemik = ($entri['demam'] ?? '') === 'Ya'
+                || SurveilansHaisOptions::leukositAbnormal($entri['leukosit'] ?? null);
+
+            if (
+                $adaTandaSistemik
+                && ($entri['sputumPurulen'] ?? '') === 'Ya'
+                && $this->alatCukupLama($tglMulai, $tglSelesai)
+            ) {
+                $hitunganBulan[$bulanKasus]['hapKasus']++;
+                $kasusList[] = $this->barisKasus('HAP', $bulanKasus, $pasien, $entri['tanggal'] ?? '', 'Tirah baring >2 hari + (demam atau leukosit abnormal) + sputum purulen');
+            }
+        }
+    }
+
     private function kumpulkanIlo(array $entriList, int $tahun, array $pasien, array &$hitunganBulan, array &$kasusList): void
     {
         foreach ($entriList as $entri) {
@@ -570,6 +616,7 @@ trait SurveilansHaisTrait
             'iadRate' => $this->hitungRate($hitungan['iadKasus'], $hitungan['clHari'], 1000),
             'iskRate' => $this->hitungRate($hitungan['iskKasus'], $hitungan['ucHari'], 1000),
             'vapRate' => $this->hitungRate($hitungan['vapKasus'], $hitungan['ventHari'], 1000),
+            'hapRate' => $this->hitungRate($hitungan['hapKasus'], $hitungan['tirahBaringHari'], 1000),
             'iloRate' => $this->hitungRate($hitungan['iloKasus'], $hitungan['operasi'], 100),
         ];
     }

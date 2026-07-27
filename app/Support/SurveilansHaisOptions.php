@@ -9,7 +9,8 @@ namespace App\Support;
  * Dipakai bersama oleh komponen form (modul-dokumen RI), cetak PDF, dan viewer
  * Rekam Medis — jangan duplikasi daftar opsi di blade.
  *
- * Grup dokumen: Plebitis/IADP · ISK · VAP (Pneumonia Ventilator) · ILO.
+ * Grup dokumen: Plebitis/IADP · ISK · VAP (Pneumonia Ventilator) · HAP (Pneumonia
+ * non-ventilator) · ILO.
  */
 class SurveilansHaisOptions
 {
@@ -37,18 +38,24 @@ class SurveilansHaisOptions
     ];
 
     /**
-     * Alat invasif yang lama pemakaiannya menjadi PENYEBUT insiden rate HAIs.
+     * Hal-hal yang lama pemakaiannya dihitung sebagai PENYEBUT insiden rate HAIs.
      *
-     * Diisi perawat ruangan lewat Observasi RI → tab "Alat Invasif" untuk SETIAP
-     * pasien terpasang alat, bukan hanya yang dicurigai infeksi. Kalau hanya pasien
+     * Diisi perawat ruangan lewat Observasi RI → tab "Alat Invasif & Tirah Baring"
+     * untuk SETIAP pasien, bukan hanya yang dicurigai infeksi. Kalau hanya pasien
      * bermasalah yang tercatat, penyebutnya timpang dan rate jadi meledak.
      * Formulir surveilans tetap memasok PEMBILANG (kasus).
+     *
+     * `tirahBaring` bukan alat, tapi ikut di sini karena perannya sama — jadi penyebut
+     * (HAP per 1000 hari tirah baring) dan pencatatnya orang yang sama. Formulir
+     * surveilans harian HIPPII pun menaruh kolom "Tirah Baring" bersebelahan dengan
+     * kolom alat (UC/IVL/CVL/ETT).
      */
-    public const ALAT_INVASIF = [
+    public const PENYEBUT_HAIS = [
         'ivPerifer' => 'IV Line Perifer',
         'cvcUmbilikal' => 'CVC / Kateter Umbilikal',
         'kateterUrine' => 'Kateter Urine',
         'ventilator' => 'Ventilator Mekanik',
+        'tirahBaring' => 'Tirah Baring',
     ];
 
     public const KELOMPOK_USIA = [
@@ -141,7 +148,7 @@ class SurveilansHaisOptions
         'pus' => 'Pus',
     ];
 
-    /* ═══ PNEUMONIA VENTILATOR (VAP) ═══ */
+    /* ═══ PNEUMONIA VENTILATOR (VAP) & PNEUMONIA NON-VENTILATOR (HAP) ═══ */
 
     public const FOTO_TORAKS = [
         'infiltrat' => 'Infiltrat',
@@ -149,6 +156,25 @@ class SurveilansHaisOptions
         'patchy' => 'Patchy',
         'terkalsifikasi' => 'Terkalsifikasi',
     ];
+
+    /**
+     * Ambang leukosit pada kriteria HAP/VAP (HIPPII): leukopeni ATAU leukositosis.
+     * Dipakai form (hint) & SurveilansHaisTrait (penetapan kasus) — satu sumber.
+     */
+    public const LEUKOPENI_KURANG_DARI = 4000;
+    public const LEUKOSITOSIS_MINIMAL = 12000;
+
+    /** Leukosit (/mm3) memenuhi kriteria HAP/VAP? */
+    public static function leukositAbnormal($leukosit): bool
+    {
+        if (!is_numeric($leukosit)) {
+            return false;
+        }
+
+        $nilai = (float) $leukosit;
+
+        return $nilai < self::LEUKOPENI_KURANG_DARI || $nilai >= self::LEUKOSITOSIS_MINIMAL;
+    }
 
     /* ═══ INFEKSI LUKA OPERASI (ILO) ═══ */
 
@@ -213,7 +239,7 @@ class SurveilansHaisOptions
     {
         return [
             'faktorRisiko' => self::FAKTOR_RISIKO,
-            'alatInvasif' => self::ALAT_INVASIF,
+            'penyebutHais' => self::PENYEBUT_HAIS,
             'kelompokUsia' => self::KELOMPOK_USIA,
             'ruteAntibiotik' => self::RUTE_ANTIBIOTIK,
             'indikasiAntibiotik' => self::INDIKASI_ANTIBIOTIK,

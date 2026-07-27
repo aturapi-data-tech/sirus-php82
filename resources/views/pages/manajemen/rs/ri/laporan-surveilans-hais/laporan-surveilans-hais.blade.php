@@ -86,6 +86,7 @@ new class extends Component {
             ['key' => 'plebitis', 'label' => 'Plebitis', 'judul' => 'Plebitis', 'kasus' => 'plebitisKasus', 'penyebut' => 'ivlHari', 'rate' => 'plebitisRate', 'satuan' => 'hari IV line', 'labelPenyebut' => 'Hari Alat', 'basis' => '‰', 'kelasKartu' => 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-700'],
             ['key' => 'isk', 'label' => 'ISK', 'judul' => 'Infeksi Saluran Kemih (CAUTI)', 'kasus' => 'iskKasus', 'penyebut' => 'ucHari', 'rate' => 'iskRate', 'satuan' => 'hari kateter urine', 'labelPenyebut' => 'Hari Alat', 'basis' => '‰', 'kelasKartu' => 'bg-cyan-50 border-cyan-200 dark:bg-cyan-900/20 dark:border-cyan-700'],
             ['key' => 'vap', 'label' => 'VAP', 'judul' => 'Pneumonia Ventilator', 'kasus' => 'vapKasus', 'penyebut' => 'ventHari', 'rate' => 'vapRate', 'satuan' => 'hari ventilator', 'labelPenyebut' => 'Hari Alat', 'basis' => '‰', 'kelasKartu' => 'bg-violet-50 border-violet-200 dark:bg-violet-900/20 dark:border-violet-700'],
+            ['key' => 'hap', 'label' => 'HAP', 'judul' => 'Pneumonia Non-Ventilator', 'kasus' => 'hapKasus', 'penyebut' => 'tirahBaringHari', 'rate' => 'hapRate', 'satuan' => 'hari tirah baring', 'labelPenyebut' => 'Hari Tirah Baring', 'basis' => '‰', 'kelasKartu' => 'bg-sky-50 border-sky-200 dark:bg-sky-900/20 dark:border-sky-700'],
             ['key' => 'ilo', 'label' => 'ILO', 'judul' => 'Infeksi Luka Operasi', 'kasus' => 'iloKasus', 'penyebut' => 'operasi', 'rate' => 'iloRate', 'satuan' => 'operasi', 'labelPenyebut' => 'Operasi', 'basis' => '%', 'kelasKartu' => 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-700'],
         ];
     }
@@ -103,7 +104,7 @@ new class extends Component {
 
 <div>
     <x-page-title title="Laporan Surveilans HAIs"
-        subtitle="Rekap bulanan insiden rate IAD, Plebitis, ISK, VAP &amp; ILO — sumber data modul Surveilans HAIs di EMR Rawat Inap" />
+        subtitle="Rekap bulanan insiden rate IAD, Plebitis, ISK, VAP, HAP &amp; ILO — sumber data modul Surveilans HAIs di EMR Rawat Inap" />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-canvas dark:bg-gray-800">
         <div class="px-6 pt-4 pb-8 space-y-6">
@@ -134,7 +135,7 @@ new class extends Component {
             </div>
 
             {{-- ── KARTU RINGKAS (rate setahun) ── --}}
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 @foreach ($daftarIndikator as $indikator)
                     <div class="p-4 border rounded-xl {{ $indikator['kelasKartu'] }}">
                         <div class="text-xs font-semibold uppercase text-muted dark:text-gray-300">{{ $indikator['label'] }}</div>
@@ -293,7 +294,7 @@ new class extends Component {
                         <p class="mb-1.5 font-semibold text-ink dark:text-gray-200">Sumber data — pembilang &amp; penyebut sengaja dipisah:</p>
                         <ul class="pl-5 space-y-1 list-disc">
                             <li><b>Kasus (pembilang)</b> &larr; EMR RI &rarr; <b>Modul Dokumen &rarr; Surveilans HAIs</b>, diisi IPCLN/IPCN saat ada dugaan infeksi.</li>
-                            <li><b>Hari pemakaian alat (penyebut)</b> &larr; EMR RI &rarr; <b>Observasi &rarr; Alat Invasif</b>, diisi perawat ruangan untuk <b>setiap</b> pasien terpasang alat.</li>
+                            <li><b>Hari pemakaian alat (penyebut)</b> &larr; EMR RI &rarr; <b>Observasi &rarr; Alat Invasif &amp; Tirah Baring</b>, diisi perawat ruangan untuk <b>setiap</b> pasien.</li>
                             <li class="text-muted">Kalau penyebut ikut diambil dari formulir surveilans, pembilang dan penyebut sama-sama berasal dari pasien bermasalah saja dan rate-nya akan melonjak jauh di atas kenyataan — karena itu dipisah. Pembagian tugasnya juga mengikuti materi IPCN: PJ pasien mencatat pemakaian alat, IPCN mengisi formulir kasus.</li>
                         </ul>
                     </div>
@@ -305,6 +306,7 @@ new class extends Component {
                             <li><b>Plebitis</b> = jumlah plebitis &divide; jumlah hari pemasangan IV line perifer &times; 1000</li>
                             <li><b>ISK</b> = jumlah ISK &divide; jumlah hari pemakaian kateter urine &times; 1000</li>
                             <li><b>VAP</b> = jumlah VAP &divide; jumlah hari pemakaian ventilator &times; 1000</li>
+                            <li><b>HAP</b> = jumlah HAP &divide; jumlah hari tirah baring &times; 1000</li>
                             <li><b>ILO</b> = jumlah ILO &divide; jumlah operasi &times; 100 <span class="text-muted">(basis 100 operasi — konvensi IDO)</span></li>
                         </ul>
                     </div>
@@ -316,6 +318,7 @@ new class extends Component {
                             <li><b>Plebitis</b> — baris pemasangan berjenis akses perifer dengan tanda lokal di area insersi (nyeri, merah, kalor, pus, bengkak); tanpa syarat lama pemasangan.</li>
                             <li><b>ISK</b> — ada tanda klinis ISK pada baris pemasangan yang kateternya terpasang <b>&ge; 3 hari kalender</b> <b>dan</b> ada hasil biakan urin terisi.</li>
                             <li><b>VAP</b> — ventilator terpasang <b>&ge; 3 hari kalender</b> <b>dan</b> minimal 2 dari: demam &ge;38&deg;C, sekresi dahak purulen, gambaran foto toraks.</li>
+                            <li><b>HAP</b> — tirah baring <b>&ge; 3 hari kalender</b> (mewakili syarat &ge;48 jam sejak masuk, pasien TANPA ventilator) <b>dan</b> (demam &ge;38&deg;C <b>atau</b> leukosit di luar 4.000&ndash;12.000/mm&sup3;) <b>dan</b> sputum purulen baru / berubah sifat.</li>
                             <li><b>ILO</b> — pemantauan luka operasi hari ke-1 s/d 17 menemukan pus, drainase, perforasi, atau fistula.</li>
                             <li><b>Asal masuk &amp; cara keluar</b> tidak ikut menghitung apa pun — keduanya diturunkan dari pendaftaran RI &amp; Perencanaan, lalu ditampilkan di tabel kasus sebagai alat verifikasi: pasien <b>kiriman RS lain</b> perlu diperiksa apakah infeksinya sudah ada sejak masuk (bila ya, keluarkan dari hitungan HAIs), dan kolom <b>Meninggal</b> memperlihatkan dampak kasusnya.</li>
                             <li class="text-muted">Ambang <b>&ge; 3 hari kalender</b> = syarat "&gt; 2 hari kalender" pada definisi IAD/ISK/VAP, dengan hari pemasangan dihitung sebagai hari ke-1. Plebitis &amp; ILO tak memakai ambang ini.</li>
@@ -327,7 +330,7 @@ new class extends Component {
                         <ul class="pl-5 space-y-1 list-disc">
                             <li>Hari pemakaian alat dihitung per hari kalender dan <b>dipecah ke bulan yang dilaluinya</b> (pemasangan lintas bulan tidak menumpuk di satu bulan); hari pasang dihitung sebagai hari ke-1.</li>
                             <li>Waktu lepas kosong = alat dianggap masih terpasang, dihitung sampai hari ini atau akhir tahun laporan.</li>
-                            <li>Pemetaan jenis alat &rarr; penyebut: <b>IV line perifer</b> &rarr; plebitis, <b>CVC / kateter umbilikal</b> &rarr; IAD, <b>kateter urine</b> &rarr; ISK, <b>ventilator</b> &rarr; VAP. Penyebut ILO tetap jumlah operasi dari formulir ILO.</li>
+                            <li>Pemetaan jenis alat &rarr; penyebut: <b>IV line perifer</b> &rarr; plebitis, <b>CVC / kateter umbilikal</b> &rarr; IAD, <b>kateter urine</b> &rarr; ISK, <b>ventilator</b> &rarr; VAP, <b>tirah baring</b> &rarr; HAP. Penyebut ILO tetap jumlah operasi dari formulir ILO.</li>
                             <li><b>Kasus muncul tapi penyebut 0</b> berarti entri Alat Invasif-nya belum diisi — rate ditampilkan 0 dan angkanya belum bisa dipakai. Lengkapi dulu tab Alat Invasif pada pasien terkait.</li>
                             <li><b>Penetapan kasus resmi</b> tetap gejala klinis + pemeriksaan penunjang + diagnosis DPJP. Angka di sini diturunkan dari centangan formulir, jadi wajib diverifikasi IPCN sebelum dilaporkan keluar.</li>
                         </ul>
