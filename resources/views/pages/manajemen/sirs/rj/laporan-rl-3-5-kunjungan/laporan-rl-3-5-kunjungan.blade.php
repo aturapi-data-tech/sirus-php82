@@ -38,7 +38,7 @@ new class extends Component {
 <div>
     <x-page-title
         title="Laporan RL 3.5 — Kunjungan"
-        subtitle="Rekap kunjungan rawat jalan + UGD per bulan, sesuai format SIRS Online Kemenkes. &quot;Kunjungan&quot; = setiap visit (bukan distinct pasien). Dalam Kota = pasien dengan kab_id Tulungagung (3504 BPS atau 1 legacy); selainnya Luar Kota." />
+        subtitle='Rekap kunjungan rawat jalan + UGD per bulan, sesuai format SIRS Online Kemenkes. "Kunjungan" = setiap visit (bukan distinct pasien). Dalam Kota = pasien dengan kab_id Tulungagung (3504 BPS atau 1 legacy); selainnya Luar Kota.' />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-canvas dark:bg-gray-800">
         <div class="px-6 pt-4 pb-6 space-y-4">

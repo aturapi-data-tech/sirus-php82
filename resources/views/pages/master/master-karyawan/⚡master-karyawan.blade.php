@@ -120,7 +120,7 @@ new class extends Component {
 
     <x-page-title
         title="Master Karyawan"
-        subtitle="Kelola data karyawan untuk login user &amp; coder iDRG (NIK Coder)" />
+        subtitle="Kelola data karyawan untuk login user & coder iDRG (NIK Coder)" />
 
     <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-900">
         <div class="flex flex-col flex-1 min-h-0 px-6 pt-2 pb-6">

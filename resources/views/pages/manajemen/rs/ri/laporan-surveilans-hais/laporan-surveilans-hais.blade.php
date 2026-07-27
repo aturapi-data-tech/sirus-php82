@@ -104,7 +104,7 @@ new class extends Component {
 
 <div>
     <x-page-title title="Laporan Surveilans HAIs"
-        subtitle="Rekap bulanan insiden rate IAD, Plebitis, ISK, VAP, HAP &amp; ILO — sumber data modul Surveilans HAIs di EMR Rawat Inap" />
+        subtitle="Rekap bulanan insiden rate IAD, Plebitis, ISK, VAP, HAP & ILO — sumber data modul Surveilans HAIs di EMR Rawat Inap" />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-canvas dark:bg-gray-800">
         <div class="px-6 pt-4 pb-8 space-y-6">

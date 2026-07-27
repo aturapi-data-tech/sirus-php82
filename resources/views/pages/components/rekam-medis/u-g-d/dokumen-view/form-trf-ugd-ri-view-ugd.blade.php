@@ -70,9 +70,9 @@ new class extends Component {
 
 <div>
     @php $t = $trf ?? []; @endphp
-    <x-border-form title="Form Transfer UGD &rarr; RI">
+    <x-border-form title="Form Transfer UGD → RI">
         @if (filled($t))
-            <x-rm.doc-list-row wire:key="trf-ugd-{{ $rjNo }}" id="trf" title="Transfer UGD &rarr; RI"
+            <x-rm.doc-list-row wire:key="trf-ugd-{{ $rjNo }}" id="trf" title="Transfer UGD → RI"
                 :date="data_get($t, 'tglPindah') ?: data_get($t, 'petugasPengirimDate')"
                 :sub="filled(data_get($t, 'alasanPindah')) ? 'Alasan: ' . data_get($t, 'alasanPindah') : null" />
         @else
@@ -80,6 +80,6 @@ new class extends Component {
         @endif
     </x-border-form>
 
-    <x-rm.dokumen-view-modal name="view-form-trf-ugd-ri-{{ $rjNo }}" title="Form Transfer UGD &rarr; RI"
+    <x-rm.dokumen-view-modal name="view-form-trf-ugd-ri-{{ $rjNo }}" title="Form Transfer UGD → RI"
         :showCetak="filled($t)" :previewHtml="$previewHtml" />
 </div>

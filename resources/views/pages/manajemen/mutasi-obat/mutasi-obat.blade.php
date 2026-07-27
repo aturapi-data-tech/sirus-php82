@@ -10,7 +10,7 @@ new class extends Component {
 <div>
     <x-page-title
         title="Mutasi Obat"
-        subtitle="Keluar masuk obat — bulanan &amp; tahunan, per gudang &amp; per unit" />
+        subtitle="Keluar masuk obat — bulanan & tahunan, per gudang & per unit" />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-canvas dark:bg-gray-800">
         <div class="px-6 py-10">

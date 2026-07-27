@@ -196,7 +196,7 @@ new class extends Component {
     {{-- HEADER --}}
     <x-page-title
         title="Master Obat"
-        subtitle="Kelola data obat &amp; produk untuk aplikasi" />
+        subtitle="Kelola data obat & produk untuk aplikasi" />
 
     {{-- CONTENT --}}
     <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-900">

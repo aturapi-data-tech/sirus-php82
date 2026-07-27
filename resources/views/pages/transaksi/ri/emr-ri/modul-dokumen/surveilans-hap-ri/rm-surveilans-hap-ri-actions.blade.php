@@ -838,7 +838,7 @@ new class extends Component {
                                 <x-border-form title="Tanda Sistemik" bgcolor="bg-surface-soft" class="!shadow-none" padding="p-3">
                                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                         <div>
-                                            <x-input-label value="Demam &ge; 38 &deg;C" />
+                                            <x-input-label value="Demam ≥ 38 °C" />
                                             <div class="mt-2">
                                                 <x-toggle wire:model="newForm.demam" trueValue="Ya" falseValue="Tidak"
                                                     :label="filled($newForm['demam'] ?? null) ? $newForm['demam'] : 'Belum diisi'" :disabled="$formReadOnly" />
@@ -849,7 +849,7 @@ new class extends Component {
                                             <x-text-input wire:model="newForm.demamHariKe" class="w-full mt-1" placeholder="mis. 3" />
                                         </div>
                                         <div>
-                                            <x-input-label value="Leukosit (/mm&sup3;)" />
+                                            <x-input-label value="Leukosit (/mm³)" />
                                             <x-text-input wire:model="newForm.leukosit" class="w-full mt-1" placeholder="mis. 13500"
                                                 :error="$errors->has('newForm.leukosit')" />
                                             @php $leukositAbnormal = \App\Support\SurveilansHaisOptions::leukositAbnormal($newForm['leukosit'] ?? null); @endphp

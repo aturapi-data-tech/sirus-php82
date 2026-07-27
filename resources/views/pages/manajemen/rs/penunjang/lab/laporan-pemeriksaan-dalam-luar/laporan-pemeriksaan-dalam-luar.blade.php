@@ -222,8 +222,8 @@ new class extends Component {
 
 <div>
     <x-page-title
-        title="Laporan Pemeriksaan Laboratorium — Internal &amp; Rujukan"
-        subtitle="Detail &amp; rekap pemeriksaan lab, dipisah lab internal dan rujukan." />
+        title="Laporan Pemeriksaan Laboratorium — Internal & Rujukan"
+        subtitle="Detail & rekap pemeriksaan lab, dipisah lab internal dan rujukan." />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-surface-soft dark:bg-gray-800">
         <div class="px-6 pt-0 pb-6">

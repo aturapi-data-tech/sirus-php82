@@ -10,7 +10,7 @@ new class extends Component {
 <div>
     <x-page-title
         title="Indikator Pelayanan"
-        subtitle="BOR / ALOS / TOI / BTO — tren bulanan &amp; tahunan" />
+        subtitle="BOR / ALOS / TOI / BTO — tren bulanan & tahunan" />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-canvas dark:bg-gray-800">
         <div class="px-6 py-10 space-y-8">

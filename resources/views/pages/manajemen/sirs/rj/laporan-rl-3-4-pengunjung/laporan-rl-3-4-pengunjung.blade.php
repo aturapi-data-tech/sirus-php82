@@ -44,7 +44,7 @@ new class extends Component {
 <div>
     <x-page-title
         title="Laporan RL 3.4 — Pengunjung"
-        subtitle="Rekap pengunjung RS per bulan, sesuai format SIRS Online Kemenkes. &quot;Pengunjung&quot; = pasien unik (DISTINCT reg_no), bukan kunjungan. Lintas RJ + UGD + RI. Pengunjung Baru = first visit ever jatuh di periode laporan; Pengunjung Lama = pernah datang sebelum periode." />
+        subtitle='Rekap pengunjung RS per bulan, sesuai format SIRS Online Kemenkes. "Pengunjung" = pasien unik (DISTINCT reg_no), bukan kunjungan. Lintas RJ + UGD + RI. Pengunjung Baru = first visit ever jatuh di periode laporan; Pengunjung Lama = pernah datang sebelum periode.' />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-canvas dark:bg-gray-800">
         <div class="px-6 pt-4 pb-6 space-y-4">

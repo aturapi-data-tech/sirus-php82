@@ -176,7 +176,7 @@ new class extends Component {
 <div>
     <x-page-title
         title="Laporan Pemeriksaan Radiologi"
-        subtitle="Detail &amp; rekap pemeriksaan radiologi per unit (RJ / UGD / RI)." />
+        subtitle="Detail & rekap pemeriksaan radiologi per unit (RJ / UGD / RI)." />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-surface-soft dark:bg-gray-800">
         <div class="px-6 pt-0 pb-6">

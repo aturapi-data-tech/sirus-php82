@@ -10,7 +10,7 @@ new class extends Component {
 <div>
     <x-page-title
         title="Laporan Diagnosa"
-        subtitle="Statistik 10 besar diagnosa, tindakan, mortalitas — bulanan &amp; tahunan" />
+        subtitle="Statistik 10 besar diagnosa, tindakan, mortalitas — bulanan & tahunan" />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-canvas dark:bg-gray-800">
         <div class="px-6 py-10">

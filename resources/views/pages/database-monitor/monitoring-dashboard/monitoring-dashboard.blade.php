@@ -453,7 +453,7 @@ SQL
 <div>
     <x-page-title
         title="Oracle Session Monitor"
-        subtitle="Locks, Long-Running SQL &amp; Kill Session" />
+        subtitle="Locks, Long-Running SQL & Kill Session" />
 
     {{-- ── BANNER: indikator request kill sedang dikirim ke Oracle ──
          Posisi: top-24 (di bawah topbar h-20) + z-[60] (di atas topbar z-50).

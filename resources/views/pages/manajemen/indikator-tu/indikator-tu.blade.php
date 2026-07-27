@@ -10,7 +10,7 @@ new class extends Component {
 <div>
     <x-page-title
         title="Indikator Tu"
-        subtitle="Oversight Kas, Hutang &amp; Administrasi — Supervisor Tu / Manager Umum" />
+        subtitle="Oversight Kas, Hutang & Administrasi — Supervisor Tu / Manager Umum" />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-canvas dark:bg-gray-800">
         <div class="px-6 py-10 space-y-8">

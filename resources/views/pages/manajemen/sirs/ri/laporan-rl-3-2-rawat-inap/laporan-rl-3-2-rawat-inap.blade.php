@@ -74,7 +74,7 @@ new class extends Component {
 <div>
     <x-page-title
         title="Laporan RL 3.2 — Rawat Inap"
-        subtitle="Rekapitulasi rawat inap per jenis pelayanan per bulan, sesuai format SIRS Online Kemenkes. Mapping otomatis: DPJP Utama (JSON levelingDokter) → poli → specialty (keyword match poli_desc). Poli yang tidak match jatuh ke baris &quot;Tidak Ada Data&quot;." />
+        subtitle='Rekapitulasi rawat inap per jenis pelayanan per bulan, sesuai format SIRS Online Kemenkes. Mapping otomatis: DPJP Utama (JSON levelingDokter) → poli → specialty (keyword match poli_desc). Poli yang tidak match jatuh ke baris "Tidak Ada Data".' />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-canvas dark:bg-gray-800">
         <div class="px-6 pt-4 pb-6 space-y-4">

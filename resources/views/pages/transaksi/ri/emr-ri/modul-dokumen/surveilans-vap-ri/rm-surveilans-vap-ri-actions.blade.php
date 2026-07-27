@@ -873,7 +873,7 @@ new class extends Component {
                                             <x-text-input wire:model="newForm.fio2Ge240HariKe" class="w-full mt-1" placeholder="hari ke ... setelah pemasangan ventilator" />
                                         </div>
                                         <div>
-                                            <x-input-label value="&lt; 240 mmHg — Hari Ke" />
+                                            <x-input-label value="< 240 mmHg — Hari Ke" />
                                             <x-text-input wire:model="newForm.fio2Lt240HariKe" class="w-full mt-1" placeholder="hari ke ... setelah pemasangan ventilator" />
                                         </div>
                                     </div>

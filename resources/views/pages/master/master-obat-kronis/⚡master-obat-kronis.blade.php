@@ -74,7 +74,7 @@ new class extends Component {
 <div>
     <x-page-title
         title="Master Obat Kronis BPJS"
-        subtitle="Daftar obat kronis BPJS — max qty per resep &amp; tarif klaim. Sumber: rsmst_listobatbpjses." />
+        subtitle="Daftar obat kronis BPJS — max qty per resep & tarif klaim. Sumber: rsmst_listobatbpjses." />
 
     <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-900">
         <div class="flex flex-col flex-1 min-h-0 px-6 pt-2 pb-6">

@@ -391,7 +391,7 @@ new class extends Component {
 <div>
     <x-page-title
         title="Pelayanan UGD"
-        subtitle="Kelola pelayanan &amp; EMR pasien Unit Gawat Darurat" />
+        subtitle="Kelola pelayanan & EMR pasien Unit Gawat Darurat" />
 
     <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-800">
         <div class="flex flex-col flex-1 min-h-0 px-6 pt-0 pb-6">

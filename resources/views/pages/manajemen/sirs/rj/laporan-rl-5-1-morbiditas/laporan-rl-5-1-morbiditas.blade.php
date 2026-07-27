@@ -53,7 +53,7 @@ new class extends Component {
 <div>
     <x-page-title
         title="Laporan RL 5.1 — Morbiditas Pasien Rawat Jalan"
-        subtitle="Rekap morbiditas RJ poliklinik per ICD-10 × umur × gender per tahun. &quot;Kasus Baru&quot; = pasien unik per ICD per tahun (DISTINCT reg_no). &quot;Jumlah Kunjungan&quot; = total visits. 1 pasien dengan multiple visit ICD-yang-sama → tetap 1 kasus baru." />
+        subtitle='Rekap morbiditas RJ poliklinik per ICD-10 × umur × gender per tahun. "Kasus Baru" = pasien unik per ICD per tahun (DISTINCT reg_no). "Jumlah Kunjungan" = total visits. 1 pasien dengan multiple visit ICD-yang-sama → tetap 1 kasus baru.' />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-canvas dark:bg-gray-800">
         <div class="px-6 pt-4 pb-6 space-y-4">

@@ -40,7 +40,7 @@ new class extends Component {
 <div>
     <x-page-title
         title="Laporan RL 5.3 — 10 Besar Kunjungan Penyakit Rawat Jalan"
-        subtitle="Top 10 ICD-10 dengan jumlah kunjungan terbanyak di RJ poliklinik per tahun. Sorted desc by total kunjungan (L + P). &quot;Kasus Baru&quot; = pasien unik (DISTINCT reg_no), &quot;Kunjungan&quot; = total visits." />
+        subtitle='Top 10 ICD-10 dengan jumlah kunjungan terbanyak di RJ poliklinik per tahun. Sorted desc by total kunjungan (L + P). "Kasus Baru" = pasien unik (DISTINCT reg_no), "Kunjungan" = total visits.' />
 
     <div class="w-full min-h-[calc(100vh-5rem)] bg-canvas dark:bg-gray-800">
         <div class="px-6 pt-4 pb-6 space-y-4">
