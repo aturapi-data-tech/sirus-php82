@@ -24,5 +24,5 @@ class ModulDokumenAksiRole
     public const HAPUS = ['Admin', 'Manager Umum', 'Manager Medis'];
 
     /** Role yang boleh MEMBUKA KUNCI (mencabut TTD petugas) entri dokumen. */
-    public const BUKA_KUNCI = ['Admin', 'Manager Umum', 'Manager Medis'];
+    public const BUKA_KUNCI = ['Admin', 'Manager Umum', 'Manager Medis', 'Perawat'];
 }

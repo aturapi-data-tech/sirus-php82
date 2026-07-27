@@ -577,7 +577,7 @@ new class extends Component {
                                                     </div>
 
                                                     {{-- Actions — hanya tampil jika status Selesai (H) --}}
-                                                    @role(['Dokter', 'Admin', 'Perawat', 'Laboratorium'])
+                                                    @role(['Dokter', 'Admin', 'Perawat', 'Laboratorium', 'Apoteker'])
                                                         @if ($isSelesai)
                                                             <div class="flex items-center gap-2 mt-3">
                                                                 {{-- Tombol Hasil Laboratorium --}}
