@@ -43,7 +43,6 @@
             return $hasil ? e(implode(', ', $hasil)) : '-';
         };
 
-        $barisTempat = collect($form['tempatDirawat'] ?? [])->filter(fn($baris) => filled($baris['ruang'] ?? null) || filled($baris['dokter'] ?? null));
         $barisObat = collect($form['antibiotik'] ?? [])->filter(fn($baris) => filled($baris['namaObat'] ?? null));
         $paramPantau = $opsi['paramPemantauanIlo'] ?? [];
         $hariPantau = $form['pemantauan'] ?? [];
@@ -72,20 +71,6 @@
             <td class="lbl">Diagnosis Akhir</td><td colspan="3">{{ $nilai('diagnosisAkhir') }}</td>
         </tr>
     </table>
-
-    @if ($barisTempat->isNotEmpty())
-        <table class="sv" style="margin-top:4px;">
-            <tr><th style="width:28%">Ruang</th><th style="width:26%">Tgl Mulai</th><th style="width:26%">s/d Tgl</th><th>Dokter</th></tr>
-            @foreach ($barisTempat as $baris)
-                <tr>
-                    <td>{{ $baris['ruang'] ?: '-' }}{{ !empty($baris['bedNo']) ? ' — Bed ' . $baris['bedNo'] : '' }}</td>
-                    <td>{{ $baris['tglMulai'] ?: '-' }}</td>
-                    <td>{{ $baris['tglSelesai'] ?: '-' }}</td>
-                    <td>{{ $baris['dokter'] ?: '-' }}</td>
-                </tr>
-            @endforeach
-        </table>
-    @endif
 
     {{-- 2. Faktor risiko --}}
     <div class="sv-sec">2. FAKTOR RISIKO</div>
@@ -152,7 +137,6 @@
     {{-- 5. Kultur --}}
     <div class="sv-sec">5. HASIL KULTUR</div>
     <table class="sv">
-        <tr><td class="lbl">Dilakukan Kultur</td><td colspan="3">{{ $nilai('kultur') }}</td></tr>
         @forelse ($form['kulturHasil'] ?? [] as $i => $baris)
             <tr>
                 <td class="lbl">Kultur ke-{{ $i + 1 }} — Tgl</td><td>{{ $baris['tgl'] ?: '-' }}</td>
@@ -164,7 +148,7 @@
     </table>
 
     {{-- 6. Antibiotik --}}
-    <div class="sv-sec">6. PEMAKAIAN ANTIBIOTIK ({{ $nilai('adaAntibiotik') }})</div>
+    <div class="sv-sec">6. PEMAKAIAN ANTIBIOTIK</div>
     @if ($barisObat->isNotEmpty())
         <table class="sv">
             <tr>

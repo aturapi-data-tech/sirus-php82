@@ -46,7 +46,6 @@
         $usia = $form['kelompokUsia'] ?? '';
         $petaTanda = $usia === 'balita' ? 'tandaIskBalita' : 'tandaIskDewasa';
 
-        $barisTempat = collect($form['tempatDirawat'] ?? [])->filter(fn($baris) => filled($baris['ruang'] ?? null) || filled($baris['dokter'] ?? null));
         $barisPasang = collect($form['pemasangan'] ?? [])->filter(fn($baris) => filled($baris['pasangKe'] ?? null) || filled($baris['tglMulai'] ?? null));
         $barisObat = collect($form['antibiotik'] ?? [])->filter(fn($baris) => filled($baris['namaObat'] ?? null));
     @endphp
@@ -70,20 +69,6 @@
             <td class="lbl">Diagnosis Akhir</td><td colspan="3">{{ $nilai('diagnosisAkhir') }}</td>
         </tr>
     </table>
-
-    @if ($barisTempat->isNotEmpty())
-        <table class="sv" style="margin-top:4px;">
-            <tr><th style="width:28%">Ruang</th><th style="width:26%">Tgl Mulai</th><th style="width:26%">s/d Tgl</th><th>Dokter</th></tr>
-            @foreach ($barisTempat as $baris)
-                <tr>
-                    <td>{{ $baris['ruang'] ?: '-' }}{{ !empty($baris['bedNo']) ? ' — Bed ' . $baris['bedNo'] : '' }}</td>
-                    <td>{{ $baris['tglMulai'] ?: '-' }}</td>
-                    <td>{{ $baris['tglSelesai'] ?: '-' }}</td>
-                    <td>{{ $baris['dokter'] ?: '-' }}</td>
-                </tr>
-            @endforeach
-        </table>
-    @endif
 
     {{-- 2. Faktor risiko --}}
     <div class="sv-sec">2. FAKTOR RISIKO</div>
@@ -124,10 +109,6 @@
     {{-- 4. Pemeriksaan & biakan urin --}}
     <div class="sv-sec">4. PEMERIKSAAN &amp; BIAKAN URIN</div>
     <table class="sv">
-        <tr>
-            <td class="lbl">Pemeriksaan Urin</td><td>{{ $nilai('pemeriksaanUrin') }}</td>
-            <td class="lbl">Biakan Urin</td><td>{{ $nilai('biakanUrin') }}</td>
-        </tr>
         @forelse ($form['pemeriksaanUrinHasil'] ?? [] as $i => $baris)
             <tr>
                 <td class="lbl">Periksa Urin ke-{{ $i + 1 }}</td>
@@ -151,7 +132,7 @@
     </table>
 
     {{-- 5. Antibiotik --}}
-    <div class="sv-sec">5. PEMAKAIAN ANTIBIOTIK ({{ $nilai('adaAntibiotik') }})</div>
+    <div class="sv-sec">5. PEMAKAIAN ANTIBIOTIK</div>
     @if ($barisObat->isNotEmpty())
         <table class="sv">
             <tr>

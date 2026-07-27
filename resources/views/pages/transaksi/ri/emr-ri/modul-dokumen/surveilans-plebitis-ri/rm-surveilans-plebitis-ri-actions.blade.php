@@ -49,17 +49,6 @@ new class extends Component {
     /** Baris staging "Pemasangan" sebelum masuk daftar (pola Leveling Dokter: form tambah + tabel). */
     public array $barisPasang = [];
 
-    /** Baris staging "Tempat Dirawat" sebelum masuk daftar (pola Leveling Dokter di Pengkajian Awal RI). */
-    public array $barisRawat = [
-        'ruang' => '',
-        'roomId' => '',
-        'bedNo' => '',
-        'tglMulai' => '',
-        'tglSelesai' => '',
-        'drId' => '',
-        'dokter' => '',
-    ];
-
     /** createdAt entri yang sedang diedit; null = entri baru. */
     public ?string $editingKey = null;
 
@@ -83,7 +72,6 @@ new class extends Component {
             // ── Data dasar surveilans ──
             'tanggal' => '',
             'diagnosisAkhir' => '',
-            'tempatDirawat' => [],
             'faktorRisiko' => array_fill_keys(array_keys(SurveilansHaisOptions::FAKTOR_RISIKO), false),
 
             // ── IADP & Plebitis ──
@@ -94,13 +82,10 @@ new class extends Component {
             'pemasangan' => [],
             'tujuanPemasangan' => array_fill_keys(array_keys(SurveilansHaisOptions::TUJUAN_PEMASANGAN), false),
             'tujuanKeterangan' => '',
-            'kulturDarah' => '',
             'kulturDarahHasil' => [],
-            'kulturPus' => '',
             'kulturPusHasil' => [],
 
             // ── Antibiotik ──
-            'adaAntibiotik' => '',
             'antibiotik' => [],
 
             // ── Penutup ──
@@ -507,84 +492,6 @@ new class extends Component {
     }
 
     /* ===============================
-     | TEMPAT DIRAWAT (pola Leveling Dokter: LOV + tabel, bukan grid baris tetap)
-     =============================== */
-    #[On('lov.selected.surveilans-plebitis-room')]
-    public function onRoomSelected(string $target, ?array $payload = null): void
-    {
-        if ($this->isFormLocked || $this->viewOnly) {
-            return;
-        }
-        $this->barisRawat['ruang'] = $payload['room_name'] ?? '';
-        $this->barisRawat['roomId'] = $payload['room_id'] ?? '';
-        $this->barisRawat['bedNo'] = $payload['bed_no'] ?? '';
-    }
-
-    #[On('lov.selected.surveilans-plebitis-dokter')]
-    public function onDokterSelected(string $target, ?array $payload = null): void
-    {
-        if ($this->isFormLocked || $this->viewOnly) {
-            return;
-        }
-        $this->barisRawat['dokter'] = $payload['dr_name'] ?? '';
-        $this->barisRawat['drId'] = $payload['dr_id'] ?? '';
-    }
-
-    /** Set tanggal/jam sekarang pada baris staging. */
-    public function setNowBaris(string $field): void
-    {
-        if ($this->isFormLocked || $this->viewOnly) {
-            return;
-        }
-        $this->barisRawat[$field] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
-    }
-
-    public function tambahTempatDirawat(): void
-    {
-        if ($this->isFormLocked || $this->viewOnly) {
-            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
-            return;
-        }
-        if (!filled($this->barisRawat['ruang'])) {
-            $this->dispatch('toast', type: 'error', message: 'Pilih ruangan terlebih dahulu.');
-            return;
-        }
-
-        $this->newForm['tempatDirawat'][] = [
-            'ruang' => $this->barisRawat['ruang'],
-            'roomId' => $this->barisRawat['roomId'],
-            'bedNo' => $this->barisRawat['bedNo'],
-            'tglMulai' => $this->barisRawat['tglMulai'],
-            'tglSelesai' => $this->barisRawat['tglSelesai'],
-            'dokter' => $this->barisRawat['dokter'],
-            'drId' => $this->barisRawat['drId'],
-        ];
-
-        // LOV ruang & dokter ikut kosong lewat prop #[Reactive] (initialRoomId/initialDrId),
-        // jadi TIDAK perlu incrementVersion — panel yang sedang terbuka tetap terbuka.
-        $this->resetBarisRawat();
-    }
-
-    public function hapusTempatDirawat(int $index): void
-    {
-        if ($this->isFormLocked || $this->viewOnly) {
-            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
-            return;
-        }
-        if (!isset($this->newForm['tempatDirawat'][$index])) {
-            return;
-        }
-
-        unset($this->newForm['tempatDirawat'][$index]);
-        $this->newForm['tempatDirawat'] = array_values($this->newForm['tempatDirawat']);
-    }
-
-    private function resetBarisRawat(): void
-    {
-        $this->barisRawat = ['ruang' => '', 'roomId' => '', 'bedNo' => '', 'tglMulai' => '', 'tglSelesai' => '', 'drId' => '', 'dokter' => ''];
-    }
-
-    /* ===============================
      | PEMASANGAN (daftar dinamis, pola Leveling Dokter)
      =============================== */
     /** Bentuk kosong baris pemasangan — kunci tanda infeksi gabungan kedua kelompok usia. */
@@ -950,7 +857,7 @@ new class extends Component {
                             <p class="mb-1.5 text-sm font-semibold text-ink dark:text-gray-200">Cara entri ini dihitung di Laporan Surveilans HAIs:</p>
                             <ul class="pl-5 space-y-1 text-sm list-disc text-body dark:text-gray-300">
                                 <li>Yang dipakai adalah <b>Jenis Akses per baris pemasangan</b> (bukan toggle di atas): baris <b>sentral/umbilikal</b> masuk hitungan IAD &amp; hari CVL, baris <b>perifer</b> masuk hitungan plebitis &amp; hari IV line. Satu entri boleh memuat keduanya.</li>
-                                <li><b>Insiden IAD</b> bila: ada baris akses <b>sentral/umbilikal</b> yang terpasang <b>&ge; 3 hari kalender</b> (hari pasang = hari ke-1) + ada tanda sistemik dicentang (suhu &gt;38&deg;C, suhu &lt;37&deg;C, menggigil, sistolik &lt;90, apnu, nadi &gt;100) + <b>kultur darah = Ya</b>.</li>
+                                <li><b>Insiden IAD</b> bila: ada baris akses <b>sentral/umbilikal</b> yang terpasang <b>&ge; 3 hari kalender</b> (hari pasang = hari ke-1) + ada tanda sistemik dicentang (suhu &gt;38&deg;C, suhu &lt;37&deg;C, menggigil, sistolik &lt;90, apnu, nadi &gt;100) + <b>ada minimal satu baris Hasil Kultur Darah</b> terisi.</li>
                                 <li><b>Insiden Plebitis</b> bila: ada baris akses <b>perifer</b> dengan tanda lokal dicentang (nyeri, merah, kalor, pus, bengkak) — tanpa syarat lama pemasangan.</li>
                                 <li>Tanggal pasang/lepas di sini dipakai untuk <b>syarat &ge;3 hari</b> dan menentukan bulan kasus. <b>Penyebutnya</b> (hari CVL &amp; hari IV line) diambil dari <b>Observasi &rarr; Alat Invasif</b>, yang diisi perawat ruangan untuk semua pasien terpasang alat — pastikan entri di sana juga ada.</li>
                             </ul>
@@ -997,101 +904,10 @@ new class extends Component {
                                     <x-text-input wire:model="newForm.diagnosisAkhir" class="w-full mt-1" placeholder="Diagnosis akhir / SMF utama" />
                                 </div>
                             </div>
-
-                            {{-- Tempat dirawat & dokter --}}
-                            <div class="mt-4">
-                                <p class="mb-2 text-xs font-semibold tracking-wide uppercase text-muted-soft">Tempat Dirawat &amp; Dokter yang Merawat</p>
-
-                                @php $daftarRawat = $newForm['tempatDirawat'] ?? []; @endphp
-                                @if (count($daftarRawat) > 0)
-                                    <div class="overflow-x-auto">
-                                        <table class="w-full overflow-hidden text-sm border rounded-lg border-hairline dark:border-gray-700">
-                                            <thead class="uppercase bg-surface-soft dark:bg-gray-800 text-muted dark:text-gray-400">
-                                                <tr>
-                                                    <th class="px-3 py-2 text-left">Ruang</th>
-                                                    <th class="px-3 py-2 text-left">Tgl Mulai</th>
-                                                    <th class="px-3 py-2 text-left">s/d Tgl</th>
-                                                    <th class="px-3 py-2 text-left">Dokter</th>
-                                                    @unless ($formRO)
-                                                        <th class="px-3 py-2 text-center">Aksi</th>
-                                                    @endunless
-                                                </tr>
-                                            </thead>
-                                            <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                                                @foreach ($daftarRawat as $indeks => $baris)
-                                                    <tr wire:key="rawat-{{ $indeks }}" class="bg-canvas dark:bg-gray-900">
-                                                        <td class="px-3 py-2 font-medium text-ink dark:text-gray-100">
-                                                            {{ $baris['ruang'] ?: '-' }}{{ !empty($baris['bedNo']) ? ' — Bed ' . $baris['bedNo'] : '' }}
-                                                        </td>
-                                                        <td class="px-3 py-2 font-mono text-muted">{{ $baris['tglMulai'] ?: '-' }}</td>
-                                                        <td class="px-3 py-2 font-mono text-muted">{{ $baris['tglSelesai'] ?: '-' }}</td>
-                                                        <td class="px-3 py-2 text-body dark:text-gray-300">{{ $baris['dokter'] ?: '-' }}</td>
-                                                        @unless ($formRO)
-                                                            <td class="px-3 py-2 text-center">
-                                                                <x-outline-button type="button" wire:click.prevent="hapusTempatDirawat({{ $indeks }})"
-                                                                    wire:confirm="Hapus ruang perawatan ini dari daftar?" wire:loading.attr="disabled"
-                                                                    class="!px-2 !py-1 !text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30"
-                                                                    title="Hapus dari daftar">
-                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                                    </svg>
-                                                                </x-outline-button>
-                                                            </td>
-                                                        @endunless
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                @else
-                                    <p class="text-sm italic text-muted-soft">Belum ada ruang perawatan pada daftar.</p>
-                                @endif
-
-                                @unless ($formRO)
-                                    <div class="p-3 mt-3 border border-dashed rounded-lg border-gray-300 dark:border-gray-600 bg-canvas dark:bg-gray-800/50">
-                                        <p class="mb-3 text-sm font-semibold tracking-wide uppercase text-ink dark:text-white">Tambah Ruang Perawatan</p>
-                                        <div class="grid items-end grid-cols-1 gap-3 lg:grid-cols-5">
-                                            <div>
-                                                <livewire:lov.room.lov-room target="surveilans-plebitis-room" label="Ruang"
-                                                    placeholder="Ketik nama ruangan / bed..." :initialRoomId="$barisRawat['roomId'] ?: null"
-                                                    wire:key="lov-room-surveilans-plebitis-{{ $riHdrNo }}-{{ $renderVersions['modal-surveilans-plebitis-ri'] ?? 0 }}" />
-                                            </div>
-                                            <div>
-                                                <x-input-label value="Tgl Mulai" />
-                                                <div class="flex gap-1 mt-1">
-                                                    <x-text-input wire:model="barisRawat.tglMulai" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
-                                                    <x-now-button wire:click="setNowBaris('tglMulai')" />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <x-input-label value="s/d Tgl" />
-                                                <div class="flex gap-1 mt-1">
-                                                    <x-text-input wire:model="barisRawat.tglSelesai" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
-                                                    <x-now-button wire:click="setNowBaris('tglSelesai')" />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <livewire:lov.dokter.lov-dokter target="surveilans-plebitis-dokter" label="Dokter yang Merawat"
-                                                    placeholder="Ketik nama/kode dokter..." :initialDrId="$barisRawat['drId'] ?: null"
-                                                    wire:key="lov-dokter-surveilans-plebitis-{{ $riHdrNo }}-{{ $renderVersions['modal-surveilans-plebitis-ri'] ?? 0 }}" />
-                                            </div>
-                                            <div>
-                                                <x-primary-button type="button" wire:click="tambahTempatDirawat" :disabled="empty($barisRawat['ruang'])" class="gap-1">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                                    </svg>
-                                                    Tambah
-                                                </x-primary-button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endunless
-                            </div>
                         </x-border-form>
 
                         {{-- 2. FAKTOR RISIKO --}}
-                        <x-border-form title="2. Faktor Risiko" :collapsible="true" :open="false">
+                        <x-border-form title="2. Faktor Risiko" :collapsible="true" :open="true">
                             <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                 @foreach ($opsiFaktorRisiko as $key => $label)
                                     <x-toggle wire:key="fr-{{ $key }}" wire:model="newForm.faktorRisiko.{{ $key }}"
@@ -1204,7 +1020,7 @@ new class extends Component {
                                     <div class="p-3 border border-dashed rounded-lg border-gray-300 dark:border-gray-600 bg-canvas dark:bg-gray-800/50">
                                         <p class="mb-3 text-sm font-semibold tracking-wide uppercase text-ink dark:text-white">Tambah Baris Pemasangan</p>
                                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-12">
-                                            <div class="sm:col-span-4">
+                                            <div class="sm:col-span-2">
                                                 <x-input-label value="Jenis Akses" class="text-xs" />
                                                 <x-select-input wire:model="barisPasang.jenisAkses" class="w-full mt-1">
                                                     <option value="">-- pilih --</option>
@@ -1213,27 +1029,27 @@ new class extends Component {
                                                     @endforeach
                                                 </x-select-input>
                                             </div>
-                                            <div class="sm:col-span-8">
+                                            <div class="sm:col-span-3">
                                                 <x-input-label value="Lokasi" class="text-xs" />
                                                 <x-text-input wire:model="barisPasang.lokasi" class="w-full mt-1" placeholder="mis. vena metacarpal dextra" />
                                             </div>
-                                            <div class="sm:col-span-4">
+                                            <div class="sm:col-span-3">
                                                 <x-input-label value="Tgl Pasang" class="text-xs" />
                                                 <div class="flex gap-1 mt-1">
                                                     <x-text-input wire:model="barisPasang.tglMulai" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
                                                     <x-now-button wire:click="setNowPasang('tglMulai')" />
                                                 </div>
                                             </div>
-                                            <div class="sm:col-span-4">
+                                            <div class="sm:col-span-3">
                                                 <x-input-label value="s/d Tgl Lepas" class="text-xs" />
                                                 <div class="flex gap-1 mt-1">
                                                     <x-text-input wire:model="barisPasang.tglSelesai" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
                                                     <x-now-button wire:click="setNowPasang('tglSelesai')" />
                                                 </div>
                                             </div>
-                                            <div class="sm:col-span-4">
+                                            <div class="sm:col-span-1">
                                                 <x-input-label value="Hari Ke" class="text-xs" />
-                                                <x-text-input wire:model="barisPasang.hariKe" class="w-full mt-1" placeholder="mis. 3" />
+                                                <x-text-input wire:model="barisPasang.hariKe" class="w-full mt-1" placeholder="3" />
                                             </div>
                                         </div>
 
@@ -1261,7 +1077,7 @@ new class extends Component {
                         </x-border-form>
 
                         {{-- 4. TUJUAN PEMASANGAN --}}
-                        <x-border-form title="4. Tujuan Pemasangan" :collapsible="true" :open="false">
+                        <x-border-form title="4. Tujuan Pemasangan" :collapsible="true" :open="true">
                             <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                 @foreach ($opsiTujuan as $key => $label)
                                     <x-toggle wire:key="tujuan-{{ $key }}" wire:model="newForm.tujuanPemasangan.{{ $key }}"
@@ -1277,25 +1093,17 @@ new class extends Component {
                         </x-border-form>
 
                         {{-- 5. KULTUR --}}
-                        <x-border-form title="5. Hasil Kultur" :collapsible="true" :open="false">
+                        <x-border-form title="5. Hasil Kultur" :collapsible="true" :open="true">
                             <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                                 <div class="space-y-3">
-                                    <div class="flex items-center gap-3">
-                                        <x-input-label value="Kultur Darah Dilakukan" class="shrink-0" />
-                                        <x-toggle wire:model="newForm.kulturDarah" trueValue="Ya" falseValue="Tidak"
-                                            :label="filled($newForm['kulturDarah'] ?? null) ? $newForm['kulturDarah'] : 'Belum diisi'" :disabled="$formRO" />
-                                    </div>
+                                    {{-- Tak ada lagi toggle "Dilakukan": ada-tidaknya baris hasil di bawah
+                                         sudah menjawabnya, dan itu pula yang dibaca aturan kasus IAD. --}}
                                     <x-surveilans.kultur-list namaDaftar="kulturDarahHasil" title="Hasil Kultur Darah"
                                         :barisList="$newForm['kulturDarahHasil'] ?? []" :barisBaru="$barisKultur['kulturDarahHasil'] ?? []"
                                         :formRO="$formRO" hasilLabel="Hasil" hasilPlaceholder="Hasil kultur darah"
                                         kosongTeks="Belum ada hasil kultur darah." />
                                 </div>
                                 <div class="space-y-3">
-                                    <div class="flex items-center gap-3">
-                                        <x-input-label value="Kultur Pus Dilakukan" class="shrink-0" />
-                                        <x-toggle wire:model="newForm.kulturPus" trueValue="Ya" falseValue="Tidak"
-                                            :label="filled($newForm['kulturPus'] ?? null) ? $newForm['kulturPus'] : 'Belum diisi'" :disabled="$formRO" />
-                                    </div>
                                     <x-surveilans.kultur-list namaDaftar="kulturPusHasil" title="Hasil Kultur Pus"
                                         :barisList="$newForm['kulturPusHasil'] ?? []" :barisBaru="$barisKultur['kulturPusHasil'] ?? []"
                                         :formRO="$formRO" hasilLabel="Hasil" hasilPlaceholder="Hasil kultur pus"
@@ -1305,13 +1113,9 @@ new class extends Component {
                         </x-border-form>
 
                         {{-- 6. PEMAKAIAN ANTIBIOTIK --}}
-                        <x-border-form title="6. Pemakaian Antibiotik" :collapsible="true" :open="false">
-                            <div class="flex items-center gap-3">
-                                <x-input-label value="Ada Pemakaian Antibiotik" class="shrink-0" />
-                                <x-toggle wire:model="newForm.adaAntibiotik" trueValue="Ada" falseValue="Tidak"
-                                    :label="filled($newForm['adaAntibiotik'] ?? null) ? $newForm['adaAntibiotik'] : 'Belum diisi'" :disabled="$formRO" />
-                            </div>
-                            <div class="mt-3">
+                        <x-border-form title="6. Pemakaian Antibiotik" :collapsible="true" :open="true">
+                            {{-- Tak ada toggle "Ada Pemakaian Antibiotik": daftar di bawah sudah menjawabnya. --}}
+                            <div>
                                 <x-surveilans.antibiotik-list :barisList="$newForm['antibiotik'] ?? []" :barisBaru="$barisObat"
                                     :formRO="$formRO" :opsiRute="$opsiRute" :opsiIndikasi="$opsiIndikasi" />
                             </div>

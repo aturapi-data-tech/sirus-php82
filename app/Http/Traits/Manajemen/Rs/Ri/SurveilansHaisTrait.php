@@ -267,7 +267,7 @@ trait SurveilansHaisTrait
                     $sentral
                     && $this->adaTanda($tanda, self::TANDA_IAD)
                     && $this->alatCukupLama($tglMulai, $tglSelesai)
-                    && ($entri['kulturDarah'] ?? '') === 'Ya'
+                    && $this->adaHasilKultur($entri['kulturDarahHasil'] ?? [])
                 ) {
                     $iadBulan ??= $this->bulanDari($tglMulai, $tahun) ?? $this->bulanDari($entri['tanggal'] ?? null, $tahun);
                 }
@@ -280,7 +280,7 @@ trait SurveilansHaisTrait
 
             if ($iadBulan !== null) {
                 $hitunganBulan[$iadBulan]['iadKasus']++;
-                $kasusList[] = $this->barisKasus('IAD', $iadBulan, $pasien, $entri['tanggal'] ?? '', 'Kateter sentral >2 hari + tanda sistemik + kultur darah');
+                $kasusList[] = $this->barisKasus('IAD', $iadBulan, $pasien, $entri['tanggal'] ?? '', 'Kateter sentral >2 hari + tanda sistemik + ada hasil kultur darah');
             }
 
             if ($plebitisBulan !== null) {
@@ -340,10 +340,10 @@ trait SurveilansHaisTrait
                 continue;
             }
 
-            // ISK = tanda klinis + biakan urin dilakukan (kriteria CAUTI butuh kultur ≥10^5).
-            if (($entri['biakanUrin'] ?? '') === 'Ya') {
+            // ISK = tanda klinis + ada hasil biakan urin (kriteria CAUTI butuh kultur ≥10^5).
+            if ($this->adaHasilKultur($entri['biakanUrinHasil'] ?? [])) {
                 $hitunganBulan[$bulanKasus]['iskKasus']++;
-                $kasusList[] = $this->barisKasus('ISK', $bulanKasus, $pasien, $entri['tanggal'] ?? '', 'Tanda klinis ISK + biakan urin');
+                $kasusList[] = $this->barisKasus('ISK', $bulanKasus, $pasien, $entri['tanggal'] ?? '', 'Tanda klinis ISK + ada hasil biakan urin');
             }
         }
     }
@@ -513,6 +513,26 @@ trait SurveilansHaisTrait
                 return null;
             }
         }
+    }
+
+    /**
+     * Kultur dianggap DILAKUKAN bila daftar hasilnya memuat minimal satu baris terisi.
+     * Formulir tak lagi punya toggle "Kultur Dilakukan" — ada-tidaknya hasil sudah
+     * menjawabnya, jadi tak ada dua sumber yang bisa saling bertentangan.
+     */
+    private function adaHasilKultur(mixed $hasilList): bool
+    {
+        if (!is_array($hasilList)) {
+            return false;
+        }
+
+        foreach ($hasilList as $baris) {
+            if (is_array($baris) && (filled($baris['tgl'] ?? null) || filled($baris['hasil'] ?? null))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Ada minimal satu flag true; $daftarKey null = cek semua key pada array. */

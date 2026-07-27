@@ -70,25 +70,25 @@
                     <x-input-label value="Nama Obat" class="text-xs" />
                     <x-text-input wire:model="barisObat.namaObat" class="w-full mt-1" placeholder="mis. Ceftriaxone" />
                 </div>
-                <div class="sm:col-span-3">
+                <div class="sm:col-span-2">
                     <x-input-label value="Tgl Mulai" class="text-xs" />
                     <div class="flex gap-1 mt-1">
                         <x-text-input wire:model="barisObat.tglMulai" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
                         <x-now-button wire:click="setNowObat('tglMulai')" />
                     </div>
                 </div>
-                <div class="sm:col-span-3">
+                <div class="sm:col-span-2">
                     <x-input-label value="s/d Tgl" class="text-xs" />
                     <div class="flex gap-1 mt-1">
                         <x-text-input wire:model="barisObat.tglSelesai" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
                         <x-now-button wire:click="setNowObat('tglSelesai')" />
                     </div>
                 </div>
-                <div class="sm:col-span-3">
+                <div class="sm:col-span-2">
                     <x-input-label value="Dosis" class="text-xs" />
                     <x-text-input wire:model="barisObat.dosis" class="w-full mt-1" placeholder="mis. 2 x 1 gr" />
                 </div>
-                <div class="sm:col-span-3">
+                <div class="sm:col-span-1">
                     <x-input-label value="Rute" class="text-xs" />
                     <x-select-input wire:model="barisObat.rute" class="w-full mt-1">
                         <option value="">—</option>
@@ -97,7 +97,7 @@
                         @endforeach
                     </x-select-input>
                 </div>
-                <div class="sm:col-span-3">
+                <div class="sm:col-span-2">
                     <x-input-label value="Indikasi" class="text-xs" />
                     <x-select-input wire:model="barisObat.indikasi" class="w-full mt-1">
                         <option value="">—</option>
@@ -106,7 +106,7 @@
                         @endforeach
                     </x-select-input>
                 </div>
-                <div class="flex items-end sm:col-span-6">
+                <div class="flex items-end justify-end sm:col-span-12">
                     <x-primary-button type="button" wire:click="tambahAntibiotik" class="gap-1">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />

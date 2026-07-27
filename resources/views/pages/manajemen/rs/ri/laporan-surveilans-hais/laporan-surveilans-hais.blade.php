@@ -312,9 +312,9 @@ new class extends Component {
                     <div class="pt-2 border-t border-blue-200/60 dark:border-blue-700/60">
                         <p class="mb-1.5 font-semibold text-ink dark:text-gray-200">Penetapan kasus dari isian formulir:</p>
                         <ul class="pl-5 space-y-1 list-disc">
-                            <li><b>IAD</b> — baris pemasangan berjenis akses sentral/umbilikal yang terpasang <b>&ge; 3 hari kalender</b>, ada tanda sistemik (suhu &gt;38&deg;C, suhu &lt;37&deg;C, menggigil, sistolik &lt;90, apnu, nadi &gt;100) <b>dan</b> kultur darah dilakukan.</li>
+                            <li><b>IAD</b> — baris pemasangan berjenis akses sentral/umbilikal yang terpasang <b>&ge; 3 hari kalender</b>, ada tanda sistemik (suhu &gt;38&deg;C, suhu &lt;37&deg;C, menggigil, sistolik &lt;90, apnu, nadi &gt;100) <b>dan</b> ada hasil kultur darah terisi.</li>
                             <li><b>Plebitis</b> — baris pemasangan berjenis akses perifer dengan tanda lokal di area insersi (nyeri, merah, kalor, pus, bengkak); tanpa syarat lama pemasangan.</li>
-                            <li><b>ISK</b> — ada tanda klinis ISK pada baris pemasangan yang kateternya terpasang <b>&ge; 3 hari kalender</b> <b>dan</b> biakan urin dilakukan.</li>
+                            <li><b>ISK</b> — ada tanda klinis ISK pada baris pemasangan yang kateternya terpasang <b>&ge; 3 hari kalender</b> <b>dan</b> ada hasil biakan urin terisi.</li>
                             <li><b>VAP</b> — ventilator terpasang <b>&ge; 3 hari kalender</b> <b>dan</b> minimal 2 dari: demam &ge;38&deg;C, sekresi dahak purulen, gambaran foto toraks.</li>
                             <li><b>ILO</b> — pemantauan luka operasi hari ke-1 s/d 17 menemukan pus, drainase, perforasi, atau fistula.</li>
                             <li><b>Asal masuk &amp; cara keluar</b> tidak ikut menghitung apa pun — keduanya diturunkan dari pendaftaran RI &amp; Perencanaan, lalu ditampilkan di tabel kasus sebagai alat verifikasi: pasien <b>kiriman RS lain</b> perlu diperiksa apakah infeksinya sudah ada sejak masuk (bila ya, keluarkan dari hitungan HAIs), dan kolom <b>Meninggal</b> memperlihatkan dampak kasusnya.</li>
