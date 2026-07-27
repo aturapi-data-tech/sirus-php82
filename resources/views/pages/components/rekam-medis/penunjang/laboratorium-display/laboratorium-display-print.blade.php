@@ -77,7 +77,7 @@
                     {{ $panelName }}
                 </div>
 
-                <table class="w-full text-[10px] border-collapse">
+                <table class="w-full text-[11px] border-collapse">
                     <thead>
                         <tr class="bg-gray-100">
                             <th class="border border-gray-400 px-2 py-0.5 text-left w-[45%]">Pemeriksaan</th>
@@ -215,7 +215,7 @@
             <div class="bg-orange-700 text-white text-[10px] font-bold uppercase px-2 py-0.5 mb-0">
                 Laboratorium Luar / Rujukan
             </div>
-            <table class="w-full text-[10px] border-collapse">
+            <table class="w-full text-[11px] border-collapse">
                 <thead>
                     <tr class="bg-gray-100">
                         <th class="border border-gray-400 px-2 py-0.5 text-left w-[50%]">Pemeriksaan</th>
