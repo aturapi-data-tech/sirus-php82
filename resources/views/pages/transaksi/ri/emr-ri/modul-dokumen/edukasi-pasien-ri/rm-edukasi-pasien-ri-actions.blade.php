@@ -574,7 +574,7 @@ new class extends Component {
                     <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
                         wire:key="edu-pasien-ri-display-pasien-{{ $riHdrNo ?? 'init' }}" />
 
-                    @php $formRO = $isFormLocked || $viewOnly; @endphp
+                    @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                     @if ($isFormLocked)
                         <div class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-lg text-amber-800 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
@@ -604,7 +604,7 @@ new class extends Component {
                     @endif
 
                     {{-- ── FORM ENTRI EDUKASI ── --}}
-                    <fieldset @disabled($formRO) class="space-y-4">
+                    <fieldset @disabled($formReadOnly) class="space-y-4">
                         <x-border-form title="Entry Edukasi Pasien" align="start" bgcolor="bg-surface-soft">
                             <div class="mt-3 space-y-3">
                                 <div class="flex items-end gap-3">
@@ -613,7 +613,7 @@ new class extends Component {
                                         <x-text-input wire:model="formEntryEdukasi.tglEdukasi" class="w-full mt-1 font-mono" readonly
                                             :error="$errors->has('formEntryEdukasi.tglEdukasi')" />
                                     </div>
-                                    @if (!$formRO)
+                                    @if (!$formReadOnly)
                                         <x-now-button wire:click="setTglEdukasi" />
                                     @endif
                                 </div>
@@ -642,7 +642,7 @@ new class extends Component {
                                     <div class="grid grid-cols-1 gap-2 mt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                                         @foreach ($edukasiOptions as $opt)
                                             <x-toggle wire:model.live="formEntryEdukasi.edukasi.kategoriEdukasi" :label="$opt"
-                                                :disabled="$formRO" />
+                                                :disabled="$formReadOnly" />
                                         @endforeach
                                     </div>
                                     <x-input-error :messages="$errors->get('formEntryEdukasi.edukasi.kategoriEdukasi')" class="mt-1" />
@@ -652,7 +652,7 @@ new class extends Component {
                                     <x-input-label value="Materi / Topik Edukasi *" />
                                     <x-text-input wire:model="formEntryEdukasi.edukasi.materiTopikEdukasi" class="w-full mt-1"
                                         placeholder="Mis. Cara minum obat antihipertensi, Diet rendah garam..."
-                                        :error="$errors->has('formEntryEdukasi.edukasi.materiTopikEdukasi')" :disabled="$formRO" />
+                                        :error="$errors->has('formEntryEdukasi.edukasi.materiTopikEdukasi')" :disabled="$formReadOnly" />
                                     <x-input-error :messages="$errors->get('formEntryEdukasi.edukasi.materiTopikEdukasi')" class="mt-1" />
                                 </div>
 
@@ -668,7 +668,7 @@ new class extends Component {
                                     <div class="mt-2 flex gap-4">
                                         @foreach (['Mengerti', 'Tidak Mengerti', 'Perlu Pengulangan'] as $st)
                                             <x-radio-button :label="$st" :value="$st" name="statusEdukasi"
-                                                wire:model.live="formEntryEdukasi.edukasi.statusEdukasi" :disabled="$formRO" />
+                                                wire:model.live="formEntryEdukasi.edukasi.statusEdukasi" :disabled="$formReadOnly" />
                                         @endforeach
                                     </div>
                                     <x-input-error :messages="$errors->get('formEntryEdukasi.edukasi.statusEdukasi')" class="mt-1" />
@@ -676,18 +676,18 @@ new class extends Component {
 
                                 <div>
                                     <x-toggle wire:model.live="formEntryEdukasi.edukasi.reEdukasi.perlu" label="Perlu Re-Edukasi"
-                                        :disabled="$formRO" />
+                                        :disabled="$formReadOnly" />
                                 </div>
                             </div>
                         </x-border-form>
 
                         {{-- ══ TTD PETUGAS & KUNCI ══ --}}
                         <x-signature.ttd-petugas :ttd="$formEntryEdukasi['petugasEdukasi']" :code="$formEntryEdukasi['petugasEdukasiCode'] ?? ''"
-                            :date="$formEntryEdukasi['tglEdukasi'] ?? ''" :locked="$formRO" sign="ttdPetugas" :allowClear="false"
+                            :date="$formEntryEdukasi['tglEdukasi'] ?? ''" :locked="$formReadOnly" sign="ttdPetugas" :allowClear="false"
                             title="Tanda Tangan Petugas"
                             nameLabel="Petugas Edukasi" dateLabel="Tanggal Edukasi"
                             signLabel="TTD Petugas &amp; Kunci" />
-                        @if (!$formRO)
+                        @if (!$formReadOnly)
                             <p class="-mt-2 text-xs text-center text-muted">Menandatangani = mengunci edukasi ini.</p>
                         @endif
                     </fieldset>

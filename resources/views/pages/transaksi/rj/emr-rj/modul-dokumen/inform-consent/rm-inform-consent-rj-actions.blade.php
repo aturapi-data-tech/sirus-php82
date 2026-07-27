@@ -822,7 +822,7 @@ new class extends Component {
                     <div
                         class="p-4 space-y-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
-                        @php $formRO = $isFormLocked || $viewOnly; @endphp
+                        @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                         @if ($isFormLocked)
                             <div
@@ -865,11 +865,11 @@ new class extends Component {
 
                             <div>
                                 <x-input-label value="PPA — Profesional Pemberi Asuhan *" class="mb-1" />
-                                @if (!$formRO)
+                                @if (!$formReadOnly)
                                     <div class="flex items-start gap-2">
                                         <div class="flex-1">
                                             <x-ppa-combobox wireModel="newConsent.petugasPemeriksa"
-                                                :disabled="$formRO" />
+                                                :disabled="$formReadOnly" />
                                         </div>
                                         <x-outline-button type="button" wire:click.prevent="setPpaSaya" class="shrink-0"
                                             title="Isi dengan nama saya (user login)">
@@ -900,14 +900,14 @@ new class extends Component {
                                 <div>
                                     <x-input-label value="Diagnosa *" class="mb-1" />
                                     <x-text-input wire:model.live="newConsent.diagnosa" :error="$errors->has('newConsent.diagnosa')"
-                                        placeholder="Diagnosa kerja / penyakit..." :disabled="$formRO"
+                                        placeholder="Diagnosa kerja / penyakit..." :disabled="$formReadOnly"
                                         class="w-full" />
                                     <x-input-error :messages="$errors->get('newConsent.diagnosa')" class="mt-1" />
                                 </div>
                                 <div>
                                     <x-input-label value="Komplikasi *" class="mb-1" />
                                     <x-text-input wire:model.live="newConsent.komplikasi" :error="$errors->has('newConsent.komplikasi')"
-                                        placeholder="Kemungkinan komplikasi..." :disabled="$formRO"
+                                        placeholder="Kemungkinan komplikasi..." :disabled="$formReadOnly"
                                         class="w-full" />
                                     <x-input-error :messages="$errors->get('newConsent.komplikasi')" class="mt-1" />
                                 </div>
@@ -916,7 +916,7 @@ new class extends Component {
                             <div>
                                 <x-input-label value="Nama Tindakan / Prosedur *" class="mb-1" />
                                 <x-text-input wire:model.live="newConsent.tindakan" :error="$errors->has('newConsent.tindakan')"
-                                    placeholder="Contoh: Injeksi IM, Hecting Ringan, Nebulizer..." :disabled="$formRO"
+                                    placeholder="Contoh: Injeksi IM, Hecting Ringan, Nebulizer..." :disabled="$formReadOnly"
                                     class="w-full" />
                                 <x-input-error :messages="$errors->get('newConsent.tindakan')" class="mt-1" />
                             </div>
@@ -926,14 +926,14 @@ new class extends Component {
                                     <x-input-label value="Tujuan Tindakan / Terapi *" class="mb-1" />
                                     <x-textarea wire:model.live="newConsent.tujuan" :error="$errors->has('newConsent.tujuan')" rows="3"
                                         placeholder="Uraian singkat mengenai tujuan tindakan..."
-                                        :disabled="$formRO" />
+                                        :disabled="$formReadOnly" />
                                     <x-input-error :messages="$errors->get('newConsent.tujuan')" class="mt-1" />
                                 </div>
 
                                 <div>
                                     <x-input-label value="Risiko Tindakan / Terapi *" class="mb-1" />
                                     <x-textarea wire:model.live="newConsent.resiko" :error="$errors->has('newConsent.resiko')" rows="3"
-                                        placeholder="Kemungkinan risiko / efek samping..." :disabled="$formRO" />
+                                        placeholder="Kemungkinan risiko / efek samping..." :disabled="$formReadOnly" />
                                     <x-input-error :messages="$errors->get('newConsent.resiko')" class="mt-1" />
                                 </div>
 
@@ -941,14 +941,14 @@ new class extends Component {
                                     <x-input-label value="Alternatif Tindakan / Terapi *" class="mb-1" />
                                     <x-textarea wire:model.live="newConsent.alternatif" :error="$errors->has('newConsent.alternatif')" rows="3"
                                         placeholder="Alternatif lain yang dapat dilakukan..."
-                                        :disabled="$formRO" />
+                                        :disabled="$formReadOnly" />
                                     <x-input-error :messages="$errors->get('newConsent.alternatif')" class="mt-1" />
                                 </div>
                             </div>
 
                             <div class="md:max-w-xs">
                                 <x-input-label value="Persetujuan *" class="mb-1" />
-                                <x-select-input wire:model.live="newConsent.agreement" :error="$errors->has('newConsent.agreement')" :disabled="$formRO"
+                                <x-select-input wire:model.live="newConsent.agreement" :error="$errors->has('newConsent.agreement')" :disabled="$formReadOnly"
                                     class="w-full">
                                     @foreach ($agreementOptions as $opt)
                                         <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
@@ -1011,8 +1011,8 @@ new class extends Component {
                                     <x-input-error :messages="$errors->get('signature')" class="mb-2" />
                                     @if (!empty($signature))
                                         <x-signature.signature-result :signature="$signature" :date="''"
-                                            :disabled="$formRO" wireMethod="clearSignature" />
-                                    @elseif (!$formRO)
+                                            :disabled="$formReadOnly" wireMethod="clearSignature" />
+                                    @elseif (!$formReadOnly)
                                         <x-signature.signature-pad wireMethod="setSignature" />
                                     @else
                                         <p class="py-8 text-base italic text-center text-muted-soft">Belum
@@ -1022,7 +1022,7 @@ new class extends Component {
                                     <div class="mt-3">
                                         <x-input-label value="Nama Pasien / Wali *" class="mb-1" />
                                         <x-text-input wire:model.live="newConsent.wali" :error="$errors->has('newConsent.wali')"
-                                            placeholder="Nama lengkap pasien atau wali..." :disabled="$formRO"
+                                            placeholder="Nama lengkap pasien atau wali..." :disabled="$formReadOnly"
                                             class="w-full" />
                                         <x-input-error :messages="$errors->get('newConsent.wali')" class="mt-1" />
                                     </div>
@@ -1030,7 +1030,7 @@ new class extends Component {
                                     <div class="mt-2">
                                         <x-input-label value="Hubungan dengan Pasien *" class="mb-1" />
                                         <x-select-input wire:model.live="newConsent.waliHubungan" :error="$errors->has('newConsent.waliHubungan')"
-                                            :disabled="$formRO" class="w-full">
+                                            :disabled="$formReadOnly" class="w-full">
                                             <option value="">— Pilih hubungan —</option>
                                             @foreach ($waliHubunganOptions as $opt)
                                                 <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
@@ -1050,8 +1050,8 @@ new class extends Component {
                                     <x-input-error :messages="$errors->get('signatureSaksi')" class="mb-2" />
                                     @if (!empty($signatureSaksi))
                                         <x-signature.signature-result :signature="$signatureSaksi" :date="''"
-                                            :disabled="$formRO" wireMethod="clearSignatureSaksi" />
-                                    @elseif (!$formRO)
+                                            :disabled="$formReadOnly" wireMethod="clearSignatureSaksi" />
+                                    @elseif (!$formReadOnly)
                                         <x-signature.signature-pad wireMethod="setSignatureSaksi" />
                                     @else
                                         <p class="py-8 text-base italic text-center text-muted-soft">Belum
@@ -1061,7 +1061,7 @@ new class extends Component {
                                     <div class="mt-3">
                                         <x-input-label value="Nama Saksi" class="mb-1" />
                                         <x-text-input wire:model.live="newConsent.saksi" :error="$errors->has('newConsent.saksi')" placeholder="Nama saksi..."
-                                            :disabled="$formRO" class="w-full" />
+                                            :disabled="$formReadOnly" class="w-full" />
                                         <x-input-error :messages="$errors->get('newConsent.saksi')" class="mt-1" />
                                     </div>
                                 </div>
@@ -1073,7 +1073,7 @@ new class extends Component {
                                         Pemberi Informasi
                                     </div>
                                     @if (empty($newConsent['dokter']))
-                                        @if (!$formRO)
+                                        @if (!$formReadOnly)
                                             <div
                                                 class="flex flex-col items-center justify-center flex-1 gap-2 p-6 border-2 border-gray-300 border-dashed rounded-xl dark:border-gray-700">
                                                 <x-primary-button wire:click.prevent="setDokterPenjelas"

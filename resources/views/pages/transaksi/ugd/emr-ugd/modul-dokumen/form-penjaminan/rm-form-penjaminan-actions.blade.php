@@ -669,7 +669,7 @@ new class extends Component {
                     wire:key="penj-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
             </div>
 
-            @php $formRO = $isFormLocked || $viewOnly; @endphp
+            @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
         @if ($isFormLocked)
             <div
@@ -717,8 +717,8 @@ new class extends Component {
                     <x-input-label value="Tanggal Form Pernyataan *" class="mb-1" />
                     <div class="flex gap-2">
                         <x-text-input wire:model.live="newForm.tanggalFormPenjaminan" :error="$errors->has('newForm.tanggalFormPenjaminan')" placeholder="dd/mm/yyyy hh:ii:ss"
-                            :disabled="$formRO" class="flex-1" />
-                        <x-now-button wire:click="setTanggalForm" wire:loading.attr="disabled" :disabled="$formRO" />
+                            :disabled="$formReadOnly" class="flex-1" />
+                        <x-now-button wire:click="setTanggalForm" wire:loading.attr="disabled" :disabled="$formReadOnly" />
                     </div>
                     <x-input-error :messages="$errors->get('newForm.tanggalFormPenjaminan')" class="mt-1" />
                 </div>
@@ -727,13 +727,13 @@ new class extends Component {
                     <div>
                         <x-input-label value="Nama Pembuat Pernyataan *" class="mb-1" />
                         <x-text-input wire:model.live="newForm.pembuatNama" :error="$errors->has('newForm.pembuatNama')" placeholder="Nama lengkap..."
-                            :disabled="$formRO" class="w-full" />
+                            :disabled="$formReadOnly" class="w-full" />
                         <x-input-error :messages="$errors->get('newForm.pembuatNama')" class="mt-1" />
                     </div>
 
                     <div>
                         <x-input-label value="Hubungan dengan Pasien *" class="mb-1" />
-                        <x-select-input wire:model.live="newForm.hubunganDenganPasien" :error="$errors->has('newForm.hubunganDenganPasien')" :disabled="$formRO">
+                        <x-select-input wire:model.live="newForm.hubunganDenganPasien" :error="$errors->has('newForm.hubunganDenganPasien')" :disabled="$formReadOnly">
                             <option value="">Pilih</option>
                             @foreach ($hubunganOptions as $opt)
                                 <option value="{{ $opt }}">{{ $opt }}</option>
@@ -745,7 +745,7 @@ new class extends Component {
                     <div>
                         <x-input-label value="Nama Saksi Keluarga *" class="mb-1" />
                         <x-text-input wire:model.live="newForm.namaSaksiKeluarga" :error="$errors->has('newForm.namaSaksiKeluarga')"
-                            placeholder="Nama lengkap saksi..." :disabled="$formRO" class="w-full" />
+                            placeholder="Nama lengkap saksi..." :disabled="$formReadOnly" class="w-full" />
                         <x-input-error :messages="$errors->get('newForm.namaSaksiKeluarga')" class="mt-1" />
                     </div>
 
@@ -762,7 +762,7 @@ new class extends Component {
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                         <x-input-label value="Jenis Kartu Penjaminan *" class="mb-1" />
-                        <x-select-input wire:model.live="newForm.jenisPenjamin" :error="$errors->has('newForm.jenisPenjamin')" :disabled="$formRO">
+                        <x-select-input wire:model.live="newForm.jenisPenjamin" :error="$errors->has('newForm.jenisPenjamin')" :disabled="$formReadOnly">
                             <option value="">Pilih</option>
                             @foreach ($jenisPenjaminOptions as $opt)
                                 <option value="{{ $opt['id'] }}">{{ $opt['desc'] }}</option>
@@ -774,7 +774,7 @@ new class extends Component {
                     <div>
                         <livewire:lov.kelas-kamar.lov-kelas-kamar target="kelas-kamar-penjaminan-ugd"
                             label="Pilih Kelas Kamar *" placeholder="Ketik / pilih kelas kamar..."
-                            :initialKelas="$newForm['kelasKamar'] ?? null" :disabled="$formRO"
+                            :initialKelas="$newForm['kelasKamar'] ?? null" :disabled="$formReadOnly"
                             wire:key="lov-kelas-kamar-{{ $editingKey ?? 'new' }}-{{ $renderVersions['modal-form-penjaminan'] ?? 0 }}" />
                         <x-input-error :messages="$errors->get('newForm.kelasKamar')" class="mt-1" />
                     </div>
@@ -802,7 +802,7 @@ new class extends Component {
                     <div>
                         <x-input-label value="Nama Asuransi Lain *" class="mb-1" />
                         <x-text-input wire:model.live="newForm.asuransiLain" :error="$errors->has('newForm.asuransiLain')"
-                            placeholder="Contoh: Allianz, Prudential, dll" :disabled="$formRO" class="w-full" />
+                            placeholder="Contoh: Allianz, Prudential, dll" :disabled="$formReadOnly" class="w-full" />
                         <x-input-error :messages="$errors->get('newForm.asuransiLain')" class="mt-1" />
                     </div>
                 @endif
@@ -813,7 +813,7 @@ new class extends Component {
                     <div>
                         <x-toggle wire:model.live="newForm.bpjsKlausulDisetujui" trueValue="1" falseValue="0"
                             label="Saya menyetujui ketentuan penjaminan BPJS Kesehatan sesuai dengan peraturan yang berlaku."
-                            :disabled="$formRO" />
+                            :disabled="$formReadOnly" />
                         <x-input-error :messages="$errors->get('newForm.bpjsKlausulDisetujui')" class="mt-1" />
                     </div>
                 @endif
@@ -821,7 +821,7 @@ new class extends Component {
                 <div>
                     <x-toggle wire:model.live="newForm.orientasiKamarDijelaskan" trueValue="1" falseValue="0"
                         label="Saya telah mendapatkan penjelasan mengenai fasilitas kamar yang dipilih beserta tarifnya."
-                        :disabled="$formRO" />
+                        :disabled="$formReadOnly" />
                     <x-input-error :messages="$errors->get('newForm.orientasiKamarDijelaskan')" class="mt-1" />
                 </div>
             </section>
@@ -841,9 +841,9 @@ new class extends Component {
                         </div>
                         <x-input-error :messages="$errors->get('signature')" class="mb-2" />
                         @if (!empty($signature))
-                            <x-signature.signature-result :signature="$signature" :date="''" :disabled="$formRO"
+                            <x-signature.signature-result :signature="$signature" :date="''" :disabled="$formReadOnly"
                                 wireMethod="clearSignature" />
-                        @elseif (!$formRO)
+                        @elseif (!$formReadOnly)
                             <x-signature.signature-pad wireMethod="setSignature" />
                         @else
                             <p class="py-8 text-base italic text-center text-muted-soft">Belum ditandatangani.</p>
@@ -858,9 +858,9 @@ new class extends Component {
                         </div>
                         <x-input-error :messages="$errors->get('signatureSaksi')" class="mb-2" />
                         @if (!empty($signatureSaksi))
-                            <x-signature.signature-result :signature="$signatureSaksi" :date="''" :disabled="$formRO"
+                            <x-signature.signature-result :signature="$signatureSaksi" :date="''" :disabled="$formReadOnly"
                                 wireMethod="clearSignatureSaksi" />
-                        @elseif (!$formRO)
+                        @elseif (!$formReadOnly)
                             <x-signature.signature-pad wireMethod="setSignatureSaksi" />
                         @else
                             <p class="py-8 text-base italic text-center text-muted-soft">Belum ditandatangani.</p>
@@ -875,9 +875,9 @@ new class extends Component {
                         </div>
                         <x-signature.ttd-petugas :framed="false" :allowClear="false"
                             :ttd="$newForm['namaPetugas']" :date="$newForm['petugasDate'] ?? ''"
-                            :code="$newForm['kodePetugas'] ?? ''" :locked="$formRO"
+                            :code="$newForm['kodePetugas'] ?? ''" :locked="$formReadOnly"
                             sign="setPetugas" label="" signLabel="TTD Petugas &amp; Kunci" />
-                        @if (!$formRO && empty($newForm['namaPetugas']))
+                        @if (!$formReadOnly && empty($newForm['namaPetugas']))
                             <p class="mt-2 text-xs text-center text-muted">Menandatangani = validasi lengkap &amp; mengunci form ini.</p>
                         @endif
                     </div>

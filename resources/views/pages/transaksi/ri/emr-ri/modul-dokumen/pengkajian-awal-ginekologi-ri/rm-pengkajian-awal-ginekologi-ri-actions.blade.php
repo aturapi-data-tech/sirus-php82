@@ -648,7 +648,7 @@ new class extends Component {
                     <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
                         wire:key="pengkajian-ginekologi-display-pasien-{{ $riHdrNo }}" />
 
-                    @php $formRO = $isFormLocked || $viewOnly; @endphp
+                    @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                     @if ($isFormLocked)
                         <div class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-lg text-amber-800 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
@@ -678,7 +678,7 @@ new class extends Component {
                     @endif
 
                     {{-- ── FORM ENTRI ── --}}
-                    <fieldset @disabled($formRO) class="space-y-4">
+                    <fieldset @disabled($formReadOnly) class="space-y-4">
 
                         {{-- 1. Data Pengkajian --}}
                         <x-border-form title="1. Data Pengkajian">
@@ -687,7 +687,7 @@ new class extends Component {
                                     <x-input-label value="Jam Pengkajian" />
                                     <div class="flex gap-1 mt-1">
                                         <x-text-input type="time" wire:model="newForm.jamPengkajian" class="w-full" />
-                                        @if (!$formRO)
+                                        @if (!$formReadOnly)
                                             <x-now-button wire:click="setJamSekarang('jamPengkajian')" />
                                         @endif
                                     </div>
@@ -781,7 +781,7 @@ new class extends Component {
                                             <x-toggle :current="in_array($opt, $newForm['penyakitPenting'] ?? [], true) ? 1 : 0"
                                                 trueValue="1" falseValue="0"
                                                 wireClick="togglePenyakit('{{ $opt }}')"
-                                                :disabled="$formRO">{{ $opt }}</x-toggle>
+                                                :disabled="$formReadOnly">{{ $opt }}</x-toggle>
                                         @endforeach
                                     </div>
                                     <x-text-input wire:model="newForm.penyakitLain" class="w-full mt-2" placeholder="Penyakit lain (bila ada)" />
@@ -793,7 +793,7 @@ new class extends Component {
                         <x-border-form title="5. Riwayat Ginekologi">
                             <div class="space-y-4">
                                 <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                                    <div><x-input-label value="HPHT" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.hpht" class="w-full" />@if (!$formRO)<x-now-button wire:click="setTglSekarang('hpht')" />@endif</div></div>
+                                    <div><x-input-label value="HPHT" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.hpht" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setTglSekarang('hpht')" />@endif</div></div>
                                     <div><x-input-label value="Menarche (umur th)" /><x-text-input type="number" wire:model="newForm.menarcheUmur" class="w-full mt-1" /></div>
                                     <div><x-input-label value="Menopause" /><x-text-input wire:model="newForm.menopause" class="w-full mt-1" placeholder="Ya/Tidak; umur" /></div>
                                     <div><x-input-label value="Kontrasepsi" /><x-text-input wire:model="newForm.kontrasepsi" class="w-full mt-1" placeholder="Suntik/Pil/IUD/…" /></div>
@@ -899,11 +899,11 @@ new class extends Component {
 
                         {{-- ══ TTD PETUGAS & KUNCI ══ --}}
                         <x-signature.ttd-petugas :ttd="$newForm['ttd']" :code="$newForm['ttdCode'] ?? ''"
-                            :date="$newForm['ttdDate'] ?? ''" :locked="$formRO" sign="ttdSaya" clear="hapusTtd"
+                            :date="$newForm['ttdDate'] ?? ''" :locked="$formReadOnly" sign="ttdSaya" clear="hapusTtd"
                             title="Tanda Tangan Petugas"
                             nameLabel="Petugas (Bidan / Dokter)" dateLabel="Waktu TTD"
                             signLabel="TTD Petugas &amp; Kunci" clearLabel="Batal TTD" />
-                        @if (!$formRO)
+                        @if (!$formReadOnly)
                             <p class="-mt-2 text-xs text-center text-muted">Menandatangani = mengunci pengkajian ini.</p>
                         @endif
                     </fieldset>

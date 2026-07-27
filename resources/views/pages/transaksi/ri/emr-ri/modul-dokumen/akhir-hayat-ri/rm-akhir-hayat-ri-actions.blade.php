@@ -909,7 +909,7 @@ new class extends Component {
             <div class="flex-1 p-4 sm:p-6 space-y-4"
                 wire:key="{{ $this->renderKey('modal-akhir-hayat-ri', [$riHdrNo ?? 'new']) }}">
 
-                @php $formRO = $isFormLocked || $viewOnly; @endphp
+                @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                 @if ($isFormLocked)
                     <div class="flex items-center gap-2 px-4 py-2.5 text-sm rounded-lg bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300">
@@ -946,7 +946,7 @@ new class extends Component {
                             <div class="flex items-end gap-2 mt-1">
                                 <x-text-input wire:model="form.tglAsesmen" class="flex-1 font-mono"
                                     placeholder="dd/mm/yyyy hh:ii:ss" readonly :error="$errors->has('form.tglAsesmen')" />
-                                <x-now-button wire:click="setTglAsesmen" :disabled="$formRO" />
+                                <x-now-button wire:click="setTglAsesmen" :disabled="$formReadOnly" />
                             </div>
                             <x-input-error :messages="$errors->get('form.tglAsesmen')" class="mt-1" />
                         </div>
@@ -965,7 +965,7 @@ new class extends Component {
                     {{-- ── 1. KONDISI MEDIS & FISIK ── --}}
                     <x-border-form title="1. Kondisi Medis & Penilaian Fisik" align="start"
                         bgcolor="bg-surface-soft" :collapsible="true" :open="true">
-                        <fieldset @disabled($formRO)>
+                        <fieldset @disabled($formReadOnly)>
                             <div class="mt-3 space-y-3">
                                 {{-- ── Grup: Diagnosis & Prognosis ── --}}
                                 <div class="p-3 border rounded-xl border-hairline bg-canvas dark:bg-gray-800 dark:border-gray-700">
@@ -974,28 +974,28 @@ new class extends Component {
                                         <div>
                                             <x-input-label value="Diagnosis Utama" />
                                             <x-textarea wire:model.blur="form.medis.diagnosaUtama" class="w-full mt-1" rows="2"
-                                                placeholder="Diagnosis utama" :disabled="$formRO" />
+                                                placeholder="Diagnosis utama" :disabled="$formReadOnly" />
                                         </div>
                                         <div>
                                             <x-input-label value="Diagnosis Sekunder" />
                                             <x-textarea wire:model.blur="form.medis.diagnosaSekunder" class="w-full mt-1" rows="2"
-                                                placeholder="Diagnosis penyerta" :disabled="$formRO" />
+                                                placeholder="Diagnosis penyerta" :disabled="$formReadOnly" />
                                         </div>
                                         <div>
                                             <x-input-label value="Riwayat Penyakit & Perawatan Sebelumnya" />
                                             <x-textarea wire:model.blur="form.medis.riwayat" class="w-full mt-1" rows="2"
-                                                placeholder="Ringkas saja" :disabled="$formRO" />
+                                                placeholder="Ringkas saja" :disabled="$formReadOnly" />
                                         </div>
                                         <div>
                                             <x-input-label value="Prognosis" />
-                                            <x-select-input wire:model.blur="form.medis.prognosis" class="w-full mt-1" :disabled="$formRO">
+                                            <x-select-input wire:model.blur="form.medis.prognosis" class="w-full mt-1" :disabled="$formReadOnly">
                                                 <option value="">— Pilih —</option>
                                                 @foreach ($prognosisOptions as $val => $label)
                                                     <option value="{{ $val }}">{{ $label }}</option>
                                                 @endforeach
                                             </x-select-input>
                                             <x-text-input wire:model.blur="form.medis.prognosisCatatan" class="w-full mt-2"
-                                                placeholder="Catatan prognosis (opsional)" :disabled="$formRO" />
+                                                placeholder="Catatan prognosis (opsional)" :disabled="$formReadOnly" />
                                         </div>
                                     </div>
                                 </div>
@@ -1009,7 +1009,7 @@ new class extends Component {
                                                 <x-input-label :value="$labelFisik . ' *'" />
                                                 <x-text-input wire:model.blur="form.fisik.{{ $fieldFisik }}" type="number" step="any"
                                                     class="w-full mt-1" :error="$errors->has('form.fisik.' . $fieldFisik)"
-                                                    :disabled="$formRO" />
+                                                    :disabled="$formReadOnly" />
                                                 <x-input-error :messages="$errors->get('form.fisik.' . $fieldFisik)" class="mt-1" />
                                             </div>
                                         @endforeach
@@ -1032,7 +1032,7 @@ new class extends Component {
                     {{-- ── 2. SIMPTOM & MASALAH KEPERAWATAN ── --}}
                     <x-border-form title="2. Gejala & Masalah Keperawatan" align="start"
                         bgcolor="bg-surface-soft" :collapsible="true" :open="true">
-                        <fieldset @disabled($formRO)>
+                        <fieldset @disabled($formReadOnly)>
                             <div class="mt-3 space-y-4">
                                 <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4 items-start">
                                     @foreach ([['nyeri', 'Nyeri'], ['sesak', 'Sesak napas'], ['mualMuntah', 'Mual / muntah'], ['kelelahan', 'Kelelahan']] as [$fieldSimptom, $labelSimptom])
@@ -1040,7 +1040,7 @@ new class extends Component {
                                             wire:key="simptom-{{ $fieldSimptom }}">
                                             <x-input-label :value="$labelSimptom" />
                                             <x-select-input wire:model.live="form.simptom.{{ $fieldSimptom }}"
-                                                :disabled="$formRO" class="w-full mt-1.5 text-sm">
+                                                :disabled="$formReadOnly" class="w-full mt-1.5 text-sm">
                                                 <option value="">— pilih tingkat —</option>
                                                 @foreach ($skalaSimptom as $val => $labelSkala)
                                                     <option value="{{ $val }}">{{ $labelSkala }}</option>
@@ -1056,13 +1056,13 @@ new class extends Component {
                                                     <div>
                                                         <x-input-label value="Lokasi nyeri" />
                                                         <x-text-input wire:model.blur="form.simptom.nyeriLokasi"
-                                                            class="w-full mt-1 text-sm" :disabled="$formRO" />
+                                                            class="w-full mt-1 text-sm" :disabled="$formReadOnly" />
                                                     </div>
                                                     <div>
                                                         <x-input-label value="Deskripsi nyeri" />
                                                         <x-text-input wire:model.blur="form.simptom.nyeriDeskripsi"
                                                             class="w-full mt-1 text-sm"
-                                                            placeholder="Karakter / durasi / pencetus" :disabled="$formRO" />
+                                                            placeholder="Karakter / durasi / pencetus" :disabled="$formReadOnly" />
                                                     </div>
                                                 </div>
                                             @endif
@@ -1073,7 +1073,7 @@ new class extends Component {
                                 <div>
                                     <x-input-label value="Gejala lainnya" />
                                     <x-text-input wire:model.blur="form.simptom.lainnya" class="w-full mt-1"
-                                        placeholder="Gejala lain yang menonjol" :disabled="$formRO" />
+                                        placeholder="Gejala lain yang menonjol" :disabled="$formReadOnly" />
                                 </div>
 
                             </div>
@@ -1083,7 +1083,7 @@ new class extends Component {
                     {{-- ── 3. PSIKOSOSIAL & SPIRITUAL ── --}}
                     <x-border-form title="3. Psikososial & Spiritual" align="start"
                         bgcolor="bg-surface-soft" :collapsible="true" :open="true">
-                        <fieldset @disabled($formRO)>
+                        <fieldset @disabled($formReadOnly)>
                             <div class="mt-3 space-y-4">
                                 {{-- Dua kolom sejajar: kiri = kondisi PASIEN, kanan = kondisi KELUARGA.
                                      Di dalam tiap kolom, sub-blok berbingkai dipasang kanan-kiri (xl) agar
@@ -1097,7 +1097,7 @@ new class extends Component {
                                         <x-input-label value="Keadaan emosional *" />
                                         <x-textarea wire:model.blur="form.psikososial.emosional" class="w-full mt-1" rows="2"
                                             placeholder="Uraian singkat kondisi emosional pasien"
-                                            :error="$errors->has('form.psikososial.emosional')" :disabled="$formRO" />
+                                            :error="$errors->has('form.psikososial.emosional')" :disabled="$formReadOnly" />
                                         <x-input-error :messages="$errors->get('form.psikososial.emosional')" class="mt-1" />
 
                                         <div class="grid grid-cols-1 gap-3 mt-3 xl:grid-cols-2 items-start">
@@ -1109,7 +1109,7 @@ new class extends Component {
                                                             <x-toggle :current="in_array($key, $form['psikososial']['reaksiPasien']['opsi'] ?? []) ? '1' : '0'"
                                                                 trueValue="1" falseValue="0"
                                                                 wireClick="toggleArrayOpt('form.psikososial.reaksiPasien.opsi', '{{ $key }}')"
-                                                                :label="$label" :disabled="$formRO" />
+                                                                :label="$label" :disabled="$formReadOnly" />
                                                         </div>
                                                     @endforeach
                                                 </div>
@@ -1123,7 +1123,7 @@ new class extends Component {
                                                             <x-toggle :current="in_array($key, $form['psikososial']['reaksiPasien']['masalah'] ?? []) ? '1' : '0'"
                                                                 trueValue="1" falseValue="0"
                                                                 wireClick="toggleArrayOpt('form.psikososial.reaksiPasien.masalah', '{{ $key }}')"
-                                                                :label="$label" :disabled="$formRO" />
+                                                                :label="$label" :disabled="$formReadOnly" />
                                                         </div>
                                                     @endforeach
                                                 </div>
@@ -1138,7 +1138,7 @@ new class extends Component {
                                         <x-input-label value="Keadaan emosional *" />
                                         <x-textarea wire:model.blur="form.psikososial.emosionalKeluarga" class="w-full mt-1" rows="2"
                                             placeholder="Uraian singkat kondisi emosional keluarga"
-                                            :error="$errors->has('form.psikososial.emosionalKeluarga')" :disabled="$formRO" />
+                                            :error="$errors->has('form.psikososial.emosionalKeluarga')" :disabled="$formReadOnly" />
                                         <x-input-error :messages="$errors->get('form.psikososial.emosionalKeluarga')" class="mt-1" />
 
                                         <div class="grid grid-cols-1 gap-3 mt-3 xl:grid-cols-2 items-start">
@@ -1150,7 +1150,7 @@ new class extends Component {
                                                             <x-toggle :current="in_array($key, $form['psikososial']['keluarga']['opsi'] ?? []) ? '1' : '0'"
                                                                 trueValue="1" falseValue="0"
                                                                 wireClick="toggleArrayOpt('form.psikososial.keluarga.opsi', '{{ $key }}')"
-                                                                :label="$label" :disabled="$formRO" />
+                                                                :label="$label" :disabled="$formReadOnly" />
                                                         </div>
                                                     @endforeach
                                                 </div>
@@ -1164,7 +1164,7 @@ new class extends Component {
                                                             <x-toggle :current="in_array($key, $form['psikososial']['keluarga']['masalah'] ?? []) ? '1' : '0'"
                                                                 trueValue="1" falseValue="0"
                                                                 wireClick="toggleArrayOpt('form.psikososial.keluarga.masalah', '{{ $key }}')"
-                                                                :label="$label" :disabled="$formRO" />
+                                                                :label="$label" :disabled="$formReadOnly" />
                                                         </div>
                                                     @endforeach
                                                 </div>
@@ -1182,7 +1182,7 @@ new class extends Component {
                                         <div class="flex gap-2 mt-1">
                                             @foreach (['tidak' => 'Tidak', 'ya' => 'Ya'] as $val => $label)
                                                 <x-radio-button :label="$label" :value="$val" name="spiritualPerlu"
-                                                    wire:model.live="form.spiritual.perluPelayanan" :disabled="$formRO" />
+                                                    wire:model.live="form.spiritual.perluPelayanan" :disabled="$formReadOnly" />
                                             @endforeach
                                         </div>
                                     </div>
@@ -1190,7 +1190,7 @@ new class extends Component {
                                     @if (($form['spiritual']['perluPelayanan'] ?? '') === 'ya')
                                         <div class="lg:col-span-3">
                                             <x-input-label value="Agama / Kepercayaan" />
-                                            <x-select-input wire:model.blur="form.spiritual.agama" class="w-full mt-1" :disabled="$formRO">
+                                            <x-select-input wire:model.blur="form.spiritual.agama" class="w-full mt-1" :disabled="$formReadOnly">
                                                 <option value="">— Pilih Agama / Kepercayaan —</option>
                                                 @foreach ($agamaOptions as $opt)
                                                     <option value="{{ $opt }}">{{ $opt }}</option>
@@ -1201,7 +1201,7 @@ new class extends Component {
                                         <div class="lg:col-span-3">
                                             <x-input-label value="Oleh (rohaniawan / pendamping)" />
                                             <x-text-input wire:model.blur="form.spiritual.oleh" class="w-full mt-1"
-                                                placeholder="Nama / unit pelayanan" :disabled="$formRO" />
+                                                placeholder="Nama / unit pelayanan" :disabled="$formReadOnly" />
                                         </div>
 
                                         <div class="lg:col-span-4">
@@ -1212,7 +1212,7 @@ new class extends Component {
                                                         <x-toggle :current="($form['spiritual'][$fieldSpiritual] ?? '') === 'ya' ? '1' : '0'"
                                                             trueValue="1" falseValue="0"
                                                             wireClick="toggleSpiritual('{{ $fieldSpiritual }}')"
-                                                            :label="$labelSpiritual" :disabled="$formRO" />
+                                                            :label="$labelSpiritual" :disabled="$formReadOnly" />
                                                     </div>
                                                 @endforeach
                                             </div>
@@ -1227,7 +1227,7 @@ new class extends Component {
                                     <div class="flex gap-2 mt-1">
                                         @foreach (['tidak' => 'Tidak ada', 'ya' => 'Ada'] as $val => $label)
                                             <x-radio-button :label="$label" :value="$val" name="orangDihubungi"
-                                                wire:model.live="form.psikososial.orangDihubungi.ada" :disabled="$formRO" />
+                                                wire:model.live="form.psikososial.orangDihubungi.ada" :disabled="$formReadOnly" />
                                         @endforeach
                                     </div>
                                     @if (($form['psikososial']['orangDihubungi']['ada'] ?? '') === 'ya')
@@ -1235,25 +1235,25 @@ new class extends Component {
                                             <div>
                                                 <x-input-label value="Nama *" />
                                                 <x-text-input wire:model.blur="form.psikososial.orangDihubungi.nama" class="w-full mt-1"
-                                                    :error="$errors->has('form.psikososial.orangDihubungi.nama')" :disabled="$formRO" />
+                                                    :error="$errors->has('form.psikososial.orangDihubungi.nama')" :disabled="$formReadOnly" />
                                                 <x-input-error :messages="$errors->get('form.psikososial.orangDihubungi.nama')" class="mt-1" />
                                             </div>
                                             <div>
                                                 <x-input-label value="Hubungan *" />
                                                 <x-text-input wire:model.blur="form.psikososial.orangDihubungi.hubungan" class="w-full mt-1"
-                                                    :error="$errors->has('form.psikososial.orangDihubungi.hubungan')" :disabled="$formRO" />
+                                                    :error="$errors->has('form.psikososial.orangDihubungi.hubungan')" :disabled="$formReadOnly" />
                                                 <x-input-error :messages="$errors->get('form.psikososial.orangDihubungi.hubungan')" class="mt-1" />
                                             </div>
                                             <div>
                                                 <x-input-label value="Alamat *" />
                                                 <x-text-input wire:model.blur="form.psikososial.orangDihubungi.alamat" class="w-full mt-1"
-                                                    :error="$errors->has('form.psikososial.orangDihubungi.alamat')" :disabled="$formRO" />
+                                                    :error="$errors->has('form.psikososial.orangDihubungi.alamat')" :disabled="$formReadOnly" />
                                                 <x-input-error :messages="$errors->get('form.psikososial.orangDihubungi.alamat')" class="mt-1" />
                                             </div>
                                             <div>
                                                 <x-input-label value="Telepon / HP" />
                                                 <x-text-input wire:model.blur="form.psikososial.orangDihubungi.telp" class="w-full mt-1"
-                                                    placeholder="08xxxxxxxxxx" :disabled="$formRO" />
+                                                    placeholder="08xxxxxxxxxx" :disabled="$formReadOnly" />
                                             </div>
                                         </div>
                                     @endif
@@ -1265,14 +1265,14 @@ new class extends Component {
                     {{-- ── 4. RENCANA, INTERVENSI & EDUKASI ── --}}
                     <x-border-form title="4. Rencana Perawatan, Intervensi & Edukasi" align="start"
                         bgcolor="bg-surface-soft" :collapsible="true" :open="true">
-                        <fieldset @disabled($formRO)>
+                        <fieldset @disabled($formReadOnly)>
                             <div class="mt-3 space-y-4">
                                 <div>
                                     <x-input-label value="Rencana perawatan selanjutnya" />
                                     <div class="flex flex-wrap gap-2 mt-1">
                                         @foreach (['rs' => 'Tetap dirawat di RS', 'rumah' => 'Dirawat di rumah'] as $val => $label)
                                             <x-radio-button :label="$label" :value="$val" name="rencanaPerawatan"
-                                                wire:model.live="form.rencana.pilihan" :disabled="$formRO" />
+                                                wire:model.live="form.rencana.pilihan" :disabled="$formReadOnly" />
                                         @endforeach
                                     </div>
                                     @if (($form['rencana']['pilihan'] ?? '') === 'rumah')
@@ -1282,7 +1282,7 @@ new class extends Component {
                                                 <div class="flex gap-2 mt-1">
                                                     @foreach (['ya' => 'Ya', 'tidak' => 'Tidak'] as $val => $label)
                                                         <x-radio-button :label="$label" :value="$val" name="lingkunganSiap"
-                                                            wire:model.live="form.rencana.lingkunganSiap" :disabled="$formRO" />
+                                                            wire:model.live="form.rencana.lingkunganSiap" :disabled="$formReadOnly" />
                                                     @endforeach
                                                 </div>
                                             </div>
@@ -1291,12 +1291,12 @@ new class extends Component {
                                                 <div class="flex gap-2 mt-1">
                                                     @foreach (['ya' => 'Ya', 'tidak' => 'Tidak'] as $val => $label)
                                                         <x-radio-button :label="$label" :value="$val" name="adaPerawat"
-                                                            wire:model.live="form.rencana.adaPerawat" :disabled="$formRO" />
+                                                            wire:model.live="form.rencana.adaPerawat" :disabled="$formReadOnly" />
                                                     @endforeach
                                                 </div>
                                                 @if (($form['rencana']['adaPerawat'] ?? '') === 'ya')
                                                     <x-text-input wire:model.blur="form.rencana.perawatOleh" class="w-full mt-2"
-                                                        placeholder="Oleh siapa" :disabled="$formRO" />
+                                                        placeholder="Oleh siapa" :disabled="$formReadOnly" />
                                                 @endif
                                             </div>
                                             <div class="p-3 border border-hairline rounded-lg bg-canvas dark:bg-gray-800 dark:border-gray-700">
@@ -1304,7 +1304,7 @@ new class extends Component {
                                                 <div class="flex gap-2 mt-1">
                                                     @foreach (['ya' => 'Ya', 'tidak' => 'Tidak'] as $val => $label)
                                                         <x-radio-button :label="$label" :value="$val" name="perluHomeCare"
-                                                            wire:model.live="form.rencana.perluHomeCare" :disabled="$formRO" />
+                                                            wire:model.live="form.rencana.perluHomeCare" :disabled="$formReadOnly" />
                                                     @endforeach
                                                 </div>
                                             </div>
@@ -1316,7 +1316,7 @@ new class extends Component {
                                             <x-input-label value="Instruksi perawatan di rumah untuk keluarga" />
                                             <x-textarea wire:model.blur="form.edukasi.rencanaDiRumah" class="w-full mt-1" rows="2"
                                                 placeholder="Obat, nutrisi, perawatan luka, tanda bahaya, kapan harus kembali ke RS"
-                                                :disabled="$formRO" />
+                                                :disabled="$formReadOnly" />
                                         </div>
                                     @endif
                                 </div>
@@ -1330,17 +1330,17 @@ new class extends Component {
                                                     <x-toggle :current="in_array($key, $form['dukungan']['opsi'] ?? []) ? '1' : '0'"
                                                         trueValue="1" falseValue="0"
                                                         wireClick="toggleArrayOpt('form.dukungan.opsi', '{{ $key }}')"
-                                                        :label="$label" :disabled="$formRO" />
+                                                        :label="$label" :disabled="$formReadOnly" />
                                                 </div>
                                             @endforeach
                                         </div>
                                         <x-text-input wire:model.blur="form.dukungan.lainnya" class="w-full mt-2"
-                                            placeholder="Dukungan lain (opsional)" :disabled="$formRO" />
+                                            placeholder="Dukungan lain (opsional)" :disabled="$formReadOnly" />
                                     </div>
 
                                     <div class="p-3 border rounded-lg border-hairline bg-surface-soft/60 dark:bg-gray-900/40 dark:border-gray-700">
                                         <p class="mb-2 text-xs font-semibold tracking-wide uppercase text-muted dark:text-gray-400">Kebutuhan pelayanan lain</p>
-                                        <x-select-input wire:model.live="form.alternatif.pilihan" class="w-full max-w-xs" :disabled="$formRO">
+                                        <x-select-input wire:model.live="form.alternatif.pilihan" class="w-full max-w-xs" :disabled="$formReadOnly">
                                             @foreach (['tidak' => 'Tidak ada', 'autopsi' => 'Autopsi', 'donasi' => 'Donasi organ', 'lainnya' => 'Lainnya'] as $val => $label)
                                                 <option value="{{ $val }}">{{ $label }}</option>
                                             @endforeach
@@ -1348,12 +1348,12 @@ new class extends Component {
                                         @if (($form['alternatif']['pilihan'] ?? '') === 'donasi')
                                             <x-text-input wire:model.blur="form.alternatif.donasiOrgan" class="w-full mt-2"
                                                 placeholder="Sebutkan organ yang didonasikan"
-                                                :error="$errors->has('form.alternatif.donasiOrgan')" :disabled="$formRO" />
+                                                :error="$errors->has('form.alternatif.donasiOrgan')" :disabled="$formReadOnly" />
                                             <x-input-error :messages="$errors->get('form.alternatif.donasiOrgan')" class="mt-1" />
                                         @endif
                                         @if (($form['alternatif']['pilihan'] ?? '') === 'lainnya')
                                             <x-text-input wire:model.blur="form.alternatif.lainnya" class="w-full mt-2"
-                                                placeholder="Sebutkan kebutuhan pelayanan lain" :disabled="$formRO" />
+                                                placeholder="Sebutkan kebutuhan pelayanan lain" :disabled="$formReadOnly" />
                                         @endif
                                     </div>
                                 </div>
@@ -1367,7 +1367,7 @@ new class extends Component {
                                                     <x-toggle :current="in_array($key, $form['intervensi']['keperawatan'] ?? []) ? '1' : '0'"
                                                         trueValue="1" falseValue="0"
                                                         wireClick="toggleArrayOpt('form.intervensi.keperawatan', '{{ $key }}')"
-                                                        :label="$label" :disabled="$formRO" />
+                                                        :label="$label" :disabled="$formReadOnly" />
                                                 </div>
                                             @endforeach
                                         </div>
@@ -1380,12 +1380,12 @@ new class extends Component {
                                                     <x-toggle :current="in_array($key, $form['intervensi']['medis'] ?? []) ? '1' : '0'"
                                                         trueValue="1" falseValue="0"
                                                         wireClick="toggleArrayOpt('form.intervensi.medis', '{{ $key }}')"
-                                                        :label="$label" :disabled="$formRO" />
+                                                        :label="$label" :disabled="$formReadOnly" />
                                                 </div>
                                             @endforeach
                                         </div>
                                         <x-text-input wire:model.blur="form.intervensi.catatan" class="w-full mt-2"
-                                            placeholder="Catatan intervensi (opsional)" :disabled="$formRO" />
+                                            placeholder="Catatan intervensi (opsional)" :disabled="$formReadOnly" />
                                     </div>
                                 </div>
 
@@ -1393,7 +1393,7 @@ new class extends Component {
                                     <p class="mb-2 text-xs font-semibold tracking-wide uppercase text-muted dark:text-gray-400">Pendidikan kesehatan (pasien &amp; keluarga) *</p>
                                     <x-textarea wire:model.blur="form.edukasi.pendidikanKesehatan" class="w-full" rows="2"
                                         placeholder="Materi edukasi yang diberikan — mis. perjalanan penyakit, manajemen nyeri, tanda menjelang akhir hayat"
-                                        :error="$errors->has('form.edukasi.pendidikanKesehatan')" :disabled="$formRO" />
+                                        :error="$errors->has('form.edukasi.pendidikanKesehatan')" :disabled="$formReadOnly" />
                                     <x-input-error :messages="$errors->get('form.edukasi.pendidikanKesehatan')" class="mt-1" />
                                 </div>
                             </div>
@@ -1403,7 +1403,7 @@ new class extends Component {
                     {{-- ── 5. PERNYATAAN & TANDA TANGAN ── --}}
                     <x-border-form title="5. Pernyataan Persetujuan & Tanda Tangan" align="start"
                         bgcolor="bg-surface-soft" :collapsible="true" :open="true">
-                        <fieldset @disabled($formRO)>
+                        <fieldset @disabled($formReadOnly)>
                             @php $clause = \App\Support\AkhirHayatClause::get($form['ttd']['clauseVersion'] ?? null); @endphp
                             <p class="p-3 mt-3 text-sm border rounded-lg text-body bg-canvas border-hairline dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
                                 {{ $clause['persetujuan'] }}
@@ -1421,8 +1421,8 @@ new class extends Component {
                                     <div class="flex-1">
                                         @if (!empty($keluargaSignature))
                                             <x-signature.signature-result :signature="$keluargaSignature" :date="''"
-                                                :disabled="$formRO" wireMethod="clearKeluargaSignature" />
-                                        @elseif (!$formRO)
+                                                :disabled="$formReadOnly" wireMethod="clearKeluargaSignature" />
+                                        @elseif (!$formReadOnly)
                                             <x-signature.signature-pad wireMethod="setKeluargaSignature" />
                                         @else
                                             <p class="py-8 text-sm italic text-center text-muted-soft">Belum ditandatangani.</p>
@@ -1434,13 +1434,13 @@ new class extends Component {
                                         <div>
                                             <x-input-label value="Nama Penanda Tangan *" />
                                             <x-text-input wire:model.blur="form.ttd.keluargaNama" class="w-full mt-1"
-                                                :error="$errors->has('form.ttd.keluargaNama')" :disabled="$formRO" />
+                                                :error="$errors->has('form.ttd.keluargaNama')" :disabled="$formReadOnly" />
                                             <x-input-error :messages="$errors->get('form.ttd.keluargaNama')" class="mt-1" />
                                         </div>
                                         <div>
                                             <x-input-label value="Hubungan dengan Pasien *" />
                                             <x-select-input wire:model.blur="form.ttd.keluargaHubungan" class="w-full mt-1"
-                                                :error="$errors->has('form.ttd.keluargaHubungan')" :disabled="$formRO">
+                                                :error="$errors->has('form.ttd.keluargaHubungan')" :disabled="$formReadOnly">
                                                 <option value="">— Pilih hubungan —</option>
                                                 @foreach ($hubunganOptions as $val => $label)
                                                     <option value="{{ $val }}">{{ $label }}</option>
@@ -1459,8 +1459,8 @@ new class extends Component {
                                     <div class="flex-1">
                                         @if (!empty($saksiSignature))
                                             <x-signature.signature-result :signature="$saksiSignature" :date="''"
-                                                :disabled="$formRO" wireMethod="clearSaksiSignature" />
-                                        @elseif (!$formRO)
+                                                :disabled="$formReadOnly" wireMethod="clearSaksiSignature" />
+                                        @elseif (!$formReadOnly)
                                             <x-signature.signature-pad wireMethod="setSaksiSignature" />
                                         @else
                                             <p class="py-8 text-sm italic text-center text-muted-soft">Belum ditandatangani.</p>
@@ -1472,7 +1472,7 @@ new class extends Component {
                                         <x-input-label value="Nama Saksi *" />
                                         <x-text-input wire:model.blur="form.ttd.saksiNama" class="w-full mt-1"
                                             placeholder="Nama saksi yang menyaksikan"
-                                            :error="$errors->has('form.ttd.saksiNama')" :disabled="$formRO" />
+                                            :error="$errors->has('form.ttd.saksiNama')" :disabled="$formReadOnly" />
                                         <x-input-error :messages="$errors->get('form.ttd.saksiNama')" class="mt-1" />
                                     </div>
                                 </div>
@@ -1487,7 +1487,7 @@ new class extends Component {
                                             :ttd="$form['ttd']['petugasName'] ?? ''"
                                             :date="$form['ttd']['petugasDate'] ?? ''"
                                             :code="$form['ttd']['petugasCode'] ?? ''"
-                                            :locked="$formRO" :allowClear="false" sign="ttdPetugas"
+                                            :locked="$formReadOnly" :allowClear="false" sign="ttdPetugas"
                                             nameLabel="Nama" dateLabel="Jam TTD" signLabel="TTD Petugas & Kunci"
                                             emptyText="Menunggu TTD petugas." />
                                     </div>

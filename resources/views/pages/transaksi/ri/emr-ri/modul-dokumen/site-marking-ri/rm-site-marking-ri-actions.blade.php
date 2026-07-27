@@ -730,7 +730,7 @@ new class extends Component {
                     <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
                         wire:key="sm-ri-display-pasien-{{ $riHdrNo ?? 'init' }}" />
 
-                    @php $formRO = $isFormLocked || $viewOnly; @endphp
+                    @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                     @if ($isFormLocked)
                         <div class="flex items-center gap-2 px-4 py-2.5 text-base font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-xl dark:bg-amber-900/20 dark:border-amber-600 dark:text-amber-300">
@@ -760,7 +760,7 @@ new class extends Component {
                     @endif
 
                     {{-- ── FORM ENTRI ── --}}
-                    <fieldset @disabled($formRO)
+                    <fieldset @disabled($formReadOnly)
                         class="p-6 space-y-6 bg-canvas border border-hairline shadow-sm sm:p-8 rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
                         {{-- ══ TANGGAL & RENCANA ══ --}}
@@ -770,7 +770,7 @@ new class extends Component {
                                 <div class="flex items-center gap-2">
                                     <x-text-input wire:model.live="newForm.tanggal" placeholder="dd/mm/yyyy HH:mm:ss"
                                         :error="$errors->has('newForm.tanggal')" class="w-full" />
-                                    @if (!$formRO)
+                                    @if (!$formReadOnly)
                                         <x-now-button wire:click="setTanggalSekarang" />
                                     @endif
                                 </div>
@@ -851,7 +851,7 @@ new class extends Component {
                             <section class="pt-6 space-y-3 border-t border-hairline dark:border-gray-700" x-data="{}">
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <h3 class="text-base font-semibold text-ink dark:text-gray-200">Diagram Penandaan Lokasi</h3>
-                                    @if (!$formRO)
+                                    @if (!$formReadOnly)
                                         <div class="flex gap-2">
                                             <x-secondary-button type="button" wire:click="undoMark" class="text-sm py-1 px-2">Hapus tanda terakhir</x-secondary-button>
                                             <x-outline-button type="button" wire:click="clearMarks" wire:confirm="Bersihkan semua tanda?" class="!px-2 !py-1 text-sm">Bersihkan</x-outline-button>
@@ -862,7 +862,7 @@ new class extends Component {
                                     Klik pada panel (tubuh / kepala / tangan / kaki) untuk menandai lokasi operasi. Tanda bernomor urut per panel & tersimpan untuk dicetak.
                                 </p>
 
-                                <x-site-marking-diagram :marks="$marks" :editable="!$formRO"
+                                <x-site-marking-diagram :marks="$marks" :editable="!$formReadOnly"
                                     wire-add-mark="addMark" />
 
                                 @if (count($marks) > 0)
@@ -880,8 +880,8 @@ new class extends Component {
                                             Perawat Ruangan</div>
                                         @if (!empty($signaturePerawatRuangan))
                                             <x-signature.signature-result :signature="$signaturePerawatRuangan" :date="''"
-                                                :disabled="$formRO" wireMethod="clearSignaturePerawatRuangan" />
-                                        @elseif (!$formRO)
+                                                :disabled="$formReadOnly" wireMethod="clearSignaturePerawatRuangan" />
+                                        @elseif (!$formReadOnly)
                                             <x-signature.signature-pad wireMethod="setSignaturePerawatRuangan" />
                                         @else
                                             <p class="py-8 text-base italic text-center text-muted-soft">Belum ditandatangani.</p>
@@ -900,8 +900,8 @@ new class extends Component {
                                             Perawat Kamar Bedah</div>
                                         @if (!empty($signaturePerawatKamarBedah))
                                             <x-signature.signature-result :signature="$signaturePerawatKamarBedah" :date="''"
-                                                :disabled="$formRO" wireMethod="clearSignaturePerawatKamarBedah" />
-                                        @elseif (!$formRO)
+                                                :disabled="$formReadOnly" wireMethod="clearSignaturePerawatKamarBedah" />
+                                        @elseif (!$formReadOnly)
                                             <x-signature.signature-pad wireMethod="setSignaturePerawatKamarBedah" />
                                         @else
                                             <p class="py-8 text-base italic text-center text-muted-soft">Belum ditandatangani.</p>
@@ -919,10 +919,10 @@ new class extends Component {
 
                         {{-- ══ TTD DOKTER OPERATOR = FINALIZE / KUNCI ══ --}}
                         <x-signature.ttd-petugas :ttd="$newForm['operatorTtd']" :date="$newForm['operatorTtdDate'] ?? ''"
-                            :code="$newForm['operatorTtdCode'] ?? ''" :locked="$formRO" sign="setOperatorTtd" clear="clearOperatorTtd"
+                            :code="$newForm['operatorTtdCode'] ?? ''" :locked="$formReadOnly" sign="setOperatorTtd" clear="clearOperatorTtd"
                             title="Tanda Tangan Dokter Operator" nameLabel="Dokter Operator" dateLabel="Waktu TTD"
                             signLabel="TTD Operator &amp; Kunci" clearLabel="Batal TTD" />
-                        @if (!$formRO)
+                        @if (!$formReadOnly)
                             <p class="-mt-2 text-xs text-center text-muted">Menandatangani sebagai Dokter Operator = mengunci penandaan ini.</p>
                         @endif
                     </fieldset>

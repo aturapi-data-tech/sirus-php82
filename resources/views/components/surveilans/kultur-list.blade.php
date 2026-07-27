@@ -8,7 +8,7 @@
     // Baris staging yang sedang disusun — isi dari properti barisKultur milik komponen induk.
     'barisBaru' => ['tgl' => '', 'hasil' => ''],
     // Read-only (form terkunci / mode lihat).
-    'formRO' => false,
+    'formReadOnly' => false,
     // Label & placeholder kolom hasil (mis. "Leukosit urin").
     'hasilLabel' => 'Hasil',
     'hasilPlaceholder' => 'Hasil pemeriksaan',
@@ -30,7 +30,7 @@
                         <th class="px-3 py-2 text-left">Ke-</th>
                         <th class="px-3 py-2 text-left">Tanggal</th>
                         <th class="px-3 py-2 text-left">{{ $hasilLabel }}</th>
-                        @unless ($formRO)
+                        @unless ($formReadOnly)
                             <th class="px-3 py-2 text-center">Aksi</th>
                         @endunless
                     </tr>
@@ -41,7 +41,7 @@
                             <td class="px-3 py-2 text-muted">{{ $indeks + 1 }}</td>
                             <td class="px-3 py-2 font-mono text-muted">{{ $baris['tgl'] ?: '-' }}</td>
                             <td class="px-3 py-2 text-body dark:text-gray-300">{{ $baris['hasil'] ?: '-' }}</td>
-                            @unless ($formRO)
+                            @unless ($formReadOnly)
                                 <td class="px-3 py-2 text-center">
                                     <x-outline-button type="button" wire:click.prevent="hapusKultur('{{ $namaDaftar }}', {{ $indeks }})"
                                         wire:confirm="Hapus hasil ini dari daftar?" wire:loading.attr="disabled"
@@ -63,7 +63,7 @@
         <p class="mb-2 text-sm italic text-muted-soft">{{ $kosongTeks }}</p>
     @endif
 
-    @unless ($formRO)
+    @unless ($formReadOnly)
         <div class="grid grid-cols-1 gap-2 sm:grid-cols-12">
             <div class="sm:col-span-5">
                 <div class="flex gap-1">

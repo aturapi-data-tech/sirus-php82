@@ -697,7 +697,7 @@ new class extends Component {
                     <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
                         wire:key="lo-ri-display-pasien-{{ $riHdrNo ?? 'init' }}" />
 
-                    @php $formRO = $isFormLocked || $viewOnly; @endphp
+                    @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                     {{-- BANNER: read-only / view-only / editing --}}
                     @if ($isFormLocked)
@@ -731,7 +731,7 @@ new class extends Component {
                         class="p-6 space-y-6 bg-canvas border border-hairline shadow-sm sm:p-8 rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
                         {{-- ── FORM ENTRI (1 laporan) ── --}}
-                        <fieldset @disabled($formRO) class="space-y-6">
+                        <fieldset @disabled($formReadOnly) class="space-y-6">
 
                             {{-- ══ WAKTU & URGENSI ══ --}}
                             <section class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -741,7 +741,7 @@ new class extends Component {
                                         <x-text-input wire:model.live="newForm.tanggalOperasi"
                                             placeholder="dd/mm/yyyy HH:mm:ss" :error="$errors->has('newForm.tanggalOperasi')"
                                             class="w-full" />
-                                        @if (!$formRO)
+                                        @if (!$formReadOnly)
                                             <x-now-button wire:click="setTanggalOperasiSekarang" />
                                         @endif
                                     </div>
@@ -996,11 +996,11 @@ new class extends Component {
                             {{-- ══ TTD OPERATOR & KUNCI ══ --}}
                             <x-signature.ttd-petugas :ttd="$newForm['operatorTtd']"
                                 :date="$newForm['operatorTtdDate'] ?? ''" :code="$newForm['operatorTtdCode'] ?? ''"
-                                :locked="$formRO" sign="setOperatorTtd" clear="clearOperatorTtd"
+                                :locked="$formReadOnly" sign="setOperatorTtd" clear="clearOperatorTtd"
                                 title="TTD Operator & Kunci"
                                 nameLabel="Operator (DPJP Bedah)" dateLabel="Waktu TTD"
                                 signLabel="TTD Operator &amp; Kunci" clearLabel="Batal TTD" />
-                            @if (!$formRO)
+                            @if (!$formReadOnly)
                                 <p class="-mt-2 text-xs text-center text-muted">Menandatangani sebagai Operator = memvalidasi &amp; mengunci laporan operasi ini.</p>
                             @endif
                         </fieldset>

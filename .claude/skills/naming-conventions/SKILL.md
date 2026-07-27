@@ -28,6 +28,16 @@ Variable lokal juga ditulis LENGKAP — jangan singkatan walau scope-nya pendek
 Nama generik untuk collection hasil juga dihindari: `$hasil`→`$jadwalList`/`$riwayatList`.
 Pengecualian: `$row` untuk item `$this->rows` di template (idiom repo lintas halaman).
 
+Akronim juga dieja penuh, termasuk yang sudah terlanjur jadi idiom lintas file
+(keputusan user 2026-07-27, alasan: auditor kode bingung membacanya):
+`$formRO`→**`$formReadOnly`** (= `$isFormLocked || $viewOnly`, flag read-only modul dokumen;
+di-rename serentak 516 kemunculan / 37 file RI+UGD+RJ, termasuk prop `:formRO` pada
+`x-surveilans.kultur-list` & `x-surveilans.antibiotik-list`).
+Varian per-form di Case Manager: `$formRO_A`/`$formRO_B`→`$formReadOnlyA`/`$formReadOnlyB`
+(menyelaraskan dgn `$viewOnlyA`/`$viewOnlyB`).
+Nama Inggris dipertahankan di sini — tetangganya (`$isFormLocked`, `$viewOnly`) memang Inggris,
+dan "read only" itu status UI, bukan istilah domain klinis.
+
 ## 2. `use` import vs FQCN di file Volt
 
 File Volt SFC punya 2 zona PHP yang **dikompilasi terpisah**:

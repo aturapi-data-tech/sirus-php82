@@ -622,7 +622,7 @@ new class extends Component {
                     <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
                         wire:key="indikator-sc-display-pasien-{{ $riHdrNo }}" />
 
-                    @php $formRO = $isFormLocked || $viewOnly; @endphp
+                    @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                     @if ($isFormLocked)
                         <div class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-lg text-amber-800 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
@@ -652,7 +652,7 @@ new class extends Component {
                     @endif
 
                     {{-- ── FORM ENTRI ── --}}
-                    <fieldset @disabled($formRO) class="space-y-4">
+                    <fieldset @disabled($formReadOnly) class="space-y-4">
 
                         {{-- 1. Indikator Proses SC (15 item) --}}
                         <x-border-form title="1. Indikator Proses SC">
@@ -673,12 +673,12 @@ new class extends Component {
                                                 <td class="px-2 py-2 align-top text-ink dark:text-gray-200">{{ $pertanyaan }}</td>
                                                 <td class="px-2 py-2 text-center align-top">
                                                     <input type="radio" value="Ya" wire:model="newForm.indikator.{{ $i }}"
-                                                        @disabled($formRO)
+                                                        @disabled($formReadOnly)
                                                         class="text-brand-green focus:ring-brand-green">
                                                 </td>
                                                 <td class="px-2 py-2 text-center align-top">
                                                     <input type="radio" value="Tidak" wire:model="newForm.indikator.{{ $i }}"
-                                                        @disabled($formRO)
+                                                        @disabled($formReadOnly)
                                                         class="text-brand-green focus:ring-brand-green">
                                                 </td>
                                             </tr>
@@ -695,7 +695,7 @@ new class extends Component {
                                     <x-radio-button name="newForm.diagnosisKlasifikasi" value="{{ $kode }}"
                                         wire="newForm.diagnosisKlasifikasi"
                                         :checked="($newForm['diagnosisKlasifikasi'] ?? '') === (string) $kode"
-                                        :disabled="$formRO"
+                                        :disabled="$formReadOnly"
                                         label="{{ $kode }}. {{ $label }}" />
                                 @endforeach
                             </div>
@@ -708,7 +708,7 @@ new class extends Component {
                                     <x-toggle :current="in_array($opt, $newForm['indikasiSc'] ?? [], true) ? 1 : 0"
                                         trueValue="1" falseValue="0"
                                         wireClick="toggleIndikasiSc('{{ $opt }}')"
-                                        :disabled="$formRO">{{ $opt }}</x-toggle>
+                                        :disabled="$formReadOnly">{{ $opt }}</x-toggle>
                                 @endforeach
                             </div>
                             <x-text-input wire:model="newForm.indikasiScLain" class="w-full mt-2" placeholder="Indikasi lain (bila Lain-lain)" />
@@ -716,11 +716,11 @@ new class extends Component {
 
                         {{-- ══ TTD PETUGAS & KUNCI ══ --}}
                         <x-signature.ttd-petugas :ttd="$newForm['ttd']" :code="$newForm['ttdCode'] ?? ''"
-                            :date="$newForm['ttdDate'] ?? ''" :locked="$formRO" sign="ttdSaya" clear="hapusTtd"
+                            :date="$newForm['ttdDate'] ?? ''" :locked="$formReadOnly" sign="ttdSaya" clear="hapusTtd"
                             title="Tanda Tangan Petugas"
                             nameLabel="Petugas (Dokter)" dateLabel="Waktu TTD"
                             signLabel="TTD Petugas &amp; Kunci" clearLabel="Batal TTD" />
-                        @if (!$formRO)
+                        @if (!$formReadOnly)
                             <p class="-mt-2 text-xs text-center text-muted">Menandatangani = mengunci audit indikator SC ini.</p>
                         @endif
                     </fieldset>

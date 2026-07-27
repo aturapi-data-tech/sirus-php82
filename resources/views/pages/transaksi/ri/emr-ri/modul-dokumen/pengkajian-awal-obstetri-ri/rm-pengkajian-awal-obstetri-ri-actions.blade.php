@@ -665,7 +665,7 @@ new class extends Component {
                     <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
                         wire:key="pengkajian-obstetri-display-pasien-{{ $riHdrNo }}" />
 
-                    @php $formRO = $isFormLocked || $viewOnly; @endphp
+                    @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                     @if ($isFormLocked)
                         <div class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-lg text-amber-800 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
@@ -695,7 +695,7 @@ new class extends Component {
                     @endif
 
                     {{-- ── FORM ENTRI ── --}}
-                    <fieldset @disabled($formRO) class="space-y-4">
+                    <fieldset @disabled($formReadOnly) class="space-y-4">
 
                         {{-- 1. Data Pengkajian --}}
                         <x-border-form title="1. Data Pengkajian">
@@ -704,7 +704,7 @@ new class extends Component {
                                     <x-input-label value="Jam Pengkajian" />
                                     <div class="flex gap-1 mt-1">
                                         <x-text-input type="time" wire:model="newForm.jamPengkajian" class="w-full" />
-                                        @if (!$formRO)
+                                        @if (!$formReadOnly)
                                             <x-now-button wire:click="setJamSekarang('jamPengkajian')" />
                                         @endif
                                     </div>
@@ -798,7 +798,7 @@ new class extends Component {
                                             <x-toggle :current="in_array($opt, $newForm['penyakitPenting'] ?? [], true) ? 1 : 0"
                                                 trueValue="1" falseValue="0"
                                                 wireClick="togglePenyakit('{{ $opt }}')"
-                                                :disabled="$formRO">{{ $opt }}</x-toggle>
+                                                :disabled="$formReadOnly">{{ $opt }}</x-toggle>
                                         @endforeach
                                     </div>
                                     <x-text-input wire:model="newForm.penyakitLain" class="w-full mt-2" placeholder="Penyakit lain (bila ada)" />
@@ -817,8 +817,8 @@ new class extends Component {
                                 <div><x-input-label value="TT (kali)" /><x-text-input wire:model="newForm.tt" class="w-full mt-1" /></div>
                                 <div><x-input-label value="Menikah (kali)" /><x-text-input type="number" wire:model="newForm.menikahKali" class="w-full mt-1" /></div>
                                 <div><x-input-label value="Lama Menikah (th)" /><x-text-input type="number" wire:model="newForm.menikahLama" class="w-full mt-1" /></div>
-                                <div><x-input-label value="HPHT" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.hpht" class="w-full" />@if (!$formRO)<x-now-button wire:click="setTglSekarang('hpht')" />@endif</div></div>
-                                <div><x-input-label value="HPL / TP" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.hpl" class="w-full" />@if (!$formRO)<x-now-button wire:click="setTglSekarang('hpl')" />@endif</div></div>
+                                <div><x-input-label value="HPHT" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.hpht" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setTglSekarang('hpht')" />@endif</div></div>
+                                <div><x-input-label value="HPL / TP" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.hpl" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setTglSekarang('hpl')" />@endif</div></div>
                                 <div><x-input-label value="Tinggi Badan (cm)" /><x-text-input type="number" wire:model="newForm.tinggiBadan" class="w-full mt-1" /></div>
                                 <div><x-input-label value="Berat Badan (kg)" /><x-text-input type="number" wire:model="newForm.beratBadan" class="w-full mt-1" /></div>
                             </div>
@@ -839,14 +839,14 @@ new class extends Component {
                                     </div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                                    <div><x-input-label value="His mulai — Tgl" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.hisMulaiTgl" class="w-full" />@if (!$formRO)<x-now-button wire:click="setTglSekarang('hisMulaiTgl')" />@endif</div></div>
-                                    <div><x-input-label value="Jam" /><div class="flex gap-1 mt-1"><x-text-input type="time" wire:model="newForm.hisMulaiJam" class="w-full" />@if (!$formRO)<x-now-button wire:click="setJamSekarang('hisMulaiJam')" />@endif</div></div>
-                                    <div><x-input-label value="Ketuban pecah — Tgl" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.ketubanTgl" class="w-full" />@if (!$formRO)<x-now-button wire:click="setTglSekarang('ketubanTgl')" />@endif</div></div>
-                                    <div><x-input-label value="Jam" /><div class="flex gap-1 mt-1"><x-text-input type="time" wire:model="newForm.ketubanJam" class="w-full" />@if (!$formRO)<x-now-button wire:click="setJamSekarang('ketubanJam')" />@endif</div></div>
-                                    <div><x-input-label value="Darah/lendir — Tgl" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.keluarDarahTgl" class="w-full" />@if (!$formRO)<x-now-button wire:click="setTglSekarang('keluarDarahTgl')" />@endif</div></div>
-                                    <div><x-input-label value="Jam" /><div class="flex gap-1 mt-1"><x-text-input type="time" wire:model="newForm.keluarDarahJam" class="w-full" />@if (!$formRO)<x-now-button wire:click="setJamSekarang('keluarDarahJam')" />@endif</div></div>
-                                    <div><x-input-label value="Rasa mengejan — Tgl" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.rasaMengejanTgl" class="w-full" />@if (!$formRO)<x-now-button wire:click="setTglSekarang('rasaMengejanTgl')" />@endif</div></div>
-                                    <div><x-input-label value="Jam" /><div class="flex gap-1 mt-1"><x-text-input type="time" wire:model="newForm.rasaMengejanJam" class="w-full" />@if (!$formRO)<x-now-button wire:click="setJamSekarang('rasaMengejanJam')" />@endif</div></div>
+                                    <div><x-input-label value="His mulai — Tgl" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.hisMulaiTgl" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setTglSekarang('hisMulaiTgl')" />@endif</div></div>
+                                    <div><x-input-label value="Jam" /><div class="flex gap-1 mt-1"><x-text-input type="time" wire:model="newForm.hisMulaiJam" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setJamSekarang('hisMulaiJam')" />@endif</div></div>
+                                    <div><x-input-label value="Ketuban pecah — Tgl" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.ketubanTgl" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setTglSekarang('ketubanTgl')" />@endif</div></div>
+                                    <div><x-input-label value="Jam" /><div class="flex gap-1 mt-1"><x-text-input type="time" wire:model="newForm.ketubanJam" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setJamSekarang('ketubanJam')" />@endif</div></div>
+                                    <div><x-input-label value="Darah/lendir — Tgl" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.keluarDarahTgl" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setTglSekarang('keluarDarahTgl')" />@endif</div></div>
+                                    <div><x-input-label value="Jam" /><div class="flex gap-1 mt-1"><x-text-input type="time" wire:model="newForm.keluarDarahJam" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setJamSekarang('keluarDarahJam')" />@endif</div></div>
+                                    <div><x-input-label value="Rasa mengejan — Tgl" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.rasaMengejanTgl" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setTglSekarang('rasaMengejanTgl')" />@endif</div></div>
+                                    <div><x-input-label value="Jam" /><div class="flex gap-1 mt-1"><x-text-input type="time" wire:model="newForm.rasaMengejanJam" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setJamSekarang('rasaMengejanJam')" />@endif</div></div>
                                 </div>
                                 <div>
                                     <x-input-label value="Perawatan/pertolongan sebelumnya" />
@@ -929,11 +929,11 @@ new class extends Component {
 
                         {{-- ══ TTD PETUGAS & KUNCI ══ --}}
                         <x-signature.ttd-petugas :ttd="$newForm['ttd']" :code="$newForm['ttdCode'] ?? ''"
-                            :date="$newForm['ttdDate'] ?? ''" :locked="$formRO" sign="ttdSaya" clear="hapusTtd"
+                            :date="$newForm['ttdDate'] ?? ''" :locked="$formReadOnly" sign="ttdSaya" clear="hapusTtd"
                             title="Tanda Tangan Petugas"
                             nameLabel="Petugas (Bidan / Dokter)" dateLabel="Waktu TTD"
                             signLabel="TTD Petugas &amp; Kunci" clearLabel="Batal TTD" />
-                        @if (!$formRO)
+                        @if (!$formReadOnly)
                             <p class="-mt-2 text-xs text-center text-muted">Menandatangani = mengunci pengkajian ini.</p>
                         @endif
                     </fieldset>

@@ -577,7 +577,7 @@ new class extends Component {
                 <div class="max-w-full mx-auto space-y-4">
                     <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo" wire:key="la-ri-display-pasien-{{ $riHdrNo ?? 'init' }}" />
 
-                    @php $formRO = $isFormLocked || $viewOnly; @endphp
+                    @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                     @if ($isFormLocked)
                         <div class="flex items-center gap-2 px-4 py-2.5 text-base font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-xl dark:bg-amber-900/20 dark:border-amber-600 dark:text-amber-300">
@@ -606,14 +606,14 @@ new class extends Component {
                     <div class="p-6 space-y-6 bg-canvas border border-hairline shadow-sm sm:p-8 rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
                         {{-- ── FORM ENTRI (1 laporan) ── --}}
-                        <fieldset @disabled($formRO) class="space-y-6">
+                        <fieldset @disabled($formReadOnly) class="space-y-6">
 
                             <section class="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div>
                                     <x-input-label value="Tanggal / Jam *" class="mb-1" />
                                     <div class="flex items-center gap-2">
                                         <x-text-input wire:model.live="newForm.tanggal" placeholder="dd/mm/yyyy HH:mm:ss" :error="$errors->has('newForm.tanggal')" class="w-full" />
-                                        @if (!$formRO) <x-now-button wire:click="setTanggalSekarang" /> @endif
+                                        @if (!$formReadOnly) <x-now-button wire:click="setTanggalSekarang" /> @endif
                                     </div>
                                     <x-input-error :messages="$errors->get('newForm.tanggal')" class="mt-1" />
                                 </div>
@@ -719,11 +719,11 @@ new class extends Component {
 
                             {{-- ══ TTD AHLI ANESTESIOLOGI & KUNCI ══ --}}
                             <x-signature.ttd-petugas :ttd="$newForm['ttd']" :date="$newForm['ttdDate'] ?? ''"
-                                :code="$newForm['ttdCode'] ?? ''" :locked="$formRO" sign="setTtd" clear="clearTtd"
+                                :code="$newForm['ttdCode'] ?? ''" :locked="$formReadOnly" sign="setTtd" clear="clearTtd"
                                 title="Tanda Tangan Ahli Anestesiologi"
                                 nameLabel="Ahli Anestesiologi" dateLabel="Waktu TTD"
                                 signLabel="TTD Petugas &amp; Kunci" clearLabel="Batal TTD" />
-                            @if (!$formRO)
+                            @if (!$formReadOnly)
                                 <p class="-mt-2 text-xs text-center text-muted">Menandatangani = mengunci laporan anestesi ini.</p>
                             @endif
                         </fieldset>

@@ -572,7 +572,7 @@ new class extends Component {
 
                     <div class="p-6 space-y-6 bg-canvas border border-hairline shadow-sm sm:p-8 rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
-                        @php $formRO = $isFormLocked || $viewOnly; @endphp
+                        @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                         @if ($isFormLocked)
                             <div class="flex items-center gap-2 px-4 py-2.5 text-base font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-xl dark:bg-amber-900/20 dark:border-amber-600 dark:text-amber-300">
@@ -598,14 +598,14 @@ new class extends Component {
                             </div>
                         @endif
 
-                        <fieldset @disabled($formRO) class="space-y-6">
+                        <fieldset @disabled($formReadOnly) class="space-y-6">
 
                             <section class="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div>
                                     <x-input-label value="Tanggal / Jam *" class="mb-1" />
                                     <div class="flex items-center gap-2">
                                         <x-text-input wire:model.live="newForm.tanggal" placeholder="dd/mm/yyyy HH:mm:ss" :error="$errors->has('newForm.tanggal')" class="w-full" />
-                                        @if (!$formRO) <x-now-button wire:click="setTanggalSekarang" /> @endif
+                                        @if (!$formReadOnly) <x-now-button wire:click="setTanggalSekarang" /> @endif
                                     </div>
                                     <x-input-error :messages="$errors->get('newForm.tanggal')" class="mt-1" />
                                 </div>
@@ -631,8 +631,8 @@ new class extends Component {
                                     <x-textarea wire:model.live="newForm.amnanese" :error="$errors->has('newForm.amnanese')" rows="2" class="w-full" />
                                 </div>
                                 <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                    <x-toggle wire:model.live="newForm.riwayatAnestesi" :trueValue="true" :falseValue="false" label="Ada riwayat anestesi" :disabled="$formRO" />
-                                    <x-toggle wire:model.live="newForm.riwayatAlergi" :trueValue="true" :falseValue="false" label="Ada riwayat alergi" :disabled="$formRO" />
+                                    <x-toggle wire:model.live="newForm.riwayatAnestesi" :trueValue="true" :falseValue="false" label="Ada riwayat anestesi" :disabled="$formReadOnly" />
+                                    <x-toggle wire:model.live="newForm.riwayatAlergi" :trueValue="true" :falseValue="false" label="Ada riwayat alergi" :disabled="$formReadOnly" />
                                 </div>
                                 @if ($newForm['riwayatAnestesi'])
                                     <x-text-input wire:model.live="newForm.riwayatAnestesiJenis" :error="$errors->has('newForm.riwayatAnestesiJenis')" placeholder="Jenis anestesi sebelumnya" class="w-full" />
@@ -641,9 +641,9 @@ new class extends Component {
                                     <x-text-input wire:model.live="newForm.riwayatAlergiJenis" :error="$errors->has('newForm.riwayatAlergiJenis')" placeholder="Jenis alergi" class="w-full" />
                                 @endif
                                 <div class="flex flex-wrap gap-4">
-                                    <x-toggle wire:model.live="newForm.merokok" :trueValue="true" :falseValue="false" label="Merokok" :disabled="$formRO" />
-                                    <x-toggle wire:model.live="newForm.alkohol" :trueValue="true" :falseValue="false" label="Alkohol" :disabled="$formRO" />
-                                    <x-toggle wire:model.live="newForm.persiapanTransfusi" :trueValue="true" :falseValue="false" label="Persiapan transfusi" :disabled="$formRO" />
+                                    <x-toggle wire:model.live="newForm.merokok" :trueValue="true" :falseValue="false" label="Merokok" :disabled="$formReadOnly" />
+                                    <x-toggle wire:model.live="newForm.alkohol" :trueValue="true" :falseValue="false" label="Alkohol" :disabled="$formReadOnly" />
+                                    <x-toggle wire:model.live="newForm.persiapanTransfusi" :trueValue="true" :falseValue="false" label="Persiapan transfusi" :disabled="$formReadOnly" />
                                 </div>
                                 @if ($newForm['persiapanTransfusi'])
                                     <x-text-input wire:model.live="newForm.transfusiJumlah" :error="$errors->has('newForm.transfusiJumlah')" placeholder="Jumlah / kolf / unit" class="w-full max-w-xs" />
@@ -715,11 +715,11 @@ new class extends Component {
 
                             {{-- ══ TTD PETUGAS & KUNCI ══ --}}
                             <x-signature.ttd-petugas :ttd="$newForm['ttd']" :date="$newForm['ttdDate'] ?? ''"
-                                :code="$newForm['ttdCode'] ?? ''" :locked="$formRO" sign="setTtd" clear="clearTtd"
+                                :code="$newForm['ttdCode'] ?? ''" :locked="$formReadOnly" sign="setTtd" clear="clearTtd"
                                 title="Tanda Tangan Dokter Anestesi"
                                 nameLabel="Dokter Anestesi" dateLabel="Waktu TTD"
                                 signLabel="TTD Petugas &amp; Kunci" clearLabel="Batal TTD" />
-                            @if (!$formRO)
+                            @if (!$formReadOnly)
                                 <p class="-mt-2 text-xs text-center text-muted">Menandatangani = mengunci asesmen ini.</p>
                             @endif
                         </fieldset>

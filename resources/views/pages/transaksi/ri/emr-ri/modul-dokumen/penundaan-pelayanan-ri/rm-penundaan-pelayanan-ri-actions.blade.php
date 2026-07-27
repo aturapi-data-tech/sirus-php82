@@ -690,7 +690,7 @@ new class extends Component {
                     <div
                         class="p-6 space-y-6 bg-canvas border border-hairline shadow-sm sm:p-8 rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
-                        @php $formRO = $isFormLocked || $viewOnly; @endphp
+                        @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                         @if ($isFormLocked)
                             <div
@@ -730,9 +730,9 @@ new class extends Component {
                             <x-input-label value="Tanggal / Jam Pemberitahuan *" class="mb-1" />
                             <div class="flex items-center gap-2">
                                 <x-text-input wire:model.live="newForm.tglPemberitahuan" placeholder="dd/mm/yyyy HH:mm:ss"
-                                    :error="$errors->has('newForm.tglPemberitahuan')" :disabled="$formRO"
+                                    :error="$errors->has('newForm.tglPemberitahuan')" :disabled="$formReadOnly"
                                     class="w-full max-w-xs" />
-                                @if (!$formRO)
+                                @if (!$formReadOnly)
                                     <x-now-button wire:click="setTglPemberitahuanSekarang" />
                                 @endif
                             </div>
@@ -746,7 +746,7 @@ new class extends Component {
                             </h3>
                             <x-textarea wire:model.live="newForm.jenis" :error="$errors->has('newForm.jenis')" rows="2"
                                 placeholder="cth: Tindakan, Pengobatan, Pemeriksaan Penunjang (Lab), Radiologi, Operasi, Rawat Inap (daftar tunggu)..."
-                                :disabled="$formRO" class="w-full" />
+                                :disabled="$formReadOnly" class="w-full" />
                             <x-input-error :messages="$errors->get('newForm.jenis')" class="mt-1" />
                         </section>
 
@@ -756,7 +756,7 @@ new class extends Component {
                                 <x-input-label value="Alasan Penundaan / Kelambatan *" class="mb-1" />
                                 <x-textarea wire:model.live="newForm.alasan" :error="$errors->has('newForm.alasan')" rows="3"
                                     placeholder="Jelaskan alasan penundaan / kelambatan pelayanan..."
-                                    :disabled="$formRO" class="w-full" />
+                                    :disabled="$formReadOnly" class="w-full" />
                                 <x-input-error :messages="$errors->get('newForm.alasan')" class="mt-1" />
                             </div>
 
@@ -764,9 +764,9 @@ new class extends Component {
                                 <x-input-label value="Jadwal Ulang" class="mb-1" />
                                 <div class="flex items-center gap-2">
                                     <x-text-input wire:model.live="newForm.jadwalUlang" placeholder="dd/mm/yyyy HH:mm:ss"
-                                        :error="$errors->has('newForm.jadwalUlang')" :disabled="$formRO"
+                                        :error="$errors->has('newForm.jadwalUlang')" :disabled="$formReadOnly"
                                         class="w-full max-w-xs" />
-                                    @if (!$formRO)
+                                    @if (!$formReadOnly)
                                         <x-now-button wire:click="setJadwalUlangSekarang" />
                                     @endif
                                 </div>
@@ -777,7 +777,7 @@ new class extends Component {
                                 <x-input-label value="Alternatif yang Ditawarkan (sesuai kebutuhan klinis)" class="mb-1" />
                                 <x-textarea wire:model.live="newForm.alternatif" :error="$errors->has('newForm.alternatif')" rows="3"
                                     placeholder="Alternatif pelayanan/rujukan yang ditawarkan..."
-                                    :disabled="$formRO" class="w-full" />
+                                    :disabled="$formReadOnly" class="w-full" />
                             </div>
                         </section>
 
@@ -787,7 +787,7 @@ new class extends Component {
                             <div class="flex flex-wrap gap-2">
                                 @foreach ($responOptions as $opt)
                                     <x-radio-button :label="$opt" :value="$opt" name="respon"
-                                        wire:model.live="newForm.respon" :disabled="$formRO" />
+                                        wire:model.live="newForm.respon" :disabled="$formReadOnly" />
                                 @endforeach
                             </div>
                             <x-input-error :messages="$errors->get('newForm.respon')" class="mt-1" />
@@ -816,8 +816,8 @@ new class extends Component {
                                     <x-input-error :messages="$errors->get('signature')" class="mb-2" />
                                     @if (!empty($signature))
                                         <x-signature.signature-result :signature="$signature" :date="''"
-                                            :disabled="$formRO" wireMethod="clearSignature" />
-                                    @elseif (!$formRO)
+                                            :disabled="$formReadOnly" wireMethod="clearSignature" />
+                                    @elseif (!$formReadOnly)
                                         <x-signature.signature-pad wireMethod="setSignature" />
                                     @else
                                         <p class="py-8 text-base italic text-center text-muted-soft">Belum
@@ -827,7 +827,7 @@ new class extends Component {
                                     <div class="mt-3">
                                         <x-input-label value="Nama Pasien / Keluarga *" class="mb-1" />
                                         <x-text-input wire:model.live="newForm.namaPenanda" :error="$errors->has('newForm.namaPenanda')"
-                                            placeholder="Nama penanda tangan..." :disabled="$formRO"
+                                            placeholder="Nama penanda tangan..." :disabled="$formReadOnly"
                                             class="w-full" />
                                         <x-input-error :messages="$errors->get('newForm.namaPenanda')" class="mt-1" />
                                     </div>
@@ -835,7 +835,7 @@ new class extends Component {
                                     <div class="mt-2">
                                         <x-input-label value="Hubungan dengan Pasien *" class="mb-1" />
                                         <x-select-input wire:model.live="newForm.hubunganPasien" :error="$errors->has('newForm.hubunganPasien')"
-                                            :disabled="$formRO" class="w-full">
+                                            :disabled="$formReadOnly" class="w-full">
                                             @foreach ($hubunganPasienOptions as $opt)
                                                 <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
                                             @endforeach
@@ -851,7 +851,7 @@ new class extends Component {
                                         Pemberi Informasi (DPJP / PPA)
                                     </div>
                                     @if (empty($newForm['pemberiInfo']))
-                                        @if (!$formRO)
+                                        @if (!$formReadOnly)
                                             <div
                                                 class="flex flex-col items-center justify-center flex-1 gap-2 p-6 border-2 border-gray-300 border-dashed rounded-xl dark:border-gray-700">
                                                 <x-primary-button wire:click.prevent="setPemberiInfo"

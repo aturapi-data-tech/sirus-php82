@@ -599,7 +599,7 @@ new class extends Component {
                     <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
                         wire:key="observasi-persalinan-display-pasien-{{ $riHdrNo }}" />
 
-                    @php $formRO = $isFormLocked || $viewOnly; @endphp
+                    @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                     @if ($isFormLocked)
                         <div class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-lg text-amber-800 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
@@ -629,7 +629,7 @@ new class extends Component {
                     @endif
 
                     {{-- ── FORM ENTRI (1 titik-waktu) ── --}}
-                    <fieldset @disabled($formRO) class="space-y-4">
+                    <fieldset @disabled($formReadOnly) class="space-y-4">
 
                         {{-- Diagnosa (boleh diisi tiap entri) --}}
                         <x-border-form title="Diagnosa Kerja">
@@ -647,7 +647,7 @@ new class extends Component {
                                     <x-input-label value="Tgl / Jam" />
                                     <div class="flex gap-1 mt-1">
                                         <x-text-input wire:model="newForm.jam" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
-                                        @if (!$formRO)
+                                        @if (!$formReadOnly)
                                             <x-now-button wire:click="setJamSekarang" />
                                         @endif
                                     </div>
@@ -668,11 +668,11 @@ new class extends Component {
 
                         {{-- ══ TTD PETUGAS & KUNCI ══ --}}
                         <x-signature.ttd-petugas :ttd="$newForm['ttd']" :code="$newForm['ttdCode'] ?? ''"
-                            :date="$newForm['ttdDate'] ?? ''" :locked="$formRO" sign="ttdSaya" clear="hapusTtd"
+                            :date="$newForm['ttdDate'] ?? ''" :locked="$formReadOnly" sign="ttdSaya" clear="hapusTtd"
                             title="Tanda Tangan Petugas"
                             nameLabel="Petugas (Bidan / Perawat)" dateLabel="Waktu TTD"
                             signLabel="TTD Petugas &amp; Kunci" clearLabel="Batal TTD" />
-                        @if (!$formRO)
+                        @if (!$formReadOnly)
                             <p class="-mt-2 text-xs text-center text-muted">Menandatangani = mengunci observasi ini.</p>
                         @endif
                     </fieldset>

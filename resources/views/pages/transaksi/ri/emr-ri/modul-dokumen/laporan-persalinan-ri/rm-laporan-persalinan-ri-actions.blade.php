@@ -660,7 +660,7 @@ new class extends Component {
                     <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
                         wire:key="laporan-persalinan-display-pasien-{{ $riHdrNo }}" />
 
-                    @php $formRO = $isFormLocked || $viewOnly; @endphp
+                    @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                     @if ($isFormLocked)
                         <div class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-lg text-amber-800 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
@@ -690,7 +690,7 @@ new class extends Component {
                     @endif
 
                     {{-- ── FORM ENTRI ── --}}
-                    <fieldset @disabled($formRO) class="space-y-4">
+                    <fieldset @disabled($formReadOnly) class="space-y-4">
 
                         {{-- 1. Jenis Partus --}}
                         <x-border-form title="1. Jenis Partus">
@@ -718,7 +718,7 @@ new class extends Component {
                                         <x-input-label value="Lahir — Tgl / Jam" />
                                         <div class="flex gap-1 mt-1">
                                             <x-text-input wire:model="newForm.bayiLahirTgl" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
-                                            @if (!$formRO)
+                                            @if (!$formReadOnly)
                                                 <x-now-button wire:click="setTglJamSekarang('bayiLahirTgl')" />
                                             @endif
                                         </div>
@@ -777,7 +777,7 @@ new class extends Component {
                                     <x-input-label value="Lahir — Tgl / Jam" />
                                     <div class="flex gap-1 mt-1">
                                         <x-text-input wire:model="newForm.plasentaLahirTgl" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
-                                        @if (!$formRO)
+                                        @if (!$formReadOnly)
                                             <x-now-button wire:click="setTglJamSekarang('plasentaLahirTgl')" />
                                         @endif
                                     </div>
@@ -921,11 +921,11 @@ new class extends Component {
 
                         {{-- ══ TTD PETUGAS & KUNCI ══ --}}
                         <x-signature.ttd-petugas :ttd="$newForm['ttd']" :code="$newForm['ttdCode'] ?? ''"
-                            :date="$newForm['ttdDate'] ?? ''" :locked="$formRO" sign="ttdSaya" clear="hapusTtd"
+                            :date="$newForm['ttdDate'] ?? ''" :locked="$formReadOnly" sign="ttdSaya" clear="hapusTtd"
                             title="Tanda Tangan Petugas"
                             nameLabel="Petugas (Dokter / Bidan)" dateLabel="Waktu TTD"
                             signLabel="TTD Petugas &amp; Kunci" clearLabel="Batal TTD" />
-                        @if (!$formRO)
+                        @if (!$formReadOnly)
                             <p class="-mt-2 text-xs text-center text-muted">Menandatangani = mengunci laporan persalinan ini.</p>
                         @endif
                     </fieldset>

@@ -646,7 +646,7 @@ new class extends Component {
                     <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
                         wire:key="pengkajian-neonatal-display-pasien-{{ $riHdrNo }}" />
 
-                    @php $formRO = $isFormLocked || $viewOnly; @endphp
+                    @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                     @if ($isFormLocked)
                         <div class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-lg text-amber-800 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
@@ -676,7 +676,7 @@ new class extends Component {
                     @endif
 
                     {{-- ── FORM ENTRI ── --}}
-                    <fieldset @disabled($formRO) class="space-y-4">
+                    <fieldset @disabled($formReadOnly) class="space-y-4">
 
                         {{-- 1. Riwayat Penyakit --}}
                         <x-border-form title="1. Riwayat Penyakit">
@@ -716,7 +716,7 @@ new class extends Component {
                                             <x-toggle :current="in_array($opt, $newForm['penyulitKehamilan'] ?? [], true) ? 1 : 0"
                                                 trueValue="1" falseValue="0"
                                                 wireClick="toggleArr('penyulitKehamilan','{{ $opt }}')"
-                                                :disabled="$formRO">{{ $opt }}</x-toggle>
+                                                :disabled="$formReadOnly">{{ $opt }}</x-toggle>
                                         @endforeach
                                     </div>
                                 </div>
@@ -727,7 +727,7 @@ new class extends Component {
                                             <x-toggle :current="in_array($opt, $newForm['penyakitMenyertai'] ?? [], true) ? 1 : 0"
                                                 trueValue="1" falseValue="0"
                                                 wireClick="toggleArr('penyakitMenyertai','{{ $opt }}')"
-                                                :disabled="$formRO">{{ $opt }}</x-toggle>
+                                                :disabled="$formReadOnly">{{ $opt }}</x-toggle>
                                         @endforeach
                                     </div>
                                 </div>
@@ -768,7 +768,7 @@ new class extends Component {
                                             <x-toggle :current="in_array($opt, $newForm['penyulitPersalinan'] ?? [], true) ? 1 : 0"
                                                 trueValue="1" falseValue="0"
                                                 wireClick="toggleArr('penyulitPersalinan','{{ $opt }}')"
-                                                :disabled="$formRO">{{ $opt }}</x-toggle>
+                                                :disabled="$formReadOnly">{{ $opt }}</x-toggle>
                                         @endforeach
                                     </div>
                                 </div>
@@ -779,7 +779,7 @@ new class extends Component {
                                             <x-toggle :current="in_array($opt, $newForm['komplikasi'] ?? [], true) ? 1 : 0"
                                                 trueValue="1" falseValue="0"
                                                 wireClick="toggleArr('komplikasi','{{ $opt }}')"
-                                                :disabled="$formRO">{{ $opt }}</x-toggle>
+                                                :disabled="$formReadOnly">{{ $opt }}</x-toggle>
                                         @endforeach
                                     </div>
                                 </div>
@@ -962,7 +962,7 @@ new class extends Component {
                                                     <x-toggle :current="in_array($opt, $newForm['b1SuaraNafas'] ?? [], true) ? 1 : 0"
                                                         trueValue="1" falseValue="0"
                                                         wireClick="toggleArr('b1SuaraNafas','{{ $opt }}')"
-                                                        :disabled="$formRO">{{ $opt }}</x-toggle>
+                                                        :disabled="$formReadOnly">{{ $opt }}</x-toggle>
                                                 @endforeach
                                             </div>
                                         </div>
@@ -1021,7 +1021,7 @@ new class extends Component {
                                                     <x-toggle :current="in_array($opt, $newForm['b3Reflek'] ?? [], true) ? 1 : 0"
                                                         trueValue="1" falseValue="0"
                                                         wireClick="toggleArr('b3Reflek','{{ $opt }}')"
-                                                        :disabled="$formRO">{{ $opt }}</x-toggle>
+                                                        :disabled="$formReadOnly">{{ $opt }}</x-toggle>
                                                 @endforeach
                                             </div>
                                         </div>
@@ -1064,13 +1064,13 @@ new class extends Component {
                                                         <x-toggle :current="in_array($opt, $newForm['b5Bab'] ?? [], true) ? 1 : 0"
                                                             trueValue="1" falseValue="0"
                                                             wireClick="toggleArr('b5Bab','{{ $opt }}')"
-                                                            :disabled="$formRO">{{ $opt }}</x-toggle>
+                                                            :disabled="$formReadOnly">{{ $opt }}</x-toggle>
                                                     @endforeach
                                                     @foreach ($b5BabWarnaOptions as $opt)
                                                         <x-toggle :current="in_array($opt, $newForm['b5Bab'] ?? [], true) ? 1 : 0"
                                                             trueValue="1" falseValue="0"
                                                             wireClick="toggleArr('b5Bab','{{ $opt }}')"
-                                                            :disabled="$formRO">{{ $opt }}</x-toggle>
+                                                            :disabled="$formReadOnly">{{ $opt }}</x-toggle>
                                                     @endforeach
                                                 </div>
                                             </div>
@@ -1081,7 +1081,7 @@ new class extends Component {
                                                         <x-toggle :current="in_array($opt, $newForm['b5Minum'] ?? [], true) ? 1 : 0"
                                                             trueValue="1" falseValue="0"
                                                             wireClick="toggleArr('b5Minum','{{ $opt }}')"
-                                                            :disabled="$formRO">{{ $opt }}</x-toggle>
+                                                            :disabled="$formReadOnly">{{ $opt }}</x-toggle>
                                                     @endforeach
                                                 </div>
                                             </div>
@@ -1115,7 +1115,7 @@ new class extends Component {
                                                     <x-toggle :current="in_array($opt, $newForm['b6Kulit'] ?? [], true) ? 1 : 0"
                                                         trueValue="1" falseValue="0"
                                                         wireClick="toggleArr('b6Kulit','{{ $opt }}')"
-                                                        :disabled="$formRO">{{ $opt }}</x-toggle>
+                                                        :disabled="$formReadOnly">{{ $opt }}</x-toggle>
                                                 @endforeach
                                             </div>
                                         </div>
@@ -1151,7 +1151,7 @@ new class extends Component {
                                     <x-toggle :current="in_array($opt, $newForm['diagnosaKeperawatan'] ?? [], true) ? 1 : 0"
                                         trueValue="1" falseValue="0"
                                         wireClick="toggleArr('diagnosaKeperawatan','{{ $opt }}')"
-                                        :disabled="$formRO" class="items-start">{{ $opt }}</x-toggle>
+                                        :disabled="$formReadOnly" class="items-start">{{ $opt }}</x-toggle>
                                 @endforeach
                             </div>
                         </x-border-form>
@@ -1166,11 +1166,11 @@ new class extends Component {
 
                         {{-- ══ TTD PETUGAS & KUNCI ══ --}}
                         <x-signature.ttd-petugas :ttd="$newForm['ttd']" :code="$newForm['ttdCode'] ?? ''"
-                            :date="$newForm['ttdDate'] ?? ''" :locked="$formRO" sign="ttdSaya" clear="hapusTtd"
+                            :date="$newForm['ttdDate'] ?? ''" :locked="$formReadOnly" sign="ttdSaya" clear="hapusTtd"
                             title="Tanda Tangan Petugas"
                             nameLabel="Petugas (Bidan / Perawat)" dateLabel="Waktu TTD"
                             signLabel="TTD Petugas &amp; Kunci" clearLabel="Batal TTD" />
-                        @if (!$formRO)
+                        @if (!$formReadOnly)
                             <p class="-mt-2 text-xs text-center text-muted">Menandatangani = mengunci pengkajian ini.</p>
                         @endif
                     </fieldset>

@@ -4,7 +4,7 @@
     // Baris staging yang sedang disusun ($barisObat).
     'barisBaru' => [],
     // Read-only (form terkunci / mode lihat).
-    'formRO' => false,
+    'formReadOnly' => false,
     // Peta opsi dari App\Support\SurveilansHaisOptions.
     'opsiRute' => [],
     'opsiIndikasi' => [],
@@ -26,7 +26,7 @@
                         <th class="px-3 py-2 text-left">Dosis</th>
                         <th class="px-3 py-2 text-left">Rute</th>
                         <th class="px-3 py-2 text-left">Indikasi</th>
-                        @unless ($formRO)
+                        @unless ($formReadOnly)
                             <th class="px-3 py-2 text-center">Aksi</th>
                         @endunless
                     </tr>
@@ -40,7 +40,7 @@
                             <td class="px-3 py-2 text-muted">{{ $baris['dosis'] ?: '-' }}</td>
                             <td class="px-3 py-2 text-muted">{{ $opsiRute[$baris['rute'] ?? ''] ?? '-' }}</td>
                             <td class="px-3 py-2 text-body dark:text-gray-300">{{ $opsiIndikasi[$baris['indikasi'] ?? ''] ?? '-' }}</td>
-                            @unless ($formRO)
+                            @unless ($formReadOnly)
                                 <td class="px-3 py-2 text-center">
                                     <x-outline-button type="button" wire:click.prevent="hapusAntibiotik({{ $indeks }})"
                                         wire:confirm="Hapus antibiotik ini dari daftar?" wire:loading.attr="disabled"
@@ -62,7 +62,7 @@
         <p class="mb-3 text-sm italic text-muted-soft">Belum ada antibiotik pada daftar.</p>
     @endif
 
-    @unless ($formRO)
+    @unless ($formReadOnly)
         <div class="p-3 border border-dashed rounded-lg border-gray-300 dark:border-gray-600 bg-canvas dark:bg-gray-800/50">
             <p class="mb-3 text-sm font-semibold tracking-wide uppercase text-ink dark:text-white">Tambah Antibiotik</p>
             <div class="grid grid-cols-1 gap-2 sm:grid-cols-12">

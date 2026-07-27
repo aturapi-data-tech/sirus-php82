@@ -9,6 +9,7 @@ use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
+use App\Support\DpjpUtamaRI;
 use App\Support\SurveilansHaisOptions;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -138,6 +139,7 @@ new class extends Component {
         }
         $this->entriList = $this->dataDaftarRi[$this->jsonKey];
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
+        $this->isiDpjpUtamaBilaKosong();
 
         $this->incrementVersion('modal-surveilans-isk-ri');
         $this->dispatch('open-modal', name: "rm-surveilans-isk-ri-{$this->riHdrNo}");
@@ -189,6 +191,19 @@ new class extends Component {
         $this->barisObat = $this->defaultBarisObat();
         $this->barisKultur = $this->defaultBarisKultur();
         $this->barisPasang = $this->defaultBarisPasang();
+    }
+
+    /**
+     * Isi awal baris TTD dengan DPJP Utama dari Leveling Dokter — hanya bila masih
+     * kosong, supaya nilai yang sudah diketik/diganti petugas tidak tertimpa.
+     */
+    private function isiDpjpUtamaBilaKosong(): void
+    {
+        if (filled($this->newForm['dokterMerawat'] ?? null)) {
+            return;
+        }
+
+        $this->newForm['dokterMerawat'] = DpjpUtamaRI::nama($this->dataDaftarRi);
     }
 
     public function setNow(string $path): void
@@ -374,6 +389,7 @@ new class extends Component {
     public function cancelEdit(): void
     {
         $this->resetNewForm();
+        $this->isiDpjpUtamaBilaKosong();
         $this->editingKey = null;
         $this->viewOnly = false;
         $this->resetValidation();
@@ -832,9 +848,9 @@ new class extends Component {
                         </div>
                     </div>
 
-                    @php $formRO = $isFormLocked || $viewOnly; @endphp
+                    @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
-                    <fieldset @disabled($formRO) class="space-y-4">
+                    <fieldset @disabled($formReadOnly) class="space-y-4">
 
                         {{-- 1. DATA DASAR --}}
                         <x-border-form title="1. Data Dasar Surveilans" :collapsible="true" :open="true">
@@ -844,7 +860,7 @@ new class extends Component {
                                     <div class="flex gap-1 mt-1">
                                         <x-text-input wire:model="newForm.tanggal" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss"
                                             :error="$errors->has('newForm.tanggal')" />
-                                        <x-now-button wire:click="setNow('tanggal')" :disabled="$formRO" />
+                                        <x-now-button wire:click="setNow('tanggal')" :disabled="$formReadOnly" />
                                     </div>
                                     <x-input-error :messages="$errors->get('newForm.tanggal')" class="mt-1" />
                                 </div>
@@ -871,7 +887,7 @@ new class extends Component {
                             <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                 @foreach ($opsiFaktorRisiko as $key => $label)
                                     <x-toggle wire:key="fr-{{ $key }}" wire:model="newForm.faktorRisiko.{{ $key }}"
-                                        :current="(bool) ($newForm['faktorRisiko'][$key] ?? false)" :disabled="$formRO"
+                                        :current="(bool) ($newForm['faktorRisiko'][$key] ?? false)" :disabled="$formReadOnly"
                                         :label="$label" :trueValue="true" :falseValue="false" />
                                 @endforeach
                             </div>
@@ -893,7 +909,7 @@ new class extends Component {
                                     <x-input-label value="Tanggal / Jam Pasang Pertama" />
                                     <div class="flex gap-1 mt-1">
                                         <x-text-input wire:model="newForm.tglPasangKateter" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
-                                        <x-now-button wire:click="setNow('tglPasangKateter')" :disabled="$formRO" />
+                                        <x-now-button wire:click="setNow('tglPasangKateter')" :disabled="$formReadOnly" />
                                     </div>
                                 </div>
                             </div>
@@ -928,7 +944,7 @@ new class extends Component {
                                                     <th class="px-3 py-2 text-left">s/d Tgl Lepas</th>
                                                     <th class="px-3 py-2 text-left">Hari Ke</th>
                                                     <th class="px-3 py-2 text-left">Tanda Infeksi</th>
-                                                    @unless ($formRO)
+                                                    @unless ($formReadOnly)
                                                         <th class="px-3 py-2 text-center">Aksi</th>
                                                     @endunless
                                                 </tr>
@@ -947,7 +963,7 @@ new class extends Component {
                                                         <td class="px-3 py-2 font-mono text-muted">{{ $baris['tglSelesai'] ?: '-' }}</td>
                                                         <td class="px-3 py-2 text-muted">{{ $baris['hariKe'] ?: '-' }}</td>
                                                         <td class="px-3 py-2 text-body dark:text-gray-300">{{ $tandaBaris ?: '-' }}</td>
-                                                        @unless ($formRO)
+                                                        @unless ($formReadOnly)
                                                             <td class="px-3 py-2 text-center">
                                                                 <x-outline-button type="button" wire:click.prevent="hapusPemasangan({{ $indeks }})"
                                                                     wire:confirm="Hapus baris pemasangan ini dari daftar?" wire:loading.attr="disabled"
@@ -969,7 +985,7 @@ new class extends Component {
                                     <p class="mb-3 text-sm italic text-muted-soft">Belum ada riwayat pemasangan pada daftar.</p>
                                 @endif
 
-                                @unless ($formRO)
+                                @unless ($formReadOnly)
                                     <div class="p-3 border border-dashed rounded-lg border-gray-300 dark:border-gray-600 bg-canvas dark:bg-gray-800/50">
                                         <p class="mb-3 text-sm font-semibold tracking-wide uppercase text-ink dark:text-white">Tambah Baris Pemasangan</p>
                                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-12">
@@ -1028,13 +1044,13 @@ new class extends Component {
                                          sudah menjawabnya, dan itu pula yang dibaca aturan kasus ISK. --}}
                                     <x-surveilans.kultur-list namaDaftar="pemeriksaanUrinHasil" title="Hasil Pemeriksaan Urin"
                                         :barisList="$newForm['pemeriksaanUrinHasil'] ?? []" :barisBaru="$barisKultur['pemeriksaanUrinHasil'] ?? []"
-                                        :formRO="$formRO" hasilLabel="Leukosit Urin" hasilPlaceholder="Leukosit urin"
+                                        :formReadOnly="$formReadOnly" hasilLabel="Leukosit Urin" hasilPlaceholder="Leukosit urin"
                                         kosongTeks="Belum ada hasil pemeriksaan urin." />
                                 </div>
                                 <div class="space-y-3">
                                     <x-surveilans.kultur-list namaDaftar="biakanUrinHasil" title="Hasil Biakan Urin"
                                         :barisList="$newForm['biakanUrinHasil'] ?? []" :barisBaru="$barisKultur['biakanUrinHasil'] ?? []"
-                                        :formRO="$formRO" hasilLabel="Hasil" hasilPlaceholder="Hasil biakan urin"
+                                        :formReadOnly="$formReadOnly" hasilLabel="Hasil" hasilPlaceholder="Hasil biakan urin"
                                         kosongTeks="Belum ada hasil biakan urin." />
                                 </div>
                             </div>
@@ -1045,7 +1061,7 @@ new class extends Component {
                             {{-- Tak ada toggle "Ada Pemakaian Antibiotik": daftar di bawah sudah menjawabnya. --}}
                             <div>
                                 <x-surveilans.antibiotik-list :barisList="$newForm['antibiotik'] ?? []" :barisBaru="$barisObat"
-                                    :formRO="$formRO" :opsiRute="$opsiRute" :opsiIndikasi="$opsiIndikasi" />
+                                    :formReadOnly="$formReadOnly" :opsiRute="$opsiRute" :opsiIndikasi="$opsiIndikasi" />
                             </div>
                         </x-border-form>
 
@@ -1055,7 +1071,12 @@ new class extends Component {
                                 <div class="space-y-3">
                                     <div>
                                         <x-input-label value="Mengetahui — Dokter yang Merawat" />
-                                        <x-text-input wire:model="newForm.dokterMerawat" class="w-full mt-1" placeholder="Nama dokter" />
+                                        {{-- Terisi otomatis dari DPJP Utama (Leveling Dokter, Pengkajian Awal RI),
+                                             tetap bisa diganti — penanda tangan tak selalu DPJP Utama. --}}
+                                        <div class="mt-1">
+                                            <x-ppa-combobox wireModel="newForm.dokterMerawat" :disabled="$formReadOnly"
+                                                placeholder="Nama dokter — pilih dari daftar atau ketik" />
+                                        </div>
                                     </div>
                                     <div>
                                         <x-input-label value="Catatan" />
@@ -1065,7 +1086,7 @@ new class extends Component {
                                 <div class="space-y-2">
                                     <x-signature.ttd-petugas :framed="false" :allowClear="false"
                                         :ttd="$newForm['ttd'] ?? ''" :date="$newForm['ttdDate'] ?? ''"
-                                        :code="$newForm['ttdCode'] ?? ''" :locked="$formRO"
+                                        :code="$newForm['ttdCode'] ?? ''" :locked="$formReadOnly"
                                         sign="ttdSaya" nameLabel="Perawat / IPCLN" dateLabel="Jam TTD" signLabel="TTD & Kunci" />
                                     <p class="text-xs text-muted dark:text-gray-400">
                                         TTD petugas = memvalidasi &amp; <strong>mengunci</strong> entri surveilans ini.

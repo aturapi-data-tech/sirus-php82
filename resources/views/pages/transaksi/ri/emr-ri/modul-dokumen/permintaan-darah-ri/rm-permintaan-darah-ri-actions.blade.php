@@ -562,7 +562,7 @@ new class extends Component {
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 space-y-4 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">
 
-                @php $formRO = $isFormLocked || $viewOnly; @endphp
+                @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                 @if ($viewOnly)
                     <div class="px-3 py-2 text-sm border rounded-lg bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
@@ -572,33 +572,33 @@ new class extends Component {
 
                 {{-- ── BAGIAN 1: DATA KLINIS ── --}}
                 <x-border-form title="Data Klinis Pasien" align="start" bgcolor="bg-surface-soft">
-                    <fieldset @disabled($formRO)>
+                    <fieldset @disabled($formReadOnly)>
                         <div class="grid grid-cols-1 gap-3 mt-3 md:grid-cols-2 xl:grid-cols-4 items-start">
                             <div>
                                 <x-input-label value="Tanggal Permintaan *" />
                                 <x-text-input wire:model.blur="form.tglPermintaan" class="w-full mt-1"
                                     placeholder="dd/mm/yyyy hh:mm:ss"
-                                    :error="$errors->has('form.tglPermintaan')" :disabled="$formRO" />
+                                    :error="$errors->has('form.tglPermintaan')" :disabled="$formReadOnly" />
                                 <x-input-error :messages="$errors->get('form.tglPermintaan')" class="mt-1" />
                             </div>
                             <div>
                                 <x-input-label value="Transfusi Sebelumnya *" />
                                 <div class="mt-2">
                                     <x-toggle wire:model.live="form.transfusiSebelumnya" trueValue="pernah" falseValue="belum"
-                                        label="Pernah ditransfusi sebelumnya" :disabled="$formRO" />
+                                        label="Pernah ditransfusi sebelumnya" :disabled="$formReadOnly" />
                                 </div>
                                 <x-input-error :messages="$errors->get('form.transfusiSebelumnya')" class="mt-1" />
                             </div>
                             <div>
                                 <x-input-label value="Diagnosa Sementara *" />
                                 <x-textarea wire:model.blur="form.diagnosaSementara" class="w-full mt-1" rows="2"
-                                    placeholder="Diagnosa kerja" :error="$errors->has('form.diagnosaSementara')" :disabled="$formRO" />
+                                    placeholder="Diagnosa kerja" :error="$errors->has('form.diagnosaSementara')" :disabled="$formReadOnly" />
                                 <x-input-error :messages="$errors->get('form.diagnosaSementara')" class="mt-1" />
                             </div>
                             <div>
                                 <x-input-label value="Indikasi Transfusi *" />
                                 <x-textarea wire:model.blur="form.indikasiTransfusi" class="w-full mt-1" rows="2"
-                                    placeholder="mis. anemia, perdarahan, dll." :error="$errors->has('form.indikasiTransfusi')" :disabled="$formRO" />
+                                    placeholder="mis. anemia, perdarahan, dll." :error="$errors->has('form.indikasiTransfusi')" :disabled="$formReadOnly" />
                                 <x-input-error :messages="$errors->get('form.indikasiTransfusi')" class="mt-1" />
                             </div>
                         </div>
@@ -607,7 +607,7 @@ new class extends Component {
 
                 {{-- ── BAGIAN 2: JENIS DARAH YANG DIPERLUKAN ── --}}
                 <x-border-form title="Jenis Darah yang Diperlukan" align="start" bgcolor="bg-surface-soft">
-                    <fieldset @disabled($formRO)>
+                    <fieldset @disabled($formReadOnly)>
                         <x-input-error :messages="$errors->get('form.jenisDarah')" class="mt-2" />
                         <div class="mt-3 overflow-x-auto">
                             <table class="w-full text-sm border-collapse">
@@ -627,19 +627,19 @@ new class extends Component {
                                             <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
                                                 <x-toggle wire:model.live="form.jenisDarah.{{ $kode }}.pilih"
                                                     :trueValue="true" :falseValue="false"
-                                                    :label="$jenisOptions[$kode]" :disabled="$formRO" />
+                                                    :label="$jenisOptions[$kode]" :disabled="$formReadOnly" />
                                             </td>
                                             <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
                                                 <div class="flex gap-1">
                                                     <x-select-input wire:model.blur="form.jenisDarah.{{ $kode }}.golongan" class="text-sm"
-                                                        :error="$errors->has('form.jenisDarah.' . $kode . '.golongan')" :disabled="$formRO || !$aktif">
+                                                        :error="$errors->has('form.jenisDarah.' . $kode . '.golongan')" :disabled="$formReadOnly || !$aktif">
                                                         <option value="">—</option>
                                                         @foreach ($golonganOptions as $g => $gl)
                                                             <option value="{{ $g }}">{{ $gl }}</option>
                                                         @endforeach
                                                     </x-select-input>
                                                     <x-select-input wire:model.blur="form.jenisDarah.{{ $kode }}.rhesus" class="text-sm w-16"
-                                                        :disabled="$formRO || !$aktif">
+                                                        :disabled="$formReadOnly || !$aktif">
                                                         <option value="">Rh</option>
                                                         @foreach ($rhesusOptions as $r => $rl)
                                                             <option value="{{ $r }}">{{ $r }}</option>
@@ -649,10 +649,10 @@ new class extends Component {
                                             </td>
                                             <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
                                                 <x-text-input type="number" step="any" wire:model.blur="form.jenisDarah.{{ $kode }}.jumlah"
-                                                    class="w-full text-sm" :error="$errors->has('form.jenisDarah.' . $kode . '.jumlah')" :disabled="$formRO || !$aktif" />
+                                                    class="w-full text-sm" :error="$errors->has('form.jenisDarah.' . $kode . '.jumlah')" :disabled="$formReadOnly || !$aktif" />
                                             </td>
                                             <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
-                                                <x-select-input wire:model.blur="form.jenisDarah.{{ $kode }}.satuan" class="w-full text-sm" :disabled="$formRO || !$aktif">
+                                                <x-select-input wire:model.blur="form.jenisDarah.{{ $kode }}.satuan" class="w-full text-sm" :disabled="$formReadOnly || !$aktif">
                                                     @foreach ($satuanOptions as $s => $sl)
                                                         <option value="{{ $s }}">{{ $sl }}</option>
                                                     @endforeach
@@ -662,9 +662,9 @@ new class extends Component {
                                                 <div class="flex items-center gap-1">
                                                     <x-text-input type="text" wire:model.blur="form.jenisDarah.{{ $kode }}.diperlukan"
                                                         placeholder="dd/mm/yyyy hh:mm:ss" class="w-full text-sm"
-                                                        :error="$errors->has('form.jenisDarah.' . $kode . '.diperlukan')" :disabled="$formRO || !$aktif" />
+                                                        :error="$errors->has('form.jenisDarah.' . $kode . '.diperlukan')" :disabled="$formReadOnly || !$aktif" />
                                                     <x-now-button wire:click="setDiperlukanSekarang('{{ $kode }}')"
-                                                        title="Set ke waktu sekarang" :disabled="$formRO || !$aktif" />
+                                                        title="Set ke waktu sekarang" :disabled="$formReadOnly || !$aktif" />
                                                 </div>
                                             </td>
                                         </tr>
@@ -675,24 +675,24 @@ new class extends Component {
                                     <tr wire:key="darah-lainnya" class="align-top">
                                         <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
                                             <x-toggle wire:model.live="form.jenisDarah.lainnya.pilih"
-                                                :trueValue="true" :falseValue="false" label="Lainnya" :disabled="$formRO" />
+                                                :trueValue="true" :falseValue="false" label="Lainnya" :disabled="$formReadOnly" />
                                             <div class="mt-1.5 space-y-1">
                                                 <x-text-input wire:model.blur="form.jenisDarah.lainnya.ket1" class="w-full text-sm"
-                                                    placeholder="1. Sebutkan…" :disabled="$formRO || !$aktifLain" />
+                                                    placeholder="1. Sebutkan…" :disabled="$formReadOnly || !$aktifLain" />
                                                 <x-text-input wire:model.blur="form.jenisDarah.lainnya.ket2" class="w-full text-sm"
-                                                    placeholder="2. Sebutkan…" :disabled="$formRO || !$aktifLain" />
+                                                    placeholder="2. Sebutkan…" :disabled="$formReadOnly || !$aktifLain" />
                                             </div>
                                         </td>
                                         <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
                                             <div class="flex gap-1">
                                                 <x-select-input wire:model.blur="form.jenisDarah.lainnya.golongan" class="text-sm"
-                                                    :error="$errors->has('form.jenisDarah.lainnya.golongan')" :disabled="$formRO || !$aktifLain">
+                                                    :error="$errors->has('form.jenisDarah.lainnya.golongan')" :disabled="$formReadOnly || !$aktifLain">
                                                     <option value="">—</option>
                                                     @foreach ($golonganOptions as $g => $gl)
                                                         <option value="{{ $g }}">{{ $gl }}</option>
                                                     @endforeach
                                                 </x-select-input>
-                                                <x-select-input wire:model.blur="form.jenisDarah.lainnya.rhesus" class="text-sm w-16" :disabled="$formRO || !$aktifLain">
+                                                <x-select-input wire:model.blur="form.jenisDarah.lainnya.rhesus" class="text-sm w-16" :disabled="$formReadOnly || !$aktifLain">
                                                     <option value="">Rh</option>
                                                     @foreach ($rhesusOptions as $r => $rl)
                                                         <option value="{{ $r }}">{{ $r }}</option>
@@ -702,10 +702,10 @@ new class extends Component {
                                         </td>
                                         <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
                                             <x-text-input type="number" step="any" wire:model.blur="form.jenisDarah.lainnya.jumlah"
-                                                class="w-full text-sm" :error="$errors->has('form.jenisDarah.lainnya.jumlah')" :disabled="$formRO || !$aktifLain" />
+                                                class="w-full text-sm" :error="$errors->has('form.jenisDarah.lainnya.jumlah')" :disabled="$formReadOnly || !$aktifLain" />
                                         </td>
                                         <td class="px-2 py-2 border-b border-hairline dark:border-gray-700">
-                                            <x-select-input wire:model.blur="form.jenisDarah.lainnya.satuan" class="w-full text-sm" :disabled="$formRO || !$aktifLain">
+                                            <x-select-input wire:model.blur="form.jenisDarah.lainnya.satuan" class="w-full text-sm" :disabled="$formReadOnly || !$aktifLain">
                                                 @foreach ($satuanOptions as $s => $sl)
                                                     <option value="{{ $s }}">{{ $sl }}</option>
                                                 @endforeach
@@ -715,9 +715,9 @@ new class extends Component {
                                             <div class="flex items-center gap-1">
                                                 <x-text-input type="text" wire:model.blur="form.jenisDarah.lainnya.diperlukan"
                                                     placeholder="dd/mm/yyyy hh:mm:ss" class="w-full text-sm"
-                                                    :error="$errors->has('form.jenisDarah.lainnya.diperlukan')" :disabled="$formRO || !$aktifLain" />
+                                                    :error="$errors->has('form.jenisDarah.lainnya.diperlukan')" :disabled="$formReadOnly || !$aktifLain" />
                                                 <x-now-button wire:click="setDiperlukanSekarang('lainnya')"
-                                                    title="Set ke waktu sekarang" :disabled="$formRO || !$aktifLain" />
+                                                    title="Set ke waktu sekarang" :disabled="$formReadOnly || !$aktifLain" />
                                             </div>
                                         </td>
                                     </tr>
@@ -737,7 +737,7 @@ new class extends Component {
                             :ttd="$form['ttd']['dokterNama'] ?? ''"
                             :date="$form['ttd']['dokterDate'] ?? ''"
                             :code="$form['ttd']['dokterCode'] ?? ''"
-                            :locked="$formRO"
+                            :locked="$formReadOnly"
                             :canSign="auth()->user()?->hasAnyRole(['Dokter', 'Admin'])"
                             sign="ttdDokter" nameLabel="Dokter Peminta" dateLabel="Jam TTD" signLabel="TTD & Kunci" />
                         <p class="mt-1 text-xs text-muted dark:text-gray-400">
@@ -870,7 +870,7 @@ new class extends Component {
             <div class="sticky bottom-0 z-10 px-6 py-4 border-t bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-end gap-3">
                     <x-secondary-button wire:click="closeModal">Tutup</x-secondary-button>
-                    @if (!$formRO)
+                    @if (!$formReadOnly)
                         @if ($editingKey)
                             <x-secondary-button wire:click="resetFormDarah">Batal Edit</x-secondary-button>
                         @endif

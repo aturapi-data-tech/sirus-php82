@@ -594,7 +594,7 @@ new class extends Component {
                     <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
                         wire:key="riwayat-obstetri-display-pasien-{{ $riHdrNo }}" />
 
-                    @php $formRO = $isFormLocked || $viewOnly; @endphp
+                    @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                     @if ($isFormLocked)
                         <div class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-lg text-amber-800 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
@@ -624,7 +624,7 @@ new class extends Component {
                     @endif
 
                     {{-- ── FORM ENTRI ── --}}
-                    <fieldset @disabled($formRO) class="space-y-4">
+                    <fieldset @disabled($formReadOnly) class="space-y-4">
 
                         {{-- 1. Status Obstetri (G-P-A) --}}
                         <x-border-form title="1. Status Obstetri">
@@ -715,7 +715,7 @@ new class extends Component {
                                                     <td class="px-1 py-1"><x-text-input type="number" wire:model="newForm.rows.{{ $i }}.bbl" class="w-full min-w-[5rem]" /></td>
                                                     <td class="px-1 py-1"><x-text-input wire:model="newForm.rows.{{ $i }}.keterangan" class="w-full min-w-[7rem]" /></td>
                                                     <td class="px-1 py-1 text-center">
-                                                        @if (!$formRO)
+                                                        @if (!$formReadOnly)
                                                             <x-outline-button type="button" wire:click="removeRow({{ $i }})"
                                                                 wire:confirm="Hapus baris ini?" wire:loading.attr="disabled"
                                                                 class="!p-2 !text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300"
@@ -736,7 +736,7 @@ new class extends Component {
                                         </tbody>
                                     </table>
                                 </div>
-                                @if (!$formRO)
+                                @if (!$formReadOnly)
                                     <div>
                                         <x-secondary-button type="button" wire:click="addRow" class="gap-1.5">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -751,11 +751,11 @@ new class extends Component {
 
                         {{-- ══ TTD PETUGAS & KUNCI ══ --}}
                         <x-signature.ttd-petugas :ttd="$newForm['ttd']" :code="$newForm['ttdCode'] ?? ''"
-                            :date="$newForm['ttdDate'] ?? ''" :locked="$formRO" sign="ttdSaya" clear="hapusTtd"
+                            :date="$newForm['ttdDate'] ?? ''" :locked="$formReadOnly" sign="ttdSaya" clear="hapusTtd"
                             title="Tanda Tangan Petugas"
                             nameLabel="Petugas (Bidan / Dokter)" dateLabel="Waktu TTD"
                             signLabel="TTD Petugas &amp; Kunci" clearLabel="Batal TTD" />
-                        @if (!$formRO)
+                        @if (!$formReadOnly)
                             <p class="-mt-2 text-xs text-center text-muted">Menandatangani = mengunci riwayat obstetri ini.</p>
                         @endif
                     </fieldset>

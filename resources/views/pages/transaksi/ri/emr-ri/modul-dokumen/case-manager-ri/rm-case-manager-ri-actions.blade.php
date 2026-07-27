@@ -808,8 +808,8 @@ new class extends Component {
                 <div class="max-w-full mx-auto space-y-4">
 
     @php
-        $formRO_A = $isFormLocked || $viewOnlyA;
-        $formRO_B = $isFormLocked || $viewOnlyB;
+        $formReadOnlyA = $isFormLocked || $viewOnlyA;
+        $formReadOnlyB = $isFormLocked || $viewOnlyB;
         $listFormA = $dataDaftarRi['formMPP']['formA'] ?? [];
         $listFormB = $dataDaftarRi['formMPP']['formB'] ?? [];
         // Peta label Form A (untuk referensi read-only di Form B)
@@ -853,7 +853,7 @@ new class extends Component {
             </div>
         @endif
 
-        <fieldset @disabled($formRO_A) class="space-y-4">
+        <fieldset @disabled($formReadOnlyA) class="space-y-4">
             {{-- Display Pasien --}}
             <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
                 wire:key="cm-fa-display-pasien-{{ $riHdrNo ?? 'new' }}" />
@@ -865,7 +865,7 @@ new class extends Component {
                         :error="$errors->has('formA.tanggal')" placeholder="dd/mm/yyyy HH:mm:ss" />
                     <x-input-error :messages="$errors->get('formA.tanggal')" class="mt-1" />
                 </div>
-                @if (!$formRO_A)
+                @if (!$formReadOnlyA)
                     <x-now-button wire:click="setTanggalFormA" />
                 @endif
             </div>
@@ -884,12 +884,12 @@ new class extends Component {
             {{-- ══ TTD PETUGAS & KUNCI (Form A) ══ --}}
             <x-signature.ttd-petugas :ttd="$formA['tandaTanganPetugas']['petugasName'] ?? ''"
                 :code="$formA['tandaTanganPetugas']['petugasCode'] ?? ''" :date="$formA['tanggal'] ?? ''"
-                :locked="$formRO_A" :allowClear="false" sign="kunciFormA" clear="hapusTtdA"
+                :locked="$formReadOnlyA" :allowClear="false" sign="kunciFormA" clear="hapusTtdA"
                 title="Tanda Tangan Petugas (MPP)" nameLabel="Petugas (MPP)" dateLabel="Waktu / Tanggal"
                 signLabel="TTD Petugas &amp; Kunci" />
         </fieldset>
 
-        @if (!$formRO_A)
+        @if (!$formReadOnlyA)
             <p class="mt-2 mb-3 text-xs text-center text-muted">Menandatangani = mengunci entri Form A ini (tidak bisa diubah lagi).</p>
         @endif
 
@@ -1170,7 +1170,7 @@ new class extends Component {
             </div>
         @endif
 
-        <fieldset @disabled($formRO_B) class="space-y-4">
+        <fieldset @disabled($formReadOnlyB) class="space-y-4">
             <div class="flex items-end gap-3">
                 <div class="flex-1">
                     <x-input-label value="Tanggal *" />
@@ -1178,7 +1178,7 @@ new class extends Component {
                         :error="$errors->has('formB.tanggal')" placeholder="dd/mm/yyyy HH:mm:ss" />
                     <x-input-error :messages="$errors->get('formB.tanggal')" class="mt-1" />
                 </div>
-                @if (!$formRO_B)
+                @if (!$formReadOnlyB)
                     <x-now-button wire:click="setTanggalFormB" />
                 @endif
             </div>
@@ -1208,12 +1208,12 @@ new class extends Component {
             {{-- ══ TTD PETUGAS & KUNCI (Form B) ══ --}}
             <x-signature.ttd-petugas :ttd="$formB['tandaTanganPetugas']['petugasName'] ?? ''"
                 :code="$formB['tandaTanganPetugas']['petugasCode'] ?? ''" :date="$formB['tanggal'] ?? ''"
-                :locked="$formRO_B" :allowClear="false" sign="kunciFormB" clear="hapusTtdB"
+                :locked="$formReadOnlyB" :allowClear="false" sign="kunciFormB" clear="hapusTtdB"
                 title="Tanda Tangan Petugas (MPP)" nameLabel="Petugas (MPP)" dateLabel="Waktu / Tanggal"
                 signLabel="TTD Petugas &amp; Kunci" />
         </fieldset>
 
-        @if (!$formRO_B)
+        @if (!$formReadOnlyB)
             <p class="mt-2 mb-3 text-xs text-center text-muted">Menandatangani = mengunci entri Form B ini (tidak bisa diubah lagi).</p>
         @endif
 

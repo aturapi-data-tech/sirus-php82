@@ -694,7 +694,7 @@ new class extends Component {
                     <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
                         wire:key="po-ri-display-pasien-{{ $riHdrNo ?? 'init' }}" />
 
-                    @php $formRO = $isFormLocked || $viewOnly; @endphp
+                    @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                     <div
                         class="p-6 space-y-6 bg-canvas border border-hairline shadow-sm sm:p-8 rounded-2xl dark:bg-gray-900 dark:border-gray-700">
@@ -728,7 +728,7 @@ new class extends Component {
                         @endif
 
                         {{-- ── FORM ENTRI ── --}}
-                        <fieldset @disabled($formRO) class="space-y-6">
+                        <fieldset @disabled($formReadOnly) class="space-y-6">
 
                             {{-- ══ DATA OPERASI ══ --}}
                             <section class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -905,11 +905,11 @@ new class extends Component {
                                 </div>
 
                                 <x-signature.ttd-petugas :ttd="$newForm['ttd']" :date="$newForm['ttdDate'] ?? ''"
-                                    :code="$newForm['ttdCode'] ?? ''" :locked="$formRO" sign="setTtd" clear="clearTtd"
+                                    :code="$newForm['ttdCode'] ?? ''" :locked="$formReadOnly" sign="setTtd" clear="clearTtd"
                                     title="Tanda Tangan Perawat Ruangan"
                                     nameLabel="Petugas (Perawat Ruangan)" dateLabel="Waktu TTD"
                                     signLabel="TTD Petugas &amp; Kunci" clearLabel="Batal TTD" />
-                                @if (!$formRO)
+                                @if (!$formReadOnly)
                                     <p class="-mt-2 text-xs text-center text-muted">Menandatangani = mengunci pengkajian ini.</p>
                                 @endif
                             </section>
