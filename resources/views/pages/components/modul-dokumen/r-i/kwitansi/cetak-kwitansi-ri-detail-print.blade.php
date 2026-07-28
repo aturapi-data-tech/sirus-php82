@@ -205,8 +205,12 @@
         </tr>
         @endif
 
-        {{-- ─── FOOTER ─── --}}
-        <tr><td colspan="4" class="p-0 border-t border-gray-800"></td></tr>
+        {{-- ─── H. PERHITUNGAN TAGIHAN ───
+             Diberi judul section seperti A–G supaya jaraknya seirama; tanpa ini
+             blok total menempel lebih rapat daripada section di atasnya.
+             Huruf H, bukan G — G sudah dipakai RETURN OBAT (bersyarat, jadi
+             sering tak terlihat), sama seperti E. OPERASI. --}}
+        <tr><td colspan="4" class="{{ $hdrSection }}">H. PERHITUNGAN TAGIHAN</td></tr>
         <tr>
             <td colspan="3" class="py-0.5 px-1.5 text-right font-semibold">TOTAL BIAYA</td>
             <td class="py-0.5 px-1.5 text-right tabular-nums font-semibold">{{ $rp($data['subtotal']) }}</td>
@@ -222,8 +226,8 @@
             <td class="py-px px-1.5 text-right tabular-nums">( {{ $rp($data['subsidi']) }} )</td>
         </tr>
         <tr>
-            <td colspan="3" class="py-0.5 px-1.5 text-right font-semibold border-t border-gray-400">TOTAL BAYAR</td>
-            <td class="py-0.5 px-1.5 text-right tabular-nums font-semibold border-t border-gray-400">
+            <td colspan="3" class="py-0.5 px-1.5 text-right font-semibold border-t border-gray-600">TOTAL BAYAR</td>
+            <td class="py-0.5 px-1.5 text-right tabular-nums font-semibold border-t border-gray-600">
                 {{ $rp($data['grandTotal']) }}
             </td>
         </tr>
