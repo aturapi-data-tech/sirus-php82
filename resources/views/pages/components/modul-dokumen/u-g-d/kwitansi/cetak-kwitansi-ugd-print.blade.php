@@ -128,59 +128,7 @@
     <div class="mb-5 px-3 py-2 bg-gray-50 border border-gray-400 rounded text-[12px] text-gray-700 italic">
         Terbilang:
         <strong class="not-italic text-gray-900">
-            @php
-                if (!function_exists('terbilang')) {
-                    function terbilang(int $nilai): string
-                    {
-                        $satuan = [
-                            '',
-                            'satu',
-                            'dua',
-                            'tiga',
-                            'empat',
-                            'lima',
-                            'enam',
-                            'tujuh',
-                            'delapan',
-                            'sembilan',
-                            'sepuluh',
-                            'sebelas',
-                        ];
-                        if ($nilai < 12) {
-                            return $satuan[$nilai];
-                        }
-                        if ($nilai < 20) {
-                            return terbilang($nilai - 10) . ' belas';
-                        }
-                        if ($nilai < 100) {
-                            return terbilang((int) ($nilai / 10)) . ' puluh' . ($nilai % 10 ? ' ' . terbilang($nilai % 10) : '');
-                        }
-                        if ($nilai < 200) {
-                            return 'seratus' . ($nilai % 100 ? ' ' . terbilang($nilai % 100) : '');
-                        }
-                        if ($nilai < 1_000) {
-                            return terbilang((int) ($nilai / 100)) . ' ratus' . ($nilai % 100 ? ' ' . terbilang($nilai % 100) : '');
-                        }
-                        if ($nilai < 2_000) {
-                            return 'seribu' . ($nilai % 1_000 ? ' ' . terbilang($nilai % 1_000) : '');
-                        }
-                        if ($nilai < 1_000_000) {
-                            return terbilang((int) ($nilai / 1_000)) .
-                                ' ribu' .
-                                ($nilai % 1_000 ? ' ' . terbilang($nilai % 1_000) : '');
-                        }
-                        if ($nilai < 1_000_000_000) {
-                            return terbilang((int) ($nilai / 1_000_000)) .
-                                ' juta' .
-                                ($nilai % 1_000_000 ? ' ' . terbilang($nilai % 1_000_000) : '');
-                        }
-                        return terbilang((int) ($nilai / 1_000_000_000)) .
-                            ' miliar' .
-                            ($nilai % 1_000_000_000 ? ' ' . terbilang($nilai % 1_000_000_000) : '');
-                    }
-                }
-                echo ucfirst(terbilang((int) ($data['grandTotal'] ?? 0))) . ' Rupiah';
-            @endphp
+            {{ \App\Support\Terbilang::rupiah((int) ($data['grandTotal'] ?? 0)) }}
         </strong>
     </div>
 

@@ -52,23 +52,6 @@
     @php
         $rp = fn(int $nilai) => number_format($nilai, 0, ',', '.');
 
-        if (!function_exists('terbilang')) {
-            function terbilang($nilai)
-            {
-                $angka = ['', 'satu', 'dua', 'tiga', 'empat', 'lima',
-                          'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
-                if ($nilai < 12) return ' ' . $angka[$nilai];
-                if ($nilai < 20) return terbilang($nilai - 10) . ' belas';
-                if ($nilai < 100) return terbilang(intdiv($nilai, 10)) . ' puluh' . terbilang($nilai % 10);
-                if ($nilai < 200) return ' seratus' . terbilang($nilai - 100);
-                if ($nilai < 1000) return terbilang(intdiv($nilai, 100)) . ' ratus' . terbilang($nilai % 100);
-                if ($nilai < 2000) return ' seribu' . terbilang($nilai - 1000);
-                if ($nilai < 1000000) return terbilang(intdiv($nilai, 1000)) . ' ribu' . terbilang($nilai % 1000);
-                if ($nilai < 1000000000) return terbilang(intdiv($nilai, 1000000)) . ' juta' . terbilang($nilai % 1000000);
-                return '';
-            }
-        }
-
         // Class helpers — alias supaya tidak repeat
         $hdrSection = 'pt-1 pb-px font-bold';
         $cellLabel  = 'py-px pl-3.5 pr-1';
@@ -270,7 +253,7 @@
     ══════════════════════════════════════ --}}
     <p class="mt-2 mb-px text-[10px]">Telah dibayar secara tunai sebesar :</p>
     <p class="m-0 text-[10px] font-semibold uppercase italic">
-        {{ trim(terbilang((int) $data['grandTotal'])) }} Rupiah
+        {{ \App\Support\Terbilang::rupiah((int) $data['grandTotal']) }}
     </p>
 
     {{-- ══════════════════════════════════════

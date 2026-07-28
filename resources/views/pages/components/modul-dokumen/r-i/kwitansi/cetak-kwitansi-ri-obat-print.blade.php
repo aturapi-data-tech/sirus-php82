@@ -131,24 +131,7 @@
     <div class="mb-5 px-3 py-2 bg-gray-50 border border-gray-400 rounded text-[12px] text-gray-700 italic">
         Terbilang (Dibayar):
         <strong class="not-italic text-gray-900">
-            @php
-                if (!function_exists('terbilang_ri_obat')) {
-                    function terbilang_ri_obat(int $nilai): string
-                    {
-                        $satuan = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
-                        if ($nilai < 12) return $satuan[$nilai];
-                        if ($nilai < 20) return terbilang_ri_obat($nilai - 10) . ' belas';
-                        if ($nilai < 100) return terbilang_ri_obat((int) ($nilai / 10)) . ' puluh' . ($nilai % 10 ? ' ' . terbilang_ri_obat($nilai % 10) : '');
-                        if ($nilai < 200) return 'seratus' . ($nilai % 100 ? ' ' . terbilang_ri_obat($nilai % 100) : '');
-                        if ($nilai < 1_000) return terbilang_ri_obat((int) ($nilai / 100)) . ' ratus' . ($nilai % 100 ? ' ' . terbilang_ri_obat($nilai % 100) : '');
-                        if ($nilai < 2_000) return 'seribu' . ($nilai % 1_000 ? ' ' . terbilang_ri_obat($nilai % 1_000) : '');
-                        if ($nilai < 1_000_000) return terbilang_ri_obat((int) ($nilai / 1_000)) . ' ribu' . ($nilai % 1_000 ? ' ' . terbilang_ri_obat($nilai % 1_000) : '');
-                        if ($nilai < 1_000_000_000) return terbilang_ri_obat((int) ($nilai / 1_000_000)) . ' juta' . ($nilai % 1_000_000 ? ' ' . terbilang_ri_obat($nilai % 1_000_000) : '');
-                        return terbilang_ri_obat((int) ($nilai / 1_000_000_000)) . ' miliar' . ($nilai % 1_000_000_000 ? ' ' . terbilang_ri_obat($nilai % 1_000_000_000) : '');
-                    }
-                }
-                echo ucfirst(terbilang_ri_obat((int) ($data['bayar'] ?? 0))) . ' Rupiah';
-            @endphp
+            {{ \App\Support\Terbilang::rupiah((int) ($data['bayar'] ?? 0)) }}
         </strong>
         @if (($data['bon'] ?? 0) > 0)
             <div class="mt-1 text-[12px] text-amber-700 not-italic">
