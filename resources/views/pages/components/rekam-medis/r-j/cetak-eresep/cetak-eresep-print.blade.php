@@ -5,19 +5,35 @@
         $isBpjs = ($dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($dataDaftarPoliRJ['klaimId'] ?? '') === 'JM';
         $klaimClass = $isBpjs ? 'text-brand-green' : 'text-red-600';
     @endphp
+    {{-- Dua kolom: kiri identitas pasien (standar), kanan data kunjungan.
+         Lebar dipatok 540px — melebihi jatah 50% dari layout — supaya memakai
+         kolom kosong 45% di dalam sel kop; sisanya masih cukup untuk blok alamat
+         RS. Porsi 50/50 (bukan 62/38 seperti kwitansi RI) karena nilai di kanan
+         panjang-panjang: No. SEP dan NIK/Id BPJS. Huruf 10px supaya muat.
+         Lebar pakai inline style karena kelas arbitrary Tailwind tak ter-render
+         di dompdf. --}}
     <x-slot name="patientData">
-        <x-pdf.identitas-pasien
-            :rm="$dataPasien['pasien']['regNo'] ?? null"
-            :nama="$dataPasien['pasien']['regName'] ?? null"
-            :jenisKelamin="$dataPasien['pasien']['jenisKelamin']['jenisKelaminDesc'] ?? null"
-            :tempatLahir="$dataPasien['pasien']['tempatLahir'] ?? null"
-            :tglLahir="$dataPasien['pasien']['tglLahir'] ?? null"
-            :umur="$dataPasien['pasien']['thn'] ?? null"
-            :alamat="$dataPasien['pasien']['identitas']['alamat'] ?? null">
+        <table cellpadding="0" cellspacing="0" style="width:540px;">
             <tr>
-                <td class="py-0.5 text-[11px] text-gray-500 whitespace-nowrap">No. Resep / Tanggal</td>
-                <td class="py-0.5 text-[11px] px-1">:</td>
-                <td class="py-0.5 text-[11px] font-bold text-gray-900">
+                <td class="align-top" style="width:44%;">
+                    <x-pdf.identitas-pasien
+                        :rm="$dataPasien['pasien']['regNo'] ?? null"
+                        :nama="$dataPasien['pasien']['regName'] ?? null"
+                        :jenisKelamin="$dataPasien['pasien']['jenisKelamin']['jenisKelaminDesc'] ?? null"
+                        :tempatLahir="$dataPasien['pasien']['tempatLahir'] ?? null"
+                        :tglLahir="$dataPasien['pasien']['tglLahir'] ?? null"
+                        :umur="$dataPasien['pasien']['thn'] ?? null"
+                        :alamat="$dataPasien['pasien']['identitas']['alamat'] ?? null"
+                        textClass="text-[10px]"
+                        class="w-full" />
+                </td>
+
+                <td class="align-top pl-2" style="width:56%;">
+                    <table class="w-full" cellpadding="0" cellspacing="0">
+            <tr>
+                <td class="py-0.5 text-[10px] text-gray-500">No. Resep / Tanggal</td>
+                <td class="py-0.5 text-[10px] px-1">:</td>
+                <td class="py-0.5 text-[10px] font-bold text-gray-900">
                     {{ $dataDaftarPoliRJ['rjNo'] ?? '-' }} / {{ $dataDaftarPoliRJ['rjDate'] ?? '-' }}
                     @if ($dataDaftarPoliRJ['statusPRB']['penanggungJawab']['statusPRB'] ?? false)
                         <span style="color:#dc2626"> PRB</span>
@@ -35,31 +51,34 @@
                 </td>
             </tr>
             <tr>
-                <td class="py-0.5 text-[11px] text-gray-500 whitespace-nowrap">Klaim / Poli</td>
-                <td class="py-0.5 text-[11px] px-1">:</td>
-                <td class="py-0.5 text-[11px] font-bold">
+                <td class="py-0.5 text-[10px] text-gray-500">Klaim / Poli</td>
+                <td class="py-0.5 text-[10px] px-1">:</td>
+                <td class="py-0.5 text-[10px] font-bold">
                     <span class="font-bold {{ $klaimClass }}">{{ $klaim->klaim_desc ?? 'Asuransi Lain' }}</span>
                     / {{ $dataDaftarPoliRJ['poliDesc'] ?? '-' }}
                 </td>
             </tr>
             <tr>
-                <td class="py-0.5 text-[11px] text-gray-500 whitespace-nowrap">NIK / Id BPJS</td>
-                <td class="py-0.5 text-[11px] px-1">:</td>
-                <td class="py-0.5 text-[11px] text-gray-900">
+                <td class="py-0.5 text-[10px] text-gray-500">NIK / Id BPJS</td>
+                <td class="py-0.5 text-[10px] px-1">:</td>
+                <td class="py-0.5 text-[10px] text-gray-900">
                     {{ $dataPasien['pasien']['identitas']['nik'] ?? '-' }}
                     / {{ $dataPasien['pasien']['identitas']['idbpjs'] ?? '-' }}
                 </td>
             </tr>
             @if ($isBpjs)
                 <tr>
-                    <td class="py-0.5 text-[11px] text-gray-500 whitespace-nowrap">No SEP</td>
-                    <td class="py-0.5 text-[11px] px-1">:</td>
-                    <td class="py-0.5 text-[11px] font-bold tracking-wide text-gray-900">
+                    <td class="py-0.5 text-[10px] text-gray-500">No SEP</td>
+                    <td class="py-0.5 text-[10px] px-1">:</td>
+                    <td class="py-0.5 text-[10px] font-bold tracking-wide text-gray-900">
                         {{ $dataDaftarPoliRJ['sep']['noSep'] ?? '-' }}
                     </td>
                 </tr>
             @endif
-        </x-pdf.identitas-pasien>
+                    </table>
+                </td>
+            </tr>
+        </table>
     </x-slot>
 
     {{-- KONTEN UTAMA: Obat (kiri) + Telaah (kanan) --}}
