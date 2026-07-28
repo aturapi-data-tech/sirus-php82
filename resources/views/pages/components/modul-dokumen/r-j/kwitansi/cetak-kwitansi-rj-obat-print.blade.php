@@ -19,12 +19,12 @@
                     :tglLahir="$data['birthDate'] ?? null"
                     :umur="$data['umur'] ?? null"
                     :alamat="$data['address'] ?? null"
-                    textClass="text-[13px]"
+                    textClass="text-[14px]"
                     class="w-full">
                     <tr>
-                        <td class="py-0.5 text-[13px] text-gray-500 whitespace-nowrap">No. Rawat Jalan</td>
-                        <td class="py-0.5 text-[13px] px-1">:</td>
-                        <td class="py-0.5 text-[13px] font-bold">{{ $data['rjNo'] ?? '-' }}</td>
+                        <td class="py-0.5 text-[14px] text-gray-500 whitespace-nowrap">No. Rawat Jalan</td>
+                        <td class="py-0.5 text-[14px] px-1">:</td>
+                        <td class="py-0.5 text-[14px] font-bold">{{ $data['rjNo'] ?? '-' }}</td>
                     </tr>
                 </x-pdf.identitas-pasien>
             </td>
@@ -32,24 +32,24 @@
             <td class="w-1/2 align-top pl-4">
                 <table class="w-full" cellpadding="0" cellspacing="0">
                     <tr>
-                        <td class="py-0.5 text-[13px] text-gray-500 whitespace-nowrap">Tgl. Rawat Jalan</td>
-                        <td class="py-0.5 text-[13px] px-1">:</td>
-                        <td class="py-0.5 text-[13px] font-bold">{{ $data['rjDate'] ?? '-' }}</td>
+                        <td class="py-0.5 text-[14px] text-gray-500 whitespace-nowrap">Tgl. Rawat Jalan</td>
+                        <td class="py-0.5 text-[14px] px-1">:</td>
+                        <td class="py-0.5 text-[14px] font-bold">{{ $data['rjDate'] ?? '-' }}</td>
                     </tr>
                     <tr>
-                        <td class="py-0.5 text-[13px] text-gray-500 whitespace-nowrap">Poli / Klinik</td>
-                        <td class="py-0.5 text-[13px] px-1">:</td>
-                        <td class="py-0.5 text-[13px]">{{ $data['poliName'] ?? '-' }}</td>
+                        <td class="py-0.5 text-[14px] text-gray-500 whitespace-nowrap">Poli / Klinik</td>
+                        <td class="py-0.5 text-[14px] px-1">:</td>
+                        <td class="py-0.5 text-[14px]">{{ $data['poliName'] ?? '-' }}</td>
                     </tr>
                     <tr>
-                        <td class="py-0.5 text-[13px] text-gray-500 whitespace-nowrap align-top">Dokter</td>
-                        <td class="py-0.5 text-[13px] px-1 align-top">:</td>
-                        <td class="py-0.5 text-[13px]">{{ $data['drName'] ?? '-' }}</td>
+                        <td class="py-0.5 text-[14px] text-gray-500 whitespace-nowrap align-top">Dokter</td>
+                        <td class="py-0.5 text-[14px] px-1 align-top">:</td>
+                        <td class="py-0.5 text-[14px]">{{ $data['drName'] ?? '-' }}</td>
                     </tr>
                     <tr>
-                        <td class="py-0.5 text-[13px] text-gray-500 whitespace-nowrap">Jenis Pembayaran</td>
-                        <td class="py-0.5 text-[13px] px-1">:</td>
-                        <td class="py-0.5 text-[13px]">{{ $data['klaimName'] ?? '-' }}</td>
+                        <td class="py-0.5 text-[14px] text-gray-500 whitespace-nowrap">Jenis Pembayaran</td>
+                        <td class="py-0.5 text-[14px] px-1">:</td>
+                        <td class="py-0.5 text-[14px]">{{ $data['klaimName'] ?? '-' }}</td>
                     </tr>
                 </table>
             </td>
@@ -59,7 +59,7 @@
     {{-- ══════════════════════════════════════
          TABEL RINCIAN OBAT
     ══════════════════════════════════════ --}}
-    <table class="w-full mb-1 text-[13px]" cellpadding="0" cellspacing="0">
+    <table class="w-full mb-1 text-[14px]" cellpadding="0" cellspacing="0">
         <thead>
             <tr class="border-b border-t border-gray-400">
                 <th class="py-1 text-left font-semibold text-gray-900 w-8">No.</th>
@@ -176,7 +176,7 @@
     {{-- ══════════════════════════════════════
          TANDA TANGAN
     ══════════════════════════════════════ --}}
-    <table class="w-full mt-4 text-[13px]" cellpadding="0" cellspacing="0">
+    <table class="w-full mt-4 text-[14px]" cellpadding="0" cellspacing="0">
         <tr>
             <td class="w-5/12 text-center align-bottom">
                 <p class="mb-16 text-gray-700">Petugas Farmasi</p>
