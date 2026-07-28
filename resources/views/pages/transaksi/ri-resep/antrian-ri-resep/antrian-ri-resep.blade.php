@@ -557,15 +557,16 @@ new class extends Component {
 
                                             {{-- Masuk / Keluar Apotek (TaskID 6/7 components — pola UGD) --}}
                                             <div class="grid grid-cols-2 gap-1">
+                                                @hasanyrole('Apoteker|Admin')
                                                 {{-- Tombol di sini; logika di komponen host task-id-apotek-actions (mount 1×).
                                                      wire:click="$dispatch(...)" = aksi Livewire (BUKAN Alpine) → host tangkap
                                                      via #[On]. Nol komponen Livewire per baris. Redup dari $row->task_id6/7. --}}
-                                                <x-primary-button type="button"
+                                                <x-success-button type="button"
                                                     wire:click="$dispatch('task-id-apotek-proses-ri', { slsNo: {{ $row->sls_no }}, aksi: '6' })"
                                                     class="!px-4 !py-2 text-sm {{ $row->task_id6 ? '!opacity-60' : '' }}"
                                                     title="{{ $row->task_id6 ? 'Sudah dijalankan, klik untuk update' : 'Klik untuk mencatat TaskId6 (Masuk Apotek)' }}">
                                                     TaskId6
-                                                </x-primary-button>
+                                                </x-success-button>
 
                                                 <x-primary-button type="button"
                                                     wire:click="$dispatch('task-id-apotek-proses-ri', { slsNo: {{ $row->sls_no }}, aksi: '7' })"
@@ -573,6 +574,7 @@ new class extends Component {
                                                     title="{{ $row->task_id7 ? 'Sudah dijalankan, klik untuk update' : 'Klik untuk mencatat TaskId7 (Keluar Apotek)' }}">
                                                     TaskId7
                                                 </x-primary-button>
+                                                @endhasanyrole
                                             </div>
 
                                             {{-- Telaah Resep & Obat --}}
