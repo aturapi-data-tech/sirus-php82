@@ -390,7 +390,10 @@ new class extends Component {
                 $this->appendAdminLogUGD($this->rjNo, 'Batal Transaksi Pembayaran');
             });
 
-            $this->txnStatus = null;
+            // Samakan dengan yang barusan ditulis ke DB (rj_status = 'A'), BUKAN null.
+            // Tombol "Batal Transaksi" (A → F) digerbangi $txnStatus === 'A'; kalau di sini
+            // di-null-kan, tombol itu hilang sampai modal dibuka ulang.
+            $this->txnStatus = 'A';
             $this->rjDiskon = 0;
             $this->accId = null;
             $this->accName = null;
@@ -938,10 +941,16 @@ new class extends Component {
             @if ($txnStatus === 'A')
                 @hasanyrole(['Admin', 'Supervisor Tu'])
                     <div class="pt-4 mt-4 border-t border-hairline dark:border-gray-700">
-                        <p class="mb-2 text-[11px] text-gray-500 dark:text-gray-400">
-                            Batalkan transaksi UGD (status jadi <span class="font-semibold">Batal/F</span>) —
-                            hanya bila belum ada transaksi layanan. Task ID 99 (BPJS) terpisah &amp; tak terpengaruh.
-                        </p>
+                        <div class="flex items-start gap-2 px-3 py-2 mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300">
+                            <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div>
+                                <p class="font-semibold">Batalkan transaksi UGD (status jadi Batal/F)</p>
+                                <p class="mt-0.5">Hanya bila belum ada transaksi layanan. Task ID 99 (BPJS) terpisah &amp; tak terpengaruh.</p>
+                            </div>
+                        </div>
                         <div class="flex justify-end">
                             <x-confirm-button variant="danger" :action="'batalKunjungan()'" title="Batal Transaksi UGD"
                                 message="Batalkan transaksi UGD ini? Status akan menjadi BATAL (F). Hanya berhasil jika belum ada transaksi layanan apa pun."

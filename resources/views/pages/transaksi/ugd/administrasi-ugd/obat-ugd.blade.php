@@ -475,8 +475,9 @@ new class extends Component {
                 </div>
                 <div class="w-28">
                     <x-input-label value="Harga" class="mb-1" />
-                    <x-text-input wire:model="formEntryObat.price" placeholder="Harga" class="w-full text-sm"
-                        x-ref="inputHarga" x-on:keyup.enter="$nextTick(() => $refs.inputCarapakai?.focus())" />
+                    <x-text-input-number wire:model="formEntryObat.price" placeholder="Harga"
+                        class="text-sm" x-ref="inputHarga"
+                        x-on:keydown.enter.prevent="$el.blur(); $nextTick(() => $refs.inputCarapakai?.focus())" />
                     <x-input-error :messages="$errors->get('formEntryObat.price')" class="mt-1" />
                 </div>
                 <div class="w-16">
@@ -530,18 +531,8 @@ new class extends Component {
                         <option value="1">Sudah</option>
                     </x-select-input>
                 </div>
-                <div class="flex gap-2 pb-0.5 shrink-0">
-                    <button type="button" wire:click.prevent="insertObat" wire:loading.attr="disabled"
-                        wire:target="insertObat"
-                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-brand-green hover:bg-brand-green/90 disabled:opacity-60 dark:bg-brand-lime dark:text-gray-900 transition shadow-sm">
-                        <span wire:loading.remove wire:target="insertObat"><svg class="w-4 h-4" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 4v16m8-8H4" />
-                            </svg></span>
-                        <span wire:loading wire:target="insertObat"><x-loading class="w-4 h-4" /></span>
-                        Tambah
-                    </button>
+                <div class="flex items-center gap-2 pb-0.5 shrink-0">
+                    <span class="text-xs text-muted dark:text-gray-400 whitespace-nowrap">Enter = simpan</span>
                     <button type="button" wire:click.prevent="resetFormEntry"
                         class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-muted dark:text-gray-300 bg-canvas dark:bg-gray-800 border border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-700 transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

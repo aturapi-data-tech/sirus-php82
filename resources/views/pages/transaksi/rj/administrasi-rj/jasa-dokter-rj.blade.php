@@ -442,30 +442,17 @@ new class extends Component {
                         <x-input-error :messages="$message" class="mt-1" />
                     @enderror
                 </div>
-                <div class="w-40">
+                <div class="w-40" x-data x-init="$nextTick(() => { $refs.inputTarif?.focus(); $refs.inputTarif?.select(); })">
                     <x-input-label value="Tarif" class="mb-1" />
-                    <x-text-input wire:model="formEntryJasaDokter.jasaDokterPrice" placeholder="Tarif"
-                        class="w-full text-sm" x-ref="inputTarif" x-init="$nextTick(() => $refs.inputTarif?.focus())"
+                    <x-text-input-number wire:model="formEntryJasaDokter.jasaDokterPrice" placeholder="Tarif"
+                        class="text-sm" x-ref="inputTarif"
                         x-on:keydown.enter.prevent="$el.blur(); $wire.insertJasaDokter().then(() => { $refs.inputTarif?.focus(); $refs.inputTarif?.select(); })" />
                     @error('formEntryJasaDokter.jasaDokterPrice')
                         <x-input-error :messages="$message" class="mt-1" />
                     @enderror
                 </div>
-                <div class="flex gap-2 pb-0.5">
-                    <button type="button" wire:click.prevent="insertJasaDokter" wire:loading.attr="disabled"
-                        wire:target="insertJasaDokter"
-                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold
-                            text-white bg-brand-green hover:bg-brand-green/90 disabled:opacity-60
-                            dark:bg-brand-lime dark:text-gray-900 transition shadow-sm">
-                        <span wire:loading.remove wire:target="insertJasaDokter">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 4v16m8-8H4" />
-                            </svg>
-                        </span>
-                        <span wire:loading wire:target="insertJasaDokter"><x-loading class="w-4 h-4" /></span>
-                        Tambah
-                    </button>
+                <div class="flex items-center gap-2 pb-0.5">
+                    <span class="text-xs text-muted dark:text-gray-400 whitespace-nowrap">Enter = simpan</span>
                     <button type="button" wire:click.prevent="resetFormEntry"
                         class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium
                             text-muted dark:text-gray-300 bg-canvas dark:bg-gray-800
