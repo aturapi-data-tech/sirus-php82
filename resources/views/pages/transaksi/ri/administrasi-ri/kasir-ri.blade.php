@@ -824,77 +824,62 @@ new class extends Component {
             @endforeach
         </div>
 
-        {{-- Summary row --}}
-        <div class="flex items-stretch gap-3">
-            <div class="flex-1 px-4 py-3 bg-canvas border border-hairline rounded-xl dark:bg-gray-900 dark:border-gray-700">
-                <p class="text-xs text-muted dark:text-gray-400 mb-0.5">Total Tagihan</p>
-                <p class="text-base font-bold text-ink dark:text-gray-100">Rp {{ number_format($totalAll) }}</p>
+        {{-- Ringkasan — dibaca dari atas ke bawah: Subtotal → Diskon → Total → Dibayar → Sisa --}}
+        <dl class="w-full max-w-md divide-y divide-hairline dark:divide-gray-700">
+
+            <div class="flex items-center justify-between gap-4 py-2.5">
+                <dt class="text-base text-muted dark:text-gray-400">Subtotal Biaya</dt>
+                <dd class="text-2xl font-bold text-ink dark:text-gray-100">Rp {{ number_format($totalAll) }}</dd>
+            </div>
+
+            <div class="flex items-center justify-between gap-4 py-2.5">
+                <dt class="text-base font-semibold text-amber-700 dark:text-amber-400">
+                    Diskon @if (!$isFormLocked)
+                        <span class="text-xs font-normal opacity-70">(dapat diubah)</span>
+                    @endif
+                </dt>
+                <dd class="w-48 text-right">
+                    @if (!$isFormLocked)
+                        <x-text-input-number wire:model="riDiskon" placeholder="0"
+                            :error="$errors->has('riDiskon')" x-ref="inputDiskonRi" class="text-2xl font-bold" />
+                    @else
+                        <span class="text-2xl font-bold text-amber-700 dark:text-amber-300">Rp
+                            {{ number_format($riDiskon) }}</span>
+                    @endif
+                </dd>
+            </div>
+
+            <div class="flex items-center justify-between gap-4 py-2.5">
+                <dt class="text-base font-bold text-blue-700 dark:text-blue-300">Total Tagihan</dt>
+                <dd class="text-2xl font-bold text-blue-700 dark:text-blue-300">Rp
+                    {{ number_format($totalSetelahDiskon) }}</dd>
             </div>
 
             @if ($angsuranAwal > 0)
-                <div class="flex items-center text-gray-300 dark:text-gray-600">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                </div>
-                <div class="flex-1 px-4 py-3 border border-violet-200 rounded-xl dark:border-violet-800/40 bg-violet-50 dark:bg-violet-900/10">
-                    <p class="text-xs text-violet-600 dark:text-violet-400 mb-0.5">Angsuran Awal</p>
-                    <p class="text-base font-bold text-violet-700 dark:text-violet-300">Rp {{ number_format($angsuranAwal) }}</p>
+                <div class="flex items-center justify-between gap-4 py-2.5">
+                    <dt class="text-base text-muted dark:text-gray-400">Dibayar <span
+                            class="text-xs font-normal opacity-70">(angsuran awal)</span></dt>
+                    <dd class="text-2xl font-bold text-ink dark:text-gray-100">Rp
+                        {{ number_format($angsuranAwal) }}</dd>
                 </div>
             @endif
 
-            <div class="flex items-center text-gray-300 dark:text-gray-600">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-            </div>
-
-            <div class="flex-1 px-4 py-3 border border-amber-200 rounded-xl dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10">
-                <p class="mb-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-                    Diskon @if (!$isFormLocked)<span class="opacity-60">(dapat diubah)</span>@endif
-                </p>
-                @if (!$isFormLocked)
-                    <x-text-input wire:model.live="riDiskon" type="number" min="0"
-                        class="w-full px-0 py-0 text-base font-bold text-amber-700 bg-transparent border-0
-                            dark:text-amber-300 focus:ring-0 focus:outline-none
-                            [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none
-                            [&::-webkit-inner-spin-button]:appearance-none"
-                        placeholder="0" />
-                    <x-input-error :messages="$errors->get('riDiskon')" class="mt-1" />
-                @else
-                    <p class="text-base font-bold text-amber-700 dark:text-amber-300">Rp {{ number_format($riDiskon) }}</p>
-                @endif
-            </div>
-
-            <div class="flex items-center text-gray-300 dark:text-gray-600">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-            </div>
-
-            <div class="flex-1 px-4 py-3 border border-blue-200 rounded-xl dark:border-blue-800/40 bg-blue-50 dark:bg-blue-900/10">
-                <p class="text-xs text-blue-600 dark:text-blue-400 mb-0.5">Setelah Diskon</p>
-                <p class="text-base font-bold text-blue-700 dark:text-blue-300">Rp {{ number_format($totalSetelahDiskon) }}</p>
-            </div>
-
-            <div class="flex items-center text-gray-300 dark:text-gray-600">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-            </div>
-
-            <div class="flex-1 px-4 py-3 border rounded-xl
-                {{ $sisaTagihan > 0
-                    ? 'border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-900/10'
-                    : 'border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-900/10' }}">
-                <p class="text-xs mb-0.5 {{ $sisaTagihan > 0 ? 'text-error dark:text-rose-400' : 'text-success dark:text-success' }}">
+            <div class="flex items-center justify-between gap-4 py-2.5">
+                <dt
+                    class="text-base font-bold {{ $sisaTagihan > 0 ? 'text-error dark:text-rose-400' : 'text-success dark:text-success' }}">
                     Sisa Tagihan
-                </p>
-                <p class="text-base font-bold {{ $sisaTagihan > 0 ? 'text-error dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300' }}">
+                </dt>
+                <dd
+                    class="text-2xl font-bold {{ $sisaTagihan > 0 ? 'text-error dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300' }}">
                     Rp {{ number_format($sisaTagihan) }}
-                </p>
+                </dd>
             </div>
-        </div>
+
+        </dl>
+
+        @error('riDiskon')
+            <x-input-error :messages="$message" class="mt-1" />
+        @enderror
     </div>
 
     @if (!$isFormLocked)
@@ -950,7 +935,17 @@ new class extends Component {
         {{-- STEP 2 — PEMBAYARAN --}}
         <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40"
             x-data
-            x-on:focus-input-bayar-ri.window="$nextTick(() => $refs.inputBayarRI?.focus())">
+            x-on:focus-input-bayar-ri.window="$nextTick(() => {
+                const fokus = () => {
+                    const el = $refs.inputBayarRI;
+                    if (!el || el === document.activeElement) return;
+                    if (document.activeElement?.matches('input, select, textarea')) return;
+                    el.focus();
+                    el.select?.();
+                };
+                fokus();
+                setTimeout(fokus, 150);
+            })">
 
             <div class="flex items-center gap-2 mb-3">
                 <span class="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white rounded-full
@@ -1024,19 +1019,25 @@ new class extends Component {
 
             </div>
 
-            {{-- Kembalian / Kurang Bayar --}}
-            @if ($tglPulangSudahDiproses)
-                @if ((int) ($bayar ?? 0) >= $sisaTagihan && $sisaTagihan > 0)
-                    <div class="mt-3 px-4 py-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-900/10">
-                        <p class="text-xs font-medium text-success dark:text-success">Kembalian</p>
-                        <p class="text-lg font-bold text-emerald-700 dark:text-emerald-300">Rp {{ number_format($kembalian) }}</p>
+            {{-- Hasil dari nominal yang diketik: kurang (jadi bon) / pas / kembalian --}}
+            @if ($tglPulangSudahDiproses && (int) ($bayar ?? 0) > 0)
+                @php $selisih = (int) ($bayar ?? 0) - $sisaTagihan; @endphp
+                <dl class="max-w-md mt-3 border-t border-hairline dark:border-gray-700">
+                    <div class="flex items-center justify-between gap-4 py-2.5">
+                        @if ($selisih < 0)
+                            <dt class="text-base font-bold text-error dark:text-rose-400">Kurang Bayar (jadi Bon)</dt>
+                            <dd class="text-2xl font-bold text-error dark:text-rose-300">Rp
+                                {{ number_format(abs($selisih)) }}</dd>
+                        @elseif ($selisih === 0)
+                            <dt class="text-base font-bold text-success dark:text-success">Pas — Lunas</dt>
+                            <dd class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">Rp 0</dd>
+                        @else
+                            <dt class="text-base font-bold text-success dark:text-success">Kembalian</dt>
+                            <dd class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">Rp
+                                {{ number_format($kembalian) }}</dd>
+                        @endif
                     </div>
-                @elseif ((int) ($bayar ?? 0) > 0 && (int) ($bayar ?? 0) < $sisaTagihan)
-                    <div class="mt-3 px-4 py-2.5 rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10">
-                        <p class="text-xs font-medium text-amber-600 dark:text-amber-400">Kurang Bayar (Bon)</p>
-                        <p class="text-lg font-bold text-amber-700 dark:text-amber-300">Rp {{ number_format($sisaTagihan - (int) ($bayar ?? 0)) }}</p>
-                    </div>
-                @endif
+                </dl>
             @endif
 
             {{-- Badge status pembayaran --}}
@@ -1057,8 +1058,8 @@ new class extends Component {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span class="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                            Pembayaran akan diproses sebagai BON/HUTANG — sisa Rp {{ number_format($sisaTagihan - (int) ($bayar ?? 0)) }}
+                        <span class="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                            Pembayaran akan diproses sebagai BON/HUTANG (masuk piutang pasien)
                         </span>
                     </div>
                 @endif
