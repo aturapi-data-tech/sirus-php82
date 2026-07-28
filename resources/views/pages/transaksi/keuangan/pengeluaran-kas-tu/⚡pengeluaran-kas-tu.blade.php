@@ -128,20 +128,18 @@ new class extends Component {
 
                     <div class="flex items-center justify-end gap-3">
                         {{-- Total periode — angka besar warna brand --}}
-                        <div class="px-4 py-2 border rounded-xl bg-brand-green/5 border-brand-green/25 dark:bg-brand-lime/10 dark:border-brand-lime/25">
-                            <div class="text-[11px] font-semibold tracking-wide uppercase text-muted dark:text-gray-400">
+                        <div class="flex items-center gap-2 px-4 py-2 border rounded-xl whitespace-nowrap bg-brand-green/5 border-brand-green/25 dark:bg-brand-lime/10 dark:border-brand-lime/25">
+                            <span class="text-[11px] font-semibold tracking-wide uppercase text-muted dark:text-gray-400">
                                 Total Periode {{ $filterBulan ?: 'semua' }}
-                            </div>
-                            <div class="flex items-center gap-2 mt-1">
-                                <svg class="w-6 h-6 shrink-0 text-brand-green dark:text-brand-lime" fill="none"
-                                    stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M3 10h18M7 15h2m4 0h4M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />
-                                </svg>
-                                <span class="text-2xl font-bold leading-none text-brand-green dark:text-brand-lime">
-                                    Rp {{ number_format($this->totalBulan) }}
-                                </span>
-                            </div>
+                            </span>
+                            <svg class="w-6 h-6 shrink-0 text-brand-green dark:text-brand-lime" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M3 10h18M7 15h2m4 0h4M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />
+                            </svg>
+                            <span class="text-2xl font-bold leading-none text-brand-green dark:text-brand-lime">
+                                Rp {{ number_format($this->totalBulan) }}
+                            </span>
                         </div>
 
                         <div class="w-28">
