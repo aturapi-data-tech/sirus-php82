@@ -1078,7 +1078,7 @@ new class extends Component {
 
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
-                <thead class="text-xs font-semibold text-muted uppercase dark:text-gray-400 bg-surface-soft dark:bg-gray-800/50">
+                <thead class="text-sm font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300 bg-surface-soft dark:bg-gray-800/50">
                     <tr>
                         <th class="px-4 py-3">Tanggal</th>
                         <th class="px-4 py-3">Akun Kas</th>
@@ -1089,16 +1089,16 @@ new class extends Component {
                 <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
                     @forelse ($payments as $pay)
                         <tr wire:key="kasir-ri-pay-{{ $pay->ripay_no ?? $loop->index }}" class="transition hover:bg-surface-soft dark:hover:bg-gray-800/40">
-                            <td class="px-4 py-3 text-muted dark:text-gray-400 whitespace-nowrap">
+                            <td class="px-4 py-1.5 text-muted dark:text-gray-400 whitespace-nowrap">
                                 {{ Carbon::parse($pay->ripay_date)->format('d/m/Y') }}
                             </td>
-                            <td class="px-4 py-3 font-mono text-xs text-muted dark:text-gray-400">
+                            <td class="px-4 py-1.5 font-mono text-sm text-muted dark:text-gray-400">
                                 {{ $pay->acc_id ?? '-' }}
                             </td>
-                            <td class="px-4 py-3 text-muted dark:text-gray-400">
+                            <td class="px-4 py-1.5 text-muted dark:text-gray-400">
                                 {{ $pay->emp_id ?? '-' }}
                             </td>
-                            <td class="px-4 py-3 font-semibold text-right text-ink dark:text-gray-200 whitespace-nowrap">
+                            <td class="px-4 py-1.5 font-semibold text-right text-ink dark:text-gray-200 whitespace-nowrap">
                                 Rp {{ number_format($pay->ripay_bayar) }}
                             </td>
                         </tr>

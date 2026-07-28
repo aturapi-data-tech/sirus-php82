@@ -348,7 +348,10 @@ new class extends Component {
 };
 ?>
 
-<div class="space-y-4" wire:key="room-ri-{{ $riHdrNo ?? 'new' }}">
+{{-- Tab baca-saja: panel dibuat fokusable supaya rantai Enter antar-tab tidak putus di sini. --}}
+<div class="space-y-4 outline-none" tabindex="-1" x-data wire:key="room-ri-{{ $riHdrNo ?? 'new' }}"
+    x-on:focus-panel-room-ri.window="$nextTick(() => setTimeout(() => $el.focus(), 150))"
+    x-on:keydown.enter="$dispatch('administrasi-ri-goto-tab', { tab: 'RiBonResep', focus: 'focus-panel-bon-resep-ri' })">
 
     {{-- LOCKED BANNER --}}
     @if ($isFormLocked)
@@ -434,7 +437,7 @@ new class extends Component {
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
-                <thead class="text-xs font-semibold text-muted uppercase dark:text-gray-400 bg-surface-soft dark:bg-gray-800/50">
+                <thead class="text-sm font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300 bg-surface-soft dark:bg-gray-800/50">
                     <tr>
                         <th class="px-4 py-3">Status</th>
                         <th class="px-4 py-3">Kamar / Bed</th>
@@ -461,14 +464,14 @@ new class extends Component {
                                 : '';
                         @endphp
                         <tr wire:key="room-ri-{{ $item['trfr_no'] ?? $loop->index }}" class="transition {{ $isActive ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : 'hover:bg-surface-soft dark:hover:bg-gray-800/40' }}">
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-1.5">
                                 @if ($isActive)
                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-200">Aktif</span>
                                 @else
                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-soft text-muted dark:bg-gray-800 dark:text-gray-400">Selesai</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-3 whitespace-nowrap">
+                            <td class="px-4 py-1.5 whitespace-nowrap">
                                 <div class="text-sm font-semibold text-ink dark:text-gray-200 leading-tight">
                                     {{ $item['room_name'] ?? $item['room_id'] }}
                                 </div>
@@ -477,7 +480,7 @@ new class extends Component {
                                     <span class="ml-1 font-mono text-[10px] text-muted-soft">· {{ $item['room_id'] }}</span>
                                 </div>
                             </td>
-                            <td class="px-4 py-3 whitespace-nowrap">
+                            <td class="px-4 py-1.5 whitespace-nowrap">
                                 @if (!$isFormLocked)
                                     <input type="text" value="{{ $item['start_date'] }}"
                                         placeholder="dd/mm/yyyy hh:mm:ss"
@@ -487,7 +490,7 @@ new class extends Component {
                                     <span class="font-mono text-xs text-muted">{{ $item['start_date'] ?? '-' }}</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-3 whitespace-nowrap">
+                            <td class="px-4 py-1.5 whitespace-nowrap">
                                 @if (!$isFormLocked)
                                     {{-- dikosongkan = kamar jadi aktif kembali --}}
                                     <input type="text" value="{{ $item['end_date'] }}"
@@ -498,7 +501,7 @@ new class extends Component {
                                     <span class="font-mono text-xs text-muted">{{ $item['end_date'] ?? '—' }}</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-right text-body dark:text-gray-300">
+                            <td class="px-4 py-1.5 text-right text-body dark:text-gray-300">
                                 @if (!$isFormLocked)
                                     <input type="number" min="0"
                                         value="{{ $day }}"
@@ -509,7 +512,7 @@ new class extends Component {
                                     {{ $day }}
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-right text-muted dark:text-gray-400 whitespace-nowrap">
+                            <td class="px-4 py-1.5 text-right text-muted dark:text-gray-400 whitespace-nowrap">
                                 @if (!$isFormLocked)
                                     <x-text-input-number
                                         id="harga-kamar-{{ $item['trfr_no'] }}"
@@ -520,7 +523,7 @@ new class extends Component {
                                     Rp {{ number_format($item['room_price'] ?? 0) }}
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-right text-muted dark:text-gray-400 whitespace-nowrap">
+                            <td class="px-4 py-1.5 text-right text-muted dark:text-gray-400 whitespace-nowrap">
                                 @if (!$isFormLocked)
                                     <x-text-input-number
                                         id="harga-prwtn-{{ $item['trfr_no'] }}"
@@ -531,7 +534,7 @@ new class extends Component {
                                     Rp {{ number_format($item['perawatan_price'] ?? 0) }}
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-right text-muted dark:text-gray-400 whitespace-nowrap">
+                            <td class="px-4 py-1.5 text-right text-muted dark:text-gray-400 whitespace-nowrap">
                                 @if (!$isFormLocked)
                                     <x-text-input-number
                                         id="harga-cs-{{ $item['trfr_no'] }}"
@@ -542,22 +545,19 @@ new class extends Component {
                                     Rp {{ number_format($item['common_service'] ?? 0) }}
                                 @endif
                             </td>
-                            <td class="px-4 py-3 font-semibold text-right text-ink dark:text-gray-200 whitespace-nowrap">
+                            <td class="px-4 py-1.5 font-semibold text-right text-ink dark:text-gray-200 whitespace-nowrap">
                                 Rp {{ number_format($subtotal) }}
                             </td>
                             @if (!$isFormLocked)
-                                <td class="px-4 py-3 text-center">
-                                    <x-outline-button type="button"
-                                        wire:click.prevent="removeRoom({{ $item['trfr_no'] }})"
+                                <td class="px-4 py-1.5 text-center">
+                                    <x-icon-button color="red" type="button" wire:click.prevent="removeRoom({{ $item['trfr_no'] }})"
                                         wire:confirm="Hapus data kamar ini?"
-                                        wire:loading.attr="disabled"
-                                        wire:target="removeRoom({{ $item['trfr_no'] }})"
-                                        class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300" title="Hapus">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        wire:loading.attr="disabled" wire:target="removeRoom({{ $item['trfr_no'] }})" title="Hapus">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
-                                    </x-outline-button>
+                                    </x-icon-button>
                                 </td>
                             @endif
                         </tr>

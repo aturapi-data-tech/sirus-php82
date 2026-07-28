@@ -93,6 +93,11 @@ new class extends Component {
 
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'emr-ri-administrasi');
+
+        // Mode entry → kursor langsung ke pencarian tab pertama (Visit).
+        if (!$this->isFormLocked) {
+            $this->dispatch('focus-lov-visit-ri');
+        }
     }
 
     /* ===============================
@@ -372,6 +377,14 @@ new class extends Component {
 
                     {{-- SUB-TAB --}}
                     <div x-data="{ tab: @entangle('activeTabAdministrasi') }"
+                        x-on:administrasi-ri-goto-tab.window="
+                            const tujuan = $event.detail;
+                            // Lepas fokus dari field asal, kalau tidak penjaga anti-rebut
+                            // di tab tujuan menganggap user sedang mengetik dan membatalkan diri.
+                            document.activeElement?.blur();
+                            tab = tujuan.tab;
+                            if (tujuan.focus) setTimeout(() => window.dispatchEvent(new CustomEvent(tujuan.focus)), 120);
+                        "
                         class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
 
                         {{-- Tab Nav --}}

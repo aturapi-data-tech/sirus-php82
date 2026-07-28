@@ -237,119 +237,136 @@ new class extends Component {
         </div>
     @endif
 
-    @if (!$isFormLocked)
-        <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40"
-            x-data
-            x-on:focus-input-konsul-price.window="$nextTick(() => $refs.inputKonsulPrice?.focus())"
-            x-on:focus-lov-konsul-ri.window="$nextTick(() => $refs.lovKonsul?.querySelector('input')?.focus())">
+    {{-- Kiri: form entri · Kanan: daftar data --}}
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
+        @if (!$isFormLocked)
+            <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40"
+                x-data
+                x-on:focus-input-konsul-price.window="$nextTick(() => $refs.inputKonsulPrice?.focus())"
+                x-on:focus-lov-konsul-ri.window="$nextTick(() => {
+                const fokus = () => {
+                    const el = $refs.lovKonsul?.querySelector('input');
+                    if (!el || el === document.activeElement) return;
+                    if (document.activeElement?.matches('input, select, textarea')) return;
+                    el.focus();
+                };
+                fokus();
+                setTimeout(fokus, 150);
+            })">
 
-            @if (empty($formEntry['drId']))
-                <div x-ref="lovKonsul">
-                    <livewire:lov.dokter.lov-dokter target="dokter-konsul-ri" label="Dokter Konsul"
-                        placeholder="Ketik kode/nama dokter..."
-                        wire:key="lov-dokter-konsul-{{ $riHdrNo }}-{{ $renderVersions['modal-konsul-ri'] ?? 0 }}" />
-                </div>
-            @else
-                <div class="grid grid-cols-4 gap-3 items-end">
-                    <div>
-                        <x-input-label value="Dokter" class="mb-1" />
-                        <x-text-input wire:model="formEntry.drName" disabled class="w-full text-sm" />
+                @if (empty($formEntry['drId']))
+                    {{-- Enter saat kolom cari masih kosong = selesai di tab ini → lompat ke tab berikutnya. --}}
+                <div x-ref="lovKonsul"
+                    x-on:keydown.enter="if (!$event.target.value?.trim()) $dispatch('administrasi-ri-goto-tab', { tab: 'RiJasaMedis', focus: 'focus-lov-jasa-medis-ri' })">
+                        <livewire:lov.dokter.lov-dokter target="dokter-konsul-ri" label="Dokter Konsul"
+                            placeholder="Ketik kode/nama dokter..."
+                            wire:key="lov-dokter-konsul-{{ $riHdrNo }}-{{ $renderVersions['modal-konsul-ri'] ?? 0 }}" />
                     </div>
-                    <div>
-                        <x-input-label value="Tanggal Konsul" class="mb-1" />
-                        <div class="flex gap-1">
-                            <x-text-input wire:model="formEntry.konsulDate" placeholder="dd/mm/yyyy hh:mm:ss"
-                                class="flex-1 text-sm font-mono min-w-0"
-                                x-on:keyup.enter="$refs.inputKonsulPrice?.focus()" />
-                            <button type="button" wire:click="refreshKonsulDate" title="Waktu sekarang"
-                                class="shrink-0 px-2 text-muted-soft hover:text-brand-green dark:hover:text-brand-lime transition">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                            </button>
+                @else
+                    <div class="grid grid-cols-4 gap-3 items-end">
+                        <div>
+                            <x-input-label value="Dokter" class="mb-1" />
+                            <x-text-input wire:model="formEntry.drName" disabled class="w-full text-sm" />
                         </div>
-                        @error('formEntry.konsulDate') <x-input-error :messages="$message" class="mt-1" /> @enderror
+                        <div>
+                            <x-input-label value="Tanggal Konsul" class="mb-1" />
+                            <div class="flex gap-1">
+                                <x-text-input wire:model="formEntry.konsulDate" placeholder="dd/mm/yyyy hh:mm:ss"
+                                    class="flex-1 text-sm font-mono min-w-0"
+                                    x-on:keyup.enter="$refs.inputKonsulPrice?.focus()" />
+                                <button type="button" wire:click="refreshKonsulDate" title="Waktu sekarang"
+                                    class="shrink-0 px-2 text-muted-soft hover:text-brand-green dark:hover:text-brand-lime transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                </button>
+                            </div>
+                            @error('formEntry.konsulDate') <x-input-error :messages="$message" class="mt-1" /> @enderror
+                        </div>
+                        <div>
+                            <x-input-label value="Tarif" class="mb-1" />
+                            <x-text-input-number wire:model="formEntry.konsulPrice"
+                                x-ref="inputKonsulPrice"
+                                x-on:keydown.enter.prevent="$el.blur(); $wire.insertKonsul()" />
+                            @error('formEntry.konsulPrice') <x-input-error :messages="$message" class="mt-1" /> @enderror
+                        </div>
+                        <div class="flex gap-2 items-end">
+                            <x-icon-button color="gray" type="button" wire:click.prevent="resetFormEntry"
+                                title="Batal — kosongkan form entri">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </x-icon-button>
+                        </div>
+                        {{-- Petunjuk cara simpan — tombol Simpan/Tambah ditiadakan --}}
+                        <p class="mt-3 text-xs text-muted dark:text-gray-400">
+                            Tekan <span class="px-1.5 py-0.5 font-semibold rounded border border-hairline bg-canvas text-body dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">Enter</span>
+                            di kolom terakhir untuk menyimpan.
+                        </p>
                     </div>
-                    <div>
-                        <x-input-label value="Tarif" class="mb-1" />
-                        <x-text-input-number wire:model="formEntry.konsulPrice"
-                            x-ref="inputKonsulPrice"
-                            x-on:keydown.enter.prevent="$el.blur(); $wire.insertKonsul()" />
-                        @error('formEntry.konsulPrice') <x-input-error :messages="$message" class="mt-1" /> @enderror
-                    </div>
-                    <div class="flex gap-2 items-end">
-                        <x-primary-button wire:click.prevent="insertKonsul" wire:loading.attr="disabled"
-                            wire:target="insertKonsul" class="flex-1 justify-center">
-                            <span wire:loading.remove wire:target="insertKonsul">Tambah</span>
-                            <span wire:loading wire:target="insertKonsul"><x-loading class="w-4 h-4" /></span>
-                        </x-primary-button>
-                        <x-secondary-button wire:click.prevent="resetFormEntry">Batal</x-secondary-button>
-                    </div>
-                </div>
-            @endif
-        </div>
-    @endif
-
-    <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-        <div class="flex items-center justify-between px-4 py-3 border-b border-hairline dark:border-gray-700">
-            <h3 class="text-sm font-semibold text-body dark:text-gray-300">Daftar Konsultasi</h3>
-            <x-badge variant="gray">{{ count($dataDaftarRI['RiKonsul'] ?? []) }} item</x-badge>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
-                <thead class="text-xs font-semibold text-muted uppercase dark:text-gray-400 bg-surface-soft dark:bg-gray-800/50">
-                    <tr>
-                        <th class="px-4 py-3">Tanggal</th>
-                        <th class="px-4 py-3">Dokter</th>
-                        <th class="px-4 py-3 text-right">Tarif</th>
-                        @if (!$isFormLocked) <th class="w-20 px-4 py-3 text-center">Hapus</th> @endif
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
-                    @forelse ($dataDaftarRI['RiKonsul'] ?? [] as $item)
-                        <tr wire:key="konsul-ri-{{ $item['konsul_no'] ?? $loop->index }}" class="transition hover:bg-surface-soft dark:hover:bg-gray-800/40">
-                            <td class="px-4 py-3 font-mono text-xs text-muted whitespace-nowrap">{{ $item['konsul_date'] ?? '-' }}</td>
-                            <td class="px-4 py-3 text-ink dark:text-gray-200 whitespace-nowrap">{{ $item['dr_name'] ?? '-' }}</td>
-                            <td class="px-4 py-3 font-semibold text-right text-ink dark:text-gray-200 whitespace-nowrap">
-                                Rp {{ number_format($item['konsul_price'] ?? 0) }}
-                            </td>
-                            @if (!$isFormLocked)
-                                <td class="px-4 py-3 text-center">
-                                    <x-outline-button type="button"
-                                        wire:click.prevent="removeKonsul({{ $item['konsul_no'] }})"
-                                        wire:confirm="Hapus konsultasi ini?" wire:loading.attr="disabled"
-                                        wire:target="removeKonsul({{ $item['konsul_no'] }})"
-                                        class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300" title="Hapus">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </x-outline-button>
-                                </td>
-                            @endif
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="{{ $isFormLocked ? 3 : 4 }}"
-                                class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
-                                Belum ada konsultasi
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-                @if (!empty($dataDaftarRI['RiKonsul']))
-                    <tfoot class="border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
-                        <tr>
-                            <td colspan="2" class="px-4 py-3 text-sm font-semibold text-muted dark:text-gray-400">Total</td>
-                            <td class="px-4 py-3 text-sm font-bold text-right text-ink dark:text-white">
-                                Rp {{ number_format(collect($dataDaftarRI['RiKonsul'])->sum('konsul_price')) }}
-                            </td>
-                            @if (!$isFormLocked) <td></td> @endif
-                        </tr>
-                    </tfoot>
                 @endif
-            </table>
+            </div>
+        @endif
+
+        <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-hairline dark:border-gray-700">
+                <h3 class="text-sm font-semibold text-body dark:text-gray-300">Daftar Konsultasi</h3>
+                <x-badge variant="gray">{{ count($dataDaftarRI['RiKonsul'] ?? []) }} item</x-badge>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-sm font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300 bg-surface-soft dark:bg-gray-800/50">
+                        <tr>
+                            <th class="px-4 py-3">Tanggal</th>
+                            <th class="px-4 py-3">Dokter</th>
+                            <th class="px-4 py-3 text-right">Tarif</th>
+                            @if (!$isFormLocked) <th class="w-20 px-4 py-3 text-center">Hapus</th> @endif
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
+                        @forelse ($dataDaftarRI['RiKonsul'] ?? [] as $item)
+                            <tr wire:key="konsul-ri-{{ $item['konsul_no'] ?? $loop->index }}" class="transition hover:bg-surface-soft dark:hover:bg-gray-800/40">
+                                <td class="px-4 py-1.5 font-mono text-sm text-muted whitespace-nowrap">{{ $item['konsul_date'] ?? '-' }}</td>
+                                <td class="px-4 py-1.5 text-ink dark:text-gray-200 whitespace-nowrap">{{ $item['dr_name'] ?? '-' }}</td>
+                                <td class="px-4 py-1.5 font-semibold text-right text-ink dark:text-gray-200 whitespace-nowrap">
+                                    Rp {{ number_format($item['konsul_price'] ?? 0) }}
+                                </td>
+                                @if (!$isFormLocked)
+                                    <td class="px-4 py-1.5 text-center">
+                                        <x-icon-button color="red" type="button" wire:click.prevent="removeKonsul({{ $item['konsul_no'] }})"
+                                            wire:confirm="Hapus konsultasi ini?"
+                                            wire:loading.attr="disabled" wire:target="removeKonsul({{ $item['konsul_no'] }})" title="Hapus">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </x-icon-button>
+                                    </td>
+                                @endif
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="{{ $isFormLocked ? 3 : 4 }}"
+                                    class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
+                                    Belum ada konsultasi
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                    @if (!empty($dataDaftarRI['RiKonsul']))
+                        <tfoot class="border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
+                            <tr>
+                                <td colspan="2" class="px-4 py-3 text-sm font-semibold text-muted dark:text-gray-400">Total</td>
+                                <td class="px-4 py-3 text-sm font-bold text-right text-ink dark:text-white">
+                                    Rp {{ number_format(collect($dataDaftarRI['RiKonsul'])->sum('konsul_price')) }}
+                                </td>
+                                @if (!$isFormLocked) <td></td> @endif
+                            </tr>
+                        </tfoot>
+                    @endif
+                </table>
+            </div>
         </div>
     </div>
 

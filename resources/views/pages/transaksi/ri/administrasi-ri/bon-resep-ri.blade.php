@@ -42,7 +42,10 @@ new class extends Component {
 };
 ?>
 
-<div class="space-y-4">
+{{-- Tab baca-saja: panel dibuat fokusable supaya rantai Enter antar-tab tidak putus di sini. --}}
+<div class="space-y-4 outline-none" tabindex="-1" x-data
+    x-on:focus-panel-bon-resep-ri.window="$nextTick(() => setTimeout(() => $el.focus(), 150))"
+    x-on:keydown.enter="$dispatch('administrasi-ri-goto-tab', { tab: 'RiRtnObat', focus: 'focus-lov-rtn-obat-ri' })">
     <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
         <div class="flex items-center justify-between px-4 py-3 border-b border-hairline dark:border-gray-700">
             <h3 class="text-sm font-semibold text-body dark:text-gray-300">Bon Resep</h3>
@@ -50,7 +53,7 @@ new class extends Component {
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
-                <thead class="text-xs font-semibold text-muted uppercase dark:text-gray-400 bg-surface-soft dark:bg-gray-800/50">
+                <thead class="text-sm font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300 bg-surface-soft dark:bg-gray-800/50">
                     <tr>
                         <th class="px-4 py-3">Tanggal</th>
                         <th class="px-4 py-3">No. SLS</th>
@@ -61,10 +64,10 @@ new class extends Component {
                 <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
                     @forelse ($dataBon as $item)
                         <tr wire:key="bon-resep-ri-{{ $item['sls_no'] ?? $loop->index }}" class="transition hover:bg-surface-soft dark:hover:bg-gray-800/40">
-                            <td class="px-4 py-3 font-mono text-xs text-muted whitespace-nowrap">{{ $item['ribon_date'] ?? '-' }}</td>
-                            <td class="px-4 py-3 font-mono text-xs text-muted dark:text-gray-400 whitespace-nowrap">{{ $item['sls_no'] ?? '-' }}</td>
-                            <td class="px-4 py-3 text-ink dark:text-gray-200">{{ $item['ribon_desc'] ?? '-' }}</td>
-                            <td class="px-4 py-3 font-semibold text-right text-ink dark:text-gray-200 whitespace-nowrap">
+                            <td class="px-4 py-1.5 font-mono text-sm text-muted whitespace-nowrap">{{ $item['ribon_date'] ?? '-' }}</td>
+                            <td class="px-4 py-1.5 font-mono text-sm text-muted dark:text-gray-400 whitespace-nowrap">{{ $item['sls_no'] ?? '-' }}</td>
+                            <td class="px-4 py-1.5 text-ink dark:text-gray-200">{{ $item['ribon_desc'] ?? '-' }}</td>
+                            <td class="px-4 py-1.5 font-semibold text-right text-ink dark:text-gray-200 whitespace-nowrap">
                                 Rp {{ number_format($item['ribon_price'] ?? 0) }}
                             </td>
                         </tr>
