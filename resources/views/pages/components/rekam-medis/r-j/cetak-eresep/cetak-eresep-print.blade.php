@@ -25,6 +25,13 @@
                     @if (($dataDaftarPoliRJ['statusResep']['status'] ?? null) === 'DITINGGAL')
                         <span style="color:#dc2626; font-size:14px; font-weight:bold"> Ditinggal</span>
                     @endif
+                    {{-- Iter — sumber sama dengan toggle "Status Iter" di modal e-resep
+                         (setStatusIter menulis flag ini ke JSON lalu sinkron ke
+                         rstxn_rjhdrs.status_iter). Detail per-obat & qty iter ada di
+                         dokumen terpisah cetak-resep-iter-rj. --}}
+                    @if ($dataDaftarPoliRJ['statusIter']['penanggungJawab']['statusIter'] ?? false)
+                        <span style="color:#dc2626"> Iter</span>
+                    @endif
                 </td>
             </tr>
             <tr>
