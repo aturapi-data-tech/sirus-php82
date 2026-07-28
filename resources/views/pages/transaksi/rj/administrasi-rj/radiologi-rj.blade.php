@@ -46,7 +46,10 @@ new class extends Component {
 };
 ?>
 
-<div class="space-y-4">
+{{-- Tab baca-saja: panel dibuat fokusable supaya rantai Enter antar-tab tidak putus di sini. --}}
+<div class="space-y-4 outline-none" tabindex="-1" x-data
+    x-on:focus-panel-radiologi-rj.window="$nextTick(() => setTimeout(() => $el.focus(), 150))"
+    x-on:keydown.enter="$dispatch('administrasi-rj-goto-tab', { tab: 'LainLain', focus: 'focus-lov-lainlain-rj' })">
     {{-- TABEL DATA (read-only) --}}
     <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
         <div class="flex items-center justify-between px-4 py-3 border-b border-hairline dark:border-gray-700">

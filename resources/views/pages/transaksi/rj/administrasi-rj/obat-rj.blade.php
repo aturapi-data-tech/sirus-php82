@@ -654,29 +654,66 @@ new class extends Component {
 
     {{-- FORM INPUT --}}
     <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40" x-data
-        x-on:focus-lov-obat-rj.window="$nextTick(() => $refs.lovObatRj?.querySelector('input')?.focus())"
+        x-on:focus-lov-obat-rj.window="$nextTick(() => {
+            const fokus = () => {
+                const el = $refs.lovObatRj?.querySelector('input');
+                if (!el || el === document.activeElement) return;
+                if (document.activeElement?.matches('input, select, textarea')) return;
+                el.focus();
+            };
+            fokus();
+            setTimeout(fokus, 150);
+        })"
         x-on:focus-input-qty-obat.window="$nextTick(() => { $refs.inputQty?.focus(); $refs.inputQty?.select(); })">
 
         @if ($isFormLocked)
             <p class="text-sm italic text-muted-soft dark:text-gray-600">Form input dinonaktifkan.</p>
         @elseif (empty($formEntryObat['productId']))
-            <div x-ref="lovObatRj">
+            {{-- Enter saat kolom cari masih kosong = selesai di tab ini → lompat ke Laboratorium. --}}
+            <div x-ref="lovObatRj"
+                x-on:keydown.enter="if (!$event.target.value?.trim()) $dispatch('administrasi-rj-goto-tab', { tab: 'Laboratorium', focus: 'focus-panel-laboratorium-rj' })">
                 <livewire:lov.product.lov-product target="obat-rj" label="Cari Obat"
                     placeholder="Ketik nama/kode/kandungan obat..."
                     wire:key="lov-obat-rj-{{ $rjNo }}-{{ $renderVersions['modal-obat-rj'] ?? 0 }}" />
             </div>
         @else
-            {{-- Baris 1 --}}
-            <div class="flex items-end gap-3 mb-3">
-                <div class="w-28">
-                    <x-input-label value="Kode" class="mb-1" />
-                    <x-text-input wire:model="formEntryObat.productId" disabled class="w-full text-sm" />
-                </div>
-                <div class="flex-1">
-                    <x-input-label value="Nama Obat" class="mb-1" />
-                    <x-text-input wire:model="formEntryObat.productName" disabled class="w-full text-sm" />
-                </div>
-                <div class="w-32">
+            {{-- Identitas obat terpilih (read-only, hasil pilih LOV) --}}
+            <div class="flex flex-wrap items-center mb-2 gap-x-3 gap-y-1">
+                <span
+                    class="px-2 py-0.5 text-xs font-mono rounded-md border border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-800 text-muted dark:text-gray-300">{{ $formEntryObat['productId'] }}</span>
+                <span
+                    class="text-sm font-semibold text-body dark:text-gray-100">{{ $formEntryObat['productName'] }}</span>
+
+                {{-- Indikator saldo apotek — live ketika qty berubah --}}
+                @if ($this->stokStatus !== 'idle')
+                    @php
+                        $stokDisplay = rtrim(rtrim(number_format((float) $stokTersedia, 2, ',', '.'), '0'), ',');
+                    @endphp
+                    @if ($this->stokStatus === 'cukup')
+                        <span class="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400"
+                            title="Saldo Apotek">
+                            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
+                            Stok Apotek: {{ $stokDisplay }}
+                        </span>
+                    @else
+                        <span class="inline-flex items-center gap-1 text-xs font-medium text-red-700 dark:text-red-400"
+                            title="Stok Apotek kurang dari qty diminta">
+                            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01M4.93 19h14.14a2 2 0 001.74-3l-7.07-12a2 2 0 00-3.48 0l-7.07 12a2 2 0 001.74 3z" />
+                            </svg>
+                            Stok Apotek: {{ $stokDisplay }} (kurang)
+                        </span>
+                    @endif
+                @endif
+            </div>
+
+            {{-- Semua field entri dalam satu baris (wrap otomatis di layar sempit) --}}
+            <div class="flex flex-wrap items-end gap-2">
+                <div class="w-20">
                     <x-input-label value="Qty" class="mb-1" />
                     <x-text-input wire:model.live.debounce.150ms="formEntryObat.qty" placeholder="Qty"
                         class="w-full text-sm" x-ref="inputQty"
@@ -684,34 +721,8 @@ new class extends Component {
                     @error('formEntryObat.qty')
                         <x-input-error :messages="$message" class="mt-1" />
                     @enderror
-
-                    {{-- Indikator saldo apotek — live ketika qty berubah --}}
-                    @if ($this->stokStatus !== 'idle')
-                        @php
-                            $stokDisplay = rtrim(rtrim(number_format((float) $stokTersedia, 2, ',', '.'), '0'), ',');
-                        @endphp
-                        @if ($this->stokStatus === 'cukup')
-                            <div class="flex items-center gap-1 mt-1 text-xs font-medium text-green-700 dark:text-green-400"
-                                title="Saldo Apotek">
-                                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M5 13l4 4L19 7" />
-                                </svg>
-                                Stok Apotek: {{ $stokDisplay }}
-                            </div>
-                        @else
-                            <div class="flex items-center gap-1 mt-1 text-xs font-medium text-red-700 dark:text-red-400"
-                                title="Stok Apotek kurang dari qty diminta">
-                                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 9v2m0 4h.01M4.93 19h14.14a2 2 0 001.74-3l-7.07-12a2 2 0 00-3.48 0l-7.07 12a2 2 0 001.74 3z" />
-                                </svg>
-                                Stok Apotek: {{ $stokDisplay }} (kurang)
-                            </div>
-                        @endif
-                    @endif
                 </div>
-                <div class="w-36">
+                <div class="w-28">
                     <x-input-label value="Harga" class="mb-1" />
                     <x-text-input wire:model="formEntryObat.price" placeholder="Harga" class="w-full text-sm"
                         x-ref="inputHarga" x-on:keyup.enter="$nextTick(() => $refs.inputCarapakai?.focus())" />
@@ -719,11 +730,7 @@ new class extends Component {
                         <x-input-error :messages="$message" class="mt-1" />
                     @enderror
                 </div>
-            </div>
-
-            {{-- Baris 2 --}}
-            <div class="flex items-end gap-3">
-                <div class="w-20">
+                <div class="w-16">
                     <x-input-label value="x/Hari" class="mb-1" />
                     <x-text-input wire:model="formEntryObat.carapakai" placeholder="1" class="w-full text-sm"
                         x-ref="inputCarapakai" x-on:keyup.enter="$nextTick(() => $refs.inputKapsul?.focus())" />
@@ -731,7 +738,7 @@ new class extends Component {
                         <x-input-error :messages="$message" class="mt-1" />
                     @enderror
                 </div>
-                <div class="w-24">
+                <div class="w-20">
                     <x-input-label value="Per Minum" class="mb-1" />
                     <x-text-input wire:model="formEntryObat.kapsul" placeholder="1" class="w-full text-sm"
                         x-ref="inputKapsul" x-on:keyup.enter="$nextTick(() => $refs.inputTakar?.focus())" />
@@ -739,7 +746,7 @@ new class extends Component {
                         <x-input-error :messages="$message" class="mt-1" />
                     @enderror
                 </div>
-                <div class="w-32">
+                <div class="w-28">
                     <x-input-label value="Takar" class="mb-1" />
                     <x-select-input id="takar" wire:model="formEntryObat.takar" x-ref="inputTakar"
                         class="block w-full text-sm border-gray-300 rounded-lg shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-brand-green focus:border-brand-green">
@@ -750,10 +757,11 @@ new class extends Component {
                         <option>Tetes</option>
                         <option>Salep</option>
                         <option>Injeksi</option>
+                        <option>Unit</option>
                         <option>Lainnya</option>
                     </x-select-input>
                 </div>
-                <div class="w-32">
+                <div class="flex-1 min-w-[7rem]">
                     <x-input-label value="Keterangan" class="mb-1" />
                     <x-text-input wire:model="formEntryObat.ket" placeholder="Ket." class="w-full text-sm"
                         x-ref="inputKet" x-on:keyup.enter="$nextTick(() => $refs.inputExpDate?.focus())" />
@@ -766,7 +774,7 @@ new class extends Component {
                         <x-input-error :messages="$message" class="mt-1" />
                     @enderror
                 </div>
-                <div class="flex-1">
+                <div class="flex-1 min-w-[8rem]">
                     <x-input-label value="Catatan Khusus" class="mb-1" />
                     <x-text-input wire:model="formEntryObat.catatanKhusus" placeholder="Catatan..."
                         class="w-full text-sm" x-ref="inputCatatan" x-on:keydown.enter.prevent="$el.blur(); $wire.insertObat()" />
@@ -779,7 +787,7 @@ new class extends Component {
                         <option value="1">Sudah</option>
                     </x-select-input>
                 </div>
-                <div class="flex gap-2 pb-0.5">
+                <div class="flex gap-2 pb-0.5 shrink-0">
                     <button type="button" wire:click.prevent="insertObat" wire:loading.attr="disabled"
                         wire:target="insertObat"
                         class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold
@@ -980,6 +988,7 @@ new class extends Component {
                                                     <option>Tetes</option>
                                                     <option>Salep</option>
                                                     <option>Injeksi</option>
+                                                    <option>Unit</option>
                                                     <option>Lainnya</option>
                                                 </x-select-input>
                                             </div>

@@ -739,7 +739,17 @@ new class extends Component {
 
     {{-- FORM INPUT PEMBAYARAN --}}
     <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40" x-data
-        x-on:focus-input-bayar.window="$nextTick(() => $refs.inputBayar?.focus())">
+        x-on:focus-input-bayar.window="$nextTick(() => {
+            const fokus = () => {
+                const el = $refs.inputBayar;
+                if (!el || el === document.activeElement) return;
+                if (document.activeElement?.matches('input, select, textarea')) return;
+                el.focus();
+                el.select?.();
+            };
+            fokus();
+            setTimeout(fokus, 150);
+        })">
 
         @if ($isFormLocked)
             <div class="space-y-3">

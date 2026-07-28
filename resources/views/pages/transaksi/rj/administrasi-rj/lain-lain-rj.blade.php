@@ -306,13 +306,24 @@ new class extends Component {
 
     {{-- FORM INPUT --}}
     <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40" x-data
-        x-on:focus-lov-lainlain-rj.window="$nextTick(() => $refs.lovLainLainRj?.querySelector('input')?.focus())"
+        x-on:focus-lov-lainlain-rj.window="$nextTick(() => {
+            const fokus = () => {
+                const el = $refs.lovLainLainRj?.querySelector('input');
+                if (!el || el === document.activeElement) return;
+                if (document.activeElement?.matches('input, select, textarea')) return;
+                el.focus();
+            };
+            fokus();
+            setTimeout(fokus, 150);
+        })"
         x-on:focus-input-tarif-lainlain.window="$nextTick(() => $refs.inputTarifLainLain?.focus())">
 
         @if ($isFormLocked)
             <p class="text-sm italic text-muted-soft dark:text-gray-600">Form input dinonaktifkan.</p>
         @elseif (empty($formEntryLainLain['lainLainId']))
-            <div x-ref="lovLainLainRj">
+            {{-- Enter saat kolom cari masih kosong = selesai di tab ini → lompat ke Kasir. --}}
+            <div x-ref="lovLainLainRj"
+                x-on:keydown.enter="if (!$event.target.value?.trim()) $dispatch('administrasi-rj-goto-tab', { tab: 'Kasir', focus: 'focus-input-bayar' })">
                 <livewire:lov.lain-lain.lov-lain-lain target="lain-lain-rj" label="Cari Lain-lain"
                     placeholder="Ketik kode/nama lain-lain..."
                     wire:key="lov-lainlain-rj-{{ $rjNo }}-{{ $renderVersions['modal-lainlain-rj'] ?? 0 }}" />

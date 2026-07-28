@@ -354,12 +354,25 @@ new class extends Component {
 
     {{-- FORM INPUT --}}
     <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40" x-data
-        x-on:focus-lov-jasa-karyawan.window="$nextTick(() => $refs.lovJasaKaryawan?.querySelector('input')?.focus())">
+        x-on:focus-lov-jasa-karyawan.window="$nextTick(() => {
+            const fokus = () => {
+                const el = $refs.lovJasaKaryawan?.querySelector('input');
+                if (!el || el === document.activeElement) return;
+                // Jangan rebut kalau user sudah terlanjur mengetik di field lain.
+                if (document.activeElement?.matches('input, select, textarea')) return;
+                el.focus();
+            };
+            fokus();
+            setTimeout(fokus, 150);
+            setTimeout(fokus, 400);
+        })">
 
         @if ($isFormLocked)
             <p class="text-sm italic text-muted-soft dark:text-gray-600">Form input dinonaktifkan.</p>
         @elseif (empty($formEntryJasaKaryawan['jasaKaryawanId']))
-            <div x-ref="lovJasaKaryawan">
+            {{-- Enter saat kolom cari masih kosong = selesai di tab ini → lompat ke Jasa Dokter. --}}
+            <div x-ref="lovJasaKaryawan"
+                x-on:keydown.enter="if (!$event.target.value?.trim()) $dispatch('administrasi-rj-goto-tab', { tab: 'JasaDokter', focus: 'focus-lov-dokter' })">
                 <livewire:lov.jasa-karyawan.lov-jasa-karyawan target="jasa-karyawan" label="Cari Jasa Karyawan"
                     placeholder="Ketik kode/nama jasa karyawan..."
                     wire:key="lov-jk-{{ $rjNo }}-{{ $renderVersions['modal-jasa-karyawan-rj'] ?? 0 }}" />

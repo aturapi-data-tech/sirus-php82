@@ -388,6 +388,16 @@ new class extends Component {
     {{-- FORM INPUT --}}
     <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40" x-data
         x-on:focus-lov-jasa-dokter.window="$nextTick(() => $refs.lovJasaDokter?.querySelector('input')?.focus())"
+        x-on:focus-lov-dokter.window="$nextTick(() => {
+            const fokus = () => {
+                const el = $refs.lovDokter?.querySelector('input');
+                if (!el || el === document.activeElement) return;
+                if (document.activeElement?.matches('input, select, textarea')) return;
+                el.focus();
+            };
+            fokus();
+            setTimeout(fokus, 150);
+        })"
         x-on:focus-input-tarif.window="$nextTick(() => $refs.inputTarif?.focus())">
 
         @if ($isFormLocked)
@@ -395,7 +405,9 @@ new class extends Component {
         @elseif (empty($formEntryJasaDokter['drId']) || empty($formEntryJasaDokter['jasaDokterId']))
             <div class="space-y-3">
                 <div class="flex gap-3">
-                    <div class="w-64">
+                    {{-- Enter saat kolom cari masih kosong = selesai di tab ini → lompat ke Jasa Medis. --}}
+                    <div class="w-64" x-ref="lovDokter"
+                        x-on:keydown.enter="if (!$event.target.value?.trim()) $dispatch('administrasi-rj-goto-tab', { tab: 'JasaMedis', focus: 'focus-lov-jasa-medis' })">
                         <livewire:lov.dokter.lov-dokter target="dokter-jasa-dokter" label="Dokter"
                             placeholder="Ketik kode/nama dokter..."
                             wire:key="lov-dokter-jd-{{ $rjNo }}-{{ $renderVersions['modal-jasa-dokter-rj'] ?? 0 }}" />
