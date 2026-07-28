@@ -23,7 +23,7 @@ new class extends Component {
     public function updatedItemsPerPage(): void { $this->resetPage(); }
     public function updatedFilterBulan(): void { $this->resetPage(); }
 
-    /* ── Child modal triggers ── */
+    /* ── Pemicu ke modal entri (child actions) ── */
     public function openCreate(): void
     {
         $this->dispatch('pengeluaran-kas.openCreate');
@@ -45,34 +45,22 @@ new class extends Component {
         $this->resetPage();
     }
 
-    /* ── Query ── */
-    #[Computed]
-    public function baseQuery()
+    /* ===============================
+     | QUERY
+     =============================== */
+    protected function filteredQuery()
     {
         $query = DB::table('rstxn_tucashks as a')
             ->leftJoin('acmst_accounts as b', 'a.acc_id', '=', 'b.acc_id')
             ->leftJoin('acmst_accounts as c', 'a.acc_id_kas', '=', 'c.acc_id')
-            ->leftJoin('immst_employers as d', 'a.emp_id', '=', 'd.emp_id')
-            ->select([
-                'a.tucashk_no',
-                DB::raw("to_char(a.tucashk_date,'dd/mm/yyyy hh24:mi:ss') as tucashk_date_display"),
-                'a.shift',
-                'a.tucashk_desc',
-                'a.tucashk_nominal',
-                'a.acc_id', 'b.acc_name',
-                'a.acc_id_kas', 'c.acc_name as acc_name_kas',
-                'a.emp_id', 'd.emp_name',
-                'a.tucashk_status',
-            ])
-            ->orderByDesc('a.tucashk_date')
-            ->orderByDesc('a.shift');
+            ->leftJoin('immst_employers as d', 'a.emp_id', '=', 'd.emp_id');
 
         if ($this->searchKeyword !== '') {
             $upper = strtoupper($this->searchKeyword);
             $query->where(function ($q) use ($upper) {
                 $q->whereRaw('UPPER(a.tucashk_desc) LIKE ?', ["%{$upper}%"])
-                  ->orWhereRaw('UPPER(b.acc_name) LIKE ?', ["%{$upper}%"])
-                  ->orWhere('a.tucashk_no', 'like', "%{$this->searchKeyword}%");
+                    ->orWhereRaw('UPPER(b.acc_name) LIKE ?', ["%{$upper}%"])
+                    ->orWhere('a.tucashk_no', 'like', "%{$this->searchKeyword}%");
             });
         }
 
@@ -86,7 +74,30 @@ new class extends Component {
     #[Computed]
     public function rows()
     {
-        return $this->baseQuery()->paginate($this->itemsPerPage);
+        return $this->filteredQuery()
+            ->select([
+                'a.tucashk_no',
+                DB::raw("to_char(a.tucashk_date,'dd/mm/yyyy hh24:mi:ss') as tucashk_date_display"),
+                'a.shift',
+                'a.tucashk_desc',
+                'a.tucashk_nominal',
+                'a.acc_id',
+                'b.acc_name',
+                'a.acc_id_kas',
+                'c.acc_name as acc_name_kas',
+                'a.emp_id',
+                'd.emp_name',
+                'a.tucashk_status',
+            ])
+            ->orderByDesc('a.tucashk_date')
+            ->orderByDesc('a.shift')
+            ->paginate($this->itemsPerPage);
+    }
+
+    #[Computed]
+    public function totalBulan(): int
+    {
+        return (int) $this->filteredQuery()->sum('a.tucashk_nominal');
     }
 };
 ?>
@@ -100,12 +111,13 @@ new class extends Component {
         <div class="flex flex-col flex-1 min-h-0 px-6 pt-2 pb-6">
 
             {{-- TOOLBAR --}}
-            <div class="sticky z-30 px-4 py-3 bg-surface-soft border-b border-hairline top-20 dark:bg-gray-900 dark:border-gray-700">
+            <div class="sticky z-30 px-4 py-3 border-b bg-surface-soft border-hairline top-20 dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <div class="flex items-center gap-3">
                         <div class="w-40">
                             <x-input-label value="Bulan" class="sr-only" />
-                            <x-text-input type="text" wire:model.live.debounce.300ms="filterBulan" placeholder="mm/yyyy" class="block w-full" />
+                            <x-text-input type="text" wire:model.live.debounce.300ms="filterBulan"
+                                placeholder="mm/yyyy" class="block w-full" />
                         </div>
                         <div class="w-full lg:max-w-md">
                             <x-input-label value="Cari" class="sr-only" />
@@ -114,7 +126,24 @@ new class extends Component {
                         </div>
                     </div>
 
-                    <div class="flex items-center justify-end gap-2">
+                    <div class="flex items-center justify-end gap-3">
+                        {{-- Total periode — angka besar warna brand --}}
+                        <div class="px-4 py-2 border rounded-xl bg-brand-green/5 border-brand-green/25 dark:bg-brand-lime/10 dark:border-brand-lime/25">
+                            <div class="text-[11px] font-semibold tracking-wide uppercase text-muted dark:text-gray-400">
+                                Total Periode {{ $filterBulan ?: 'semua' }}
+                            </div>
+                            <div class="flex items-center gap-2 mt-1">
+                                <svg class="w-6 h-6 shrink-0 text-brand-green dark:text-brand-lime" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M3 10h18M7 15h2m4 0h4M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />
+                                </svg>
+                                <span class="text-2xl font-bold leading-none text-brand-green dark:text-brand-lime">
+                                    Rp {{ number_format($this->totalBulan) }}
+                                </span>
+                            </div>
+                        </div>
+
                         <div class="w-28">
                             <x-input-label value="Per halaman" class="sr-only" />
                             <x-select-input wire:model.live="itemsPerPage">
@@ -132,8 +161,8 @@ new class extends Component {
                 </div>
             </div>
 
-            {{-- TABLE --}}
-            <div class="mt-4 flex flex-col flex-1 min-h-0 bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+            {{-- TABEL --}}
+            <div class="flex flex-col flex-1 min-h-0 mt-4 border shadow-sm bg-canvas border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                 <div class="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-t-2xl">
                     <table class="min-w-full text-sm">
                         <thead class="sticky top-0 z-10 text-muted bg-surface-soft dark:bg-gray-800 dark:text-gray-200">
@@ -144,12 +173,13 @@ new class extends Component {
                                 <th class="px-4 py-3 font-semibold text-right">NOMINAL</th>
                                 <th class="px-4 py-3 font-semibold">KAS</th>
                                 <th class="px-4 py-3 font-semibold">INFO</th>
-                                <th class="px-4 py-3 font-semibold">AKSI</th>
+                                <th class="px-4 py-3 font-semibold text-center">AKSI</th>
                             </tr>
                         </thead>
-                        <tbody class="text-body divide-y divide-hairline dark:divide-gray-700 dark:text-gray-200">
+                        <tbody class="divide-y text-body divide-hairline dark:divide-gray-700 dark:text-gray-200">
                             @forelse($this->rows as $row)
-                                <tr wire:key="co-row-{{ $row->tucashk_no }}" class="hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                <tr wire:key="co-row-{{ $row->tucashk_no }}"
+                                    class="transition hover:bg-surface-soft dark:hover:bg-gray-800/60">
                                     <td class="px-4 py-3 font-mono text-sm whitespace-nowrap">{{ $row->tucashk_no }}</td>
                                     <td class="px-4 py-3 text-sm whitespace-nowrap">
                                         <div>{{ $row->tucashk_date_display ?? '-' }}</div>
@@ -159,7 +189,9 @@ new class extends Component {
                                         <div>{{ $row->tucashk_desc ?? '-' }}</div>
                                         <div class="text-muted-soft">{{ $row->acc_id }} - {{ $row->acc_name ?? '-' }}</div>
                                     </td>
-                                    <td class="px-4 py-3 font-mono text-right whitespace-nowrap">Rp {{ number_format($row->tucashk_nominal ?? 0) }}</td>
+                                    <td class="px-4 py-3 font-mono text-right whitespace-nowrap">
+                                        Rp {{ number_format($row->tucashk_nominal ?? 0) }}
+                                    </td>
                                     <td class="px-4 py-3 text-sm">
                                         <div>{{ $row->acc_name_kas ?? '-' }}</div>
                                         <div class="text-muted-soft">{{ $row->acc_id_kas }}</div>
@@ -169,14 +201,17 @@ new class extends Component {
                                         <x-badge variant="success" class="mt-1">Posted</x-badge>
                                     </td>
                                     <td class="px-4 py-3">
-                                        <div class="flex flex-wrap gap-2">
+                                        <div class="flex items-center justify-center gap-1">
                                             <x-secondary-button type="button"
-                                                wire:click="openEdit('{{ $row->tucashk_no }}')" class="px-2 py-1 text-xs">
+                                                wire:click="openEdit('{{ $row->tucashk_no }}')"
+                                                class="px-2 py-1 text-xs">
                                                 Edit
                                             </x-secondary-button>
                                             @hasanyrole('Admin|Tu')
-                                                <x-confirm-button variant="danger" :action="'requestDelete(\'' . $row->tucashk_no . '\')'"
-                                                    title="Hapus Transaksi" message="Yakin ingin menghapus transaksi #{{ $row->tucashk_no }}?"
+                                                <x-confirm-button variant="danger"
+                                                    :action="'requestDelete(\'' . $row->tucashk_no . '\')'"
+                                                    title="Hapus Transaksi"
+                                                    message="Yakin ingin menghapus transaksi #{{ $row->tucashk_no }}?"
                                                     confirmText="Ya, hapus" cancelText="Batal"
                                                     class="px-2 py-1 text-xs">
                                                     Hapus
@@ -187,7 +222,7 @@ new class extends Component {
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-4 py-10 text-center text-muted dark:text-gray-400">
+                                    <td colspan="7" class="px-4 py-10 text-center text-muted dark:text-gray-400">
                                         Tidak ada data pengeluaran kas.
                                     </td>
                                 </tr>
@@ -196,13 +231,14 @@ new class extends Component {
                     </table>
                 </div>
 
-                <div class="sticky bottom-0 z-10 px-4 py-3 bg-canvas border-t border-hairline rounded-b-2xl dark:bg-gray-900 dark:border-gray-700">
+                <div class="sticky bottom-0 z-10 px-4 py-3 border-t bg-canvas border-hairline rounded-b-2xl dark:bg-gray-900 dark:border-gray-700">
                     {{ $this->rows->links() }}
                 </div>
             </div>
 
-            {{-- Child actions component (modal CRUD) --}}
-            <livewire:pages::transaksi.keuangan.pengeluaran-kas-tu.pengeluaran-kas-tu-actions wire:key="pengeluaran-kas-tu-actions" />
+            {{-- Modal entri / koreksi (child actions) --}}
+            <livewire:pages::transaksi.keuangan.pengeluaran-kas-tu.pengeluaran-kas-tu-actions
+                wire:key="pengeluaran-kas-tu-actions" />
         </div>
     </div>
 </div>

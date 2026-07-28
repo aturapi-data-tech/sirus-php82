@@ -116,6 +116,15 @@ Route::middleware(['auth'])->group(function () {
         ->name('master.diag-keperawatan');
 
     // ===========================================
+    // MASTER TERMINOLOGI SATUSEHAT (LOINC & SNOMED CT)
+    // ===========================================
+    Route::livewire('/master/loinc', 'pages::master.master-loinc.master-loinc')
+        ->name('master.loinc');
+
+    Route::livewire('/master/snomed', 'pages::master.master-snomed.master-snomed')
+        ->name('master.snomed');
+
+    // ===========================================
     // RAWAT JALAN (RJ) - DAFTAR RAWAT JALAN (Pendaftaran)
     // ===========================================
     Route::livewire('/rawat-jalan/daftar', 'pages::transaksi.rj.daftar-rj.daftar-rj')

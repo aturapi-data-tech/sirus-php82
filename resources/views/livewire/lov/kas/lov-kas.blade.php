@@ -50,6 +50,10 @@ new class extends Component {
 
     public bool $disabled = false;
 
+    /** true = tampilkan border merah (validasi induk gagal). */
+    #[Reactive]
+    public bool $error = false;
+
     /* ── Lifecycle ── */
 
     public function mount(): void
@@ -242,7 +246,8 @@ new class extends Component {
     <div class="relative mt-1">
         @if ($selected === null)
             @if (!$disabled)
-                <x-text-input type="text" class="block w-full" :placeholder="$placeholder" wire:model.live.debounce.250ms="search"
+                <x-text-input type="text" class="block w-full" :placeholder="$placeholder" :error="$error"
+                    wire:model.live.debounce.250ms="search"
                     wire:keydown.escape.prevent="resetLov" wire:keydown.arrow-down.prevent="selectNext"
                     wire:keydown.arrow-up.prevent="selectPrevious" wire:keydown.enter.prevent="chooseHighlighted" />
             @else

@@ -98,6 +98,8 @@ class AppMenu
 
             // ── Master Laboratorium ──────────────────────────────────
             $entry(['group' => 'Master Laboratorium', 'groupOrder' => 2, 'order' => 1, 'route' => 'master.laborat', 'title' => 'Master Laboratorium', 'desc' => 'Kelola kategori lab & item pemeriksaan', 'roles' => $masterRoles, 'badge' => 'Lab']),
+            $entry(['group' => 'Master Laboratorium', 'groupOrder' => 2, 'order' => 2, 'route' => 'master.loinc', 'title' => 'Master LOINC', 'desc' => 'Kode LOINC pemeriksaan lab & observasi — LOV + pengiriman SATUSEHAT', 'roles' => $masterRoles, 'badge' => 'SATUSEHAT']),
+            $entry(['group' => 'Master Laboratorium', 'groupOrder' => 2, 'order' => 3, 'route' => 'master.snomed', 'title' => 'Master SNOMED CT', 'desc' => 'Kode SNOMED CT keluhan / prosedur / alergi — LOV + pengiriman SATUSEHAT', 'roles' => $masterRoles, 'badge' => 'SATUSEHAT']),
 
             // ── Master Apotek ────────────────────────────────────────
             $entry(['group' => 'Master Apotek', 'groupOrder' => 3, 'order' => 1, 'route' => 'master.obat', 'title' => 'Master Obat', 'desc' => 'Kelola data obat & farmasi', 'roles' => $masterRoles, 'badge' => 'Apotek']),
