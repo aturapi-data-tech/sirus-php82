@@ -137,6 +137,8 @@ new class extends Component {
         $this->accId = $payload['acc_id'] ?? null;
         $this->accName = $payload['acc_name'] ?? null;
         $this->resetErrorBag('accId');
+        // Akun Kas = langkah terakhir (Diskon → PPN → Materai → Bayar → Akun Kas → Simpan).
+        $this->dispatch('focus-btn-simpan-rcv');
     }
 
     /* ══════════════════════════════
@@ -765,6 +767,7 @@ new class extends Component {
         $this->hitungSemua();
         $this->incrementVersion('bayar');
         $this->dispatch('open-modal', name: 'penerimaan-medis-bayar');
+        $this->dispatch('focus-input-diskon-rcv');
     }
 
     public function closeBayar(): void
@@ -1129,18 +1132,12 @@ new class extends Component {
                         <dl class="w-full max-w-md divide-y divide-hairline dark:divide-gray-700">
 
                             <div class="flex items-center justify-between gap-4 py-2.5">
-                                <dt class="text-base text-muted dark:text-gray-400">Total Qty</dt>
-                                <dd class="text-base font-semibold text-ink dark:text-gray-100">
-                                    {{ number_format($totalQty) }}</dd>
-                            </div>
-
-                            <div class="flex items-center justify-between gap-4 py-2.5">
                                 <dt class="text-base text-muted dark:text-gray-400">Total Barang</dt>
                                 <dd class="text-2xl font-bold text-ink dark:text-gray-100">Rp
                                     {{ number_format($totalBarang) }}</dd>
                             </div>
 
-                            <div class="flex items-center justify-between gap-4 py-2.5">
+                            <div class="flex items-center justify-between gap-4 py-2.5 px-3 -mx-3 rounded-lg bg-amber-50/70 dark:bg-amber-900/10">
                                 <dt class="text-base font-semibold text-amber-700 dark:text-amber-400">Diskon</dt>
                                 <dd class="text-2xl font-bold text-amber-700 dark:text-amber-300">&minus; Rp
                                     {{ number_format($rcvDiskon ?? 0) }}</dd>
@@ -1164,7 +1161,7 @@ new class extends Component {
                                     {{ number_format($rcvMaterai ?? 0) }}</dd>
                             </div>
 
-                            <div class="flex items-center justify-between gap-4 py-2.5">
+                            <div class="flex items-center justify-between gap-4 py-2.5 px-3 -mx-3 rounded-lg bg-blue-50 dark:bg-blue-900/15">
                                 <dt class="text-base font-bold text-blue-700 dark:text-blue-300">Grand Total</dt>
                                 <dd class="text-2xl font-bold text-blue-700 dark:text-blue-300">Rp
                                     {{ number_format($grandTotal) }}</dd>
@@ -1246,8 +1243,32 @@ new class extends Component {
     {{-- ═══════════════════════════════════════════════════════════════
          MODAL PEMBAYARAN — input diskon/PPN/materai/bayar + summary
          ═══════════════════════════════════════════════════════════════ --}}
-    <x-modal name="penerimaan-medis-bayar" size="2xl" focusable>
-        <div class="flex flex-col" wire:key="{{ $this->renderKey('bayar', [$rcvNo]) }}">
+    <x-modal name="penerimaan-medis-bayar" size="full" height="full" focusable>
+        <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('bayar', [$rcvNo]) }}"
+            x-data="{
+                fokusKe(ref) {
+                    const coba = () => {
+                        const el = this.$refs[ref];
+                        if (!el || el === document.activeElement) return;
+                        if (document.activeElement?.matches('input, select, textarea')) return;
+                        el.focus();
+                        el.select?.();
+                    };
+                    this.$nextTick(() => { coba(); setTimeout(coba, 150); });
+                }
+            }"
+            x-on:focus-lov-kas-rcv.window="$nextTick(() => {
+                const fokus = () => {
+                    const el = $refs.lovKasRcv?.querySelector('input:not([disabled])') || $refs.lovKasRcv?.querySelector('button');
+                    if (!el || el === document.activeElement) return;
+                    if (document.activeElement?.matches('input, select, textarea')) return;
+                    el.focus();
+                };
+                fokus();
+                setTimeout(fokus, 150);
+            })"
+            x-on:focus-btn-simpan-rcv.window="fokusKe('btnSaveRcv')"
+            x-on:focus-input-diskon-rcv.window="fokusKe('inputDiskonRcv')">
             {{-- Header --}}
             <div class="px-6 py-4 border-b border-hairline dark:border-gray-700">
                 <div class="flex items-center justify-between gap-4">
@@ -1279,86 +1300,139 @@ new class extends Component {
                 </div>
             </div>
 
-            {{-- Body --}}
-            <div class="px-6 py-5">
-                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    {{-- Kiri: input --}}
-                    <div class="space-y-3">
-                        <div>
+            {{-- Body — pola Kasir RJ: satu daftar vertikal, input menyatu di barisnya.
+                 Urutan kerja: Diskon → PPN → Materai → Bayar → Akun Kas → Simpan. --}}
+            <div class="flex-1 px-6 py-5 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">
+                <div class="grid w-full grid-cols-1 gap-6 mx-auto max-w-6xl lg:grid-cols-2 items-start">
+
+                    {{-- ══ KIRI: perhitungan tagihan ══ --}}
+                    <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-canvas dark:bg-gray-900">
+                        <h3 class="flex items-center gap-2 mb-2 text-sm font-semibold tracking-wide uppercase text-blue-700 dark:text-blue-300">
+                            <span class="inline-block w-2 h-2 rounded-full bg-blue-500"></span>
+                            Perhitungan Tagihan
+                        </h3>
+                        <dl class="divide-y divide-hairline dark:divide-gray-700">
+
+                            <div class="flex items-center justify-between gap-4 py-2.5">
+                                <dt class="text-base text-muted dark:text-gray-400">Total Barang</dt>
+                                <dd class="text-2xl font-bold text-ink dark:text-gray-100">Rp
+                                    {{ number_format($totalBarang) }}</dd>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-4 py-2.5 px-3 -mx-3 rounded-lg bg-amber-50/70 dark:bg-amber-900/10">
+                                <dt class="text-base font-semibold text-amber-700 dark:text-amber-400">
+                                    Diskon <span class="text-xs font-normal opacity-70">(Rp)</span>
+                                </dt>
+                                <dd class="w-48">
+                                    <x-text-input-number wire:model="rcvDiskon" placeholder="0" x-ref="inputDiskonRcv"
+                                        class="text-2xl font-bold"
+                                        x-on:keydown.enter.prevent="$el.blur(); fokusKe('inputPpnRcv')" />
+                                </dd>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-4 py-2.5">
+                                <dt class="text-base text-muted dark:text-gray-400">Setelah Diskon</dt>
+                                <dd class="text-2xl font-bold text-ink dark:text-gray-100">Rp
+                                    {{ number_format($totalSetelahDiskon) }}</dd>
+                            </div>
+
+                            {{-- PPN persen: input biasa, BUKAN x-text-input-number — komponen itu
+                                 mengirim integer bersih, sedangkan $rcvPpn float (mis. 11,5%). --}}
+                            <div class="flex items-center justify-between gap-4 py-2.5 px-3 -mx-3 rounded-lg bg-amber-50/70 dark:bg-amber-900/10">
+                                <dt class="text-base font-semibold text-amber-700 dark:text-amber-400">
+                                    PPN <span class="text-xs font-normal opacity-70">(%)</span>
+                                </dt>
+                                <dd class="w-48">
+                                    <x-text-input type="text" inputmode="decimal" wire:model.blur="rcvPpn"
+                                        placeholder="0" x-ref="inputPpnRcv" class="w-full text-2xl font-bold text-right"
+                                        x-on:keydown.enter.prevent="$el.blur(); fokusKe('inputMateraiRcv')" />
+                                </dd>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-4 py-2.5">
+                                <dt class="text-base text-muted dark:text-gray-400">Nilai PPN</dt>
+                                <dd class="text-2xl font-bold text-ink dark:text-gray-100">Rp
+                                    {{ number_format($ppnNominal) }}</dd>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-4 py-2.5 px-3 -mx-3 rounded-lg bg-amber-50/70 dark:bg-amber-900/10">
+                                <dt class="text-base font-semibold text-amber-700 dark:text-amber-400">
+                                    Materai <span class="text-xs font-normal opacity-70">(Rp)</span>
+                                </dt>
+                                <dd class="w-48">
+                                    <x-text-input-number wire:model="rcvMaterai" placeholder="0"
+                                        x-ref="inputMateraiRcv" class="text-2xl font-bold"
+                                        x-on:keydown.enter.prevent="$el.blur(); fokusKe('inputBayarRcv')" />
+                                </dd>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-4 py-2.5 px-3 -mx-3 rounded-lg bg-blue-50 dark:bg-blue-900/15">
+                                <dt class="text-base font-bold text-blue-700 dark:text-blue-300">Grand Total</dt>
+                                <dd class="text-2xl font-bold text-blue-700 dark:text-blue-300">Rp
+                                    {{ number_format($grandTotal) }}</dd>
+                            </div>
+
+                        </dl>
+                    </div>
+
+                    {{-- ══ KANAN: pembayaran ══ --}}
+                    <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-canvas dark:bg-gray-900">
+                        <h3 class="flex items-center gap-2 mb-2 text-sm font-semibold tracking-wide uppercase text-emerald-700 dark:text-emerald-300">
+                            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                            Pembayaran
+                        </h3>
+                        <dl class="divide-y divide-hairline dark:divide-gray-700">
+
+                            <div class="flex items-center justify-between gap-4 py-2.5">
+                                <dt class="text-base font-bold text-blue-700 dark:text-blue-300">Grand Total</dt>
+                                <dd class="text-2xl font-bold text-blue-700 dark:text-blue-300">Rp
+                                    {{ number_format($grandTotal) }}</dd>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-4 py-2.5 px-3 -mx-3 rounded-lg bg-amber-50/70 dark:bg-amber-900/10">
+                                <dt class="text-base font-bold text-amber-700 dark:text-amber-400">
+                                    Bayar <span class="text-xs font-normal opacity-70">(Rp)</span>
+                                </dt>
+                                <dd class="w-48">
+                                    <x-text-input-number wire:model="bayar" placeholder="0" x-ref="inputBayarRcv"
+                                        class="text-2xl font-bold"
+                                        x-on:keydown.enter.prevent="$el.blur(); $dispatch('focus-lov-kas-rcv')" />
+                                </dd>
+                            </div>
+
+                            {{-- Hasil: kurang / pas / lebih --}}
+                            @if ((int) ($bayar ?? 0) > 0)
+                                <div
+                                    class="flex items-center justify-between gap-4 py-2.5 px-3 -mx-3 rounded-lg {{ $sisa < 0 ? 'bg-rose-50 dark:bg-rose-900/15' : 'bg-emerald-50 dark:bg-emerald-900/15' }}">
+                                    @if ($sisa < 0)
+                                        <dt class="text-base font-bold text-error dark:text-rose-400">Sisa / Kurang</dt>
+                                        <dd class="text-2xl font-bold text-error dark:text-rose-300">Rp
+                                            {{ number_format(abs($sisa)) }}</dd>
+                                    @elseif ($sisa === 0)
+                                        <dt class="text-base font-bold text-success dark:text-success">Pas — Lunas</dt>
+                                        <dd class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">Rp 0</dd>
+                                    @else
+                                        <dt class="text-base font-bold text-success dark:text-success">Kembalian</dt>
+                                        <dd class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">Rp
+                                            {{ number_format($sisa) }}</dd>
+                                    @endif
+                                </div>
+                            @endif
+                        </dl>
+
+                        {{-- Cara Bayar — langkah TERAKHIR sebelum posting --}}
+                        <div class="pt-4 mt-4 border-t border-hairline dark:border-gray-700" x-ref="lovKasRcv">
                             <livewire:lov.kas.lov-kas target="kas-rcv" tipe="" label="Cara Bayar (Akun Kas)"
                                 :initialAccId="$accId"
                                 wire:key="lov-kas-rcv-{{ $rcvNo ?? 'new' }}-{{ $renderVersions['bayar'] ?? 0 }}" />
                             <x-input-error :messages="$errors->get('accId')" class="mt-1" />
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <x-input-label value="Diskon (Rp)" class="w-32 shrink-0" />
-                            <x-text-input-number wire:model.live="rcvDiskon" />
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <x-input-label value="PPN (%)" class="w-32 shrink-0" />
-                            <x-text-input-number wire:model.live="rcvPpn" />
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <x-input-label value="Materai (Rp)" class="w-32 shrink-0" />
-                            <x-text-input-number wire:model.live="rcvMaterai" />
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <x-input-label value="Bayar (Rp)" class="w-32 shrink-0" />
-                            <x-text-input-number wire:model.live="bayar" />
-                        </div>
-                    </div>
-
-                    {{-- Kanan: ringkasan --}}
-                    <div
-                        class="p-4 space-y-2 text-sm border bg-gradient-to-br from-gray-50 to-white border-brand/20 rounded-xl dark:from-gray-800 dark:to-gray-900 dark:border-brand-lime/25">
-                        <div class="flex justify-between text-muted dark:text-gray-300">
-                            <span>Total Qty</span>
-                            <span class="font-mono font-semibold">{{ number_format($totalQty) }}</span>
-                        </div>
-                        <div class="flex justify-between text-muted dark:text-gray-300">
-                            <span>Total</span>
-                            <span class="font-mono">Rp {{ number_format($totalBarang) }}</span>
-                        </div>
-                        <div class="flex justify-between text-muted dark:text-gray-300">
-                            <span>Diskon</span>
-                            <span class="font-mono text-error dark:text-rose-400">- Rp
-                                {{ number_format($rcvDiskon ?? 0) }}</span>
-                        </div>
-                        <div class="flex justify-between text-muted dark:text-gray-300">
-                            <span>Setelah Diskon</span>
-                            <span class="font-mono">Rp {{ number_format($totalSetelahDiskon) }}</span>
-                        </div>
-                        <div class="flex justify-between text-muted dark:text-gray-300">
-                            <span>PPN ({{ $rcvPpn ?? 0 }}%)</span>
-                            <span class="font-mono">Rp {{ number_format($ppnNominal) }}</span>
-                        </div>
-                        <div class="flex justify-between text-muted dark:text-gray-300">
-                            <span>Materai</span>
-                            <span class="font-mono">Rp {{ number_format($rcvMaterai ?? 0) }}</span>
-                        </div>
-                        <hr class="border-gray-300 dark:border-gray-700">
-                        <div class="flex items-center justify-between text-lg font-bold">
-                            <span class="tracking-wide uppercase text-brand dark:text-brand-lime">Grand Total</span>
-                            <span class="font-mono text-brand dark:text-brand-lime">Rp
-                                {{ number_format($grandTotal) }}</span>
-                        </div>
-                        <hr class="border-gray-300 dark:border-gray-700">
-                        <div class="flex justify-between text-muted dark:text-gray-300">
-                            <span>Bayar</span>
-                            <span class="font-mono">Rp {{ number_format($bayar ?? 0) }}</span>
-                        </div>
-                        <div class="flex justify-between font-semibold">
-                            <span>Sisa</span>
-                            <span
-                                class="font-mono {{ $sisa >= 0 ? 'text-brand dark:text-brand-lime' : 'text-error dark:text-rose-400' }}">Rp
-                                {{ number_format($sisa) }}</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             {{-- Footer modal bayar --}}
-            <div class="flex justify-end gap-2 px-6 py-4 bg-surface-soft border-t border-hairline dark:bg-gray-800/50 dark:border-gray-700">
+            <div class="sticky bottom-0 z-10 flex justify-end gap-2 px-6 py-4 mt-auto bg-surface-soft border-t border-hairline dark:bg-gray-800/50 dark:border-gray-700">
                 <x-secondary-button type="button" wire:click="closeBayar">
                     Batal
                 </x-secondary-button>
