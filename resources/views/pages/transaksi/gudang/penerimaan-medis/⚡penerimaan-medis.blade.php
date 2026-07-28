@@ -203,7 +203,8 @@ new class extends Component {
                 class="mt-4 flex flex-col flex-1 min-h-0 bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                 <div class="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-t-2xl">
                     <table class="min-w-full text-sm">
-                        <thead class="sticky top-0 z-10 text-muted bg-surface-soft dark:bg-gray-800 dark:text-gray-200">
+                        <thead
+                            class="sticky top-0 z-10 text-sm font-semibold tracking-wide text-left text-gray-600 uppercase bg-surface-soft dark:bg-gray-800 dark:text-gray-300">
                             <tr class="text-left">
                                 <th class="px-4 py-3 font-semibold">NO</th>
                                 <th class="px-4 py-3 font-semibold">TANGGAL</th>
@@ -228,19 +229,19 @@ new class extends Component {
                                 @endphp
                                 <tr wire:key="rcv-row-{{ $row->rcv_no }}"
                                     class="hover:bg-surface-soft dark:hover:bg-gray-800/60">
-                                    <td class="px-4 py-3 font-mono whitespace-nowrap">{{ $row->rcv_no }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
+                                    <td class="px-4 py-1.5 font-mono whitespace-nowrap">{{ $row->rcv_no }}</td>
+                                    <td class="px-4 py-1.5 whitespace-nowrap">
                                         <div>{{ $row->rcv_date_display ?? '-' }}</div>
                                         <div class="text-muted-soft">Shift {{ $row->shift ?? '-' }}</div>
                                     </td>
-                                    <td class="px-4 py-3">
+                                    <td class="px-4 py-1.5">
                                         <div class="font-semibold">{{ $row->supp_name ?? '-' }}</div>
                                         <div class="text-muted-soft">{{ $row->supp_id }}</div>
                                     </td>
-                                    <td class="px-4 py-3">{{ $row->rcv_desc ?? '-' }}</td>
-                                    <td class="px-4 py-3 font-mono text-right whitespace-nowrap">Rp
+                                    <td class="px-4 py-1.5">{{ $row->rcv_desc ?? '-' }}</td>
+                                    <td class="px-4 py-1.5 font-mono text-right whitespace-nowrap">Rp
                                         {{ number_format($grandTotal) }}</td>
-                                    <td class="px-4 py-3">
+                                    <td class="px-4 py-1.5">
                                         <div>{{ $row->emp_name ?? ($row->emp_id ?? '-') }}</div>
                                         @php
                                             $st = (string) ($row->rcv_status ?? '');
@@ -256,7 +257,7 @@ new class extends Component {
                                     </td>
                                     {{-- Kolom AKSI — sementara disembunyikan.
                                          Buka tombol Edit/Lihat via klik baris atau reinstate kolom ini kalau perlu. --}}
-                                    <td class="px-4 py-3">
+                                    <td class="px-4 py-1.5">
                                         @php
                                             $editable = $st === 'A';
                                             $canDelete = in_array($st, ['A', 'F'], true);

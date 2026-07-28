@@ -914,7 +914,7 @@ new class extends Component {
                         {{-- Form entry (sembunyikan saat status non-editable) --}}
                         @if (!$isReadOnly)
                         <div class="p-4 ">
-                            <div class="grid grid-cols-2 gap-3 sm:grid-cols-[2.5fr_0.7fr_repeat(5,1fr)_auto] items-start">
+                            <div class="grid grid-cols-2 gap-3 sm:grid-cols-[2.5fr_0.7fr_repeat(5,1fr)] items-start">
                                 {{-- Barang --}}
                                 <div class="col-span-2 sm:col-span-1" x-ref="entryProductWrapper">
                                     <div>
@@ -998,21 +998,13 @@ new class extends Component {
                                         <x-input-error :messages="$errors->get('entryRcvEd')" />
                                     </div>
                                 </div>
-                                {{-- Button (label spacer + button + error spacer biar align dengan field lain) --}}
-                                <div class="col-span-2 sm:col-span-1">
-                                    <div class="invisible mb-1 text-xs select-none">&nbsp;</div>
-                                    <x-primary-button type="button" wire:click="tambahBarang"
-                                        class="justify-center w-full !px-2" title="Tambah ke Keranjang">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M12 4v16m8-8H4" />
-                                        </svg>
-                                        <span class="sr-only">Tambah ke Keranjang</span>
-                                    </x-primary-button>
-                                    <div class="mt-1 min-h-[1.25rem]"></div>
-                                </div>
                             </div>
+
+                            {{-- Petunjuk cara simpan — tombol Tambah ditiadakan --}}
+                            <p class="mt-3 text-xs text-muted dark:text-gray-400">
+                                Tekan <span class="px-1.5 py-0.5 font-semibold rounded border border-hairline bg-canvas text-body dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">Enter</span>
+                                di kolom <strong>ED</strong> untuk menambahkan ke keranjang.
+                            </p>
                         </div>
 
                         {{-- ═══ KONFIRMASI UPDATE HARGA (amber = warning) ═══ --}}
@@ -1043,7 +1035,7 @@ new class extends Component {
                         <div class="overflow-x-auto border-t border-hairline dark:border-gray-700">
                             <table class="min-w-full text-sm">
                                 <thead
-                                    class="text-xs tracking-wider text-muted uppercase bg-surface-soft dark:bg-gray-800 dark:text-gray-200">
+                                    class="text-sm font-semibold tracking-wide text-left text-gray-600 uppercase bg-surface-soft dark:bg-gray-800 dark:text-gray-300">
                                     <tr class="text-left">
                                         <th class="px-3 py-2 font-semibold">#</th>
                                         <th class="px-3 py-2 font-semibold">Barang</th>
@@ -1062,17 +1054,17 @@ new class extends Component {
                                     @forelse($details as $i => $dtl)
                                         <tr wire:key="dtl-{{ $dtl['_key'] }}"
                                             class="hover:bg-surface-soft dark:hover:bg-gray-800/50">
-                                            <td class="px-3 py-2 text-muted-soft">{{ $i + 1 }}</td>
-                                            <td class="px-3 py-2">
+                                            <td class="px-3 py-1.5 text-muted-soft">{{ $i + 1 }}</td>
+                                            <td class="px-3 py-1.5">
                                                 <div class="font-medium text-ink dark:text-gray-100">
                                                     {{ $dtl['product_name'] ?? '-' }}</div>
                                                 <div class="text-xs text-muted-soft">{{ $dtl['product_id'] }}</div>
                                             </td>
-                                            <td class="px-3 py-2 font-mono text-right">
+                                            <td class="px-3 py-1.5 font-mono text-right">
                                                 {{ number_format($dtl['qty'] ?? 0) }}</td>
-                                            <td class="px-3 py-2 font-mono text-right">
+                                            <td class="px-3 py-1.5 font-mono text-right">
                                                 {{ number_format($dtl['cost_price'] ?? 0) }}</td>
-                                            <td class="px-3 py-2 text-right">
+                                            <td class="px-3 py-1.5 text-right">
                                                 <div>{{ $dtl['dsp_discount'] ?? '-' }}</div>
                                                 @if (!empty($dtl['dsp_discount1']))
                                                     <div class="text-xs text-muted-soft">{{ $dtl['dsp_discount1'] }}
@@ -1080,18 +1072,25 @@ new class extends Component {
                                                 @endif
                                             </td>
                                             <td
-                                                class="px-3 py-2 font-mono font-semibold text-right text-brand dark:text-brand-lime">
+                                                class="px-3 py-1.5 font-mono font-semibold text-right text-brand dark:text-brand-lime">
                                                 Rp {{ number_format($dtl['vtotal'] ?? 0) }}</td>
-                                            <td class="px-3 py-2">{{ $dtl['rcv_bath'] ?? '-' }}</td>
-                                            <td class="px-3 py-2">{{ $dtl['rcv_ed'] ?? '-' }}</td>
+                                            <td class="px-3 py-1.5">{{ $dtl['rcv_bath'] ?? '-' }}</td>
+                                            <td class="px-3 py-1.5">{{ $dtl['rcv_ed'] ?? '-' }}</td>
                                             @if (!$isReadOnly)
-                                                <td class="px-3 py-2">
-                                                    <x-confirm-button variant="danger" :action="'hapusBarang(' . $dtl['_key'] . ')'"
-                                                        title="Hapus Barang"
-                                                        message="Hapus {{ $dtl['product_name'] ?? '' }} dari keranjang?"
-                                                        confirmText="Ya" cancelText="Batal" class="!py-1 !px-2 text-xs">
-                                                        X
-                                                    </x-confirm-button>
+                                                <td class="px-3 py-1.5">
+                                                    <x-outline-button type="button"
+                                                        wire:click.prevent="hapusBarang({{ $dtl['_key'] }})"
+                                                        wire:confirm="Hapus {{ $dtl['product_name'] ?? 'barang ini' }} dari keranjang?"
+                                                        wire:loading.attr="disabled"
+                                                        class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300"
+                                                        title="Hapus dari keranjang">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </x-outline-button>
                                                 </td>
                                             @endif
                                         </tr>
@@ -1113,78 +1112,88 @@ new class extends Component {
                 {{-- ═══ RINCIAN PEMBAYARAN — hanya tampil kalau transaksi sudah dibayar (H/L) ═══ --}}
                 @if (in_array($rcvStatus, ['H', 'L'], true))
                     <x-border-form :title="'Rincian Pembayaran — ' . ($rcvStatus === 'L' ? 'Lunas' : 'Hutang')">
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <div
-                                class="p-4 space-y-2 text-sm border bg-gradient-to-br from-gray-50 to-white border-brand/20 rounded-xl dark:from-gray-800 dark:to-gray-900 dark:border-brand-lime/25">
-                                <div class="flex justify-between text-muted dark:text-gray-300">
-                                    <span>Total Qty</span>
-                                    <span class="font-mono font-semibold">{{ number_format($totalQty) }}</span>
-                                </div>
-                                <div class="flex justify-between text-muted dark:text-gray-300">
-                                    <span>Total Barang</span>
-                                    <span class="font-mono">Rp {{ number_format($totalBarang) }}</span>
-                                </div>
-                                <div class="flex justify-between text-muted dark:text-gray-300">
-                                    <span>Diskon</span>
-                                    <span class="font-mono text-error dark:text-rose-400">- Rp
-                                        {{ number_format($rcvDiskon ?? 0) }}</span>
-                                </div>
-                                <div class="flex justify-between text-muted dark:text-gray-300">
-                                    <span>Setelah Diskon</span>
-                                    <span class="font-mono">Rp {{ number_format($totalSetelahDiskon) }}</span>
-                                </div>
-                                <div class="flex justify-between text-muted dark:text-gray-300">
-                                    <span>PPN ({{ $rcvPpn ?? 0 }}%)</span>
-                                    <span class="font-mono">Rp {{ number_format($ppnNominal) }}</span>
-                                </div>
-                                <div class="flex justify-between text-muted dark:text-gray-300">
-                                    <span>Materai</span>
-                                    <span class="font-mono">Rp {{ number_format($rcvMaterai ?? 0) }}</span>
-                                </div>
-                                <hr class="border-gray-300 dark:border-gray-700">
-                                <div class="flex items-center justify-between text-base font-bold">
-                                    <span class="tracking-wide uppercase text-brand dark:text-brand-lime">Grand
-                                        Total</span>
-                                    <span class="font-mono text-brand dark:text-brand-lime">Rp
-                                        {{ number_format($grandTotal) }}</span>
-                                </div>
+
+                        {{-- Status + cara bayar --}}
+                        <div class="flex flex-wrap items-center gap-2 mb-3">
+                            <x-badge :variant="$rcvStatus === 'L' ? 'success' : 'warning'">
+                                {{ $rcvStatus === 'L' ? 'LUNAS' : 'HUTANG' }}
+                            </x-badge>
+                            @if ($accName || $accId)
+                                <span class="text-sm text-muted dark:text-gray-400">
+                                    via <strong class="text-body dark:text-gray-200">{{ $accName ?: $accId }}</strong>
+                                </span>
+                            @endif
+                        </div>
+
+                        {{-- Rincian — dibaca dari atas ke bawah, pola Kasir RJ --}}
+                        <dl class="w-full max-w-md divide-y divide-hairline dark:divide-gray-700">
+
+                            <div class="flex items-center justify-between gap-4 py-2.5">
+                                <dt class="text-base text-muted dark:text-gray-400">Total Qty</dt>
+                                <dd class="text-base font-semibold text-ink dark:text-gray-100">
+                                    {{ number_format($totalQty) }}</dd>
                             </div>
 
-                            <div
-                                class="p-4 space-y-2 text-sm border bg-gradient-to-br from-gray-50 to-white rounded-xl dark:from-gray-800 dark:to-gray-900 {{ $rcvStatus === 'L' ? 'border-emerald-300 dark:border-emerald-800' : 'border-amber-300 dark:border-amber-800' }}">
-                                <div
-                                    class="flex items-center gap-2 pb-2 mb-2 border-b border-hairline dark:border-gray-700">
-                                    <span
-                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $rcvStatus === 'L' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' }}">
-                                        {{ $rcvStatus === 'L' ? 'LUNAS' : 'HUTANG' }}
-                                    </span>
-                                    @if ($accName || $accId)
-                                        <span class="text-xs text-muted dark:text-gray-400">
-                                            via <strong
-                                                class="text-body dark:text-gray-200">{{ $accName ?: $accId }}</strong>
-                                        </span>
-                                    @endif
-                                </div>
-                                <div class="flex justify-between text-muted dark:text-gray-300">
-                                    <span>Dibayar</span>
-                                    <span class="font-mono font-semibold">Rp {{ number_format($bayar ?? 0) }}</span>
-                                </div>
-                                <div class="flex justify-between text-muted dark:text-gray-300">
-                                    <span>Grand Total</span>
-                                    <span class="font-mono">Rp {{ number_format($grandTotal) }}</span>
-                                </div>
-                                <hr class="border-gray-300 dark:border-gray-700">
-                                <div class="flex items-center justify-between text-base font-bold">
-                                    <span>{{ ($bayar ?? 0) >= $grandTotal ? 'Kembalian' : 'Sisa / Kurang' }}</span>
-                                    @php
-                                        $selisih = ($bayar ?? 0) - $grandTotal;
-                                    @endphp
-                                    <span
-                                        class="font-mono {{ $selisih >= 0 ? 'text-brand dark:text-brand-lime' : 'text-error dark:text-rose-400' }}">Rp
-                                        {{ number_format(abs($selisih)) }}</span>
-                                </div>
+                            <div class="flex items-center justify-between gap-4 py-2.5">
+                                <dt class="text-base text-muted dark:text-gray-400">Total Barang</dt>
+                                <dd class="text-2xl font-bold text-ink dark:text-gray-100">Rp
+                                    {{ number_format($totalBarang) }}</dd>
                             </div>
-                        </div>
+
+                            <div class="flex items-center justify-between gap-4 py-2.5">
+                                <dt class="text-base font-semibold text-amber-700 dark:text-amber-400">Diskon</dt>
+                                <dd class="text-2xl font-bold text-amber-700 dark:text-amber-300">&minus; Rp
+                                    {{ number_format($rcvDiskon ?? 0) }}</dd>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-4 py-2.5">
+                                <dt class="text-base text-muted dark:text-gray-400">Setelah Diskon</dt>
+                                <dd class="text-2xl font-bold text-ink dark:text-gray-100">Rp
+                                    {{ number_format($totalSetelahDiskon) }}</dd>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-4 py-2.5">
+                                <dt class="text-base text-muted dark:text-gray-400">PPN ({{ $rcvPpn ?? 0 }}%)</dt>
+                                <dd class="text-2xl font-bold text-ink dark:text-gray-100">Rp
+                                    {{ number_format($ppnNominal) }}</dd>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-4 py-2.5">
+                                <dt class="text-base text-muted dark:text-gray-400">Materai</dt>
+                                <dd class="text-2xl font-bold text-ink dark:text-gray-100">Rp
+                                    {{ number_format($rcvMaterai ?? 0) }}</dd>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-4 py-2.5">
+                                <dt class="text-base font-bold text-blue-700 dark:text-blue-300">Grand Total</dt>
+                                <dd class="text-2xl font-bold text-blue-700 dark:text-blue-300">Rp
+                                    {{ number_format($grandTotal) }}</dd>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-4 py-2.5">
+                                <dt class="text-base text-muted dark:text-gray-400">Dibayar</dt>
+                                <dd class="text-2xl font-bold text-ink dark:text-gray-100">Rp
+                                    {{ number_format($bayar ?? 0) }}</dd>
+                            </div>
+
+                            {{-- Baris hasil: kurang / pas / kembalian --}}
+                            @php $selisih = (int) ($bayar ?? 0) - (int) $grandTotal; @endphp
+                            <div class="flex items-center justify-between gap-4 py-2.5">
+                                @if ($selisih < 0)
+                                    <dt class="text-base font-bold text-error dark:text-rose-400">Sisa / Kurang</dt>
+                                    <dd class="text-2xl font-bold text-error dark:text-rose-300">Rp
+                                        {{ number_format(abs($selisih)) }}</dd>
+                                @elseif ($selisih === 0)
+                                    <dt class="text-base font-bold text-success dark:text-success">Pas — Lunas</dt>
+                                    <dd class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">Rp 0</dd>
+                                @else
+                                    <dt class="text-base font-bold text-success dark:text-success">Kembalian</dt>
+                                    <dd class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">Rp
+                                        {{ number_format($selisih) }}</dd>
+                                @endif
+                            </div>
+
+                        </dl>
                     </x-border-form>
                 @endif
             </div>
