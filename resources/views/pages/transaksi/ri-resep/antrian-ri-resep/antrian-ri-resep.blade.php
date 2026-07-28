@@ -134,7 +134,7 @@ new class extends Component {
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 's.dr_id')
             ->join('rstxn_rihdrs as r', 'r.rihdr_no', '=', 's.rihdr_no')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'r.klaim_id')
-            ->select(['s.sls_no', DB::raw("to_char(s.sls_date,'dd/mm/yyyy hh24:mi:ss') as sls_date_display"), 's.status', 's.rihdr_no', 's.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 's.no_antrian', 's.dr_id', 'd.dr_name', 's.shift', 'r.ri_status', 'r.klaim_id', 'k.klaim_desc', 'k.klaim_status', 'r.datadaftarri_json', 'r.vno_sep', DB::raw("to_char(s.waktu_masuk_pelayanan,'dd/mm/yyyy hh24:mi') as waktu_masuk"), DB::raw("to_char(s.waktu_selesai_pelayanan,'dd/mm/yyyy hh24:mi') as waktu_selesai"), DB::raw('(select count(*) from imtxn_slsdtls where sls_no = s.sls_no) as item_count')])
+            ->select(['s.sls_no', DB::raw("to_char(s.sls_date,'dd/mm/yyyy hh24:mi') as sls_date_display"), 's.status', 's.rihdr_no', 's.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 's.no_antrian', 's.dr_id', 'd.dr_name', 's.shift', 'r.ri_status', 'r.klaim_id', 'k.klaim_desc', 'k.klaim_status', 'r.datadaftarri_json', 'r.vno_sep', DB::raw("to_char(s.waktu_masuk_pelayanan,'dd/mm/yyyy hh24:mi') as waktu_masuk"), DB::raw("to_char(s.waktu_selesai_pelayanan,'dd/mm/yyyy hh24:mi') as waktu_selesai")])
             ->whereNotNull('s.rihdr_no')
             ->whereBetween('s.sls_date', [$start, $end]);
 
@@ -253,8 +253,8 @@ new class extends Component {
             $row->telaah_resep_ttd = $apotekHdr['telaahResep']['penanggungJawab']['userLog'] ?? null;
             $row->telaah_obat_ttd = $apotekHdr['telaahObat']['penanggungJawab']['userLog'] ?? null;
 
-            $row->task_id6 = $apotekHdr['taskIdPelayanan']['taskId6'] ?? null;
-            $row->task_id7 = $apotekHdr['taskIdPelayanan']['taskId7'] ?? null;
+            $row->task_id6 = preg_replace('/:\d{2}$/', '', $apotekHdr['taskIdPelayanan']['taskId6'] ?? '') ?: null;
+            $row->task_id7 = preg_replace('/:\d{2}$/', '', $apotekHdr['taskIdPelayanan']['taskId7'] ?? '') ?: null;
 
             // Status SLS badge
             $statusMap = ['A' => 'Antrian', 'L' => 'Selesai'];
@@ -317,7 +317,7 @@ new class extends Component {
 
             {{-- TOOLBAR --}}
             <div
-                class="sticky z-30 px-4 py-3 bg-surface-soft border-b border-hairline top-20 dark:bg-gray-900 dark:border-gray-700">
+                class="sticky z-30 px-4 py-2.5 bg-surface-soft border-b border-hairline top-20 dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex flex-wrap items-end gap-3"
                     wire:key="{{ $this->renderKey('ri-resep-antrian-toolbar', []) }}">
 
@@ -401,7 +401,7 @@ new class extends Component {
                     <x-toolbar-refresh-reset class="ml-auto" />
                 </div>
 
-                <div class="mt-1 text-xs text-muted">
+                <div class="mt-1 text-sm text-muted">
                     Data Terakhir: {{ now()->format('d/m/Y H:i:s') }}
                 </div>
             </div>
@@ -431,11 +431,11 @@ new class extends Component {
                             @forelse ($this->rows as $row)
                                 <tr
                                     wire:key="ri-resep-antrian-row-{{ $row->sls_no }}"
-                                    class="transition bg-canvas dark:bg-gray-900 hover:shadow-md hover:bg-blue-50 dark:hover:bg-gray-800 rounded-xl shadow-sm ring-1 ring-hairline dark:ring-gray-700
+                                    class="transition bg-canvas dark:bg-gray-900 hover:shadow-md hover:bg-surface-soft dark:hover:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-hairline dark:ring-gray-700
                                     {{ $row->no_antrian > 0 ? 'border-l-4 border-l-blue-500' : '' }}">
 
                                     {{-- ANTRIAN & PASIEN --}}
-                                    <td class="px-4 py-4 align-top">
+                                    <td class="px-4 py-5 align-top">
                                         <div class="flex items-start gap-3">
                                             <div
                                                 class="flex flex-col items-center justify-center w-16 h-16 rounded-xl
@@ -445,7 +445,7 @@ new class extends Component {
                                                 <span class="text-2xl font-bold leading-none">
                                                     {{ $row->no_antrian ?: '-' }}
                                                 </span>
-                                                <span class="text-[9px] font-medium mt-0.5 text-center leading-tight">
+                                                <span class="text-[10px] font-medium mt-0.5 text-center leading-tight">
                                                     {{ $row->no_antrian > 0 ? 'apotek' : 'belum' }}
                                                 </span>
                                             </div>
@@ -454,7 +454,7 @@ new class extends Component {
                                                 :alamat="$row->address" :collapseUmur="false">
                                                 @if ($row->no_antrian > 0)
                                                     <span
-                                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
+                                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
                                                         {{ $row->jenis_resep === 'racikan'
                                                             ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
                                                             : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' }}">
@@ -466,12 +466,12 @@ new class extends Component {
                                     </td>
 
                                     {{-- RESEP / DOKTER --}}
-                                    <td class="px-4 py-4 space-y-1 align-top">
+                                    <td class="px-4 py-5 space-y-1 align-top">
                                         <div class="text-sm font-mono font-semibold text-blue-600 dark:text-blue-400">
                                             SLS #{{ $row->sls_no }}
                                             @if ($row->resep_no)
                                                 <span class="text-muted-soft">·</span>
-                                                <span class="text-xs text-muted dark:text-gray-400">Resep
+                                                <span class="text-sm text-muted dark:text-gray-400">Resep
                                                     #{{ $row->resep_no }}</span>
                                             @endif
                                         </div>
@@ -482,24 +482,23 @@ new class extends Component {
                                         <x-badge :variant="$row->ri_status_variant">
                                             {{ $row->ri_status_text }}
                                         </x-badge>
-                                        <div class="text-xs text-muted dark:text-gray-500">
+                                        <div class="text-sm text-muted dark:text-gray-500">
                                             No RI: {{ $row->rihdr_no }}
                                         </div>
                                         <x-list.sep-spri :sep="$row->vno_sep" />
                                     </td>
 
                                     {{-- STATUS LAYANAN --}}
-                                    <td class="px-4 py-4 space-y-2 align-top">
-                                        <div class="text-xs text-muted dark:text-gray-400">
+                                    <td class="px-4 py-5 space-y-2 align-top">
+                                        <div class="text-sm text-muted dark:text-gray-400 whitespace-nowrap">
                                             {{ $row->sls_date_display }} | Shift {{ $row->shift ?? '-' }}
-                                            &bull; {{ $row->item_count }} obat
                                         </div>
 
                                         <x-badge :variant="$row->status_variant">
                                             {{ $row->status_text }}
                                         </x-badge>
 
-                                        <div class="space-y-1 text-xs">
+                                        <div class="space-y-1 text-sm">
                                             <div class="flex items-center gap-1.5">
                                                 <span
                                                     class="w-2 h-2 rounded-full {{ $row->telaah_resep_done ? 'bg-emerald-500' : 'bg-gray-300' }}"></span>
@@ -526,12 +525,12 @@ new class extends Component {
                                     </td>
 
                                     {{-- WAKTU APOTEK --}}
-                                    <td class="px-4 py-4 space-y-2 align-top">
-                                        <div class="text-xs space-y-1">
+                                    <td class="px-4 py-5 space-y-2 align-top">
+                                        <div class="text-sm space-y-1">
                                             <div class="flex items-center gap-1.5">
                                                 <span
                                                     class="w-2 h-2 rounded-full {{ $row->task_id6 ? 'bg-emerald-500' : 'bg-gray-300' }}"></span>
-                                                <span class="text-muted dark:text-gray-400">
+                                                <span class="text-muted dark:text-gray-400 whitespace-nowrap">
                                                     Masuk Apotek:
                                                     <span
                                                         class="font-medium">{{ $row->task_id6 ?? ($row->waktu_masuk ?? '—') }}</span>
@@ -540,7 +539,7 @@ new class extends Component {
                                             <div class="flex items-center gap-1.5">
                                                 <span
                                                     class="w-2 h-2 rounded-full {{ $row->task_id7 ? 'bg-violet-500' : 'bg-gray-300' }}"></span>
-                                                <span class="text-muted dark:text-gray-400">
+                                                <span class="text-muted dark:text-gray-400 whitespace-nowrap">
                                                     Keluar Apotek:
                                                     <span
                                                         class="font-medium">{{ $row->task_id7 ?? ($row->waktu_selesai ?? '—') }}</span>
@@ -550,11 +549,14 @@ new class extends Component {
                                     </td>
 
                                     {{-- AKSI --}}
-                                    <td class="px-4 py-4 align-top">
+                                    <td class="px-4 py-5 align-top">
                                         <div class="flex flex-col gap-2">
 
+                                            {{-- Baris 1: [grid TaskId6 TaskId7] | [Telaah] — susunan 2x2 menirukan tab UGD --}}
+                                            <div class="grid grid-cols-2 gap-2">
+
                                             {{-- Masuk / Keluar Apotek (TaskID 6/7 components — pola UGD) --}}
-                                            <div class="flex space-x-1">
+                                            <div class="grid grid-cols-2 gap-1">
                                                 {{-- Tombol di sini; logika di komponen host task-id-apotek-actions (mount 1×).
                                                      wire:click="$dispatch(...)" = aksi Livewire (BUKAN Alpine) → host tangkap
                                                      via #[On]. Nol komponen Livewire per baris. Redup dari $row->task_id6/7. --}}
@@ -576,7 +578,7 @@ new class extends Component {
                                             {{-- Telaah Resep & Obat --}}
                                             @if ($row->telaah_resep_done && $row->telaah_obat_done)
                                                 <x-secondary-button wire:click="openTelaah({{ $row->sls_no }})"
-                                                    class="text-xs whitespace-nowrap justify-center !opacity-60"
+                                                    class="text-sm whitespace-nowrap justify-center !opacity-60"
                                                     title="Telaah Resep & Obat sudah ditelaah, klik untuk lihat detail">
                                                     <svg class="w-3.5 h-3.5 mr-1" fill="none"
                                                         stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -587,7 +589,7 @@ new class extends Component {
                                                 </x-secondary-button>
                                             @else
                                                 <x-secondary-button wire:click="openTelaah({{ $row->sls_no }})"
-                                                    class="text-xs whitespace-nowrap justify-center !bg-teal-600 !text-white !border-teal-700 hover:!bg-teal-700 dark:!bg-teal-600 dark:!text-white dark:!border-teal-700 dark:hover:!bg-teal-700">
+                                                    class="text-sm whitespace-nowrap justify-center !bg-teal-600 !text-white !border-teal-700 hover:!bg-teal-700 dark:!bg-teal-600 dark:!text-white dark:!border-teal-700 dark:hover:!bg-teal-700">
                                                     <svg class="w-3.5 h-3.5 mr-1" fill="none"
                                                         stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -596,24 +598,41 @@ new class extends Component {
                                                     Telaah Resep &amp; Obat
                                                 </x-secondary-button>
                                             @endif
+                                            </div>
 
-                                            {{-- Administrasi (Obat + Kasir) — pola purple ala UGD --}}
-                                            @hasanyrole('Apoteker|Admin|Tu')
-                                                @if ($row->status === 'L')
-                                                    <x-success-button
-                                                        wire:click="openAdministrasi({{ $row->sls_no }}, 'kasir')"
-                                                        class="text-xs whitespace-nowrap justify-center">
-                                                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24" stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        Lihat / Cetak
-                                                    </x-success-button>
+                                            {{-- Baris 2: Cetak E-Resep | Administrasi (grid sejajar, urutan ala UGD).
+                                                 Slot kiri diisi <div></div> kosong saat resep belum ada supaya
+                                                 tombol Administrasi tetap berada di kolom kanan. --}}
+                                            <div class="grid grid-cols-2 gap-2">
+                                                @if ($row->has_eresep || $row->has_eresep_racikan)
+                                                    <x-info-button wire:click="cetakEresep({{ $row->sls_no }})"
+                                                        wire:loading.attr="disabled" wire:target="cetakEresep"
+                                                        class="text-sm whitespace-nowrap justify-center">
+                                                        <span wire:loading.remove wire:target="cetakEresep" class="flex items-center">
+                                                            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                            </svg>
+                                                            Cetak E-Resep
+                                                        </span>
+                                                        <span wire:loading wire:target="cetakEresep" class="flex items-center gap-1">
+                                                            <x-loading /> Menyiapkan...
+                                                        </span>
+                                                    </x-info-button>
                                                 @else
+                                                    <div></div>
+                                                @endif
+
+                                                {{-- Administrasi (Obat + Kasir) — purple seragam dengan RJ/UGD.
+                                                     Dulu nota ter-post (status 'L') tampil sebagai tombol hijau
+                                                     "Lihat / Cetak"; sekarang rupanya sama, hanya TAB TUJUAN yang
+                                                     berbeda — 'kasir' bila sudah post, 'obat' bila belum. --}}
+                                                @hasanyrole('Apoteker|Admin|Tu')
                                                     <x-secondary-button
-                                                        wire:click="openAdministrasi({{ $row->sls_no }}, 'obat')"
-                                                        class="text-xs whitespace-nowrap justify-center !bg-purple-600 !text-white !border-purple-700 hover:!bg-purple-700 dark:!bg-purple-600 dark:!text-white dark:!border-purple-700 dark:hover:!bg-purple-700">
+                                                        wire:click="openAdministrasi({{ $row->sls_no }}, '{{ $row->status === 'L' ? 'kasir' : 'obat' }}')"
+                                                        class="text-sm whitespace-nowrap justify-center !bg-purple-600 !text-white !border-purple-700 hover:!bg-purple-700 dark:!bg-purple-600 dark:!text-white dark:!border-purple-700 dark:hover:!bg-purple-700"
+                                                        title="{{ $row->status === 'L' ? 'Sudah diproses kasir — buka tab Kasir untuk lihat / cetak' : 'Buka administrasi obat' }}">
                                                         <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
                                                             viewBox="0 0 24 24" stroke-width="2">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -621,27 +640,8 @@ new class extends Component {
                                                         </svg>
                                                         Administrasi
                                                     </x-secondary-button>
-                                                @endif
-                                            @endhasanyrole
-
-                                            {{-- Cetak E-Resep — hidden kalau eresep kosong (pola RJ/UGD) --}}
-                                            @if ($row->has_eresep || $row->has_eresep_racikan)
-                                                <x-info-button wire:click="cetakEresep({{ $row->sls_no }})"
-                                                    wire:loading.attr="disabled" wire:target="cetakEresep"
-                                                    class="text-xs whitespace-nowrap justify-center">
-                                                    <span wire:loading.remove wire:target="cetakEresep" class="flex items-center">
-                                                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24" stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                                        </svg>
-                                                        Cetak E-Resep
-                                                    </span>
-                                                    <span wire:loading wire:target="cetakEresep" class="flex items-center gap-1">
-                                                        <x-loading /> Menyiapkan...
-                                                    </span>
-                                                </x-info-button>
-                                            @endif
+                                                @endhasanyrole
+                                            </div>
 
                                         </div>
                                     </td>
@@ -668,7 +668,7 @@ new class extends Component {
 
                 {{-- PAGINATION --}}
                 <div
-                    class="sticky bottom-0 z-10 px-4 py-3 bg-canvas border-t border-hairline rounded-b-2xl dark:bg-gray-900 dark:border-gray-700">
+                    class="sticky bottom-0 z-10 px-4 py-4 bg-canvas border-t border-hairline rounded-b-2xl dark:bg-gray-900 dark:border-gray-700">
                     {{ $this->rows->links() }}
                 </div>
             </div>

@@ -50,7 +50,9 @@ module.exports = {
                 },
                 muted: {
                     DEFAULT: "#69736b", // sub-judul
-                    soft: "#8b948c", // caption / fine-print
+                    soft: "#6b746c", // caption / fine-print — 4.53:1 vs kanvas (WCAG AA).
+                    // Dulu #8b948c = 3.13:1, di bawah ambang 4.5:1 sehingga teks
+                    // sekunder terbaca buram. Dipakai ~382 file lewat text-muted-soft.
                 },
                 hairline: {
                     DEFAULT: "#dde4d8", // garis 1px di permukaan terang

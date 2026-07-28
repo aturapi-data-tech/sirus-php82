@@ -117,7 +117,7 @@ new class extends Component {
             ->join('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
-            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.vno_sep', 'h.nobooking', 'h.datadaftarugd_json', 'k.klaim_desc', 'k.klaim_status', 'h.waktu_masuk_apt', 'h.waktu_selesai_pelayanan'])
+            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.vno_sep', 'h.nobooking', 'h.datadaftarugd_json', 'k.klaim_desc', 'k.klaim_status', 'h.waktu_masuk_apt', 'h.waktu_selesai_pelayanan'])
             ->whereBetween('h.rj_date', [$start, $end])
             ->where('h.klaim_id', '!=', 'KR');
 
@@ -208,8 +208,8 @@ new class extends Component {
             $row->telaah_resep_ttd = $json['telaahResep']['penanggungJawab']['userLog'] ?? null;
             $row->telaah_obat_ttd = $json['telaahObat']['penanggungJawab']['userLog'] ?? null;
 
-            $row->task_id6 = $json['taskIdPelayanan']['taskId6'] ?? null;
-            $row->task_id7 = $json['taskIdPelayanan']['taskId7'] ?? null;
+            $row->task_id6 = preg_replace('/:\d{2}$/', '', $json['taskIdPelayanan']['taskId6'] ?? '') ?: null;
+            $row->task_id7 = preg_replace('/:\d{2}$/', '', $json['taskIdPelayanan']['taskId7'] ?? '') ?: null;
 
             $row->status_resep = $json['statusResep']['status'] ?? null;
             $row->status_resep_label = match ($row->status_resep) {
@@ -268,7 +268,7 @@ new class extends Component {
 
             {{-- TOOLBAR --}}
             <div
-                class="sticky z-30 px-4 py-3 bg-surface-soft border-b border-hairline top-20 dark:bg-gray-900 dark:border-gray-700">
+                class="sticky z-30 px-4 py-2.5 bg-surface-soft border-b border-hairline top-20 dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex flex-wrap items-end gap-3"
                     wire:key="{{ $this->renderKey('antrian-apotek-toolbar', []) }}">
 
@@ -358,7 +358,7 @@ new class extends Component {
                     <x-toolbar-refresh-reset class="ml-auto" />
 
                 </div>
-                <div class="mt-1 text-xs text-muted">
+                <div class="mt-1 text-sm text-muted">
                     Data Terakhir: {{ now()->format('d/m/Y H:i:s') }}
                 </div>
             </div>
@@ -395,7 +395,7 @@ new class extends Component {
 
                                     {{-- ANTRIAN & PASIEN — tile nomor antrian apotek (pola sama dgn RJ/RI;
                                          sebelumnya UGD tidak menampilkan nomor sama sekali padahal sudah dihitung) --}}
-                                    <td class="px-4 py-4 align-top">
+                                    <td class="px-4 py-5 align-top">
                                         <div class="flex items-start gap-3">
                                             {{-- Nomor antrian apotek --}}
                                             <div
@@ -406,7 +406,7 @@ new class extends Component {
                                                 <span class="text-2xl font-bold leading-none">
                                                     {{ $row->no_antrian_apotek ?: '-' }}
                                                 </span>
-                                                <span class="text-[9px] font-medium mt-0.5 text-center leading-tight">
+                                                <span class="text-[10px] font-medium mt-0.5 text-center leading-tight">
                                                     {{ $row->no_antrian_apotek > 0 ? 'apotek' : 'belum' }}
                                                 </span>
                                             </div>
@@ -415,42 +415,43 @@ new class extends Component {
                                                 <x-list.identitas-pasien :regNo="$row->reg_no" :nama="$row->reg_name"
                                                     :sex="$row->sex" :tglLahir="$row->birth_date"
                                                     :alamat="$row->address" :collapseUmur="false">
-                                                    {{-- Jenis resep badge --}}
-                                                    @if ($row->no_antrian_apotek > 0)
-                                                        <span
-                                                            class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium
-                                                            {{ $row->jenis_resep === 'racikan'
-                                                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                                                                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' }}">
-                                                            {{ ucfirst($row->jenis_resep) }}
-                                                        </span>
-                                                    @endif
+                                                    {{-- Badge jenis resep DIHAPUS: menduplikasi badge "Racikan"
+                                                         di kolom Status Layanan (sebelah E-Resep), yang lebih tepat
+                                                         karena hanya muncul saat memang ada resep racikan. --}}
                                                 </x-list.identitas-pasien>
                                             </div>
                                         </div>
                                     </td>
 
                                     {{-- DOKTER --}}
-                                    <td class="px-4 py-4 space-y-1 align-top">
+                                    <td class="px-4 py-5 space-y-1 align-top">
                                         <div class="text-sm font-semibold text-success dark:text-success">
                                             {{ $row->dr_name ?? '-' }}
                                         </div>
-                                        <div class="flex flex-wrap items-center gap-2">
+                                        {{-- Susunan menirukan tab RJ: badge klaim satu baris,
+                                             SEP turun ke baris sendiri. Sebelumnya keduanya
+                                             dijejalkan dalam satu baris flex — nomor SEP yang
+                                             panjang memaksa kolom melebar ke samping, sehingga
+                                             komposisi lebar kolom tab UGD tidak sama dengan RJ. --}}
+                                        <div class="flex flex-wrap items-center gap-1">
                                             <x-list.klaim-badge :status="$row->klaim_status" :desc="$row->klaim_desc" :id="$row->klaim_id" />
-                                            <x-list.sep-spri :sep="$row->vno_sep" />
+                                        </div>
+                                        <x-list.sep-spri :sep="$row->vno_sep" />
+                                        <div class="text-sm text-muted dark:text-gray-500">
+                                            No UGD: {{ $row->rj_no }}
                                         </div>
                                     </td>
 
                                     {{-- STATUS LAYANAN --}}
-                                    <td class="px-4 py-4 space-y-2 align-top">
-                                        <div class="text-xs text-muted dark:text-gray-400">
+                                    <td class="px-4 py-5 space-y-2 align-top">
+                                        <div class="text-sm text-muted dark:text-gray-400 whitespace-nowrap">
                                             {{ $row->rj_date_display }} | Shift {{ $row->shift ?? '-' }}
                                         </div>
                                         <x-badge :variant="$row->status_variant">{{ $row->status_text }}</x-badge>
                                         <div class="flex gap-1.5">
                                             @if ($row->eresep_count)
                                                 <span
-                                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
                                                     <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                                         <path fill-rule="evenodd"
                                                             d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -460,13 +461,13 @@ new class extends Component {
                                                 </span>
                                             @else
                                                 <span
-                                                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                                                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
                                                     Tanpa Resep
                                                 </span>
                                             @endif
                                             @if ($row->has_eresep_racikan)
                                                 <span
-                                                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                                                     Racikan
                                                 </span>
                                             @endif
@@ -474,7 +475,7 @@ new class extends Component {
                                         @if ($row->status_resep)
                                             <x-badge :variant="$row->status_resep_color">{{ $row->status_resep_label }}</x-badge>
                                         @endif
-                                        <div class="space-y-1 text-xs">
+                                        <div class="space-y-1 text-sm">
                                             <div class="flex items-center gap-1.5">
                                                 <span
                                                     class="w-2 h-2 rounded-full {{ $row->telaah_resep_done ? 'bg-emerald-500' : 'bg-gray-300' }}"></span>
@@ -501,8 +502,8 @@ new class extends Component {
                                     </td>
 
                                     {{-- WAKTU APOTEK --}}
-                                    <td class="px-4 py-4 space-y-2 align-top">
-                                        <div class="text-xs space-y-1">
+                                    <td class="px-4 py-5 space-y-2 align-top">
+                                        <div class="text-sm space-y-1">
                                             @php
                                                 $rjLabel = match ($row->rj_status) {
                                                     'A' => 'Belum Bayar',
@@ -520,7 +521,7 @@ new class extends Component {
                                                 };
                                             @endphp
                                             @if ($rjLabel)
-                                                <div class="text-xs text-muted dark:text-gray-500">
+                                                <div class="text-sm text-muted dark:text-gray-500">
                                                     Kasir:
                                                     <span class="font-medium {{ $rjTextColor }}">{{ $rjLabel }}</span>
                                                 </div>
@@ -528,7 +529,7 @@ new class extends Component {
                                             <div class="flex items-center gap-1.5">
                                                 <span
                                                     class="w-2 h-2 rounded-full {{ $row->task_id6 ? 'bg-emerald-500' : 'bg-gray-300' }}"></span>
-                                                <span class="text-muted dark:text-gray-400">
+                                                <span class="text-muted dark:text-gray-400 whitespace-nowrap">
                                                     Masuk Apotek: <span
                                                         class="font-medium">{{ $row->task_id6 ?? '—' }}</span>
                                                 </span>
@@ -536,13 +537,13 @@ new class extends Component {
                                             <div class="flex items-center gap-1.5">
                                                 <span
                                                     class="w-2 h-2 rounded-full {{ $row->task_id7 ? 'bg-violet-500' : 'bg-gray-300' }}"></span>
-                                                <span class="text-muted dark:text-gray-400">
+                                                <span class="text-muted dark:text-gray-400 whitespace-nowrap">
                                                     Keluar Apotek: <span
                                                         class="font-medium">{{ $row->task_id7 ?? '—' }}</span>
                                                 </span>
                                             </div>
                                         </div>
-                                        <div class="text-xs text-muted dark:text-gray-500">
+                                        <div class="text-sm text-muted dark:text-gray-500">
                                             Administrasi:
                                             <span
                                                 class="font-medium {{ $row->admin_user !== '-' ? 'text-success dark:text-success' : 'text-muted-soft' }}">
@@ -552,7 +553,7 @@ new class extends Component {
                                     </td>
 
                                     {{-- AKSI --}}
-                                    <td class="px-4 py-4 align-top">
+                                    <td class="px-4 py-5 align-top">
                                         @if ($row->status_text === 'Batal')
                                             {{-- Batal: actions tidak diakses, konfirmasi ke Pendaftaran --}}
                                             <div class="flex flex-col items-center gap-2 p-3 text-center border border-red-200 rounded-lg bg-red-50 dark:bg-red-900/10 dark:border-red-800">
@@ -564,10 +565,10 @@ new class extends Component {
                                                             d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
                                                     </svg>
                                                 </div>
-                                                <span class="text-xs font-semibold text-red-600 dark:text-red-400">
+                                                <span class="text-sm font-semibold text-red-600 dark:text-red-400">
                                                     Pasien Batal
                                                 </span>
-                                                <span class="text-xs text-muted dark:text-gray-400">
+                                                <span class="text-sm text-muted dark:text-gray-400">
                                                     Konfirmasi ke<br>Pendaftaran
                                                 </span>
                                             </div>
@@ -600,7 +601,7 @@ new class extends Component {
                                                 @if ($row->telaah_resep_done && $row->telaah_obat_done)
                                                     <x-secondary-button
                                                         wire:click="openTelaah({{ $row->eresep_count }}, '{{ $row->rj_no }}')"
-                                                        class="text-xs whitespace-nowrap justify-center !opacity-60"
+                                                        class="text-sm whitespace-nowrap justify-center !opacity-60"
                                                         title="Telaah Resep & Obat sudah ditelaah, klik untuk lihat detail">
                                                         <svg class="w-3.5 h-3.5 mr-1" fill="none"
                                                             stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -612,7 +613,7 @@ new class extends Component {
                                                 @else
                                                     <x-secondary-button
                                                         wire:click="openTelaah({{ $row->eresep_count }}, '{{ $row->rj_no }}')"
-                                                        class="text-xs whitespace-nowrap justify-center !bg-teal-600 !text-white !border-teal-700 hover:!bg-teal-700 dark:!bg-teal-600 dark:!text-white dark:!border-teal-700 dark:hover:!bg-teal-700">
+                                                        class="text-sm whitespace-nowrap justify-center !bg-teal-600 !text-white !border-teal-700 hover:!bg-teal-700 dark:!bg-teal-600 dark:!text-white dark:!border-teal-700 dark:hover:!bg-teal-700">
                                                         <svg class="w-3.5 h-3.5 mr-1" fill="none"
                                                             stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -628,7 +629,7 @@ new class extends Component {
                                                 @if ($row->has_eresep || $row->has_eresep_racikan)
                                                     <x-info-button wire:click="cetakEresep('{{ $row->rj_no }}')"
                                                         wire:loading.attr="disabled" wire:target="cetakEresep"
-                                                        class="text-xs whitespace-nowrap justify-center">
+                                                        class="text-sm whitespace-nowrap justify-center">
                                                         <span wire:loading.remove wire:target="cetakEresep"
                                                             class="flex items-center">
                                                             <svg class="w-3.5 h-3.5 mr-1" fill="none"
@@ -650,7 +651,7 @@ new class extends Component {
                                                 @hasanyrole('Admin|Perawat|Casemix|Apoteker')
                                                     <x-secondary-button
                                                         wire:click="openAdministrasiPasien('{{ $row->rj_no }}')"
-                                                        class="text-xs whitespace-nowrap justify-center !bg-purple-600 !text-white !border-purple-700 hover:!bg-purple-700 dark:!bg-purple-600 dark:!text-white dark:!border-purple-700 dark:hover:!bg-purple-700">
+                                                        class="text-sm whitespace-nowrap justify-center !bg-purple-600 !text-white !border-purple-700 hover:!bg-purple-700 dark:!bg-purple-600 dark:!text-white dark:!border-purple-700 dark:hover:!bg-purple-700">
                                                         <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
                                                             viewBox="0 0 24 24" stroke-width="2">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -689,7 +690,7 @@ new class extends Component {
                 </div>
 
                 <div
-                    class="sticky bottom-0 z-10 px-4 py-3 bg-canvas border-t border-hairline rounded-b-2xl dark:bg-gray-900 dark:border-gray-700">
+                    class="sticky bottom-0 z-10 px-4 py-4 bg-canvas border-t border-hairline rounded-b-2xl dark:bg-gray-900 dark:border-gray-700">
                     {{ $this->rows->links() }}
                 </div>
             </div>

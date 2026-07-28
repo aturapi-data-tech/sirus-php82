@@ -27,7 +27,7 @@ new class extends Component {
 ?>
 
 <div class="min-h-screen bg-surface-soft dark:bg-gray-900">
-    <div class="px-4 py-4 mx-auto max-w-[1920px]">
+    <div class="px-4 pt-2 pb-4 mx-auto max-w-[1920px]">
 
         {{-- HEADER --}}
         {{-- <div class="flex items-center justify-between mb-4">
@@ -40,10 +40,13 @@ new class extends Component {
         </div> --}}
         {{-- TAB NAV + AKSI --}}
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <x-tabs variant="underline">
-                <x-tab :active="$activeTab === 'rj'" color="emerald" wire:click="setTab('rj')">Rawat Jalan</x-tab>
-                <x-tab :active="$activeTab === 'ugd'" color="rose" wire:click="setTab('ugd')">UGD</x-tab>
-                <x-tab :active="$activeTab === 'ri'" color="blue" wire:click="setTab('ri')">Rawat Inap</x-tab>
+            {{-- Varian chip. Prop color sengaja dilepas: varian chip & card selalu
+                 memakai warna brand untuk state aktif (lihat komponen tab), jadi
+                 emerald/rose/blue tak lagi berpengaruh. --}}
+            <x-tabs variant="chip">
+                <x-tab :active="$activeTab === 'rj'" wire:click="setTab('rj')">Rawat Jalan</x-tab>
+                <x-tab :active="$activeTab === 'ugd'" wire:click="setTab('ugd')">UGD</x-tab>
+                <x-tab :active="$activeTab === 'ri'" wire:click="setTab('ri')">Rawat Inap</x-tab>
             </x-tabs>
 
             <x-outline-button type="button" wire:click="openCekSaldo"
@@ -56,7 +59,7 @@ new class extends Component {
         </div>
 
         {{-- TAB CONTENT --}}
-        <div class="mt-4">
+        <div class="mt-2">
             @if ($activeTab === 'rj')
                 <livewire:pages::transaksi.rj.antrian-apotek-rj.antrian-apotek-rj
                     wire:key="antrian-apotek-rj-wrapper" />

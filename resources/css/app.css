@@ -72,7 +72,8 @@
     --body: #b9c4bc;
     --body-strong: #dbe4dd;
     --muted: #9aa89e;
-    --muted-soft: #76847b;
+    /* 4.52:1 vs kartu gelap (#1a271f). Dulu #76847b = 3.96:1, di bawah AA. */
+    --muted-soft: #808e85;
     --primary-disabled: #274b38;
     --on-primary: #ffffff;
     /* semantic: tint lebih gelap, deep lebih terang agar kontras di forest */
