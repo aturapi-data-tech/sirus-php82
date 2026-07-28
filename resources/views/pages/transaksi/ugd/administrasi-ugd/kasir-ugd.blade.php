@@ -79,7 +79,8 @@ new class extends Component {
         $this->accId = $payload['acc_id'] ?? null;
         $this->accName = $payload['acc_name'] ?? null;
         $this->resetErrorBag('accId');
-        $this->dispatch('focus-input-bayar');
+        // Akun Kas = langkah terakhir sebelum posting (Diskon → Bayar → Akun Kas → Post).
+        $this->dispatch('focus-post-transaksi-ugd');
     }
 
     /* ===============================
@@ -680,96 +681,165 @@ new class extends Component {
         </div>
     @endif
 
-    {{-- RINGKASAN BIAYA --}}
-    <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
-        <div class="flex items-stretch gap-3">
+    {{-- ══ PEMBAYARAN — ringkasan biaya & input pembayaran dalam satu kartu ══ --}}
+    {{-- Urutan kerja kasir: Diskon → Bayar → Akun Kas → Post Transaksi --}}
+    <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40"
+        x-data="{
+            fokusKe(ref) {
+                const coba = () => {
+                    const el = this.$refs[ref];
+                    if (!el || el === document.activeElement) return;
+                    if (document.activeElement?.matches('input, select, textarea')) return;
+                    el.focus();
+                    el.select?.();
+                };
+                this.$nextTick(() => { coba(); setTimeout(coba, 150); });
+            }
+        }"
+        x-on:focus-input-diskon-ugd.window="fokusKe('inputDiskon')"
+        x-on:focus-input-bayar-ugd.window="fokusKe('inputBayar')"
+        x-on:focus-post-transaksi-ugd.window="fokusKe('btnPost')">
 
-            <div
-                class="flex-1 px-4 py-3 bg-canvas border border-hairline rounded-xl dark:bg-gray-900 dark:border-gray-700">
-                <p class="text-xs text-muted dark:text-gray-400 mb-0.5">Total Tagihan</p>
-                <p class="text-base font-bold text-ink dark:text-gray-100">Rp {{ number_format($rjTotal) }}</p>
-            </div>
-
-            <div class="flex items-center text-gray-300 dark:text-gray-600">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-            </div>
-
-            <div
-                class="flex-1 px-4 py-3 border border-amber-200 rounded-xl dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10">
-                <p class="mb-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-                    Diskon @if (!$isFormLocked)
-                        <span class="opacity-60">(dapat diubah)</span>
-                    @endif
-                </p>
-                @if (!$isFormLocked)
-                    <x-text-input wire:model.live="rjDiskon" type="number" min="0"
-                        class="w-full px-0 py-0 text-base font-bold text-amber-700 bg-transparent border-0
-                            dark:text-amber-300 focus:ring-0 focus:outline-none
-                            [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none
-                            [&::-webkit-inner-spin-button]:appearance-none"
-                        placeholder="0" x-on:keyup.enter="$dispatch('focus-lov-kas-kasir-ugd')" />
-                    <x-input-error :messages="$errors->get('rjDiskon')" class="mt-1" />
-                @else
-                    <p class="text-base font-bold text-amber-700 dark:text-amber-300">Rp {{ number_format($rjDiskon) }}
-                    </p>
-                @endif
-            </div>
-
-            <div class="flex items-center text-gray-300 dark:text-gray-600">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-            </div>
-
-            <div
-                class="flex-1 px-4 py-3 border border-blue-200 rounded-xl dark:border-blue-800/40 bg-blue-50 dark:bg-blue-900/10">
-                <p class="text-xs text-blue-600 dark:text-blue-400 mb-0.5">Setelah Diskon</p>
-                <p class="text-base font-bold text-blue-700 dark:text-blue-300">Rp {{ number_format($dspTotalAll) }}</p>
-            </div>
-
-            <div class="flex items-center text-gray-300 dark:text-gray-600">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-            </div>
-
-            @if ($sudahBayar > 0)
-                <div
-                    class="flex-1 px-4 py-3 border border-violet-200 rounded-xl dark:border-violet-800/40 bg-violet-50 dark:bg-violet-900/10">
-                    <p class="text-xs text-violet-600 dark:text-violet-400 mb-0.5">Sudah Dibayar</p>
-                    <p class="text-base font-bold text-violet-700 dark:text-violet-300">Rp
-                        {{ number_format($sudahBayar) }}</p>
-                </div>
-                <div class="flex items-center text-gray-300 dark:text-gray-600">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        {{-- ══ PANDUAN KASIR (collapsible, default tertutup) ══ --}}
+        @if (!$isFormLocked && ($txnStatus === null || $txnStatus === 'A'))
+            <div x-data="{ open: false }"
+                class="mb-4 overflow-hidden border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
+                <button type="button" @click="open = !open"
+                    class="flex items-center justify-between w-full px-3 py-2 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/30">
+                    <span class="flex items-center gap-2">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Panduan Kasir UGD
+                    </span>
+                    <svg class="w-4 h-4 transition-transform" :class="open ? 'rotate-180' : ''" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
-                </div>
-            @endif
+                </button>
 
-            <div
-                class="flex-1 px-4 py-3 border rounded-xl
-                {{ $rjSisa > 0
-                    ? 'border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-900/10'
-                    : 'border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-900/10' }}">
-                <p
-                    class="text-xs mb-0.5 {{ $rjSisa > 0 ? 'text-error dark:text-rose-400' : 'text-success dark:text-success' }}">
-                    Sisa Tagihan
-                </p>
-                <p
-                    class="text-base font-bold {{ $rjSisa > 0 ? 'text-error dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300' }}">
-                    Rp {{ number_format($rjSisa) }}
-                </p>
+                <div x-show="open" x-collapse class="px-3 pb-3 text-xs text-blue-900 dark:text-blue-200">
+                    <ul class="space-y-1 ml-4 list-disc">
+                        <li><strong>Post Transaksi</strong> — Pilih Akun Kas, isi nominal bayar, lalu klik "Post Transaksi". Bisa cicilan atau lunas.</li>
+                        <li><strong>Transfer ke RI</strong> — Jika pasien UGD perlu rawat inap, klik "Transfer ke RI", pilih ruangan & bed, lalu konfirmasi. Seluruh biaya UGD (termasuk biaya RJ jika ada) akan dipindahkan ke RI.</li>
+                    </ul>
+                </div>
+            </div>
+        @endif
+
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-[28rem_1fr] lg:gap-6">
+
+            {{-- KIRI: rincian biaya, dibaca atas ke bawah --}}
+            <div>
+                <dl class="divide-y divide-hairline dark:divide-gray-700">
+
+                    {{-- Subtotal --}}
+                    <div class="flex items-center justify-between gap-4 py-2.5">
+                        <dt class="text-base text-muted dark:text-gray-400">Subtotal Biaya</dt>
+                        <dd class="text-2xl font-bold text-ink dark:text-gray-100">Rp
+                            {{ number_format($rjTotal) }}</dd>
+                    </div>
+
+                    {{-- Diskon --}}
+                    <div class="flex items-center justify-between gap-4 py-2.5">
+                        <dt class="text-base font-semibold text-amber-700 dark:text-amber-400">
+                            Diskon @if (!$isFormLocked)
+                                <span class="text-xs font-normal opacity-70">(dapat diubah)</span>
+                            @endif
+                        </dt>
+                        <dd class="w-48 text-right">
+                            @if (!$isFormLocked)
+                                <x-text-input-number wire:model="rjDiskon" placeholder="0"
+                                    :error="$errors->has('rjDiskon')" x-ref="inputDiskon"
+                                    class="text-2xl font-bold"
+                                    x-on:keydown.enter.prevent="$el.blur(); $dispatch('focus-input-bayar-ugd')" />
+                            @else
+                                <span class="text-2xl font-bold text-amber-700 dark:text-amber-300">Rp
+                                    {{ number_format($rjDiskon) }}</span>
+                            @endif
+                        </dd>
+                    </div>
+
+                    {{-- Total Tagihan --}}
+                    <div class="flex items-center justify-between gap-4 py-2.5">
+                        <dt class="text-base font-bold text-blue-700 dark:text-blue-300">Total Tagihan</dt>
+                        <dd class="text-2xl font-bold text-blue-700 dark:text-blue-300">Rp
+                            {{ number_format($dspTotalAll) }}</dd>
+                    </div>
+
+                    {{-- Dibayar — hanya bila sudah pernah ada pembayaran (cicilan) --}}
+                    @if ($sudahBayar > 0)
+                        <div class="flex items-center justify-between gap-4 py-2.5">
+                            <dt class="text-base text-muted dark:text-gray-400">Dibayar</dt>
+                            <dd class="text-2xl font-bold text-ink dark:text-gray-100">Rp
+                                {{ number_format($sudahBayar) }}</dd>
+                        </div>
+                    @endif
+
+                    {{-- Sisa Tagihan — jumlah yang HARUS dibayar sekarang --}}
+                    <div class="flex items-center justify-between gap-4 py-2.5">
+                        <dt
+                            class="text-base font-bold {{ $rjSisa > 0 ? 'text-error dark:text-rose-400' : 'text-success dark:text-success' }}">
+                            Sisa Tagihan
+                        </dt>
+                        <dd
+                            class="text-2xl font-bold {{ $rjSisa > 0 ? 'text-error dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300' }}">
+                            Rp {{ number_format($rjSisa) }}
+                        </dd>
+                    </div>
+
+                    {{-- Bayar — nominal yang diserahkan sekarang --}}
+                    @if (!$isFormLocked)
+                        <div class="flex items-center justify-between gap-4 py-2.5">
+                            <dt class="text-base font-bold text-body dark:text-gray-200">
+                                Bayar <span class="text-xs font-normal opacity-70">(Rp)</span>
+                            </dt>
+                            <dd class="w-48">
+                                <x-text-input-number wire:model="bayar" placeholder="0" :error="$errors->has('bayar')"
+                                    x-ref="inputBayar" class="text-2xl font-bold"
+                                    x-on:keydown.enter.prevent="$el.blur(); $dispatch('focus-lov-kas-kasir-ugd')" />
+                            </dd>
+                        </div>
+
+                        {{-- Hasil dari nominal yang diketik: kurang / pas / kembalian.
+                             Satu baris yang berubah label & warna, supaya tidak ada dua angka
+                             berbeda (Sisa vs Kembalian) yang saling membingungkan. --}}
+                        @php
+                            $bayarKini = (int) ($bayar ?? 0);
+                            $selisih = $bayarKini - $rjSisa;
+                        @endphp
+                        @if ($bayarKini > 0)
+                            <div class="flex items-center justify-between gap-4 py-2.5">
+                                @if ($selisih < 0)
+                                    <dt class="text-base font-bold text-error dark:text-rose-400">Kurang Bayar</dt>
+                                    <dd class="text-2xl font-bold text-error dark:text-rose-300">Rp
+                                        {{ number_format(abs($selisih)) }}</dd>
+                                @elseif ($selisih === 0)
+                                    <dt class="text-base font-bold text-success dark:text-success">Pas — Lunas</dt>
+                                    <dd class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">Rp 0</dd>
+                                @else
+                                    <dt class="text-base font-bold text-success dark:text-success">Kembalian</dt>
+                                    <dd class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">Rp
+                                        {{ number_format($kembalian) }}</dd>
+                                @endif
+                            </div>
+                        @endif
+                    @endif
+
+                </dl>
+
+                @error('rjDiskon')
+                    <x-input-error :messages="$message" class="mt-1" />
+                @enderror
+
+                @error('bayar')
+                    <x-input-error :messages="$message" class="mt-1" />
+                @enderror
             </div>
 
-        </div>
-    </div>
-
-    {{-- FORM INPUT PEMBAYARAN --}}
-    <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40" x-data
-        x-on:focus-input-bayar.window="$nextTick(() => $refs.inputBayar?.focus())">
+            {{-- KANAN: input pembayaran / status transaksi --}}
+            <div class="lg:pl-6 lg:border-l border-hairline dark:border-gray-700">
 
         @if ($isFormLocked)
             <div class="space-y-3">
@@ -828,47 +898,33 @@ new class extends Component {
                 @endif
             </div>
         @else
-            {{-- Panduan penggunaan --}}
-            @if ($txnStatus === null || $txnStatus === 'A')
-                <div class="flex items-start gap-2 px-3 py-2 mb-3 text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-200">
-                    <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                        <p class="font-semibold text-blue-900 dark:text-blue-100">Panduan Kasir UGD:</p>
-                        <ul class="mt-1 space-y-0.5 list-disc list-inside">
-                            <li><strong>Post Transaksi</strong> — Pilih Akun Kas, isi nominal bayar, lalu klik "Post Transaksi". Bisa cicilan atau lunas.</li>
-                            <li><strong>Transfer ke RI</strong> — Jika pasien UGD perlu rawat inap, klik "Transfer ke RI", pilih ruangan & bed, lalu konfirmasi. Seluruh biaya UGD (termasuk biaya RJ jika ada) akan dipindahkan ke RI.</li>
-                        </ul>
-                    </div>
-                </div>
-            @endif
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[20rem_13rem_auto] items-start gap-3">
+            <div class="space-y-3">
 
                 {{-- LOV Akun Kas — tipe="ugd" agar hanya tampil kas aktif untuk UGD --}}
                 <div
-                    x-on:focus-lov-kas-kasir-ugd.window="$nextTick(() => $el.querySelector('input')?.focus())">
+                    x-on:focus-lov-kas-kasir-ugd.window="$nextTick(() => {
+                        const fokus = () => {
+                            // Akun sudah terpilih → LOV render input disabled + tombol 'Ubah',
+                            // jadi tombol itulah kendali Akun Kas yang bisa difokus.
+                            const el = $el.querySelector('input:not([disabled])') || $el.querySelector('button');
+                            if (!el || el === document.activeElement) return;
+                            if (document.activeElement?.matches('input, select, textarea')) return;
+                            el.focus();
+                        };
+                        fokus();
+                        setTimeout(fokus, 150);
+                    })">
                     <livewire:lov.kas.lov-kas target="kas-kasir-ugd" tipe="ugd" label="Akun Kas" :initialAccId="$accId"
                         wire:key="lov-kas-kasir-ugd-{{ $rjNo }}-{{ $renderVersions['kasir-ugd'] ?? 0 }}" />
                     <x-input-error :messages="$errors->get('accId')" class="mt-1" />
                 </div>
 
-                {{-- Input Bayar --}}
-                <div>
-                    <x-input-label value="Nominal Bayar (Rp)" class="mb-1" />
-                    <x-text-input-number wire:model="bayar" placeholder="0"
-                        :error="$errors->has('bayar')" x-ref="inputBayar"
-                        x-on:keydown.enter.prevent="$el.blur(); $wire.postTransaksi()" />
-                    <x-input-error :messages="$errors->get('bayar')" class="mt-1" />
-                </div>
-
                 {{-- Tombol Post & Transfer --}}
-                <div class="flex gap-2 pt-6">
+                <div class="flex gap-2">
                     {{-- Post Transaksi — Admin, Tu --}}
                     @hasanyrole(['Admin', 'Tu'])
                     <x-primary-button wire:click="postTransaksi" wire:loading.attr="disabled"
-                        wire:target="postTransaksi">
+                        wire:target="postTransaksi" x-ref="btnPost">
                         <span wire:loading.remove wire:target="postTransaksi">Post Transaksi</span>
                         <span wire:loading wire:target="postTransaksi"><x-loading /></span>
                     </x-primary-button>
@@ -886,30 +942,15 @@ new class extends Component {
                             Batalkan transaksi UGD (status jadi <span class="font-semibold">Batal/F</span>) —
                             hanya bila belum ada transaksi layanan. Task ID 99 (BPJS) terpisah &amp; tak terpengaruh.
                         </p>
-                        <x-confirm-button variant="danger" :action="'batalKunjungan()'" title="Batal Transaksi UGD"
-                            message="Batalkan transaksi UGD ini? Status akan menjadi BATAL (F). Hanya berhasil jika belum ada transaksi layanan apa pun."
-                            confirmText="Ya, batalkan" cancelText="Batal">
-                            Batal Transaksi
-                        </x-confirm-button>
+                        <div class="flex justify-end">
+                            <x-confirm-button variant="danger" :action="'batalKunjungan()'" title="Batal Transaksi UGD"
+                                message="Batalkan transaksi UGD ini? Status akan menjadi BATAL (F). Hanya berhasil jika belum ada transaksi layanan apa pun."
+                                confirmText="Ya, batalkan" cancelText="Batal">
+                                Batal Transaksi
+                            </x-confirm-button>
+                        </div>
                     </div>
                 @endhasanyrole
-            @endif
-
-            {{-- Kembalian / Kurang Bayar --}}
-            @if ((int) ($bayar ?? 0) >= $rjSisa && $rjSisa > 0)
-                <div
-                    class="mt-3 px-4 py-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-900/10">
-                    <p class="text-xs font-medium text-success dark:text-success">Kembalian</p>
-                    <p class="text-lg font-bold text-emerald-700 dark:text-emerald-300">Rp
-                        {{ number_format($kembalian) }}</p>
-                </div>
-            @elseif ((int) ($bayar ?? 0) > 0 && (int) ($bayar ?? 0) < $rjSisa)
-                <div
-                    class="mt-3 px-4 py-2.5 rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10">
-                    <p class="text-xs font-medium text-amber-600 dark:text-amber-400">Kurang Bayar</p>
-                    <p class="text-lg font-bold text-amber-700 dark:text-amber-300">Rp
-                        {{ number_format($rjSisa - (int) ($bayar ?? 0)) }}</p>
-                </div>
             @endif
 
             {{-- Badge status pembayaran --}}
@@ -929,15 +970,16 @@ new class extends Component {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span class="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                        Pembayaran akan diproses sebagai CICILAN — sisa Rp
-                        {{ number_format($rjSisa - (int) ($bayar ?? 0)) }}
+                    <span class="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                        Pembayaran akan diproses sebagai CICILAN
                     </span>
                 </div>
             @endif
 
         @endif
 
+            </div>
+        </div>
     </div>
 
     {{-- TABEL RIWAYAT PEMBAYARAN --}}

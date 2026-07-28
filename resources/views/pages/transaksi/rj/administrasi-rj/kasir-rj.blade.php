@@ -918,11 +918,13 @@ new class extends Component {
                                 Batalkan transaksi RJ (status jadi <span class="font-semibold">Batal/F</span>) —
                                 hanya bila belum ada transaksi layanan. Task ID 99 (BPJS) terpisah &amp; tak terpengaruh.
                             </p>
-                            <x-confirm-button variant="danger" :action="'batalKunjungan()'" title="Batal Transaksi RJ"
-                                message="Batalkan transaksi RJ ini? Status akan menjadi BATAL (F). Hanya berhasil jika belum ada transaksi layanan apa pun."
-                                confirmText="Ya, batalkan" cancelText="Batal">
-                                Batal Transaksi
-                            </x-confirm-button>
+                            <div class="flex justify-end">
+                                <x-confirm-button variant="danger" :action="'batalKunjungan()'" title="Batal Transaksi RJ"
+                                    message="Batalkan transaksi RJ ini? Status akan menjadi BATAL (F). Hanya berhasil jika belum ada transaksi layanan apa pun."
+                                    confirmText="Ya, batalkan" cancelText="Batal">
+                                    Batal Transaksi
+                                </x-confirm-button>
+                            </div>
                         </div>
                     @endhasanyrole
                 @endif

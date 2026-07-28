@@ -171,7 +171,7 @@ new class extends Component {
             $this->findData($this->rjNo);
 
             $this->resetFormEntry();
-            $this->dispatch('focus-lov-dokter');
+            $this->dispatch('focus-lov-dokter-ugd');
             $this->dispatch('administrasi-ugd.updated');
             $this->dispatch('toast', type: 'success', message: 'Jasa Dokter berhasil ditambahkan.');
         } catch (\RuntimeException $e) {
@@ -310,13 +310,25 @@ new class extends Component {
 
     <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40" x-data
         x-on:focus-lov-jasa-dokter.window="$nextTick(() => $refs.lovJasaDokter?.querySelector('input')?.focus())"
+        x-on:focus-lov-dokter-ugd.window="$nextTick(() => {
+            const fokus = () => {
+                const el = $refs.lovDokter?.querySelector('input');
+                if (!el || el === document.activeElement) return;
+                if (document.activeElement?.matches('input, select, textarea')) return;
+                el.focus();
+            };
+            fokus();
+            setTimeout(fokus, 150);
+        })"
         x-on:focus-input-tarif.window="$nextTick(() => $refs.inputTarif?.focus())">
 
         @if ($isFormLocked)
             <p class="text-sm italic text-muted-soft dark:text-gray-600">Form input dinonaktifkan.</p>
         @elseif (empty($formEntryJasaDokter['drId']) || empty($formEntryJasaDokter['jasaDokterId']))
             <div class="flex gap-3">
-                <div class="w-64">
+                {{-- Enter saat kolom cari masih kosong = selesai di tab ini → lompat ke Jasa Medis. --}}
+                <div class="w-64" x-ref="lovDokter"
+                    x-on:keydown.enter="if (!$event.target.value?.trim()) $dispatch('administrasi-ugd-goto-tab', { tab: 'JasaMedis', focus: 'focus-lov-jasa-medis-ugd' })">
                     <livewire:lov.dokter.lov-dokter target="dokter-jasa-dokter" label="Dokter"
                         placeholder="Ketik kode/nama dokter..."
                         wire:key="lov-dokter-jd-{{ $rjNo }}-{{ $renderVersions['modal-jasa-dokter-ugd'] ?? 0 }}" />

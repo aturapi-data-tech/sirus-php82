@@ -82,7 +82,10 @@ new class extends Component {
 };
 ?>
 
-<div class="space-y-4">
+{{-- Tab baca-saja: panel dibuat fokusable supaya rantai Enter antar-tab tidak putus di sini. --}}
+<div class="space-y-4 outline-none" tabindex="-1" x-data
+    x-on:focus-panel-transfer-ugd.window="$nextTick(() => setTimeout(() => $el.focus(), 150))"
+    x-on:keydown.enter="$dispatch('administrasi-ugd-goto-tab', { tab: 'Kasir', focus: 'focus-input-diskon-ugd' })">
 
     {{-- INFO --}}
     <div

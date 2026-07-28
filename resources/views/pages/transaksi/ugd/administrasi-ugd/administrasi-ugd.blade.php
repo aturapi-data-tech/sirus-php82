@@ -103,6 +103,11 @@ new class extends Component {
 
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'emr-ugd-administrasi');
+
+        // Mode entry → kursor langsung ke pencarian Jasa Karyawan (tab pertama).
+        if (!$this->isFormLocked) {
+            $this->dispatch('focus-lov-jasa-karyawan-ugd');
+        }
     }
 
     /* ===============================
@@ -123,6 +128,7 @@ new class extends Component {
         $this->reset(['rjNo', 'dataDaftarUGD']);
         $this->resetVersion();
         $this->isFormLocked = false;
+        $this->activeTabAdministrasi = 'JasaKaryawan';
         $this->rjStatus = 'A';
         $this->sumRsAdmin = $this->sumRjAdmin = $this->sumPoliPrice = 0;
         $this->sumJasaKaryawan = $this->sumJasaDokter = $this->sumJasaMedis = 0;
@@ -552,6 +558,14 @@ new class extends Component {
 
                         {{-- SUB-TAB --}}
                         <div x-data="{ tab: @entangle('activeTabAdministrasi') }"
+                            x-on:administrasi-ugd-goto-tab.window="
+                                const tujuan = $event.detail;
+                                // Lepas fokus dari field asal, kalau tidak penjaga anti-rebut
+                                // di tab tujuan menganggap user sedang mengetik dan membatalkan diri.
+                                document.activeElement?.blur();
+                                tab = tujuan.tab;
+                                if (tujuan.focus) setTimeout(() => window.dispatchEvent(new CustomEvent(tujuan.focus)), 120);
+                            "
                             class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
 
                             <x-tabs variant="underline" class="flex-wrap p-2">

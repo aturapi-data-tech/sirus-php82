@@ -292,13 +292,24 @@ new class extends Component {
 
     {{-- FORM INPUT --}}
     <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40" x-data
-        x-on:focus-lov-lainlain-ugd.window="$nextTick(() => $refs.lovLainLainUgd?.querySelector('input')?.focus())"
+        x-on:focus-lov-lainlain-ugd.window="$nextTick(() => {
+            const fokus = () => {
+                const el = $refs.lovLainLainUgd?.querySelector('input');
+                if (!el || el === document.activeElement) return;
+                if (document.activeElement?.matches('input, select, textarea')) return;
+                el.focus();
+            };
+            fokus();
+            setTimeout(fokus, 150);
+        })"
         x-on:focus-input-tarif-lainlain.window="$nextTick(() => $refs.inputTarifLainLain?.focus())">
 
         @if ($isFormLocked)
             <p class="text-sm italic text-muted-soft dark:text-gray-600">Form input dinonaktifkan.</p>
         @elseif (empty($formEntryLainLain['lainLainId']))
-            <div x-ref="lovLainLainUgd">
+            {{-- Enter saat kolom cari masih kosong = selesai di tab ini → lompat ke Transfer. --}}
+            <div x-ref="lovLainLainUgd"
+                x-on:keydown.enter="if (!$event.target.value?.trim()) $dispatch('administrasi-ugd-goto-tab', { tab: 'Transfer', focus: 'focus-panel-transfer-ugd' })">
                 <livewire:lov.lain-lain.lov-lain-lain target="lain-lain-ugd" label="Cari Lain-lain"
                     placeholder="Ketik kode/nama lain-lain..."
                     wire:key="lov-lainlain-ugd-{{ $rjNo }}-{{ $renderVersions['modal-lainlain-ugd'] ?? 0 }}" />
