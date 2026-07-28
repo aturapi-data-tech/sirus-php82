@@ -355,6 +355,15 @@ trait EmrRITrait
             'commonService' => (int) ($room->cs_total    ?? 0),
             'perawatan'     => (int) ($room->perwt_total ?? 0),
             'bonResep'      => (int) DB::table('rstxn_ribonobats')->where('rihdr_no', $riHdrNo)->sum('ribon_price'),
+            // RESEP LUNAS — porsi resep yang sudah dibayar tunai di apotek.
+            // Kasir apotek membelah tiap nota: yang dibayar tinggal di sls_bayar,
+            // sisanya di-insert ke rstxn_ribonobats sebagai bon (lihat
+            // administrasi-ri-resep & administrasi-kasir-ri). Jadi berlaku
+            // sls_total = sls_bayar + ribon_price, dan menjumlah sls_bayar TIDAK
+            // menggandakan 'bonResep' maupun 'obatPinjam'.
+            // Hanya nota ter-post (status 'L') yang dihitung; status 'A' masih draft.
+            'resepLunas'    => (int) DB::table('imtxn_slshdrs')->where('rihdr_no', $riHdrNo)
+                                    ->where('status', 'L')->sum('sls_bayar'),
             'rtnObat'       => (int) DB::table('rstxn_riobatrtns')->where('rihdr_no', $riHdrNo)
                                     ->selectRaw('nvl(sum(riobat_qty * riobat_price),0) as total')->value('total'),
             'obatPinjam'    => (int) DB::table('rstxn_riobats')->where('rihdr_no', $riHdrNo)

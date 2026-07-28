@@ -1,33 +1,52 @@
 <x-pdf.layout-a4-with-out-background title="PERINCIAN BIAYA PENGOBATAN DAN PERAWATAN">
 
     {{-- ══════════════════════════════════════
-         HEADER PASIEN (slot patientData)
+         HEADER PASIEN (slot patientData) — dua kolom, sebelah kop
+         Kiri  : identitas pasien (standar)
+         Kanan : data perawatan (tgl masuk/keluar, jenis klaim)
+         Huruf 10px supaya muat. Lebar dipatok 540px — melebihi jatah 50%
+         dari layout — untuk memakai kolom kosong 45% di dalam sel kop;
+         sisanya masih cukup untuk blok alamat RS. Nilai tanggal dikunci
+         nowrap agar jam tidak turun baris. Lebar pakai inline style
+         karena kelas arbitrary Tailwind tidak ter-render di dompdf.
     ══════════════════════════════════════ --}}
     <x-slot name="patientData">
-        <x-pdf.identitas-pasien
-            :rm="$data['regNo'] ?? null"
-            :nama="$data['regName'] ?? null"
-            :jenisKelamin="($data['sex'] ?? '') === 'L' ? 'Laki-laki' : (($data['sex'] ?? '') === 'P' ? 'Perempuan' : null)"
-            :tempatLahir="$data['birthPlace'] ?? null"
-            :tglLahir="$data['birthDate'] ?? null"
-            :umur="$data['umur'] ?? null"
-            :alamat="$data['address'] ?? null">
+        <table cellpadding="0" cellspacing="0" style="width:540px;">
             <tr>
-                <td class="py-0.5 text-[11px] text-gray-500 whitespace-nowrap">Tgl. Masuk</td>
-                <td class="py-0.5 text-[11px] px-1">:</td>
-                <td class="py-0.5 text-[11px]">{{ $data['entryDate'] }}</td>
+                <td class="align-top" style="width:62%;">
+                    <x-pdf.identitas-pasien
+                        :rm="$data['regNo'] ?? null"
+                        :nama="$data['regName'] ?? null"
+                        :jenisKelamin="($data['sex'] ?? '') === 'L' ? 'Laki-laki' : (($data['sex'] ?? '') === 'P' ? 'Perempuan' : null)"
+                        :tempatLahir="$data['birthPlace'] ?? null"
+                        :tglLahir="$data['birthDate'] ?? null"
+                        :umur="$data['umur'] ?? null"
+                        :alamat="$data['address'] ?? null"
+                        textClass="text-[10px]"
+                        class="w-full" />
+                </td>
+
+                <td class="align-top pl-2" style="width:38%;">
+                    <table class="w-full" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td class="py-0.5 text-[10px] text-gray-500 whitespace-nowrap">Tgl. Masuk</td>
+                            <td class="py-0.5 text-[10px] px-1">:</td>
+                            <td class="py-0.5 text-[10px] whitespace-nowrap">{{ $data['entryDate'] }}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-0.5 text-[10px] text-gray-500 whitespace-nowrap">Tgl. Keluar</td>
+                            <td class="py-0.5 text-[10px] px-1">:</td>
+                            <td class="py-0.5 text-[10px] whitespace-nowrap">{{ $data['exitDate'] }}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-0.5 text-[10px] text-gray-500 whitespace-nowrap">Jenis Klaim</td>
+                            <td class="py-0.5 text-[10px] px-1">:</td>
+                            <td class="py-0.5 text-[10px] whitespace-nowrap">{{ $data['klaimName'] }}</td>
+                        </tr>
+                    </table>
+                </td>
             </tr>
-            <tr>
-                <td class="py-0.5 text-[11px] text-gray-500 whitespace-nowrap">Tgl. Keluar</td>
-                <td class="py-0.5 text-[11px] px-1">:</td>
-                <td class="py-0.5 text-[11px]">{{ $data['exitDate'] }}</td>
-            </tr>
-            <tr>
-                <td class="py-0.5 text-[11px] text-gray-500 whitespace-nowrap">Jenis Klaim</td>
-                <td class="py-0.5 text-[11px] px-1">:</td>
-                <td class="py-0.5 text-[11px]">{{ $data['klaimName'] }}</td>
-            </tr>
-        </x-pdf.identitas-pasien>
+        </table>
     </x-slot>
 
     @php
@@ -209,24 +228,22 @@
             <td colspan="3" class="py-0.5 px-1.5 text-right font-semibold">TOTAL BIAYA</td>
             <td class="py-0.5 px-1.5 text-right tabular-nums font-semibold">{{ $rp($data['subtotal']) }}</td>
         </tr>
-        @if ($data['subsidi'] > 0)
+        {{-- Selalu tampil walau 0 — baris yang kadang ada kadang hilang bikin
+             pembaca ragu apakah cetakannya beda perlakuan. --}}
+        <tr>
+            <td colspan="3" class="py-px px-1.5 text-right">RESEP LUNAS (dibayar di apotek)</td>
+            <td class="py-px px-1.5 text-right tabular-nums">( {{ $rp($data['resepLunasFooter']) }} )</td>
+        </tr>
         <tr>
             <td colspan="3" class="py-px px-1.5 text-right">SUBSIDI</td>
             <td class="py-px px-1.5 text-right tabular-nums">( {{ $rp($data['subsidi']) }} )</td>
         </tr>
-        @endif
-        @if ($data['sudahBayar'] > 0)
         <tr>
-            <td colspan="3" class="py-px px-1.5 text-right">SUDAH DIBAYAR</td>
-            <td class="py-px px-1.5 text-right tabular-nums">( {{ $rp($data['sudahBayar']) }} )</td>
+            <td colspan="3" class="py-0.5 px-1.5 text-right font-semibold border-t border-gray-400">TOTAL BAYAR</td>
+            <td class="py-0.5 px-1.5 text-right tabular-nums font-semibold border-t border-gray-400">
+                {{ $rp($data['grandTotal']) }}
+            </td>
         </tr>
-        @if ($data['sisa'] > 0)
-        <tr>
-            <td colspan="3" class="py-0.5 px-1.5 text-right font-semibold border-t border-gray-400">SISA TAGIHAN</td>
-            <td class="py-0.5 px-1.5 text-right tabular-nums font-semibold border-t border-gray-400 text-red-600">{{ $rp($data['sisa']) }}</td>
-        </tr>
-        @endif
-        @endif
     </table>
 
     {{-- ══════════════════════════════════════

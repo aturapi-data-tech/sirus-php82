@@ -89,9 +89,9 @@ new class extends Component {
 
         $dObatPinjam = (int) $costs['obatPinjam'];
         $dBonResep   = (int) $costs['bonResep'];
-        // RESEP LUNAS = porsi obat yg sudah dilunasi di apotek (belum ada flag eksplisit di sistem;
-        //  placeholder 0 — bisa di-isi nanti dari sumber penjualan apotek bila tabelnya difinalkan)
-        $dResepLunas = 0;
+        // RESEP LUNAS = porsi resep yg sudah dibayar tunai di apotek (imtxn_slshdrs.sls_bayar).
+        // Masuk subtotal sebagai rincian, lalu dibalik lagi di footer supaya tagihan tetap benar.
+        $dResepLunas = (int) $costs['resepLunas'];
         $dSub        = $dObatPinjam + $dBonResep + $dResepLunas;
 
         $eOperasi = (int) $costs['ok'];

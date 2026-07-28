@@ -168,7 +168,9 @@ new class extends Component {
 
         $dObatPinjam = (int) $costs['obatPinjam'];
         $dBonResep   = (int) $costs['bonResep'];
-        $dResepLunas = 0;
+        // RESEP LUNAS = porsi resep yg sudah dibayar tunai di apotek (imtxn_slshdrs.sls_bayar).
+        // Masuk subtotal sebagai rincian, lalu dibalik lagi di footer supaya tagihan tetap benar.
+        $dResepLunas = (int) $costs['resepLunas'];
         $dTotal      = $dObatPinjam + $dBonResep + $dResepLunas;
 
         $eOperasi = (int) $costs['ok'];
@@ -196,7 +198,9 @@ new class extends Component {
         $aRoom = (int) $costs['room'];
         $subtotal   = $aRoom + $bTotal + $cTotal + $dTotal + $eOperasi + $fTotal - $gRetur;
         $subsidi    = (int) ($hdr->ri_diskon ?? 0);
-        $grandTotal = max(0, $subtotal - $subsidi);
+        // Resep lunas dibalik: sudah dibayar di apotek, jangan ditagih lagi di kasir RI.
+        $resepLunasFooter = $dResepLunas;
+        $grandTotal = max(0, $subtotal - $subsidi - $resepLunasFooter);
 
         $sudahBayar = (int) DB::table('rstxn_ripaymentpdtls')->where('rihdr_no', $riHdrNo)->sum('ripay_bayar');
         $sisa       = max(0, $grandTotal - $sudahBayar);
@@ -258,6 +262,7 @@ new class extends Component {
 
             'subtotal'   => $subtotal,
             'subsidi'    => $subsidi,
+            'resepLunasFooter' => $resepLunasFooter,
             'grandTotal' => $grandTotal,
             'sudahBayar' => $sudahBayar,
             'sisa'       => $sisa,
