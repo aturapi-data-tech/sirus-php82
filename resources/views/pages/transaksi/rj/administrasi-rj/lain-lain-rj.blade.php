@@ -323,7 +323,7 @@ new class extends Component {
         @elseif (empty($formEntryLainLain['lainLainId']))
             {{-- Enter saat kolom cari masih kosong = selesai di tab ini → lompat ke Kasir. --}}
             <div x-ref="lovLainLainRj"
-                x-on:keydown.enter="if (!$event.target.value?.trim()) $dispatch('administrasi-rj-goto-tab', { tab: 'Kasir', focus: 'focus-input-bayar' })">
+                x-on:keydown.enter="if (!$event.target.value?.trim()) $dispatch('administrasi-rj-goto-tab', { tab: 'Kasir', focus: 'focus-input-diskon' })">
                 <livewire:lov.lain-lain.lov-lain-lain target="lain-lain-rj" label="Cari Lain-lain"
                     placeholder="Ketik kode/nama lain-lain..."
                     wire:key="lov-lainlain-rj-{{ $rjNo }}-{{ $renderVersions['modal-lainlain-rj'] ?? 0 }}" />
