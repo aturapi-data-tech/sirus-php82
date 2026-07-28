@@ -195,6 +195,49 @@ DB::transaction(function () {
 // Role: Admin | Supervisor Tu.
 TXT,
 
+'batal-sls' => <<<'TXT'
+// BATAL TRANSAKSI APOTEK RI (administrasi-ri-resep / administrasi-kasir-ri::batalTransaksi).
+// Membatalkan PEMBAYARAN RESEP. Header resep = imtxn_slshdrs (bukan rstxn_*hdrs).
+// Status resep cuma 2: 'A' belum diproses kasir | 'L' sudah.
+
+// GUARD (urut — yang murah dulu, baru sentuh DB):
+if (!auth()->user()->hasAnyRole(['Apoteker','Admin','Tu'])) { toast(...); return; }   // role DI SERVER
+if ($this->status !== 'L')            { toast('Transaksi belum diproses'); return; }
+if (strtoupper($this->riStatus) === 'P') { toast('Pasien sudah pulang'); return; }
+
+DB::transaction(function () {
+    // anti-race: kunci baris, lalu BACA ULANG statusnya di dalam transaksi.
+    // tanpa ini 2 kasir yang menekan Batal bersamaan sama-sama lolos guard di atas.
+    DB::table('imtxn_slshdrs')->where('sls_no', $this->slsNo)->lockForUpdate()->first();
+    $current = DB::table('imtxn_slshdrs')->where('sls_no', $this->slsNo)->first();
+    if (strtoupper($current->status ?? 'A') !== 'L') {
+        throw new \RuntimeException('Transaksi sudah dalam status belum diproses.');
+    }
+
+    DB::table('imtxn_slshdrs')->where('sls_no', $this->slsNo)->update([
+        'status'    => 'A',        // L → A, resep aktif lagi & bisa dibayar ulang
+        'sls_bayar' => null, 'sls_bon' => null,
+        'bayar'     => null, 'sisa'    => null,
+        'acc_id'    => null, 'waktu_selesai_pelayanan' => null,
+        // emp_id sengaja TIDAK direset — jejak siapa terakhir mem-posting tetap dibutuhkan
+    ]);
+
+    // efek samping WAJIB ikut dicabut: sisa yang masuk Bon Inap
+    DB::table('rstxn_ribonobats')->where('sls_no', $this->slsNo)->delete();
+});
+
+// sesudah sukses: samakan properti dgn DB (BUKAN null) + buang cache computed
+$this->status = 'A';
+$this->bayar  = null; $this->accId = null; $this->accName = null;
+unset($this->isKasirPosted, $this->isObatLocked, $this->canEditJasa);
+$this->recalcKasir();
+$this->dispatch('ri-resep-refresh-after-antrian.saved');   // refresh list antrian
+
+// BELUM ADA di Apotek RI: lapis kedua (setara Batal Inap → 'F') untuk membatalkan
+// RESEPNYA sendiri. Resep salah yg belum dibayar → hapus obat satu per satu
+// (removeObat), header imtxn_slshdrs tetap ada & tetap muncul di antrian.
+TXT,
+
 'edit-inline' => <<<'TXT'
 // SEL TABEL YANG LANGSUNG TERSIMPAN (room-ri: Hari, tarif, tgl Mulai/Selesai).
 // Nilai dikirim lewat ARGUMEN AKSI, bukan wire:model — baris tabel tak punya properti per-sel.
@@ -283,6 +326,7 @@ TXT,
                         'batal-transfer'  => 'Batal Transfer',
                         'batal-transaksi' => 'Batal Transaksi (Pulang)',
                         'batal-inap'      => 'Batal Inap → F',
+                        'batal-sls'       => 'Batal Transaksi Apotek RI (SLS)',
                         'matriks'         => 'Matriks Batal',
                         'guard-transfer'  => 'Guard & Konsistensi Transfer',
                     ],
@@ -605,6 +649,18 @@ TXT,
                             <strong>lunas</strong> (dibayar penuh) atau <strong>bon</strong> (dibayar sebagian).
                         </p>
 
+                        <div class="ds-card-outline mb-8" style="padding:16px 20px">
+                            <span class="ds-spike" style="vertical-align:middle"></span>
+                            <span class="ds-body-sm" style="color:var(--body-strong)">
+                                <strong>Khusus rawat inap: resep apoteknya transaksi terpisah.</strong>
+                                Obat pasien inap ditebus lewat <strong>Apotek RI</strong> yang punya nomor
+                                (<span class="ds-code">No SLS</span>), antrean, dan <strong>kasir sendiri</strong> —
+                                terpisah dari kasir RI yang menghitung biaya kamar &amp; tindakan saat pulang.
+                                Satu pasien inap bisa punya banyak resep. Sisa yang belum dibayar di kasir apotek
+                                masuk <strong>Bon Inap</strong>, lalu ditagih saat pasien pulang.
+                            </span>
+                        </div>
+
                         {{-- ===== 2. TRANSFER (PINDAH TINGKAT PELAYANAN) ===== --}}
                         <h2 class="ds-title-lg mb-2">2. Kalau pasien dipindah (transfer)</h2>
                         <div class="flex flex-wrap items-center gap-2 mb-3">
@@ -659,6 +715,18 @@ TXT,
                             (kembali aktif), <strong>baru batalkan kunjungannya</strong>. Untuk pasien hasil pindahan,
                             gunakan <strong>Batal Perpindahan</strong>, bukan Batal Kunjungan.
                         </p>
+
+                        <div class="ds-card-outline mb-8" style="padding:16px 20px; border-color:#d97706">
+                            <div class="ds-caption-up mb-1" style="color:#d97706">Resep Apotek RI</div>
+                            <div class="ds-body-sm" style="color:var(--body-strong)">
+                                Untuk resep rawat inap, yang bisa dibatalkan <strong>baru pembayarannya</strong> —
+                                resep kembali berstatus belum diproses kasir dan bisa dibayar ulang.
+                                <strong>Resepnya sendiri belum bisa dibatalkan.</strong> Kalau resep terlanjur salah
+                                dan belum dibayar, obatnya harus dihapus satu per satu; nomor resepnya tetap ada dan
+                                tetap muncul di antrean apotek. Ini beda dari kunjungan RJ/UGD/RI yang sudah punya
+                                <strong>Batal Kunjungan</strong>.
+                            </div>
+                        </div>
 
                         {{-- ===== ATURAN MAIN (guards dalam bahasa awam) ===== --}}
                         <h2 class="ds-title-lg mb-3">Aturan main biar data tetap rapi</h2>
@@ -881,8 +949,39 @@ TXT,
                     </section>
 
                     {{-- ====== 10 MATRIKS ====== --}}
-                    <section x-show="section === 'matriks'" x-cloak>
+                    {{-- ====== 10 BATAL TRANSAKSI APOTEK RI (SLS) ====== --}}
+                    <section x-show="section === 'batal-sls'" x-cloak>
                         <div class="ds-eyebrow mb-3">10 — Transfer &amp; Batal</div>
+                        <h1 class="ds-display-md mb-4">Batal Transaksi Apotek RI (SLS)</h1>
+                        <p class="ds-body-md mb-4" style="max-width:64ch">
+                            Membatalkan <strong>pembayaran resep rawat inap</strong>. Header resep ada di
+                            <span class="ds-code">imtxn_slshdrs</span> — bukan <span class="ds-code">rstxn_*hdrs</span>
+                            seperti RJ/UGD/RI — dan statusnya cuma dua:
+                            <span class="ds-code">'A'</span> belum diproses kasir, <span class="ds-code">'L'</span> sudah.
+                        </p>
+
+                        <div class="ds-card-dark mt-2" style="padding:0; overflow:hidden">
+                            <div class="px-4 py-2.5" style="background:var(--surface-dark-soft)">
+                                <span class="ds-caption-up" style="color:var(--on-dark-soft)">batalTransaksi (Apotek RI) — guard, anti-race, efek samping</span>
+                            </div>
+                            <pre class="ds-code" style="margin:0; padding:20px 24px; color:var(--on-dark-soft); overflow-x:auto; line-height:1.7">{{ $snip['batal-sls'] }}</pre>
+                        </div>
+
+                        <div class="ds-card-outline mt-6" style="padding:16px 20px">
+                            <span class="ds-spike" style="vertical-align:middle"></span>
+                            <span class="ds-body-sm" style="color:var(--body-strong)">
+                                <strong>Dua komponen kembar.</strong>
+                                <span class="ds-code">administrasi-ri-resep</span> (dibuka dari Antrian RI-Resep di
+                                halaman Apotek) dan <span class="ds-code">administrasi-kasir-ri</span> (dari Antrian
+                                Kasir RI) punya judul modal yang sama persis tapi file &amp; nama event berbeda.
+                                Rolenya pun beda: Apoteker|Admin|Tu vs Admin|Manager Umum|Supervisor Tu. Kalau
+                                menyalin pola dari satu ke yang lain, cek ulang nama event LOV-nya.
+                            </span>
+                        </div>
+                    </section>
+
+                    <section x-show="section === 'matriks'" x-cloak>
+                        <div class="ds-eyebrow mb-3">11 — Transfer &amp; Batal</div>
                         <h1 class="ds-display-md mb-4">Matriks Model Batal</h1>
                         <p class="ds-body-md mb-6" style="max-width:62ch">
                             Tiga model batal sering tertukar. Bedakan dari <strong>apa yang dibatalkan</strong> &amp;
@@ -942,7 +1041,7 @@ TXT,
 
                     {{-- ====== 11 GUARD & KONSISTENSI TRANSFER ====== --}}
                     <section x-show="section === 'guard-transfer'" x-cloak>
-                        <div class="ds-eyebrow mb-3">11 — Transfer &amp; Batal</div>
+                        <div class="ds-eyebrow mb-3">12 — Transfer &amp; Batal</div>
                         <h1 class="ds-display-md mb-4">Guard &amp; Konsistensi Transfer</h1>
                         <p class="ds-body-md mb-6" style="max-width:64ch">
                             Checklist semua <strong>guard</strong> di dua alur transfer
@@ -1081,7 +1180,7 @@ TXT,
 
                     {{-- ====== 12 RANJAU ====== --}}
                     <section x-show="section === 'ranjau'" x-cloak>
-                        <div class="ds-eyebrow mb-3">12 — Referensi</div>
+                        <div class="ds-eyebrow mb-3">13 — Referensi</div>
                         <h1 class="ds-display-md mb-4">Ranjau Umum</h1>
                         <div class="space-y-3">
                             @foreach ([
@@ -1107,7 +1206,7 @@ TXT,
 
                     {{-- ====== 13 GLOSARIUM ====== --}}
                     <section x-show="section === 'glosarium'" x-cloak>
-                        <div class="ds-eyebrow mb-3">13 — Referensi</div>
+                        <div class="ds-eyebrow mb-3">14 — Referensi</div>
                         <h1 class="ds-display-md mb-4">Glosarium</h1>
                         <div class="ds-card-outline" style="padding:0; overflow-x:auto">
                             <table class="ds-table">
