@@ -462,7 +462,7 @@ new class extends Component {
                     style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
                 </div>
 
-                <div class="relative space-y-3" x-data="{ expanded: true }">
+                <div class="relative space-y-3" x-data="{ expanded: false }">
 
                     {{-- ROW 1: Display Pasien (kayak EMR UGD) | Total Tagihan (clickable toggle) | Close --}}
                     <div class="flex items-start justify-between gap-4">

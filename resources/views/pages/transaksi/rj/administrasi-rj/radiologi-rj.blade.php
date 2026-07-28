@@ -60,7 +60,7 @@ new class extends Component {
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
                 <thead
-                    class="text-xs font-semibold text-muted uppercase dark:text-gray-400 bg-surface-soft dark:bg-gray-800/50">
+                    class="text-sm font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300 bg-surface-soft dark:bg-gray-800/50">
                     <tr>
                         <th class="px-4 py-3">Kode</th>
                         <th class="px-4 py-3">Keterangan</th>
@@ -71,13 +71,13 @@ new class extends Component {
                     @forelse ($rjRad as $item)
                         <tr wire:key="rad-row-{{ $item['radDtl'] }}"
                             class="transition hover:bg-surface-soft dark:hover:bg-gray-800/40">
-                            <td class="px-4 py-2 font-mono text-xs text-muted dark:text-gray-400 whitespace-nowrap">
+                            <td class="px-4 py-1.5 font-mono text-sm text-muted dark:text-gray-400 whitespace-nowrap">
                                 {{ $item['radId'] }}
                             </td>
-                            <td class="px-4 py-2 text-ink dark:text-gray-200 whitespace-nowrap">
+                            <td class="px-4 py-1.5 text-ink dark:text-gray-200 whitespace-nowrap">
                                 {{ $item['radDesc'] }}
                             </td>
-                            <td class="px-4 py-2 whitespace-nowrap">
+                            <td class="px-4 py-1.5 whitespace-nowrap">
                                 <span class="block font-semibold text-right text-ink dark:text-gray-200">
                                     Rp {{ number_format($item['radPrice']) }}
                                 </span>

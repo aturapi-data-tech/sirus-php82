@@ -304,200 +304,200 @@ new class extends Component {
         </div>
     @endif
 
-    {{-- FORM INPUT --}}
-    <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40" x-data
-        x-on:focus-lov-lainlain-rj.window="$nextTick(() => {
-            const fokus = () => {
-                const el = $refs.lovLainLainRj?.querySelector('input');
-                if (!el || el === document.activeElement) return;
-                if (document.activeElement?.matches('input, select, textarea')) return;
-                el.focus();
-            };
-            fokus();
-            setTimeout(fokus, 150);
-        })"
-        x-on:focus-input-tarif-lainlain.window="$nextTick(() => $refs.inputTarifLainLain?.focus())">
+    {{-- Kiri: form entri · Kanan: daftar data --}}
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
+        {{-- FORM INPUT --}}
+        <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40" x-data
+            x-on:focus-lov-lainlain-rj.window="$nextTick(() => {
+                const fokus = () => {
+                    const el = $refs.lovLainLainRj?.querySelector('input');
+                    if (!el || el === document.activeElement) return;
+                    if (document.activeElement?.matches('input, select, textarea')) return;
+                    el.focus();
+                };
+                fokus();
+                setTimeout(fokus, 150);
+            })"
+            x-on:focus-input-tarif-lainlain.window="$nextTick(() => $refs.inputTarifLainLain?.focus())">
 
-        @if ($isFormLocked)
-            <p class="text-sm italic text-muted-soft dark:text-gray-600">Form input dinonaktifkan.</p>
-        @elseif (empty($formEntryLainLain['lainLainId']))
-            {{-- Enter saat kolom cari masih kosong = selesai di tab ini → lompat ke Kasir. --}}
-            <div x-ref="lovLainLainRj"
-                x-on:keydown.enter="if (!$event.target.value?.trim()) $dispatch('administrasi-rj-goto-tab', { tab: 'Kasir', focus: 'focus-input-diskon' })">
-                <livewire:lov.lain-lain.lov-lain-lain target="lain-lain-rj" label="Cari Lain-lain"
-                    placeholder="Ketik kode/nama lain-lain..."
-                    wire:key="lov-lainlain-rj-{{ $rjNo }}-{{ $renderVersions['modal-lainlain-rj'] ?? 0 }}" />
-            </div>
-        @else
-            <div class="flex items-end gap-3">
-                {{-- Kode --}}
-                <div class="w-28">
-                    <x-input-label value="Kode" class="mb-1" />
-                    <x-text-input wire:model="formEntryLainLain.lainLainId" disabled class="w-full text-sm" />
+            @if ($isFormLocked)
+                <p class="text-sm italic text-muted-soft dark:text-gray-600">Form input dinonaktifkan.</p>
+            @elseif (empty($formEntryLainLain['lainLainId']))
+                {{-- Enter saat kolom cari masih kosong = selesai di tab ini → lompat ke Kasir. --}}
+                <div x-ref="lovLainLainRj"
+                    x-on:keydown.enter="if (!$event.target.value?.trim()) $dispatch('administrasi-rj-goto-tab', { tab: 'Kasir', focus: 'focus-input-diskon' })">
+                    <livewire:lov.lain-lain.lov-lain-lain target="lain-lain-rj" label="Cari Lain-lain"
+                        placeholder="Ketik kode/nama lain-lain..."
+                        wire:key="lov-lainlain-rj-{{ $rjNo }}-{{ $renderVersions['modal-lainlain-rj'] ?? 0 }}" />
                 </div>
+            @else
+                <div class="flex flex-wrap items-end gap-3">
+                    {{-- Kode --}}
+                    <div class="w-28">
+                        <x-input-label value="Kode" class="mb-1" />
+                        <x-text-input wire:model="formEntryLainLain.lainLainId" disabled class="w-full text-sm" />
+                    </div>
 
-                {{-- Deskripsi --}}
-                <div class="flex-1">
-                    <x-input-label value="Lain-lain" class="mb-1" />
-                    <x-text-input wire:model="formEntryLainLain.lainLainDesc" disabled class="w-full text-sm" />
-                    @error('formEntryLainLain.lainLainId')
-                        <x-input-error :messages="$message" class="mt-1" />
-                    @enderror
+                    {{-- Deskripsi --}}
+                    <div class="flex-1">
+                        <x-input-label value="Lain-lain" class="mb-1" />
+                        <x-text-input wire:model="formEntryLainLain.lainLainDesc" disabled class="w-full text-sm" />
+                        @error('formEntryLainLain.lainLainId')
+                            <x-input-error :messages="$message" class="mt-1" />
+                        @enderror
+                    </div>
+
+                    {{-- Tarif --}}
+                    <div class="w-44" x-data
+                        x-init="$nextTick(() => { $refs.inputTarifLainLain?.focus(); $refs.inputTarifLainLain?.select(); })">
+                        <x-input-label value="Tarif" class="mb-1" />
+                        <x-text-input-number wire:model="formEntryLainLain.lainLainPrice" placeholder="Tarif"
+                            class="text-sm" x-ref="inputTarifLainLain"
+                            x-on:keydown.enter.prevent="$el.blur(); $wire.insertLainLain()" />
+                        @error('formEntryLainLain.lainLainPrice')
+                            <x-input-error :messages="$message" class="mt-1" />
+                        @enderror
+                    </div>
+
+                    {{-- Tombol --}}
+                    <div class="flex items-center gap-2 pb-0.5">
+                        <x-icon-button color="gray" type="button" wire:click.prevent="resetFormEntry"
+                            title="Batal — kosongkan form entri">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </x-icon-button>
+                    </div>
                 </div>
-
-                {{-- Tarif --}}
-                <div class="w-44" x-data
-                    x-init="$nextTick(() => { $refs.inputTarifLainLain?.focus(); $refs.inputTarifLainLain?.select(); })">
-                    <x-input-label value="Tarif" class="mb-1" />
-                    <x-text-input-number wire:model="formEntryLainLain.lainLainPrice" placeholder="Tarif"
-                        class="text-sm" x-ref="inputTarifLainLain"
-                        x-on:keydown.enter.prevent="$el.blur(); $wire.insertLainLain()" />
-                    @error('formEntryLainLain.lainLainPrice')
-                        <x-input-error :messages="$message" class="mt-1" />
-                    @enderror
-                </div>
-
-                {{-- Tombol --}}
-                <div class="flex items-center gap-2 pb-0.5">
-                    <span class="text-xs text-muted dark:text-gray-400 whitespace-nowrap">Enter = simpan</span>
-                    <button type="button" wire:click.prevent="resetFormEntry"
-                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium
-                            text-muted dark:text-gray-300 bg-canvas dark:bg-gray-800
-                            border border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-700 transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        Batal
-                    </button>
-                </div>
-            </div>
-        @endif
-    </div>
-
-    {{-- TABEL DATA --}}
-    <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-        <div class="flex items-center justify-between px-4 py-3 border-b border-hairline dark:border-gray-700">
-            <h3 class="text-sm font-semibold text-body dark:text-gray-300">Daftar Lain-lain</h3>
-            <x-badge variant="gray">{{ count($rjLainLain) }} item</x-badge>
+                {{-- Petunjuk cara simpan — tombol Tambah sudah ditiadakan --}}
+                <p class="mt-3 text-xs text-muted dark:text-gray-400">
+                    Tekan <span class="px-1.5 py-0.5 font-semibold rounded border border-hairline bg-canvas text-body dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">Enter</span>
+                    di kolom terakhir untuk menyimpan.
+                </p>
+            @endif
         </div>
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
-                <thead
-                    class="text-xs font-semibold text-muted uppercase dark:text-gray-400 bg-surface-soft dark:bg-gray-800/50">
-                    <tr>
-                        <th class="px-4 py-3">Kode</th>
-                        <th class="px-4 py-3">Keterangan</th>
-                        <th class="px-4 py-3 text-right">Tarif</th>
-                        @if (!$isFormLocked)
-                            <th class="px-4 py-3 text-center w-28">Aksi</th>
-                        @endif
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
-                    @forelse ($rjLainLain as $item)
-                        @php $isEditing = $editingDtl === $item['rjotherDtl']; @endphp
-                        <tr wire:key="lainlain-row-{{ $item['rjotherDtl'] }}-{{ $isEditing ? 'edit' : 'view' }}" x-data
-                            class="{{ $isEditing ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-surface-soft dark:hover:bg-gray-800/40' }} transition">
-
-                            {{-- Kode --}}
-                            <td class="px-4 py-2 font-mono text-xs text-muted dark:text-gray-400 whitespace-nowrap">
-                                {{ $item['lainLainId'] }}
-                            </td>
-
-                            {{-- Deskripsi --}}
-                            <td class="px-4 py-2 text-ink dark:text-gray-200 whitespace-nowrap">
-                                {{ $item['lainLainDesc'] }}
-                            </td>
-
-                            {{-- Tarif --}}
-                            <td class="px-4 py-2 whitespace-nowrap">
-                                @if ($isEditing)                                    <div class="flex justify-end" x-data
-                                        x-init="$nextTick(() => { $refs.editLainLainPrice?.focus(); $refs.editLainLainPrice?.select(); })">
-                                        <x-text-input-number wire:model="editRow.lainLainPrice"
-                                            placeholder="Tarif" class="text-sm w-44" x-ref="editLainLainPrice"
-                                            x-on:keydown.enter.prevent="$el.blur(); $wire.saveEdit()" />
-                                    </div>
-                                    @error('editRow.lainLainPrice')
-                                        <x-input-error :messages="$message" class="mt-1 text-right" />
-                                    @enderror
-                                @else
-                                    <span class="block font-semibold text-right text-ink dark:text-gray-200">
-                                        Rp {{ number_format($item['lainLainPrice']) }}
-                                    </span>
-                                @endif
-                            </td>
-
-                            {{-- Aksi --}}
+        {{-- TABEL DATA --}}
+        <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead
+                        class="text-sm font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300 bg-surface-soft dark:bg-gray-800/50">
+                        <tr>
+                            <th class="px-4 py-3">Kode</th>
+                            <th class="px-4 py-3">Keterangan</th>
+                            <th class="px-4 py-3 text-right">Tarif</th>
                             @if (!$isFormLocked)
-                                <td class="px-4 py-2 whitespace-nowrap">
-                                    @if ($isEditing)
-                                        <div class="flex items-center justify-center gap-1">
-                                            <x-secondary-button type="button" wire:click="saveEdit"
-                                                wire:loading.attr="disabled" wire:target="saveEdit"
-                                                class="px-3 py-1 text-xs text-green-700 border-green-300 hover:bg-green-50 dark:text-green-400 dark:border-green-600 dark:hover:bg-green-900/20">
-                                                Simpan
-                                            </x-secondary-button>
-                                            <x-secondary-button type="button" wire:click="cancelEdit"
-                                                class="px-3 py-1 text-xs">
-                                                Batal
-                                            </x-secondary-button>
+                                <th class="px-4 py-3 text-center w-28">Aksi</th>
+                            @endif
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
+                        @forelse ($rjLainLain as $item)
+                            @php $isEditing = $editingDtl === $item['rjotherDtl']; @endphp
+                            <tr wire:key="lainlain-row-{{ $item['rjotherDtl'] }}-{{ $isEditing ? 'edit' : 'view' }}" x-data
+                                class="{{ $isEditing ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-surface-soft dark:hover:bg-gray-800/40' }} transition">
+
+                                {{-- Kode --}}
+                                <td class="px-4 py-1.5 font-mono text-sm text-muted dark:text-gray-400 whitespace-nowrap">
+                                    {{ $item['lainLainId'] }}
+                                </td>
+
+                                {{-- Deskripsi --}}
+                                <td class="px-4 py-1.5 text-ink dark:text-gray-200 whitespace-nowrap">
+                                    {{ $item['lainLainDesc'] }}
+                                </td>
+
+                                {{-- Tarif --}}
+                                <td class="px-4 py-1.5 whitespace-nowrap">
+                                    @if ($isEditing)                                    <div class="flex justify-end" x-data
+                                            x-init="$nextTick(() => { $refs.editLainLainPrice?.focus(); $refs.editLainLainPrice?.select(); })">
+                                            <x-text-input-number wire:model="editRow.lainLainPrice"
+                                                placeholder="Tarif" class="text-sm w-44" x-ref="editLainLainPrice"
+                                                x-on:keydown.enter.prevent="$el.blur(); $wire.saveEdit()" />
                                         </div>
+                                        @error('editRow.lainLainPrice')
+                                            <x-input-error :messages="$message" class="mt-1 text-right" />
+                                        @enderror
                                     @else
-                                        <div class="flex items-center justify-center gap-1">
-                                            <x-secondary-button type="button"
-                                                wire:click="startEdit({{ $item['rjotherDtl'] }})"
-                                                class="px-3 py-1 text-xs">
-                                                Edit
-                                            </x-secondary-button>
-                                            <x-outline-button type="button"
-                                                wire:click.prevent="removeLainLain({{ $item['rjotherDtl'] }})"
-                                                wire:confirm="Hapus lain-lain ini?" wire:loading.attr="disabled"
-                                                wire:target="removeLainLain({{ $item['rjotherDtl'] }})"
-                                                class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300" title="Hapus">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </x-outline-button>
-                                        </div>
+                                        <span class="block font-semibold text-right text-ink dark:text-gray-200">
+                                            Rp {{ number_format($item['lainLainPrice']) }}
+                                        </span>
                                     @endif
                                 </td>
-                            @endif
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="{{ $isFormLocked ? 3 : 4 }}"
-                                class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
-                                <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                </svg>
-                                Belum ada data lain-lain
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
 
-                @if (!empty($rjLainLain))
-                    <tfoot class="border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
-                        <tr>
-                            <td colspan="{{ $isFormLocked ? 2 : 3 }}"
-                                class="px-4 py-3 text-sm font-semibold text-muted dark:text-gray-400">Total</td>
-                            <td class="px-4 py-3 text-sm font-bold text-right text-ink dark:text-white">
-                                Rp {{ number_format(collect($rjLainLain)->sum('lainLainPrice')) }}
-                            </td>
-                            @if (!$isFormLocked)
-                                <td></td>
-                            @endif
-                        </tr>
-                    </tfoot>
-                @endif
-            </table>
+                                {{-- Aksi --}}
+                                @if (!$isFormLocked)
+                                    <td class="px-4 py-1.5 whitespace-nowrap">
+                                        @if ($isEditing)
+                                            <div class="flex items-center justify-center gap-1">
+                                                <x-primary-button type="button" wire:click="saveEdit"
+                                                    wire:loading.attr="disabled" wire:target="saveEdit"
+                                                    class="!px-3 !py-1 !text-xs">
+                                                    <span wire:loading.remove wire:target="saveEdit">Simpan</span>
+                                                    <span wire:loading wire:target="saveEdit"><x-loading class="w-3 h-3" /></span>
+                                                </x-primary-button>
+                                                <x-secondary-button type="button" wire:click="cancelEdit"
+                                                    class="px-3 py-1 text-xs">
+                                                    Batal
+                                                </x-secondary-button>
+                                            </div>
+                                        @else
+                                            <div class="flex items-center justify-center gap-1">
+                                                <x-secondary-button type="button"
+                                                    wire:click="startEdit({{ $item['rjotherDtl'] }})"
+                                                    class="px-3 py-1 text-xs">
+                                                    Edit
+                                                </x-secondary-button>
+                                                <x-outline-button type="button"
+                                                    wire:click.prevent="removeLainLain({{ $item['rjotherDtl'] }})"
+                                                    wire:confirm="Hapus lain-lain ini?" wire:loading.attr="disabled"
+                                                    wire:target="removeLainLain({{ $item['rjotherDtl'] }})"
+                                                    class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300" title="Hapus">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </x-outline-button>
+                                            </div>
+                                        @endif
+                                    </td>
+                                @endif
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="{{ $isFormLocked ? 3 : 4 }}"
+                                    class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
+                                    <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                    Belum ada data lain-lain
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+
+                    @if (!empty($rjLainLain))
+                        <tfoot class="border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
+                            <tr>
+                                <td colspan="{{ $isFormLocked ? 2 : 3 }}"
+                                    class="px-4 py-3 text-sm font-semibold text-muted dark:text-gray-400">Total</td>
+                                <td class="px-4 py-3 text-sm font-bold text-right text-ink dark:text-white">
+                                    Rp {{ number_format(collect($rjLainLain)->sum('lainLainPrice')) }}
+                                </td>
+                                @if (!$isFormLocked)
+                                    <td></td>
+                                @endif
+                            </tr>
+                        </tfoot>
+                    @endif
+                </table>
+            </div>
         </div>
     </div>
 

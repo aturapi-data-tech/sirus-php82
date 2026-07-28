@@ -58,7 +58,7 @@ new class extends Component {
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
                 <thead
-                    class="text-xs font-semibold text-muted uppercase dark:text-gray-400 bg-surface-soft dark:bg-gray-800/50">
+                    class="text-sm font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300 bg-surface-soft dark:bg-gray-800/50">
                     <tr>
                         <th class="px-4 py-3">Keterangan</th>
                         <th class="px-4 py-3 text-right">Tarif Laborat</th>
@@ -68,10 +68,10 @@ new class extends Component {
                     @forelse ($rjLab as $item)
                         <tr wire:key="lab-row-{{ $item['labDtl'] }}"
                             class="transition hover:bg-surface-soft dark:hover:bg-gray-800/40">
-                            <td class="px-4 py-2">
+                            <td class="px-4 py-1.5">
                                 <span class="text-ink dark:text-gray-200">{{ $item['labDesc'] }}</span>
                             </td>
-                            <td class="px-4 py-2 whitespace-nowrap">
+                            <td class="px-4 py-1.5 whitespace-nowrap">
                                 <span class="block font-semibold text-right text-ink dark:text-gray-200">
                                     Rp {{ number_format($item['labPrice']) }}
                                 </span>

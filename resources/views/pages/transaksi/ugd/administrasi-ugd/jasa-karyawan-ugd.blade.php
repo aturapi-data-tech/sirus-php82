@@ -329,145 +329,147 @@ new class extends Component {
         </div>
     @endif
 
-    {{-- FORM INPUT --}}
-    <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40" x-data
-        x-on:focus-lov-jasa-karyawan-ugd.window="$nextTick(() => {
-            const fokus = () => {
-                const el = $refs.lovJasaKaryawan?.querySelector('input');
-                if (!el || el === document.activeElement) return;
-                if (document.activeElement?.matches('input, select, textarea')) return;
-                el.focus();
-            };
-            fokus();
-            setTimeout(fokus, 150);
-            setTimeout(fokus, 400);
-        })">
+    {{-- Kiri: form entri · Kanan: daftar data --}}
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
+        {{-- FORM INPUT --}}
+        <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40" x-data
+            x-on:focus-lov-jasa-karyawan-ugd.window="$nextTick(() => {
+                const fokus = () => {
+                    const el = $refs.lovJasaKaryawan?.querySelector('input');
+                    if (!el || el === document.activeElement) return;
+                    if (document.activeElement?.matches('input, select, textarea')) return;
+                    el.focus();
+                };
+                fokus();
+                setTimeout(fokus, 150);
+                setTimeout(fokus, 400);
+            })">
 
-        @if ($isFormLocked)
-            <p class="text-sm italic text-muted-soft dark:text-gray-600">Form input dinonaktifkan.</p>
-        @elseif (empty($formEntryJasaKaryawan['jasaKaryawanId']))
-            {{-- Enter saat kolom cari masih kosong = selesai di tab ini → lompat ke Jasa Dokter. --}}
-            <div x-ref="lovJasaKaryawan"
-                x-on:keydown.enter="if (!$event.target.value?.trim()) $dispatch('administrasi-ugd-goto-tab', { tab: 'JasaDokter', focus: 'focus-lov-dokter-ugd' })">
-                <livewire:lov.jasa-karyawan.lov-jasa-karyawan target="jasa-karyawan" label="Cari Jasa Karyawan"
-                    placeholder="Ketik kode/nama jasa karyawan..."
-                    wire:key="lov-jk-{{ $rjNo }}-{{ $renderVersions['modal-jasa-karyawan-ugd'] ?? 0 }}" />
-            </div>
-        @else
-            <div class="flex items-end gap-3" x-data>
-                <div class="w-28">
-                    <x-input-label value="Kode" class="mb-1" />
-                    <x-text-input wire:model="formEntryJasaKaryawan.jasaKaryawanId" placeholder="Kode" disabled
-                        class="w-full text-sm" />
-                    @error('formEntryJasaKaryawan.jasaKaryawanId')
-                        <x-input-error :messages="$message" class="mt-1" />
-                    @enderror
+            @if ($isFormLocked)
+                <p class="text-sm italic text-muted-soft dark:text-gray-600">Form input dinonaktifkan.</p>
+            @elseif (empty($formEntryJasaKaryawan['jasaKaryawanId']))
+                {{-- Enter saat kolom cari masih kosong = selesai di tab ini → lompat ke Jasa Dokter. --}}
+                <div x-ref="lovJasaKaryawan"
+                    x-on:keydown.enter="if (!$event.target.value?.trim()) $dispatch('administrasi-ugd-goto-tab', { tab: 'JasaDokter', focus: 'focus-lov-dokter-ugd' })">
+                    <livewire:lov.jasa-karyawan.lov-jasa-karyawan target="jasa-karyawan" label="Cari Jasa Karyawan"
+                        placeholder="Ketik kode/nama jasa karyawan..."
+                        wire:key="lov-jk-{{ $rjNo }}-{{ $renderVersions['modal-jasa-karyawan-ugd'] ?? 0 }}" />
                 </div>
-                <div class="flex-1">
-                    <x-input-label value="Jasa Karyawan" class="mb-1" />
-                    <x-text-input wire:model="formEntryJasaKaryawan.jasaKaryawanDesc" placeholder="Jasa Karyawan"
-                        disabled class="w-full text-sm" />
-                    @error('formEntryJasaKaryawan.jasaKaryawanDesc')
-                        <x-input-error :messages="$message" class="mt-1" />
-                    @enderror
+            @else
+                <div class="flex flex-wrap items-end gap-3" x-data>
+                    <div class="w-28">
+                        <x-input-label value="Kode" class="mb-1" />
+                        <x-text-input wire:model="formEntryJasaKaryawan.jasaKaryawanId" placeholder="Kode" disabled
+                            class="w-full text-sm" />
+                        @error('formEntryJasaKaryawan.jasaKaryawanId')
+                            <x-input-error :messages="$message" class="mt-1" />
+                        @enderror
+                    </div>
+                    <div class="flex-1">
+                        <x-input-label value="Jasa Karyawan" class="mb-1" />
+                        <x-text-input wire:model="formEntryJasaKaryawan.jasaKaryawanDesc" placeholder="Jasa Karyawan"
+                            disabled class="w-full text-sm" />
+                        @error('formEntryJasaKaryawan.jasaKaryawanDesc')
+                            <x-input-error :messages="$message" class="mt-1" />
+                        @enderror
+                    </div>
+                    <div class="w-40" x-data x-init="$nextTick(() => { $refs.inputTarif?.focus(); $refs.inputTarif?.select(); })">
+                        <x-input-label value="Tarif" class="mb-1" />
+                        <x-text-input-number wire:model="formEntryJasaKaryawan.jasaKaryawanPrice" placeholder="Tarif"
+                            class="text-sm" x-ref="inputTarif"
+                            x-on:keydown.enter.prevent="$el.blur(); $wire.insertJasaKaryawan().then(() => { $refs.inputTarif?.focus(); $refs.inputTarif?.select(); })" />
+                        @error('formEntryJasaKaryawan.jasaKaryawanPrice')
+                            <x-input-error :messages="$message" class="mt-1" />
+                        @enderror
+                    </div>
+                    <div class="flex items-center gap-2 pb-0.5">
+                        <x-icon-button color="gray" type="button" wire:click.prevent="resetFormEntry"
+                            title="Batal — kosongkan form entri">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </x-icon-button>
+                    </div>
                 </div>
-                <div class="w-40" x-data x-init="$nextTick(() => { $refs.inputTarif?.focus(); $refs.inputTarif?.select(); })">
-                    <x-input-label value="Tarif" class="mb-1" />
-                    <x-text-input-number wire:model="formEntryJasaKaryawan.jasaKaryawanPrice" placeholder="Tarif"
-                        class="text-sm" x-ref="inputTarif"
-                        x-on:keydown.enter.prevent="$el.blur(); $wire.insertJasaKaryawan().then(() => { $refs.inputTarif?.focus(); $refs.inputTarif?.select(); })" />
-                    @error('formEntryJasaKaryawan.jasaKaryawanPrice')
-                        <x-input-error :messages="$message" class="mt-1" />
-                    @enderror
-                </div>
-                <div class="flex items-center gap-2 pb-0.5">
-                    <span class="text-xs text-muted dark:text-gray-400 whitespace-nowrap">Enter = simpan</span>
-                    <button type="button" wire:click.prevent="resetFormEntry"
-                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-muted dark:text-gray-300 bg-canvas dark:bg-gray-800 border border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-700 transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        Batal
-                    </button>
-                </div>
-            </div>
-        @endif
-    </div>
-
-    {{-- TABEL DATA --}}
-    <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-        <div class="flex items-center justify-between px-4 py-3 border-b border-hairline dark:border-gray-700">
-            <h3 class="text-sm font-semibold text-body dark:text-gray-300">Daftar Jasa Karyawan</h3>
-            <x-badge variant="gray">{{ count($ugdJasaKaryawan) }} item</x-badge>
+                {{-- Petunjuk cara simpan — tombol Tambah sudah ditiadakan --}}
+                <p class="mt-3 text-xs text-muted dark:text-gray-400">
+                    Tekan <span class="px-1.5 py-0.5 font-semibold rounded border border-hairline bg-canvas text-body dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">Enter</span>
+                    di kolom terakhir untuk menyimpan.
+                </p>
+            @endif
         </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
-                <thead
-                    class="text-xs font-semibold text-muted uppercase dark:text-gray-400 bg-surface-soft dark:bg-gray-800/50">
-                    <tr>
-                        <th class="px-4 py-3">Kode</th>
-                        <th class="px-4 py-3">Jasa Karyawan</th>
-                        <th class="px-4 py-3 text-right">Tarif</th>
-                        @if (!$isFormLocked)
-                            <th class="w-20 px-4 py-3 text-center">Hapus</th>
-                        @endif
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
-                    @forelse ($ugdJasaKaryawan as $item)
-                        <tr wire:key="jasa-karyawan-ugd-{{ $item['rjActeDtl'] ?? $loop->index }}" class="transition group hover:bg-surface-soft dark:hover:bg-gray-800/40">
-                            <td class="px-4 py-3 font-mono text-xs text-muted dark:text-gray-400 whitespace-nowrap">
-                                {{ $item['JasaKaryawanId'] }}</td>
-                            <td class="px-4 py-3 text-ink dark:text-gray-200 whitespace-nowrap">
-                                {{ $item['JasaKaryawanDesc'] }}</td>
-                            <td
-                                class="px-4 py-3 font-semibold text-right text-ink dark:text-gray-200 whitespace-nowrap">
-                                Rp {{ number_format($item['JasaKaryawanPrice']) }}</td>
+
+        {{-- TABEL DATA --}}
+        <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead
+                        class="text-sm font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300 bg-surface-soft dark:bg-gray-800/50">
+                        <tr>
+                            <th class="px-4 py-3">Kode</th>
+                            <th class="px-4 py-3">Jasa Karyawan</th>
+                            <th class="px-4 py-3 text-right">Tarif</th>
                             @if (!$isFormLocked)
-                                <td class="px-4 py-3 text-center">
-                                    <x-outline-button type="button"
-                                        wire:click.prevent="removeJasaKaryawan({{ $item['rjActeDtl'] }})"
-                                        wire:confirm="Hapus jasa karyawan ini?" wire:loading.attr="disabled"
-                                        wire:target="removeJasaKaryawan({{ $item['rjActeDtl'] }})"
-                                        class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300" title="Hapus">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </x-outline-button>
+                                <th class="w-20 px-4 py-3 text-center">Hapus</th>
+                            @endif
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
+                        @forelse ($ugdJasaKaryawan as $item)
+                            <tr wire:key="jasa-karyawan-ugd-{{ $item['rjActeDtl'] ?? $loop->index }}" class="transition group hover:bg-surface-soft dark:hover:bg-gray-800/40">
+                                <td class="px-4 py-1.5 font-mono text-sm text-muted dark:text-gray-400 whitespace-nowrap">
+                                    {{ $item['JasaKaryawanId'] }}</td>
+                                <td class="px-4 py-1.5 text-ink dark:text-gray-200 whitespace-nowrap">
+                                    {{ $item['JasaKaryawanDesc'] }}</td>
+                                <td
+                                    class="px-4 py-1.5 font-semibold text-right text-ink dark:text-gray-200 whitespace-nowrap">
+                                    Rp {{ number_format($item['JasaKaryawanPrice']) }}</td>
+                                @if (!$isFormLocked)
+                                    <td class="px-4 py-1.5 text-center">
+                                        <x-outline-button type="button"
+                                            wire:click.prevent="removeJasaKaryawan({{ $item['rjActeDtl'] }})"
+                                            wire:confirm="Hapus jasa karyawan ini?" wire:loading.attr="disabled"
+                                            wire:target="removeJasaKaryawan({{ $item['rjActeDtl'] }})"
+                                            class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300" title="Hapus">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </x-outline-button>
+                                    </td>
+                                @endif
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="{{ $isFormLocked ? 3 : 4 }}"
+                                    class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
+                                    <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                    Belum ada jasa karyawan
                                 </td>
-                            @endif
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="{{ $isFormLocked ? 3 : 4 }}"
-                                class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
-                                <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                </svg>
-                                Belum ada jasa karyawan
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-                @if (!empty($ugdJasaKaryawan))
-                    <tfoot class="border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
-                        <tr>
-                            <td colspan="2"
-                                class="px-4 py-3 text-sm font-semibold text-muted dark:text-gray-400">Total</td>
-                            <td class="px-4 py-3 text-sm font-bold text-right text-ink dark:text-white">
-                                Rp {{ number_format(collect($ugdJasaKaryawan)->sum('JasaKaryawanPrice')) }}
-                            </td>
-                            @if (!$isFormLocked)
-                                <td></td>
-                            @endif
-                        </tr>
-                    </tfoot>
-                @endif
-            </table>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                    @if (!empty($ugdJasaKaryawan))
+                        <tfoot class="border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
+                            <tr>
+                                <td colspan="2"
+                                    class="px-4 py-3 text-sm font-semibold text-muted dark:text-gray-400">Total</td>
+                                <td class="px-4 py-3 text-sm font-bold text-right text-ink dark:text-white">
+                                    Rp {{ number_format(collect($ugdJasaKaryawan)->sum('JasaKaryawanPrice')) }}
+                                </td>
+                                @if (!$isFormLocked)
+                                    <td></td>
+                                @endif
+                            </tr>
+                        </tfoot>
+                    @endif
+                </table>
+            </div>
         </div>
     </div>
 

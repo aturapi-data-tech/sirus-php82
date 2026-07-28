@@ -106,7 +106,7 @@ new class extends Component {
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
                 <thead
-                    class="text-xs font-semibold text-muted uppercase dark:text-gray-400 bg-surface-soft dark:bg-gray-800/50">
+                    class="text-sm font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300 bg-surface-soft dark:bg-gray-800/50">
                     <tr>
                         <th class="px-4 py-3">Sumber</th>
                         <th class="px-4 py-3 text-right">Adm. RS</th>
@@ -124,27 +124,27 @@ new class extends Component {
                 <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
                     @forelse ($rjTransfer as $item)
                         <tr wire:key="transfer-ugd-{{ $item['sumber'] ?? $loop->index }}" class="hover:bg-surface-soft dark:hover:bg-gray-800/40 transition">
-                            <td class="px-4 py-3 text-body dark:text-gray-300 whitespace-nowrap font-mono text-xs">
+                            <td class="px-4 py-1.5 text-body dark:text-gray-300 whitespace-nowrap font-mono text-sm">
                                 {{ $item['sumber'] }}</td>
-                            <td class="px-4 py-3 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
+                            <td class="px-4 py-1.5 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
                                 {{ number_format($item['rsAdmin']) }}</td>
-                            <td class="px-4 py-3 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
+                            <td class="px-4 py-1.5 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
                                 {{ number_format($item['rjAdmin']) }}</td>
-                            <td class="px-4 py-3 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
+                            <td class="px-4 py-1.5 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
                                 {{ number_format($item['actePrice']) }}</td>
-                            <td class="px-4 py-3 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
+                            <td class="px-4 py-1.5 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
                                 {{ number_format($item['actpPrice']) }}</td>
-                            <td class="px-4 py-3 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
+                            <td class="px-4 py-1.5 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
                                 {{ number_format($item['actdPrice']) }}</td>
-                            <td class="px-4 py-3 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
+                            <td class="px-4 py-1.5 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
                                 {{ number_format($item['obat']) }}</td>
-                            <td class="px-4 py-3 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
+                            <td class="px-4 py-1.5 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
                                 {{ number_format($item['lab']) }}</td>
-                            <td class="px-4 py-3 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
+                            <td class="px-4 py-1.5 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
                                 {{ number_format($item['rad']) }}</td>
-                            <td class="px-4 py-3 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
+                            <td class="px-4 py-1.5 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
                                 {{ number_format($item['other']) }}</td>
-                            <td class="px-4 py-3 text-right font-bold text-ink dark:text-white whitespace-nowrap">
+                            <td class="px-4 py-1.5 text-right font-bold text-ink dark:text-white whitespace-nowrap">
                                 Rp {{ number_format($item['total']) }}</td>
                         </tr>
                     @empty
