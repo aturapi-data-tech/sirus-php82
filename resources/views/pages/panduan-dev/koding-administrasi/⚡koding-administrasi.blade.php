@@ -896,11 +896,41 @@ TXT,
                                     <tr><td class="ds-td-strong">Batal Transaksi</td><td class="ds-body-sm">Pembayaran / pulang</td><td class="ds-td-class">P → I (RI) · reset (RJ/UGD)</td><td class="ds-body-sm">Sudah dibayar/pulang</td><td class="ds-body-sm">Admin / Supervisor Tu</td></tr>
                                     <tr><td class="ds-td-strong">Batal Transfer</td><td class="ds-body-sm">Transfer UGD→RI</td><td class="ds-td-class">UGD: I → A · RI dihapus</td><td class="ds-body-sm">RI belum ada transaksi; lab UGD tak pending</td><td class="ds-body-sm">Admin / Tu</td></tr>
                                     <tr><td class="ds-td-strong">Batal Inap</td><td class="ds-body-sm">Admisi RI</td><td class="ds-td-class">I → F (soft)</td><td class="ds-body-sm">Dirawat, bukan transfer, belum ada transaksi</td><td class="ds-body-sm">Admin / Supervisor Tu</td></tr>
+                                    <tr><td class="ds-td-strong">Batal Transaksi (Apotek RI)</td><td class="ds-body-sm">Pembayaran resep RI</td><td class="ds-td-class">L → A (<span class="ds-code">imtxn_slshdrs.status</span>)</td><td class="ds-body-sm">Status 'L'; pasien belum pulang; <span class="ds-code">lockForUpdate</span> + baca ulang status</td><td class="ds-body-sm">Apoteker / Admin / Tu <span class="ds-body-sm" style="color:var(--muted)">(kasir-ri: Admin / Manager Umum / Supervisor Tu)</span></td></tr>
                                 </tbody>
                             </table>
                         </div>
 
                         <div class="ds-card-outline mt-6" style="padding:16px 20px">
+                            <span class="ds-spike" style="vertical-align:middle"></span>
+                            <span class="ds-body-sm" style="color:var(--body-strong)">
+                                <strong>Apotek RI belum punya lapis kedua.</strong>
+                                <span class="ds-code">administrasi-ri-resep</span> &amp;
+                                <span class="ds-code">administrasi-kasir-ri</span> hanya punya Batal Transaksi
+                                (pembayaran). Resep yang terlanjur salah dan belum dibayar harus dihapus obat per obat
+                                lewat <span class="ds-code">removeObat()</span> — header
+                                <span class="ds-code">imtxn_slshdrs</span> tetap ada dan tetap muncul di antrian.
+                                Kalau lapis kedua ditambahkan, ikuti pola Batal Inap: soft-cancel ke status batal,
+                                role lebih ketat, syarat belum ada pembayaran.
+                            </span>
+                        </div>
+
+                        <div class="ds-card-outline mt-3" style="padding:16px 20px">
+                            <span class="ds-spike" style="vertical-align:middle"></span>
+                            <span class="ds-body-sm" style="color:var(--body-strong)">
+                                <strong>Sesudah batal, samakan properti dengan yang ditulis ke DB — jangan di-null-kan.</strong>
+                                <span class="ds-code">batalTransaksi()</span> RJ/UGD dulu men-set
+                                <span class="ds-code">$txnStatus = null</span> padahal DB ditulis
+                                <span class="ds-code">'A'</span>. Tombol Batal Transaksi (A → F) digerbangi
+                                <span class="ds-code">$txnStatus === 'A'</span>, jadi tombolnya hilang sesudah
+                                Post → Batal sampai modal ditutup &amp; dibuka ulang. Diperbaiki di
+                                <span class="ds-code">91218d91</span>. Buang juga cache computed
+                                (<span class="ds-code">unset($this-&gt;isKasirPosted, ...)</span>) dan
+                                <span class="ds-code">emp_id</span> sengaja TIDAK direset demi jejak audit.
+                            </span>
+                        </div>
+
+                        <div class="ds-card-outline mt-3" style="padding:16px 20px">
                             <span class="ds-spike" style="vertical-align:middle"></span>
                             <span class="ds-body-sm" style="color:var(--body-strong)">
                                 <strong>Urutan bila kasus campur:</strong> pasien sudah pulang lalu ingin dibatalkan total →

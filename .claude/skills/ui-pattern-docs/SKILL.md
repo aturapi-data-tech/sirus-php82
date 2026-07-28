@@ -13,6 +13,7 @@ Sebelum membuat komponen baru, cek apakah polanya sudah ada di `docs/`. Ikuti po
 |---|---|
 | **Modul master baru / CRUD list+form** (struktur file, event, `ds-table`, `x-action-*`, ORA-02292) | `docs/standar-master-module.md` (acuan kanonik: `master-agama`) |
 | Standar tombol (varian, ukuran, warna, ikon) | `docs/standar-komponen-tombol.md` |
+| **Kasir, transfer & model batal** (alur kasir→pulang, transfer RJ→UGD→RI, Batal Transaksi/Transfer/Inap, matriks & guard) | halaman `/panduan-dev/koding-administrasi` |
 | Tab bar (`x-tabs`/`x-tab` — varian, mode server/Alpine, warna modul) | `docs/tabs-pattern.md` |
 | Standar UI komponen umum | `docs/standar-ui-komponen.md` |
 | Halaman bertabel full-height (frame, toolbar sticky, pagination, empty state) | `docs/page-frame-pattern.md` |
