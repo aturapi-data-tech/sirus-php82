@@ -147,7 +147,7 @@ new class extends Component {
                     'takar' => $r->resep_takar ?: 'Tablet',
                     'ket' => $r->resep_ket,
                     'etiketStatus' => (int) ($r->etiket_status ?? 0),
-                    'expDate' => $r->exp_date, // yyyy-mm-dd (untuk input type="date" saat edit)
+                    'expDate' => $r->exp_date, // yyyy-mm-dd dari DB; diubah ke dd/mm/yyyy saat masuk form edit
                     'expDateDisplay' => $r->exp_date ? Carbon::parse($r->exp_date)->format('d/m/Y') : '-', // dd/mm/yyyy (untuk tampilan tabel)
                 ],
             )
@@ -196,7 +196,7 @@ new class extends Component {
         $this->formEntryObat['productId'] = $payload['product_id'] ?? '';
         $this->formEntryObat['productName'] = $payload['product_name'] ?? '';
         $this->formEntryObat['price'] = $payload['sales_price'] ?? 0;
-        $this->formEntryObat['expDate'] = Carbon::now()->addMonths(12)->format('Y-m-d');
+        $this->formEntryObat['expDate'] = Carbon::now()->addMonths(12)->format('d/m/Y');
 
         $this->dispatch('focus-input-qty-obat-ri');
     }
@@ -219,14 +219,14 @@ new class extends Component {
                 'formEntryObat.carapakai' => 'required|numeric|min:1',
                 'formEntryObat.kapsul' => 'required|numeric|min:1',
                 'formEntryObat.takar' => 'required|string',
-                'formEntryObat.expDate' => 'required|date',
+                'formEntryObat.expDate' => 'required|date_format:d/m/Y',
             ],
             [
                 'formEntryObat.productId.required' => 'Obat wajib dipilih.',
                 'formEntryObat.qty.min' => 'Qty minimal 1.',
                 'formEntryObat.price.min' => 'Harga tidak valid.',
                 'formEntryObat.expDate.required' => 'Exp Date wajib diisi.',
-                'formEntryObat.expDate.date' => 'Format Exp Date tidak valid.',
+                'formEntryObat.expDate.date_format' => 'Exp Date harus format dd/mm/yyyy.',
             ],
         );
 
@@ -235,7 +235,7 @@ new class extends Component {
                 $this->lockSlshdrAndGuard();
 
                 $maxDtl = (int) DB::table('imtxn_slsdtls')->select(DB::raw('nvl(max(sls_dtl)+1,1) as m'))->value('m');
-                $expFormatted = Carbon::parse($this->formEntryObat['expDate'])->format('Y-m-d H:i:s');
+                $expFormatted = Carbon::createFromFormat('d/m/Y', $this->formEntryObat['expDate'])->startOfDay()->format('Y-m-d H:i:s');
 
                 DB::table('imtxn_slsdtls')->insert([
                     'sls_dtl' => $maxDtl,
@@ -284,7 +284,7 @@ new class extends Component {
             'kapsul' => $row['kapsul'],
             'takar' => $row['takar'],
             'ket' => $row['ket'] ?? '',
-            'expDate' => $row['expDate'] ?? '',
+            'expDate' => !empty($row['expDate']) ? Carbon::parse($row['expDate'])->format('d/m/Y') : '',
             'etiketStatus' => $row['etiketStatus'],
         ];
     }
@@ -308,7 +308,7 @@ new class extends Component {
                 'editRow.carapakai' => 'required|numeric|min:1',
                 'editRow.kapsul' => 'required|numeric|min:1',
                 'editRow.takar' => 'required|string',
-                'editRow.expDate' => 'required|date',
+                'editRow.expDate' => 'required|date_format:d/m/Y',
             ],
             [
                 'editRow.qty.required' => 'Qty wajib diisi.',
@@ -321,7 +321,7 @@ new class extends Component {
             DB::transaction(function () {
                 $this->lockSlshdrAndGuard();
 
-                $expFormatted = Carbon::parse($this->editRow['expDate'])->format('Y-m-d H:i:s');
+                $expFormatted = Carbon::createFromFormat('d/m/Y', $this->editRow['expDate'])->startOfDay()->format('Y-m-d H:i:s');
 
                 DB::table('imtxn_slsdtls')
                     ->where('sls_dtl', $this->editingDtl)
@@ -397,7 +397,8 @@ new class extends Component {
         $this->accId = $payload['acc_id'] ?? null;
         $this->accName = $payload['acc_name'] ?? null;
         $this->resetErrorBag('accId');
-        $this->dispatch('focus-input-bayar-ri');
+        // Akun Kas = langkah terakhir sebelum posting (Jasa Karyawan → Bayar → Akun Kas → Post).
+        $this->dispatch('focus-post-transaksi-ri');
     }
 
     public function updatedBayar(): void
@@ -666,8 +667,7 @@ new class extends Component {
     <x-modal name="administrasi-kasir-ri" size="full" height="full" focusable>
         <div wire:key="{{ $this->renderKey('modal-administrasi-kasir-ri', [$slsNo ?? 'new']) }}" x-data
             x-on:focus-input-qty-obat-ri.window="$nextTick(() => $refs.inputQtyRi?.focus())"
-            x-on:focus-lov-obat-kasir-ri.window="$nextTick(() => $refs.lovObatRi?.querySelector('input')?.focus())"
-            x-on:focus-input-bayar-ri.window="$nextTick(() => $refs.inputBayarRi?.focus())">
+            x-on:focus-lov-obat-kasir-ri.window="$nextTick(() => $refs.lovObatRi?.querySelector('input')?.focus())">
 
             {{-- HEADER --}}
             <div class="flex items-start justify-between gap-4 px-6 py-4 border-b border-hairline dark:border-gray-700">
@@ -803,295 +803,325 @@ new class extends Component {
                             </div>
                         @endif
 
-                        {{-- FORM INPUT --}}
-                        <div
-                            class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
-                            @if ($this->isObatLocked)
-                                <p class="text-sm italic text-muted-soft dark:text-gray-600">Form input dinonaktifkan.</p>
-                            @elseif (empty($formEntryObat['productId']))
-                                <div x-ref="lovObatRi">
-                                    <livewire:lov.product.lov-product target="obat-kasir-ri" label="Cari Obat"
-                                        placeholder="Ketik nama/kode obat..."
-                                        wire:key="lov-obat-kasir-ri-{{ $slsNo }}-{{ $renderVersions['modal-administrasi-kasir-ri'] ?? 0 }}" />
-                                </div>
-                            @else
-                                <div class="flex items-end gap-3 mb-3">
-                                    <div class="w-28">
-                                        <x-input-label value="Kode" class="mb-1" />
-                                        <x-text-input wire:model="formEntryObat.productId" disabled
-                                            class="w-full text-sm" />
-                                    </div>
-                                    <div class="flex-1">
-                                        <x-input-label value="Nama Obat" class="mb-1" />
-                                        <x-text-input wire:model="formEntryObat.productName" disabled
-                                            class="w-full text-sm" />
-                                    </div>
-                                    <div class="w-20">
-                                        <x-input-label value="Qty" class="mb-1" />
-                                        <x-text-input wire:model="formEntryObat.qty" class="w-full text-sm"
-                                            x-ref="inputQtyRi"
-                                            x-on:keyup.enter="$nextTick(() => $refs.inputHargaRi?.focus())" />
-                                        @error('formEntryObat.qty')
-                                            <x-input-error :messages="$message" class="mt-1" />
-                                        @enderror
-                                    </div>
-                                    <div class="w-32">
-                                        <x-input-label value="Harga" class="mb-1" />
-                                        <x-text-input wire:model="formEntryObat.price" class="w-full text-sm"
-                                            x-ref="inputHargaRi"
-                                            x-on:keyup.enter="$nextTick(() => $refs.inputCarapakaiRi?.focus())" />
-                                        @error('formEntryObat.price')
-                                            <x-input-error :messages="$message" class="mt-1" />
-                                        @enderror
-                                    </div>
-                                </div>
-                                <div class="flex items-end gap-3">
-                                    <div class="w-20">
-                                        <x-input-label value="x/Hari" class="mb-1" />
-                                        <x-text-input wire:model="formEntryObat.carapakai" class="w-full text-sm"
-                                            x-ref="inputCarapakaiRi"
-                                            x-on:keyup.enter="$nextTick(() => $refs.inputKapsulRi?.focus())" />
-                                    </div>
-                                    <div class="w-24">
-                                        <x-input-label value="Per Minum" class="mb-1" />
-                                        <x-text-input wire:model="formEntryObat.kapsul" class="w-full text-sm"
-                                            x-ref="inputKapsulRi"
-                                            x-on:keyup.enter="$nextTick(() => $refs.inputTakarRi?.focus())" />
-                                    </div>
-                                    <div class="w-32">
-                                        <x-input-label value="Takar" class="mb-1" />
-                                        <x-select-input wire:model="formEntryObat.takar" x-ref="inputTakarRi"
-                                            x-on:keyup.enter="$nextTick(() => $refs.inputKetRi?.focus())"
-                                            class="block w-full text-sm border-gray-300 rounded-lg shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                            <option>Tablet</option>
-                                            <option>Kapsul</option>
-                                            <option>Sirup</option>
-                                            <option>Sachet</option>
-                                            <option>Tetes</option>
-                                            <option>Salep</option>
-                                            <option>Injeksi</option>
-                                            <option>Lainnya</option>
-                                        </x-select-input>
-                                    </div>
-                                    <div class="w-32">
-                                        <x-input-label value="Keterangan" class="mb-1" />
-                                        <x-text-input wire:model="formEntryObat.ket" class="w-full text-sm"
-                                            x-ref="inputKetRi"
-                                            x-on:keyup.enter="$nextTick(() => $refs.inputExpDateRi?.focus())" />
-                                    </div>
-                                    <div class="w-36">
-                                        <x-input-label value="Exp. Date" class="mb-1" />
-                                        <x-text-input type="date" wire:model="formEntryObat.expDate"
-                                            class="w-full text-sm" x-ref="inputExpDateRi"
-                                            x-on:keyup.enter="$nextTick(() => $refs.inputEtiketRi?.focus())" />
-                                        @error('formEntryObat.expDate')
-                                            <x-input-error :messages="$message" class="mt-1" />
-                                        @enderror
-                                    </div>
-                                    <div class="w-24">
-                                        <x-input-label value="Etiket" class="mb-1" />
-                                        <x-select-input wire:model="formEntryObat.etiketStatus" x-ref="inputEtiketRi"
-                                            x-on:keydown.enter.prevent="$el.blur(); $wire.insertObat()"
-                                            class="block w-full text-sm border-gray-300 rounded-lg shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                            <option value="0">Belum</option>
-                                            <option value="1">Sudah</option>
-                                        </x-select-input>
-                                    </div>
-                                    <div class="flex gap-2 pb-0.5">
-                                        <x-primary-button wire:click="insertObat" wire:loading.attr="disabled"
-                                            wire:target="insertObat">
-                                            <span wire:loading.remove wire:target="insertObat"
-                                                class="flex items-center gap-1">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M12 4v16m8-8H4" />
-                                                </svg>
-                                                Tambah
-                                            </span>
-                                            <span wire:loading wire:target="insertObat"><x-loading /></span>
-                                        </x-primary-button>
-                                        <x-secondary-button wire:click="resetFormEntry">Batal</x-secondary-button>
-                                    </div>
-                                </div>
-                            @endif
-                        </div>
-
-                        {{-- TABEL OBAT --}}
-                        <div
-                            class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                        {{-- Kiri: form entri · Kanan: daftar obat --}}
+                        <div class="grid grid-cols-1 gap-4 lg:grid-cols-5 items-start">
+                            {{-- FORM INPUT --}}
                             <div
-                                class="flex items-center justify-between px-4 py-3 border-b border-hairline dark:border-gray-700">
-                                <h3 class="text-sm font-semibold text-body dark:text-gray-300">Daftar Obat</h3>
-                                <x-badge variant="gray">{{ count($items) }} item</x-badge>
+                                class="lg:col-span-2 p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
+                                @if ($this->isObatLocked)
+                                    <p class="text-sm italic text-muted-soft dark:text-gray-600">Form input dinonaktifkan.</p>
+                                @elseif (empty($formEntryObat['productId']))
+                                    <div x-ref="lovObatRi">
+                                        <livewire:lov.product.lov-product target="obat-kasir-ri" label="Cari Obat"
+                                            placeholder="Ketik nama/kode obat..."
+                                            wire:key="lov-obat-kasir-ri-{{ $slsNo }}-{{ $renderVersions['modal-administrasi-kasir-ri'] ?? 0 }}" />
+                                    </div>
+                                @else
+                                    {{-- Identitas obat terpilih (read-only, hasil pilih LOV) --}}
+                                    <div class="flex flex-wrap items-center mb-3 gap-x-3 gap-y-1">
+                                        <span
+                                            class="px-2 py-0.5 text-xs font-mono rounded-md border border-hairline dark:border-gray-700 bg-canvas dark:bg-gray-800 text-muted dark:text-gray-300">{{ $formEntryObat['productId'] }}</span>
+                                        <span
+                                            class="text-lg font-bold text-ink dark:text-gray-100">{{ $formEntryObat['productName'] }}</span>
+                                    </div>
+
+                                    {{-- Semua field entri dalam satu baris (wrap otomatis di layar sempit) --}}
+                                    <div class="flex flex-wrap items-end gap-2">
+                                        <div class="w-20">
+                                            <x-input-label value="Qty" class="mb-1" />
+                                            <x-text-input wire:model="formEntryObat.qty" class="w-full text-sm text-right"
+                                                x-ref="inputQtyRi"
+                                                x-on:keyup.enter="$nextTick(() => $refs.inputHargaRi?.focus())" />
+                                            <x-input-error :messages="$errors->get('formEntryObat.qty')" class="mt-1" />
+                                        </div>
+                                        <div class="w-28">
+                                            <x-input-label value="Harga" class="mb-1" />
+                                            <x-text-input-number wire:model="formEntryObat.price" class="text-sm"
+                                                x-ref="inputHargaRi"
+                                                x-on:keydown.enter.prevent="$el.blur(); $nextTick(() => $refs.inputCarapakaiRi?.focus())" />
+                                            <x-input-error :messages="$errors->get('formEntryObat.price')" class="mt-1" />
+                                        </div>
+                                        <div class="w-16">
+                                            <x-input-label value="x/Hari" class="mb-1" />
+                                            <x-text-input wire:model="formEntryObat.carapakai"
+                                                class="w-full text-sm text-center" x-ref="inputCarapakaiRi"
+                                                x-on:keyup.enter="$nextTick(() => $refs.inputKapsulRi?.focus())" />
+                                        </div>
+                                        <div class="w-20">
+                                            <x-input-label value="Per Minum" class="mb-1" />
+                                            <x-text-input wire:model="formEntryObat.kapsul" class="w-full text-sm text-center"
+                                                x-ref="inputKapsulRi"
+                                                x-on:keyup.enter="$nextTick(() => $refs.inputTakarRi?.focus())" />
+                                        </div>
+                                        <div class="w-28">
+                                            <x-input-label value="Takar" class="mb-1" />
+                                            <x-select-input wire:model="formEntryObat.takar" x-ref="inputTakarRi"
+                                                x-on:keyup.enter="$nextTick(() => $refs.inputKetRi?.focus())"
+                                                class="block w-full text-sm border-gray-300 rounded-lg shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                                <option>Tablet</option><option>Kapsul</option><option>Sirup</option>
+                                                <option>Sachet</option><option>Tetes</option><option>Salep</option>
+                                                <option>Injeksi</option><option>Unit</option><option>Lainnya</option>
+                                            </x-select-input>
+                                        </div>
+                                        <div class="flex-1 min-w-[7rem]">
+                                            <x-input-label value="Keterangan" class="mb-1" />
+                                            <x-text-input wire:model="formEntryObat.ket" placeholder="Ket."
+                                                class="w-full text-sm" x-ref="inputKetRi"
+                                                x-on:keyup.enter="$nextTick(() => $refs.inputExpDateRi?.focus())" />
+                                        </div>
+                                        <div class="w-36">
+                                            <x-input-label value="Exp. Date" class="mb-1" />
+                                            <x-text-input wire:model="formEntryObat.expDate" placeholder="dd/mm/yyyy"
+                                                inputmode="numeric" maxlength="10" class="w-full text-sm"
+                                                x-ref="inputExpDateRi"
+                                                x-on:keyup.enter="$nextTick(() => $refs.inputEtiketRi?.focus())" />
+                                            <x-input-error :messages="$errors->get('formEntryObat.expDate')" class="mt-1" />
+                                        </div>
+                                        <div class="w-24">
+                                            <x-input-label value="Etiket" class="mb-1" />
+                                            <x-select-input wire:model="formEntryObat.etiketStatus" x-ref="inputEtiketRi"
+                                                x-on:keydown.enter.prevent="$el.blur(); $wire.insertObat()"
+                                                class="block w-full text-sm border-gray-300 rounded-lg shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                                <option value="0">Belum</option>
+                                                <option value="1">Sudah</option>
+                                            </x-select-input>
+                                        </div>
+                                        <div class="flex items-center gap-2 pb-0.5 shrink-0">
+                                            <x-icon-button color="gray" type="button" wire:click.prevent="resetFormEntry"
+                                                title="Batal — kosongkan form entri">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </x-icon-button>
+                                        </div>
+                                    </div>
+
+                                    {{-- Petunjuk cara simpan — tombol Tambah sudah ditiadakan --}}
+                                    <p class="mt-3 text-xs text-muted dark:text-gray-400">
+                                        Tekan <span class="px-1.5 py-0.5 font-semibold rounded border border-hairline bg-canvas text-body dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">Enter</span>
+                                        di kolom terakhir untuk menyimpan.
+                                    </p>
+                                @endif
                             </div>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-sm text-left">
-                                    <thead
-                                        class="text-xs font-semibold text-muted uppercase dark:text-gray-400 bg-surface-soft dark:bg-gray-800/50">
-                                        <tr>
-                                            <th class="px-3 py-2">Kode</th>
-                                            <th class="px-3 py-2">Nama Obat</th>
-                                            <th class="px-3 py-2 text-center w-20">Qty</th>
-                                            <th class="px-3 py-2 text-center w-24">Signa</th>
-                                            <th class="px-3 py-2 text-center w-24">Takar</th>
-                                            <th class="px-3 py-2 w-32">Ket.</th>
-                                            <th class="px-3 py-2 w-32">Exp Date</th>
-                                            <th class="px-3 py-2 text-center w-24">Etiket</th>
-                                            <th class="px-3 py-2 text-right w-24">Harga</th>
-                                            <th class="px-3 py-2 text-right w-28">Total</th>
-                                            <th class="px-3 py-2 text-center w-28">Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
-                                        @forelse ($items as $item)
-                                            <tr wire:key="kasir-ri-obat-{{ $item['slsDtl'] ?? $loop->index }}" class="hover:bg-surface-soft dark:hover:bg-gray-800/40">
-                                                <td class="px-3 py-2 font-mono text-xs text-muted">
-                                                    {{ $item['productId'] }}</td>
-                                                <td class="px-3 py-2 uppercase">{{ $item['productName'] }}</td>
 
-                                                @if ($editingDtl === $item['slsDtl'])
-                                                    <td class="px-3 py-2"><x-text-input wire:model="editRow.qty"
-                                                            class="w-full text-xs py-1" /></td>
-                                                    <td class="px-3 py-2">
-                                                        <div class="flex gap-1">
-                                                            <x-text-input wire:model="editRow.carapakai"
-                                                                class="w-12 text-xs py-1" placeholder="x" />
-                                                            <x-text-input wire:model="editRow.kapsul"
-                                                                class="w-12 text-xs py-1" placeholder="dd" />
-                                                        </div>
-                                                    </td>
-                                                    <td class="px-3 py-2">
-                                                        <x-select-input wire:model="editRow.takar"
-                                                            class="w-full text-xs py-1">
-                                                            <option>Tablet</option>
-                                                            <option>Kapsul</option>
-                                                            <option>Sirup</option>
-                                                            <option>Sachet</option>
-                                                            <option>Tetes</option>
-                                                            <option>Salep</option>
-                                                            <option>Injeksi</option>
-                                                            <option>Lainnya</option>
-                                                        </x-select-input>
-                                                    </td>
-                                                    <td class="px-3 py-2"><x-text-input wire:model="editRow.ket"
-                                                            class="w-full text-xs py-1" /></td>
-                                                    <td class="px-3 py-2"><x-text-input type="date"
-                                                            wire:model="editRow.expDate"
-                                                            class="w-full text-xs py-1" /></td>
-                                                    {{-- Etiket (read-only saat edit) --}}
-                                                    <td class="px-3 py-2 text-center">
-                                                        <span class="text-xs text-muted-soft">—</span>
-                                                    </td>
-                                                    <td class="px-3 py-2 font-mono text-right text-xs">
-                                                        {{ number_format($item['price']) }}</td>
-                                                    <td class="px-3 py-2 font-mono text-right text-xs font-semibold">
-                                                        {{ number_format($item['price'] * (int) ($editRow['qty'] ?? 0)) }}
-                                                    </td>
-                                                    <td class="px-3 py-2 whitespace-nowrap">
-                                                        <div class="flex items-center gap-1">
-                                                            <x-secondary-button type="button" wire:click="saveEdit"
-                                                                wire:loading.attr="disabled" wire:target="saveEdit"
-                                                                class="px-3 py-1 text-xs text-green-700 border-green-300 hover:bg-green-50 dark:text-green-400 dark:border-green-600 dark:hover:bg-green-900/20">
-                                                                Simpan
-                                                            </x-secondary-button>
-                                                            <x-secondary-button type="button" wire:click="cancelEdit"
-                                                                class="px-3 py-1 text-xs">
-                                                                Batal
-                                                            </x-secondary-button>
-                                                        </div>
-                                                    </td>
-                                                @else
-                                                    <td class="px-3 py-2 text-center font-mono">{{ $item['qty'] }}
-                                                    </td>
-                                                    <td class="px-3 py-2 text-center text-xs text-muted">
-                                                        S{{ $item['carapakai'] ?? '-' }}dd{{ $item['kapsul'] ?? '-' }}
-                                                    </td>
-                                                    <td class="px-3 py-2 text-center text-xs">
-                                                        {{ $item['takar'] ?? '-' }}</td>
-                                                    <td class="px-3 py-2 text-xs text-muted">
-                                                        {{ $item['ket'] ?? '-' }}</td>
-                                                    <td class="px-3 py-2 text-xs font-mono text-muted">
-                                                        {{ $item['expDateDisplay'] ?? '-' }}</td>
+                            {{-- TABEL OBAT --}}
+                            <div
+                                class="lg:col-span-3 overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-sm text-left">
+                                        <thead
+                                            class="text-sm font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300 bg-surface-soft dark:bg-gray-800/50">
+                                            <tr>
+                                                <th class="px-3 py-3">Kode</th>
+                                                <th class="px-3 py-3">Nama Obat</th>
+                                                <th class="px-3 py-3 text-right w-20">Qty</th>
+                                                <th class="px-3 py-3 text-right w-24">Harga</th>
+                                                <th class="px-3 py-3 text-right w-28">Total</th>
+                                                <th class="px-3 py-3">Signa</th>
+                                                <th class="px-3 py-3 text-center w-24">Etiket</th>
+                                                <th class="px-3 py-3 text-center w-28">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
+                                            @forelse ($items as $item)
+                                                @php $isEditing = $editingDtl === $item['slsDtl']; @endphp
 
-                                                    {{-- Etiket: kolom terpisah, ghost-button dengan ikon + teks --}}
-                                                    <td class="px-3 py-2 text-center whitespace-nowrap">
-                                                        <x-ghost-button
-                                                            wire:click="cetakEtiketItem({{ $item['slsDtl'] }})"
-                                                            wire:loading.attr="disabled"
-                                                            wire:target="cetakEtiketItem({{ $item['slsDtl'] }})"
-                                                            class="!px-2 !py-1 !text-xs">
-                                                            <span wire:loading.remove
-                                                                wire:target="cetakEtiketItem({{ $item['slsDtl'] }})">
-                                                                <svg class="w-3 h-3" fill="none"
-                                                                    stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round"
-                                                                        stroke-linejoin="round" stroke-width="2"
-                                                                        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                                                </svg>
-                                                            </span>
-                                                            <span wire:loading
-                                                                wire:target="cetakEtiketItem({{ $item['slsDtl'] }})">
-                                                                <x-loading class="w-3 h-3" />
-                                                            </span>
-                                                            Etiket
-                                                        </x-ghost-button>
-                                                    </td>
+                                                @if ($isEditing)
+                                                    {{-- BARIS EDIT — tata letaknya dibuat sama dengan form entri --}}
+                                                    <tr wire:key="kasir-ri-obat-{{ $item['slsDtl'] }}-edit"
+                                                        class="bg-blue-50 dark:bg-blue-900/20 transition">
+                                                        <td colspan="{{ $this->isObatLocked ? 7 : 8 }}" class="px-3 py-3">
 
-                                                    <td class="px-3 py-2 font-mono text-right text-xs">
-                                                        {{ number_format($item['price']) }}</td>
-                                                    <td class="px-3 py-2 font-mono text-right text-xs font-semibold">
-                                                        {{ number_format($item['total']) }}</td>
-
-                                                    {{-- Aksi: Edit + Hapus (pola RJ — text + native delete) --}}
-                                                    <td class="px-3 py-2 whitespace-nowrap">
-                                                        @if (!$this->isObatLocked)
-                                                            <div class="flex items-center gap-1">
-                                                                <x-secondary-button type="button"
-                                                                    wire:click="startEdit({{ $item['slsDtl'] }})"
-                                                                    class="px-3 py-1 text-xs">
-                                                                    Edit
-                                                                </x-secondary-button>
-                                                                <button type="button"
-                                                                    wire:click.prevent="removeObat({{ $item['slsDtl'] }})"
-                                                                    wire:confirm="Hapus obat ini?"
-                                                                    wire:loading.attr="disabled"
-                                                                    wire:target="removeObat({{ $item['slsDtl'] }})"
-                                                                    class="inline-flex items-center justify-center w-8 h-8 text-red-500 transition rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600">
-                                                                    <svg class="w-4 h-4" fill="none"
-                                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path stroke-linecap="round"
-                                                                            stroke-linejoin="round" stroke-width="2"
-                                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                                    </svg>
-                                                                </button>
+                                                            {{-- Identitas obat — sejajar dengan form entri --}}
+                                                            <div class="flex flex-wrap items-center mb-3 gap-x-3 gap-y-1">
+                                                                <span
+                                                                    class="px-2 py-0.5 text-xs font-mono rounded-md border border-hairline dark:border-gray-700 bg-canvas dark:bg-gray-800 text-muted dark:text-gray-300">{{ $item['productId'] }}</span>
+                                                                <span
+                                                                    class="text-lg font-bold text-ink dark:text-gray-100">{{ $item['productName'] }}</span>
+                                                                <span class="ml-auto text-sm text-muted dark:text-gray-400">
+                                                                    Total
+                                                                    <span class="text-base font-bold text-ink dark:text-gray-100">Rp
+                                                                        {{ number_format($item['price'] * (int) ($editRow['qty'] ?? 0)) }}</span>
+                                                                </span>
                                                             </div>
-                                                        @else
-                                                            <span class="text-xs text-muted-soft">—</span>
-                                                        @endif
-                                                    </td>
+
+                                                            {{-- Field — urutan & lebar mengikuti form entri --}}
+                                                            <div class="flex flex-wrap items-end gap-2">
+                                                                <div class="w-20">
+                                                                    <x-input-label value="Qty" class="mb-1" />
+                                                                    <x-text-input wire:model="editRow.qty"
+                                                                        class="w-full text-sm text-right" x-ref="editQtyRi"
+                                                                        x-init="$el.focus();
+                                                                        $el.select()" />
+                                                                </div>
+                                                                <div class="w-28">
+                                                                    <x-input-label value="Harga" class="mb-1" />
+                                                                    <x-text-input value="{{ number_format($item['price']) }}"
+                                                                        disabled class="w-full text-sm text-right" />
+                                                                </div>
+                                                                <div class="w-16">
+                                                                    <x-input-label value="x/Hari" class="mb-1" />
+                                                                    <x-text-input wire:model="editRow.carapakai"
+                                                                        class="w-full text-sm text-center" placeholder="x" />
+                                                                </div>
+                                                                <div class="w-20">
+                                                                    <x-input-label value="Per Minum" class="mb-1" />
+                                                                    <x-text-input wire:model="editRow.kapsul"
+                                                                        class="w-full text-sm text-center" placeholder="dd" />
+                                                                </div>
+                                                                <div class="w-28">
+                                                                    <x-input-label value="Takar" class="mb-1" />
+                                                                    <x-select-input wire:model="editRow.takar"
+                                                                        class="block w-full text-sm border-gray-300 rounded-lg shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                                                        <option>Tablet</option><option>Kapsul</option><option>Sirup</option>
+                                                                        <option>Sachet</option><option>Tetes</option><option>Salep</option>
+                                                                        <option>Injeksi</option><option>Unit</option><option>Lainnya</option>
+                                                                    </x-select-input>
+                                                                </div>
+                                                                <div class="flex-1 min-w-[7rem]">
+                                                                    <x-input-label value="Keterangan" class="mb-1" />
+                                                                    <x-text-input wire:model="editRow.ket" placeholder="Ket."
+                                                                        class="w-full text-sm" />
+                                                                </div>
+                                                                <div class="w-36">
+                                                                    <x-input-label value="Exp. Date" class="mb-1" />
+                                                                    <x-text-input wire:model="editRow.expDate"
+                                                                        placeholder="dd/mm/yyyy" inputmode="numeric"
+                                                                        maxlength="10" class="w-full text-sm" />
+                                                                </div>
+                                                                <div class="flex items-center gap-2 pb-0.5 shrink-0">
+                                                                    <x-primary-button type="button" wire:click="saveEdit"
+                                                                        wire:loading.attr="disabled" wire:target="saveEdit">
+                                                                        <span wire:loading.remove
+                                                                            wire:target="saveEdit">Simpan</span>
+                                                                        <span wire:loading wire:target="saveEdit"><x-loading /></span>
+                                                                    </x-primary-button>
+                                                                    <x-icon-button color="gray" type="button"
+                                                                        wire:click="cancelEdit" title="Batal — tutup baris edit">
+                                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                            viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                                stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                                        </svg>
+                                                                    </x-icon-button>
+                                                                </div>
+                                                            </div>
+
+                                                            @error('editRow.qty')
+                                                                <p class="mt-2 text-xs text-red-500">{{ $message }}</p>
+                                                            @enderror
+                                                            @error('editRow.expDate')
+                                                                <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
+                                                            @enderror
+                                                        </td>
+                                                    </tr>
+                                                @else
+                                                    <tr wire:key="kasir-ri-obat-{{ $item['slsDtl'] ?? $loop->index }}"
+                                                        class="hover:bg-surface-soft dark:hover:bg-gray-800/40 transition">
+                                                        <td class="px-3 py-1.5 font-mono text-sm text-muted">
+                                                            {{ $item['productId'] }}</td>
+                                                        <td class="px-3 py-1.5 uppercase">{{ $item['productName'] }}</td>
+                                                        <td class="px-3 py-1.5 font-mono text-right">{{ $item['qty'] }}</td>
+                                                        <td class="px-3 py-1.5 font-mono text-sm text-right">
+                                                            {{ number_format($item['price']) }}</td>
+                                                        <td class="px-3 py-1.5 font-mono text-sm font-semibold text-right">
+                                                            {{ number_format($item['total']) }}</td>
+
+                                                        {{-- Signa = aturan pakai + takaran + ket, exp. date --}}
+                                                        <td class="px-3 py-1.5">
+                                                            <div class="flex flex-col leading-tight">
+                                                                <span class="text-body dark:text-gray-300">
+                                                                    S{{ $item['carapakai'] ?? '-' }}dd{{ $item['kapsul'] ?? '-' }}
+                                                                    {{ $item['takar'] ?? '' }}
+                                                                    @if (!empty($item['ket']) && $item['ket'] !== '-')
+                                                                        <span class="text-muted dark:text-gray-400">&middot; {{ $item['ket'] }}</span>
+                                                                    @endif
+                                                                </span>
+                                                                <span class="text-xs text-muted dark:text-gray-400">
+                                                                    Exp. {{ $item['expDateDisplay'] ?? '-' }}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+
+                                                        {{-- Etiket --}}
+                                                        <td class="px-3 py-1.5 text-center whitespace-nowrap">
+                                                            <x-icon-button color="blue" type="button"
+                                                                wire:click="cetakEtiketItem({{ $item['slsDtl'] }})"
+                                                                wire:loading.attr="disabled"
+                                                                wire:target="cetakEtiketItem({{ $item['slsDtl'] }})"
+                                                                title="Cetak etiket obat ini">
+                                                                <span wire:loading.remove
+                                                                    wire:target="cetakEtiketItem({{ $item['slsDtl'] }})">
+                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                        viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                                            stroke-width="2"
+                                                                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                                    </svg>
+                                                                </span>
+                                                                <span wire:loading
+                                                                    wire:target="cetakEtiketItem({{ $item['slsDtl'] }})">
+                                                                    <x-loading class="w-4 h-4" />
+                                                                </span>
+                                                            </x-icon-button>
+                                                        </td>
+
+                                                        {{-- Aksi --}}
+                                                        <td class="px-3 py-1.5 whitespace-nowrap">
+                                                            @if (!$this->isObatLocked)
+                                                                <div class="flex items-center justify-center gap-1">
+                                                                    <x-icon-button color="gray" type="button"
+                                                                        wire:click="startEdit({{ $item['slsDtl'] }})"
+                                                                        title="Edit baris obat ini">
+                                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                            viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                                stroke-width="2"
+                                                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                                        </svg>
+                                                                    </x-icon-button>
+                                                                    <x-icon-button color="red" type="button"
+                                                                        wire:click.prevent="removeObat({{ $item['slsDtl'] }})"
+                                                                        wire:confirm="Hapus obat ini?"
+                                                                        wire:loading.attr="disabled"
+                                                                        wire:target="removeObat({{ $item['slsDtl'] }})"
+                                                                        title="Hapus">
+                                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                            viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                                stroke-width="2"
+                                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                        </svg>
+                                                                    </x-icon-button>
+                                                                </div>
+                                                            @else
+                                                                <span class="text-sm text-muted-soft">—</span>
+                                                            @endif
+                                                        </td>
+                                                    </tr>
                                                 @endif
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="11" class="px-3 py-8 text-center text-muted-soft">Belum
-                                                    ada obat.</td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                    @if (count($items) > 0)
-                                        <tfoot
-                                            class="bg-surface-soft dark:bg-gray-800/50 border-t border-hairline dark:border-gray-700">
-                                            <tr>
-                                                <td colspan="9" class="px-3 py-2 text-right text-xs font-semibold">
-                                                    Subtotal</td>
-                                                <td class="px-3 py-2 text-right font-mono font-bold">Rp
-                                                    {{ number_format($this->subtotal) }}</td>
-                                                <td></td>
-                                            </tr>
-                                        </tfoot>
-                                    @endif
-                                </table>
+                                            @empty
+                                                <tr>
+                                                    <td colspan="8" class="px-3 py-8 text-center text-muted-soft">Belum
+                                                        ada obat.</td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                        @if (count($items) > 0)
+                                            <tfoot
+                                                class="bg-surface-soft dark:bg-gray-800/50 border-t border-hairline dark:border-gray-700">
+                                                <tr>
+                                                    <td colspan="6" class="px-3 py-2 text-right text-xs font-semibold">
+                                                        Subtotal</td>
+                                                    <td class="px-3 py-2 text-right font-mono font-bold">Rp
+                                                        {{ number_format($this->subtotal) }}</td>
+                                                    <td></td>
+                                                </tr>
+                                            </tfoot>
+                                        @endif
+                                    </table>
+                                </div>
                             </div>
                         </div>
 
@@ -1122,115 +1152,167 @@ new class extends Component {
                             </div>
                         @endif
 
-                        {{-- RINGKASAN BIAYA — pola kasir-rj (flex horizontal dengan panah) --}}
-                        <div
-                            class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
-                            <div class="flex items-stretch gap-3">
+                        {{-- ══ PEMBAYARAN — ringkasan biaya & input pembayaran dalam satu kartu ══ --}}
+                        {{-- Urutan kerja kasir: Jasa Karyawan → Bayar → Akun Kas → Post Transaksi --}}
+                        <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40"
+                            x-data="{
+                                fokusKe(ref) {
+                                    const coba = () => {
+                                        const el = this.$refs[ref];
+                                        if (!el || el === document.activeElement) return;
+                                        if (document.activeElement?.matches('input, select, textarea')) return;
+                                        el.focus();
+                                        el.select?.();
+                                    };
+                                    this.$nextTick(() => { coba(); setTimeout(coba, 150); });
+                                }
+                            }"
+                            x-on:focus-input-jasa-ri.window="fokusKe('inputJasaRi')"
+                            x-on:focus-input-bayar-ri.window="fokusKe('inputBayarRi')"
+                            x-on:focus-post-transaksi-ri.window="fokusKe('btnPostRi')">
 
-                                {{-- Subtotal Obat --}}
-                                <div
-                                    class="flex-1 px-4 py-3 bg-canvas border border-hairline rounded-xl dark:bg-gray-900 dark:border-gray-700">
-                                    <p class="text-xs text-muted dark:text-gray-400 mb-0.5">Subtotal Obat</p>
-                                    <p class="text-base font-bold text-ink dark:text-gray-100">Rp
-                                        {{ number_format($this->subtotal) }}</p>
-                                </div>
-
-                                <div class="flex items-center text-gray-300 dark:text-gray-600">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </div>
-
-                                {{-- Jasa Karyawan (editable) --}}
-                                <div
-                                    class="flex-1 px-4 py-3 border border-amber-200 rounded-xl dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10">
-                                    <p class="mb-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-                                        Jasa Karyawan
-                                        @if ($this->canEditJasa)
-                                            <span class="opacity-60">(dapat diubah)</span>
-                                        @endif
-                                    </p>
-                                    @if ($this->canEditJasa)
-                                        <x-text-input wire:model.live.debounce.300ms="jasaKaryawan" type="number"
-                                            min="0"
-                                            class="w-full px-0 py-0 text-base font-bold text-amber-700 bg-transparent border-0
-                                                dark:text-amber-300 focus:ring-0 focus:outline-none
-                                                [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none
-                                                [&::-webkit-inner-spin-button]:appearance-none"
-                                            placeholder="0"
-                                            x-on:keyup.enter="$dispatch('focus-lov-kas-administrasi-kasir-ri')" />
-                                    @else
-                                        <p class="text-base font-bold text-amber-700 dark:text-amber-300">Rp
-                                            {{ number_format($jasaKaryawan) }}</p>
-                                    @endif
-                                </div>
-
-                                <div class="flex items-center text-gray-300 dark:text-gray-600">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </div>
-
-                                {{-- Total Tagihan --}}
-                                <div
-                                    class="flex-1 px-4 py-3 border border-blue-200 rounded-xl dark:border-blue-800/40 bg-blue-50 dark:bg-blue-900/10">
-                                    <p class="text-xs text-blue-600 dark:text-blue-400 mb-0.5">Total Tagihan</p>
-                                    <p class="text-base font-bold text-blue-700 dark:text-blue-300">Rp
-                                        {{ number_format($totalAll) }}</p>
-                                </div>
-
-                                <div class="flex items-center text-gray-300 dark:text-gray-600">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </div>
-
-                                @if ($sudahBayar > 0)
-                                    <div
-                                        class="flex-1 px-4 py-3 border border-violet-200 rounded-xl dark:border-violet-800/40 bg-violet-50 dark:bg-violet-900/10">
-                                        <p class="text-xs text-violet-600 dark:text-violet-400 mb-0.5">Dibayar</p>
-                                        <p class="text-base font-bold text-violet-700 dark:text-violet-300">Rp
-                                            {{ number_format($sudahBayar) }}</p>
-                                    </div>
-                                    <div class="flex items-center text-gray-300 dark:text-gray-600">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
+                            {{-- ══ PANDUAN KASIR (collapsible, default tertutup) ══ --}}
+                            @if (!$this->isKasirPosted && strtoupper($riStatus ?? '') !== 'P')
+                                <div x-data="{ open: false }"
+                                    class="mb-4 overflow-hidden border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
+                                    <button type="button" @click="open = !open"
+                                        class="flex items-center justify-between w-full px-3 py-2 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/30">
+                                        <span class="flex items-center gap-2">
+                                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Panduan Kasir RI
+                                        </span>
+                                        <svg class="w-4 h-4 transition-transform" :class="open ? 'rotate-180' : ''"
+                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M9 5l7 7-7 7" />
+                                                d="M19 9l-7 7-7-7" />
                                         </svg>
-                                    </div>
-                                @endif
+                                    </button>
 
-                                {{-- Sisa Tagihan / Bon --}}
-                                <div
-                                    class="flex-1 px-4 py-3 border rounded-xl
-                                    {{ $sisaTagihan > 0
-                                        ? 'border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-900/10'
-                                        : 'border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-900/10' }}">
-                                    <p
-                                        class="text-xs mb-0.5 {{ $sisaTagihan > 0 ? 'text-error dark:text-rose-400' : 'text-success dark:text-success' }}">
-                                        @if ($this->isKasirPosted && $sisaTagihan > 0)
-                                            Bon Inap
-                                        @else
-                                            Sisa Tagihan
+                                    <div x-show="open" x-collapse class="px-3 pb-3 text-xs text-blue-900 dark:text-blue-200">
+                                        <ul class="space-y-1 ml-4 list-disc">
+                                            <li>Pilih Akun Kas, isi nominal bayar, lalu klik "Post Transaksi".</li>
+                                            <li>Bayar penuh = LUNAS. Bayar sebagian = BON, sisanya masuk Bon Inap
+                                                (ditagih saat pulang).</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            @endif
+
+                            <div class="grid grid-cols-1 gap-4 lg:grid-cols-5 items-start">
+
+                                {{-- KIRI: rincian biaya, dibaca atas ke bawah --}}
+                                <div class="lg:col-span-2">
+                                    <dl class="divide-y divide-hairline dark:divide-gray-700">
+
+                                        {{-- Subtotal Obat --}}
+                                        <div class="flex items-center justify-between gap-4 py-2.5">
+                                            <dt class="text-base text-muted dark:text-gray-400">Subtotal Biaya</dt>
+                                            <dd class="text-2xl font-bold text-ink dark:text-gray-100">Rp
+                                                {{ number_format($this->subtotal) }}</dd>
+                                        </div>
+
+                                        {{-- Jasa Karyawan (bisa diubah) --}}
+                                        <div class="flex items-center justify-between gap-4 py-2.5">
+                                            <dt class="text-base font-semibold text-amber-700 dark:text-amber-400">
+                                                Jasa Karyawan @if ($this->canEditJasa)
+                                                    <span class="text-xs font-normal opacity-70">(dapat diubah)</span>
+                                                @endif
+                                            </dt>
+                                            <dd class="w-48 text-right">
+                                                @if ($this->canEditJasa)
+                                                    <x-text-input-number wire:model="jasaKaryawan" placeholder="0"
+                                                        x-ref="inputJasaRi" class="text-2xl font-bold"
+                                                        x-on:keydown.enter.prevent="$el.blur(); $dispatch('focus-input-bayar-ri')" />
+                                                @else
+                                                    <span class="text-2xl font-bold text-amber-700 dark:text-amber-300">Rp
+                                                        {{ number_format($jasaKaryawan) }}</span>
+                                                @endif
+                                            </dd>
+                                        </div>
+
+                                        {{-- Total Tagihan --}}
+                                        <div class="flex items-center justify-between gap-4 py-2.5">
+                                            <dt class="text-base font-bold text-blue-700 dark:text-blue-300">Total Tagihan
+                                            </dt>
+                                            <dd class="text-2xl font-bold text-blue-700 dark:text-blue-300">Rp
+                                                {{ number_format($totalAll) }}</dd>
+                                        </div>
+
+                                        {{-- Dibayar — hanya bila sudah ada pembayaran --}}
+                                        @if ($sudahBayar > 0)
+                                            <div class="flex items-center justify-between gap-4 py-2.5">
+                                                <dt class="text-base text-muted dark:text-gray-400">Dibayar</dt>
+                                                <dd class="text-2xl font-bold text-ink dark:text-gray-100">Rp
+                                                    {{ number_format($sudahBayar) }}</dd>
+                                            </div>
                                         @endif
-                                    </p>
-                                    <p
-                                        class="text-base font-bold {{ $sisaTagihan > 0 ? 'text-error dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300' }}">
-                                        Rp {{ number_format($sisaTagihan) }}
-                                    </p>
+
+                                        {{-- Sisa Tagihan / Bon Inap --}}
+                                        <div class="flex items-center justify-between gap-4 py-2.5">
+                                            <dt
+                                                class="text-base font-bold {{ $sisaTagihan > 0 ? 'text-error dark:text-rose-400' : 'text-success dark:text-success' }}">
+                                                Sisa Tagihan
+                                            </dt>
+                                            <dd
+                                                class="text-2xl font-bold {{ $sisaTagihan > 0 ? 'text-error dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300' }}">
+                                                Rp {{ number_format($sisaTagihan) }}
+                                            </dd>
+                                        </div>
+
+                                        {{-- Bayar — nominal yang diserahkan sekarang --}}
+                                        @if (!$this->isKasirPosted && strtoupper($riStatus ?? '') !== 'P')
+                                            <div class="flex items-center justify-between gap-4 py-2.5">
+                                                <dt class="text-base font-bold text-body dark:text-gray-200">
+                                                    Bayar <span class="text-xs font-normal opacity-70">(Rp)</span>
+                                                </dt>
+                                                <dd class="w-48">
+                                                    <x-text-input-number wire:model="bayar" placeholder="0"
+                                                        :error="$errors->has('bayar')" x-ref="inputBayarRi"
+                                                        class="text-2xl font-bold"
+                                                        x-on:keydown.enter.prevent="$el.blur(); $dispatch('focus-lov-kas-administrasi-kasir-ri')" />
+                                                </dd>
+                                            </div>
+
+                                            {{-- Hasil dari nominal yang diketik: kurang (masuk Bon Inap) / pas / kembalian --}}
+                                            @php
+                                                $bayarKini = (int) ($bayar ?? 0);
+                                                $selisih = $bayarKini - $sisaTagihan;
+                                            @endphp
+                                            @if ($bayarKini > 0)
+                                                <div class="flex items-center justify-between gap-4 py-2.5">
+                                                    @if ($selisih < 0)
+                                                        <dt class="text-base font-bold text-error dark:text-rose-400">Kurang
+                                                            Bayar</dt>
+                                                        <dd class="text-2xl font-bold text-error dark:text-rose-300">Rp
+                                                            {{ number_format(abs($selisih)) }}</dd>
+                                                    @elseif ($selisih === 0)
+                                                        <dt class="text-base font-bold text-success dark:text-success">Pas
+                                                            — Lunas</dt>
+                                                        <dd class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                                                            Rp 0</dd>
+                                                    @else
+                                                        <dt class="text-base font-bold text-success dark:text-success">
+                                                            Kembalian</dt>
+                                                        <dd class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                                                            Rp {{ number_format($kembalian) }}</dd>
+                                                    @endif
+                                                </div>
+                                            @endif
+                                        @endif
+
+                                    </dl>
+
+                                    @error('bayar')
+                                        <x-input-error :messages="$message" class="mt-1" />
+                                    @enderror
                                 </div>
 
-                            </div>
-                        </div>
-
-                        {{-- FORM INPUT PEMBAYARAN --}}
-                        <div
-                            class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
-
+                                {{-- KANAN: input pembayaran / status transaksi --}}
+                                <div class="lg:col-span-3 lg:pl-6 lg:border-l border-hairline dark:border-gray-700">
                             @if ($this->isKasirPosted)
                                 <div class="space-y-3">
                                     <div class="flex items-center justify-between">
@@ -1289,68 +1371,31 @@ new class extends Component {
                                         class="px-3 py-2 mb-3 text-xs text-error bg-rose-50 border border-rose-200 rounded-lg dark:bg-rose-900/20 dark:border-rose-700 dark:text-rose-300">
                                         Pasien sudah pulang. Transaksi tidak dapat diproses.
                                     </div>
-                                @else
-                                    <div
-                                        class="flex items-start gap-2 px-3 py-2 mb-3 text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-200">
-                                        <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        <div>
-                                            <p class="font-semibold text-blue-900 dark:text-blue-100">Panduan Kasir RI:</p>
-                                            <ul class="mt-1 space-y-0.5 list-disc list-inside">
-                                                <li>Pilih Akun Kas, isi nominal bayar, lalu klik "Post Transaksi".</li>
-                                                <li>Bayar penuh = LUNAS. Bayar sebagian = BON, sisanya masuk Bon Inap
-                                                    (ditagih saat pulang).</li>
-                                            </ul>
-                                        </div>
-                                    </div>
                                 @endif
 
-                                <div class="flex items-end gap-3" x-data
-                                    x-on:focus-lov-kas-administrasi-kasir-ri.window="$nextTick(() => $el.querySelector('input')?.focus())">
-                                    <div class="w-80">
+                                <div class="space-y-3"
+                                    x-on:focus-lov-kas-administrasi-kasir-ri.window="$nextTick(() => {
+                                        const fokus = () => {
+                                            const el = $el.querySelector('input:not([disabled])') || $el.querySelector('button');
+                                            if (!el || el === document.activeElement) return;
+                                            if (document.activeElement?.matches('input, select, textarea')) return;
+                                            el.focus();
+                                        };
+                                        fokus();
+                                        setTimeout(fokus, 150);
+                                    })">
+                                    <div>
                                         <livewire:lov.kas.lov-kas target="kas-administrasi-kasir-ri" tipe="ri"
                                             label="Akun Kas" :initialAccId="$accId"
                                             wire:key="lov-kas-administrasi-kasir-ri-{{ $slsNo }}-{{ $renderVersions['modal-administrasi-kasir-ri'] ?? 0 }}" />
                                         <x-input-error :messages="$errors->get('accId')" class="mt-1" />
                                     </div>
 
-                                    <div class="w-52">
-                                        <x-input-label value="Nominal Bayar (Rp)" class="mb-1" />
-                                        <x-text-input type="number" wire:model.live.debounce.300ms="bayar"
-                                            placeholder="0" class="w-full font-mono text-right" min="0"
-                                            x-ref="inputBayarRi"
-                                            x-on:keydown.enter.prevent="$el.blur(); $wire.postTransaksi()" />
-                                        <x-input-error :messages="$errors->get('bayar')" class="mt-1" />
-                                    </div>
-
-                                    @if ((int) ($bayar ?? 0) >= $sisaTagihan && $sisaTagihan > 0)
-                                        <div
-                                            class="flex-1 px-4 py-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-900/10">
-                                            <p class="text-xs font-medium text-success dark:text-success">
-                                                Kembalian</p>
-                                            <p class="text-lg font-bold text-emerald-700 dark:text-emerald-300">Rp
-                                                {{ number_format($kembalian) }}</p>
-                                        </div>
-                                    @elseif ((int) ($bayar ?? 0) > 0 && (int) ($bayar ?? 0) < $sisaTagihan)
-                                        <div
-                                            class="flex-1 px-4 py-2.5 rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10">
-                                            <p class="text-xs font-medium text-amber-600 dark:text-amber-400">Kurang
-                                                Bayar</p>
-                                            <p class="text-lg font-bold text-amber-700 dark:text-amber-300">Rp
-                                                {{ number_format($sisaTagihan - (int) ($bayar ?? 0)) }}</p>
-                                        </div>
-                                    @else
-                                        <div class="flex-1"></div>
-                                    @endif
-
-                                    <div class="flex gap-2 pb-0.5">
+                                    <div class="flex gap-2">
                                         @hasanyrole('Admin|Tu|Manager Umum|Supervisor Tu')
                                             @if (strtoupper($riStatus ?? '') !== 'P')
                                                 <x-primary-button wire:click="postTransaksi" wire:loading.attr="disabled"
-                                                    wire:target="postTransaksi">
+                                                    wire:target="postTransaksi" x-ref="btnPostRi">
                                                     <span wire:loading.remove wire:target="postTransaksi">Post
                                                         Transaksi</span>
                                                     <span wire:loading wire:target="postTransaksi"><x-loading /></span>
@@ -1378,14 +1423,15 @@ new class extends Component {
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
-                                        <span class="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                                            Pembayaran akan diproses sebagai BON — sisa Rp
-                                            {{ number_format($sisaTagihan - (int) ($bayar ?? 0)) }} masuk Bon Inap
+                                        <span class="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                                            Pembayaran akan diproses sebagai BON
                                         </span>
                                     </div>
                                 @endif
                             @endif
 
+                                </div>
+                            </div>
                         </div>
                     </div>
                 @endif
