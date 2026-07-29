@@ -455,6 +455,8 @@ trait AnalisaPerputaranObatTrait
                 NVL(d.dtl_persen,0) as diskon_persen, NVL(d.dtl_diskon,0) as diskon_rupiah,
                 NVL(d.dtl_persen1,0) as diskon_persen2, NVL(d.dtl_diskon1,0) as diskon_rupiah2,
                 CASE WHEN NVL(h.rcv_ppn_status,'1') = '1' THEN NVL(h.rcv_ppn,0) ELSE 0 END as ppn_persen,
+                NVL(h.rcv_ppn_status,'1') as ppn_status,
+                NVL(h.rcv_diskon,0) as diskon_faktur, NVL(h.rcv_materai,0) as materai_faktur,
                 (
                     (NVL(d.qty,0)*NVL(d.cost_price,0))
                     - ((NVL(d.qty,0)*NVL(d.cost_price,0)) * NVL(d.dtl_persen,0)/100)
@@ -489,6 +491,8 @@ trait AnalisaPerputaranObatTrait
                 NVL(d.dtl_persen,0) as diskon_persen, NVL(d.dtl_diskon,0) as diskon_rupiah,
                 NVL(d.dtl_persen1,0) as diskon_persen2, NVL(d.dtl_diskon1,0) as diskon_rupiah2,
                 CASE WHEN NVL(h.rcv_ppn_status,'1') = '1' THEN NVL(h.rcv_ppn,0) ELSE 0 END as ppn_persen,
+                NVL(h.rcv_ppn_status,'1') as ppn_status,
+                NVL(h.rcv_diskon,0) as diskon_faktur, NVL(h.rcv_materai,0) as materai_faktur,
                 (
                     (NVL(d.qty,0)*NVL(d.cost_price,0))
                     - ((NVL(d.qty,0)*NVL(d.cost_price,0)) * NVL(d.dtl_persen,0)/100)

@@ -207,6 +207,13 @@ new class extends Component {
                     'diskon_persen2' => (float) $faktur->diskon_persen2,
                     'diskon_rupiah' => (float) $faktur->diskon_rupiah + (float) $faktur->diskon_rupiah2,
                     'ppn_persen' => (float) $faktur->ppn_persen,
+                    'ppn_status' => (string) $faktur->ppn_status,
+                    'diskon_faktur' => (float) $faktur->diskon_faktur,
+                    'materai_faktur' => (float) $faktur->materai_faktur,
+                    // kolomnya di-alias 'harga_bruto' di query, BUKAN cost_price
+                    'diskon_per_unit' => ((float) $faktur->qty * (float) $faktur->harga_bruto > 0)
+                        ? (((float) $faktur->qty * (float) $faktur->harga_bruto) - (float) $faktur->netto_baris) / (float) $faktur->qty
+                        : 0.0,
                     'netto_unit' => $nettoBaris / (float) $faktur->qty,
                     'netto_unit_ppn' => $nettoPlusPpn / (float) $faktur->qty,
                     'netto_total' => $nettoBaris,
@@ -743,6 +750,17 @@ new class extends Component {
                                                     <td class="px-3 py-2">
                                                         <div class="text-ink dark:text-gray-200">{{ $faktur->supp_name }}</div>
                                                         <div class="font-mono text-xs text-muted">{{ $faktur->faktur }}</div>
+                                                        @if ($faktur->diskon_faktur > 0 || $faktur->materai_faktur > 0)
+                                                            <div class="text-[10px] text-amber-700 dark:text-amber-300">
+                                                                @if ($faktur->diskon_faktur > 0)
+                                                                    diskon faktur Rp {{ number_format($faktur->diskon_faktur) }}
+                                                                @endif
+                                                                @if ($faktur->materai_faktur > 0)
+                                                                    · materai Rp {{ number_format($faktur->materai_faktur) }}
+                                                                @endif
+                                                                (tidak masuk harga/unit)
+                                                            </div>
+                                                        @endif
                                                     </td>
                                                     <td class="px-3 py-2 font-mono text-right">{{ number_format($faktur->qty) }}</td>
                                                     <td class="px-3 py-2 font-mono text-right">{{ number_format($faktur->harga_bruto) }}</td>
@@ -751,11 +769,18 @@ new class extends Component {
                                                             {{ rtrim(rtrim(number_format($faktur->diskon_persen, 2), '0'), '.') }}%@if ($faktur->diskon_persen2 > 0) + {{ rtrim(rtrim(number_format($faktur->diskon_persen2, 2), '0'), '.') }}%@endif
                                                         @elseif ($faktur->diskon_rupiah > 0)
                                                             Rp {{ number_format($faktur->diskon_rupiah) }}
+                                                            <span class="block text-[10px] font-normal text-muted">se-baris · ≈ Rp {{ number_format($faktur->diskon_per_unit, 2) }}/unit</span>
                                                         @else
                                                             <span class="text-muted">—</span>
                                                         @endif
                                                     </td>
-                                                    <td class="px-3 py-2 font-mono text-right">{{ rtrim(rtrim(number_format($faktur->ppn_persen, 2), '0'), '.') }}%</td>
+                                                    <td class="px-3 py-2 font-mono text-right">
+                                                        @if ($faktur->ppn_status !== '1')
+                                                            <span class="text-muted">bebas PPN</span>
+                                                        @else
+                                                            {{ rtrim(rtrim(number_format($faktur->ppn_persen, 2), '0'), '.') }}%
+                                                        @endif
+                                                    </td>
                                                     <td class="px-3 py-2 font-mono font-semibold text-right">{{ number_format($faktur->netto_unit) }}</td>
                                                     <td class="px-3 py-2 font-mono text-right text-muted">{{ number_format($faktur->netto_unit_ppn) }}</td>
                                                 </tr>
@@ -764,12 +789,57 @@ new class extends Component {
                                     </table>
                                 </div>
 
-                                <p class="mt-2 text-xs text-muted">
-                                    Netto/unit = harga bruto setelah dua lapis diskon baris, <strong>sebelum PPN</strong> —
-                                    basis yang sama dengan cost_price di master obat, supaya perbandingannya setara.
-                                    Kolom Incl PPN memakai PPN faktur, dipakai saat menguji apakah harga jual masih menutup biaya.
-                                    Diskon di level faktur (potongan rupiah untuk seluruh nota) tidak dialokasikan ke unit.
-                                </p>
+                                <details class="p-3 mt-3 text-sm border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800/40">
+                                    <summary class="font-semibold text-blue-800 cursor-pointer dark:text-blue-300">
+                                        Asal angka diskon, PPN, dan materai
+                                    </summary>
+                                    <div class="mt-2 space-y-2 text-blue-900/80 dark:text-blue-200/80">
+                                        <div>
+                                            <div class="font-semibold">Diskon — melekat di BARIS faktur (imtxn_receivedtls)</div>
+                                            <ul class="mt-1 space-y-1" style="list-style: disc; padding-left: 18px">
+                                                <li>Ada dua lapis, tiap lapis punya versi persen dan rupiah:
+                                                    <span class="font-mono">dtl_persen</span> / <span class="font-mono">dtl_diskon</span>,
+                                                    lalu <span class="font-mono">dtl_persen1</span> / <span class="font-mono">dtl_diskon1</span>.
+                                                    Lapis kedua dihitung <em>setelah</em> lapis pertama, bukan dijumlahkan.
+                                                </li>
+                                                <li>Versi rupiah adalah potongan untuk <strong>seluruh baris</strong>, bukan per unit —
+                                                    "Rp 50" pada baris qty 50 berarti ≈ Rp 1/unit. Itulah sebabnya netto/unit turun
+                                                    dari 142.484 menjadi 142.483.
+                                                </li>
+                                                <li>Rumusnya sama persis dengan yang dipakai Pembayaran Hutang PBF, supaya nilai
+                                                    tagihan dan nilai pembelian tidak pernah beda antar layar.
+                                                </li>
+                                            </ul>
+                                        </div>
+
+                                        <div>
+                                            <div class="font-semibold">PPN — melekat di FAKTUR (imtxn_receivehdrs)</div>
+                                            <ul class="mt-1 space-y-1" style="list-style: disc; padding-left: 18px">
+                                                <li><span class="font-mono">rcv_ppn</span> = persen PPN, dipakai hanya bila
+                                                    <span class="font-mono">rcv_ppn_status = '1'</span>; kalau tidak, baris ditandai
+                                                    <strong>bebas PPN</strong>. Di data 12 bulan terakhir, 1.408 dari 3.339 faktur memang tanpa PPN.
+                                                </li>
+                                                <li>PPN dikenakan pada nilai baris setelah diskon, itulah kolom <strong>Incl PPN</strong>.</li>
+                                            </ul>
+                                        </div>
+
+                                        <div>
+                                            <div class="font-semibold">Diskon faktur &amp; materai — TIDAK dibagi ke unit</div>
+                                            <ul class="mt-1 space-y-1" style="list-style: disc; padding-left: 18px">
+                                                <li><span class="font-mono">rcv_diskon</span> (potongan untuk seluruh nota) dan
+                                                    <span class="font-mono">rcv_materai</span> melekat ke faktur, bukan ke barang.
+                                                    Membaginya rata ke tiap item akan menggeser harga satuan barang yang tidak ada
+                                                    hubungannya dengan potongan itu, jadi sengaja dibiarkan di luar perhitungan —
+                                                    tapi tetap ditampilkan sebagai catatan kecil pada barisnya bila nilainya ada.
+                                                </li>
+                                                <li>Di data 12 bulan terakhir keduanya nyaris tak terpakai: diskon faktur 0 dari
+                                                    3.339 faktur, materai hanya 2 faktur. Kalau nanti mulai dipakai rutin, alokasinya
+                                                    perlu dibahas dulu sebelum diubah.
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </details>
                             @endif
                         </x-border-form>
 
@@ -933,6 +1003,59 @@ new class extends Component {
                                 </p>
                             @endif
                         </x-border-form>
+
+                        {{-- PANDUAN BACA — panel biru standar, default tertutup --}}
+                        <details class="p-3 text-sm border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800/40">
+                            <summary class="font-semibold text-blue-800 cursor-pointer dark:text-blue-300">
+                                Cara membaca evaluasi ini — urutan periksa &amp; tindakannya
+                            </summary>
+                            <div class="mt-2 space-y-3 text-blue-900/80 dark:text-blue-200/80">
+
+                                <div>
+                                    <div class="font-semibold">Urutan membacanya</div>
+                                    <ol class="mt-1 space-y-1" style="list-style: decimal; padding-left: 20px">
+                                        <li><strong>Posisi stok dulu.</strong> Pastikan Anda melihat lokasi yang dimaksud —
+                                            gudang dan apotek berdiri sendiri. Stok minus berarti data belum benar; betulkan
+                                            dulu sebelum memakai angka lain di halaman ini.</li>
+                                        <li><strong>Pola pemakaian.</strong> Lihat "bulan aktif" dan tabel pergerakan bulanan.
+                                            Pemakaian rutin tiap bulan boleh dijadikan dasar order; pemakaian yang menumpuk di
+                                            satu-dua bulan biasanya kegiatan tertentu, jangan dirata-ratakan mentah.</li>
+                                        <li><strong>Harga belinya bergerak ke mana.</strong> Baca tren dan rentang terendah–tertinggi.
+                                            Kalau harga naik, cek dulu apakah diskon supplier hilang atau memang harga dasar naik.</li>
+                                        <li><strong>Baru putuskan</strong> order dan harga jual, memakai kotak Usulan sebagai titik awal.</li>
+                                    </ol>
+                                </div>
+
+                                <div>
+                                    <div class="font-semibold">Membaca kombinasi angka</div>
+                                    <ul class="mt-1 space-y-1" style="list-style: disc; padding-left: 18px">
+                                        <li><strong>FAST + cakupan &lt; 1 bulan</strong> → paling mendesak: dipakai rutin tapi stok
+                                            hampir habis. Pakai angka "Order sekarang".</li>
+                                        <li><strong>FAST + cakupan besar</strong> → aman; jangan tambah order walau pemakaiannya tinggi.</li>
+                                        <li><strong>SLOW/DEAD + nilai stok besar</strong> → modal mengendap. Hentikan pembelian,
+                                            pertimbangkan retur ke supplier atau pemindahan ke unit yang masih memakai.</li>
+                                        <li><strong>DEAD tapi masih dibeli</strong> (ada faktur di riwayat) → pembelian jalan terus
+                                            padahal barang tidak keluar; ini yang paling sering jadi temuan.</li>
+                                        <li><strong>Distribusi didominasi satu ruangan</strong> → pemakaian sebenarnya ada di ruangan
+                                            itu; ingat jejaknya berhenti di serah-terima, bukan pemakaian pasien.</li>
+                                    </ul>
+                                </div>
+
+                                <div>
+                                    <div class="font-semibold">Yang perlu diwaspadai sebelum mengambil keputusan</div>
+                                    <ul class="mt-1 space-y-1" style="list-style: disc; padding-left: 18px">
+                                        <li>Rata-rata pemakaian memakai seluruh periode. Obat baru atau obat yang baru berhenti
+                                            dipakai akan terlihat menyesatkan — periksa tabel bulanannya.</li>
+                                        <li>Usulan harga jual hanya mempertahankan markup yang sudah ada di master. Kalau markup
+                                            master-nya sendiri belum benar, usulannya ikut tidak benar.</li>
+                                        <li>Belum diperhitungkan: lead time supplier, kedaluwarsa/batch, rencana kegiatan,
+                                            dan kesepakatan harga khusus.</li>
+                                        <li>Layar ini tidak pernah mengubah data — semua keputusan tetap dijalankan lewat menu
+                                            pembelian dan master obat.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </details>
                     </div>
                 @endif
             </div>
