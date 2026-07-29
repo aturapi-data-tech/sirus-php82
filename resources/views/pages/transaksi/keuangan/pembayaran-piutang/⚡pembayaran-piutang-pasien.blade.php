@@ -25,6 +25,7 @@ new class extends Component {
     public ?string $regNo = null;
     public ?string $regName = null;
     public string $filterJalur = '';     // '' | RJ | UGD | RI
+    public string $filterKlaim = '';     // '' | BPJS | UMUM | KRONIS | DOKEL
 
     /* Pilihan nota: "JALUR|NO" => sisa */
     public array $terpilih = [];
@@ -49,9 +50,14 @@ new class extends Component {
         $this->kosongkanPilihan();
     }
 
+    public function updatedFilterKlaim(): void
+    {
+        $this->kosongkanPilihan();
+    }
+
     public function resetFilters(): void
     {
-        $this->reset(['regNo', 'regName', 'filterJalur']);
+        $this->reset(['regNo', 'regName', 'filterJalur', 'filterKlaim']);
         $this->kosongkanPilihan();
     }
 
@@ -68,16 +74,43 @@ new class extends Component {
         $this->terpilih[$kunci] = $sisa;
     }
 
-    public function centangSemua(): void
+    /** Satu saklar: nyala = centang semua nota pasien, mati = kosongkan. */
+    public function toggleSemua(): void
     {
+        if ($this->semuaTercentang) {
+            $this->kosongkanPilihan();
+            return;
+        }
+
         foreach ($this->rows as $row) {
             $this->terpilih[$row->jalur . '|' . $row->no_transaksi] = (int) $row->sisa;
         }
+
+        unset($this->semuaTercentang);
     }
 
     public function kosongkanPilihan(): void
     {
         $this->terpilih = [];
+        unset($this->semuaTercentang);
+    }
+
+    #[Computed]
+    public function semuaTercentang(): bool
+    {
+        $jumlahBaris = $this->rows->count();
+
+        if ($jumlahBaris === 0) {
+            return false;
+        }
+
+        foreach ($this->rows as $row) {
+            if (!array_key_exists($row->jalur . '|' . $row->no_transaksi, $this->terpilih)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     #[Computed]
@@ -112,7 +145,7 @@ new class extends Component {
     public function refreshAfterPaid(): void
     {
         $this->kosongkanPilihan();
-        unset($this->rows, $this->totalTerpilih);
+        unset($this->rows, $this->totalTerpilih, $this->semuaTercentang);
     }
 
     /* ── Data: seluruh piutang pasien terpilih ── */
@@ -123,7 +156,7 @@ new class extends Component {
             return collect();
         }
 
-        $baris = $this->piutangPerPasien($this->regNo, $this->filterJalur);
+        $baris = $this->piutangPerPasien($this->regNo, $this->filterJalur, $this->filterKlaim);
         $this->isiDokterRiLeveling($baris);
 
         return $baris;
@@ -149,13 +182,13 @@ new class extends Component {
             <div class="sticky z-30 px-4 py-3 mt-2 bg-surface-soft border-b border-hairline top-20 dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex flex-wrap items-end gap-3">
 
-                    <div class="w-full sm:max-w-xl">
+                    <div class="w-full sm:w-80 sm:shrink-0">
                         @if ($regNo)
                             <x-input-label value="Pasien" />
                             <div class="flex items-center gap-2 mt-1">
-                                <div class="flex-1 px-3 py-2 text-sm border rounded-lg border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700">
-                                    <span class="font-semibold text-ink dark:text-gray-100">{{ $regName }}</span>
-                                    <span class="ml-2 font-mono text-xs text-muted">No. RM {{ $regNo }}</span>
+                                <div class="flex-1 min-w-0 px-3 py-2 text-sm border rounded-lg border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700">
+                                    <div class="font-semibold leading-tight truncate text-ink dark:text-gray-100">{{ $regName }}</div>
+                                    <div class="font-mono text-xs leading-tight text-muted">No. RM {{ $regNo }}</div>
                                 </div>
                                 <x-secondary-button type="button" wire:click="gantiPasien">Ganti</x-secondary-button>
                             </div>
@@ -168,7 +201,7 @@ new class extends Component {
 
                     <div class="w-full sm:w-auto">
                         <x-input-label value="Jalur" />
-                        <x-select-input wire:model.live="filterJalur" class="w-full mt-1 sm:w-36">
+                        <x-select-input wire:model.live="filterJalur" class="w-full mt-1 sm:w-32">
                             <option value="">Semua</option>
                             <option value="RJ">Rawat Jalan</option>
                             <option value="UGD">UGD</option>
@@ -176,43 +209,53 @@ new class extends Component {
                         </x-select-input>
                     </div>
 
+                    <div class="w-full sm:w-auto">
+                        <x-input-label value="Klaim" />
+                        <x-select-input wire:model.live="filterKlaim" class="w-full mt-1 sm:w-32">
+                            <option value="">Semua</option>
+                            <option value="BPJS">BPJS</option>
+                            <option value="UMUM">UMUM</option>
+                            <option value="KRONIS">KRONIS</option>
+                            <option value="DOKEL">DOKEL</option>
+                        </x-select-input>
+                    </div>
+
+                    {{-- Ringkasan pilihan + saklar centang semua --}}
+                    <div class="flex items-center gap-2 px-3 py-2 border rounded-xl whitespace-nowrap bg-brand-green/5 border-brand-green/25 dark:bg-brand-lime/10 dark:border-brand-lime/25">
+                        <span class="text-[11px] font-semibold tracking-wide uppercase text-muted dark:text-gray-400">
+                            Terpilih {{ count($terpilih) }} Nota
+                        </span>
+                        <svg class="w-5 h-5 shrink-0 text-brand-green dark:text-brand-lime" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M3 10h18M7 15h2m4 0h4M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />
+                        </svg>
+                        <span class="text-xl font-bold leading-none text-brand-green dark:text-brand-lime">
+                            Rp {{ number_format($this->totalTerpilih) }}
+                        </span>
+                    </div>
+
+                    <div class="pb-1.5">
+                        <x-toggle :current="$this->semuaTercentang ? '1' : '0'" trueValue="1" falseValue="0"
+                            wireClick="toggleSemua" label="Centang semua nota"
+                            title="Nyala = centang semua nota pasien, mati = kosongkan pilihan" />
+                    </div>
+
                     <div class="flex items-center gap-2 ml-auto">
                         <x-toolbar-refresh-reset :label="null" />
+                        <x-primary-button type="button" wire:click="prosesTerpilih"
+                            wire:loading.attr="disabled" wire:target="prosesTerpilih">
+                            Proses Pembayaran
+                        </x-primary-button>
                     </div>
-                </div>
-            </div>
-
-            {{-- BAR PILIHAN --}}
-            <div class="flex flex-wrap items-center gap-3 px-4 py-3 mt-4 border rounded-2xl bg-canvas border-hairline dark:border-gray-700 dark:bg-gray-900">
-                <div class="flex items-center gap-2 px-4 py-2 border rounded-xl whitespace-nowrap bg-brand-green/5 border-brand-green/25 dark:bg-brand-lime/10 dark:border-brand-lime/25">
-                    <span class="text-[11px] font-semibold tracking-wide uppercase text-muted dark:text-gray-400">
-                        Terpilih {{ count($terpilih) }} Nota
-                    </span>
-                    <svg class="w-6 h-6 shrink-0 text-brand-green dark:text-brand-lime" fill="none"
-                        stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M3 10h18M7 15h2m4 0h4M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />
-                    </svg>
-                    <span class="text-2xl font-bold leading-none text-brand-green dark:text-brand-lime">
-                        Rp {{ number_format($this->totalTerpilih) }}
-                    </span>
                 </div>
 
                 @if ($regNo)
-                    <div class="text-sm text-muted dark:text-gray-400">
+                    <div class="mt-2 text-sm text-muted dark:text-gray-400">
                         Total piutang pasien ini: Rp {{ number_format($this->totalSisaPasien, 0, ',', '.') }}
                         · {{ $this->rows->count() }} nota
                     </div>
                 @endif
-
-                <div class="flex items-center gap-2 ml-auto">
-                    <x-secondary-button type="button" wire:click="centangSemua">Centang semua nota</x-secondary-button>
-                    <x-secondary-button type="button" wire:click="kosongkanPilihan">Kosongkan</x-secondary-button>
-                    <x-primary-button type="button" wire:click="prosesTerpilih"
-                        wire:loading.attr="disabled" wire:target="prosesTerpilih">
-                        Proses Pembayaran
-                    </x-primary-button>
-                </div>
             </div>
 
             {{-- TABEL --}}

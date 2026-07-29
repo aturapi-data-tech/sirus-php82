@@ -359,10 +359,10 @@ trait PiutangPasienTrait
      * Seluruh piutang milik SATU pasien (semua jalur), sisa>0 — untuk layar
      * pembayaran per pasien (umum). Jumlah barisnya kecil, jadi aman diambil utuh.
      */
-    protected function piutangPerPasien(string $regNo, string $jalur = ''): \Illuminate\Support\Collection
+    protected function piutangPerPasien(string $regNo, string $jalur = '', string $klaim = ''): \Illuminate\Support\Collection
     {
         return DB::query()
-            ->fromSub($this->piutangUnionSub(null, null, $jalur, '', ''), 'p')
+            ->fromSub($this->piutangUnionSub(null, null, $jalur, $klaim, ''), 'p')
             ->where('reg_no', $regNo)
             ->where('sisa', '>', 0)
             ->orderByDesc('sisa')
