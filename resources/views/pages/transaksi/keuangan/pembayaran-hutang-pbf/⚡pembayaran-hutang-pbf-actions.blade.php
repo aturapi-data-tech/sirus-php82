@@ -63,6 +63,12 @@ new class extends Component {
     public function onKasSelected(string $target, ?array $payload): void
     {
         $this->accId = $payload['acc_id'] ?? null;
+        $this->dispatch('focus-bayar-nominal');
+    }
+
+    public function setTanggalSekarang(): void
+    {
+        $this->tanggal = Carbon::now()->format('d/m/Y H:i:s');
     }
 
     /* ── Proses pembayaran ── */
@@ -268,21 +274,46 @@ new class extends Component {
 ?>
 
 <div>
-    <x-modal name="pembayaran-hutang-pbf-actions" size="2xl" focusable>
-        <div class="flex flex-col" wire:key="{{ $this->renderKey('modal', [$suppId]) }}">
+    <x-modal name="pembayaran-hutang-pbf-actions" size="full" height="full" focusable>
+        <div class="flex flex-col min-h-[calc(100vh-8rem)]"
+            wire:key="{{ $this->renderKey('modal', [$suppId]) }}"
+            x-data
+            x-on:focus-bayar-tanggal.window="$nextTick(() => setTimeout(() => $refs.inputTanggal?.focus(), 150))"
+            x-on:focus-bayar-nominal.window="$nextTick(() => setTimeout(() => { $refs.inputBayar?.focus(); $refs.inputBayar?.select(); }, 150))"
+            x-on:focus-btn-proses.window="$nextTick(() => setTimeout(() => $refs.btnProses?.focus(), 150))">
 
             {{-- HEADER --}}
-            <div class="px-6 py-5 border-b border-hairline dark:border-gray-700">
-                <div class="flex items-start justify-between gap-4">
+            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
+                <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
+                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
+                </div>
+
+                <div class="relative flex items-start justify-between gap-4">
                     <div>
-                        <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">
-                            Proses Pembayaran Hutang PBF
-                        </h2>
-                        <p class="mt-1 text-sm text-muted dark:text-gray-400">
-                            Sistem akan mengalokasikan pembayaran ke <strong>{{ $jumlah }}</strong> nota yang Anda centang (FIFO — nota terlama dulu).
-                        </p>
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
+                                <img src="{{ asset('images/Logogram black solid.png') }}" alt="RSI Madinah" class="block w-6 h-6 dark:hidden" />
+                                <img src="{{ asset('images/Logogram white solid.png') }}" alt="RSI Madinah" class="hidden w-6 h-6 dark:block" />
+                            </div>
+
+                            <div>
+                                <h2 class="text-2xl font-semibold text-ink dark:text-gray-100">
+                                    Proses Pembayaran Hutang PBF
+                                </h2>
+                                <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
+                                    Pembayaran dialokasikan ke nota yang dicentang sesuai urutan klik (nota terlama dulu).
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2 mt-3">
+                            <x-badge variant="info">{{ $jumlah }} nota terpilih</x-badge>
+                            <x-badge variant="warning">Sisa Rp {{ number_format($sisaChecked) }}</x-badge>
+                        </div>
                     </div>
+
                     <x-icon-button color="gray" type="button" wire:click="closeModal">
+                        <span class="sr-only">Close</span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
                         </svg>
@@ -291,94 +322,119 @@ new class extends Component {
             </div>
 
             {{-- BODY --}}
-            <div class="px-6 py-5 space-y-5"
-                x-data
-                x-on:focus-bayar-tanggal.window="$nextTick(() => setTimeout(() => $refs.inputTanggal?.focus(), 150))">
+            <div class="flex-1 px-4 py-4 bg-surface-soft/70 dark:bg-gray-950/20">
+                <div class="space-y-4 max-w-4xl">
 
-                {{-- Info Supplier --}}
-                <div class="px-4 py-3 border border-hairline rounded-lg bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div>
-                            <div class="text-xs text-muted dark:text-gray-400">Supplier</div>
-                            <div class="text-base font-semibold text-ink dark:text-gray-100">
-                                {{ $suppName ?? '-' }}
+                    {{-- Info supplier & sisa hutang --}}
+                    <div class="px-4 py-3 border border-hairline rounded-2xl bg-canvas dark:bg-gray-900 dark:border-gray-700">
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div>
+                                <div class="text-[11px] font-semibold tracking-wide uppercase text-muted dark:text-gray-400">Supplier</div>
+                                <div class="text-base font-semibold text-ink dark:text-gray-100">{{ $suppName ?? '-' }}</div>
+                                <div class="font-mono text-xs text-muted">Kode: {{ $suppId ?? '-' }}</div>
                             </div>
-                            <div class="font-mono text-xs text-muted">Kode: {{ $suppId ?? '-' }}</div>
-                        </div>
-                        <div>
-                            <div class="text-xs text-muted dark:text-gray-400">Total Sisa Hutang Terpilih</div>
-                            <div class="font-mono text-2xl font-bold text-error dark:text-rose-400">
-                                Rp {{ number_format($sisaChecked) }}
+                            <div class="sm:text-right">
+                                <div class="text-[11px] font-semibold tracking-wide uppercase text-muted dark:text-gray-400">Total Sisa Hutang Terpilih</div>
+                                <div class="font-mono text-2xl font-bold leading-none text-error dark:text-rose-400">
+                                    Rp {{ number_format($sisaChecked) }}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {{-- Tanggal --}}
-                <div>
-                    <x-input-label value="Tanggal Pembayaran" :required="true" />
-                    <x-text-input type="text" wire:model="tanggal" placeholder="dd/mm/yyyy hh:mm:ss"
-                        x-ref="inputTanggal" class="w-full mt-1" />
-                    <x-input-error :messages="$errors->get('tanggal')" class="mt-1" />
-                </div>
+                    <x-border-form title="Data Pembayaran">
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-12 items-start">
+                                {{-- Tanggal --}}
+                                <div class="sm:col-span-5">
+                                    <x-input-label value="Tanggal Pembayaran" :required="true" />
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <x-text-input type="text" wire:model="tanggal"
+                                            placeholder="dd/mm/yyyy hh:mm:ss" class="w-full text-sm"
+                                            x-ref="inputTanggal" :error="$errors->has('tanggal')"
+                                            x-on:keydown.enter.prevent="($refs.lovKasWrapper?.querySelector('input:not([disabled])') || $refs.inputBayar)?.focus()" />
+                                        <x-now-button wire:click.prevent="setTanggalSekarang" />
+                                    </div>
+                                    <x-input-error :messages="$errors->get('tanggal')" class="mt-1" />
+                                </div>
 
-                {{-- Akun Kas (sumber dana cashout) --}}
-                <div>
-                    <livewire:lov.kas.lov-kas
-                        target="kas-hutang-pbf"
-                        tipe=""
-                        label="Akun Kas"
-                        placeholder="Ketik kode/nama kas..."
-                        :initialAccId="$accId"
-                        wire:key="lov-kas-hutang-pbf-{{ $suppId ?? 'empty' }}-{{ $renderVersions['modal'] ?? 0 }}" />
-                    <x-input-error :messages="$errors->get('accId')" class="mt-1" />
-                </div>
+                                {{-- Akun Kas --}}
+                                <div class="sm:col-span-7" x-ref="lovKasWrapper">
+                                    <livewire:lov.kas.lov-kas
+                                        target="kas-hutang-pbf"
+                                        tipe=""
+                                        label="Akun Kas (sumber dana)"
+                                        placeholder="Ketik kode/nama kas..."
+                                        :initialAccId="$accId"
+                                        :error="$errors->has('accId')"
+                                        wire:key="lov-kas-hutang-pbf-{{ $suppId ?? 'empty' }}-{{ $renderVersions['modal'] ?? 0 }}" />
+                                    <x-input-error :messages="$errors->get('accId')" class="mt-1" />
+                                </div>
+                            </div>
 
-                {{-- Nominal Bayar --}}
-                <div>
-                    <x-input-label value="Nominal Bayar (Rp)" :required="true" />
-                    <x-text-input-number wire:model="bayar" />
-                    <p class="mt-1 text-xs text-muted dark:text-gray-400">
-                        Default = total sisa nota terpilih. Bisa kurang dari itu untuk angsuran (sisa nota tetap berstatus Hutang).
-                    </p>
-                    <x-input-error :messages="$errors->get('bayar')" class="mt-1" />
-                </div>
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-12 items-start">
+                                {{-- Nominal --}}
+                                <div class="sm:col-span-5">
+                                    <x-input-label value="Nominal Bayar (Rp)" :required="true" />
+                                    <div class="mt-1">
+                                        <x-text-input-number wire:model="bayar" class="text-sm"
+                                            x-ref="inputBayar" :error="$errors->has('bayar')"
+                                            x-on:keydown.enter.prevent="$el.blur(); $refs.inputKet?.focus()" />
+                                    </div>
+                                    <x-input-error :messages="$errors->get('bayar')" class="mt-1" />
+                                    <p class="mt-1 text-xs text-muted dark:text-gray-400">
+                                        Default = total sisa nota terpilih. Boleh lebih kecil untuk angsuran.
+                                    </p>
+                                </div>
 
-                {{-- Keterangan --}}
-                <div>
-                    <x-input-label value="Keterangan (opsional)" />
-                    <x-text-input type="text" wire:model="keterangan" placeholder="Keterangan tambahan..."
-                        class="w-full mt-1" />
-                </div>
+                                {{-- Keterangan --}}
+                                <div class="sm:col-span-7">
+                                    <x-input-label value="Keterangan (opsional)" />
+                                    <x-text-input type="text" wire:model="keterangan"
+                                        placeholder="Keterangan tambahan..." class="w-full mt-1 text-sm"
+                                        x-ref="inputKet"
+                                        x-on:keydown.enter.prevent="$refs.btnProses?.focus()" />
+                                </div>
+                            </div>
+                        </div>
+                    </x-border-form>
 
-                {{-- Note --}}
-                <div class="px-4 py-3 border rounded-lg border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700">
-                    <div class="flex items-start gap-2">
-                        <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        <div class="text-xs text-amber-800 dark:text-amber-300">
-                            <p class="font-semibold">Cara alokasi pembayaran:</p>
-                            <ul class="mt-1 ml-5 space-y-0.5 list-disc">
-                                <li>Nota dialokasikan sesuai <strong>urutan klik</strong> (badge angka di tabel) — jadi user yang menentukan nota mana yang dilunasi duluan</li>
-                                <li>Nominal bayar dialokasikan penuh sampai nota lunas, sisa diteruskan ke nota berikutnya</li>
-                                <li>Kalau nominal kurang dari total sisa, nota terakhir akan menjadi <strong>cicilan</strong> (status tetap Hutang)</li>
-                            </ul>
+                    {{-- Cara alokasi --}}
+                    <div class="px-4 py-3 border rounded-2xl border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700">
+                        <div class="flex items-start gap-2">
+                            <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <div class="text-xs text-amber-800 dark:text-amber-300">
+                                <p class="font-semibold">Cara alokasi pembayaran:</p>
+                                <ul class="mt-1 ml-5 space-y-0.5 list-disc">
+                                    <li>Nota dialokasikan sesuai <strong>urutan klik</strong> (badge angka di tabel) — user yang menentukan nota mana dilunasi duluan</li>
+                                    <li>Nominal bayar dialokasikan penuh sampai nota lunas, sisa diteruskan ke nota berikutnya</li>
+                                    <li>Kalau nominal kurang dari total sisa, nota terakhir menjadi <strong>cicilan</strong> (status tetap Hutang)</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             {{-- FOOTER --}}
-            <div class="px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
-                <div class="flex items-center justify-end gap-3">
-                    <x-secondary-button type="button" wire:click="closeModal">Batal</x-secondary-button>
-                    <x-primary-button type="button" wire:click="processBayar"
-                        wire:loading.attr="disabled" wire:target="processBayar">
-                        <span wire:loading.remove wire:target="processBayar">Proses Pembayaran</span>
-                        <span wire:loading wire:target="processBayar">Memproses...</span>
-                    </x-primary-button>
+            <div class="sticky bottom-0 z-10 px-6 py-4 mt-auto border-t bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="text-xs text-muted dark:text-gray-400">
+                        Urutan <span class="px-1.5 py-0.5 font-semibold rounded border border-hairline bg-canvas text-body dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">Enter</span>:
+                        Tanggal → Akun Kas → Nominal → Keterangan → tombol Proses.
+                    </div>
+
+                    <div class="flex justify-end gap-2">
+                        <x-secondary-button type="button" wire:click="closeModal">Batal</x-secondary-button>
+                        <x-primary-button type="button" wire:click="processBayar" x-ref="btnProses"
+                            wire:loading.attr="disabled" wire:target="processBayar">
+                            <span wire:loading.remove wire:target="processBayar">Proses Pembayaran</span>
+                            <span wire:loading wire:target="processBayar"><x-loading /> Memproses...</span>
+                        </x-primary-button>
+                    </div>
                 </div>
             </div>
         </div>
