@@ -19,6 +19,14 @@ class AppMenu
     /** Role yang berhak melihat semua menu Master. */
     private const MASTER_ROLES = ['admin', 'manager umum', 'manager medis', 'supervisor penunjang', 'supervisor tu'];
 
+    /**
+     * Penanda 'roles' untuk menu yang boleh dilihat SEMUA role (juga user tanpa role).
+     * Dipakai menu lintas unit seperti Formulir Manual Down Time — saat SIMRS
+     * bermasalah, siapa pun yang masih bisa membuka aplikasi harus dapat
+     * mengunduh formulir cadangannya.
+     */
+    public const SEMUA_ROLE = '*';
+
     /** @return array<int, array<string, mixed>> */
     public static function all(): array
     {
@@ -35,6 +43,7 @@ class AppMenu
 
     /**
      * Filter entries by role names (case-insensitive).
+     * Entri ber-roles ['*'] (SEMUA_ROLE) selalu lolos, apa pun role user.
      *
      * @param  array<int, string>  $userRoles
      * @return array<int, array<string, mixed>>
@@ -44,7 +53,11 @@ class AppMenu
         // trim() penting: nama role di DB pernah mengandung trailing space ('Manager Umum ')
         // → strtolower saja tidak match dan seluruh menu role tsb hilang.
         $roles = array_map(fn($r) => trim(strtolower($r)), $userRoles);
-        return array_values(array_filter(self::all(), fn($m) => !empty(array_intersect($m['roles'], $roles))));
+
+        return array_values(array_filter(
+            self::all(),
+            fn($m) => in_array(self::SEMUA_ROLE, $m['roles'], true) || !empty(array_intersect($m['roles'], $roles)),
+        ));
     }
 
     /**
@@ -182,9 +195,9 @@ class AppMenu
             $entry(['group' => 'Operasi', 'groupOrder' => 13, 'order' => 1, 'route' => 'operasi.jadwal-operasi', 'title' => 'Jadwal Operasi', 'desc' => 'Booking & manajemen jadwal operasi pasien', 'roles' => ['admin', 'manager medis', 'perawat'], 'badge' => 'OK']),
 
             // ── Down Time ─────────────────────────────────────────────
-            // Terbuka untuk semua role pelayanan: saat SIMRS mati, siapa pun yang
-            // masih bisa membuka halaman ini harus dapat mengunduh formulirnya.
-            $entry(['group' => 'Down Time', 'groupOrder' => 14, 'order' => 1, 'route' => 'downtime.formulir-manual', 'title' => 'Formulir Manual Down Time', 'desc' => 'Formulir cadangan saat SIMRS tidak dapat diakses — EMR RJ, Administrasi RJ, Kasir RJ, Apotek RJ + log & rekonsiliasi IT', 'roles' => ['admin', 'manager umum', 'manager medis', 'supervisor tu', 'supervisor penunjang', 'tu', 'mr', 'dokter', 'perawat', 'apoteker', 'casemix', 'laboratorium', 'radiologi', 'gizi', 'gudang obat', 'gudang non medis'], 'badge' => 'DT']),
+            // Terbuka untuk SEMUA role: saat SIMRS bermasalah, siapa pun yang masih
+            // bisa membuka aplikasi harus dapat mengunduh formulir cadangannya.
+            $entry(['group' => 'Down Time', 'groupOrder' => 14, 'order' => 1, 'route' => 'downtime.formulir-manual', 'title' => 'Formulir Manual Down Time', 'desc' => 'Formulir cadangan saat SIMRS tidak dapat diakses — EMR, administrasi, kasir & apotek RJ/UGD/RI + log & rekonsiliasi IT', 'roles' => [self::SEMUA_ROLE], 'badge' => 'DT']),
 
             // ── Sistem ────────────────────────────────────────────────
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 1, 'route' => 'database-monitor.monitoring-dashboard', 'title' => 'Oracle Session Monitor', 'desc' => 'Locks, long-running SQL & kill session', 'roles' => ['admin'], 'badge' => 'DB']),
