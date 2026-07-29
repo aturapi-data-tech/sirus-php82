@@ -50,9 +50,15 @@ new class extends Component {
 
     public bool $disabled = false;
 
-    /** true = tampilkan border merah (validasi induk gagal). */
+    /**
+     * true = tampilkan border merah (validasi induk gagal).
+     *
+     * WAJIB nullable: prop #[Reactive] yang TIDAK dikirim induk akan disinkron
+     * sebagai null tiap induk re-render → `bool` non-nullable bikin TypeError
+     * "Cannot assign null to property $error of type bool" di /livewire/update.
+     */
     #[Reactive]
-    public bool $error = false;
+    public ?bool $error = false;
 
     /* ── Lifecycle ── */
 
@@ -246,7 +252,7 @@ new class extends Component {
     <div class="relative mt-1">
         @if ($selected === null)
             @if (!$disabled)
-                <x-text-input type="text" class="block w-full" :placeholder="$placeholder" :error="$error"
+                <x-text-input type="text" class="block w-full" :placeholder="$placeholder" :error="(bool) $error"
                     wire:model.live.debounce.250ms="search"
                     wire:keydown.escape.prevent="resetLov" wire:keydown.arrow-down.prevent="selectNext"
                     wire:keydown.arrow-up.prevent="selectPrevious" wire:keydown.enter.prevent="chooseHighlighted" />
