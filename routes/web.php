@@ -315,6 +315,12 @@ Route::middleware(['auth'])->group(function () {
         ->name('keuangan.pengeluaran-kas-tu');
 
     // ===========================================
+    // KEUANGAN - ANALISA PERPUTARAN OBAT (fast/slow/dead moving)
+    // ===========================================
+    Route::livewire('/keuangan/analisa-perputaran-obat', 'pages::transaksi.keuangan.analisa-perputaran-obat.analisa-perputaran-obat')
+        ->name('keuangan.analisa-perputaran-obat');
+
+    // ===========================================
     // KEUANGAN - PIUTANG PASIEN (2 konsep, 2 komponen)
     //   1. Klaim BPJS  : bundel per bulan, tab RJ/UGD/RI
     //   2. Per pasien  : umumnya pasien umum, alokasi FIFO

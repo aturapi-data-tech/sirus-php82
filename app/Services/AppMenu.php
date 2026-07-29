@@ -175,6 +175,7 @@ class AppMenu
             $entry(['group' => 'Keuangan', 'groupOrder' => 12, 'order' => 10, 'route' => 'keuangan.buku-besar', 'title' => 'Buku Besar', 'desc' => 'Mutasi & saldo per akun dalam periode tertentu', 'roles' => ['admin', 'manager umum'], 'badge' => 'BB']),
             $entry(['group' => 'Keuangan', 'groupOrder' => 12, 'order' => 11, 'route' => 'keuangan.laba-rugi', 'title' => 'Laporan Laba Rugi', 'desc' => 'Pendapatan vs beban — laba/rugi periode berjalan', 'roles' => ['admin', 'manager umum'], 'badge' => 'LR']),
             $entry(['group' => 'Keuangan', 'groupOrder' => 12, 'order' => 12, 'route' => 'keuangan.neraca', 'title' => 'Laporan Neraca', 'desc' => 'Posisi aktiva, kewajiban & modal per tanggal', 'roles' => ['admin', 'manager umum'], 'badge' => 'NRC']),
+            $entry(['group' => 'Keuangan', 'groupOrder' => 12, 'order' => 13, 'route' => 'keuangan.analisa-perputaran-obat', 'title' => 'Analisa Perputaran Obat', 'desc' => 'Fast / slow / dead moving per lokasi — sorot modal stok yang mengendap', 'roles' => ['admin', 'manager umum', 'supervisor tu', 'tu'], 'badge' => 'STOK']),
 
             // ── Operasi ────────────────────────────────────────────────
             $entry(['group' => 'Operasi', 'groupOrder' => 13, 'order' => 1, 'route' => 'operasi.jadwal-operasi', 'title' => 'Jadwal Operasi', 'desc' => 'Booking & manajemen jadwal operasi pasien', 'roles' => ['admin', 'manager medis', 'perawat'], 'badge' => 'OK']),
