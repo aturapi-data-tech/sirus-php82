@@ -1,8 +1,6 @@
 <x-downtime.halaman kode="UGD-EMR-03" judul="Lembar Observasi & Pemberian Obat / Cairan UGD"
     subjudul="Pengganti tab Observasi dan Obat & Cairan pada EMR UGD" unit="Perawat UGD"
-    entriUlang="Pelayanan UGD > EMR > tab Observasi dan Obat & Cairan" :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="ringkas" />
+    entriUlang="Pelayanan UGD > EMR > tab Observasi dan Obat & Cairan" identitas="ringkas" :break="$dtBreak ?? false">
 
     <div class="dt-sec">A. Observasi Tanda Vital</div>
     <table class="dt-tbl dt-tbl-kecil">

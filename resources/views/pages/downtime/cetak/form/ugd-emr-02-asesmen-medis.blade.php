@@ -1,8 +1,6 @@
 <x-downtime.halaman kode="UGD-EMR-02" judul="Asesmen Medis, Diagnosa & Tindakan UGD"
     subjudul="Pengganti tab Pemeriksaan (dokter), Diagnosa & Perencanaan pada EMR UGD" unit="Dokter jaga UGD"
-    entriUlang="Pelayanan UGD > EMR > tab Pemeriksaan, Diagnosa, Perencanaan" :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="ringkas" />
+    entriUlang="Pelayanan UGD > EMR > tab Pemeriksaan, Diagnosa, Perencanaan" identitas="ringkas" :break="$dtBreak ?? false">
 
     <div class="dt-sec">A. Anamnesis</div>
     <table class="dt-tbl dt-tbl-kecil">

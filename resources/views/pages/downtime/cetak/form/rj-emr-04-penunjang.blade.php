@@ -1,9 +1,7 @@
 <x-downtime.halaman kode="RJ-EMR-04" judul="Permintaan Pemeriksaan Penunjang Rawat Jalan"
     subjudul="Pengganti order laboratorium & radiologi elektronik" unit="Dokter poli > Laboratorium / Radiologi"
     entriUlang="Pelayanan RJ > Pemeriksaan > Penunjang; hasil di Transaksi Laboratorium / Upload Hasil Radiologi"
-    :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="ringkas" />
+    identitas="ringkas" :break="$dtBreak ?? false">
 
     <div class="dt-sec">A. Data Permintaan</div>
     <table class="dt-tbl">

@@ -28,9 +28,7 @@
 
 <x-downtime.halaman kode="RJ-EMR-03" judul="Penilaian Nyeri, Risiko Jatuh & Skrining Gizi Rawat Jalan"
     subjudul="Pengganti tab Penilaian pada EMR Rawat Jalan" unit="Perawat poli rawat jalan"
-    entriUlang="Pelayanan Rawat Jalan > EMR > tab Penilaian" :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="ringkas" />
+    entriUlang="Pelayanan Rawat Jalan > EMR > tab Penilaian" identitas="ringkas" :break="$dtBreak ?? false">
 
     <div class="dt-sec">A. Penilaian Nyeri</div>
     <table class="dt-tbl dt-tbl-kecil">

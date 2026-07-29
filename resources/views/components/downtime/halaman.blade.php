@@ -12,6 +12,8 @@
     'unit' => null,
     'entriUlang' => null,
     'break' => false,
+    // Varian blok identitas pasien di kop: 'lengkap' / 'ringkas' / null (tanpa).
+    'identitas' => null,
     // Padding sel dipangkas (default) supaya satu formulir tetap muat 1 lembar A4.
     // Set false bila formulir pendek dan ingin baris lebih lega.
     'padat' => true,
@@ -19,10 +21,25 @@
 
 <div class="dt-halaman {{ $break ? 'dt-break' : '' }} {{ $padat ? 'dt-padat' : '' }}">
 
-    {{-- KOP + KOTAK KODE — hanya formulir ke-2 dst.; formulir pertama memakai
-         kop layout (kotak kodenya dititipkan lewat slot patientData). --}}
+    {{-- KOP — hanya formulir ke-2 dst.; formulir pertama memakai kop layout
+         (blok identitas pasiennya dititipkan lewat slot patientData layout).
+         Identitas pasien di kiri, sejajar logo — pola sama dengan layout. --}}
     @if ($break)
-        <x-logo.identitas :showGaris="true" />
+        @if (filled($identitas))
+            <table style="width:100%; border-collapse:collapse;">
+                <tr>
+                    <td style="width:50%; vertical-align:bottom;">
+                        <x-downtime.identitas :variant="$identitas" />
+                    </td>
+                    <td style="width:50%; vertical-align:bottom; padding-left:8px;">
+                        <x-logo.identitas :showGaris="false" />
+                    </td>
+                </tr>
+            </table>
+            <hr style="border: none; border-top: 2px solid #000; margin: 8px 0;">
+        @else
+            <x-logo.identitas :showGaris="true" />
+        @endif
     @endif
 
     {{-- KOTAK KODE + JUDUL (sebaris agar hemat tinggi halaman) --}}

@@ -1,8 +1,6 @@
 <x-downtime.halaman kode="RI-EMR-02" judul="Asesmen Awal Medis Rawat Inap (DPJP)"
     subjudul="Pengganti Pengkajian Dokter & tab Diagnosa pada EMR Rawat Inap" unit="DPJP / dokter jaga ruangan"
-    entriUlang="Daftar Rawat Inap > EMR > Pengkajian Dokter & tab Diagnosa" :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="ringkas" />
+    entriUlang="Daftar Rawat Inap > EMR > Pengkajian Dokter & tab Diagnosa" identitas="ringkas" :break="$dtBreak ?? false">
 
     <div class="dt-sec">A. Anamnesis</div>
     <table class="dt-tbl dt-tbl-kecil">

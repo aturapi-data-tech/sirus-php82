@@ -13,9 +13,7 @@
 
 <x-downtime.halaman kode="RI-ADM-02" judul="Rincian Biaya Pelayanan Rawat Inap"
     subjudul="Pengganti layar Administrasi RI sebelum pasien ke kasir" unit="Administrasi rawat inap"
-    entriUlang="Rawat Inap > Daftar Rawat Inap > Administrasi RI (per tab biaya)" :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="lengkap" />
+    entriUlang="Rawat Inap > Daftar Rawat Inap > Administrasi RI (per tab biaya)" identitas="lengkap" :break="$dtBreak ?? false">
 
     <div class="dt-sec">Rincian Biaya</div>
     <table class="dt-tbl dt-tbl-kecil">

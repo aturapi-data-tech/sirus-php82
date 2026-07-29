@@ -7,7 +7,19 @@
      kelas Tailwind arbitrary) supaya hasil dompdf tidak bergantung isi build CSS.
      Judul dokumen sengaja tidak dititipkan ke layout: tiap formulir mencetak
      judulnya sendiri (lihat x-downtime.halaman) supaya seragam di mode bundel. --}}
+@props([
+    // Varian blok identitas pasien formulir PERTAMA ('lengkap'/'ringkas'/null).
+    // Formulir berikutnya dalam bundel mencetak kopnya sendiri di x-downtime.halaman.
+    'identitasAwal' => null,
+])
+
 <x-pdf.layout-a4-with-out-background :title="null" :showGaris="true">
+
+    @if (filled($identitasAwal))
+        <x-slot name="patientData">
+            <x-downtime.identitas :variant="$identitasAwal" />
+        </x-slot>
+    @endif
 
     <style>
         /* Formulir isian butuh ruang lebih banyak daripada dokumen naratif:
@@ -60,6 +72,28 @@
             text-align: center;
             padding: 3px 6px;
             text-transform: uppercase;
+        }
+
+        /* ── Blok identitas pasien di kop (kiri, sejajar logo) ── */
+        .dt-identitas {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .dt-identitas td {
+            font-size: 8.5px;
+            padding: 0 2px 1px 0;
+            vertical-align: bottom;
+        }
+
+        .dt-identitas-label {
+            width: 34%;
+            white-space: nowrap;
+            color: #444;
+        }
+
+        .dt-identitas-titik {
+            width: 8px;
         }
 
         /* ── Kotak kode formulir ── */

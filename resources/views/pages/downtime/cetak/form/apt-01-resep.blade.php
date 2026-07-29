@@ -26,9 +26,7 @@
     subjudul="Pengganti e-resep RJ / UGD / RI beserta pengkajian resep dan pengkajian obat"
     unit="Dokter & apoteker RJ / UGD / RI"
     entriUlang="Pelayanan RJ/UGD/RI > E-Resep, lalu Apotek > Antrian Apotek jalur terkait"
-    :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="lengkap" />
+    identitas="lengkap" :break="$dtBreak ?? false">
 
     <table style="width:100%; border-collapse:collapse; margin-top:6px;">
         <tr>

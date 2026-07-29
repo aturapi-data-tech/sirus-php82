@@ -2,9 +2,7 @@
     subjudul="Catatan pemberian obat per pasien selama waktu henti — dasar penagihan & penyesuaian stok ruangan"
     unit="Perawat & apoteker ruangan"
     entriUlang="Daftar Rawat Inap > E-Resep / Administrasi RI (obat), lalu cek Kartu Stock ruangan"
-    :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="ringkas" />
+    identitas="ringkas" :break="$dtBreak ?? false">
 
     <table class="dt-tbl" style="margin-top:6px;">
         <tr>

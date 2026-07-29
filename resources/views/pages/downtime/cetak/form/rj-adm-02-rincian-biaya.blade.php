@@ -15,9 +15,7 @@
 
 <x-downtime.halaman kode="RJ-ADM-02" judul="Rincian Biaya Pelayanan Rawat Jalan"
     subjudul="Pengganti layar Administrasi RJ sebelum pasien ke kasir" unit="Administrasi rawat jalan"
-    entriUlang="Rawat Jalan > Daftar Rawat Jalan > Administrasi RJ (per tab biaya)" :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="lengkap" />
+    entriUlang="Rawat Jalan > Daftar Rawat Jalan > Administrasi RJ (per tab biaya)" identitas="lengkap" :break="$dtBreak ?? false">
 
     <div class="dt-sec">Rincian Biaya</div>
     <table class="dt-tbl dt-tbl-kecil">

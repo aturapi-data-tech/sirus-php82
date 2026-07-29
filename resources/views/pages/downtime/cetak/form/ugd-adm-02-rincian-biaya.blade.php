@@ -15,9 +15,7 @@
 
 <x-downtime.halaman kode="UGD-ADM-02" judul="Rincian Biaya Pelayanan UGD"
     subjudul="Pengganti layar Administrasi UGD sebelum pasien ke kasir" unit="Administrasi UGD"
-    entriUlang="UGD > Daftar UGD > Administrasi UGD (per tab biaya)" :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="lengkap" />
+    entriUlang="UGD > Daftar UGD > Administrasi UGD (per tab biaya)" identitas="lengkap" :break="$dtBreak ?? false">
 
     <div class="dt-sec">Rincian Biaya</div>
     <table class="dt-tbl dt-tbl-kecil">

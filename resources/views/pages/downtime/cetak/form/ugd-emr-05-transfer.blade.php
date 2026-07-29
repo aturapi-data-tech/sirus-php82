@@ -1,9 +1,7 @@
 <x-downtime.halaman kode="UGD-EMR-05" judul="Transfer / Rujukan Pasien UGD"
     subjudul="Serah terima pasien ke rawat inap, ruang tindakan, atau rujukan ke RS lain" unit="Perawat & dokter UGD"
     entriUlang="Transfer ke RI: Daftar Rawat Inap (cara masuk UGD); rujuk keluar: EMR UGD > Rujukan Antar RS"
-    :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="ringkas" />
+    identitas="ringkas" :break="$dtBreak ?? false">
 
     <div class="dt-sec">A. Data Transfer</div>
     <table class="dt-tbl">

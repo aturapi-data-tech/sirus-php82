@@ -1,9 +1,7 @@
 <x-downtime.halaman kode="RI-EMR-07" judul="Ringkasan Pulang (Resume Medis) Rawat Inap"
     subjudul="Dokumen wajib rekam medis & syarat berkas klaim BPJS — diisi DPJP saat pasien pulang" unit="DPJP"
     entriUlang="Daftar Rawat Inap > EMR > Ringkasan Pulang; berkas klaim menyusul setelah lengkap"
-    :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="lengkap" />
+    identitas="lengkap" :break="$dtBreak ?? false">
 
     <div class="dt-sec">A. Data Perawatan</div>
     <table class="dt-tbl dt-tbl-kecil">

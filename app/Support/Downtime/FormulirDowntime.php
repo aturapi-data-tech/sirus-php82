@@ -15,6 +15,7 @@ namespace App\Support\Downtime;
  * - unit      : unit pengguna formulir
  * - desc      : ringkasan isi formulir (kartu katalog)
  * - isi       : poin-poin bagian formulir (kartu katalog)
+ * - identitas : varian blok identitas pasien di kop ('lengkap'/'ringkas'), tak ada = tanpa identitas
  * - entriUlang: menu SIMRS tujuan entri ulang setelah sistem pulih
  * - view      : partial blade di resources/views/pages/downtime/cetak/form/
  * - lembar    : perkiraan jumlah lembar A4 per formulir
@@ -130,6 +131,7 @@ class FormulirDowntime
             // ── EMR Rawat Jalan ───────────────────────────────────────
             [
                 'kode' => 'RJ-EMR-01',
+                'identitas' => 'ringkas',
                 'judul' => 'Asesmen Awal Keperawatan Rawat Jalan',
                 'area' => 'emr-rj',
                 'unit' => 'Perawat poli rawat jalan',
@@ -141,6 +143,7 @@ class FormulirDowntime
             ],
             [
                 'kode' => 'RJ-EMR-02',
+                'identitas' => 'ringkas',
                 'judul' => 'Asesmen Medis, Diagnosa & Terapi Rawat Jalan',
                 'area' => 'emr-rj',
                 'unit' => 'Dokter poli rawat jalan',
@@ -152,6 +155,7 @@ class FormulirDowntime
             ],
             [
                 'kode' => 'RJ-EMR-03',
+                'identitas' => 'ringkas',
                 'judul' => 'Penilaian Nyeri, Risiko Jatuh & Skrining Gizi Rawat Jalan',
                 'area' => 'emr-rj',
                 'unit' => 'Perawat poli rawat jalan',
@@ -163,6 +167,7 @@ class FormulirDowntime
             ],
             [
                 'kode' => 'RJ-EMR-04',
+                'identitas' => 'ringkas',
                 'judul' => 'Permintaan Pemeriksaan Penunjang Rawat Jalan',
                 'area' => 'emr-rj',
                 'unit' => 'Dokter poli — tujuan Laboratorium / Radiologi',
@@ -187,6 +192,7 @@ class FormulirDowntime
             ],
             [
                 'kode' => 'RJ-ADM-02',
+                'identitas' => 'lengkap',
                 'judul' => 'Rincian Biaya Pelayanan Rawat Jalan',
                 'area' => 'adm-rj',
                 'unit' => 'Administrasi rawat jalan',
@@ -211,6 +217,7 @@ class FormulirDowntime
             // ── EMR Unit Gawat Darurat ────────────────────────────────
             [
                 'kode' => 'UGD-EMR-01',
+                'identitas' => 'ringkas',
                 'judul' => 'Triase & Asesmen Awal Keperawatan UGD',
                 'area' => 'emr-ugd',
                 'unit' => 'Perawat UGD',
@@ -222,6 +229,7 @@ class FormulirDowntime
             ],
             [
                 'kode' => 'UGD-EMR-02',
+                'identitas' => 'ringkas',
                 'judul' => 'Asesmen Medis, Diagnosa & Tindakan UGD',
                 'area' => 'emr-ugd',
                 'unit' => 'Dokter jaga UGD',
@@ -233,6 +241,7 @@ class FormulirDowntime
             ],
             [
                 'kode' => 'UGD-EMR-03',
+                'identitas' => 'ringkas',
                 'judul' => 'Lembar Observasi & Pemberian Obat / Cairan UGD',
                 'area' => 'emr-ugd',
                 'unit' => 'Perawat UGD',
@@ -244,6 +253,7 @@ class FormulirDowntime
             ],
             [
                 'kode' => 'UGD-EMR-04',
+                'identitas' => 'ringkas',
                 'judul' => 'Permintaan Pemeriksaan Penunjang UGD (Cito)',
                 'area' => 'emr-ugd',
                 'unit' => 'Dokter UGD → Laboratorium / Radiologi',
@@ -255,6 +265,7 @@ class FormulirDowntime
             ],
             [
                 'kode' => 'UGD-EMR-05',
+                'identitas' => 'ringkas',
                 'judul' => 'Transfer / Rujukan Pasien UGD',
                 'area' => 'emr-ugd',
                 'unit' => 'Perawat & dokter UGD',
@@ -279,6 +290,7 @@ class FormulirDowntime
             ],
             [
                 'kode' => 'UGD-ADM-02',
+                'identitas' => 'lengkap',
                 'judul' => 'Rincian Biaya Pelayanan UGD',
                 'area' => 'adm-ugd',
                 'unit' => 'Administrasi UGD',
@@ -303,6 +315,7 @@ class FormulirDowntime
             // ── EMR Rawat Inap ────────────────────────────────────────
             [
                 'kode' => 'RI-EMR-01',
+                'identitas' => 'ringkas',
                 'judul' => 'Asesmen Awal Keperawatan Rawat Inap',
                 'area' => 'emr-ri',
                 'unit' => 'Perawat ruangan',
@@ -314,6 +327,7 @@ class FormulirDowntime
             ],
             [
                 'kode' => 'RI-EMR-02',
+                'identitas' => 'ringkas',
                 'judul' => 'Asesmen Awal Medis Rawat Inap (DPJP)',
                 'area' => 'emr-ri',
                 'unit' => 'DPJP / dokter jaga ruangan',
@@ -325,6 +339,7 @@ class FormulirDowntime
             ],
             [
                 'kode' => 'RI-EMR-03',
+                'identitas' => 'ringkas',
                 'judul' => 'Catatan Perkembangan Pasien Terintegrasi (CPPT)',
                 'area' => 'emr-ri',
                 'unit' => 'Seluruh PPA (dokter, perawat, apoteker, gizi, fisioterapi)',
@@ -336,6 +351,7 @@ class FormulirDowntime
             ],
             [
                 'kode' => 'RI-EMR-04',
+                'identitas' => 'ringkas',
                 'judul' => 'SBAR — Serah Terima Pasien Antar Shift',
                 'area' => 'emr-ri',
                 'unit' => 'Perawat ruangan',
@@ -347,6 +363,7 @@ class FormulirDowntime
             ],
             [
                 'kode' => 'RI-EMR-05',
+                'identitas' => 'ringkas',
                 'judul' => 'Observasi Tanda Vital & Balance Cairan Harian',
                 'area' => 'emr-ri',
                 'unit' => 'Perawat ruangan',
@@ -358,6 +375,7 @@ class FormulirDowntime
             ],
             [
                 'kode' => 'RI-EMR-06',
+                'identitas' => 'ringkas',
                 'judul' => 'Rekam Pemberian Obat Rawat Inap',
                 'area' => 'emr-ri',
                 'unit' => 'Perawat & apoteker ruangan',
@@ -369,6 +387,7 @@ class FormulirDowntime
             ],
             [
                 'kode' => 'RI-EMR-07',
+                'identitas' => 'lengkap',
                 'judul' => 'Ringkasan Pulang (Resume Medis) Rawat Inap',
                 'area' => 'emr-ri',
                 'unit' => 'DPJP',
@@ -393,6 +412,7 @@ class FormulirDowntime
             ],
             [
                 'kode' => 'RI-ADM-02',
+                'identitas' => 'lengkap',
                 'judul' => 'Rincian Biaya Pelayanan Rawat Inap',
                 'area' => 'adm-ri',
                 'unit' => 'Administrasi rawat inap',
@@ -452,6 +472,7 @@ class FormulirDowntime
             // ── Apotek (lintas jalur RJ/UGD/RI) ───────────────────────
             [
                 'kode' => 'APT-01',
+                'identitas' => 'lengkap',
                 'judul' => 'Resep Manual, Telaah Resep & Telaah Obat',
                 'area' => 'apotek',
                 'unit' => 'Dokter & apoteker RJ / UGD / RI',

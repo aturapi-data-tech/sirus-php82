@@ -1,9 +1,7 @@
 <x-downtime.halaman kode="RJ-EMR-02" judul="Asesmen Medis, Diagnosa & Terapi Rawat Jalan"
     subjudul="Pengganti tab Pemeriksaan (dokter), Diagnosa & Perencanaan pada EMR Rawat Jalan"
     unit="Dokter poli rawat jalan" entriUlang="Pelayanan Rawat Jalan > EMR > tab Pemeriksaan, Diagnosa, Perencanaan"
-    :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="ringkas" />
+    identitas="ringkas" :break="$dtBreak ?? false">
 
     <div class="dt-sec">A. Anamnesis</div>
     <table class="dt-tbl dt-tbl-kecil">
@@ -41,7 +39,7 @@
         </tr>
     </table>
 
-    <div class="dt-sec">D. Diagnosa</div>
+    <div class="dt-sec">C. Diagnosa</div>
     <table class="dt-tbl dt-tbl-kecil">
         <tr>
             <th style="width:5%;">No</th>
@@ -63,7 +61,7 @@
     </table>
     <div class="dt-note">Kode ICD-10 boleh dikosongkan; nama diagnosa wajib ditulis lengkap untuk koder.</div>
 
-    <div class="dt-sec">E. Prosedur / Tindakan</div>
+    <div class="dt-sec">D. Prosedur / Tindakan</div>
     <table class="dt-tbl dt-tbl-kecil">
         <tr>
             <th style="width:5%;">No</th>
@@ -83,7 +81,7 @@
         @endforeach
     </table>
 
-    <div class="dt-sec">F. Terapi & Edukasi</div>
+    <div class="dt-sec">E. Terapi & Edukasi</div>
     <table class="dt-tbl dt-tbl-kecil">
         <tr>
             <td class="dt-tbl-label" style="width:20%;">Terapi / instruksi</td>
@@ -95,7 +93,7 @@
         </tr>
     </table>
 
-    <div class="dt-sec">G. Tindak Lanjut & Rencana Pemulangan</div>
+    <div class="dt-sec">F. Tindak Lanjut & Rencana Pemulangan</div>
     <table class="dt-tbl dt-tbl-kecil">
         <tr>
             <td class="dt-tbl-label" style="width:20%;">Tindak lanjut</td>

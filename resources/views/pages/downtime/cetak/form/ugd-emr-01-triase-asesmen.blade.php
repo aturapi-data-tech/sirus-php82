@@ -1,8 +1,6 @@
 <x-downtime.halaman kode="UGD-EMR-01" judul="Triase & Asesmen Awal Keperawatan UGD"
     subjudul="Pengganti triase + tab Anamnesa & Pemeriksaan (perawat) pada EMR UGD" unit="Perawat UGD"
-    entriUlang="Pelayanan UGD > EMR > triase, tab Anamnesa & Pemeriksaan" :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="ringkas" />
+    entriUlang="Pelayanan UGD > EMR > triase, tab Anamnesa & Pemeriksaan" identitas="ringkas" :break="$dtBreak ?? false">
 
     <div class="dt-sec">A. Triase</div>
     <table class="dt-tbl">

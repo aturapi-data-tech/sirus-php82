@@ -1,8 +1,6 @@
 <x-downtime.halaman kode="RI-EMR-01" judul="Asesmen Awal Keperawatan Rawat Inap"
     subjudul="Pengganti Pengkajian Awal & tab Penilaian pada EMR Rawat Inap" unit="Perawat ruangan"
-    entriUlang="Daftar Rawat Inap > EMR > Pengkajian Awal & tab Penilaian" :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="ringkas" />
+    entriUlang="Daftar Rawat Inap > EMR > Pengkajian Awal & tab Penilaian" identitas="ringkas" :break="$dtBreak ?? false">
 
     <div class="dt-sec">A. Data Masuk Ruangan</div>
     <table class="dt-tbl">

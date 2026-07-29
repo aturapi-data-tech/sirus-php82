@@ -2,9 +2,7 @@
     subjudul="Pengganti CPPT elektronik — format SOAP per PPA, diverifikasi DPJP utama"
     unit="Seluruh PPA (dokter, perawat, apoteker, gizi, fisioterapi)"
     entriUlang="Daftar Rawat Inap > EMR > CPPT (entri per catatan sesuai tanggal & profesi)"
-    :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="ringkas" />
+    identitas="ringkas" :break="$dtBreak ?? false">
 
     @foreach ([1, 2, 3] as $entri)
         <div class="dt-sec">Catatan {{ $entri }}</div>

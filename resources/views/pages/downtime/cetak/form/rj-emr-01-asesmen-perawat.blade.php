@@ -1,8 +1,6 @@
 <x-downtime.halaman kode="RJ-EMR-01" judul="Asesmen Awal Keperawatan Rawat Jalan"
     subjudul="Pengganti tab Anamnesa & Pemeriksaan (perawat) pada EMR Rawat Jalan" unit="Perawat poli rawat jalan"
-    entriUlang="Pelayanan Rawat Jalan > EMR > tab Anamnesa & Pemeriksaan" :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="ringkas" />
+    entriUlang="Pelayanan Rawat Jalan > EMR > tab Anamnesa & Pemeriksaan" identitas="ringkas" :break="$dtBreak ?? false">
 
     <div class="dt-sec">A. Pengkajian Awal</div>
     <table class="dt-tbl">

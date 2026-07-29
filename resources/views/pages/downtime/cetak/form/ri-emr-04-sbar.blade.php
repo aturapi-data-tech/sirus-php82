@@ -1,9 +1,7 @@
 <x-downtime.halaman kode="RI-EMR-04" judul="SBAR — Serah Terima Pasien Antar Shift"
     subjudul="Pengganti SBAR elektronik pada EMR Rawat Inap" unit="Perawat ruangan"
     entriUlang="Daftar Rawat Inap > EMR > SBAR (entri per catatan sesuai tanggal & profesi)"
-    :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="ringkas" />
+    identitas="ringkas" :break="$dtBreak ?? false">
 
     @foreach ([1, 2] as $entri)
         <div class="dt-sec">Serah Terima {{ $entri }}</div>

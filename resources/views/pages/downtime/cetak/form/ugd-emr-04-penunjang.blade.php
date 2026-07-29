@@ -2,9 +2,7 @@
     subjudul="Pengganti order laboratorium & radiologi elektronik untuk pasien gawat darurat"
     unit="Dokter UGD > Laboratorium / Radiologi"
     entriUlang="Pelayanan UGD > Pemeriksaan > Penunjang; hasil di Transaksi Laboratorium / Upload Hasil Radiologi"
-    :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="ringkas" />
+    identitas="ringkas" :break="$dtBreak ?? false">
 
     <div class="dt-sec">A. Data Permintaan</div>
     <table class="dt-tbl">

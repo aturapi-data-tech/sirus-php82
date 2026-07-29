@@ -2,9 +2,7 @@
     subjudul="Pengganti tab Observasi pada EMR Rawat Inap — satu lembar untuk satu hari perawatan"
     unit="Perawat ruangan"
     entriUlang="Daftar Rawat Inap > EMR > Observasi (observasi lanjutan, cairan, oksigen, alat invasif)"
-    :break="$dtBreak ?? false">
-
-    <x-downtime.identitas variant="ringkas" />
+    identitas="ringkas" :break="$dtBreak ?? false">
 
     <div class="dt-sec">A. Observasi Tanda Vital</div>
     <table class="dt-tbl dt-tbl-kecil">

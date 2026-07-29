@@ -5,7 +5,13 @@
 
      Kop halaman pertama berasal dari layout cetak standar; blok berikutnya
      (formulir ke-2 dst.) mencetak kopnya sendiri lewat x-downtime.halaman. --}}
-<x-downtime.dokumen>
+@php
+    // Formulir pertama menumpang kop layout — varian identitasnya dikirim ke
+    // slot patientData supaya blok identitas pasien tercetak di kiri logo.
+    $identitasAwal = ($sampul ?? false) ? null : ($daftar[0]['identitas'] ?? null);
+@endphp
+
+<x-downtime.dokumen :identitasAwal="$identitasAwal">
 
     @if ($sampul ?? false)
         <x-downtime.sampul :judul="$judul" :daftar="$daftar" :dicetakOleh="$dicetakOleh ?? null" :tglCetak="$tglCetak ?? null" />
