@@ -36,9 +36,8 @@
                     </td>
                 </tr>
             </table>
-            <hr style="border: none; border-top: 2px solid #000; margin: 8px 0;">
         @else
-            <x-logo.identitas :showGaris="true" />
+            <x-logo.identitas :showGaris="false" />
         @endif
     @endif
 

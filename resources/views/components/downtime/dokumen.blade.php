@@ -13,7 +13,7 @@
     'identitasAwal' => null,
 ])
 
-<x-pdf.layout-a4-with-out-background :title="null" :showGaris="true">
+<x-pdf.layout-a4-with-out-background :title="null" :showGaris="false">
 
     @if (filled($identitasAwal))
         <x-slot name="patientData">
