@@ -315,6 +315,17 @@ Route::middleware(['auth'])->group(function () {
         ->name('keuangan.pengeluaran-kas-tu');
 
     // ===========================================
+    // KEUANGAN - PIUTANG PASIEN (2 konsep, 2 komponen)
+    //   1. Klaim BPJS  : bundel per bulan, tab RJ/UGD/RI
+    //   2. Per pasien  : umumnya pasien umum, alokasi FIFO
+    // ===========================================
+    Route::livewire('/keuangan/pembayaran-piutang-bpjs', 'pages::transaksi.keuangan.pembayaran-piutang.pembayaran-piutang-bpjs')
+        ->name('keuangan.pembayaran-piutang-bpjs');
+
+    Route::livewire('/keuangan/pembayaran-piutang-pasien', 'pages::transaksi.keuangan.pembayaran-piutang.pembayaran-piutang-pasien')
+        ->name('keuangan.pembayaran-piutang-pasien');
+
+    // ===========================================
     // KEUANGAN - PEMBAYARAN HUTANG PBF (medis)
     // ===========================================
     Route::livewire('/keuangan/pembayaran-hutang-pbf', 'pages::transaksi.keuangan.pembayaran-hutang-pbf.pembayaran-hutang-pbf')

@@ -295,14 +295,104 @@ trait PiutangPasienTrait
     }
 
     /**
+     * Satu baris piutang untuk SATU transaksi — dipakai layar pembayaran piutang
+     * saat menghitung ulang sisa tepat sebelum menulis (setelah lock baris header).
+     *
+     * Sengaja memakai query jalur yang SAMA dengan laporan supaya rumus sisa tidak
+     * pernah bercabang: kalau rumusnya berubah, monitoring & pembayaran ikut berubah
+     * bersamaan. Mengembalikan null bila transaksi sudah tidak berstatus hutang.
+     */
+    protected function piutangSatuTransaksi(string $jalur, string $noTransaksi): ?object
+    {
+        return $this->piutangBanyakTransaksi([['jalur' => $jalur, 'no' => $noTransaksi]])->first();
+    }
+
+    /**
+     * Banyak transaksi sekaligus — dipakai pembayaran bundel (klaim BPJS per bulan)
+     * & pembayaran per pasien, supaya sisa seluruh nota terpilih diambil dalam
+     * MAKSIMAL 3 query (satu per jalur), bukan satu query per nota.
+     *
+     * @param  array<int, array{jalur: string, no: string}>  $pasangan
+     */
+    protected function piutangBanyakTransaksi(array $pasangan): \Illuminate\Support\Collection
+    {
+        $perJalur = [];
+        foreach ($pasangan as $item) {
+            $jalur = (string) ($item['jalur'] ?? '');
+            $no    = (string) ($item['no'] ?? '');
+            if ($jalur === '' || $no === '') {
+                continue;
+            }
+            $perJalur[$jalur][] = $no;
+        }
+
+        $hasil = collect();
+
+        foreach ($perJalur as $jalur => $daftarNo) {
+            // Oracle membatasi ekspresi IN pada 1000 item — potong per 900.
+            foreach (array_chunk(array_unique($daftarNo), 900) as $potongan) {
+                $bagian = match ($jalur) {
+                    'RJ'  => $this->piutangRj(null, null, '', ''),
+                    'UGD' => $this->piutangUgd(null, null, '', ''),
+                    'RI'  => $this->piutangRi(null, null, '', ''),
+                    default => null,
+                };
+
+                if (!$bagian) {
+                    continue;
+                }
+
+                $hasil = $hasil->concat(
+                    DB::query()
+                        ->fromSub($bagian, 'u')
+                        ->selectRaw('u.*, GREATEST(0, u.total - u.diskon - u.bayar) as sisa')
+                        ->whereIn('no_transaksi', $potongan)
+                        ->get(),
+                );
+            }
+        }
+
+        return $hasil;
+    }
+
+    /**
+     * Seluruh piutang milik SATU pasien (semua jalur), sisa>0 — untuk layar
+     * pembayaran per pasien (umum). Jumlah barisnya kecil, jadi aman diambil utuh.
+     */
+    protected function piutangPerPasien(string $regNo, string $jalur = ''): \Illuminate\Support\Collection
+    {
+        return DB::query()
+            ->fromSub($this->piutangUnionSub(null, null, $jalur, '', ''), 'p')
+            ->where('reg_no', $regNo)
+            ->where('sisa', '>', 0)
+            ->orderByDesc('sisa')
+            ->get();
+    }
+
+    /** Kunci cache ringkasan — dipisah supaya layar pembayaran bisa membuangnya. */
+    protected function piutangSummaryKey(?Carbon $start, ?Carbon $end, string $jalur, string $klaim, string $search): string
+    {
+        return 'piutang-pasien:summary:' . md5(implode('|', [
+            $start?->toDateString() ?? '', $end?->toDateString() ?? '', $jalur, $klaim, $search,
+        ]));
+    }
+
+    /**
+     * Buang cache ringkasan untuk kombinasi filter tertentu — dipanggil setelah
+     * pembayaran piutang supaya angka ringkasan tidak tertinggal 2 menit.
+     */
+    protected function piutangForgetSummary(?Carbon $start, ?Carbon $end, string $jalur, string $klaim, string $search): void
+    {
+        Cache::forget($this->piutangSummaryKey($start, $end, $jalur, $klaim, $search));
+    }
+
+    /**
      * Agregat ringkasan (COUNT + SUM di SQL), di-cache 120 detik per-kombinasi filter
      * agar navigasi antar-halaman tak mengulang agregat berat.
      */
     protected function piutangSummary(?Carbon $start, ?Carbon $end, string $jalur, string $klaim, string $search): array
     {
-        $cacheKey = 'piutang-pasien:summary:' . md5(implode('|', [
-            $start?->toDateString() ?? '', $end?->toDateString() ?? '', $jalur, $klaim, $search,
-        ]));
+        $cacheKey = $this->piutangSummaryKey($start, $end, $jalur, $klaim, $search);
 
         return Cache::remember($cacheKey, 120, function () use ($start, $end, $jalur, $klaim, $search) {
             $ringkasan = DB::query()
