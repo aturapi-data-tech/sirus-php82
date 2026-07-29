@@ -116,6 +116,12 @@ Route::middleware(['auth'])->group(function () {
         ->name('master.diag-keperawatan');
 
     // ===========================================
+    // MASTER IDENTITAS RS (kop cetakan + setelan transaksi)
+    // ===========================================
+    Route::livewire('/master/identitas', 'pages::master.master-identitas.master-identitas')
+        ->name('master.identitas');
+
+    // ===========================================
     // MASTER TERMINOLOGI SATUSEHAT (LOINC & SNOMED CT)
     // ===========================================
     Route::livewire('/master/loinc', 'pages::master.master-loinc.master-loinc')
