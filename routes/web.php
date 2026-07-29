@@ -52,6 +52,14 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/panduan-dev/koding-skill', 'pages::panduan-dev.koding-skill.koding-skill')
         ->name('panduan-dev.koding-skill');
 
+    // ===========================================
+    // DOWN TIME — FORMULIR MANUAL WAKTU HENTI SIMRS
+    // ===========================================
+    // Katalog formulir manual (EMR RJ, Administrasi RJ, Kasir RJ, Apotek RJ, Umum/IT)
+    // + unduh PDF per formulir / bundel per area untuk sosialisasi.
+    Route::livewire('/downtime/formulir-manual', 'pages::downtime.formulir-manual.formulir-manual')
+        ->name('downtime.formulir-manual');
+
     Route::livewire('/master/poli', 'pages::master.master-poli.master-poli')
         ->name('master.poli');
 
