@@ -415,15 +415,34 @@ new class extends Component {
         $this->sisa = ($this->bayar ?? 0) - $this->grandTotal;
     }
 
+    /**
+     * Toggle "Kena PPN" — status dan nilai persen harus SELALU sejalan.
+     * Sebelumnya rcv_ppn_status hanya diisi diam-diam dari RSMST_IDENTITASES tanpa
+     * kontrol di layar, sehingga bisa tersimpan status '0' padahal PPN diketik > 0
+     * (faktur 10833 th. 2020). Modul lain menafsirkan kombinasi itu berbeda:
+     * penerimaan menghitung PPN apa adanya, pembayaran hutang PBF menganggap bebas PPN.
+     */
+    public function updatedRcvPpnStatus(): void
+    {
+        if ($this->rcvPpnStatus === '0') {
+            $this->rcvPpn = 0;
+            $this->hitungSemua();
+            return;
+        }
+
+        // Dinyalakan: pakai persen dari identitas RS bila field masih kosong/0.
+        if (($this->rcvPpn ?? 0) <= 0) {
+            $this->rcvPpn = (float) (DB::table('rsmst_identitases')->value('ppn_value') ?? 0);
+        }
+
+        $this->hitungSemua();
+    }
+
     public function updatedRcvDiskon(): void
     {
         $this->hitungSemua();
     }
     public function updatedRcvPpn(): void
-    {
-        $this->hitungSemua();
-    }
-    public function updatedRcvPpnStatus(): void
     {
         $this->hitungSemua();
     }
@@ -441,6 +460,31 @@ new class extends Component {
      ══════════════════════════════ */
     public function simpan(): void
     {
+        // validate() DULUAN, sebelum guard toast lain — kalau ditaruh setelahnya,
+        // early-return bikin field bernilai salah tidak pernah ditandai merah.
+        // Angka pembayaran header ikut menentukan grand total & hutang ke supplier,
+        // jadi divalidasi sebelum menulis — bukan hanya di-cast float diam-diam.
+        // PPN dibatasi 0-100: salah ketik (mis. 1100) langsung menggelembungkan tagihan.
+        $this->validate(
+            [
+                'rcvPpn' => 'nullable|numeric|min:0|max:100',
+                'rcvDiskon' => 'nullable|numeric|min:0',
+                'rcvMaterai' => 'nullable|numeric|min:0',
+                'bayar' => 'nullable|numeric|min:0',
+            ],
+            [
+                'rcvPpn.numeric' => 'PPN harus berupa angka.',
+                'rcvPpn.min' => 'PPN tidak boleh negatif.',
+                'rcvPpn.max' => 'PPN maksimal 100%.',
+                'rcvDiskon.numeric' => 'Diskon faktur harus berupa angka.',
+                'rcvDiskon.min' => 'Diskon faktur tidak boleh negatif.',
+                'rcvMaterai.numeric' => 'Materai harus berupa angka.',
+                'rcvMaterai.min' => 'Materai tidak boleh negatif.',
+                'bayar.numeric' => 'Nominal bayar harus berupa angka.',
+                'bayar.min' => 'Nominal bayar tidak boleh negatif.',
+            ],
+        );
+
         // Guard edit mode: status selain 'A' (Daftar Tunggu) sudah final — tidak boleh disimpan ulang.
         if ($this->formMode === 'edit' && $this->rcvNo) {
             $currentStatus = (string) (DB::table('imtxn_receivehdrsnon')->where('rcv_no', $this->rcvNo)->value('rcv_status') ?? '');
@@ -1336,14 +1380,30 @@ new class extends Component {
 
                             {{-- PPN persen: input biasa, BUKAN x-text-input-number — komponen itu
                                  mengirim integer bersih, sedangkan $rcvPpn float (mis. 11,5%). --}}
+                            {{-- Saklar status PPN (rcv_ppn_status). Dimatikan → persen dinolkan,
+                                 dinyalakan → ambil PPN_VALUE dari identitas RS. --}}
+                            <div class="flex items-center justify-between gap-4 py-2.5 px-3 -mx-3">
+                                <dt class="text-base text-muted dark:text-gray-400">Faktur kena PPN</dt>
+                                <dd>
+                                    <x-toggle wire:model="rcvPpnStatus" trueValue="1" falseValue="0"
+                                        :label="$rcvPpnStatus === '1' ? 'Ya' : 'Bebas PPN'" />
+                                </dd>
+                            </div>
+
                             <div class="flex items-center justify-between gap-4 py-2.5 px-3 -mx-3 rounded-lg bg-amber-50/70 dark:bg-amber-900/10">
                                 <dt class="text-base font-semibold text-amber-700 dark:text-amber-400">
                                     PPN <span class="text-xs font-normal opacity-70">(%)</span>
                                 </dt>
                                 <dd class="w-48">
+                                    {{-- $rcvPpn bertipe ?float: kalau huruf sempat terkirim, Livewire melempar
+                                         TypeError (500) SEBELUM validasi server jalan. Karena itu karakter
+                                         non-angka disaring di input, dan rentang 0-100 dijaga di simpan(). --}}
                                     <x-text-input type="text" inputmode="decimal" wire:model.blur="rcvPpn"
                                         placeholder="0" x-ref="inputPpnRcv" class="w-full text-2xl font-bold text-right"
+                                        :error="$errors->has('rcvPpn')" :disabled="$rcvPpnStatus === '0'"
+                                        x-on:input="$el.value = $el.value.replace(/[^0-9.,]/g, '').replace(',', '.')"
                                         x-on:keydown.enter.prevent="$el.blur(); fokusKe('inputMateraiRcv')" />
+                                    <x-input-error :messages="$errors->get('rcvPpn')" class="mt-1 text-right" />
                                 </dd>
                             </div>
 

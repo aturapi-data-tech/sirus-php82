@@ -440,7 +440,14 @@ new class extends Component {
                         <li>Klasifikasi dihitung <strong>per lokasi</strong>. Obat yang mati di gudang bisa saja aktif di apotek — periksa keduanya sebelum menyimpulkan.</li>
                         <li><strong>Cakupan</strong> = stok ÷ rata-rata pemakaian per bulan, yaitu perkiraan berapa bulan lagi stok bertahan. Urutan <strong>"Perlu dicek"</strong> memakai ini: di blok FAST yang cakupannya paling tipis naik ke atas (risiko kehabisan), sedangkan di blok SLOW &amp; DEAD yang nilai stoknya terbesar yang naik (modal mengendap). Tanda <strong>≤ limit</strong> muncul bila stok sudah menyentuh batas minimum di master obat.</li>
                         <li><strong>Stok minus</strong> berarti ledger mencatat keluar lebih besar daripada saldo awal + masuk — biasanya penerimaan belum diposting atau pengeluaran dobel. Item seperti ini naik paling atas di urutan "Perlu dicek" karena angkanya jelas perlu dibetulkan lebih dulu sebelum dipakai mengambil keputusan.</li>
-                        <li>Belum ada: penilaian kedaluwarsa (batch/expired), usulan retur ke PBF, dan simpanan riwayat klasifikasi antar periode.</li>
+                        <li><strong>Kedaluwarsa belum masuk hitungan.</strong> Stok, cakupan, dan nilai stok memakai
+                            seluruh fisik barang tanpa memandang tanggal ED — barang yang tinggal sebulan lagi kedaluwarsa
+                            tetap dihitung sebagai stok tersedia. Datanya sebenarnya ada di penerimaan
+                            (<span class="font-mono">imtxn_receivedtls.rcv_ed</span> &amp; <span class="font-mono">rcv_bath</span>,
+                            terisi 5.817 dari 7.514 baris 12 bulan terakhir), tetapi disimpan sebagai teks bebas sehingga perlu
+                            dinormalkan dulu sebelum bisa dipakai menghitung. Untuk sekarang: perlakukan angka ketersediaan di
+                            sini sebagai batas atas, bukan stok siap pakai.</li>
+                        <li>Belum ada juga: usulan retur ke PBF dan simpanan riwayat klasifikasi antar periode.</li>
                     </ul>
                 </div>
             </details>

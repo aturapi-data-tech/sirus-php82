@@ -231,6 +231,7 @@ new class extends Component {
         if ($belanja->isEmpty()) {
             return [
                 'jumlahFaktur' => 0, 'totalQty' => 0.0, 'totalNilai' => 0.0, 'totalNilaiPpn' => 0.0,
+                'brutoTerakhir' => 0.0, 'potonganPersen' => null,
                 'hppTerakhir' => 0.0, 'hppTerakhirPpn' => 0.0, 'hppRata' => 0.0,
                 'hppTerendah' => 0.0, 'hppTertinggi' => 0.0,
                 'hppSebelumnya' => 0.0, 'trenPersen' => null, 'tglTerakhir' => null,
@@ -252,6 +253,10 @@ new class extends Component {
             'totalQty' => $totalQty,
             'totalNilai' => $totalNilai,
             'totalNilaiPpn' => $totalNilaiPpn,
+            'brutoTerakhir' => (float) $terakhir->harga_bruto,
+            'potonganPersen' => (float) $terakhir->harga_bruto > 0
+                ? ((float) $terakhir->harga_bruto - $hppTerakhir) / (float) $terakhir->harga_bruto * 100
+                : null,
             'hppTerakhir' => $hppTerakhir,
             'hppTerakhirPpn' => (float) $terakhir->netto_unit_ppn,
             'hppRata' => $totalQty > 0 ? $totalNilai / $totalQty : 0.0,
@@ -552,51 +557,86 @@ new class extends Component {
                                     @endif
                                 </div>
 
-                                {{-- Harga jual --}}
+                                {{-- Harga: beli vs jual sekarang vs usulan --}}
                                 <div class="p-3 border rounded-2xl border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700">
-                                    <h4 class="text-sm font-semibold text-ink dark:text-gray-100">Harga Jual</h4>
+                                    <h4 class="text-sm font-semibold text-ink dark:text-gray-100">Harga</h4>
 
-                                    @if ($master->sales_price <= 0)
-                                        <p class="mt-3 text-sm text-muted">
-                                            Item non-medis tidak menyimpan harga jual di master — bagian ini tidak berlaku.
-                                        </p>
-                                    @else
-                                        <div class="grid grid-cols-2 gap-3 mt-3">
-                                            <div>
-                                                <div class="text-[11px] font-semibold tracking-wide uppercase text-muted">Harga jual sekarang</div>
-                                                <div class="font-mono text-xl font-bold text-ink dark:text-gray-100">Rp {{ number_format($master->sales_price) }}</div>
-                                                <div class="text-xs text-muted">
-                                                    @if ($usulan['marginJualSekarang'] !== null)
-                                                        margin {{ number_format($usulan['marginJualSekarang'], 1) }}% terhadap harga beli terakhir
-                                                    @else
-                                                        belum ada pembelian sebagai pembanding
-                                                    @endif
-                                                </div>
+                                    <div class="grid grid-cols-3 gap-3 mt-3">
+                                        {{-- Beli --}}
+                                        <div>
+                                            <div class="text-[11px] font-semibold tracking-wide uppercase text-muted">Harga beli terakhir</div>
+                                            <div class="font-mono text-xl font-bold text-ink dark:text-gray-100">
+                                                Rp {{ number_format($belanja['hppTerakhir']) }}
                                             </div>
-                                            <div>
-                                                <div class="text-[11px] font-semibold tracking-wide uppercase text-muted">Usulan harga jual</div>
-                                                <div class="font-mono text-xl font-bold text-brand-green dark:text-brand-lime">
-                                                    {{ $usulan['hargaJualUsulan'] !== null ? 'Rp ' . number_format($usulan['hargaJualUsulan']) : '—' }}
-                                                </div>
-                                                <div class="text-xs text-muted">
-                                                    @if ($usulan['markupMaster'] !== null)
-                                                        menjaga markup master {{ number_format($usulan['markupMaster'] * 100, 1) }}%
-                                                        @if ($usulan['hargaJualUsulanPpn'] !== null)
-                                                            · Rp {{ number_format($usulan['hargaJualUsulanPpn']) }} bila PPN ditanggung RS
-                                                        @endif
-                                                    @else
-                                                        harga beli master kosong, markup tak terhitung
-                                                    @endif
-                                                </div>
+                                            <div class="text-xs text-muted">
+                                                kotor Rp {{ number_format($belanja['brutoTerakhir']) }}
+                                                @if ($belanja['potonganPersen'] !== null && $belanja['potonganPersen'] > 0)
+                                                    · potongan {{ number_format($belanja['potonganPersen'], 2) }}%
+                                                @endif
+                                            </div>
+                                            <div class="text-xs text-muted">
+                                                rata² Rp {{ number_format($belanja['hppRata']) }} ·
+                                                incl PPN Rp {{ number_format($belanja['hppTerakhirPpn']) }}
                                             </div>
                                         </div>
 
-                                        @if ($usulan['jualDiBawahBeli'])
-                                            <div class="px-3 py-2 mt-3 text-xs font-semibold border rounded-lg text-rose-800 bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800 dark:text-rose-300">
-                                                Harga jual master LEBIH RENDAH dari harga beli terakhir termasuk PPN
-                                                (Rp {{ number_format($belanja['hppTerakhirPpn']) }}) — tiap penjualan menambah rugi.
+                                        {{-- Jual sekarang --}}
+                                        <div class="pl-3 border-l border-hairline dark:border-gray-700">
+                                            <div class="text-[11px] font-semibold tracking-wide uppercase text-muted">Jual sekarang</div>
+                                            <div class="font-mono text-xl font-bold text-ink dark:text-gray-100">
+                                                {{ $master->sales_price > 0 ? 'Rp ' . number_format($master->sales_price) : '—' }}
                                             </div>
-                                        @endif
+                                            <div class="text-xs text-muted">
+                                                @if ($usulan['marginJualSekarang'] !== null)
+                                                    margin {{ number_format($usulan['marginJualSekarang'], 1) }}%
+                                                    · untung Rp {{ number_format($master->sales_price - $belanja['hppTerakhir']) }}/unit
+                                                @elseif ($master->sales_price <= 0)
+                                                    non-medis tak menyimpan harga jual
+                                                @else
+                                                    belum ada pembelian sebagai pembanding
+                                                @endif
+                                            </div>
+                                            <div class="text-xs text-muted">
+                                                beli di master Rp {{ number_format($master->cost_price) }}
+                                            </div>
+                                        </div>
+
+                                        {{-- Usulan --}}
+                                        <div class="pl-3 border-l border-hairline dark:border-gray-700">
+                                            <div class="text-[11px] font-semibold tracking-wide uppercase text-muted">Usulan jual</div>
+                                            <div class="font-mono text-xl font-bold text-brand-green dark:text-brand-lime">
+                                                {{ $usulan['hargaJualUsulan'] !== null ? 'Rp ' . number_format($usulan['hargaJualUsulan']) : '—' }}
+                                            </div>
+                                            <div class="text-xs text-muted">
+                                                @if ($usulan['markupMaster'] !== null)
+                                                    markup master {{ number_format($usulan['markupMaster'] * 100, 1) }}%
+                                                @else
+                                                    markup tak terhitung
+                                                @endif
+                                            </div>
+                                            <div class="text-xs text-muted">
+                                                @if ($usulan['hargaJualUsulanPpn'] !== null)
+                                                    Rp {{ number_format($usulan['hargaJualUsulanPpn']) }} bila PPN ditanggung RS
+                                                @endif
+                                            </div>
+                                            @if ($usulan['hargaJualUsulan'] !== null && $master->sales_price > 0)
+                                                @php $selisih = $usulan['hargaJualUsulan'] - $master->sales_price; @endphp
+                                                <div class="text-xs font-semibold {{ $selisih > 0 ? 'text-rose-700 dark:text-rose-300' : ($selisih < 0 ? 'text-brand-green dark:text-brand-lime' : 'text-muted') }}">
+                                                    @if ($selisih == 0)
+                                                        harga sekarang sudah pas
+                                                    @else
+                                                        {{ $selisih > 0 ? 'perlu naik' : 'bisa turun' }} Rp {{ number_format(abs($selisih)) }}
+                                                    @endif
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    @if ($usulan['jualDiBawahBeli'])
+                                        <div class="px-3 py-2 mt-3 text-xs font-semibold border rounded-lg text-rose-800 bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800 dark:text-rose-300">
+                                            Harga jual master LEBIH RENDAH dari harga beli terakhir termasuk PPN
+                                            (Rp {{ number_format($belanja['hppTerakhirPpn']) }}) — tiap penjualan menambah rugi.
+                                        </div>
                                     @endif
 
                                     @if ($usulan['masterBedaDenganFaktur'] !== null && abs($usulan['masterBedaDenganFaktur']) >= 1)
@@ -736,10 +776,16 @@ new class extends Component {
                                                 <th class="px-3 py-2 font-semibold">Tanggal</th>
                                                 <th class="px-3 py-2 font-semibold">Supplier / Faktur</th>
                                                 <th class="px-3 py-2 font-semibold text-right">Qty</th>
-                                                <th class="px-3 py-2 font-semibold text-right">Harga Bruto</th>
+                                                <th class="px-3 py-2 font-semibold text-right">
+                                                    Harga Bruto
+                                                    <div class="text-[10px] font-normal normal-case text-muted">satuan · total baris</div>
+                                                </th>
+                                                <th class="px-3 py-2 font-semibold text-right">
+                                                    Netto / unit
+                                                    <div class="text-[10px] font-normal normal-case text-muted">satuan · total baris</div>
+                                                </th>
                                                 <th class="px-3 py-2 font-semibold text-right">Diskon</th>
                                                 <th class="px-3 py-2 font-semibold text-right">PPN</th>
-                                                <th class="px-3 py-2 font-semibold text-right">Netto / unit</th>
                                                 <th class="px-3 py-2 font-semibold text-right">Incl PPN</th>
                                             </tr>
                                         </thead>
@@ -763,7 +809,14 @@ new class extends Component {
                                                         @endif
                                                     </td>
                                                     <td class="px-3 py-2 font-mono text-right">{{ number_format($faktur->qty) }}</td>
-                                                    <td class="px-3 py-2 font-mono text-right">{{ number_format($faktur->harga_bruto) }}</td>
+                                                    <td class="px-3 py-2 font-mono text-right">
+                                                        {{ number_format($faktur->harga_bruto) }}
+                                                        <span class="block text-[10px] font-normal text-muted">{{ number_format($faktur->qty * $faktur->harga_bruto) }}</span>
+                                                    </td>
+                                                    <td class="px-3 py-2 font-mono font-semibold text-right">
+                                                        {{ number_format($faktur->netto_unit) }}
+                                                        <span class="block text-[10px] font-normal text-muted">{{ number_format($faktur->netto_total) }}</span>
+                                                    </td>
                                                     <td class="px-3 py-2 font-mono text-right">
                                                         @if ($faktur->diskon_persen > 0 || $faktur->diskon_persen2 > 0)
                                                             {{ rtrim(rtrim(number_format($faktur->diskon_persen, 2), '0'), '.') }}%@if ($faktur->diskon_persen2 > 0) + {{ rtrim(rtrim(number_format($faktur->diskon_persen2, 2), '0'), '.') }}%@endif
@@ -781,7 +834,6 @@ new class extends Component {
                                                             {{ rtrim(rtrim(number_format($faktur->ppn_persen, 2), '0'), '.') }}%
                                                         @endif
                                                     </td>
-                                                    <td class="px-3 py-2 font-mono font-semibold text-right">{{ number_format($faktur->netto_unit) }}</td>
                                                     <td class="px-3 py-2 font-mono text-right text-muted">{{ number_format($faktur->netto_unit_ppn) }}</td>
                                                 </tr>
                                             @endforeach
@@ -1048,8 +1100,12 @@ new class extends Component {
                                             dipakai akan terlihat menyesatkan — periksa tabel bulanannya.</li>
                                         <li>Usulan harga jual hanya mempertahankan markup yang sudah ada di master. Kalau markup
                                             master-nya sendiri belum benar, usulannya ikut tidak benar.</li>
-                                        <li>Belum diperhitungkan: lead time supplier, kedaluwarsa/batch, rencana kegiatan,
-                                            dan kesepakatan harga khusus.</li>
+                                        <li><strong>Ketersediaan di sini belum mencakup kedaluwarsa.</strong> Stok dan cakupan
+                                            menghitung seluruh fisik barang, termasuk yang sebentar lagi ED. Jadi "cukup 3 bulan"
+                                            bisa jadi tidak benar bila sebagian stoknya kedaluwarsa lebih dulu — periksa fisik
+                                            atau kartu batch sebelum memutuskan menunda order.</li>
+                                        <li>Belum diperhitungkan juga: lead time supplier, rencana kegiatan (mis. operasi
+                                            terjadwal), dan kesepakatan harga khusus.</li>
                                         <li>Layar ini tidak pernah mengubah data — semua keputusan tetap dijalankan lewat menu
                                             pembelian dan master obat.</li>
                                     </ul>
