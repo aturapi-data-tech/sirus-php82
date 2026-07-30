@@ -195,15 +195,24 @@ new class extends Component {
      * Kalau true, kode Indonesian Modification (master `im`=1 atau deskripsi
      * berakhiran "(IM)") DITOLAK saat dipilih.
      *
-     * GUARD 3. Status pemakaian: BELUM dipakai satu pun dari 12 call site — coder
-     * INACBG, satu-satunya konsumen yang butuh, memilih menyetelnya false (lihat
-     * blockHeader) karena penentu akhir di sana `validcode` dari respons E-Klaim.
+     * GUARD 3. Status pemakaian: aktif di 3 call site coder iDRG; mati di 9 lainnya
+     * (SEP/VClaim, EMR diagnosis, coder INACBG).
      *
-     * Prop ini tetap ada karena perlu terpisah dari GUARD 1: 1.413 dari 1.416 kode
-     * IM ber-`valid_code`=1 DAN accpdx='Y', jadi guard valid_code maupun accpdx
-     * tidak menangkapnya. Nyalakan bila suatu saat ada field yang harus menolak
-     * kode IM sejak pemilihan. JANGAN nyalakan di LOV iDRG — grouper iDRG memang
-     * memakai kode IM. Penandanya App\Support\Diagnosa\KodeIm.
+     * Perlu terpisah dari GUARD 1: 1.413 dari 1.416 kode IM ber-`valid_code`=1 DAN
+     * accpdx='Y', jadi guard valid_code maupun accpdx tidak menangkapnya.
+     *
+     * E-Klaim menolak kode IM di KEDUA bridging. Buktinya komponen iDRG sendiri
+     * menampilkan badge "Kode IM tidak diakui" + pesan "Kode IM tidak dikenali
+     * e-klaim. Coba kode ICD-10 standar tanpa suffix IM." (kirim-diagnosa-idrg
+     * baris 497 & 517). Menyalakan prop ini memindahkan penolakan itu ke depan —
+     * saat memilih — supaya koder tidak perlu bolak-balik mengirim klaim dulu.
+     *
+     * Catatan: prop ini hanya menutup PEMILIHAN MANUAL. Jalur sync (syncFromEmr di
+     * iDRG, syncFromIdrg di INACBG) tidak lewat add(), jadi kode IM dari EMR masih
+     * bisa masuk daftar coder — memang disengaja, supaya kelihatan lalu diganti;
+     * penandanya badge merah di kolom Keterangan.
+     *
+     * Penandanya App\Support\Diagnosa\KodeIm.
      */
     public bool $blockIm = false;
 

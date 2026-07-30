@@ -30,17 +30,20 @@ Ringkasan keputusan cepat:
    utk join/simpan internal pakai `diag_id`.
 3. **Jangan hapus baris master** — legacy `diag_id` direferensikan >130rb baris
    `rstxn_*dtls`. Nonaktifkan via `valid_code=0` (toggle di /master/diagnosa).
-4. Field diagnosa **primer** → semua konsumen sekarang memakai guard exists-Y server-side,
-   BUKAN `:primaryOnly` (0 dari 12 call site memakainya); jaga single-Primary invariant
-   saat auto-kategori. Status prop lain: `blockHeader` aktif di 9 call site (default),
-   dilepas di 3 coder INACBG; `blockIm` 0 pemakai.
+4. Field diagnosa **primer** → semua konsumen memakai guard exists-Y server-side, BUKAN
+   `:primaryOnly` (0 dari 12 call site); jaga single-Primary invariant saat auto-kategori.
+   Ketiga prop guard ditulis EKSPLISIT di 12 call site (tabel di docs §2). Status:
+   `blockHeader` menutup di 12, `blockIm` aktif di 3 coder iDRG, `primaryOnly` 0 pemakai.
 4b. **Setup guard LOV per konsumen** (`blockHeader` default true, `blockIm` default false):
    EMR/SEP/master pakai default; coder iDRG pakai default; **coder INACBG melepas
    keduanya** (`:blockHeader="false" :blockIm="false"`, tanpa `primaryOnly`) karena
    penentu akhirnya `validcode` dari respons E-Klaim + badge per baris. Keputusan
    sadar: kode kategori/IM yang lolos akan dibalas validcode=0.
    Kode IM: 1.413 dari 1.416 ber-`valid_code=1` & `accpdx='Y'`, jadi guard valid_code
-   TIDAK menangkapnya. Penandanya `App\Support\Diagnosa\KodeIm` — cek DUA sumber:
+   TIDAK menangkapnya. E-Klaim menolaknya di KEDUA bridging — komponen iDRG pun punya
+   badge "Kode IM tidak diakui" (kirim-diagnosa-idrg:497,517) — karena itu coder iDRG
+   memakai `:blockIm="true"`. Prop ini hanya menutup pemilihan manual; jalur sync tidak
+   lewat add(). Penandanya `App\Support\Diagnosa\KodeIm` — cek DUA sumber:
    kolom `im=1` DAN deskripsi berakhiran `(IM)`.
 4b2. **"Kode lengkap kok diblokir?"** Cek baris kembar `*X` dulu: 266 icdx punya baris
    seed (`I10`, vc=1) + baris legacy (`I10X`, vc=0). Suruh pilih baris yang tidak merah,
