@@ -195,8 +195,9 @@ new class extends Component {
      * Kalau true, kode Indonesian Modification (master `im`=1 atau deskripsi
      * berakhiran "(IM)") DITOLAK saat dipilih.
      *
-     * GUARD 3. Status pemakaian: aktif di 3 call site coder iDRG; mati di 9 lainnya
-     * (SEP/VClaim, EMR diagnosis, coder INACBG).
+     * GUARD 3. Status pemakaian: aktif di 3 call site coder iDRG (langkah koding
+     * utama); mati di 9 lainnya termasuk coder INACBG yang justru dibuka penuh
+     * sebagai lapis override.
      *
      * Perlu terpisah dari GUARD 1: 1.413 dari 1.416 kode IM ber-`valid_code`=1 DAN
      * accpdx='Y', jadi guard valid_code maupun accpdx tidak menangkapnya.
@@ -219,10 +220,10 @@ new class extends Component {
     /**
      * Kalau true (DEFAULT), kode block/kategori (`valid_code`=0) ditolak.
      *
-     * GUARD 1. Status pemakaian: aktif di 9 dari 12 call site (SEP/VClaim, EMR
-     * diagnosis, coder iDRG — semuanya memakai default), dilepas di 3 coder INACBG
-     * yang sengaja membiarkan koder memasukkan kode apa pun lalu memakai `validcode`
-     * dari respons E-Klaim sebagai penentu akhir.
+     * GUARD 1. Status pemakaian: menutup di 9 dari 12 call site (SEP/VClaim, EMR
+     * diagnosis, coder iDRG), DIBUKA di 3 coder INACBG — layar itu lapis override
+     * atas hasil iDRG, jadi koder bebas memasukkan kode apa pun dan penentu akhirnya
+     * `validcode` dari respons E-Klaim.
      *
      * Konteksnya: 210.311 baris diagnosa EMR RJ lama memakai kode kategori seperti
      * E11 "Non-insulin-dependent diabetes mellitus" atau K29 "Gastritis and

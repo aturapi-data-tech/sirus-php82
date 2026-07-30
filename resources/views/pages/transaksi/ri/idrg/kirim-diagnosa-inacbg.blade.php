@@ -456,13 +456,14 @@ new class extends Component {
     </div>
 
     @if (!$inacbgFinal)
-        {{-- Ketiga guard LOV ditulis eksplisit dan untuk sementara semuanya memakai
-             NILAI DEFAULT, menunggu keputusan final matriks guard per konsumen
-             (lihat docs/diagnosa-architecture.md §2). Jadi kode block/kategori
-             ditolak, kode IM masih boleh dipilih, dan kode accpdx='N' boleh masuk
-             tetapi dipaksa jadi Secondary oleh add()/setKategori(). Penilaian
-             akhir tetap `validcode` dari respons E-Klaim — lihat kolom Keterangan
-             tiap baris. --}}
+        {{-- Guard LOV di sini DIBUKA (kebalikan dari coder iDRG yang menutup kode
+             kategori & kode IM). Alasannya peran layar ini: menurut kop file,
+             INACBG adalah lapis OVERRIDE koder casemix atas hasil iDRG — jadi
+             koder harus bebas memasukkan kode apa pun, termasuk kode kategori dan
+             kode IM, lalu memakai `validcode` dari respons E-Klaim sebagai penentu
+             (kolom Keterangan: Valid / Tidak Valid / IM tidak berlaku). Kode
+             accpdx='N' juga boleh masuk, tetapi dipaksa jadi Secondary oleh
+             add()/setKategori(). Setup lengkap 12 call site: docs §2. --}}
         <p class="mb-2 text-sm text-muted dark:text-gray-400">
             Kevalidan akhir ditentukan E-Klaim setelah &ldquo;Set Diagnosa&rdquo; — cek kolom
             Keterangan tiap baris.
@@ -470,7 +471,7 @@ new class extends Component {
 
         <div wire:key="lov-diagnosa-inacbg-coder-{{ $riHdrNo ?? 'none' }}">
             <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosa (untuk INACBG)" target="riFormDiagnosaInacbgCoder"
-                :blockHeader="true" :blockIm="false" :primaryOnly="false"
+                :blockHeader="false" :blockIm="false" :primaryOnly="false"
                 wire:key="lov-diagnosa-inacbg-coder-inner-{{ $riHdrNo ?? 'none' }}" />
         </div>
     @endif

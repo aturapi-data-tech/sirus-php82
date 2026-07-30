@@ -103,15 +103,21 @@ adalah kode anaknya (`E11.9`, `K29.7`).
 | 7 | Coder iDRG | `transaksi/rj/idrg/kirim-diagnosa-idrg.blade.php` : 441 | `rjFormDiagnosaIdrgCoder` | **true** | **true** | false |
 | 8 | Coder iDRG | `transaksi/ugd/idrg/kirim-diagnosa-idrg.blade.php` : 436 | `ugdFormDiagnosaIdrgCoder` | **true** | **true** | false |
 | 9 | Coder iDRG | `transaksi/ri/idrg/kirim-diagnosa-idrg.blade.php` : 434 | `riFormDiagnosaIdrgCoder` | **true** | **true** | false |
-| 10 | Coder INACBG | `transaksi/rj/idrg/kirim-diagnosa-inacbg.blade.php` : 472 | `rjFormDiagnosaInacbgCoder` | **true** | false | false |
-| 11 | Coder INACBG | `transaksi/ugd/idrg/kirim-diagnosa-inacbg.blade.php` : 472 | `ugdFormDiagnosaInacbgCoder` | **true** | false | false |
-| 12 | Coder INACBG | `transaksi/ri/idrg/kirim-diagnosa-inacbg.blade.php` : 472 | `riFormDiagnosaInacbgCoder` | **true** | false | false |
+| 10 | Coder INACBG | `transaksi/rj/idrg/kirim-diagnosa-inacbg.blade.php` : 473 | `rjFormDiagnosaInacbgCoder` | false | false | false |
+| 11 | Coder INACBG | `transaksi/ugd/idrg/kirim-diagnosa-inacbg.blade.php` : 473 | `ugdFormDiagnosaInacbgCoder` | false | false | false |
+| 12 | Coder INACBG | `transaksi/ri/idrg/kirim-diagnosa-inacbg.blade.php` : 473 | `riFormDiagnosaInacbgCoder` | false | false | false |
 
-Rekap: `blockHeader` menutup di ke-12 call site. `blockIm` aktif di 3 call site coder
-iDRG dan mati di 9 lainnya. `primaryOnly` tidak aktif di mana pun — aturan primer
-ditegakkan server-side di tiap konsumen (§4). Keputusan yang masih terbuka: apakah
-`blockIm` juga dinyalakan di coder INACBG, dan apakah SEP/VClaim (field `diagAwal`,
-satu nilai, wajib, tanpa pemeriksaan `accpdx`) memakai `primaryOnly="true"`.
+Rekap: `blockHeader` menutup di 9 call site (SEP/VClaim, EMR, coder iDRG) dan DIBUKA
+di 3 coder INACBG. `blockIm` aktif hanya di 3 coder iDRG. `primaryOnly` tidak aktif di
+mana pun — aturan primer ditegakkan server-side di tiap konsumen (§4).
+
+**Kenapa iDRG ketat tapi INACBG bebas.** iDRG adalah langkah koding utama, jadi kode
+kategori & kode IM ditolak sejak pemilihan supaya tidak perlu bolak-balik mengirim
+klaim. Coder INACBG adalah lapis **override** atas hasil iDRG (lihat kop
+`kirim-diagnosa-inacbg.blade.php`) — koder harus bebas memasukkan kode apa pun untuk
+memperbaiki hasil grouper, dan penentu akhirnya `validcode` dari respons E-Klaim yang
+sudah ditampilkan per baris. Sisa keputusan terbuka: apakah SEP/VClaim (field
+`diagAwal`, satu nilai, wajib, tanpa pemeriksaan `accpdx`) memakai `primaryOnly="true"`.
 
 Cara memeriksa ulang kalau nanti ada call site baru:
 
