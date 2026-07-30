@@ -61,16 +61,64 @@ jangan bikin autocomplete sendiri.
     target="rjFormDiagnosaVclaim"      {{-- bedakan per form --}}
     :initialDiagnosaId="$diagnosaId"   {{-- mode edit (reactive; cari by diag_id lalu icdx) --}}
     :primaryOnly="true"                {{-- opsional: blok accpdx='N' (utk field DXP) --}}
+    :blockIm="true"                    {{-- opsional: blok kode IM (default false) --}}
+    :blockHeader="false"               {{-- opsional: izinkan kode kategori (default true = ditolak) --}}
     :disabled="$isFormLocked" />
 ```
 
 Perilaku:
 - Search min 2 char, limit 50, match `diag_id`/`icdx`/`diag_desc`.
 - Dropdown menampilkan **SEMUA** baris termasuk invalid — baris invalid merah + badge
-  (`!PDX` amber, `★` ungu, `iM` emerald), sama dengan badge di /master/diagnosa.
+  (`!PDX` amber, `★` ungu, `iM` emerald; `iM ✕` merah bila `blockIm`), sama dengan
+  badge di /master/diagnosa.
 - Guard di `choose()` (berlaku di SEMUA pemakai LOV, bukan cuma iDRG):
-  1. `valid_code !== 1` → toast error, batal pilih.
+  1. `blockHeader && valid_code !== 1` → toast error, batal pilih. `blockHeader`
+     default **true**; kalau dilepas, baris kategori diberi badge `KATEGORI` amber
+     (tidak merah) supaya tetap kelihatan bukan kode leaf.
   2. `primaryOnly && accpdx !== 'Y'` → toast error, batal pilih.
+  3. `blockIm && App\Support\Diagnosa\KodeIm::adalah($opt)` → toast error, batal pilih.
+
+**Kalau kode LENGKAP terasa terblokir, cek baris kembar dulu.** 266 icdx punya DUA
+baris: baris seed Kemenkes (mis. `diag_id` = `I10`, `valid_code`=1) dan baris legacy
+(`diag_id` = `I10X`, `valid_code`=0 karena tidak ada di berkas referensi; 261 dari 266
+ber-akhiran `X`). Keduanya muncul di dropdown dengan `icdx` sama — satu merah, satu
+tidak. Jawabannya memilih baris yang tidak merah, BUKAN melepas `blockHeader`.
+
+Angka untuk menakar dampaknya (data dev): dari 293.870 baris diagnosa EMR RJ lama yang
+memakai kode `valid_code`=0, **83.559** sebenarnya punya baris valid (kasus kembar di
+atas) dan **210.311** memakai kode kategori asli seperti `E11` / `K29` — yang benar
+adalah kode anaknya (`E11.9`, `K29.7`).
+
+**Setup per konsumen.**
+
+| Konsumen | blockHeader | blockIm | primaryOnly |
+|---|---|---|---|
+| EMR diagnosis, SEP/VClaim, master | true (default) | false (default) | sesuai field |
+| Coder iDRG | true (default) | false — grouper iDRG memang memakai kode IM | tidak |
+| **Coder INACBG** | **false** | **false** | tidak |
+
+Coder INACBG sengaja melepas semua guard: penentu akhir di sana adalah `validcode` dari
+respons `expanded[]` E-Klaim, dan tiap baris coder sudah menampilkan badge
+Valid / Tidak Valid / IM tidak berlaku beserta alasannya. Jadi koder boleh memasukkan
+kode apa adanya (kategori, IM, atau kode yang tak boleh primer → otomatis Secondary),
+lalu memperbaikinya setelah tahu jawaban E-Klaim. Konsekuensinya diterima sadar:
+kode kategori/IM yang lolos ke klaim akan dibalas `validcode=0`.
+
+**Kapan pakai `blockIm`.** Untuk konsumen selain INACBG yang ingin menolak kode IM di
+muka. E-Klaim INACBG menolak kode
+Indonesian Modification, tetapi **1.413 dari 1.416** kode IM di master ber-`valid_code=1`
+(dan `accpdx='Y'`) sehingga lolos guard 1 & 2 — tanpa flag ini kode IM baru ketahuan
+salah setelah klaim dikirim dan dibalas `validcode=0`. Jangan dinyalakan di LOV iDRG:
+grouper iDRG memang memakai kode IM. Default `false` supaya pemakai LOV lain tak berubah.
+
+Penanda IM ada di `App\Support\Diagnosa\KodeIm` (helper statis, lintas komponen):
+- `KodeIm::adalah(array $baris)` — dari payload LOV / baris coder yang sudah di tangan.
+- `KodeIm::adalahKode(string $kode, string $deskripsi = '')` — lookup master untuk guard
+  server-side. Sengaja `exists()` atas SEMUA baris berkode sama: baris legacy sering
+  ber-`im=0` default, jadi cukup satu baris menandai IM untuk memblokir.
+
+Dua sumber penanda dan **keduanya** harus dicek: kolom master `im=1` dan deskripsi
+berakhiran `(IM)` — sebagian baris seed hanya membawa penanda di salah satunya.
 - Sukses → dispatch `lov.selected.{target}` dengan payload:
   ```php
   ['diag_id' => ..., 'diag_desc' => ..., 'icdx' => ...,
@@ -156,5 +204,7 @@ Pengecualian: lookup **by `diag_id` saja** (PK, unik — mis. dari payload LOV y
 2. Butuh kode utk sistem eksternal? Kirim **`icdx`** (BPJS/E-Klaim), bukan `diag_id`.
 3. Butuh referensi internal/join transaksi? Simpan **`diag_id`**.
 4. Field diagnosa primer? Set `:primaryOnly="true"` ATAU guard exists-Y (§4) di server.
+5. Field coder INACBG? Set `:blockIm="true"` + ulangi guard `KodeIm::adalahKode()` di
+   server (`add()`), karena `add()` juga dipanggil dari sync iDRG & aksi lain.
 5. Auto-kategori Primary/Secondary: cek dulu sudah ada Primary, lalu guard accpdx.
 6. Jangan hapus baris master yang direferensikan transaksi — nonaktifkan via `valid_code=0`.

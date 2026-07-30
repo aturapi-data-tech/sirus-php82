@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\iDRG\iDrgTrait;
+use App\Support\Diagnosa\KodeIm;
 
 new class extends Component {
     use EmrRJTrait, iDrgTrait;
@@ -145,13 +146,13 @@ new class extends Component {
                 $byIcdx = $masters->keyBy('icdx');
                 $byDiagId = $masters->keyBy('diag_id');
                 foreach ($coder as $i => $row) {
-                    $m = $byIcdx->get($row['code']) ?? $byDiagId->get($row['code']);
-                    if (!$m) {
+                    $masterDiag = $byIcdx->get($row['code']) ?? $byDiagId->get($row['code']);
+                    if (!$masterDiag) {
                         continue;
                     }
-                    $isImCode = (bool) preg_match('/\(IM\)\s*$/i', $row['desc'] ?? '') || (int) ($m->im ?? 0) === 1;
-                    $coder[$i]['validcode'] = $isImCode ? '0' : (string) ((int) ($m->valid_code ?? 0));
-                    $coder[$i]['accpdx'] = (string) ($m->accpdx ?? 'N');
+                    $isImCode = KodeIm::adalah(['im' => $masterDiag->im ?? 0, 'desc' => $row['desc'] ?? '']);
+                    $coder[$i]['validcode'] = $isImCode ? '0' : (string) ((int) ($masterDiag->valid_code ?? 0));
+                    $coder[$i]['accpdx'] = (string) ($masterDiag->accpdx ?? 'N');
                 }
             }
 
@@ -455,8 +456,21 @@ new class extends Component {
     </div>
 
     @if (!$inacbgFinal)
+        {{-- Semua guard LOV DILEPAS di coder INACBG: koder boleh memasukkan kode
+             kategori, kode IM, maupun kode yang tidak boleh primer. Penentu akhir
+             di sini adalah `validcode` dari respons E-Klaim (kolom Keterangan tiap
+             baris: Valid / Tidak Valid / IM tidak berlaku), bukan flag master —
+             jadi koder bisa memasukkan kode apa adanya lalu memperbaikinya setelah
+             tahu jawaban E-Klaim. Guard master tetap berlaku di jalur lain (EMR,
+             SEP/VClaim) karena default prop-nya menutup. --}}
+        <p class="mb-2 text-sm text-muted dark:text-gray-400">
+            Semua kode ICD-10 bisa dipilih di sini. Kevalidan ditentukan E-Klaim setelah
+            &ldquo;Set Diagnosa&rdquo; — cek kolom Keterangan tiap baris.
+        </p>
+
         <div wire:key="lov-diagnosa-inacbg-coder-{{ $rjNo ?? 'none' }}">
             <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosa (untuk INACBG)" target="rjFormDiagnosaInacbgCoder"
+                :blockHeader="false" :blockIm="false" :primaryOnly="false"
                 wire:key="lov-diagnosa-inacbg-coder-inner-{{ $rjNo ?? 'none' }}" />
         </div>
     @endif

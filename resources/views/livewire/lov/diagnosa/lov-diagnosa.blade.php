@@ -1,6 +1,139 @@
 <?php
 
+/*
+|--------------------------------------------------------------------------
+| LOV Diagnosa ICD-10 — picker diagnosa standar (SATU-satunya)
+|--------------------------------------------------------------------------
+|
+| Semua field diagnosa di aplikasi ini memakai komponen ini: EMR RJ/UGD/RI,
+| SEP/VClaim, coder iDRG, coder INACBG, dan master. JANGAN membuat autocomplete
+| diagnosa sendiri — aturan kode mana yang boleh dipilih ada di sini, sekali,
+| supaya tidak ada jalur yang lolos aturan.
+|
+| Dokumen lengkap: docs/diagnosa-architecture.md §2 (skill: diagnosa-flow).
+|
+|
+| STANDAR PEMAKAIAN
+| -----------------
+| Tag komponen di bawah sengaja ditulis TANPA tanda kurang-dari: Blade
+| mengompilasi tag komponen walau berada di dalam komentar, dan itu memicu
+| error "Undefined variable $component" saat halaman dirender.
+|
+|   livewire:lov.diagnosa.lov-diagnosa
+|       label="Diagnosa *"
+|       target="rjFormDiagnosaVclaim"       <- WAJIB, unik per form
+|       :initialDiagnosaId="$diagnosaId"    <- opsional, mode edit (reactive)
+|       :primaryOnly="true"                 <- opsional, field diagnosa primer
+|       :blockIm="true"                     <- opsional, khusus coder INACBG
+|       :blockHeader="false"                <- opsional, izinkan kode kategori
+|                                              (default true = ditolak)
+|       :disabled="$isFormLocked"           <- opsional, form terkunci
+|       wire:key="lov-diag-{$noTransaksi}"  <- WAJIB kalau ada >1 LOV di halaman
+|
+| Parent menangkap hasilnya lewat dua event bernama sesuai `target`:
+|
+|   #[On('lov.selected.rjFormDiagnosaVclaim')]
+|   public function onDiagnosa(string $target, array $payload): void { ... }
+|
+|   #[On('lov.cleared.rjFormDiagnosaVclaim')]
+|   public function onDiagnosaCleared(string $target): void { ... }
+|
+| Isi $payload — 3 identitas + 4 flag master, jadi parent TIDAK perlu query
+| ulang ke master (lihat jebakan icdx kembar di bawah):
+|
+|   ['diag_id' => '...', 'diag_desc' => '...', 'icdx' => '...',
+|    'valid_code' => int, 'accpdx' => 'Y|N', 'asterisk' => int, 'im' => int]
+|
+| Aturan memilih field mana yang dikirim ke mana:
+| - ke sistem eksternal (BPJS SEP, E-Klaim iDRG/INACBG) → `icdx`
+| - untuk join / simpan internal (rstxn_*dtls) → `diag_id`
+|
+|
+| CARA KERJA
+| ----------
+| 1. mount() → loadInitialData(): kalau `initialDiagnosaId` diisi, baris dicari
+|    by `diag_id` DULU, baru fallback by `icdx`, lalu tampil sebagai terpilih
+|    (mode edit). Prop-nya #[Reactive] supaya ikut berubah saat parent berpindah
+|    record tanpa perlu remount.
+| 2. updatedSearch(): minimal 2 karakter, UPPER + LIKE di `diag_id`/`icdx`/
+|    `diag_desc`, limit 50 baris, urut `icdx` lalu `diag_desc`. Tidak ada
+|    auto-select walau ketikan cocok persis — pilihan tetap ditentukan pengguna.
+| 3. Dropdown menampilkan SEMUA baris hasil pencarian, TERMASUK yang terblokir:
+|    barisnya merah + badge alasannya. Ini disengaja — koder harus tahu kodenya
+|    memang ADA tapi tidak boleh dipakai, bukan mengira "tidak ditemukan" lalu
+|    mencari-cari kode lain.
+| 4. choose() menjalankan 3 guard, masing-masing membatalkan pilihan
+|    dengan toast error (lihat GUARD di bawah). Baru setelah lolos semuanya,
+|    dispatchSelected() menyimpan state terpilih + melempar `lov.selected.*`.
+| 5. clearSelected() (tombol "Ubah") mengosongkan pilihan + melempar
+|    `lov.cleared.*`. Saat `disabled` = true tombolnya hilang dan clear ditolak.
+| 6. Navigasi papan tuts: panah atas/bawah menggeser `selectedIndex`, Enter
+|    memilih baris tersorot, Escape mengosongkan daftar. Event `lov-scroll`
+|    dipakai Alpine untuk menggulirkan baris tersorot ke area tampak.
+|
+| Guard-nya ditegakkan di choose() (server), BUKAN cuma di tampilan: badge dan
+| warna merah hanya penanda visual, sedangkan klik baris tetap sampai ke server.
+|
+|
+| GUARD — kode mana yang tidak boleh dipilih
+| ------------------------------------------
+| Empat flag di RSMST_MSTDIAGS (kelola di /master/diagnosa). Jumlah baris di
+| bawah = kondisi master saat dokumen ini ditulis, sekadar gambaran skalanya:
+|
+|   valid_code = 0   4.192 baris   kode block/parent header (mis. A74 "Other
+|                                  diseases caused by chlamydiae", E11, K29),
+|                                  bukan kode leaf. -> GUARD 1, aktif bila
+|                                  `blockHeader` = true (DEFAULT).
+|
+|   accpdx = 'N'    27.558 baris   tidak boleh jadi diagnosa PRIMER (boleh jadi
+|                                  sekunder). -> GUARD 2, aktif bila
+|                                  `primaryOnly` = true.
+|
+|   asterisk = 1       852 baris   kode asterisk, wajib dipasangkan dengan
+|                                  etiologi (dagger). Semuanya (852/852) sudah
+|                                  ber-accpdx='N', jadi aturan "asterisk tak
+|                                  boleh primer" otomatis ikut GUARD 2 — di
+|                                  sini hanya diberi badge. Validasi pasangan
+|                                  dagger-asterisk BELUM ada.
+|
+|   im = 1           1.416 baris   Indonesian Modification. Dipakai grouper
+|                                  iDRG, tetapi DITOLAK E-Klaim INACBG.
+|                                  -> GUARD 3, aktif bila `blockIm` = true.
+|
+| SEMUA guard bisa dilepas per-field. Coder INACBG memang melepas ketiganya
+| (`:blockHeader="false"` + `:blockIm="false"`, tanpa `primaryOnly`) karena di sana
+| penentu akhir adalah `validcode` dari respons E-Klaim, bukan flag lokal — tiap
+| baris coder sudah menampilkan badge Valid / Tidak Valid / IM tidak berlaku.
+|
+| Kenapa GUARD 3 perlu terpisah: 1.413 dari 1.416 kode IM ber-valid_code=1 dan
+| accpdx='Y', jadi lolos GUARD 1 & 2. Tanpa `blockIm`, kode IM masuk coder
+| INACBG dan baru ketahuan salah setelah klaim dikirim lalu dibalas
+| validcode=0 oleh E-Klaim. Jangan nyalakan di LOV iDRG — di sana kode IM
+| memang yang dipakai. Penandaannya di App\Support\Diagnosa\KodeIm (dua sumber:
+| kolom `im` DAN deskripsi berakhiran "(IM)").
+|
+|
+| JEBAKAN
+| -------
+| - 288 icdx KEMBAR di master (baris seed E-Klaim + baris legacy). Baris legacy
+|   sering ber-valid_code=0/accpdx='N' default. JANGAN pernah lookup flag by
+|   `icdx` memakai value()/first() — bisa kena baris yang salah. Karena itu
+|   payload LOV sudah membawa keempat flag; kalau parent tetap harus memeriksa
+|   ulang, pakai pola exists() (lihat docs §4) atau KodeIm::adalahKode().
+| - Baris kembar `*X`: 266 icdx punya DUA baris — baris seed Kemenkes (mis.
+|   diag_id `I10`, valid_code=1) dan baris legacy (diag_id `I10X`, valid_code=0
+|   karena tidak ada di berkas referensi). Di dropdown keduanya muncul dengan
+|   icdx sama, satu merah satu tidak. Jadi kalau kode LENGKAP seperti I10 / J00 /
+|   K30 terasa "terblokir", solusinya memilih baris yang tidak merah — BUKAN
+|   melepas `blockHeader`. 261 dari 266 baris legacy itu ber-diag_id akhiran "X".
+| - Lookup by `diag_id` saja aman (PK unik).
+| - Beberapa LOV di satu halaman WAJIB `wire:key` berbeda, kalau tidak Livewire
+|   menganggapnya komponen yang sama dan isian keduanya saling tertukar.
+|
+*/
+
 use Livewire\Component;
+use App\Support\Diagnosa\KodeIm;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Reactive;
 
@@ -44,6 +177,33 @@ new class extends Component {
      * Pakai untuk LOV diagnosa primer (DXP) di iDRG/INACBG flow.
      */
     public bool $primaryOnly = false;
+
+    /**
+     * Kalau true, kode Indonesian Modification (master `im`=1 atau deskripsi
+     * berakhiran "(IM)") DITOLAK saat dipilih.
+     *
+     * Dipakai coder INACBG: E-Klaim menolak kode IM, tetapi 1.413 dari 1.416 kode
+     * IM di master ber-`valid_code`=1 sehingga lolos Guard 1 — tanpa flag ini kode
+     * IM tetap bisa masuk list dan baru ketahuan salah setelah dikirim ke E-Klaim.
+     * Default false: iDRG (dan pemakai LOV lain) justru memang memakai kode IM.
+     */
+    public bool $blockIm = false;
+
+    /**
+     * Kalau true (DEFAULT), kode block/kategori (`valid_code`=0) ditolak.
+     *
+     * Set false hanya bila pemakainya sadar konsekuensinya — mis. coder INACBG, yang
+     * sengaja membiarkan koder memasukkan kode apa pun lalu memakai `validcode` dari
+     * respons E-Klaim sebagai penentu akhir.
+     *
+     * Konteksnya: 210.311 baris diagnosa EMR RJ lama memakai kode kategori seperti
+     * E11 "Non-insulin-dependent diabetes mellitus" atau K29 "Gastritis and
+     * duodenitis". Kode yang benar adalah anaknya (E11.9, K29.7).
+     *
+     * Catatan: kalau yang terasa terblokir justru kode LENGKAP (I10, J00, K30),
+     * itu bukan kasus header — lihat bagian JEBAKAN soal baris kembar `*X`.
+     */
+    public bool $blockHeader = true;
 
     public function mount(): void
     {
@@ -224,7 +384,7 @@ new class extends Component {
         $code = $opt['icdx'] ?: $opt['diag_id'];
 
         // Guard 1: blok code invalid (parent/category placeholder).
-        if ((int) ($opt['valid_code'] ?? 0) !== 1) {
+        if ($this->blockHeader && (int) ($opt['valid_code'] ?? 0) !== 1) {
             $this->dispatch('toast', type: 'error', message: "Kode {$code} tidak valid (parent/category). Pilih kode leaf/spesifik.");
             return;
         }
@@ -232,6 +392,12 @@ new class extends Component {
         // Guard 2: kalau LOV ini untuk diagnosa primer, blok kode dgn accpdx='N'.
         if ($this->primaryOnly && ($opt['accpdx'] ?? 'N') !== 'Y') {
             $this->dispatch('toast', type: 'error', message: "Kode {$code} tidak boleh dipakai sebagai diagnosa primer (accpdx='N').");
+            return;
+        }
+
+        // Guard 3: kalau LOV ini untuk INACBG, blok kode Indonesian Modification.
+        if ($this->blockIm && KodeIm::adalah($opt)) {
+            $this->dispatch('toast', type: 'error', message: "Kode {$code} adalah kode IM (Indonesian Modification) — tidak berlaku di INACBG. Pilih kode ICD-10 non-IM.");
             return;
         }
 
@@ -352,9 +518,11 @@ new class extends Component {
                 <ul class="overflow-y-auto divide-y divide-gray-100 max-h-72 dark:divide-gray-800">
                     @foreach ($options as $index => $option)
                         @php
-                            $isInvalid = (int) ($option['valid_code'] ?? 0) !== 1;
+                            $isHeaderCode = (int) ($option['valid_code'] ?? 0) !== 1;
+                            $isInvalid = $isHeaderCode && $blockHeader;
                             $isBlockedPrimary = $primaryOnly && ($option['accpdx'] ?? 'N') !== 'Y';
-                            $isBlocked = $isInvalid || $isBlockedPrimary;
+                            $isBlockedIm = $blockIm && App\Support\Diagnosa\KodeIm::adalah($option);
+                            $isBlocked = $isInvalid || $isBlockedPrimary || $isBlockedIm;
                             $rowClass = $isBlocked
                                 ? 'bg-red-50 dark:bg-red-900/10 cursor-not-allowed'
                                 : '';
@@ -370,6 +538,10 @@ new class extends Component {
                                         {{ $option['label'] ?? '-' }}
                                     </div>
                                     <div class="flex flex-wrap items-center gap-1 shrink-0">
+                                        @if ($isHeaderCode && !$blockHeader)
+                                            <span class="px-1.5 py-0.5 text-[10px] font-bold tracking-wide uppercase bg-amber-100 text-amber-800 rounded dark:bg-amber-900/30 dark:text-amber-300"
+                                                title="Kode kategori/block — bukan kode leaf; tidak berlaku untuk klaim">KATEGORI</span>
+                                        @endif
                                         @if (($option['accpdx'] ?? 'N') === 'N' && !$isInvalid)
                                             <span class="px-1.5 py-0.5 text-[10px] font-bold tracking-wide uppercase bg-amber-100 text-amber-800 rounded dark:bg-amber-900/30 dark:text-amber-300"
                                                 title="Tidak boleh sebagai diagnosa primer">!PDX</span>
@@ -378,9 +550,12 @@ new class extends Component {
                                             <span class="px-1.5 py-0.5 text-[10px] font-bold tracking-wide uppercase bg-purple-100 text-purple-800 rounded dark:bg-purple-900/30 dark:text-purple-300"
                                                 title="Kode asterisk — wajib pair dengan etiologi (dagger)">★</span>
                                         @endif
-                                        @if (!empty($option['im']))
+                                        @if ($isBlockedIm)
+                                            <span class="px-1.5 py-0.5 text-[10px] font-bold tracking-wide uppercase bg-red-100 text-red-800 rounded dark:bg-red-900/30 dark:text-red-300"
+                                                title="Kode Indonesian Modification — ditolak E-Klaim INACBG, pilih kode non-IM">iM ✕</span>
+                                        @elseif (!empty($option['im']))
                                             <span class="px-1.5 py-0.5 text-[10px] font-bold tracking-wide uppercase bg-emerald-100 text-emerald-800 rounded dark:bg-emerald-900/30 dark:text-emerald-300"
-                                                title="Kode spesifik iDRG/INACBG Indonesian Modification">iM</span>
+                                                title="Kode spesifik iDRG Indonesian Modification">iM</span>
                                         @endif
                                     </div>
                                 </div>

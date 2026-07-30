@@ -13,7 +13,8 @@ Ringkasan keputusan cepat:
 | Lapisan | Lokasi |
 |---|---|
 | Master + 4 flag iDRG (`valid_code/accpdx/asterisk/im`) | `RSMST_MSTDIAGS`, UI `/master/diagnosa` |
-| Picker standar (SATU-satunya) | `livewire/lov/diagnosa/lov-diagnosa.blade.php` — guard `valid_code!==1` & `primaryOnly` ada di `choose()`, berlaku utk SEMUA pemakai |
+| Picker standar (SATU-satunya) | `livewire/lov/diagnosa/lov-diagnosa.blade.php` — guard `valid_code!==1`, `primaryOnly`, `blockIm` ada di `choose()`, berlaku utk SEMUA pemakai |
+| Penanda kode IM (lintas komponen) | `App\Support\Diagnosa\KodeIm` — `adalah(array)` & `adalahKode(string)` |
 | EMR diagnosis (RJ/UGD/RI) | `rm-diagnosa-*-actions.blade.php` — dual-write `rstxn_*dtls.diag_id` + JSON `diagnosis[]` (`diagId/icdX/kategoriDiagnosa`) |
 | SEP / VClaim | `vclaim-*-actions.blade.php` — `SEPForm.diagAwal` = **icdx** |
 | iDRG/INACBG coder | `kirim-diagnosa-{idrg,inacbg}.blade.php` — JSON `idrg.coderDiagnosa[]` (`code`=icdx), kirim `"PRI#SEC#..."`, validcode final dari `expanded[]` E-Klaim |
@@ -31,5 +32,20 @@ Ringkasan keputusan cepat:
    `rstxn_*dtls`. Nonaktifkan via `valid_code=0` (toggle di /master/diagnosa).
 4. Field diagnosa **primer** → `:primaryOnly="true"` di LOV atau guard exists-Y server-side;
    jaga single-Primary invariant saat auto-kategori.
+4b. **Setup guard LOV per konsumen** (`blockHeader` default true, `blockIm` default false):
+   EMR/SEP/master pakai default; coder iDRG pakai default; **coder INACBG melepas
+   keduanya** (`:blockHeader="false" :blockIm="false"`, tanpa `primaryOnly`) karena
+   penentu akhirnya `validcode` dari respons E-Klaim + badge per baris. Keputusan
+   sadar: kode kategori/IM yang lolos akan dibalas validcode=0.
+   Kode IM: 1.413 dari 1.416 ber-`valid_code=1` & `accpdx='Y'`, jadi guard valid_code
+   TIDAK menangkapnya. Penandanya `App\Support\Diagnosa\KodeIm` — cek DUA sumber:
+   kolom `im=1` DAN deskripsi berakhiran `(IM)`.
+4b2. **"Kode lengkap kok diblokir?"** Cek baris kembar `*X` dulu: 266 icdx punya baris
+   seed (`I10`, vc=1) + baris legacy (`I10X`, vc=0). Suruh pilih baris yang tidak merah,
+   JANGAN lepas `blockHeader`. Kode kategori asli (E11, K29) beda kasus — 210.311 baris
+   EMR RJ lama memakai pola kategori ini.
+4c. **Asterisk sudah tercakup guard primer**: 852/852 kode `asterisk=1` ber-`accpdx='N'`,
+   jadi tidak perlu guard asterisk terpisah untuk aturan "asterisk tak boleh primer".
+   Yang BELUM ada: validasi pasangan dagger–asterisk dalam satu list.
 5. Fix data baris kembar: `database/sql/2026_06_04_sync_dup_icdx_validation_flags.sql`
    (cek dulu sudah dieksekusi atau belum sebelum menyimpulkan bug LOV).
