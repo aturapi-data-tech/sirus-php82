@@ -3,7 +3,9 @@
 use Livewire\Component;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Support\NyeriOptions;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
 use Illuminate\Validation\ValidationException;
@@ -65,6 +67,9 @@ new class extends Component {
 
         // Initialize penilaian data jika belum ada
         $this->dataDaftarPoliRJ['penilaian'] ??= $this->getDefaultPenilaian();
+
+        $this->umurPasienTahun = $this->hitungUmurPasien($dataDaftarPoliRJ['regNo'] ?? null);
+        $this->skalaDisarankan = NyeriOptions::saranUntukUmur($this->umurPasienTahun);
 
         $this->incrementVersion('modal-penilaian-rj');
 
@@ -153,17 +158,69 @@ new class extends Component {
 
     public array $formEntryNyeri = [];
 
-    public array $nyeriMetodeOptions = [['nyeriMetode' => 'NRS'], ['nyeriMetode' => 'BPS'], ['nyeriMetode' => 'NIPS'], ['nyeriMetode' => 'FLACC'], ['nyeriMetode' => 'VAS']];
+    // Umur pasien (tahun) utk menyarankan skala yang sesuai — hanya saran, tidak memaksa.
+    public ?int $umurPasienTahun = null;
+    public array $skalaDisarankan = [];
 
-    public array $vasOptions = [['vas' => '0', 'active' => true], ['vas' => '1', 'active' => false], ['vas' => '2', 'active' => false], ['vas' => '3', 'active' => false], ['vas' => '4', 'active' => false], ['vas' => '5', 'active' => false], ['vas' => '6', 'active' => false], ['vas' => '7', 'active' => false], ['vas' => '8', 'active' => false], ['vas' => '9', 'active' => false], ['vas' => '10', 'active' => false]];
+    /* Definisi skala (sasaran populasi, rentang, item, interpretasi) — App\Support\NyeriOptions. */
+    #[Computed]
+    public function daftarSkala(): array
+    {
+        return NyeriOptions::SKALA;
+    }
 
-    public array $flaccOptions = [
-        'face' => [['score' => 0, 'description' => 'Ekspresi wajah netral atau tersenyum', 'active' => false], ['score' => 1, 'description' => 'Sedikit cemberut, menarik diri', 'active' => false], ['score' => 2, 'description' => 'Meringis, rahang mengatup rapat', 'active' => false]],
-        'legs' => [['score' => 0, 'description' => 'Posisi normal atau relaks', 'active' => false], ['score' => 1, 'description' => 'Gelisah, tegang, atau menarik kaki', 'active' => false], ['score' => 2, 'description' => 'Menendang atau kaki ditarik ke arah tubuh', 'active' => false]],
-        'activity' => [['score' => 0, 'description' => 'Berbaring tenang, bergerak mudah', 'active' => false], ['score' => 1, 'description' => 'Menggeliat, bergerak bolak-balik, tegang', 'active' => false], ['score' => 2, 'description' => 'Melengkungkan tubuh, kaku, menggeliat hebat', 'active' => false]],
-        'cry' => [['score' => 0, 'description' => 'Tidak menangis', 'active' => false], ['score' => 1, 'description' => 'Merintih atau mengerang, sesekali menangis', 'active' => false], ['score' => 2, 'description' => 'Menangis terus-menerus, berteriak', 'active' => false]],
-        'consolability' => [['score' => 0, 'description' => 'Tenang, tidak perlu ditenangkan', 'active' => false], ['score' => 1, 'description' => 'Dapat ditenangkan dengan sentuhan', 'active' => false], ['score' => 2, 'description' => 'Sulit ditenangkan, terus menangis', 'active' => false]],
-    ];
+    /* Definisi skala yang sedang dipakai; null bila metode belum dipilih. */
+    #[Computed]
+    public function skalaTerpilih(): ?array
+    {
+        return NyeriOptions::skala($this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] ?? '');
+    }
+
+    /* Interpretasi skor berjalan: label, tingkat, warna badge, tata laksana. */
+    #[Computed]
+    public function interpretasiBerjalan(): array
+    {
+        return NyeriOptions::interpretasi($this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] ?? '', $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] ?? null);
+    }
+
+    /*
+     | Interpretasi satu entri riwayat — dihitung ulang dari metode + skor tersimpan,
+     | bukan dari nyeriKet. Entri lama sempat menyimpan keterangan yang tidak ikut skor;
+     | bila skor di luar rentang skala, nilai tersimpan dipakai apa adanya.
+     */
+    public function interpretasiEntri(array $entri): array
+    {
+        $hasil = NyeriOptions::interpretasi(data_get($entri, 'nyeri.nyeriMetode.nyeriMetode'), data_get($entri, 'nyeri.nyeriMetode.nyeriMetodeScore'));
+
+        if ($hasil['tingkat'] === '' && filled(data_get($entri, 'nyeri.nyeriKet'))) {
+            $hasil['label'] = data_get($entri, 'nyeri.nyeriKet');
+        }
+
+        return $hasil;
+    }
+
+    /*
+     | Umur pasien dalam tahun, dihitung on-the-fly dari birth_date (kolom umur di
+     | master hanya snapshot saat pendaftaran). Null bila tgl lahir kosong — saran
+     | skala sekadar tidak muncul, form tetap jalan.
+     */
+    private function hitungUmurPasien(?string $regNo): ?int
+    {
+        if (empty($regNo)) {
+            return null;
+        }
+
+        $birthDate = DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('birth_date');
+        if (empty($birthDate)) {
+            return null;
+        }
+
+        try {
+            return (int) Carbon::parse($birthDate)->diffInYears(Carbon::now(config('app.timezone')));
+        } catch (\Throwable) {
+            return null;
+        }
+    }
 
     private function defaultFormEntryNyeriState(): array
     {
@@ -193,49 +250,38 @@ new class extends Component {
         $this->formEntryNyeri['tglPenilaian'] = Carbon::now()->format('d/m/Y H:i:s');
     }
 
-    public function updateVasNyeriScore(int $score): void
+    /* Skala tipe 'pilih' (VAS, Wong-Baker): satu nilai dipilih langsung. */
+    public function updateSkorSkala(int $skor): void
     {
-        foreach ($this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] as &$opt) {
-            $opt['active'] = (int) $opt['vas'] === $score;
+        foreach ($this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] as &$opsi) {
+            $opsi['active'] = (int) $opsi['score'] === $skor;
         }
-        $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] = $score;
-        $this->formEntryNyeri['nyeri']['nyeriKet'] = $this->getJenisNyeriVas($score);
+        unset($opsi);
+
+        $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] = $skor;
+        $this->sinkronKetNyeri();
     }
 
-    private function getJenisNyeriVas(int $score): string
+    /* Skala tipe 'item' (FLACC, NIPS, BPS, CPOT, PAINAD): skor = jumlah item terpilih. */
+    public function updateSkorItem(string $kategori, int $skor): void
     {
-        return match (true) {
-            $score === 0 => 'Tidak Nyeri',
-            $score <= 3 => 'Nyeri Ringan',
-            $score <= 6 => 'Nyeri Sedang',
-            default => 'Nyeri Berat',
-        };
+        if (!isset($this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'][$kategori]['opsi'])) {
+            return;
+        }
+
+        foreach ($this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'][$kategori]['opsi'] as &$opsi) {
+            $opsi['active'] = (int) $opsi['score'] === $skor;
+        }
+        unset($opsi);
+
+        $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] = NyeriOptions::totalSkorItem($this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri']);
+        $this->sinkronKetNyeri();
     }
 
-    public function updateFlaccScore(string $category, int $score): void
+    /* Satu-satunya tempat keterangan nyeri dihitung — selalu turunan dari metode + skor. */
+    private function sinkronKetNyeri(): void
     {
-        foreach ($this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'][$category] as &$item) {
-            $item['active'] = $item['score'] === $score;
-        }
-        unset($item);
-
-        $total = 0;
-        foreach ($this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] as $options) {
-            foreach ($options as $opt) {
-                if ($opt['active']) {
-                    $total += $opt['score'];
-                    break;
-                }
-            }
-        }
-
-        $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] = $total;
-        $this->formEntryNyeri['nyeri']['nyeriKet'] = match (true) {
-            $total === 0 => 'Santai dan nyaman',
-            $total <= 3 => 'Ketidaknyamanan ringan',
-            $total <= 6 => 'Nyeri sedang',
-            default => 'Nyeri berat',
-        };
+        $this->formEntryNyeri['nyeri']['nyeriKet'] = NyeriOptions::interpretasi($this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] ?? '', $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] ?? null)['label'];
     }
 
     public function addAssessmentNyeri(): void
@@ -253,6 +299,11 @@ new class extends Component {
             $this->setTglPenilaianNyeri();
         }
 
+        // Skor divalidasi terhadap rentang skala yang dipilih — BPS 3–12, NIPS 0–7,
+        // CPOT 0–8, sisanya 0–10. Tanpa ini skor di luar akal ikut tersimpan.
+        $metode = $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] ?? '';
+        $rentang = NyeriOptions::rentang($metode);
+
         try {
             $this->validate(
                 [
@@ -260,8 +311,8 @@ new class extends Component {
                     'formEntryNyeri.petugasPenilai' => 'required|string|max:100',
                     'formEntryNyeri.petugasPenilaiCode' => 'required|string|max:50',
                     'formEntryNyeri.nyeri.nyeri' => 'required|in:Ya,Tidak',
-                    'formEntryNyeri.nyeri.nyeriMetode.nyeriMetode' => 'required_if:formEntryNyeri.nyeri.nyeri,Ya|string|max:50',
-                    'formEntryNyeri.nyeri.nyeriMetode.nyeriMetodeScore' => 'required_if:formEntryNyeri.nyeri.nyeri,Ya|numeric|min:0|max:100',
+                    'formEntryNyeri.nyeri.nyeriMetode.nyeriMetode' => 'required_if:formEntryNyeri.nyeri.nyeri,Ya|nullable|in:' . implode(',', array_keys(NyeriOptions::SKALA)),
+                    'formEntryNyeri.nyeri.nyeriMetode.nyeriMetodeScore' => 'required_if:formEntryNyeri.nyeri.nyeri,Ya|nullable|numeric|min:' . $rentang['min'] . '|max:' . $rentang['max'],
                 ],
                 [
                     'formEntryNyeri.tglPenilaian.required' => 'Tanggal penilaian wajib diisi.',
@@ -276,6 +327,19 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: collect($e->errors())->flatten()->first() ?? 'Periksa kembali data nyeri yang diisi.');
             return;
         }
+
+        // Skala tipe 'item' (FLACC/NIPS/BPS/CPOT/PAINAD) wajib dinilai lengkap —
+        // total dari sebagian aspek bukan skor yang sah.
+        if (($this->formEntryNyeri['nyeri']['nyeri'] ?? '') === 'Ya' && (NyeriOptions::skala($metode)['tipe'] ?? '') === 'item') {
+            $belum = NyeriOptions::itemBelumDinilai($this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] ?? []);
+            if (!empty($belum)) {
+                $this->dispatch('toast', type: 'warning', message: 'Aspek ' . $metode . ' belum dinilai: ' . implode(', ', $belum) . '.');
+                return;
+            }
+        }
+
+        // Keterangan nyeri selalu diturunkan ulang sesaat sebelum simpan.
+        $this->sinkronKetNyeri();
 
         $this->dataDaftarPoliRJ['penilaian']['nyeri'][] = $this->formEntryNyeri;
         $this->savePenilaian('Tambah Penilaian RJ Nyeri — entri ' . ($this->formEntryNyeri['tglPenilaian'] ?? '-'));
@@ -976,28 +1040,19 @@ new class extends Component {
             };
         }
 
-        // ===== AUTO KET NYERI (NRS / BPS / NIPS) =====
+        // ===== SKOR NYERI DIKETIK MANUAL (NRS): clamp ke rentang skala + hitung ulang keterangan =====
         if ($property === 'formEntryNyeri.nyeri.nyeriMetode.nyeriMetodeScore') {
-            $metode = $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] ?? '';
-            if (in_array($metode, ['NRS', 'BPS', 'NIPS'])) {
-                $score = (int) ($this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] ?? 0);
-                $this->formEntryNyeri['nyeri']['nyeriKet'] = $this->getJenisNyeriVas($score);
-            }
+            $rentang = NyeriOptions::rentang($this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] ?? '');
+            $skor = (int) ($this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] ?? 0);
+            $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] = max($rentang['min'], min($rentang['max'], $skor));
+            $this->sinkronKetNyeri();
         }
 
         // ===== RESET DATA SAAT GANTI METODE NYERI =====
         if ($property === 'formEntryNyeri.nyeri.nyeriMetode.nyeriMetode') {
-            $value = $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'];
-            $this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] = [];
+            $this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] = NyeriOptions::kerangkaData($this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] ?? '');
             $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] = 0;
-            $this->formEntryNyeri['nyeri']['nyeriKet'] = 'Tidak Nyeri';
-
-            if ($value === 'VAS') {
-                $this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] = $this->vasOptions;
-            }
-            if ($value === 'FLACC') {
-                $this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] = $this->flaccOptions;
-            }
+            $this->formEntryNyeri['nyeri']['nyeriKet'] = '';
         }
 
         // ===== RESET DATA SAAT GANTI METODE RESIKO JATUH =====

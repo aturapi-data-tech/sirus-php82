@@ -42,129 +42,33 @@
                                 class="w-full mt-1"
                                 x-ref="nyMetode" x-on:keydown.enter.prevent="($refs.nyMetodeScore || $refs.nyPencetus)?.focus()">
                                 <option value="">-- Pilih Metode --</option>
-                                @foreach ($nyeriMetodeOptions as $opt)
-                                    <option value="{{ $opt['nyeriMetode'] }}">{{ $opt['nyeriMetode'] }}</option>
+                                @foreach ($this->daftarSkala as $kode => $skala)
+                                    <option value="{{ $kode }}">{{ $kode }} — {{ $skala['sasaran'] }}</option>
                                 @endforeach
                             </x-select-input>
                             <x-input-error :messages="$errors->get('formEntryNyeri.nyeri.nyeriMetode.nyeriMetode')" class="mt-1" />
+                            @if (!empty($skalaDisarankan))
+                                <p class="mt-1 text-xs text-muted">
+                                    Umur pasien {{ $umurPasienTahun }} th — disarankan:
+                                    <span class="font-semibold text-brand dark:text-brand-lime">{{ implode(' / ', $skalaDisarankan) }}</span>
+                                </p>
+                            @endif
                         </div>
 
-                        @if ($formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'])
-                            <div>
-                                <x-input-label value="Skor" />
-                                <div class="flex items-center gap-2 mt-1">
-                                    <span class="px-3 py-2 text-sm font-bold text-white rounded-lg bg-brand">
-                                        {{ $formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] }}
-                                    </span>
-                                    @if ($formEntryNyeri['nyeri']['nyeriKet'])
-                                        <span
-                                            class="px-2 py-0.5 text-sm font-bold rounded-full
-                                            {{ str_contains(strtolower($formEntryNyeri['nyeri']['nyeriKet']), 'berat')
-                                                ? 'bg-red-100 text-red-700'
-                                                : (str_contains(strtolower($formEntryNyeri['nyeri']['nyeriKet']), 'sedang')
-                                                    ? 'bg-yellow-100 text-yellow-700'
-                                                    : (str_contains(strtolower($formEntryNyeri['nyeri']['nyeriKet']), 'ringan')
-                                                        ? 'bg-orange-100 text-orange-700'
-                                                        : 'bg-green-100 text-green-700')) }}">
-                                            {{ $formEntryNyeri['nyeri']['nyeriKet'] }}
-                                        </span>
-                                    @endif
-                                </div>
-                            </div>
+                        <x-nyeri.panduan-skala :daftarSkala="$this->daftarSkala" />
+
+                        @if ($this->skalaTerpilih)
+                            <x-nyeri.identitas-skala :skala="$this->skalaTerpilih" :kode="$formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode']"
+                                :skor="$formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore']" :tafsir="$this->interpretasiBerjalan" />
                         @endif
                     </div>
                 @endif
 
-                {{-- ===== NRS ===== --}}
-                @if ($formEntryNyeri['nyeri']['nyeri'] === 'Ya' && $formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] === 'NRS')
-                    <x-border-form :title="__('Numeric Rating Scale (NRS)')" :align="__('start')" :bgcolor="__('bg-canvas')">
-                        <div class="space-y-3">
-                            <p class="text-sm text-muted-soft">Interpretasi: 0 Tidak Nyeri | 1–3 Ringan | 4–6 Sedang |
-                                7–10 Berat</p>
-                            <div>
-                                <x-input-label value="Skor NRS (0–10)" :required="true" />
-                                <x-text-input type="number" min="0" max="10"
-                                    wire:model.live="formEntryNyeri.nyeri.nyeriMetode.nyeriMetodeScore"
-                                    class="w-32 mt-1"
-                                    x-ref="nyMetodeScore" x-on:keydown.enter.prevent="$refs.nyPencetus?.focus()" />
-                                <x-input-error :messages="$errors->get('formEntryNyeri.nyeri.nyeriMetode.nyeriMetodeScore')" class="mt-1" />
-                            </div>
-                        </div>
-                    </x-border-form>
-                @endif
-
-                {{-- ===== VAS ===== --}}
-                @if ($formEntryNyeri['nyeri']['nyeri'] === 'Ya' && $formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] === 'VAS')
-                    <x-border-form :title="__('Visual Analog Scale (VAS)')" :align="__('start')" :bgcolor="__('bg-canvas')">
-                        <div class="space-y-3">
-                            <p class="text-sm text-muted-soft">Interpretasi: 0 Tidak Nyeri | 1–3 Ringan | 4–6 Sedang |
-                                7–10 Berat</p>
-                            <div class="flex flex-wrap gap-2">
-                                @foreach ($formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] as $opt)
-                                    <button type="button" wire:click="updateVasNyeriScore({{ $opt['vas'] }})"
-                                        class="w-10 h-10 text-sm font-bold rounded-lg border-2 transition
-                                            {{ $opt['active']
-                                                ? 'border-primary bg-brand text-white'
-                                                : 'border-gray-300 bg-canvas text-muted hover:border-primary hover:text-primary dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300' }}">
-                                        {{ $opt['vas'] }}
-                                    </button>
-                                @endforeach
-                            </div>
-                        </div>
-                    </x-border-form>
-                @endif
-
-                {{-- ===== FLACC ===== --}}
-                @if ($formEntryNyeri['nyeri']['nyeri'] === 'Ya' && $formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] === 'FLACC')
-                    <x-border-form :title="__('FLACC Scale')" :align="__('start')" :bgcolor="__('bg-canvas')">
-                        <div class="space-y-4">
-                            <p class="text-sm text-muted-soft">Interpretasi: 0 Santai | 1–3 Ketidaknyamanan ringan | 4–6
-                                Nyeri sedang | 7–10 Nyeri berat</p>
-                            @foreach ($formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] as $category => $items)
-                                <div>
-                                    <x-input-label :value="ucwords($category)" />
-                                    <div class="flex flex-wrap gap-2 mt-1">
-                                        @foreach ($items as $item)
-                                            <button type="button"
-                                                wire:click="updateFlaccScore('{{ $category }}', {{ $item['score'] }})"
-                                                class="px-3 py-1.5 text-sm rounded-lg border-2 transition text-left
-                                                    {{ $item['active']
-                                                        ? 'border-primary bg-brand text-white'
-                                                        : 'border-gray-300 bg-canvas text-muted hover:border-primary hover:text-primary dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300' }}">
-                                                <span class="font-bold">{{ $item['score'] }}</span> —
-                                                {{ $item['description'] }}
-                                            </button>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </x-border-form>
-                @endif
-
-                {{-- ===== BPS / NIPS ===== --}}
-                @if (
-                    $formEntryNyeri['nyeri']['nyeri'] === 'Ya' &&
-                        in_array($formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'], ['BPS', 'NIPS']))
-                    <x-border-form :title="__($formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'])" :align="__('start')" :bgcolor="__('bg-canvas')">
-                        <div class="space-y-3">
-                            @if ($formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] === 'BPS')
-                                <p class="text-sm text-muted-soft">Interpretasi: 3 Tidak Nyeri | 4–6 Nyeri Ringan | 7–9
-                                    Nyeri Sedang | 10–12 Nyeri Berat</p>
-                            @else
-                                <p class="text-sm text-muted-soft">Interpretasi: 0–2 Tidak Nyeri | 3–4 Nyeri Ringan | 5–6
-                                    Nyeri Sedang | 7 Nyeri Berat</p>
-                            @endif
-                            <div>
-                                <x-input-label value="Skor" :required="true" />
-                                <x-text-input type="number" min="0"
-                                    wire:model.live="formEntryNyeri.nyeri.nyeriMetode.nyeriMetodeScore"
-                                    class="w-32 mt-1"
-                                    x-ref="nyMetodeScore" x-on:keydown.enter.prevent="$refs.nyPencetus?.focus()" />
-                                <x-input-error :messages="$errors->get('formEntryNyeri.nyeri.nyeriMetode.nyeriMetodeScore')" class="mt-1" />
-                            </div>
-                        </div>
-                    </x-border-form>
+                {{-- ===== INSTRUMEN SKALA (bentuk mengikuti tipe skala) ===== --}}
+                @if ($formEntryNyeri['nyeri']['nyeri'] === 'Ya' && $this->skalaTerpilih)
+                    <x-nyeri.instrumen :skala="$this->skalaTerpilih" :kode="$formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode']"
+                        :dataNyeri="$formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri']" x-ref="nyMetodeScore"
+                        x-on:keydown.enter.prevent="$refs.nyPencetus?.focus()" />
                 @endif
 
                 {{-- ===== DETAIL NYERI ===== --}}
@@ -280,16 +184,19 @@
                     <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
                         @foreach (array_reverse(array_filter($dataDaftarPoliRJ['penilaian']['nyeri'] ?? [], fn($r) => filled(data_get($r, 'tglPenilaian'))), true) as $i => $row)
                             @php
-                                $ket = $row['nyeri']['nyeriKet'] ?? '-';
-                                $rowBg = match (true) {
-                                    str_contains(strtolower($ket), 'berat')
+                                $tafsir = $this->interpretasiEntri($row);
+                                $ket = $tafsir['label'];
+                                $skala = $this->daftarSkala[$row['nyeri']['nyeriMetode']['nyeriMetode'] ?? ''] ?? null;
+                                $rowBg = match ($tafsir['tingkat']) {
+                                    'sangatBerat', 'berat'
                                         => 'bg-red-50 hover:bg-red-100 dark:bg-red-900/10 dark:hover:bg-red-900/20',
-                                    str_contains(strtolower($ket), 'sedang')
-                                        => 'bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/10 dark:hover:bg-yellow-900/20',
-                                    str_contains(strtolower($ket), 'ringan')
+                                    'sedang'
                                         => 'bg-orange-50 hover:bg-orange-100 dark:bg-orange-900/10 dark:hover:bg-orange-900/20',
-                                    default
+                                    'ringan'
+                                        => 'bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/10 dark:hover:bg-yellow-900/20',
+                                    'tidak'
                                         => 'bg-green-50 hover:bg-green-100 dark:bg-green-900/10 dark:hover:bg-green-900/20',
+                                    default => 'hover:bg-surface-soft dark:hover:bg-gray-800',
                                 };
                             @endphp
                             <tr class="{{ $rowBg }}">
@@ -302,22 +209,23 @@
                                         {{ $row['nyeri']['nyeri'] ?? '-' }}
                                     </span>
                                 </td>
-                                <td class="px-3 py-2">{{ $row['nyeri']['nyeriMetode']['nyeriMetode'] ?? '-' }}</td>
+                                <td class="px-3 py-2">
+                                    {{ $row['nyeri']['nyeriMetode']['nyeriMetode'] ?? '-' }}
+                                    @if ($skala)
+                                        <div class="text-[11px] text-muted-soft">{{ $skala['sasaran'] }}</div>
+                                    @endif
+                                </td>
                                 <td class="px-3 py-2 font-bold">
-                                    {{ $row['nyeri']['nyeriMetode']['nyeriMetodeScore'] ?? '-' }}</td>
+                                    {{ $row['nyeri']['nyeriMetode']['nyeriMetodeScore'] ?? '-' }}@if ($skala)<span class="font-normal text-muted-soft">/{{ $skala['max'] }}</span>@endif
+                                </td>
                                 <td class="px-3 py-2">
                                     @if ($ket !== '-')
-                                        <span
-                                            class="px-2 py-0.5 rounded-full text-sm font-medium
-                                            {{ str_contains(strtolower($ket), 'berat')
-                                                ? 'bg-red-100 text-red-700'
-                                                : (str_contains(strtolower($ket), 'sedang')
-                                                    ? 'bg-yellow-100 text-yellow-700'
-                                                    : (str_contains(strtolower($ket), 'ringan')
-                                                        ? 'bg-orange-100 text-orange-700'
-                                                        : 'bg-green-100 text-green-700')) }}">
+                                        <span class="px-2 py-0.5 rounded-full text-sm font-medium {{ $tafsir['badge'] }}">
                                             {{ $ket }}
                                         </span>
+                                        @if ($tafsir['tataLaksana'])
+                                            <div class="text-[11px] text-muted-soft mt-0.5">{{ $tafsir['tataLaksana'] }}</div>
+                                        @endif
                                     @else
                                         -
                                     @endif

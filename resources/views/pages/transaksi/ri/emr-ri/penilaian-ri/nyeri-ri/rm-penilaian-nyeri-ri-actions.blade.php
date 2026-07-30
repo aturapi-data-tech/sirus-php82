@@ -5,8 +5,10 @@ use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
+use App\Support\NyeriOptions;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 
 new class extends Component {
@@ -15,6 +17,10 @@ new class extends Component {
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
     public array $dataDaftarRi = [];
+
+    // Umur pasien (tahun) utk menyarankan skala yang sesuai — hanya saran, tidak memaksa.
+    public ?int $umurPasienTahun = null;
+    public array $skalaDisarankan = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-penilaian-nyeri-ri'];
@@ -44,17 +50,26 @@ new class extends Component {
         ],
     ];
 
-    public array $nyeriMetodeOptions = [['nyeriMetode' => 'NRS'], ['nyeriMetode' => 'BPS'], ['nyeriMetode' => 'NIPS'], ['nyeriMetode' => 'FLACC'], ['nyeriMetode' => 'VAS']];
+    /* Definisi skala (sasaran populasi, rentang, item, interpretasi) — App\Support\NyeriOptions. */
+    #[Computed]
+    public function daftarSkala(): array
+    {
+        return NyeriOptions::SKALA;
+    }
 
-    public array $vasOptions = [['vas' => '0', 'active' => true], ['vas' => '1', 'active' => false], ['vas' => '2', 'active' => false], ['vas' => '3', 'active' => false], ['vas' => '4', 'active' => false], ['vas' => '5', 'active' => false], ['vas' => '6', 'active' => false], ['vas' => '7', 'active' => false], ['vas' => '8', 'active' => false], ['vas' => '9', 'active' => false], ['vas' => '10', 'active' => false]];
+    /* Definisi skala yang sedang dipakai; null bila metode belum dipilih. */
+    #[Computed]
+    public function skalaTerpilih(): ?array
+    {
+        return NyeriOptions::skala($this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] ?? '');
+    }
 
-    public array $flaccOptions = [
-        'face' => [['score' => 0, 'description' => 'Ekspresi wajah netral atau tersenyum', 'active' => false], ['score' => 1, 'description' => 'Ekspresi wajah sedikit cemberut, menarik diri', 'active' => false], ['score' => 2, 'description' => 'Ekspresi wajah meringis, rahang mengatup rapat', 'active' => false]],
-        'legs' => [['score' => 0, 'description' => 'Posisi normal atau relaks', 'active' => false], ['score' => 1, 'description' => 'Gelisah, tegang, atau menarik kaki', 'active' => false], ['score' => 2, 'description' => 'Menendang, atau kaki ditarik ke arah tubuh', 'active' => false]],
-        'activity' => [['score' => 0, 'description' => 'Berbaring tenang, posisi normal, bergerak dengan mudah', 'active' => false], ['score' => 1, 'description' => 'Menggeliat, bergerak bolak-balik, tegang', 'active' => false], ['score' => 2, 'description' => 'Melengkungkan tubuh, kaku, atau menggeliat hebat', 'active' => false]],
-        'cry' => [['score' => 0, 'description' => 'Tidak menangis (tertidur atau terjaga)', 'active' => false], ['score' => 1, 'description' => 'Merintih atau mengerang, sesekali menangis', 'active' => false], ['score' => 2, 'description' => 'Menangis terus-menerus, berteriak, atau merintih', 'active' => false]],
-        'consolability' => [['score' => 0, 'description' => 'Tenang, tidak perlu ditenangkan', 'active' => false], ['score' => 1, 'description' => 'Dapat ditenangkan dengan sentuhan atau pelukan', 'active' => false], ['score' => 2, 'description' => 'Sulit ditenangkan, terus menangis atau merintih', 'active' => false]],
-    ];
+    /* Interpretasi skor berjalan: label, tingkat, warna badge, tata laksana. */
+    #[Computed]
+    public function interpretasiBerjalan(): array
+    {
+        return NyeriOptions::interpretasi($this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] ?? '', $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] ?? null);
+    }
 
     public function mount(): void
     {
@@ -83,7 +98,33 @@ new class extends Component {
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
 
+        $this->umurPasienTahun = $this->hitungUmurPasien($data['regNo'] ?? null);
+        $this->skalaDisarankan = NyeriOptions::saranUntukUmur($this->umurPasienTahun);
+
         $this->incrementVersion('modal-penilaian-nyeri-ri');
+    }
+
+    /*
+     | Umur pasien dalam tahun, dihitung on-the-fly dari birth_date (kolom umur
+     | di master hanya snapshot saat pendaftaran). Null bila tgl lahir kosong —
+     | saran skala sekadar tidak muncul, form tetap jalan.
+     */
+    private function hitungUmurPasien(?string $regNo): ?int
+    {
+        if (empty($regNo)) {
+            return null;
+        }
+
+        $birthDate = DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('birth_date');
+        if (empty($birthDate)) {
+            return null;
+        }
+
+        try {
+            return (int) Carbon::parse($birthDate)->diffInYears(Carbon::now(config('app.timezone')));
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     public function setTglPenilaianNyeri(): void
@@ -91,42 +132,81 @@ new class extends Component {
         $this->formEntryNyeri['tglPenilaian'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
     }
 
+    /* Ganti metode → bangun ulang kerangka item/pilihan skala baru, skor & keterangan direset. */
     public function updatedFormEntryNyeriNyeriNyeriMetodeNyeriMetode(string $value): void
     {
-        $this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] = match ($value) {
-            'VAS' => $this->vasOptions,
-            'FLACC' => $this->flaccOptions,
-            default => [],
-        };
+        $this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] = NyeriOptions::kerangkaData($value);
         $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] = 0;
-        $this->formEntryNyeri['nyeri']['nyeriKet'] = 'Tidak Nyeri';
+        $this->formEntryNyeri['nyeri']['nyeriKet'] = '';
     }
 
-    public function updateVasNyeriScore(int $score): void
+    /* Skala tipe 'pilih' (VAS, Wong-Baker): satu nilai dipilih langsung. */
+    public function updateSkorSkala(int $skor): void
     {
-        foreach ($this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] as &$opt) {
-            $opt['active'] = $opt['vas'] == $score;
+        foreach ($this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] as &$opsi) {
+            $opsi['active'] = (int) $opsi['score'] === $skor;
         }
-        $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] = $score;
-        $this->formEntryNyeri['nyeri']['nyeriKet'] = $score === 0 ? 'Tidak Nyeri' : ($score <= 3 ? 'Nyeri Ringan' : ($score <= 6 ? 'Nyeri Sedang' : 'Nyeri Berat'));
+        unset($opsi);
+
+        $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] = $skor;
+        $this->sinkronKetNyeri();
     }
 
-    public function updateFlaccScore(string $category, int $score): void
+    /* Skala tipe 'item' (FLACC, NIPS, BPS, CPOT, PAINAD): skor = jumlah item terpilih. */
+    public function updateSkorItem(string $kategori, int $skor): void
     {
-        foreach ($this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'][$category] as &$item) {
-            $item['active'] = $item['score'] === $score;
+        if (!isset($this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'][$kategori]['opsi'])) {
+            return;
         }
-        $total = 0;
-        foreach ($this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] as $items) {
-            foreach ($items as $item) {
-                if ($item['active']) {
-                    $total += $item['score'];
-                    break;
-                }
-            }
+
+        foreach ($this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'][$kategori]['opsi'] as &$opsi) {
+            $opsi['active'] = (int) $opsi['score'] === $skor;
         }
-        $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] = $total;
-        $this->formEntryNyeri['nyeri']['nyeriKet'] = $total === 0 ? 'Santai dan nyaman' : ($total <= 3 ? 'Ketidaknyamanan ringan' : ($total <= 6 ? 'Nyeri sedang' : 'Nyeri berat'));
+        unset($opsi);
+
+        $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] = NyeriOptions::totalSkorItem($this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri']);
+        $this->sinkronKetNyeri();
+    }
+
+    /*
+     | Skor diketik manual (NRS) — clamp ke rentang skala lalu hitung ulang keterangan.
+     | Tanpa hook ini, keterangan tertinggal di nilai lama (mis. skor 8 berlabel
+     | "Tidak Nyeri") dan nilai keliru itu ikut tersimpan ke JSON EMR.
+     */
+    public function updated(string $property): void
+    {
+        if ($property !== 'formEntryNyeri.nyeri.nyeriMetode.nyeriMetodeScore') {
+            return;
+        }
+
+        $rentang = NyeriOptions::rentang($this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] ?? '');
+        $skor = (int) ($this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] ?? 0);
+        $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] = max($rentang['min'], min($rentang['max'], $skor));
+        $this->sinkronKetNyeri();
+    }
+
+    /*
+     | Interpretasi satu entri riwayat — dihitung ulang dari metode + skor tersimpan,
+     | bukan dari nyeriKet. Entri lama sempat menyimpan keterangan yang tidak ikut
+     | skor (mis. NRS 8 tersimpan "Tidak Nyeri"); dengan dihitung ulang, riwayat
+     | menampilkan interpretasi yang benar. Bila skor di luar rentang skala
+     | (data lama BPS/NIPS), nilai tersimpan dipakai apa adanya.
+     */
+    public function interpretasiEntri(array $entri): array
+    {
+        $hasil = NyeriOptions::interpretasi(data_get($entri, 'nyeri.nyeriMetode.nyeriMetode'), data_get($entri, 'nyeri.nyeriMetode.nyeriMetodeScore'));
+
+        if ($hasil['tingkat'] === '' && filled(data_get($entri, 'nyeri.nyeriKet'))) {
+            $hasil['label'] = data_get($entri, 'nyeri.nyeriKet');
+        }
+
+        return $hasil;
+    }
+
+    /* Satu-satunya tempat keterangan nyeri dihitung — selalu turunan dari metode + skor. */
+    private function sinkronKetNyeri(): void
+    {
+        $this->formEntryNyeri['nyeri']['nyeriKet'] = NyeriOptions::interpretasi($this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] ?? '', $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] ?? null)['label'];
     }
 
     #[On('save-rm-penilaian-nyeri-ri')]
@@ -145,10 +225,17 @@ new class extends Component {
             $this->setTglPenilaianNyeri();
         }
 
+        // Skor divalidasi terhadap rentang skala yang dipilih — BPS 3–12, NIPS 0–7,
+        // CPOT 0–8, sisanya 0–10. Tanpa ini skor di luar akal (mis. 50) ikut tersimpan.
+        $metode = $this->formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] ?? '';
+        $rentang = NyeriOptions::rentang($metode);
+
         $this->validateWithToast(
             [
                 'formEntryNyeri.nyeri.nyeri' => 'required|in:Ya,Tidak',
                 'formEntryNyeri.tglPenilaian' => 'required|date_format:d/m/Y H:i:s',
+                'formEntryNyeri.nyeri.nyeriMetode.nyeriMetode' => 'required_if:formEntryNyeri.nyeri.nyeri,Ya|nullable|in:' . implode(',', array_keys(NyeriOptions::SKALA)),
+                'formEntryNyeri.nyeri.nyeriMetode.nyeriMetodeScore' => 'required_if:formEntryNyeri.nyeri.nyeri,Ya|nullable|numeric|min:' . $rentang['min'] . '|max:' . $rentang['max'],
                 'formEntryNyeri.nyeri.sistolik' => 'required_if:formEntryNyeri.nyeri.nyeri,Ya|nullable|numeric|min:0|max:300',
                 'formEntryNyeri.nyeri.distolik' => 'required_if:formEntryNyeri.nyeri.nyeri,Ya|nullable|numeric|min:0|max:200',
                 'formEntryNyeri.nyeri.frekuensiNafas' => 'required_if:formEntryNyeri.nyeri.nyeri,Ya|nullable|numeric|min:0|max:100',
@@ -167,6 +254,8 @@ new class extends Component {
             [
                 'formEntryNyeri.nyeri.nyeri' => 'Status Nyeri',
                 'formEntryNyeri.tglPenilaian' => 'Tanggal Penilaian',
+                'formEntryNyeri.nyeri.nyeriMetode.nyeriMetode' => 'Metode Penilaian',
+                'formEntryNyeri.nyeri.nyeriMetode.nyeriMetodeScore' => 'Skor ' . ($metode ?: 'Nyeri'),
                 'formEntryNyeri.nyeri.sistolik' => 'Sistolik',
                 'formEntryNyeri.nyeri.distolik' => 'Diastolik',
                 'formEntryNyeri.nyeri.frekuensiNafas' => 'Frekuensi Nafas',
@@ -174,6 +263,19 @@ new class extends Component {
                 'formEntryNyeri.nyeri.suhu' => 'Suhu',
             ],
         );
+
+        // Skala tipe 'item' (FLACC/NIPS/BPS/CPOT/PAINAD) wajib dinilai lengkap —
+        // total dari sebagian aspek bukan skor yang sah.
+        if (($this->formEntryNyeri['nyeri']['nyeri'] ?? '') === 'Ya' && (NyeriOptions::skala($metode)['tipe'] ?? '') === 'item') {
+            $belum = NyeriOptions::itemBelumDinilai($this->formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] ?? []);
+            if (!empty($belum)) {
+                $this->dispatch('toast', type: 'warning', message: 'Aspek ' . $metode . ' belum dinilai: ' . implode(', ', $belum) . '.');
+                return;
+            }
+        }
+
+        // Keterangan nyeri selalu diturunkan ulang sesaat sebelum simpan.
+        $this->sinkronKetNyeri();
 
         try {
             DB::transaction(function () {
@@ -271,106 +373,34 @@ new class extends Component {
                             <x-select-input wire:model.live="formEntryNyeri.nyeri.nyeriMetode.nyeriMetode"
                                 class="w-full mt-1">
                                 <option value="">-- Pilih Metode --</option>
-                                @foreach ($nyeriMetodeOptions as $opt)
-                                    <option value="{{ $opt['nyeriMetode'] }}">{{ $opt['nyeriMetode'] }}</option>
+                                @foreach ($this->daftarSkala as $kode => $skala)
+                                    <option value="{{ $kode }}">{{ $kode }} — {{ $skala['sasaran'] }}</option>
                                 @endforeach
                             </x-select-input>
+                            <x-input-error :messages="$errors->get('formEntryNyeri.nyeri.nyeriMetode.nyeriMetode')" class="mt-1" />
+                            @if (!empty($skalaDisarankan))
+                                <p class="mt-1 text-xs text-muted">
+                                    Umur pasien {{ $umurPasienTahun }} th — disarankan:
+                                    <span class="font-semibold text-brand dark:text-brand-lime">{{ implode(' / ', $skalaDisarankan) }}</span>
+                                </p>
+                            @endif
                         </div>
                     @endif
                 </div>
 
+                {{-- Panduan pemilihan skala — siapa memakai skala apa --}}
+                <x-nyeri.panduan-skala :daftarSkala="$this->daftarSkala" />
+
                 @if ($formEntryNyeri['nyeri']['nyeri'] === 'Ya')
-                    @if ($formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'])
-                        <div class="flex flex-wrap items-center gap-2">
-                            <span class="px-3 py-1 text-xs font-bold text-white rounded-lg bg-brand">
-                                Skor: {{ $formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] }}
-                            </span>
-                            @if ($formEntryNyeri['nyeri']['nyeriKet'])
-                                @php $ket = $formEntryNyeri['nyeri']['nyeriKet']; @endphp
-                                <span
-                                    class="px-2 py-0.5 text-xs font-bold rounded-full
-                                    {{ str_contains(strtolower($ket), 'berat')
-                                        ? 'bg-red-100 text-red-700'
-                                        : (str_contains(strtolower($ket), 'sedang')
-                                            ? 'bg-yellow-100 text-yellow-700'
-                                            : (str_contains(strtolower($ket), 'ringan')
-                                                ? 'bg-orange-100 text-orange-700'
-                                                : 'bg-green-100 text-green-700')) }}">
-                                    {{ $ket }}
-                                </span>
-                            @endif
-                        </div>
+                    @if ($this->skalaTerpilih)
+                        <x-nyeri.identitas-skala :skala="$this->skalaTerpilih" :kode="$formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode']"
+                            :skor="$formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore']" :tafsir="$this->interpretasiBerjalan" />
                     @endif
 
-                    {{-- NRS --}}
-                    @if ($formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] === 'NRS')
-                        <x-border-form title="Numeric Rating Scale (NRS)" align="start" bgcolor="bg-canvas">
-                            <div class="mt-3">
-                                <p class="text-xs text-muted-soft mb-2">Interpretasi: 0 Tidak Nyeri | 1–3 Ringan | 4–6
-                                    Sedang | 7–10 Berat</p>
-                                <x-input-label value="Skor NRS (0–10) *" />
-                                <x-text-input type="number" min="0" max="10"
-                                    wire:model.live="formEntryNyeri.nyeri.nyeriMetode.nyeriMetodeScore"
-                                    class="w-32 mt-1" />
-                            </div>
-                        </x-border-form>
-                    @endif
-
-                    {{-- VAS --}}
-                    @if ($formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] === 'VAS')
-                        <x-border-form title="Visual Analog Scale (VAS)" align="start" bgcolor="bg-canvas">
-                            <div class="mt-3">
-                                <p class="text-xs text-muted-soft mb-2">Interpretasi: 0 Tidak Nyeri | 1–3 Ringan | 4–6
-                                    Sedang | 7–10 Berat</p>
-                                <div class="flex flex-wrap gap-2">
-                                    @foreach ($formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] as $opt)
-                                        <button type="button" wire:click="updateVasNyeriScore({{ $opt['vas'] }})"
-                                            class="w-10 h-10 text-xs font-bold rounded-lg border-2 transition
-                                                {{ $opt['active'] ? 'border-brand bg-brand text-white' : 'border-gray-300 bg-canvas text-muted hover:border-brand hover:text-brand' }}">
-                                            {{ $opt['vas'] }}
-                                        </button>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </x-border-form>
-                    @endif
-
-                    {{-- FLACC --}}
-                    @if ($formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'] === 'FLACC')
-                        <x-border-form title="FLACC Scale" align="start" bgcolor="bg-canvas">
-                            <div class="mt-3 space-y-3">
-                                <p class="text-xs text-muted-soft">Interpretasi: 0 Santai | 1–3 Ringan | 4–6 Sedang | 7–10
-                                    Berat</p>
-                                @foreach ($formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri'] as $category => $items)
-                                    <div>
-                                        <x-input-label :value="ucwords($category)" />
-                                        <div class="flex flex-wrap gap-2 mt-1">
-                                            @foreach ($items as $item)
-                                                <button type="button"
-                                                    wire:click="updateFlaccScore('{{ $category }}', {{ $item['score'] }})"
-                                                    class="px-3 py-1.5 text-xs rounded-lg border-2 transition
-                                                        {{ $item['active'] ? 'border-brand bg-brand text-white' : 'border-gray-300 bg-canvas text-muted hover:border-brand hover:text-brand' }}">
-                                                    <span class="font-bold">{{ $item['score'] }}</span> —
-                                                    {{ $item['description'] }}
-                                                </button>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </x-border-form>
-                    @endif
-
-                    {{-- BPS / NIPS --}}
-                    @if (in_array($formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode'], ['BPS', 'NIPS']))
-                        <x-border-form :title="$formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode']" align="start" bgcolor="bg-canvas">
-                            <div class="mt-3">
-                                <x-input-label value="Skor *" />
-                                <x-text-input type="number" min="0"
-                                    wire:model.live="formEntryNyeri.nyeri.nyeriMetode.nyeriMetodeScore"
-                                    class="w-32 mt-1" />
-                            </div>
-                        </x-border-form>
+                    {{-- Instrumen skala — bentuknya mengikuti tipe skala --}}
+                    @if ($this->skalaTerpilih)
+                        <x-nyeri.instrumen :skala="$this->skalaTerpilih" :kode="$formEntryNyeri['nyeri']['nyeriMetode']['nyeriMetode']"
+                            :dataNyeri="$formEntryNyeri['nyeri']['nyeriMetode']['dataNyeri']" />
                     @endif
 
                     <div class="grid grid-cols-2 gap-4">
@@ -506,14 +536,16 @@ new class extends Component {
                     <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
                         @foreach (array_reverse(array_filter($dataDaftarRi['penilaian']['nyeri'] ?? [], fn($r) => filled(data_get($r, 'tglPenilaian'))), true) as $i => $row)
                             @php
-                                $ket = $row['nyeri']['nyeriKet'] ?? '-';
-                                $rowBg = str_contains(strtolower($ket), 'berat')
-                                    ? 'bg-red-50 hover:bg-red-100'
-                                    : (str_contains(strtolower($ket), 'sedang')
-                                        ? 'bg-yellow-50 hover:bg-yellow-100'
-                                        : (str_contains(strtolower($ket), 'ringan')
-                                            ? 'bg-orange-50 hover:bg-orange-100'
-                                            : 'bg-green-50 hover:bg-green-100'));
+                                $tafsir = $this->interpretasiEntri($row);
+                                $ket = $tafsir['label'];
+                                $skala = $this->daftarSkala[$row['nyeri']['nyeriMetode']['nyeriMetode'] ?? ''] ?? null;
+                                $rowBg = match ($tafsir['tingkat']) {
+                                    'sangatBerat', 'berat' => 'bg-red-50 hover:bg-red-100 dark:bg-red-900/10 dark:hover:bg-red-900/20',
+                                    'sedang' => 'bg-orange-50 hover:bg-orange-100 dark:bg-orange-900/10 dark:hover:bg-orange-900/20',
+                                    'ringan' => 'bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/10 dark:hover:bg-yellow-900/20',
+                                    'tidak' => 'bg-green-50 hover:bg-green-100 dark:bg-green-900/10 dark:hover:bg-green-900/20',
+                                    default => 'hover:bg-surface-soft dark:hover:bg-gray-800',
+                                };
                             @endphp
                             <tr class="{{ $rowBg }}">
 
@@ -537,23 +569,22 @@ new class extends Component {
                                 <td class="px-3 py-2">
                                     <div class="font-medium">{{ $row['nyeri']['nyeriMetode']['nyeriMetode'] ?? '-' }}
                                     </div>
-                                    <div class="flex items-center gap-1 mt-0.5">
-                                        <span
-                                            class="font-bold">{{ $row['nyeri']['nyeriMetode']['nyeriMetodeScore'] ?? '-' }}</span>
+                                    @if ($skala)
+                                        <div class="text-[10px] text-muted-soft">{{ $skala['sasaran'] }}</div>
+                                    @endif
+                                    <div class="flex flex-wrap items-center gap-1 mt-0.5">
+                                        <span class="font-bold">
+                                            {{ $row['nyeri']['nyeriMetode']['nyeriMetodeScore'] ?? '-' }}@if ($skala)<span class="font-normal text-muted-soft">/{{ $skala['max'] }}</span>@endif
+                                        </span>
                                         @if ($ket !== '-')
-                                            <span
-                                                class="px-1.5 py-0.5 rounded-full text-[10px] font-bold
-                                {{ str_contains(strtolower($ket), 'berat')
-                                    ? 'bg-red-100 text-red-700'
-                                    : (str_contains(strtolower($ket), 'sedang')
-                                        ? 'bg-yellow-100 text-yellow-700'
-                                        : (str_contains(strtolower($ket), 'ringan')
-                                            ? 'bg-orange-100 text-orange-700'
-                                            : 'bg-green-100 text-green-700')) }}">
+                                            <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold {{ $tafsir['badge'] }}">
                                                 {{ $ket }}
                                             </span>
                                         @endif
                                     </div>
+                                    @if ($tafsir['tataLaksana'])
+                                        <div class="text-[10px] text-muted-soft mt-0.5">{{ $tafsir['tataLaksana'] }}</div>
+                                    @endif
                                 </td>
 
                                 {{-- Tanda Vital --}}
