@@ -91,7 +91,10 @@
                             @php
                                 $itemId = trim($item->clabitem_id ?? '');
                                 $itemDesc = trim($item->clabitem_desc ?? '');
-                                $isHeader = $itemId === '' || str_starts_with($itemDesc, '*');
+                                // Prefix "*" di master dipakai untuk DUA hal: judul sub-seksi yang memang tak
+                                // pernah diisi (*SEDIMEN, *JENIS LEUKOSIT) DAN item hasil beneran (*BAU, *WARNA,
+                                // *LENDIR, *PARASIT, ...). Penentunya ADA/TIDAKNYA hasil, bukan namanya.
+                                $isHeader = $itemId === '' || (str_starts_with($itemDesc, '*') && trim((string) ($item->lab_result ?? '')) === '');
 
                                 $useConvert = ($item->lowhigh_status ?? '') === 'Y';
                                 $unitConvert = $useConvert ? (floatval($item->unit_convert ?? 1) ?: 1) : 1;

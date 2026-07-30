@@ -937,7 +937,12 @@ new class extends Component {
                                                 $itemId = trim($item->clabitem_id ?? '');
                                                 $itemDesc = trim($item->clabitem_desc ?? '');
                                                 $isChecked = $itemId ? $this->isRowSelected($itemId) : false;
-                                                $isHeader = $itemId === '' || str_starts_with($itemDesc, '*');
+                                                // Prefix "*" di master dipakai untuk DUA hal: judul sub-seksi yang
+                                                // memang tak pernah diisi (*SEDIMEN, *JENIS LEUKOSIT) DAN item hasil
+                                                // beneran (*BAU, *WARNA, *LENDIR, *PARASIT, ...). Jadi penentunya
+                                                // ADA/TIDAKNYA hasil, bukan namanya — kalau hanya lihat "*", hasil
+                                                // yang sudah dientry ikut tersembunyi di display & cetakan.
+                                                $isHeader = $itemId === '' || (str_starts_with($itemDesc, '*') && trim((string) ($item->lab_result ?? '')) === '');
                                             @endphp
                                             @if ($isHeader)
                                                 <tr class="bg-surface-soft dark:bg-gray-700/60 font-semibold">
