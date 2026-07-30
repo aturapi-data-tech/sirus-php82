@@ -198,6 +198,7 @@ class AppMenu
             // Terbuka untuk SEMUA role: saat SIMRS bermasalah, siapa pun yang masih
             // bisa membuka aplikasi harus dapat mengunduh formulir cadangannya.
             $entry(['group' => 'Down Time', 'groupOrder' => 14, 'order' => 1, 'route' => 'downtime.formulir-manual', 'title' => 'Formulir Manual Down Time', 'desc' => 'Formulir cadangan saat SIMRS tidak dapat diakses — EMR, administrasi, kasir & apotek RJ/UGD/RI + log & rekonsiliasi IT', 'roles' => [self::SEMUA_ROLE], 'badge' => 'DT']),
+            $entry(['group' => 'Down Time', 'groupOrder' => 14, 'order' => 2, 'route' => 'downtime.daftar-tarif', 'title' => 'Daftar Tarif Down Time', 'desc' => 'Price list acuan pengisian nominal formulir manual — kamar, visite & konsul, jasa medis/dokter/karyawan, lab, radiologi, obat & lain-lain', 'roles' => [self::SEMUA_ROLE], 'badge' => 'TRF']),
 
             // ── Sistem ────────────────────────────────────────────────
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 1, 'route' => 'database-monitor.monitoring-dashboard', 'title' => 'Oracle Session Monitor', 'desc' => 'Locks, long-running SQL & kill session', 'roles' => ['admin'], 'badge' => 'DB']),

@@ -60,6 +60,11 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/downtime/formulir-manual', 'pages::downtime.formulir-manual.formulir-manual')
         ->name('downtime.formulir-manual');
 
+    // Daftar tarif (price list) acuan pengisian nominal di formulir manual —
+    // kamar, visite/konsul, jasa medis & dokter, penunjang, obat, lain-lain.
+    Route::livewire('/downtime/daftar-tarif', 'pages::downtime.daftar-tarif.daftar-tarif')
+        ->name('downtime.daftar-tarif');
+
     Route::livewire('/master/poli', 'pages::master.master-poli.master-poli')
         ->name('master.poli');
 
