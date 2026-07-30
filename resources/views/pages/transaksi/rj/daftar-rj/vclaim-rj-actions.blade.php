@@ -1256,7 +1256,8 @@ new class extends Component {
                                     {{-- 11. Diagnosa (LOV) --}}
                                     <div class="lg:col-span-4">
                                         <livewire:lov.diagnosa.lov-diagnosa label="Diagnosa *"
-                                            target="rjFormDiagnosaVclaim" :initialDiagnosaId="$diagnosaId ?? null" :disabled="$isFormLocked" />
+                                            target="rjFormDiagnosaVclaim" :initialDiagnosaId="$diagnosaId ?? null" :disabled="$isFormLocked"
+                                            :blockHeader="true" :blockIm="false" :primaryOnly="false" />
                                         @if (!empty($SEPForm['diagAwal']))
                                             <p class="mt-1 text-xs text-muted-soft">
                                                 Kode ICD-10: <span

@@ -439,7 +439,8 @@ new class extends Component {
     @if (!$idrgFinal)
         <div wire:key="lov-diagnosa-idrg-coder-{{ $rjNo ?? 'none' }}">
             <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosa (untuk klaim iDRG)" target="rjFormDiagnosaIdrgCoder"
-                wire:key="lov-diagnosa-idrg-coder-inner-{{ $rjNo ?? 'none' }}" />
+                wire:key="lov-diagnosa-idrg-coder-inner-{{ $rjNo ?? 'none' }}"
+                :blockHeader="true" :blockIm="false" :primaryOnly="false" />
         </div>
     @endif
 

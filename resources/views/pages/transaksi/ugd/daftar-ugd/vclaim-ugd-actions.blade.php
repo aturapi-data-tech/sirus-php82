@@ -663,7 +663,8 @@ new class extends Component {
                                 {{-- 5. LOV Diagnosa --}}
                                 <div class="lg:col-span-4" x-ref="lovDiagnosaVclaim">
                                     <livewire:lov.diagnosa.lov-diagnosa label="Diagnosa *"
-                                        target="ugdFormDiagnosaVclaim" :initialDiagnosaId="$diagnosaId ?? null" :disabled="$isFormLocked" />
+                                        target="ugdFormDiagnosaVclaim" :initialDiagnosaId="$diagnosaId ?? null" :disabled="$isFormLocked"
+                                        :blockHeader="true" :blockIm="false" :primaryOnly="false" />
                                     {{-- kode ICD-10 read-only --}}
                                     @if (!empty($SEPForm['diagAwal']))
                                         <p class="mt-1 text-xs text-muted-soft">

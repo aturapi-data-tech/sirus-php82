@@ -10,7 +10,10 @@
 | diagnosa sendiri — aturan kode mana yang boleh dipilih ada di sini, sekali,
 | supaya tidak ada jalur yang lolos aturan.
 |
-| Dokumen lengkap: docs/diagnosa-architecture.md §2 (skill: diagnosa-flow).
+| Dokumen lengkap: docs/diagnosa-architecture.md §2 (skill: diagnosa-flow) — di sana
+| ada tabel SELURUH 12 call site beserta status blockHeader/blockIm/primaryOnly-nya.
+| Perbarui tabel itu setiap menambah pemakaian LOV baru:
+|   grep -rn "lov.diagnosa.lov-diagnosa" resources/views --include=*.blade.php -A3
 |
 |
 | STANDAR PEMAKAIAN
@@ -173,8 +176,18 @@ new class extends Component {
     public bool $showAdditionalInfo = true;
 
     /**
-     * Kalau true, filter hanya code yang accpdx='Y' (boleh jadi diagnosa primer).
-     * Pakai untuk LOV diagnosa primer (DXP) di iDRG/INACBG flow.
+     * Kalau true, kode dgn accpdx='N' (tidak boleh jadi diagnosa primer) ditolak.
+     *
+     * GUARD 2. Status pemakaian: BELUM dipakai satu pun dari 12 call site. Semua
+     * konsumen menegakkan aturan primer di server, bukan lewat prop ini:
+     * - EMR diagnosis   : lookup `accpdx` by `diag_id` lalu tentukan kategori
+     * - coder iDRG/INACBG: pola exists() (icdx OR diag_id) di add() & setKategori()
+     *
+     * Sebabnya field diagnosa di aplikasi ini SATU kotak untuk primer + sekunder:
+     * kode accpdx='N' tetap boleh masuk, hanya dipaksa jadi Secondary. Prop ini baru
+     * berguna kalau nanti ada field yang KHUSUS diagnosa primer (mis. diagAwal SEP
+     * terpisah) — di situ menolak sejak pemilihan lebih jelas daripada memaksa
+     * kategori setelah tersimpan.
      */
     public bool $primaryOnly = false;
 
@@ -182,19 +195,25 @@ new class extends Component {
      * Kalau true, kode Indonesian Modification (master `im`=1 atau deskripsi
      * berakhiran "(IM)") DITOLAK saat dipilih.
      *
-     * Dipakai coder INACBG: E-Klaim menolak kode IM, tetapi 1.413 dari 1.416 kode
-     * IM di master ber-`valid_code`=1 sehingga lolos Guard 1 — tanpa flag ini kode
-     * IM tetap bisa masuk list dan baru ketahuan salah setelah dikirim ke E-Klaim.
-     * Default false: iDRG (dan pemakai LOV lain) justru memang memakai kode IM.
+     * GUARD 3. Status pemakaian: BELUM dipakai satu pun dari 12 call site — coder
+     * INACBG, satu-satunya konsumen yang butuh, memilih menyetelnya false (lihat
+     * blockHeader) karena penentu akhir di sana `validcode` dari respons E-Klaim.
+     *
+     * Prop ini tetap ada karena perlu terpisah dari GUARD 1: 1.413 dari 1.416 kode
+     * IM ber-`valid_code`=1 DAN accpdx='Y', jadi guard valid_code maupun accpdx
+     * tidak menangkapnya. Nyalakan bila suatu saat ada field yang harus menolak
+     * kode IM sejak pemilihan. JANGAN nyalakan di LOV iDRG — grouper iDRG memang
+     * memakai kode IM. Penandanya App\Support\Diagnosa\KodeIm.
      */
     public bool $blockIm = false;
 
     /**
      * Kalau true (DEFAULT), kode block/kategori (`valid_code`=0) ditolak.
      *
-     * Set false hanya bila pemakainya sadar konsekuensinya — mis. coder INACBG, yang
-     * sengaja membiarkan koder memasukkan kode apa pun lalu memakai `validcode` dari
-     * respons E-Klaim sebagai penentu akhir.
+     * GUARD 1. Status pemakaian: aktif di 9 dari 12 call site (SEP/VClaim, EMR
+     * diagnosis, coder iDRG — semuanya memakai default), dilepas di 3 coder INACBG
+     * yang sengaja membiarkan koder memasukkan kode apa pun lalu memakai `validcode`
+     * dari respons E-Klaim sebagai penentu akhir.
      *
      * Konteksnya: 210.311 baris diagnosa EMR RJ lama memakai kode kategori seperti
      * E11 "Non-insulin-dependent diabetes mellitus" atau K29 "Gastritis and

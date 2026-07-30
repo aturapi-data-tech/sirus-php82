@@ -89,13 +89,36 @@ memakai kode `valid_code`=0, **83.559** sebenarnya punya baris valid (kasus kemb
 atas) dan **210.311** memakai kode kategori asli seperti `E11` / `K29` — yang benar
 adalah kode anaknya (`E11.9`, `K29.7`).
 
-**Setup per konsumen.**
+**Setup di SELURUH pemakai LOV.** 12 call site, hasil audit langsung ke berkas
+(semua call site kini MENULIS ketiga prop eksplisit, dan untuk sementara semuanya
+memakai nilai default sambil menunggu keputusan final matriks guard):
 
-| Konsumen | blockHeader | blockIm | primaryOnly |
-|---|---|---|---|
-| EMR diagnosis, SEP/VClaim, master | true (default) | false (default) | sesuai field |
-| Coder iDRG | true (default) | false — grouper iDRG memang memakai kode IM | tidak |
-| **Coder INACBG** | **false** | **false** | tidak |
+| # | Konsumen | File : baris | `target` | `blockHeader` | `blockIm` | `primaryOnly` |
+|---|---|---|---|---|---|---|
+| 1 | SEP / VClaim | `transaksi/rj/daftar-rj/vclaim-rj-actions.blade.php` : 1258 | `rjFormDiagnosaVclaim` | true _(default)_ | false _(default)_ | false _(default)_ |
+| 2 | SEP / VClaim | `transaksi/ugd/daftar-ugd/vclaim-ugd-actions.blade.php` : 665 | `ugdFormDiagnosaVclaim` | true _(default)_ | false _(default)_ | false _(default)_ |
+| 3 | SEP / VClaim | `transaksi/ri/daftar-ri/vclaim-ri-actions.blade.php` : 1374 | `riFormDiagnosaVclaim` | true _(default)_ | false _(default)_ | false _(default)_ |
+| 4 | EMR Diagnosis | `transaksi/rj/emr-rj/diagnosa/rm-diagnosa-rj-actions.blade.php` : 485 | `rjFormDiagnosaRm` | true _(default)_ | false _(default)_ | false _(default)_ |
+| 5 | EMR Diagnosis | `transaksi/ugd/emr-ugd/diagnosa/rm-diagnosa-ugd-actions.blade.php` : 422 | `ugdFormDiagnosaRm` | true _(default)_ | false _(default)_ | false _(default)_ |
+| 6 | EMR Diagnosis | `transaksi/ri/emr-ri/diagnosa-ri/rm-diagnosa-ri-actions.blade.php` : 441 | `riFormDiagnosaRm` | true _(default)_ | false _(default)_ | false _(default)_ |
+| 7 | Coder iDRG | `transaksi/rj/idrg/kirim-diagnosa-idrg.blade.php` : 441 | `rjFormDiagnosaIdrgCoder` | true _(default)_ | false _(default)_ | false _(default)_ |
+| 8 | Coder iDRG | `transaksi/ugd/idrg/kirim-diagnosa-idrg.blade.php` : 436 | `ugdFormDiagnosaIdrgCoder` | true _(default)_ | false _(default)_ | false _(default)_ |
+| 9 | Coder iDRG | `transaksi/ri/idrg/kirim-diagnosa-idrg.blade.php` : 434 | `riFormDiagnosaIdrgCoder` | true _(default)_ | false _(default)_ | false _(default)_ |
+| 10 | Coder INACBG | `transaksi/rj/idrg/kirim-diagnosa-inacbg.blade.php` : 472 | `rjFormDiagnosaInacbgCoder` | **true** | **false** | **false** |
+| 11 | Coder INACBG | `transaksi/ugd/idrg/kirim-diagnosa-inacbg.blade.php` : 472 | `ugdFormDiagnosaInacbgCoder` | **true** | **false** | **false** |
+| 12 | Coder INACBG | `transaksi/ri/idrg/kirim-diagnosa-inacbg.blade.php` : 472 | `riFormDiagnosaInacbgCoder` | **true** | **false** | **false** |
+
+Rekap: ke-12 call site memakai nilai default — `blockHeader` menutup di semuanya,
+`blockIm` & `primaryOnly` tidak aktif di mana pun. Aturan primer tetap ditegakkan
+server-side di tiap konsumen (§4). Keputusan yang masih terbuka: apakah `blockIm`
+dinyalakan di bridging iDRG/INACBG, dan apakah SEP/VClaim (field `diagAwal`, satu
+nilai) memakai `primaryOnly="true"`.
+
+Cara memeriksa ulang kalau nanti ada call site baru:
+
+```bash
+grep -rn "lov.diagnosa.lov-diagnosa" resources/views --include=*.blade.php -A3
+```
 
 Coder INACBG sengaja melepas semua guard: penentu akhir di sana adalah `validcode` dari
 respons `expanded[]` E-Klaim, dan tiap baris coder sudah menampilkan badge
@@ -104,8 +127,7 @@ kode apa adanya (kategori, IM, atau kode yang tak boleh primer → otomatis Seco
 lalu memperbaikinya setelah tahu jawaban E-Klaim. Konsekuensinya diterima sadar:
 kode kategori/IM yang lolos ke klaim akan dibalas `validcode=0`.
 
-**Kapan pakai `blockIm`.** Untuk konsumen selain INACBG yang ingin menolak kode IM di
-muka. E-Klaim INACBG menolak kode
+**Kenapa `blockIm` perlu ada walau belum dipakai.** E-Klaim INACBG menolak kode
 Indonesian Modification, tetapi **1.413 dari 1.416** kode IM di master ber-`valid_code=1`
 (dan `accpdx='Y'`) sehingga lolos guard 1 & 2 — tanpa flag ini kode IM baru ketahuan
 salah setelah klaim dikirim dan dibalas `validcode=0`. Jangan dinyalakan di LOV iDRG:
@@ -203,8 +225,13 @@ Pengecualian: lookup **by `diag_id` saja** (PK, unik — mis. dari payload LOV y
 1. Pakai `<livewire:lov.diagnosa.lov-diagnosa>` dengan `target` unik per form.
 2. Butuh kode utk sistem eksternal? Kirim **`icdx`** (BPJS/E-Klaim), bukan `diag_id`.
 3. Butuh referensi internal/join transaksi? Simpan **`diag_id`**.
-4. Field diagnosa primer? Set `:primaryOnly="true"` ATAU guard exists-Y (§4) di server.
-5. Field coder INACBG? Set `:blockIm="true"` + ulangi guard `KodeIm::adalahKode()` di
-   server (`add()`), karena `add()` juga dipanggil dari sync iDRG & aksi lain.
+4. Field diagnosa primer? Semua konsumen saat ini memakai guard exists-Y (§4) di
+   server, BUKAN `:primaryOnly="true"` — field diagnosa di aplikasi ini satu kotak
+   untuk primer + sekunder, kode `accpdx='N'` tetap masuk lalu dipaksa Secondary.
+   Prop `primaryOnly` baru relevan kalau ada field KHUSUS primer.
+5. Field coder INACBG? Lepas semua guard (`:blockHeader="false" :blockIm="false"
+   :primaryOnly="false"`) dan JANGAN tambah guard IM di `add()` — penentu akhirnya
+   `validcode` E-Klaim + badge per baris. Aturan primer tetap ditegakkan `add()` /
+   `setKategori()` lewat pola exists-Y.
 5. Auto-kategori Primary/Secondary: cek dulu sudah ada Primary, lalu guard accpdx.
 6. Jangan hapus baris master yang direferensikan transaksi — nonaktifkan via `valid_code=0`.

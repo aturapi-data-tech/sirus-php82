@@ -30,8 +30,10 @@ Ringkasan keputusan cepat:
    utk join/simpan internal pakai `diag_id`.
 3. **Jangan hapus baris master** — legacy `diag_id` direferensikan >130rb baris
    `rstxn_*dtls`. Nonaktifkan via `valid_code=0` (toggle di /master/diagnosa).
-4. Field diagnosa **primer** → `:primaryOnly="true"` di LOV atau guard exists-Y server-side;
-   jaga single-Primary invariant saat auto-kategori.
+4. Field diagnosa **primer** → semua konsumen sekarang memakai guard exists-Y server-side,
+   BUKAN `:primaryOnly` (0 dari 12 call site memakainya); jaga single-Primary invariant
+   saat auto-kategori. Status prop lain: `blockHeader` aktif di 9 call site (default),
+   dilepas di 3 coder INACBG; `blockIm` 0 pemakai.
 4b. **Setup guard LOV per konsumen** (`blockHeader` default true, `blockIm` default false):
    EMR/SEP/master pakai default; coder iDRG pakai default; **coder INACBG melepas
    keduanya** (`:blockHeader="false" :blockIm="false"`, tanpa `primaryOnly`) karena
