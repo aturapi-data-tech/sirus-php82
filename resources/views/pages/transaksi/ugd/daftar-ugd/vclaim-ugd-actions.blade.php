@@ -662,9 +662,15 @@ new class extends Component {
 
                                 {{-- 5. LOV Diagnosa --}}
                                 <div class="lg:col-span-4" x-ref="lovDiagnosaVclaim">
+                                    {{-- Guard LOV dibuka: kode kategori & kode IM boleh dipilih sebagai
+                                         diagnosa awal SEP. Penilaian akhir diserahkan BPJS — bila kodenya
+                                         tak diterima, VClaim menolak saat SEP dibuat dan pesannya muncul
+                                         sebagai toast dari metadata respons. Beda dgn coder iDRG/INACBG,
+                                         di sini TIDAK ada badge kevalidan per kode. Setup 12 call site:
+                                         docs/diagnosa-architecture.md §2. --}}
                                     <livewire:lov.diagnosa.lov-diagnosa label="Diagnosa *"
                                         target="ugdFormDiagnosaVclaim" :initialDiagnosaId="$diagnosaId ?? null" :disabled="$isFormLocked"
-                                        :blockHeader="true" :blockIm="false" :primaryOnly="false" />
+                                        :blockHeader="false" :blockIm="false" :primaryOnly="false" />
                                     {{-- kode ICD-10 read-only --}}
                                     @if (!empty($SEPForm['diagAwal']))
                                         <p class="mt-1 text-xs text-muted-soft">

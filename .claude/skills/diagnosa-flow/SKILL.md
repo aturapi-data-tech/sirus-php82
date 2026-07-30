@@ -33,9 +33,11 @@ Ringkasan keputusan cepat:
 4. Field diagnosa **primer** → semua konsumen memakai guard exists-Y server-side, BUKAN
    `:primaryOnly` (0 dari 12 call site); jaga single-Primary invariant saat auto-kategori.
    Ketiga prop guard ditulis EKSPLISIT di 12 call site (tabel di docs §2). Status:
-   `blockHeader` menutup di 9 (dibuka di 3 coder INACBG), `blockIm` aktif di 3 coder
-   iDRG, `primaryOnly` 0 pemakai. Pola: iDRG = langkah koding utama → ketat;
-   INACBG = lapis override hasil iDRG → dibuka penuh, penentu akhir validcode E-Klaim.
+   `blockHeader` menutup di 6 (EMR + coder iDRG), dibuka di 6 (SEP/VClaim + coder
+   INACBG); `blockIm` aktif di 3 coder iDRG; `primaryOnly` 0 pemakai. Pembagi
+   keputusannya = siapa penilai akhir kode: ada sistem luar yang menolak & pesannya
+   sampai ke pengguna (E-Klaim, BPJS) → guard dibuka; tidak ada penilai luar (EMR)
+   atau penolakan mahal krn harus kirim klaim dulu (coder iDRG) → guard ditutup.
 4b. **Setup guard LOV per konsumen** (`blockHeader` default true, `blockIm` default false):
    EMR/SEP/master pakai default; coder iDRG pakai default; **coder INACBG melepas
    keduanya** (`:blockHeader="false" :blockIm="false"`, tanpa `primaryOnly`) karena

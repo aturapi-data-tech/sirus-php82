@@ -220,10 +220,12 @@ new class extends Component {
     /**
      * Kalau true (DEFAULT), kode block/kategori (`valid_code`=0) ditolak.
      *
-     * GUARD 1. Status pemakaian: menutup di 9 dari 12 call site (SEP/VClaim, EMR
-     * diagnosis, coder iDRG), DIBUKA di 3 coder INACBG — layar itu lapis override
-     * atas hasil iDRG, jadi koder bebas memasukkan kode apa pun dan penentu akhirnya
-     * `validcode` dari respons E-Klaim.
+     * GUARD 1. Status pemakaian: menutup di 6 dari 12 call site (EMR diagnosis +
+     * coder iDRG), DIBUKA di 6 lainnya (SEP/VClaim + coder INACBG). Pembaginya:
+     * siapa penilai akhir kode — kalau ada sistem luar yang menolak & pesannya
+     * sampai ke pengguna (E-Klaim di INACBG, BPJS di SEP), guard dibuka; kalau
+     * tidak ada penilai luar (EMR) atau penolakan mahal karena harus kirim klaim
+     * dulu (coder iDRG), guard ditutup. Tabel lengkap: docs §2.
      *
      * Konteksnya: 210.311 baris diagnosa EMR RJ lama memakai kode kategori seperti
      * E11 "Non-insulin-dependent diabetes mellitus" atau K29 "Gastritis and

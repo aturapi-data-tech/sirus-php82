@@ -94,9 +94,9 @@ adalah kode anaknya (`E11.9`, `K29.7`).
 
 | # | Konsumen | File : baris | `target` | `blockHeader` | `blockIm` | `primaryOnly` |
 |---|---|---|---|---|---|---|
-| 1 | SEP / VClaim | `transaksi/rj/daftar-rj/vclaim-rj-actions.blade.php` : 1258 | `rjFormDiagnosaVclaim` | **true** | false | false |
-| 2 | SEP / VClaim | `transaksi/ugd/daftar-ugd/vclaim-ugd-actions.blade.php` : 665 | `ugdFormDiagnosaVclaim` | **true** | false | false |
-| 3 | SEP / VClaim | `transaksi/ri/daftar-ri/vclaim-ri-actions.blade.php` : 1374 | `riFormDiagnosaVclaim` | **true** | false | false |
+| 1 | SEP / VClaim | `transaksi/rj/daftar-rj/vclaim-rj-actions.blade.php` : 1264 | `rjFormDiagnosaVclaim` | false | false | false |
+| 2 | SEP / VClaim | `transaksi/ugd/daftar-ugd/vclaim-ugd-actions.blade.php` : 671 | `ugdFormDiagnosaVclaim` | false | false | false |
+| 3 | SEP / VClaim | `transaksi/ri/daftar-ri/vclaim-ri-actions.blade.php` : 1380 | `riFormDiagnosaVclaim` | false | false | false |
 | 4 | EMR Diagnosis | `transaksi/rj/emr-rj/diagnosa/rm-diagnosa-rj-actions.blade.php` : 485 | `rjFormDiagnosaRm` | **true** | false | false |
 | 5 | EMR Diagnosis | `transaksi/ugd/emr-ugd/diagnosa/rm-diagnosa-ugd-actions.blade.php` : 422 | `ugdFormDiagnosaRm` | **true** | false | false |
 | 6 | EMR Diagnosis | `transaksi/ri/emr-ri/diagnosa-ri/rm-diagnosa-ri-actions.blade.php` : 441 | `riFormDiagnosaRm` | **true** | false | false |
@@ -107,17 +107,19 @@ adalah kode anaknya (`E11.9`, `K29.7`).
 | 11 | Coder INACBG | `transaksi/ugd/idrg/kirim-diagnosa-inacbg.blade.php` : 473 | `ugdFormDiagnosaInacbgCoder` | false | false | false |
 | 12 | Coder INACBG | `transaksi/ri/idrg/kirim-diagnosa-inacbg.blade.php` : 473 | `riFormDiagnosaInacbgCoder` | false | false | false |
 
-Rekap: `blockHeader` menutup di 9 call site (SEP/VClaim, EMR, coder iDRG) dan DIBUKA
-di 3 coder INACBG. `blockIm` aktif hanya di 3 coder iDRG. `primaryOnly` tidak aktif di
-mana pun — aturan primer ditegakkan server-side di tiap konsumen (§4).
+Rekap: `blockHeader` menutup di 6 call site (EMR diagnosis + coder iDRG) dan DIBUKA di
+6 lainnya (SEP/VClaim + coder INACBG). `blockIm` aktif hanya di 3 coder iDRG.
+`primaryOnly` tidak aktif di mana pun — aturan primer ditegakkan server-side di tiap
+konsumen (§4).
 
-**Kenapa iDRG ketat tapi INACBG bebas.** iDRG adalah langkah koding utama, jadi kode
-kategori & kode IM ditolak sejak pemilihan supaya tidak perlu bolak-balik mengirim
-klaim. Coder INACBG adalah lapis **override** atas hasil iDRG (lihat kop
-`kirim-diagnosa-inacbg.blade.php`) — koder harus bebas memasukkan kode apa pun untuk
-memperbaiki hasil grouper, dan penentu akhirnya `validcode` dari respons E-Klaim yang
-sudah ditampilkan per baris. Sisa keputusan terbuka: apakah SEP/VClaim (field
-`diagAwal`, satu nilai, wajib, tanpa pemeriksaan `accpdx`) memakai `primaryOnly="true"`.
+**Pola keputusannya: siapa penilai akhir kode.**
+
+| Konsumen | Guard LOV | Penilai akhir |
+|---|---|---|
+| Coder iDRG | ketat (`blockHeader` + `blockIm`) | langkah koding utama — ditolak sejak pemilihan supaya tidak bolak-balik kirim klaim |
+| Coder INACBG | dibuka | `validcode` respons E-Klaim, tampil per baris di kolom Keterangan |
+| SEP / VClaim | dibuka | BPJS VClaim saat SEP dibuat; pesan penolakan muncul sebagai toast dari metadata respons. **Tidak ada** badge kevalidan per kode seperti di coder |
+| EMR diagnosis | ketat (`blockHeader`) | tidak dikirim ke luar; kode kategori ditutup supaya rekam medis tetap spesifik |
 
 Cara memeriksa ulang kalau nanti ada call site baru:
 
