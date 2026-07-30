@@ -32,6 +32,9 @@
     @php
         $txn = $data['dataDaftarTxn'];
         $lastNyeri = !empty($txn['penilaian']['nyeri']) ? end($txn['penilaian']['nyeri']) : null;
+        // FQCN: `use` tak bisa dipakai di sini — blok @php ini terkompilasi di dalam
+        // blok if milik komponen <x-pdf.layout-a4...>, sedangkan `use` wajib di scope file.
+        $ringkasNyeri = \App\Support\NyeriOptions::ringkasEntri($lastNyeri ?? []);
         $lastResikoJatuh = !empty($txn['penilaian']['resikoJatuh']) ? end($txn['penilaian']['resikoJatuh']) : null;
         $lastResikoBunuhDiri = !empty($txn['penilaian']['resikoBunuhDiri']) ? end($txn['penilaian']['resikoBunuhDiri']) : null;
         $lastDekubitus = !empty($txn['penilaian']['dekubitus']) ? end($txn['penilaian']['dekubitus']) : null;
@@ -119,9 +122,9 @@
                 <span class="font-bold">Status Medik :</span>
                 {{ ($txn['anamnesa']['pengkajianPerawatan']['statusMedik']['statusMedik'] ?? '') !== '' ? $txn['anamnesa']['pengkajianPerawatan']['statusMedik']['statusMedik'] : '-' }}<br>
                 <span class="font-bold">Skala Nyeri :</span>
-                Metode : {{ $lastNyeri['nyeri']['nyeriMetode']['nyeriMetode'] ?? '-' }} /
-                Skor : {{ $lastNyeri['nyeri']['nyeriMetode']['nyeriMetodeScore'] ?? '-' }} /
-                {{ $lastNyeri['nyeri']['nyeriKet'] ?? '-' }} /
+                Metode : {{ $ringkasNyeri['metode'] }} /
+                Skor : {{ $ringkasNyeri['skor'] }} /
+                {{ $ringkasNyeri['label'] }}@if ($ringkasNyeri['catatan']) ({{ $ringkasNyeri['catatan'] }})@endif /
                 Pencetus : {{ $lastNyeri['nyeri']['pencetus'] ?? '-' }} /
                 Durasi : {{ $lastNyeri['nyeri']['durasi'] ?? '-' }} /
                 Lokasi : {{ $lastNyeri['nyeri']['lokasi'] ?? '-' }} /

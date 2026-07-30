@@ -519,6 +519,93 @@ class NyeriOptions
     }
 
     /**
+     * Keterangan bawaan versi lama yang PERNAH dihasilkan otomatis oleh sistem.
+     * Dipakai memilah mana isi nyeriKet yang label turunan (boleh ditimpa) dan
+     * mana yang catatan bebas tulisan petugas (WAJIB dipertahankan).
+     */
+    public const LABEL_LAMA = ['Santai dan nyaman', 'Ketidaknyamanan ringan'];
+
+    /**
+     * Isi nyeriKet yang merupakan catatan bebas petugas — string kosong bila
+     * nilainya cuma label turunan sistem.
+     *
+     * Data lama menyimpan campuran: sebagian label otomatis ("Nyeri Sedang"),
+     * sebagian tulisan tangan petugas ("hilang timbul", "nyeri akut", "Nyeri
+     * saat bergerak"). Tulisan petugas tidak boleh hilang dari layar & cetakan.
+     */
+    public static function catatanLama(?string $keterangan): string
+    {
+        $keterangan = trim((string) $keterangan);
+        if ($keterangan === '') {
+            return '';
+        }
+
+        $labelSistem = self::LABEL_LAMA;
+        foreach (self::SKALA as $skala) {
+            foreach ($skala['interpretasi'] as [, , $label]) {
+                $labelSistem[] = $label;
+            }
+        }
+
+        foreach ($labelSistem as $label) {
+            if (mb_strtolower($keterangan) === mb_strtolower($label)) {
+                return '';
+            }
+        }
+
+        return $keterangan;
+    }
+
+    /**
+     * Tafsir satu entri riwayat: interpretasi dihitung ulang dari metode + skor,
+     * plus catatan bebas petugas (bila ada) supaya tidak tertimpa.
+     *
+     * @return array{label:string, tingkat:string, badge:string, tataLaksana:string, catatan:string}
+     */
+    public static function tafsirEntri(array $entri): array
+    {
+        $kode = data_get($entri, 'nyeri.nyeriMetode.nyeriMetode');
+        $skor = data_get($entri, 'nyeri.nyeriMetode.nyeriMetodeScore');
+        $keterangan = trim((string) data_get($entri, 'nyeri.nyeriKet', ''));
+
+        $tafsir = self::interpretasi($kode, $skor);
+        $catatan = self::catatanLama($keterangan);
+
+        // Skor di luar rentang skala (data lama) & keterangan tersimpan berupa
+        // label baku → pakai label itu apa adanya.
+        if ($tafsir['tingkat'] === '' && $catatan === '' && $keterangan !== '') {
+            $tafsir['label'] = $keterangan;
+        }
+
+        $tafsir['catatan'] = $catatan;
+
+        return $tafsir;
+    }
+
+    /**
+     * Ringkasan satu entri penilaian nyeri untuk display & cetak Rekam Medis.
+     *
+     * @param  array  $entri  satu entri penilaian (punya key 'nyeri')
+     * @return array{metode:string, sasaran:string, skor:string, label:string, tataLaksana:string, catatan:string}
+     */
+    public static function ringkasEntri(array $entri): array
+    {
+        $kode = data_get($entri, 'nyeri.nyeriMetode.nyeriMetode');
+        $skor = data_get($entri, 'nyeri.nyeriMetode.nyeriMetodeScore');
+        $skala = self::skala($kode);
+        $tafsir = self::tafsirEntri($entri);
+
+        return [
+            'metode' => filled($kode) ? $kode : '-',
+            'sasaran' => $skala['sasaran'] ?? '',
+            'skor' => $skor === null || $skor === '' ? '-' : ($skala ? $skor . '/' . $skala['max'] : (string) $skor),
+            'label' => $tafsir['label'],
+            'tataLaksana' => $tafsir['tataLaksana'],
+            'catatan' => $tafsir['catatan'],
+        ];
+    }
+
+    /**
      * Kode skala yang disarankan untuk umur tertentu (tahun).
      * Skala tanpa batas usia (BPS/CPOT) tidak pernah disarankan otomatis —
      * pemakaiannya ditentukan kondisi pasien, bukan umur.

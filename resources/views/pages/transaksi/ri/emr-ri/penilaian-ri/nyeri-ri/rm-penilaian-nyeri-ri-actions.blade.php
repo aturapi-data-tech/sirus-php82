@@ -187,20 +187,13 @@ new class extends Component {
 
     /*
      | Interpretasi satu entri riwayat — dihitung ulang dari metode + skor tersimpan,
-     | bukan dari nyeriKet. Entri lama sempat menyimpan keterangan yang tidak ikut
-     | skor (mis. NRS 8 tersimpan "Tidak Nyeri"); dengan dihitung ulang, riwayat
-     | menampilkan interpretasi yang benar. Bila skor di luar rentang skala
-     | (data lama BPS/NIPS), nilai tersimpan dipakai apa adanya.
+     | bukan dari nyeriKet (entri lama sempat menyimpan label yang tidak ikut skor).
+     | Catatan bebas tulisan petugas di nyeriKet tetap dikembalikan lewat key
+     | 'catatan' supaya tidak hilang dari layar.
      */
     public function interpretasiEntri(array $entri): array
     {
-        $hasil = NyeriOptions::interpretasi(data_get($entri, 'nyeri.nyeriMetode.nyeriMetode'), data_get($entri, 'nyeri.nyeriMetode.nyeriMetodeScore'));
-
-        if ($hasil['tingkat'] === '' && filled(data_get($entri, 'nyeri.nyeriKet'))) {
-            $hasil['label'] = data_get($entri, 'nyeri.nyeriKet');
-        }
-
-        return $hasil;
+        return NyeriOptions::tafsirEntri($entri);
     }
 
     /* Satu-satunya tempat keterangan nyeri dihitung — selalu turunan dari metode + skor. */
@@ -584,6 +577,9 @@ new class extends Component {
                                     </div>
                                     @if ($tafsir['tataLaksana'])
                                         <div class="text-[10px] text-muted-soft mt-0.5">{{ $tafsir['tataLaksana'] }}</div>
+                                    @endif
+                                    @if ($tafsir['catatan'])
+                                        <div class="text-[10px] text-body mt-0.5">Catatan: {{ $tafsir['catatan'] }}</div>
                                     @endif
                                 </td>
 

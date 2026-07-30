@@ -22,6 +22,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Support\NyeriOptions;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait;
@@ -276,9 +277,12 @@ new class extends Component {
         $gabung = fn(array $bagian) => trim(implode(' · ', array_filter($bagian, fn($teks) => filled($teks))));
 
         $hasil = match ($jenisPenilaian) {
+            // Interpretasi nyeri dihitung ulang dari metode + skor (App\Support\NyeriOptions)
+            // supaya sama dengan layar EMR; entri lama yang nyeriKet-nya keliru ikut terkoreksi.
             'nyeri' => $gabung([
                 data_get($dataPenilaian, 'nyeri'),
-                data_get($dataPenilaian, 'nyeriKet'),
+                NyeriOptions::ringkasEntri(['nyeri' => $dataPenilaian])['label'],
+                NyeriOptions::ringkasEntri(['nyeri' => $dataPenilaian])['catatan'],
                 filled(data_get($dataPenilaian, 'lokasi')) ? 'lokasi: ' . data_get($dataPenilaian, 'lokasi') : null,
             ]),
             'resikoJatuh' => $gabung([data_get($dataPenilaian, 'resikoJatuh'), data_get($dataPenilaian, 'kategoriResiko')]),

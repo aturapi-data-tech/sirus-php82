@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Support\NyeriOptions;
 
 new class extends Component {
     use EmrRJTrait, MasterPasienTrait;
@@ -105,6 +106,12 @@ new class extends Component {
     public function navNext(): void
     {
         $this->dispatch('rm-display-nav', dir: 'next');
+    }
+
+    /* Ringkasan entri nyeri (metode/skor/interpretasi) — dipakai daftar Skala Nyeri. */
+    public function ringkasNyeri(array $entri): array
+    {
+        return NyeriOptions::ringkasEntri($entri);
     }
 };
 ?>
@@ -287,7 +294,8 @@ new class extends Component {
                                     <span class="w-56 shrink-0 text-right text-muted">Skala Nyeri :</span>
                                     <div class="space-y-1 text-body dark:text-gray-300">
                                         @forelse ($nyeriRec as $n)
-                                            <div><span class="text-sm font-medium text-muted-soft">{{ $n['tglPenilaian'] ?? '-' }}</span> — Metode: {{ $n['nyeri']['nyeriMetode']['nyeriMetode'] ?? '-' }} / Skor: {{ $n['nyeri']['nyeriMetode']['nyeriMetodeScore'] ?? '-' }} / {{ $n['nyeri']['nyeriKet'] ?? '-' }} / Pencetus: {{ $n['nyeri']['pencetus'] ?? '-' }} / Durasi: {{ $n['nyeri']['durasi'] ?? '-' }} / Lokasi: {{ $n['nyeri']['lokasi'] ?? '-' }}</div>
+                                            @php $ringkasNyeri = $this->ringkasNyeri($n); @endphp
+                                            <div><span class="text-sm font-medium text-muted-soft">{{ $n['tglPenilaian'] ?? '-' }}</span> — Metode: {{ $ringkasNyeri['metode'] }} / Skor: {{ $ringkasNyeri['skor'] }} / {{ $ringkasNyeri['label'] }}@if ($ringkasNyeri['catatan']) ({{ $ringkasNyeri['catatan'] }})@endif / Pencetus: {{ $n['nyeri']['pencetus'] ?? '-' }} / Durasi: {{ $n['nyeri']['durasi'] ?? '-' }} / Lokasi: {{ $n['nyeri']['lokasi'] ?? '-' }}</div>
                                         @empty
                                             <span class="italic text-muted-soft">Belum dinilai</span>
                                         @endforelse

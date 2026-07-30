@@ -226,6 +226,9 @@
                                         @if ($tafsir['tataLaksana'])
                                             <div class="text-[11px] text-muted-soft mt-0.5">{{ $tafsir['tataLaksana'] }}</div>
                                         @endif
+                                        @if ($tafsir['catatan'])
+                                            <div class="text-[11px] text-body mt-0.5">Catatan: {{ $tafsir['catatan'] }}</div>
+                                        @endif
                                     @else
                                         -
                                     @endif

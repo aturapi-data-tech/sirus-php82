@@ -185,18 +185,12 @@ new class extends Component {
 
     /*
      | Interpretasi satu entri riwayat — dihitung ulang dari metode + skor tersimpan,
-     | bukan dari nyeriKet. Entri lama sempat menyimpan keterangan yang tidak ikut skor;
-     | bila skor di luar rentang skala, nilai tersimpan dipakai apa adanya.
+     | bukan dari nyeriKet (entri lama sempat menyimpan label yang tidak ikut skor).
+     | Catatan bebas tulisan petugas di nyeriKet tetap dikembalikan lewat key 'catatan'.
      */
     public function interpretasiEntri(array $entri): array
     {
-        $hasil = NyeriOptions::interpretasi(data_get($entri, 'nyeri.nyeriMetode.nyeriMetode'), data_get($entri, 'nyeri.nyeriMetode.nyeriMetodeScore'));
-
-        if ($hasil['tingkat'] === '' && filled(data_get($entri, 'nyeri.nyeriKet'))) {
-            $hasil['label'] = data_get($entri, 'nyeri.nyeriKet');
-        }
-
-        return $hasil;
+        return NyeriOptions::tafsirEntri($entri);
     }
 
     /*
