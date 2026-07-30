@@ -43,6 +43,11 @@ Detail lengkap: **`docs/clause-versioning.md`**. Ringkas di bawah.
 
 - `App\Support\GeneralConsentClause` — general consent RJ/UGD/RI (versioning).
 - `App\Support\PenjaminanClause` — ketentuan BPJS & selisih biaya Form Penjaminan (versioning, section `bpjs`/`selisih`).
+- `App\Support\AkhirHayatClause` — teks pernyataan Pengkajian Akhir Hayat RI (v1).
+- `App\Support\SuratKematianClause` — klausul Surat Keterangan Kematian UGD (v1).
+- `App\Support\KerohanianClause` — klausul Permintaan Pelayanan Kerohaniawan RI (v1).
+  Sempat dihapus 2026-07-22 lalu DIPULIHKAN 2026-07-30 (`fe09b68b`) — permintaan
+  rohaniwan tidak selalu terkait akhir hayat.
 - Kelas kamar (orientasi Form Penjaminan) — **snapshot** (`kelasKamarSnapshot` di entri).
 
 Lihat juga: `docs/clause-versioning.md`, skill `blade-safe-edit`.
