@@ -130,7 +130,9 @@ new class extends Component {
             'paket' => $paket,
             'judul' => $judul,
             'dicetakOleh' => auth()->user()?->myuser_name ?: (auth()->user()?->name ?: '-'),
-            'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y H:i'),
+            // Format dd/mm/yyyy hh24:mi:ss — seragam dengan penulisan tanggal-jam
+            // transaksi di SIMRS, sekaligus menegaskan tarif ini potret detik cetak.
+            'tglCetak' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
         ];
 
         $pdf = Pdf::loadView('pages.downtime.cetak.cetak-tarif', $data)->setPaper('A4');
