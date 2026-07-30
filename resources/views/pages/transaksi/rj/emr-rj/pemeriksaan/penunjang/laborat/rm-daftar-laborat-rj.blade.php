@@ -37,7 +37,7 @@ new class extends Component {
             ->join('lbtxn_checkupdtls as d', 'h.checkup_no', '=', 'd.checkup_no')
             ->join('lbmst_clabitems as c', 'd.clabitem_id', '=', 'c.clabitem_id')
             ->select(
-                'h.checkup_no', 'h.checkup_date', 'h.checkup_status',
+                'h.checkup_no', 'h.checkup_date', 'h.checkup_status', 'h.cito_status',
                 'c.clabitem_desc',
             )
             ->where('h.ref_no', $this->rjNo)
@@ -53,6 +53,7 @@ new class extends Component {
                 'checkup_no' => $first->checkup_no,
                 'checkup_date' => $first->checkup_date,
                 'checkup_status' => $first->checkup_status,
+                'cito_status' => $first->cito_status,
                 'items' => $group->pluck('clabitem_desc')->implode(', '),
             ];
         })->values();
@@ -70,18 +71,21 @@ new class extends Component {
             </tr>
         </thead>
         <tbody class="bg-canvas">
-            @forelse ($this->rows as $r)
+            @forelse ($this->rows as $orderLab)
                 <tr class="border-b group">
                     <td class="px-2 py-2 text-sm font-mono text-muted group-hover:bg-surface-soft whitespace-nowrap">
-                        {{ $r->checkup_date ? \Carbon\Carbon::parse($r->checkup_date)->format('d/m/Y H:i') : '-' }}
+                        {{ $orderLab->checkup_date ? \Carbon\Carbon::parse($orderLab->checkup_date)->format('d/m/Y H:i') : '-' }}
                     </td>
                     <td class="px-2 py-2 text-body group-hover:bg-surface-soft">
-                        {{ $r->items }}
+                        @if ($orderLab->cito_status === '1')
+                            <x-badge variant="danger" class="mr-1 font-bold">CITO</x-badge>
+                        @endif
+                        {{ $orderLab->items }}
                     </td>
                     <td class="px-2 py-2 text-center group-hover:bg-surface-soft">
-                        @if ($r->checkup_status === 'H')
+                        @if ($orderLab->checkup_status === 'H')
                             <x-badge variant="success">Selesai</x-badge>
-                        @elseif ($r->checkup_status === 'C')
+                        @elseif ($orderLab->checkup_status === 'C')
                             <x-badge variant="info">Proses</x-badge>
                         @else
                             <x-badge variant="warning">Terdaftar</x-badge>

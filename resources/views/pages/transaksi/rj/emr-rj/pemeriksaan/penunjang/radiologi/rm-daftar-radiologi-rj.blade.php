@@ -37,21 +37,22 @@ new class extends Component {
 
         $items = DB::table('rstxn_rjrads as r')
             ->join('rsmst_radiologis as m', 'r.rad_id', '=', 'm.rad_id')
-            ->select('r.rad_dtl', 'r.rj_no', 'r.waktu_entry', 'm.rad_desc', 'r.dr_pengirim', 'r.keterangan')
+            ->select('r.rad_dtl', 'r.rj_no', 'r.waktu_entry', 'm.rad_desc', 'r.dr_pengirim', 'r.keterangan', 'r.cito_status')
             ->where('r.rj_no', $this->rjNo)
             ->orderByDesc('r.waktu_entry')
             ->orderBy('r.rad_dtl')
             ->get();
 
         return $items
-            ->groupBy(fn($r) => $r->waktu_entry ? Carbon::parse($r->waktu_entry)->format('YmdHis') : 'null')
+            ->groupBy(fn($pemeriksaan) => $pemeriksaan->waktu_entry ? Carbon::parse($pemeriksaan->waktu_entry)->format('YmdHis') : 'null')
             ->map(function ($group) {
                 $first = $group->first();
                 return (object) [
                     'rj_no' => $first->rj_no,
                     'waktu_entry' => $first->waktu_entry,
                     'dr_pengirim' => $first->dr_pengirim,
-                    'items' => $group->map(fn($r) => $r->rad_desc . ($r->keterangan ? ' (' . $r->keterangan . ')' : ''))->implode(', '),
+                    'cito_status' => $first->cito_status,
+                    'items' => $group->map(fn($pemeriksaan) => $pemeriksaan->rad_desc . ($pemeriksaan->keterangan ? ' (' . $pemeriksaan->keterangan . ')' : ''))->implode(', '),
                 ];
             })
             ->values();
@@ -70,16 +71,19 @@ new class extends Component {
             </tr>
         </thead>
         <tbody class="bg-canvas">
-            @forelse ($this->rows as $r)
+            @forelse ($this->rows as $orderRadiologi)
                 <tr class="border-b group">
                     <td class="px-2 py-2 text-sm font-mono text-muted group-hover:bg-surface-soft whitespace-nowrap">
-                        {{ $r->waktu_entry ? \Carbon\Carbon::parse($r->waktu_entry)->format('d/m/Y H:i') : '-' }}
+                        {{ $orderRadiologi->waktu_entry ? \Carbon\Carbon::parse($orderRadiologi->waktu_entry)->format('d/m/Y H:i') : '-' }}
                     </td>
                     <td class="px-2 py-2 text-body group-hover:bg-surface-soft">
-                        {{ $r->items }}
+                        @if ($orderRadiologi->cito_status === '1')
+                            <x-badge variant="danger" class="mr-1 font-bold">CITO</x-badge>
+                        @endif
+                        {{ $orderRadiologi->items }}
                     </td>
                     <td class="px-2 py-2 text-body group-hover:bg-surface-soft">
-                        {{ $r->dr_pengirim ?? '-' }}
+                        {{ $orderRadiologi->dr_pengirim ?? '-' }}
                     </td>
                     <td class="px-2 py-2 text-center text-muted-soft group-hover:bg-surface-soft">
                         -

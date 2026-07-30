@@ -88,14 +88,14 @@ new class extends Component {
         if ($this->filterMode === 'harian') {
             try {
                 $tanggal = Carbon::createFromFormat('d/m/Y', trim($this->filterTanggal))->startOfDay();
-            } catch (\Exception $e) {
+            } catch (\Exception $exception) {
                 $tanggal = Carbon::now()->startOfDay();
             }
             return [$tanggal, (clone $tanggal)->endOfDay()];
         }
         try {
             $tanggal = Carbon::createFromFormat('m/Y', trim($this->filterBulan))->startOfMonth();
-        } catch (\Exception $e) {
+        } catch (\Exception $exception) {
             $tanggal = Carbon::now()->startOfMonth();
         }
         return [$tanggal, (clone $tanggal)->endOfMonth()];
@@ -119,11 +119,11 @@ new class extends Component {
 
         // SEMUA sumber → union RJ+UGD+RI (setiap subquery difilter + ditambah waktu_sort utk urut gabungan)
         if ($this->filterSource === 'ALL') {
-            $rj = $this->applyRadFilters($this->baseQueryRJ($pasienCols), 'rj_date');
-            $ugd = $this->applyRadFilters($this->baseQueryUGD($pasienCols), 'rj_date');
-            $ri = $this->applyRadFilters($this->baseQueryRI($pasienCols), 'entry_date');
+            $queryRJ = $this->applyRadFilters($this->baseQueryRJ($pasienCols), 'rj_date');
+            $queryUGD = $this->applyRadFilters($this->baseQueryUGD($pasienCols), 'rj_date');
+            $queryRI = $this->applyRadFilters($this->baseQueryRI($pasienCols), 'entry_date');
 
-            $union = $rj->unionAll($ugd)->unionAll($ri);
+            $union = $queryRJ->unionAll($queryUGD)->unionAll($queryRI);
 
             return DB::query()->fromSub($union, 't')
                 ->orderByDesc('t.waktu_sort')
@@ -201,7 +201,7 @@ new class extends Component {
             ->join('rsmst_radiologis as m', 'r.rad_id', '=', 'm.rad_id')
             ->join('rstxn_rjhdrs as h', 'r.rj_no', '=', 'h.rj_no')
             ->leftJoin('rsmst_pasiens as p', 'h.reg_no', '=', 'p.reg_no')
-            ->select(array_merge([DB::raw("'RJ' as src"), 'r.rad_dtl as dtl_no', 'r.rj_no as ref_no'], $pasienCols, ['m.rad_desc', 'r.rad_price', 'r.dr_pengirim', 'r.dr_radiologi', 'r.klinis_desc', 'r.rad_upload_pdf', 'r.rad_upload_pdf_foto', 'r.keterangan', DB::raw('DBMS_LOB.GETLENGTH(r.hasil_bacaan) as hasil_bacaan'), 'r.waktu_entry', DB::raw("to_char(r.tgl_bacaan,'dd/mm/yyyy hh24:mi:ss') as tgl_bacaan"), 'h.rj_status as hdr_status']));
+            ->select(array_merge([DB::raw("'RJ' as src"), 'r.rad_dtl as dtl_no', 'r.rj_no as ref_no'], $pasienCols, ['m.rad_desc', 'r.rad_price', 'r.dr_pengirim', 'r.dr_radiologi', 'r.klinis_desc', 'r.cito_status', 'r.rad_upload_pdf', 'r.rad_upload_pdf_foto', 'r.keterangan', DB::raw('DBMS_LOB.GETLENGTH(r.hasil_bacaan) as hasil_bacaan'), 'r.waktu_entry', DB::raw("to_char(r.tgl_bacaan,'dd/mm/yyyy hh24:mi:ss') as tgl_bacaan"), 'h.rj_status as hdr_status']));
     }
 
     private function baseQueryUGD(array $pasienCols)
@@ -210,7 +210,7 @@ new class extends Component {
             ->join('rsmst_radiologis as m', 'r.rad_id', '=', 'm.rad_id')
             ->join('rstxn_ugdhdrs as h', 'r.rj_no', '=', 'h.rj_no')
             ->leftJoin('rsmst_pasiens as p', 'h.reg_no', '=', 'p.reg_no')
-            ->select(array_merge([DB::raw("'UGD' as src"), 'r.rad_dtl as dtl_no', 'r.rj_no as ref_no'], $pasienCols, ['m.rad_desc', 'r.rad_price', 'r.dr_pengirim', 'r.dr_radiologi', 'r.klinis_desc', 'r.rad_upload_pdf', 'r.rad_upload_pdf_foto', 'r.keterangan', DB::raw('DBMS_LOB.GETLENGTH(r.hasil_bacaan) as hasil_bacaan'), 'r.waktu_entry', DB::raw("to_char(r.tgl_bacaan,'dd/mm/yyyy hh24:mi:ss') as tgl_bacaan"), 'h.rj_status as hdr_status']));
+            ->select(array_merge([DB::raw("'UGD' as src"), 'r.rad_dtl as dtl_no', 'r.rj_no as ref_no'], $pasienCols, ['m.rad_desc', 'r.rad_price', 'r.dr_pengirim', 'r.dr_radiologi', 'r.klinis_desc', 'r.cito_status', 'r.rad_upload_pdf', 'r.rad_upload_pdf_foto', 'r.keterangan', DB::raw('DBMS_LOB.GETLENGTH(r.hasil_bacaan) as hasil_bacaan'), 'r.waktu_entry', DB::raw("to_char(r.tgl_bacaan,'dd/mm/yyyy hh24:mi:ss') as tgl_bacaan"), 'h.rj_status as hdr_status']));
     }
 
     private function baseQueryRI(array $pasienCols)
@@ -219,7 +219,7 @@ new class extends Component {
             ->join('rsmst_radiologis as m', 'r.rad_id', '=', 'm.rad_id')
             ->join('rstxn_rihdrs as h', 'r.rihdr_no', '=', 'h.rihdr_no')
             ->leftJoin('rsmst_pasiens as p', 'h.reg_no', '=', 'p.reg_no')
-            ->select(array_merge([DB::raw("'RI' as src"), 'r.rirad_no as dtl_no', 'r.rihdr_no as ref_no'], $pasienCols, ['m.rad_desc', 'r.rirad_price as rad_price', 'r.dr_pengirim', 'r.dr_radiologi', 'r.klinis_desc', 'r.rad_upload_pdf', 'r.rad_upload_pdf_foto', 'r.keterangan', DB::raw('DBMS_LOB.GETLENGTH(r.hasil_bacaan) as hasil_bacaan'), 'r.waktu_entry', DB::raw("to_char(r.tgl_bacaan,'dd/mm/yyyy hh24:mi:ss') as tgl_bacaan"), 'h.ri_status as hdr_status']));
+            ->select(array_merge([DB::raw("'RI' as src"), 'r.rirad_no as dtl_no', 'r.rihdr_no as ref_no'], $pasienCols, ['m.rad_desc', 'r.rirad_price as rad_price', 'r.dr_pengirim', 'r.dr_radiologi', 'r.klinis_desc', 'r.cito_status', 'r.rad_upload_pdf', 'r.rad_upload_pdf_foto', 'r.keterangan', DB::raw('DBMS_LOB.GETLENGTH(r.hasil_bacaan) as hasil_bacaan'), 'r.waktu_entry', DB::raw("to_char(r.tgl_bacaan,'dd/mm/yyyy hh24:mi:ss') as tgl_bacaan"), 'h.ri_status as hdr_status']));
     }
 
     /* ===============================
@@ -240,25 +240,25 @@ new class extends Component {
         try {
             $payload = null;
             if ($value !== '') {
-                $dt = null;
-                foreach (['d/m/Y H:i:s', 'd/m/Y H:i', 'd/m/Y'] as $fmt) {
+                $tanggal = null;
+                foreach (['d/m/Y H:i:s', 'd/m/Y H:i', 'd/m/Y'] as $format) {
                     try {
-                        $dt = \Carbon\Carbon::createFromFormat($fmt, $value);
+                        $tanggal = \Carbon\Carbon::createFromFormat($format, $value);
                         break;
                     } catch (\Throwable) {
                     }
                 }
-                if (!$dt) {
+                if (!$tanggal) {
                     $this->dispatch('toast', type: 'error', message: 'Format Tgl Bacaan tidak valid (dd/mm/yyyy HH:mm:ss).');
                     return;
                 }
-                $payload = DB::raw("TO_DATE('" . $dt->format('Y-m-d H:i:s') . "','YYYY-MM-DD HH24:MI:SS')");
+                $payload = DB::raw("TO_DATE('" . $tanggal->format('Y-m-d H:i:s') . "','YYYY-MM-DD HH24:MI:SS')");
             }
             $this->storeTglBacaan($source, $dtlNo, $refNo, $payload);
             $this->dispatch('toast', type: 'success', message: 'Tgl Bacaan disimpan.');
             unset($this->rows);
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal simpan: ' . $e->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal simpan: ' . $exception->getMessage());
         }
     }
 
@@ -269,8 +269,8 @@ new class extends Component {
             $this->storeTglBacaan($source, $dtlNo, $refNo, DB::raw('SYSDATE'));
             $this->dispatch('toast', type: 'success', message: 'Tgl Bacaan diset ke sekarang.');
             unset($this->rows);
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal simpan: ' . $e->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal simpan: ' . $exception->getMessage());
         }
     }
 
@@ -330,8 +330,8 @@ new class extends Component {
             });
             $this->dispatch('toast', type: 'success', message: $label . ' disimpan.');
             unset($this->rows);
-        } catch (\Exception $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal simpan: ' . $e->getMessage());
+        } catch (\Exception $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal simpan: ' . $exception->getMessage());
         }
     }
 
@@ -398,8 +398,8 @@ new class extends Component {
             $this->dispatch('toast', type: 'success', message: 'Tarif disimpan.');
             $this->cancelEditTarif();
             unset($this->rows);
-        } catch (\Exception $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal simpan: ' . $e->getMessage());
+        } catch (\Exception $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal simpan: ' . $exception->getMessage());
         }
     }
 
@@ -459,8 +459,8 @@ new class extends Component {
 
             $this->dispatch('toast', type: 'success', message: 'Order radiologi berhasil dibatalkan.');
             unset($this->rows);
-        } catch (\Exception $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal membatalkan: ' . $e->getMessage());
+        } catch (\Exception $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membatalkan: ' . $exception->getMessage());
         }
     }
 
@@ -629,6 +629,11 @@ new class extends Component {
                                     $isHasilOk = !empty($row->rad_upload_pdf);
                                     $isLengkap = $isFotoOk && $isHasilOk;
 
+                                    // CITO = order ditandai segera dari EMR. Baris disorot merah
+                                    // (menimpa sorotan amber "belum lengkap") selama hasil belum lengkap.
+                                    $isCito = ($row->cito_status ?? null) === '1';
+                                    $citoAktif = $isCito && !$isLengkap;
+
                                     // Standar baru: file di private disk, akses via route('files.show').
                                     // Backward-compat: row lama berisi full path 'Radiologi/Foto/x.pdf' (public legacy)
                                     // → fallback ke asset('storage/...').
@@ -672,9 +677,9 @@ new class extends Component {
                                 @endphp
                                 <tr wire:key="rad-row-{{ $row->src }}-{{ $row->dtl_no }}-{{ $row->ref_no }}"
                                     class="transition rounded-2xl shadow-sm ring-1 ring-hairline dark:ring-gray-700
-                                    {{ $isLengkap
-                                        ? 'bg-canvas dark:bg-gray-900 hover:shadow-lg hover:bg-surface-soft dark:hover:bg-gray-800'
-                                        : 'bg-amber-50 dark:bg-amber-900/10 hover:shadow-md hover:bg-amber-100 dark:hover:bg-amber-900/20 border-l-4 border-amber-400' }}">
+                                    @if ($citoAktif) bg-red-50 dark:bg-red-900/10 hover:shadow-md hover:bg-red-100 dark:hover:bg-red-900/20 border-l-4 border-red-500
+                                    @elseif ($isLengkap) bg-canvas dark:bg-gray-900 hover:shadow-lg hover:bg-surface-soft dark:hover:bg-gray-800
+                                    @else bg-amber-50 dark:bg-amber-900/10 hover:shadow-md hover:bg-amber-100 dark:hover:bg-amber-900/20 border-l-4 border-amber-400 @endif">
 
                                     {{-- TGL ORDER & PASIEN (digabung 1 kolom) --}}
                                     <td class="px-6 py-6 space-y-1 align-top">
@@ -683,6 +688,18 @@ new class extends Component {
                                                 {{ $row->waktu_efektif ?? '-' }}
                                             </span>
                                             <x-badge :variant="['RJ' => 'info', 'UGD' => 'danger', 'RI' => 'purple'][$row->src] ?? 'alternative'">{{ ['RJ' => 'Rawat Jalan', 'UGD' => 'UGD', 'RI' => 'Rawat Inap'][$row->src] ?? $row->src }}</x-badge>
+                                            @if ($isCito)
+                                                <span
+                                                    class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-red-700 bg-red-100 border border-red-300 rounded-full dark:bg-red-900/30 dark:border-red-500 dark:text-red-200"
+                                                    title="Order CITO — dahulukan pemeriksaan ini">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                    </svg>
+                                                    CITO
+                                                </span>
+                                            @endif
                                         </div>
                                         <x-list.identitas-pasien class="pt-1" :regNo="$row->reg_no" :nama="$row->reg_name" :sex="$row->sex" :tglLahir="$row->birth_date" :alamat="$row->address" :collapseUmur="false" />
                                     </td>

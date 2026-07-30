@@ -89,11 +89,11 @@ new class extends Component {
     private function dateRange(): array
     {
         try {
-            $d = Carbon::createFromFormat('d/m/Y', trim($this->filterTanggal))->startOfDay();
-        } catch (\Exception $e) {
-            $d = now()->startOfDay();
+            $tanggal = Carbon::createFromFormat('d/m/Y', trim($this->filterTanggal))->startOfDay();
+        } catch (\Exception $exception) {
+            $tanggal = now()->startOfDay();
         }
-        return [$d, (clone $d)->endOfDay()];
+        return [$tanggal, (clone $tanggal)->endOfDay()];
     }
 
     /* -------------------------
@@ -127,6 +127,12 @@ new class extends Component {
                     FROM lbtxn_checkuphdrs k
                     WHERE k.checkup_no = rsview_checkups.checkup_no
                 ) AS klinis_desc"),
+                // Penanda CITO dari header order (diisi saat order dikirim dari EMR).
+                DB::raw("(
+                    SELECT k.cito_status
+                    FROM lbtxn_checkuphdrs k
+                    WHERE k.checkup_no = rsview_checkups.checkup_no
+                ) AS cito_status"),
                 // Status transaksi INDUK (RJ/UGD/RI) — resolve per source dari header induk.
                 DB::raw("(
                     SELECT CASE UPPER(h.status_rjri)
@@ -150,13 +156,13 @@ new class extends Component {
 
         $search = trim($this->searchKeyword);
         if ($search !== '' && mb_strlen($search) >= 2) {
-            $kw = mb_strtoupper($search);
-            $query->where(function ($q) use ($search, $kw) {
+            $keyword = mb_strtoupper($search);
+            $query->where(function ($subQuery) use ($search, $keyword) {
                 if (ctype_digit($search)) {
-                    $q->orWhere('checkup_no', 'like', "%{$search}%")
+                    $subQuery->orWhere('checkup_no', 'like', "%{$search}%")
                       ->orWhere('reg_no', 'like', "%{$search}%");
                 }
-                $q->orWhere(DB::raw('UPPER(reg_name)'), 'like', "%{$kw}%");
+                $subQuery->orWhere(DB::raw('UPPER(reg_name)'), 'like', "%{$keyword}%");
             });
         }
 
@@ -295,7 +301,7 @@ new class extends Component {
                         </thead>
 
                         <tbody>
-                            @forelse($this->rows as $idx => $row)
+                            @forelse($this->rows as $index => $row)
                                 @php
                                     $statusCode = $row->checkup_status ?? '';
                                     $isSelesai = $statusCode === 'H';
@@ -332,33 +338,43 @@ new class extends Component {
 
                                     // Status transaksi INDUK — warna DISAMAKAN dengan display-pasien (rekam medis):
                                     // RJ/UGD A=warning L=success F=error I=blue; RI I=brand(Dirawat) P=amber(Pulang) L=muted F=error.
-                                    $ps = strtoupper($row->parent_status ?? '');
-                                    $psMuted = 'bg-surface-soft text-muted border-hairline';
+                                    $statusInduk = strtoupper($row->parent_status ?? '');
+                                    $statusIndukMuted = 'bg-surface-soft text-muted border-hairline';
                                     [$parentLabel, $parentClass] = match (true) {
-                                        $ps === '' => ['-', $psMuted],
-                                        $layanan === 'RJ'  && $ps === 'A' => ['Aktif', 'bg-warning/10 text-warning border-warning/30'],
-                                        $layanan === 'RJ'  && $ps === 'L' => ['Selesai', 'bg-success/10 text-success border-success/30'],
-                                        $layanan === 'RJ'  && $ps === 'F' => ['Batal', 'bg-error/10 text-error border-error/30'],
-                                        $layanan === 'RJ'  && $ps === 'I' => ['Transfer UGD', 'bg-blue-100 text-blue-700 border-blue-200'],
-                                        $layanan === 'UGD' && $ps === 'A' => ['Aktif', 'bg-warning/10 text-warning border-warning/30'],
-                                        $layanan === 'UGD' && $ps === 'L' => ['Selesai', 'bg-success/10 text-success border-success/30'],
-                                        $layanan === 'UGD' && $ps === 'F' => ['Batal', 'bg-error/10 text-error border-error/30'],
-                                        $layanan === 'UGD' && $ps === 'I' => ['Transfer Rawat Inap', 'bg-blue-100 text-blue-700 border-blue-200'],
-                                        $layanan === 'RI'  && $ps === 'I' => ['Dirawat', 'bg-brand/10 text-brand border-brand/30'],
-                                        $layanan === 'RI'  && $ps === 'P' => ['Pulang', 'bg-amber-100 text-amber-700 border-amber-200'],
-                                        $layanan === 'RI'  && $ps === 'L' => ['Pulang', $psMuted],
-                                        $layanan === 'RI'  && $ps === 'F' => ['Batal', 'bg-error/10 text-error border-error/30'],
-                                        default => [$ps, $psMuted],
+                                        $statusInduk === '' => ['-', $statusIndukMuted],
+                                        $layanan === 'RJ'  && $statusInduk === 'A' => ['Aktif', 'bg-warning/10 text-warning border-warning/30'],
+                                        $layanan === 'RJ'  && $statusInduk === 'L' => ['Selesai', 'bg-success/10 text-success border-success/30'],
+                                        $layanan === 'RJ'  && $statusInduk === 'F' => ['Batal', 'bg-error/10 text-error border-error/30'],
+                                        $layanan === 'RJ'  && $statusInduk === 'I' => ['Transfer UGD', 'bg-blue-100 text-blue-700 border-blue-200'],
+                                        $layanan === 'UGD' && $statusInduk === 'A' => ['Aktif', 'bg-warning/10 text-warning border-warning/30'],
+                                        $layanan === 'UGD' && $statusInduk === 'L' => ['Selesai', 'bg-success/10 text-success border-success/30'],
+                                        $layanan === 'UGD' && $statusInduk === 'F' => ['Batal', 'bg-error/10 text-error border-error/30'],
+                                        $layanan === 'UGD' && $statusInduk === 'I' => ['Transfer Rawat Inap', 'bg-blue-100 text-blue-700 border-blue-200'],
+                                        $layanan === 'RI'  && $statusInduk === 'I' => ['Dirawat', 'bg-brand/10 text-brand border-brand/30'],
+                                        $layanan === 'RI'  && $statusInduk === 'P' => ['Pulang', 'bg-amber-100 text-amber-700 border-amber-200'],
+                                        $layanan === 'RI'  && $statusInduk === 'L' => ['Pulang', $statusIndukMuted],
+                                        $layanan === 'RI'  && $statusInduk === 'F' => ['Batal', 'bg-error/10 text-error border-error/30'],
+                                        default => [$statusInduk, $statusIndukMuted],
                                     };
                                 @endphp
 
-                                <tr wire:key="daftar-laborat-{{ $row->checkup_no ?? $idx }}"
-                                    class="transition bg-canvas rounded-2xl shadow-sm ring-1 ring-hairline dark:ring-gray-700 dark:bg-gray-900 hover:shadow-lg hover:bg-surface-soft dark:hover:bg-gray-800">
+                                @php
+                                    // CITO = order ditandai segera dari EMR. Baris disorot merah
+                                    // selama pemeriksaan belum selesai/batal (status P/C).
+                                    $isCito = ($row->cito_status ?? null) === '1';
+                                    $citoAktif = $isCito && in_array($row->checkup_status, ['P', 'C'], true);
+                                @endphp
+
+                                <tr wire:key="daftar-laborat-{{ $row->checkup_no ?? $index }}"
+                                    class="transition rounded-2xl shadow-sm ring-1 ring-hairline dark:ring-gray-700 hover:shadow-lg
+                                        {{ $citoAktif
+                                            ? 'bg-red-50 dark:bg-red-900/10 border-l-4 border-red-500 hover:bg-red-100 dark:hover:bg-red-900/20'
+                                            : 'bg-canvas dark:bg-gray-900 hover:bg-surface-soft dark:hover:bg-gray-800' }}">
 
                                     {{-- NO --}}
                                     <td class="px-6 py-4 align-top">
                                         <div class="text-sm font-mono text-muted">
-                                            {{ $this->rows->firstItem() + $idx }}
+                                            {{ $this->rows->firstItem() + $index }}
                                         </div>
                                     </td>
 
@@ -375,6 +391,18 @@ new class extends Component {
                                         </div>
                                         {{-- Layanan (nama lengkap) + status transaksi induk, sebelahan --}}
                                         <div class="flex flex-wrap items-center gap-2">
+                                            @if ($isCito)
+                                                <span
+                                                    class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold text-red-700 bg-red-100 border border-red-300 rounded-full dark:bg-red-900/30 dark:border-red-500 dark:text-red-200"
+                                                    title="Order CITO — dahulukan pemeriksaan ini">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                    </svg>
+                                                    CITO
+                                                </span>
+                                            @endif
                                             <span class="inline-flex px-2.5 py-0.5 text-xs font-semibold border rounded-full {{ $layananColor }}">
                                                 {{ $layananLabel }}
                                             </span>

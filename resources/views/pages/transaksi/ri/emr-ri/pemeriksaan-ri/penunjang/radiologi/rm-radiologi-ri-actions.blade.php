@@ -26,6 +26,7 @@ new class extends Component {
     public array $selectedItems = []; // [ rad_id => [...item] ]
     public string $drId = ''; // dokter pengirim — picker dari relatedDoctors
     public string $klinisDesc = ''; // Diagnosis/Keterangan Klinis — wajib diisi
+    public string $cito = '0'; // '1' = CITO (didahulukan petugas radiologi), '0' = rutin
 
     protected function rules(): array
     {
@@ -75,6 +76,7 @@ new class extends Component {
         $this->searchItem = '';
         $this->drId = '';
         $this->klinisDesc = '';
+        $this->cito = '0';
         $this->resetValidation();
         $this->resetPage();
         $this->incrementVersion('radiologi-order-modal-ri');
@@ -85,7 +87,7 @@ new class extends Component {
     public function closeModal(): void
     {
         $this->dispatch('close-modal', name: "radiologi-order-ri-{$this->riHdrNo}");
-        $this->reset(['selectedItems', 'searchItem', 'drId', 'klinisDesc']);
+        $this->reset(['selectedItems', 'searchItem', 'drId', 'klinisDesc', 'cito']);
     }
 
     /*
@@ -229,21 +231,22 @@ new class extends Component {
                         'dr_pengirim' => $drPengirimName,
                         'dr_radiologi' => 'dr. M.A. Budi Purwito, Sp.Rad.',
                         'klinis_desc' => trim($this->klinisDesc),
+                        'cito_status' => $this->cito === '1' ? '1' : '0',
                         'waktu_entry' => DB::raw("TO_DATE('{$now}','dd/mm/yyyy hh24:mi:ss')"),
                         'rirad_date'  => DB::raw("TO_DATE('{$now}','dd/mm/yyyy hh24:mi:ss')"),
                     ]);
                 }
 
-                $this->appendAdminLogRI((int) $this->riHdrNo, 'Order Radiologi — ' . collect($this->selectedItems)->pluck('rad_desc')->implode(', '), 'MR');
+                $this->appendAdminLogRI((int) $this->riHdrNo, 'Order Radiologi' . ($this->cito === '1' ? ' [CITO]' : '') . ' — ' . collect($this->selectedItems)->pluck('rad_desc')->implode(', '), 'MR');
             });
 
             $this->dispatch('radiologi-order-terkirim');
-            $this->dispatch('toast', type: 'success', message: count($this->selectedItems) . ' item radiologi berhasil dikirim.');
+            $this->dispatch('toast', type: 'success', message: count($this->selectedItems) . ' item radiologi berhasil dikirim' . ($this->cito === '1' ? ' dengan status CITO.' : '.'));
             $this->closeModal();
-        } catch (\RuntimeException $e) {
-            $this->dispatch('toast', type: 'error', message: $e->getMessage());
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal mengirim: ' . $e->getMessage());
+        } catch (\RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal mengirim: ' . $exception->getMessage());
         }
     }
 
@@ -418,6 +421,19 @@ new class extends Component {
                                 class="w-full mt-1 text-sm border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-brand/30 focus:border-brand dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"></textarea>
                             <x-input-error :messages="$errors->get('klinisDesc')" class="mt-1" />
                         </div>
+                        {{-- Prioritas: CITO --}}
+                        <div>
+                            <x-input-label value="Prioritas Pemeriksaan" />
+                            <div class="mt-1.5">
+                                <x-toggle wire:model="cito" trueValue="1" falseValue="0" onColor="bg-error"
+                                    label="CITO — didahulukan" />
+                            </div>
+                            @if ($cito === '1')
+                                <p class="mt-1.5 text-xs font-medium text-error-deep dark:text-red-300">
+                                    Order ditandai CITO — petugas radiologi akan mendahulukan pemeriksaan ini.
+                                </p>
+                            @endif
+                        </div>
                     </div>
 
                     {{-- Header keranjang --}}
@@ -433,17 +449,19 @@ new class extends Component {
 
                     {{-- List item dipilih (keranjang) --}}
                     <div class="flex-1 px-5 pb-4 space-y-1.5 overflow-y-auto">
-                        @forelse ($selectedItems as $id => $sel)
+                        @forelse ($selectedItems as $radId => $itemDipilih)
                             <div
                                 class="flex items-start justify-between gap-2 p-2.5 border rounded-lg border-brand/20 bg-brand/5">
                                 <div class="min-w-0">
-                                    <p class="text-sm font-medium leading-tight text-brand">{{ $sel['rad_desc'] }}</p>
-                                    @if ($sel['rad_price'])
-                                        <p class="mt-0.5 text-[11px] text-brand/60">{{ number_format($sel['rad_price']) }}
+                                    <p class="text-sm font-medium leading-tight text-brand">
+                                        {{ $itemDipilih['rad_desc'] }}</p>
+                                    @if ($itemDipilih['rad_price'])
+                                        <p class="mt-0.5 text-[11px] text-brand/60">
+                                            {{ number_format($itemDipilih['rad_price']) }}
                                         </p>
                                     @endif
                                 </div>
-                                <button type="button" wire:click="removeSelected('{{ $id }}')"
+                                <button type="button" wire:click="removeSelected('{{ $radId }}')"
                                     class="mt-0.5 shrink-0 text-muted-soft hover:text-red-500 transition-colors">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd"
@@ -472,7 +490,17 @@ new class extends Component {
             <div
                 class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700 shrink-0">
                 <div class="flex items-center justify-between gap-3">
-                    <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        @if ($cito === '1')
+                            <span
+                                class="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-bold text-red-700 bg-red-50 border border-red-300 rounded-full dark:bg-red-900/25 dark:border-red-500 dark:text-red-200">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                                CITO
+                            </span>
+                        @endif
                         @if (!empty($selectedItems))
                             <span
                                 class="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium text-brand bg-brand/10 border border-brand/30 rounded-full">

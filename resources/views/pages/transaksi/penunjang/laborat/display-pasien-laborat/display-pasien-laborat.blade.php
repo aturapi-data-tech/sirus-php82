@@ -30,7 +30,7 @@ new class extends Component {
             return;
         }
 
-        $header = DB::table('lbtxn_checkuphdrs as a')->leftJoin('rsmst_doctors as d', 'a.dr_id', '=', 'd.dr_id')->leftJoin('immst_employers as e', 'a.emp_id', '=', 'e.emp_id')->select('a.checkup_no', DB::raw("to_char(a.checkup_date,'dd/mm/yyyy hh24:mi:ss') as checkup_date"), 'a.reg_no', 'd.dr_name', 'a.emp_id', 'e.emp_name', 'a.checkup_status', 'a.status_rjri', 'a.ref_no', 'a.klinis_desc')->where('a.checkup_no', $this->checkupNo)->first();
+        $header = DB::table('lbtxn_checkuphdrs as a')->leftJoin('rsmst_doctors as d', 'a.dr_id', '=', 'd.dr_id')->leftJoin('immst_employers as e', 'a.emp_id', '=', 'e.emp_id')->select('a.checkup_no', DB::raw("to_char(a.checkup_date,'dd/mm/yyyy hh24:mi:ss') as checkup_date"), 'a.reg_no', 'd.dr_name', 'a.emp_id', 'e.emp_name', 'a.checkup_status', 'a.status_rjri', 'a.ref_no', 'a.klinis_desc', 'a.cito_status')->where('a.checkup_no', $this->checkupNo)->first();
 
         if (!$header) {
             return;
@@ -47,8 +47,8 @@ new class extends Component {
 <div>
     @if (!empty($pasienData) && !empty($headerData))
         @php
-            $p = $pasienData['pasien'] ?? [];
-            $h = $headerData;
+            $pasien = $pasienData['pasien'] ?? [];
+            $header = $headerData;
 
             $statusLabel = ['P' => 'Terdaftar', 'C' => 'Proses', 'H' => 'Selesai', 'F' => 'Batal'];
             $statusColor = [
@@ -57,11 +57,11 @@ new class extends Component {
                 'H' => 'bg-green-100 text-green-700 border-green-200',
                 'F' => 'bg-error/10 text-error border-error/30',
             ];
-            $st = $h['checkup_status'] ?? '';
-            $statusText = $statusLabel[$st] ?? $st;
-            $statusClass = $statusColor[$st] ?? 'bg-surface-soft text-muted';
+            $statusKode = $header['checkup_status'] ?? '';
+            $statusText = $statusLabel[$statusKode] ?? $statusKode;
+            $statusClass = $statusColor[$statusKode] ?? 'bg-surface-soft text-muted';
 
-            $layanan = strtoupper($h['status_rjri'] ?? '');
+            $layanan = strtoupper($header['status_rjri'] ?? '');
             $layananColor = match ($layanan) {
                 'RJ' => 'bg-blue-100 text-blue-700 border-blue-200',
                 'UGD' => 'bg-red-100 text-red-700 border-red-200',
@@ -69,15 +69,15 @@ new class extends Component {
                 default => 'bg-surface-soft text-muted border-hairline',
             };
 
-            $alamat = trim($p['identitas']['alamat'] ?? '');
-            $rt = trim($p['identitas']['rt'] ?? '');
-            $rw = trim($p['identitas']['rw'] ?? '');
+            $alamat = trim($pasien['identitas']['alamat'] ?? '');
+            $rt = trim($pasien['identitas']['rt'] ?? '');
+            $rw = trim($pasien['identitas']['rw'] ?? '');
             $alamatLine = $alamat;
             if ($rt !== '' || $rw !== '') {
                 $alamatLine .= " RT {$rt}/RW {$rw}";
             }
 
-            $tglLahirRaw = $p['tglLahir'] ?? '';
+            $tglLahirRaw = $pasien['tglLahir'] ?? '';
             $tglLahirFmt = '-';
             if (!empty($tglLahirRaw)) {
                 try {
@@ -86,7 +86,7 @@ new class extends Component {
                     $tglLahirFmt = $tglLahirRaw;
                 }
             }
-            $tempatLahir = trim($p['tempatLahir'] ?? '');
+            $tempatLahir = trim($pasien['tempatLahir'] ?? '');
             $tglLahirLabel = $tempatLahir !== '' ? "{$tempatLahir}, {$tglLahirFmt}" : $tglLahirFmt;
         @endphp
 
@@ -103,10 +103,10 @@ new class extends Component {
                     {{-- Nama + No RM --}}
                     <div class="flex items-baseline justify-between gap-2">
                         <span class="text-xl font-bold text-ink dark:text-white">
-                            {{ $p['regName'] ?? '-' }}
+                            {{ $pasien['regName'] ?? '-' }}
                         </span>
                         <span class="font-mono text-base text-muted dark:text-gray-400 shrink-0">
-                            {{ $p['regNo'] ?? '-' }}
+                            {{ $pasien['regNo'] ?? '-' }}
                         </span>
                     </div>
 
@@ -118,13 +118,13 @@ new class extends Component {
                             <div>
                                 <span class="text-muted">Jenis Kelamin:</span>
                                 <span class="ml-1 text-body dark:text-gray-300">
-                                    {{ $p['jenisKelamin']['jenisKelaminDesc'] ?? '-' }}
+                                    {{ $pasien['jenisKelamin']['jenisKelaminDesc'] ?? '-' }}
                                 </span>
                             </div>
                             <div>
                                 <span class="text-muted">Umur:</span>
                                 <span class="ml-1 text-body dark:text-gray-300">
-                                    {{ $p['thn'] ?? 0 }} Thn {{ $p['bln'] ?? 0 }} Bln {{ $p['hari'] ?? 0 }} Hr
+                                    {{ $pasien['thn'] ?? 0 }} Thn {{ $pasien['bln'] ?? 0 }} Bln {{ $pasien['hari'] ?? 0 }} Hr
                                 </span>
                             </div>
                             <div>
@@ -141,17 +141,17 @@ new class extends Component {
                                 </div>
                             @endif
 
-                            @if (!empty($p['kontak']['nomerTelponSelulerPasien']))
+                            @if (!empty($pasien['kontak']['nomerTelponSelulerPasien']))
                                 <div class="text-body dark:text-gray-300">
-                                    📞 {{ $p['kontak']['nomerTelponSelulerPasien'] }}
+                                    📞 {{ $pasien['kontak']['nomerTelponSelulerPasien'] }}
                                 </div>
                             @endif
 
                             <div class="text-xs font-mono text-muted dark:text-gray-400">
                                 🆔
-                                NIK: {{ $p['identitas']['nik'] ?? '-' }}
-                                @if (!empty($p['identitas']['idbpjs']))
-                                    • BPJS: {{ $p['identitas']['idbpjs'] }}
+                                NIK: {{ $pasien['identitas']['nik'] ?? '-' }}
+                                @if (!empty($pasien['identitas']['idbpjs']))
+                                    • BPJS: {{ $pasien['identitas']['idbpjs'] }}
                                 @endif
                             </div>
                         </div>
@@ -164,6 +164,17 @@ new class extends Component {
                     {{-- BARIS 1: Layanan + Status | No Checkup --}}
                     <div class="flex items-center justify-between gap-2">
                         <div class="flex items-center gap-1.5 flex-wrap">
+                            @if (($header['cito_status'] ?? null) === '1')
+                                <span
+                                    class="inline-flex items-center gap-1 border rounded-full px-2.5 py-0.5 text-xs font-bold text-red-700 bg-red-100 border-red-300 dark:bg-red-900/30 dark:border-red-500 dark:text-red-200"
+                                    title="Order CITO — dahulukan pemeriksaan ini">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                    CITO
+                                </span>
+                            @endif
                             <span
                                 class="inline-block border rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $layananColor }}">
                                 {{ $layanan ?: '-' }}
@@ -183,37 +194,37 @@ new class extends Component {
                     <div>
                         <span class="text-muted">Dokter:</span>
                         <span
-                            class="ml-1 font-semibold text-brand dark:text-brand-lime">{{ $h['dr_name'] ?? '-' }}</span>
+                            class="ml-1 font-semibold text-brand dark:text-brand-lime">{{ $header['dr_name'] ?? '-' }}</span>
                     </div>
 
                     {{-- BARIS 3: Diagnosis/Ket. Klinis (jika ada) --}}
-                    @if (!empty($h['klinis_desc']))
+                    @if (!empty($header['klinis_desc']))
                         <div>
                             <span class="text-muted">Diagnosis/Ket. Klinis:</span>
                             <span
-                                class="ml-1 font-medium text-amber-700 dark:text-amber-400">{{ $h['klinis_desc'] }}</span>
+                                class="ml-1 font-medium text-amber-700 dark:text-amber-400">{{ $header['klinis_desc'] }}</span>
                         </div>
                     @endif
 
                     {{-- BARIS 4: Tanggal --}}
                     <div>
                         <span class="text-muted">Tanggal:</span>
-                        <span class="ml-1 text-body dark:text-gray-300">{{ $h['checkup_date'] ?? '-' }}</span>
+                        <span class="ml-1 text-body dark:text-gray-300">{{ $header['checkup_date'] ?? '-' }}</span>
                     </div>
 
                     {{-- BARIS 5: Ref No (jika ada) --}}
-                    @if (!empty($h['ref_no']))
+                    @if (!empty($header['ref_no']))
                         <div>
                             <span class="text-muted">Ref No ({{ $layanan }}):</span>
-                            <span class="ml-1 font-mono text-body dark:text-gray-300">{{ $h['ref_no'] }}</span>
+                            <span class="ml-1 font-mono text-body dark:text-gray-300">{{ $header['ref_no'] }}</span>
                         </div>
                     @endif
 
                     {{-- BARIS 6: Petugas --}}
                     <div>
                         <span class="text-muted">Petugas:</span>
-                        @if (!empty($h['emp_name']))
-                            <span class="ml-1 text-body dark:text-gray-300">{{ $h['emp_name'] }}</span>
+                        @if (!empty($header['emp_name']))
+                            <span class="ml-1 text-body dark:text-gray-300">{{ $header['emp_name'] }}</span>
                         @else
                             <span class="ml-1 italic text-muted-soft dark:text-gray-500">Belum ada petugas</span>
                         @endif

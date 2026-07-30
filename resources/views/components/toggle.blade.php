@@ -6,6 +6,7 @@
         <x-toggle wire:model.live="dataDaftarUGD.passStatus" trueValue="N" falseValue="O" label="Pasien Baru" />
         <x-toggle wire:model.live="activeStatus" trueValue="1" falseValue="0">Status Aktif</x-toggle>
         <x-toggle wire:model.live="forceOccupiedBed" :trueValue="true" :falseValue="false" label="Paksa pilih bed" />
+        <x-toggle wire:model="cito" trueValue="1" falseValue="0" onColor="bg-error" label="CITO" />
 
       Mode 2 (per-row di table — pakai `current` + `wireClick`):
         <x-toggle :current="$row->active_record" trueValue="1" falseValue="0"
@@ -24,6 +25,7 @@
     'disabled' => false,
     'current' => null,    // override initial value (Mode 2 / per-row)
     'wireClick' => null,  // panggil method server saat klik (Mode 2)
+    'onColor' => 'bg-brand', // warna track saat ON — mis. 'bg-error' utk penanda mendesak (CITO)
 ])
 
 @php
@@ -69,7 +71,7 @@
     class="flex items-center space-x-2 {{ $disabled ? 'cursor-not-allowed opacity-90' : 'cursor-pointer' }}"
     {{ $attrs }}>
     <div class="h-6 transition rounded-full w-11
-        {{ $isOn ? 'bg-brand' : 'bg-gray-300' }}">
+        {{ $isOn ? $onColor : 'bg-gray-300' }}">
         <div class="w-4 h-4 mt-1 transition transform bg-white rounded-full shadow
             {{ $isOn ? 'translate-x-6 ml-1' : 'translate-x-1' }}">
         </div>

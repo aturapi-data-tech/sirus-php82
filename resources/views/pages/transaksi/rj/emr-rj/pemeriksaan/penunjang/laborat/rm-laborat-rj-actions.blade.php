@@ -28,6 +28,7 @@ new class extends Component {
     public string $searchItem = '';
     public array $selectedItems = []; // [ clabitem_id => [...item] ]
     public string $klinisDesc = ''; // Diagnosis/Keterangan Klinis — wajib diisi
+    public string $cito = '0'; // '1' = CITO (didahulukan petugas lab), '0' = rutin
 
     protected function rules(): array
     {
@@ -65,6 +66,7 @@ new class extends Component {
         $this->selectedItems = [];
         $this->searchItem = '';
         $this->klinisDesc = '';
+        $this->cito = '0';
         $this->resetValidation();
         $this->resetPage();
         $this->incrementVersion('laborat-order-modal');
@@ -75,7 +77,7 @@ new class extends Component {
     public function closeModal(): void
     {
         $this->dispatch('close-modal', name: "laborat-order-rj-{$this->rjNo}");
-        $this->reset(['selectedItems', 'searchItem', 'klinisDesc']);
+        $this->reset(['selectedItems', 'searchItem', 'klinisDesc', 'cito']);
     }
 
     /* ===============================
@@ -86,7 +88,7 @@ new class extends Component {
     {
         $search = trim($this->searchItem);
 
-        return DB::table('lbmst_clabitems')->select('clabitem_id', 'clabitem_desc', 'price', 'clabitem_group', 'item_code')->whereNull('clabitem_group')->whereNotNull('clabitem_desc')->when($search, fn($q) => $q->whereRaw('UPPER(clabitem_desc) LIKE ?', ['%' . mb_strtoupper($search) . '%']))->orderBy('clabitem_desc', 'asc')->paginate(15);
+        return DB::table('lbmst_clabitems')->select('clabitem_id', 'clabitem_desc', 'price', 'clabitem_group', 'item_code')->whereNull('clabitem_group')->whereNotNull('clabitem_desc')->when($search, fn($query) => $query->whereRaw('UPPER(clabitem_desc) LIKE ?', ['%' . mb_strtoupper($search) . '%']))->orderBy('clabitem_desc', 'asc')->paginate(15);
     }
 
     /* ===============================
@@ -158,22 +160,23 @@ new class extends Component {
                     'checkup_status' => 'P',
                     'ref_no' => $this->rjNo,
                     'klinis_desc' => trim($this->klinisDesc),
+                    'cito_status' => $this->cito === '1' ? '1' : '0',
                 ]);
 
                 foreach ($this->selectedItems as $item) {
                     $this->insertItemAndChildren($checkupNo, $item);
                 }
 
-                $this->appendAdminLogRJ((int) $this->rjNo, 'Order Lab — ' . collect($this->selectedItems)->pluck('clabitem_desc')->implode(', '), 'MR');
+                $this->appendAdminLogRJ((int) $this->rjNo, 'Order Lab' . ($this->cito === '1' ? ' [CITO]' : '') . ' — ' . collect($this->selectedItems)->pluck('clabitem_desc')->implode(', '), 'MR');
             });
 
             $this->dispatch('laborat-order-terkirim');
-            $this->dispatch('toast', type: 'success', message: count($this->selectedItems) . ' item laboratorium berhasil dikirim.');
+            $this->dispatch('toast', type: 'success', message: count($this->selectedItems) . ' item laboratorium berhasil dikirim' . ($this->cito === '1' ? ' dengan status CITO.' : '.'));
             $this->closeModal();
-        } catch (\RuntimeException $e) {
-            $this->dispatch('toast', type: 'error', message: $e->getMessage());
-        } catch (\Exception $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal mengirim: ' . $e->getMessage());
+        } catch (\RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        } catch (\Exception $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal mengirim: ' . $exception->getMessage());
         }
     }
 
@@ -364,6 +367,20 @@ new class extends Component {
                 <div
                     class="flex flex-col w-full min-h-0 border-t lg:w-96 shrink-0 lg:border-t-0 lg:border-l border-hairline dark:border-gray-700 bg-canvas dark:bg-gray-900">
 
+                    {{-- Prioritas: CITO --}}
+                    <div class="px-5 py-3 border-b border-hairline-soft dark:border-gray-700">
+                        <x-input-label value="Prioritas Pemeriksaan" />
+                        <div class="mt-1.5">
+                            <x-toggle wire:model="cito" trueValue="1" falseValue="0" onColor="bg-error"
+                                label="CITO — didahulukan" />
+                        </div>
+                        @if ($cito === '1')
+                            <p class="mt-1.5 text-xs font-medium text-error-deep dark:text-red-300">
+                                Order ditandai CITO — petugas laboratorium akan mendahulukan pemeriksaan ini.
+                            </p>
+                        @endif
+                    </div>
+
                     {{-- Diagnosis/Keterangan Klinis --}}
                     <div class="px-5 py-3 border-b border-hairline-soft dark:border-gray-700">
                         <x-input-label value="Diagnosis/Keterangan Klinis" required />
@@ -386,18 +403,18 @@ new class extends Component {
 
                     {{-- List item dipilih (keranjang) --}}
                     <div class="flex-1 px-5 pb-4 space-y-1.5 overflow-y-auto">
-                        @forelse ($selectedItems as $id => $sel)
+                        @forelse ($selectedItems as $clabitemId => $itemDipilih)
                             <div
                                 class="flex items-start justify-between gap-2 p-2.5 border rounded-lg border-brand-green/20 bg-brand-green/5">
                                 <div class="min-w-0">
                                     <p class="text-sm font-medium leading-tight text-brand-green">
-                                        {{ $sel['clabitem_desc'] }}</p>
-                                    @if ($sel['price'])
+                                        {{ $itemDipilih['clabitem_desc'] }}</p>
+                                    @if ($itemDipilih['price'])
                                         <p class="mt-0.5 text-[11px] text-brand-green/60">
-                                            {{ number_format($sel['price']) }}</p>
+                                            {{ number_format($itemDipilih['price']) }}</p>
                                     @endif
                                 </div>
-                                <button type="button" wire:click="removeSelected('{{ $id }}')"
+                                <button type="button" wire:click="removeSelected('{{ $clabitemId }}')"
                                     class="mt-0.5 shrink-0 text-muted-soft hover:text-red-500 transition-colors">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd"
@@ -428,7 +445,17 @@ new class extends Component {
                 <div class="flex items-center justify-between gap-3">
 
                     {{-- Kiri: info --}}
-                    <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        @if ($cito === '1')
+                            <span
+                                class="inline-flex items-center gap-1.5 px-3 py-1 text-base font-bold text-red-700 bg-red-50 border border-red-300 rounded-full dark:bg-red-900/25 dark:border-red-500 dark:text-red-200">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                                CITO
+                            </span>
+                        @endif
                         @if (!empty($selectedItems))
                             <span
                                 class="inline-flex items-center gap-1.5 px-3 py-1 text-base font-medium text-brand-green bg-brand-green/10 border border-brand-green/30 rounded-full">
