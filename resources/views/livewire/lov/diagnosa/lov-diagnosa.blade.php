@@ -11,7 +11,7 @@
 | supaya tidak ada jalur yang lolos aturan.
 |
 | Dokumen lengkap: docs/diagnosa-architecture.md §2 (skill: diagnosa-flow) — di sana
-| ada tabel SELURUH 12 call site beserta status blockHeader/blockIm/primaryOnly-nya.
+| ada tabel SELURUH 12 call site beserta status blockHeader/blockIm/blockNonPrimary-nya.
 | Perbarui tabel itu setiap menambah pemakaian LOV baru:
 |   grep -rn "lov.diagnosa.lov-diagnosa" resources/views --include=*.blade.php -A3
 |
@@ -26,7 +26,7 @@
 |       label="Diagnosa *"
 |       target="rjFormDiagnosaVclaim"       <- WAJIB, unik per form
 |       :initialDiagnosaId="$diagnosaId"    <- opsional, mode edit (reactive)
-|       :primaryOnly="true"                 <- opsional, field diagnosa primer
+|       :blockNonPrimary="true"             <- opsional, tolak kode accpdx='N'
 |       :blockIm="true"                     <- opsional, khusus coder INACBG
 |       :blockHeader="false"                <- opsional, izinkan kode kategori
 |                                              (default true = ditolak)
@@ -80,6 +80,25 @@
 |
 | GUARD — kode mana yang tidak boleh dipilih
 | ------------------------------------------
+| DUA URUSAN BERBEDA, jangan tertukar — ini sumber kerancuan nama prop lama
+| (`primaryOnly`, sudah di-rename jadi `blockNonPrimary`):
+|
+|   boleh DIPILIH atau tidak      -> ditentukan DI SINI, lewat prop block*
+|   jadi PRIMARY atau SECONDARY   -> ditentukan komponen pemakai, di add() /
+|                                    setKategori() (lookup accpdx, jaga
+|                                    single-Primary invariant)
+|
+| Jadi `blockNonPrimary="false"` TIDAK berarti "kode ini jadi primer". Artinya
+| cuma: kode yang tak boleh primer tetap BOLEH DIPILIH — nanti komponennya yang
+| menaruhnya sebagai Secondary.
+|
+| Ketiga prop dibaca satu arah: true = kode itu DITOLAK, false = boleh dipilih.
+| Masing-masing memblokir satu properti kode di master:
+|
+|   blockHeader     -> valid_code = 0
+|   blockIm         -> im = 1
+|   blockNonPrimary -> accpdx = 'N'
+|
 | Empat flag di RSMST_MSTDIAGS (kelola di /master/diagnosa). Jumlah baris di
 | bawah = kondisi master saat dokumen ini ditulis, sekadar gambaran skalanya:
 |
@@ -90,7 +109,7 @@
 |
 |   accpdx = 'N'    27.558 baris   tidak boleh jadi diagnosa PRIMER (boleh jadi
 |                                  sekunder). -> GUARD 2, aktif bila
-|                                  `primaryOnly` = true.
+|                                  `blockNonPrimary` = true.
 |
 |   asterisk = 1       852 baris   kode asterisk, wajib dipasangkan dengan
 |                                  etiologi (dagger). Semuanya (852/852) sudah
@@ -104,7 +123,7 @@
 |                                  -> GUARD 3, aktif bila `blockIm` = true.
 |
 | SEMUA guard bisa dilepas per-field. Coder INACBG memang melepas ketiganya
-| (`:blockHeader="false"` + `:blockIm="false"`, tanpa `primaryOnly`) karena di sana
+| (`:blockHeader="false"` + `:blockIm="false"`, tanpa `blockNonPrimary`) karena di sana
 | penentu akhir adalah `validcode` dari respons E-Klaim, bukan flag lokal — tiap
 | baris coder sudah menampilkan badge Valid / Tidak Valid / IM tidak berlaku.
 |
@@ -178,6 +197,10 @@ new class extends Component {
     /**
      * Kalau true, kode dgn accpdx='N' (tidak boleh jadi diagnosa primer) ditolak.
      *
+     * Dulu bernama `primaryOnly` — di-rename karena namanya terbaca seperti urusan
+     * PENEMPATAN (jadi primer / sekunder), padahal prop ini murni soal boleh-tidaknya
+     * kode DIPILIH. Penempatan kategori tetap urusan komponen pemakai.
+     *
      * GUARD 2. Status pemakaian: BELUM dipakai satu pun dari 12 call site. Semua
      * konsumen menegakkan aturan primer di server, bukan lewat prop ini:
      * - EMR diagnosis   : lookup `accpdx` by `diag_id` lalu tentukan kategori
@@ -189,7 +212,7 @@ new class extends Component {
      * terpisah) — di situ menolak sejak pemilihan lebih jelas daripada memaksa
      * kategori setelah tersimpan.
      */
-    public bool $primaryOnly = false;
+    public bool $blockNonPrimary = false;
 
     /**
      * Kalau true, kode Indonesian Modification (master `im`=1 atau deskripsi
@@ -421,8 +444,8 @@ new class extends Component {
         }
 
         // Guard 2: kalau LOV ini untuk diagnosa primer, blok kode dgn accpdx='N'.
-        if ($this->primaryOnly && ($opt['accpdx'] ?? 'N') !== 'Y') {
-            $this->dispatch('toast', type: 'error', message: "Kode {$code} tidak boleh dipakai sebagai diagnosa primer (accpdx='N').");
+        if ($this->blockNonPrimary && ($opt['accpdx'] ?? 'N') !== 'Y') {
+            $this->dispatch('toast', type: 'error', message: "Kode {$code} tidak boleh dipakai sebagai diagnosa primer (accpdx='N'), jadi tidak bisa dipilih di field ini.");
             return;
         }
 
@@ -551,9 +574,9 @@ new class extends Component {
                         @php
                             $isHeaderCode = (int) ($option['valid_code'] ?? 0) !== 1;
                             $isInvalid = $isHeaderCode && $blockHeader;
-                            $isBlockedPrimary = $primaryOnly && ($option['accpdx'] ?? 'N') !== 'Y';
+                            $isBlockedNonPrimary = $blockNonPrimary && ($option['accpdx'] ?? 'N') !== 'Y';
                             $isBlockedIm = $blockIm && App\Support\Diagnosa\KodeIm::adalah($option);
-                            $isBlocked = $isInvalid || $isBlockedPrimary || $isBlockedIm;
+                            $isBlocked = $isInvalid || $isBlockedNonPrimary || $isBlockedIm;
                             $rowClass = $isBlocked
                                 ? 'bg-red-50 dark:bg-red-900/10 cursor-not-allowed'
                                 : '';

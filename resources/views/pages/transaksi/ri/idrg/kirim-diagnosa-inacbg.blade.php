@@ -471,7 +471,7 @@ new class extends Component {
 
         <div wire:key="lov-diagnosa-inacbg-coder-{{ $riHdrNo ?? 'none' }}">
             <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosa (untuk INACBG)" target="riFormDiagnosaInacbgCoder"
-                :blockHeader="false" :blockIm="false" :primaryOnly="false"
+                :blockHeader="false" :blockIm="false" :blockNonPrimary="false"
                 wire:key="lov-diagnosa-inacbg-coder-inner-{{ $riHdrNo ?? 'none' }}" />
         </div>
     @endif

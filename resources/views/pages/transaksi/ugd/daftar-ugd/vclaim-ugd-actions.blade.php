@@ -670,7 +670,7 @@ new class extends Component {
                                          docs/diagnosa-architecture.md §2. --}}
                                     <livewire:lov.diagnosa.lov-diagnosa label="Diagnosa *"
                                         target="ugdFormDiagnosaVclaim" :initialDiagnosaId="$diagnosaId ?? null" :disabled="$isFormLocked"
-                                        :blockHeader="false" :blockIm="false" :primaryOnly="false" />
+                                        :blockHeader="false" :blockIm="false" :blockNonPrimary="false" />
                                     {{-- kode ICD-10 read-only --}}
                                     @if (!empty($SEPForm['diagAwal']))
                                         <p class="mt-1 text-xs text-muted-soft">

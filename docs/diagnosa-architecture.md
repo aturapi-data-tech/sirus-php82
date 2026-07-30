@@ -60,7 +60,7 @@ jangan bikin autocomplete sendiri.
     label="Diagnosa *"
     target="rjFormDiagnosaVclaim"      {{-- bedakan per form --}}
     :initialDiagnosaId="$diagnosaId"   {{-- mode edit (reactive; cari by diag_id lalu icdx) --}}
-    :primaryOnly="true"                {{-- opsional: blok accpdx='N' (utk field DXP) --}}
+    :blockNonPrimary="true"                {{-- opsional: blok accpdx='N' (utk field DXP) --}}
     :blockIm="true"                    {{-- opsional: blok kode IM (default false) --}}
     :blockHeader="false"               {{-- opsional: izinkan kode kategori (default true = ditolak) --}}
     :disabled="$isFormLocked" />
@@ -75,7 +75,7 @@ Perilaku:
   1. `blockHeader && valid_code !== 1` → toast error, batal pilih. `blockHeader`
      default **true**; kalau dilepas, baris kategori diberi badge `KATEGORI` amber
      (tidak merah) supaya tetap kelihatan bukan kode leaf.
-  2. `primaryOnly && accpdx !== 'Y'` → toast error, batal pilih.
+  2. `blockNonPrimary && accpdx !== 'Y'` → toast error, batal pilih.
   3. `blockIm && App\Support\Diagnosa\KodeIm::adalah($opt)` → toast error, batal pilih.
 
 **Kalau kode LENGKAP terasa terblokir, cek baris kembar dulu.** 266 icdx punya DUA
@@ -92,7 +92,7 @@ adalah kode anaknya (`E11.9`, `K29.7`).
 **Setup di SELURUH pemakai LOV.** 12 call site, hasil audit langsung ke berkas
 (semua call site MENULIS ketiga prop eksplisit; cetak tebal = menutup / aktif):
 
-| # | Konsumen | File : baris | `target` | `blockHeader` | `blockIm` | `primaryOnly` |
+| # | Konsumen | File : baris | `target` | `blockHeader` | `blockIm` | `blockNonPrimary` |
 |---|---|---|---|---|---|---|
 | 1 | SEP / VClaim | `transaksi/rj/daftar-rj/vclaim-rj-actions.blade.php` : 1264 | `rjFormDiagnosaVclaim` | false | false | false |
 | 2 | SEP / VClaim | `transaksi/ugd/daftar-ugd/vclaim-ugd-actions.blade.php` : 671 | `ugdFormDiagnosaVclaim` | false | false | false |
@@ -109,7 +109,7 @@ adalah kode anaknya (`E11.9`, `K29.7`).
 
 Rekap: `blockHeader` menutup di 6 call site (EMR diagnosis + coder iDRG) dan DIBUKA di
 6 lainnya (SEP/VClaim + coder INACBG). `blockIm` aktif hanya di 3 coder iDRG.
-`primaryOnly` tidak aktif di mana pun — aturan primer ditegakkan server-side di tiap
+`blockNonPrimary` tidak aktif di mana pun — aturan primer ditegakkan server-side di tiap
 konsumen (§4).
 
 **Pola keputusannya: siapa penilai akhir kode.**
@@ -242,11 +242,11 @@ Pengecualian: lookup **by `diag_id` saja** (PK, unik — mis. dari payload LOV y
 2. Butuh kode utk sistem eksternal? Kirim **`icdx`** (BPJS/E-Klaim), bukan `diag_id`.
 3. Butuh referensi internal/join transaksi? Simpan **`diag_id`**.
 4. Field diagnosa primer? Semua konsumen saat ini memakai guard exists-Y (§4) di
-   server, BUKAN `:primaryOnly="true"` — field diagnosa di aplikasi ini satu kotak
+   server, BUKAN `:blockNonPrimary="true"` — field diagnosa di aplikasi ini satu kotak
    untuk primer + sekunder, kode `accpdx='N'` tetap masuk lalu dipaksa Secondary.
-   Prop `primaryOnly` baru relevan kalau ada field KHUSUS primer.
+   Prop `blockNonPrimary` baru relevan kalau ada field KHUSUS primer.
 5. Field coder INACBG? Lepas semua guard (`:blockHeader="false" :blockIm="false"
-   :primaryOnly="false"`) dan JANGAN tambah guard IM di `add()` — penentu akhirnya
+   :blockNonPrimary="false"`) dan JANGAN tambah guard IM di `add()` — penentu akhirnya
    `validcode` E-Klaim + badge per baris. Aturan primer tetap ditegakkan `add()` /
    `setKategori()` lewat pola exists-Y.
 5. Auto-kategori Primary/Secondary: cek dulu sudah ada Primary, lalu guard accpdx.

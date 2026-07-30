@@ -13,7 +13,7 @@ Ringkasan keputusan cepat:
 | Lapisan | Lokasi |
 |---|---|
 | Master + 4 flag iDRG (`valid_code/accpdx/asterisk/im`) | `RSMST_MSTDIAGS`, UI `/master/diagnosa` |
-| Picker standar (SATU-satunya) | `livewire/lov/diagnosa/lov-diagnosa.blade.php` — guard `valid_code!==1`, `primaryOnly`, `blockIm` ada di `choose()`, berlaku utk SEMUA pemakai |
+| Picker standar (SATU-satunya) | `livewire/lov/diagnosa/lov-diagnosa.blade.php` — guard `valid_code!==1`, `blockNonPrimary`, `blockIm` ada di `choose()`, berlaku utk SEMUA pemakai |
 | Penanda kode IM (lintas komponen) | `App\Support\Diagnosa\KodeIm` — `adalah(array)` & `adalahKode(string)` |
 | EMR diagnosis (RJ/UGD/RI) | `rm-diagnosa-*-actions.blade.php` — dual-write `rstxn_*dtls.diag_id` + JSON `diagnosis[]` (`diagId/icdX/kategoriDiagnosa`) |
 | SEP / VClaim | `vclaim-*-actions.blade.php` — `SEPForm.diagAwal` = **icdx** |
@@ -31,16 +31,16 @@ Ringkasan keputusan cepat:
 3. **Jangan hapus baris master** — legacy `diag_id` direferensikan >130rb baris
    `rstxn_*dtls`. Nonaktifkan via `valid_code=0` (toggle di /master/diagnosa).
 4. Field diagnosa **primer** → semua konsumen memakai guard exists-Y server-side, BUKAN
-   `:primaryOnly` (0 dari 12 call site); jaga single-Primary invariant saat auto-kategori.
+   `:blockNonPrimary` (0 dari 12 call site); jaga single-Primary invariant saat auto-kategori.
    Ketiga prop guard ditulis EKSPLISIT di 12 call site (tabel di docs §2). Status:
    `blockHeader` menutup di 6 (EMR + coder iDRG), dibuka di 6 (SEP/VClaim + coder
-   INACBG); `blockIm` aktif di 3 coder iDRG; `primaryOnly` 0 pemakai. Pembagi
+   INACBG); `blockIm` aktif di 3 coder iDRG; `blockNonPrimary` 0 pemakai. Pembagi
    keputusannya = siapa penilai akhir kode: ada sistem luar yang menolak & pesannya
    sampai ke pengguna (E-Klaim, BPJS) → guard dibuka; tidak ada penilai luar (EMR)
    atau penolakan mahal krn harus kirim klaim dulu (coder iDRG) → guard ditutup.
 4b. **Setup guard LOV per konsumen** (`blockHeader` default true, `blockIm` default false):
    EMR/SEP/master pakai default; coder iDRG pakai default; **coder INACBG melepas
-   keduanya** (`:blockHeader="false" :blockIm="false"`, tanpa `primaryOnly`) karena
+   keduanya** (`:blockHeader="false" :blockIm="false"`, tanpa `blockNonPrimary`) karena
    penentu akhirnya `validcode` dari respons E-Klaim + badge per baris. Keputusan
    sadar: kode kategori/IM yang lolos akan dibalas validcode=0.
    Kode IM: 1.413 dari 1.416 ber-`valid_code=1` & `accpdx='Y'`, jadi guard valid_code

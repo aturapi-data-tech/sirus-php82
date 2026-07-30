@@ -1263,7 +1263,7 @@ new class extends Component {
                                          docs/diagnosa-architecture.md §2. --}}
                                         <livewire:lov.diagnosa.lov-diagnosa label="Diagnosa *"
                                             target="rjFormDiagnosaVclaim" :initialDiagnosaId="$diagnosaId ?? null" :disabled="$isFormLocked"
-                                            :blockHeader="false" :blockIm="false" :primaryOnly="false" />
+                                            :blockHeader="false" :blockIm="false" :blockNonPrimary="false" />
                                         @if (!empty($SEPForm['diagAwal']))
                                             <p class="mt-1 text-xs text-muted-soft">
                                                 Kode ICD-10: <span

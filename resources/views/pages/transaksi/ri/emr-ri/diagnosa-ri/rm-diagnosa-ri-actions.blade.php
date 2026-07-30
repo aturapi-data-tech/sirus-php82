@@ -440,7 +440,7 @@ new class extends Component {
             <x-border-form bgcolor="bg-canvas">
                 <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosis" target="riFormDiagnosaRm" :initialDiagnosaId="$diagnosaId ?? null"
                     :disabled="$isFormLocked" wire:key="lov-diagnosa-{{ $this->renderKey('modal-diagnosis-ri') }}"
-                    :blockHeader="true" :blockIm="false" :primaryOnly="false" />
+                    :blockHeader="true" :blockIm="false" :blockNonPrimary="false" />
             </x-border-form>
 
             {{-- List Diagnosa --}}
