@@ -41,6 +41,7 @@ new class extends Component {
 
     public ?string $drId = null; // dr_id terpilih; nama di-lookup saat insert ke dr_pengirim
     public ?string $klinisDesc = null;
+    public string $cito = '0'; // '1' = CITO (didahulukan petugas radiologi), '0' = rutin
 
     /* ===============================
      | OPEN / CLOSE MODAL
@@ -61,7 +62,7 @@ new class extends Component {
 
     private function resetState(): void
     {
-        $this->reset(['patientSearch', 'filterBangsal', 'selectedRefNo', 'selectedPatient', 'searchItem', 'selectedItems', 'drId', 'klinisDesc']);
+        $this->reset(['patientSearch', 'filterBangsal', 'selectedRefNo', 'selectedPatient', 'searchItem', 'selectedItems', 'drId', 'klinisDesc', 'cito']);
         $this->resetValidation();
         $this->resetPage();
     }
@@ -72,7 +73,7 @@ new class extends Component {
             return;
         }
         $this->source = $source;
-        $this->reset(['patientSearch', 'filterBangsal', 'selectedRefNo', 'selectedPatient', 'searchItem', 'selectedItems', 'drId', 'klinisDesc']);
+        $this->reset(['patientSearch', 'filterBangsal', 'selectedRefNo', 'selectedPatient', 'searchItem', 'selectedItems', 'drId', 'klinisDesc', 'cito']);
         unset($this->activePatients);
         $this->resetPage();
     }
@@ -193,7 +194,7 @@ new class extends Component {
 
     public function changePatient(): void
     {
-        $this->reset(['selectedRefNo', 'selectedPatient', 'drId', 'klinisDesc']);
+        $this->reset(['selectedRefNo', 'selectedPatient', 'drId', 'klinisDesc', 'cito']);
         unset($this->relatedDoctors);
     }
 
@@ -391,6 +392,7 @@ new class extends Component {
                             'rad_price' => 0 + $sel['price'],
                             'dr_pengirim' => $drPengirim,
                             'klinis_desc' => $klinis,
+                            'cito_status' => $this->cito === '1' ? '1' : '0',
                             'waktu_entry' => DB::raw('sysdate'),
                         ]);
                     }
@@ -405,6 +407,7 @@ new class extends Component {
                             'rad_price' => 0 + $sel['price'],
                             'dr_pengirim' => $drPengirim,
                             'klinis_desc' => $klinis,
+                            'cito_status' => $this->cito === '1' ? '1' : '0',
                             'waktu_entry' => DB::raw('sysdate'),
                         ]);
                     }
@@ -420,6 +423,7 @@ new class extends Component {
                             'rirad_price' => 0 + $sel['price'],
                             'dr_pengirim' => $drPengirim,
                             'klinis_desc' => $klinis,
+                            'cito_status' => $this->cito === '1' ? '1' : '0',
                             'waktu_entry' => DB::raw('sysdate'),
                             'rirad_date' => DB::raw('sysdate'),
                         ]);
@@ -428,11 +432,11 @@ new class extends Component {
 
                 // Audit log terpadu (tab "Log Aktivitas") — dari sisi radiologi.
                 $namaItem = collect($this->selectedItems)->pluck('rad_desc')->implode(', ');
-                $this->appendLog('Tambah Order Radiologi (dari radiologi) - ' . $namaItem);
+                $this->appendLog('Tambah Order Radiologi (dari radiologi)' . ($this->cito === '1' ? ' [CITO]' : '') . ' - ' . $namaItem);
             });
 
             $count = count($this->selectedItems);
-            $this->dispatch('toast', type: 'success', message: $count . ' pemeriksaan radiologi berhasil ditambahkan.');
+            $this->dispatch('toast', type: 'success', message: $count . ' pemeriksaan radiologi berhasil ditambahkan' . ($this->cito === '1' ? ' dengan status CITO.' : '.'));
             $this->dispatch('radiologi-refresh');
             $this->closeTambahModal();
         } catch (\RuntimeException $e) {
@@ -715,6 +719,20 @@ new class extends Component {
                                 placeholder="Diagnosis kerja / keterangan klinis pasien..."
                                 :error="$errors->has('klinisDesc')" class="mt-1 text-sm" />
                             <x-input-error :messages="$errors->get('klinisDesc')" class="mt-1" />
+                        </div>
+
+                        {{-- Prioritas: CITO --}}
+                        <div class="px-5 py-3 border-b border-hairline-soft dark:border-gray-700">
+                            <x-input-label value="Prioritas Pemeriksaan" class="text-xs" />
+                            <div class="mt-1.5">
+                                <x-toggle wire:model="cito" trueValue="1" falseValue="0" onColor="bg-error"
+                                    label="CITO — didahulukan" />
+                            </div>
+                            @if ($cito === '1')
+                                <p class="mt-1.5 text-xs font-medium text-error-deep dark:text-red-300">
+                                    Order ditandai CITO — pemeriksaan ini didahulukan.
+                                </p>
+                            @endif
                         </div>
 
                         {{-- Header keranjang --}}
