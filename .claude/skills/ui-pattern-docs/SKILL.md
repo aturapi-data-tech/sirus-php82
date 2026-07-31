@@ -29,6 +29,7 @@ Sebelum membuat komponen baru, cek apakah polanya sudah ada di `docs/`. Ikuti po
 | Versioning teks klausul dokumen legal (consent/pernyataan; cetak ulang sesuai redaksi saat TTD) | `docs/clause-versioning.md` (+ skill `clause-versioning`) |
 | Laboratorium — siklus PENUH (EMR order → petugas → admin/kasir → dokter lihat hasil → master → laporan) | `docs/laborat-architecture.md` (+ skill `laborat`) |
 | Laboratorium — deep-dive modul petugas (item master, hasil, rentang normal & nilai kritis, Mindray, batal) | `docs/laborat-modul.md` (+ skill `laborat`) |
+| **Kamar Operasi (OK)** — port Oracle Forms rit006x.fmb: 2 pintu masuk (petugas OK & order EMR RI), mesin tarif 11 pos, guard pulang dua arah, rantai Enter. Memuat **tahapan porting ke RJ/UGD**. | `docs/kamar-operasi-modul.md` |
 | **Modul-dokumen RI** (formulir bertanda tangan: consent, kerohanian, edukasi, akhir hayat — draft → TTD keluarga/saksi → TTD petugas = kunci → buka kunci Admin/Manager, cetak) | `docs/modul-dokumen-ri-pattern.md` |
 | **Dokumen multi-entri EMR RI** (CPPT/SBAR — banyak entri per pasien, tab per-profesi, Edit=pemilik/Hapus=supervisor/Review=DPJP Utama, copy-ke-form, cetak per-entri) | `docs/emr-multi-entry-document-pattern.md` (+ skill `emr-multi-entry-document`) |
 
