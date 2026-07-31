@@ -459,6 +459,16 @@ new class extends Component {
             return;
         }
 
+        // Guard MAJU: pasien yang sudah dikirim ke Kamar Operasi belum boleh pulang
+        // sebelum biayanya dikembalikan (Trf Biaya-INAP). Transfer mensyaratkan
+        // ri_status='I', jadi kalau pasien terlanjur pulang biayanya tidak akan
+        // pernah bisa masuk tagihan.
+        if ($this->checkOkPendingRI($this->riHdrNo)) {
+            $noOk = implode(', ', $this->daftarOkPendingRI($this->riHdrNo));
+            $this->dispatch('toast', type: 'error', message: "Transaksi Kamar Operasi No. {$noOk} belum ditransfer ke biaya rawat inap, proses pulang tidak bisa dilakukan.");
+            return;
+        }
+
         // Cek perhitungan kamar sudah diproses
         if (!$this->tglPulangSudahDiproses) {
             $this->dispatch('toast', type: 'error', message: 'Data perhitungan kamar belum diproses. Klik "Proses Tgl Pulang" terlebih dahulu.');

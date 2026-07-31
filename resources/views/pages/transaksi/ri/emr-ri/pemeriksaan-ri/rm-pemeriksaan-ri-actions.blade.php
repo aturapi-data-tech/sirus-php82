@@ -294,6 +294,17 @@ new class extends Component {
             </div>
         </div>
 
+        <div class="p-4 bg-canvas border border-hairline rounded-xl shadow-sm dark:bg-gray-900 dark:border-gray-700">
+            <h3 class="text-sm font-semibold text-body dark:text-gray-300 mb-3">Kamar Operasi</h3>
+            <livewire:pages::transaksi.ri.emr-ri.pemeriksaan-ri.penunjang.kamar-operasi.rm-kamar-operasi-ri-actions
+                :riHdrNo="$riHdrNo" :disabled="$orderDisabled" wire:key="ok-order-ri-{{ $riHdrNo }}" />
+
+            <div class="mt-3">
+                <livewire:pages::transaksi.ri.emr-ri.pemeriksaan-ri.penunjang.kamar-operasi.rm-daftar-kamar-operasi-ri
+                    :riHdrNo="$riHdrNo" wire:key="daftar-ok-ri-{{ $riHdrNo }}" />
+            </div>
+        </div>
+
     </div>
 
     {{-- ════════════ TAB 2 — UPLOAD PENUNJANG ════════════ --}}

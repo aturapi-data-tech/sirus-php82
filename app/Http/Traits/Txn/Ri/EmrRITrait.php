@@ -100,6 +100,39 @@ trait EmrRITrait
             ->exists();
     }
 
+    /**
+     * Cek apakah ada transaksi Kamar Operasi yang belum dikembalikan biayanya
+     * (`ok_status = 'A'`) untuk kunjungan ini.
+     *
+     * Sama konsepnya dengan checkLabPendingRI: pasien yang sudah dikirim ke OK
+     * belum boleh dipulangkan sebelum petugas OK menekan Trf Biaya-INAP —
+     * kalau lolos, biayanya tidak akan pernah bisa masuk tagihan karena transfer
+     * mensyaratkan `ri_status='I'`. Guard MAJU saja; operasi mundur (batal) tidak
+     * memakai ini.
+     *
+     * `ok_status` NULL diperlakukan sebagai 'A', mengikuti NVL(ok_status,'A') di
+     * form legacy rit006x.fmb.
+     */
+    protected function checkOkPendingRI($riHdrNo): bool
+    {
+        return DB::table('rstxn_oks')
+            ->where('rihdr_no', $riHdrNo)
+            ->whereRaw("NVL(ok_status,'A') = 'A'")
+            ->exists();
+    }
+
+    /** Nomor transaksi OK yang masih menggantung — untuk pesan ke petugas. */
+    protected function daftarOkPendingRI($riHdrNo): array
+    {
+        return DB::table('rstxn_oks')
+            ->where('rihdr_no', $riHdrNo)
+            ->whereRaw("NVL(ok_status,'A') = 'A'")
+            ->orderBy('ok_reg')
+            ->pluck('ok_reg')
+            ->map(fn($n) => (string) $n)
+            ->all();
+    }
+
     protected function lockRIRow($riHdrNo): void
     {
         $exists = DB::table('rstxn_rihdrs')

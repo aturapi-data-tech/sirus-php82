@@ -465,6 +465,12 @@ Route::middleware(['auth'])->group(function () {
         ->name('transaksi.penunjang.radiologi.upload');
 
     // ===========================================
+    // TRANSAKSI PENUNJANG - KAMAR OPERASI
+    // ===========================================
+    Route::livewire('/transaksi/penunjang/kamar-operasi', 'pages::transaksi.penunjang.kamar-operasi.daftar-kamar-operasi')
+        ->name('transaksi.penunjang.kamar-operasi');
+
+    // ===========================================
     // DATABASE MONITOR - MONITORING DASHBOARD
     // ===========================================
     Route::livewire('/database-monitor/monitoring-dashboard', 'pages::database-monitor.monitoring-dashboard.monitoring-dashboard')

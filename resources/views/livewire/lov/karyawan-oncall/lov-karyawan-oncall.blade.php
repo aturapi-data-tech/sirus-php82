@@ -4,20 +4,30 @@ use Livewire\Attributes\Reactive;
 use Illuminate\Support\Facades\DB;
 
 /**
- * LOV Jasa Karyawan — memilih JENIS TARIF dari `rsmst_actemps`.
+ * LOV Karyawan On Call — memilih ORANG dari `hrmst_employees`.
  *
- * ⚠️ JANGAN TERTUKAR dengan `lov.karyawan-oncall.lov-karyawan-oncall`:
+ * ⚠️ JANGAN TERTUKAR dengan `lov.jasa-karyawan.lov-jasa-karyawan`:
  *
- *   lov-jasa-karyawan   → `rsmst_actemps`    → JENIS TARIF jasa karyawan (acte_id, harga)
  *   lov-karyawan-oncall → `hrmst_employees`  → SIAPA petugasnya (emp_id, name)
+ *   lov-jasa-karyawan   → `rsmst_actemps`    → JENIS TARIF jasa karyawan (acte_id, harga)
  *
- * Ini daftar tindakan/jasa berikut tarifnya, BUKAN daftar pegawai. Payload:
- * `acte_id`, `acte_desc`, `acte_price`, `acte_price_bpjs`.
+ * Namanya mirip tapi isinya beda sama sekali: yang satu daftar pegawai, yang satu
+ * daftar tindakan/jasa berikut tarifnya. Payload-nya pun beda (`emp_id`/`name`
+ * vs `acte_id`/`acte_desc`/`acte_price`), jadi salah pilih komponen akan membuat
+ * listener `lov.selected.*` menerima key yang tidak ada dan diam-diam menyimpan null.
+ *
+ * Dipakai di Kamar Operasi untuk mengisi crew: asisten operator, asisten anestesi,
+ * instrument, pengganti anestesi, dan daftar crew OM LOP. Untuk crew OM LOP,
+ * tiap petugas punya dua kolom jasa — jasa biasa (`omlop_fee`) dan **jasa on call**
+ * (`oncallomlop_fee`) — yang keduanya jasa petugas dan TIDAK ditagihkan ke pasien.
+ *
+ * Hanya karyawan aktif (`status_ed = 'E'`). Prop `omlopOnly` mempersempit ke
+ * karyawan bertanda `omlop_status = 'Y'` (15 orang) untuk pemilihan crew OM LOP.
  */
 new class extends Component {
     public string $target = 'default';
-    public string $label = 'Cari Jasa Karyawan';
-    public string $placeholder = 'Ketik kode/nama jasa karyawan...';
+    public string $label = 'Cari Karyawan';
+    public string $placeholder = 'Ketik NIK/nama karyawan...';
 
     public string $search = '';
     public array $options = [];
@@ -27,19 +37,22 @@ new class extends Component {
     public ?array $selected = null;
 
     #[Reactive]
-    public ?string $initialActeId = null;
+    public ?string $initialEmpId = null;
 
     public bool $disabled = false;
 
+    /** Batasi ke karyawan bertanda crew OM LOP. */
+    public bool $omlopOnly = false;
+
     public function mount(): void
     {
-        if (!$this->initialActeId) {
+        if (!$this->initialEmpId) {
             return;
         }
-        $this->loadSelected($this->initialActeId);
+        $this->loadSelected($this->initialEmpId);
     }
 
-    public function updatedInitialActeId($value): void
+    public function updatedInitialEmpId($value): void
     {
         $this->selected = null;
         $this->search = '';
@@ -52,18 +65,33 @@ new class extends Component {
         $this->loadSelected($value);
     }
 
-    protected function loadSelected(string $acteId): void
+    /**
+     * Baris terpilih dibaca TANPA filter aktif/omlop — karyawan yang sudah
+     * terlanjur tersimpan di transaksi lama harus tetap tampil namanya walau
+     * sekarang sudah nonaktif, supaya data lama tidak terlihat kosong.
+     */
+    protected function loadSelected(string $empId): void
     {
-        $row = DB::table('rsmst_actemps')->select('acte_id', 'acte_desc', 'acte_price', 'acte_price_bpjs')->where('acte_id', $acteId)->first();
+        $row = DB::table('hrmst_employees')->select('emp_id', 'name', 'status_ed', 'omlop_status')->where('emp_id', $empId)->first();
 
         if ($row) {
             $this->selected = [
-                'acte_id' => (string) $row->acte_id,
-                'acte_desc' => (string) ($row->acte_desc ?? ''),
-                'acte_price' => (int) ($row->acte_price ?? 0),
-                'acte_price_bpjs' => (int) ($row->acte_price_bpjs ?? 0),
+                'emp_id' => (string) $row->emp_id,
+                'name' => (string) ($row->name ?? ''),
+                'nonaktif' => ($row->status_ed ?? '') !== 'E',
             ];
         }
+    }
+
+    private function baseQuery()
+    {
+        $query = DB::table('hrmst_employees')->select('emp_id', 'name', 'status_ed', 'omlop_status')->where('status_ed', 'E');
+
+        if ($this->omlopOnly) {
+            $query->where('omlop_status', 'Y');
+        }
+
+        return $query;
     }
 
     public function updatedSearch(): void
@@ -79,17 +107,12 @@ new class extends Component {
             return;
         }
 
-        // ── Exact match by acte_id ──
+        // ── Exact match by emp_id ──
         if (ctype_alnum($keyword)) {
-            $exact = DB::table('rsmst_actemps')->select('acte_id', 'acte_desc', 'acte_price', 'acte_price_bpjs')->where('acte_id', $keyword)->first();
+            $exact = $this->baseQuery()->where('emp_id', $keyword)->first();
 
             if ($exact) {
-                $this->dispatchSelected([
-                    'acte_id' => (string) $exact->acte_id,
-                    'acte_desc' => (string) ($exact->acte_desc ?? ''),
-                    'acte_price' => (int) ($exact->acte_price ?? 0),
-                    'acte_price_bpjs' => (int) ($exact->acte_price_bpjs ?? 0),
-                ]);
+                $this->dispatchSelected(['emp_id' => (string) $exact->emp_id, 'name' => (string) ($exact->name ?? ''), 'nonaktif' => false]);
                 return;
             }
         }
@@ -97,25 +120,23 @@ new class extends Component {
         // ── Partial search ──
         $upper = mb_strtoupper($keyword);
 
-        $rows = DB::table('rsmst_actemps')
-            ->select('acte_id', 'acte_desc', 'acte_price', 'acte_price_bpjs')
-            ->where(function ($q) use ($keyword, $upper) {
-                $q->where(DB::raw('upper(acte_desc)'), 'like', "%{$upper}%")->orWhere(DB::raw('upper(acte_id)'), 'like', "%{$upper}%");
+        $rows = $this->baseQuery()
+            ->where(function ($subQuery) use ($upper) {
+                $subQuery->where(DB::raw('upper(name)'), 'like', "%{$upper}%")->orWhere(DB::raw('upper(emp_id)'), 'like', "%{$upper}%");
             })
-            ->orderBy('acte_desc')
-            ->orderBy('acte_id')
+            ->orderBy('name')
+            ->orderBy('emp_id')
             ->limit(50)
             ->get();
 
         $this->options = $rows
             ->map(
                 fn($row) => [
-                    'acte_id' => (string) $row->acte_id,
-                    'acte_desc' => (string) ($row->acte_desc ?? ''),
-                    'acte_price' => (int) ($row->acte_price ?? 0),
-                    'acte_price_bpjs' => (int) ($row->acte_price_bpjs ?? 0),
-                    'label' => $row->acte_desc ?: '-',
-                    'hint' => 'Kode: ' . $row->acte_id . ' • Rp ' . number_format($row->acte_price ?? 0),
+                    'emp_id' => (string) $row->emp_id,
+                    'name' => (string) ($row->name ?? ''),
+                    'nonaktif' => false,
+                    'label' => $row->name ?: '-',
+                    'hint' => 'NIK: ' . $row->emp_id . (($row->omlop_status ?? '') === 'Y' ? ' • crew OM LOP' : ''),
                 ],
             )
             ->toArray();
@@ -136,7 +157,7 @@ new class extends Component {
 
         $this->selected = null;
         $this->resetLov();
-        $this->dispatch('lov.selected', target: $this->target, payload: null);
+        $this->dispatch('lov.selected.' . $this->target, target: $this->target, payload: null);
     }
 
     public function close(): void
@@ -176,12 +197,7 @@ new class extends Component {
             return;
         }
 
-        $this->dispatchSelected([
-            'acte_id' => $this->options[$index]['acte_id'] ?? '',
-            'acte_desc' => $this->options[$index]['acte_desc'] ?? '',
-            'acte_price' => $this->options[$index]['acte_price'] ?? 0,
-            'acte_price_bpjs' => $this->options[$index]['acte_price_bpjs'] ?? 0,
-        ]);
+        $this->dispatchSelected(['emp_id' => $this->options[$index]['emp_id'] ?? '', 'name' => $this->options[$index]['name'] ?? '', 'nonaktif' => false]);
     }
 
     public function chooseHighlighted(): void
@@ -231,7 +247,8 @@ new class extends Component {
             {{-- Mode selected --}}
             <div class="flex items-center gap-2">
                 <div class="flex-1">
-                    <x-text-input type="text" class="block w-full" :value="$selected['acte_id'] . ' — ' . $selected['acte_desc']" disabled />
+                    <x-text-input type="text" class="block w-full"
+                        :value="$selected['name'] . ' (' . $selected['emp_id'] . ')' . ($selected['nonaktif'] ? ' — nonaktif' : '')" disabled />
                 </div>
                 @if (!$disabled)
                     <x-secondary-button type="button" wire:click="clearSelected" class="px-4 whitespace-nowrap">
@@ -247,7 +264,7 @@ new class extends Component {
                 class="absolute z-50 w-full mt-2 overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
                 <ul class="overflow-y-auto divide-y divide-gray-100 max-h-72 dark:divide-gray-800">
                     @foreach ($options as $index => $option)
-                        <li wire:key="lov-jk-{{ $option['acte_id'] }}-{{ $index }}"
+                        <li wire:key="lov-karyawan-{{ $option['emp_id'] }}-{{ $index }}"
                             x-ref="lovItem{{ $index }}">
                             <x-lov.item wire:click="choose({{ $index }})" :active="$index === $selectedIndex">
                                 <div class="font-semibold text-gray-900 dark:text-gray-100">
