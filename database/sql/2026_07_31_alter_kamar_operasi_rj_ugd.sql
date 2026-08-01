@@ -7,7 +7,7 @@
 --   - penampung biaya cuma rstxn_rioks
 --   - sl_codefrom seluruhnya '01' (tak pernah dipakai membedakan layanan)
 --
--- STATUS: sudah dijalankan di DEV (2026-07-31). BELUM di PRODUKSI.
+-- STATUS: sudah terpasang di ORCL (172.8.8.12) — diverifikasi 2026-08-01.
 -- Jalankan berurutan, verifikasi dengan blok di bagian akhir.
 -- Lihat docs/kamar-operasi-modul.md §9.
 --
