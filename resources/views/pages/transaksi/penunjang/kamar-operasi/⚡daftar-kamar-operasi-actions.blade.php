@@ -470,8 +470,27 @@ new class extends Component {
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">
                 <div class="max-w-full mx-auto space-y-4">
 
+                    {{-- TRANSAKSI DIBATALKAN — didahulukan dari peringatan kunjungan.
+                         Kalau tidak, spanduk kunjungan yang muncul dan berkata "tarif masih
+                         boleh dilengkapi", padahal form dibatalkan terkunci seluruhnya. --}}
+                    @if ($statusOk === 'F')
+                        <div class="flex items-start gap-2 px-4 py-3 text-sm border rounded-xl border-error/30 bg-error/5 text-error dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
+                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            </svg>
+                            <div>
+                                <p class="font-semibold">Transaksi operasi ini dibatalkan</p>
+                                <p class="mt-1">
+                                    Isinya ditampilkan apa adanya sebagai <span class="font-semibold">riwayat</span> —
+                                    tindakan, tarif, dan crew tidak bisa diubah lagi, dan biayanya tidak masuk
+                                    tagihan pasien.
+                                </p>
+                            </div>
+                        </div>
+
                     {{-- PERINGATAN KUNJUNGAN RI TIDAK AKTIF --}}
-                    @if ($indukTerkunci)
+                    @elseif ($indukTerkunci)
                         <div class="flex items-start gap-2 px-4 py-3 text-sm border rounded-xl border-warning/30 bg-warning-tint text-warning-deep dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
                             <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -593,7 +612,7 @@ new class extends Component {
                             @endhasanyrole
                         @endif
 
-                        @if ($indukTerkunci)
+                        @if ($indukTerkunci && $statusOk !== 'F')
                             <span class="inline-flex items-center gap-1 text-xs italic text-error dark:text-red-400">
                                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -637,6 +656,10 @@ new class extends Component {
                             </span>
                         @elseif ($statusOk === 'L')
                             <x-badge variant="success">Biaya sudah masuk tagihan {{ $this->labelSumber() }}</x-badge>
+                        @elseif ($statusOk === 'F')
+                            {{-- Tanpa cabang ini footer transaksi dibatalkan kosong melompong:
+                                 form mati tanpa satu pun keterangan kenapa. --}}
+                            <x-badge variant="danger">Transaksi dibatalkan &mdash; hanya bisa dilihat</x-badge>
                         @endif
 
                         <x-secondary-button type="button" wire:click="closeActions">Tutup</x-secondary-button>

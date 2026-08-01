@@ -73,11 +73,13 @@ new class extends Component {
                     [$statusText, $statusVariant] = match ($statusOk) {
                         'A' => ['Proses Transaksi', 'warning'],
                         'L' => ['Transaksi Selesai', 'success'],
-                        'F' => ['Dibatalkan', 'error'],
+                        'F' => ['Dibatalkan', 'danger'],
                         default => [$statusOk, 'gray'],
                     };
                 @endphp
-                <tr wire:key="daftar-ok-ugd-{{ $row['ok_reg'] }}" class="border-b group">
+                {{-- Baris dibatalkan ditandai merah, sama seperti pasien Batal di Pelayanan RJ. --}}
+                <tr wire:key="daftar-ok-ugd-{{ $row['ok_reg'] }}"
+                    class="border-b group {{ $statusOk === 'F' ? 'bg-error/5 dark:bg-red-900/10 border-l-4 border-error' : '' }}">
                     <td class="px-2 py-2 text-sm font-mono text-muted group-hover:bg-surface-soft whitespace-nowrap">
                         {{ $row['ok_date'] ?? '-' }}
                     </td>

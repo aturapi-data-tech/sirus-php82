@@ -196,11 +196,6 @@ new class extends Component {
                     ELSE            (SELECT h.ri_status FROM rstxn_rihdrs  h WHERE h.rihdr_no = NVL(k.ref_no, k.rihdr_no))
                 END AS status_induk,
                 CASE NVL(k.status_rjri, 'RI')
-                    WHEN 'RJ'  THEN (SELECT po.poli_desc  FROM rstxn_rjhdrs  h JOIN rsmst_polis      po ON po.poli_id  = h.poli_id  WHERE h.rj_no    = k.ref_no)
-                    WHEN 'UGD' THEN (SELECT e.entry_desc  FROM rstxn_ugdhdrs h JOIN rsmst_entrytypes e  ON e.entry_id  = h.entry_id WHERE h.rj_no    = k.ref_no)
-                    ELSE            (SELECT r.room_name   FROM rstxn_rihdrs  h JOIN rsmst_rooms      r  ON r.room_id   = h.room_id  WHERE h.rihdr_no = NVL(k.ref_no, k.rihdr_no))
-                END AS unit_name,
-                CASE NVL(k.status_rjri, 'RI')
                     WHEN 'RJ'  THEN (SELECT h.klaim_id FROM rstxn_rjhdrs  h WHERE h.rj_no    = k.ref_no)
                     WHEN 'UGD' THEN (SELECT h.klaim_id FROM rstxn_ugdhdrs h WHERE h.rj_no    = k.ref_no)
                     ELSE            (SELECT h.klaim_id FROM rstxn_rihdrs  h WHERE h.rihdr_no = NVL(k.ref_no, k.rihdr_no))
@@ -231,7 +226,6 @@ new class extends Component {
                 DB::raw("to_char(o.ok_date,'dd/mm/yyyy hh24:mi:ss') as ok_date_display"),
                 'o.reg_no',
                 'o.status_induk',
-                'o.unit_name',
                 'o.klaim_id',
                 'o.vno_sep',
                 'kt.klaim_desc',
@@ -451,42 +445,45 @@ new class extends Component {
                                     [$statusText, $statusVariant] = match ($statusCode) {
                                         'A' => ['Proses Transaksi', 'warning'],
                                         'L' => ['Transaksi Selesai', 'success'],
-                                        'F' => ['Dibatalkan', 'error'],
+                                        'F' => ['Dibatalkan', 'danger'],
                                         default => [$statusCode, 'gray'],
                                     };
 
                                     // Layanan asal kunjungan.
                                     $sumberRow = strtoupper($row->sumber ?? 'RI');
-                                    [$sumberLabel, $sumberClass] = match ($sumberRow) {
-                                        'RJ' => ['Rawat Jalan', 'bg-sky-100 text-sky-700 border-sky-200'],
-                                        'UGD' => ['Gawat Darurat', 'bg-rose-100 text-rose-700 border-rose-200'],
-                                        default => ['Rawat Inap', 'bg-purple-100 text-purple-700 border-purple-200'],
+                                    // Warna lewat VARIAN x-badge, bukan kelas Tailwind mentah —
+                                    // standar list transaksi (lihat Daftar RI / Pelayanan RJ-UGD).
+                                    [$sumberLabel, $sumberVariant] = match ($sumberRow) {
+                                        'RJ' => ['Rawat Jalan', 'info'],
+                                        'UGD' => ['Gawat Darurat', 'danger'],
+                                        default => ['Rawat Inap', 'purple'],
                                     };
 
                                     // Status kunjungan induk — kolomnya beda per layanan
                                     // (ri_status vs rj_status), sudah diseragamkan di query.
                                     $statusInduk = strtoupper($row->status_induk ?? '');
-                                    $statusIndukMuted = 'bg-surface-soft text-muted border-hairline';
 
                                     if ($sumberRow === 'RI') {
-                                        [$indukLabel, $indukClass] = match ($statusInduk) {
-                                            '' => ['-', $statusIndukMuted],
-                                            'I' => ['Dirawat', 'bg-brand/10 text-brand border-brand/30'],
-                                            'P' => ['Pulang', 'bg-amber-100 text-amber-700 border-amber-200'],
-                                            'L' => ['Pulang', $statusIndukMuted],
-                                            'F' => ['Batal', 'bg-error/10 text-error border-error/30'],
-                                            default => [$statusInduk, $statusIndukMuted],
+                                        // Peta warna MENYAMAI Daftar RI: I = brand, P = success.
+                                        [$indukLabel, $indukVariant] = match ($statusInduk) {
+                                            '' => ['-', 'gray'],
+                                            'I' => ['Dirawat', 'brand'],
+                                            'P' => ['Pulang', 'success'],
+                                            'L' => ['Pulang', 'gray'],
+                                            'F' => ['Batal', 'danger'],
+                                            default => [$statusInduk, 'gray'],
                                         };
                                         $indukAktif = $statusInduk === 'I';
                                         $sebabTerkunci = 'pasien sudah tidak dirawat';
                                     } else {
-                                        [$indukLabel, $indukClass] = match ($statusInduk) {
-                                            '' => ['-', $statusIndukMuted],
-                                            'A' => ['Aktif', 'bg-brand/10 text-brand border-brand/30'],
-                                            'L' => ['Sudah Dibayar', 'bg-amber-100 text-amber-700 border-amber-200'],
-                                            'I' => ['Dirawat Inap', $statusIndukMuted],
-                                            'F' => ['Batal', 'bg-error/10 text-error border-error/30'],
-                                            default => [$statusInduk, $statusIndukMuted],
+                                        // RJ/UGD: 'A' aktif = brand, sejajar 'I' Dirawat di RI.
+                                        [$indukLabel, $indukVariant] = match ($statusInduk) {
+                                            '' => ['-', 'gray'],
+                                            'A' => ['Aktif', 'brand'],
+                                            'L' => ['Sudah Dibayar', 'success'],
+                                            'I' => ['Dirawat Inap', 'gray'],
+                                            'F' => ['Batal', 'danger'],
+                                            default => [$statusInduk, 'gray'],
                                         };
                                         $indukAktif = $statusInduk === 'A';
                                         $sebabTerkunci = 'kunjungan sudah ditutup di kasir';
@@ -499,11 +496,19 @@ new class extends Component {
                                     $transferTerkunci = $statusCode === 'A' && !$indukAktif;
                                 @endphp
 
+                                {{-- Penandaan baris mengikuti konsep Pelayanan RJ:
+                                       MERAH  = dibatalkan (keadaan final, tak perlu tindakan)
+                                       AMBER  = perlu tindakan (biaya belum ditransfer & kunjungan
+                                                sudah ditutup — uangnya terancam tak masuk tagihan)
+                                     Dibedakan warnanya supaya "sudah selesai urusannya" tidak
+                                     tertukar dengan "justru butuh dikerjakan". --}}
                                 <tr wire:key="daftar-kamar-operasi-{{ $row->ok_reg ?? $index }}"
                                     class="transition rounded-2xl shadow-sm ring-1 ring-hairline dark:ring-gray-700 hover:shadow-lg
-                                        {{ $transferTerkunci
-                                            ? 'bg-red-50 dark:bg-red-900/10 border-l-4 border-red-500 hover:bg-red-100 dark:hover:bg-red-900/20'
-                                            : 'bg-canvas dark:bg-gray-900 hover:bg-surface-soft dark:hover:bg-gray-800' }}">
+                                        {{ $statusCode === 'F'
+                                            ? 'bg-error/5 dark:bg-red-900/10 border-l-4 border-error hover:bg-error/10 dark:hover:bg-red-900/20'
+                                            : ($transferTerkunci
+                                                ? 'bg-amber-50 dark:bg-amber-900/10 border-l-4 border-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/20'
+                                                : 'bg-canvas dark:bg-gray-900 hover:bg-surface-soft dark:hover:bg-gray-800') }}">
 
                                     {{-- NO --}}
                                     <td class="px-6 py-4 align-top">
@@ -524,33 +529,19 @@ new class extends Component {
                                          sebagai wire:key baris + argumen aksi menu. --}}
                                     <td class="px-6 py-4 space-y-2 align-top">
                                         <div class="flex flex-wrap items-center gap-2">
-                                            <span class="inline-flex px-2.5 py-0.5 text-xs font-semibold border rounded-full {{ $sumberClass }}">
-                                                {{ $sumberLabel }}
-                                            </span>
-                                            <span class="inline-flex px-2.5 py-0.5 text-xs font-semibold border rounded-full {{ $indukClass }}">
-                                                {{ $indukLabel }}
-                                            </span>
+                                            <x-badge :variant="$sumberVariant">{{ $sumberLabel }}</x-badge>
+                                            <x-badge :variant="$indukVariant">{{ $indukLabel }}</x-badge>
                                         </div>
                                         <div class="font-mono text-sm text-body dark:text-gray-300">
                                             {{ $row->ok_date_display ?? '-' }}
                                         </div>
-                                        {{-- Nomor kunjungan (No Inap/No Reg) TIDAK ditampilkan —
-                                             sama alasannya dengan No Txn. Yang tersisa cuma unit
-                                             asalnya, yang memang menerangkan pasien datang dari mana.
-                                             Nomornya tetap bisa DICARI dan tetap dipakai aksi menu. --}}
-                                        @if (!empty($row->unit_name))
-                                            <div class="text-sm text-muted dark:text-gray-400">
-                                                {{ $row->unit_name }}
-                                            </div>
-                                        @endif
-
                                         {{-- Cara bayar & No. SEP — komponen standar list transaksi,
                                              supaya warna badge & format SEP sama dengan Daftar RJ/UGD/RI. --}}
                                         <x-list.klaim-badge :status="$row->klaim_status" :desc="$row->klaim_desc" :id="$row->klaim_id" />
                                         <x-list.sep-spri :sep="$row->vno_sep" />
 
                                         @if ($transferTerkunci)
-                                            <div class="text-xs font-semibold text-red-700 dark:text-red-300">
+                                            <div class="text-xs font-semibold text-warning-deep dark:text-amber-300">
                                                 Belum ditransfer &mdash; {{ $sebabTerkunci }}
                                             </div>
                                         @endif
