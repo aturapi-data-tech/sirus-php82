@@ -457,10 +457,10 @@ new class extends Component {
 
                                     // Layanan asal kunjungan.
                                     $sumberRow = strtoupper($row->sumber ?? 'RI');
-                                    [$sumberLabel, $sumberClass, $labelNomorInduk] = match ($sumberRow) {
-                                        'RJ' => ['Rawat Jalan', 'bg-sky-100 text-sky-700 border-sky-200', 'No Reg'],
-                                        'UGD' => ['Gawat Darurat', 'bg-rose-100 text-rose-700 border-rose-200', 'No Reg'],
-                                        default => ['Rawat Inap', 'bg-purple-100 text-purple-700 border-purple-200', 'No Inap'],
+                                    [$sumberLabel, $sumberClass] = match ($sumberRow) {
+                                        'RJ' => ['Rawat Jalan', 'bg-sky-100 text-sky-700 border-sky-200'],
+                                        'UGD' => ['Gawat Darurat', 'bg-rose-100 text-rose-700 border-rose-200'],
+                                        default => ['Rawat Inap', 'bg-purple-100 text-purple-700 border-purple-200'],
                                     };
 
                                     // Status kunjungan induk — kolomnya beda per layanan
@@ -518,10 +518,11 @@ new class extends Component {
                                     </td>
 
                                     {{-- TRANSAKSI --}}
+                                    {{-- No Txn (ok_reg) TIDAK ditampilkan — nomor internal modul OK,
+                                         tak dipakai berkomunikasi dengan pasien maupun unit lain.
+                                         Tetap bisa DICARI lewat kotak pencarian, dan tetap dipakai
+                                         sebagai wire:key baris + argumen aksi menu. --}}
                                     <td class="px-6 py-4 space-y-2 align-top">
-                                        <div class="text-base font-medium text-body dark:text-gray-300">
-                                            No Txn: {{ $row->ok_reg }}
-                                        </div>
                                         <div class="flex flex-wrap items-center gap-2">
                                             <span class="inline-flex px-2.5 py-0.5 text-xs font-semibold border rounded-full {{ $sumberClass }}">
                                                 {{ $sumberLabel }}
@@ -533,12 +534,15 @@ new class extends Component {
                                         <div class="font-mono text-sm text-body dark:text-gray-300">
                                             {{ $row->ok_date_display ?? '-' }}
                                         </div>
-                                        <div class="text-sm text-muted dark:text-gray-400">
-                                            {{ $labelNomorInduk }}: {{ $row->induk_no }}
-                                            @if (!empty($row->unit_name))
-                                                <span class="ml-1">&middot; {{ $row->unit_name }}</span>
-                                            @endif
-                                        </div>
+                                        {{-- Nomor kunjungan (No Inap/No Reg) TIDAK ditampilkan —
+                                             sama alasannya dengan No Txn. Yang tersisa cuma unit
+                                             asalnya, yang memang menerangkan pasien datang dari mana.
+                                             Nomornya tetap bisa DICARI dan tetap dipakai aksi menu. --}}
+                                        @if (!empty($row->unit_name))
+                                            <div class="text-sm text-muted dark:text-gray-400">
+                                                {{ $row->unit_name }}
+                                            </div>
+                                        @endif
 
                                         {{-- Cara bayar & No. SEP — komponen standar list transaksi,
                                              supaya warna badge & format SEP sama dengan Daftar RJ/UGD/RI. --}}
