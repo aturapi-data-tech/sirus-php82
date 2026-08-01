@@ -20,11 +20,25 @@ new class extends Component {
     /* ===============================
      | OPEN MODUL DOKUMEN RJ
      =============================== */
+    /**
+     * Tab yang langsung terbuka. Default 'suket' (perilaku lama). Pemanggil dari
+     * luar EMR boleh meminta tab tertentu — mis. worklist Kamar Operasi membuka
+     * langsung ke 'pelayanan-bedah' supaya petugas OK tak perlu menyusuri tab.
+     */
+    public string $tabAwal = 'suket';
+
+    /** Tab yang boleh diminta pemanggil lewat event open. */
+    private const TAB_BOLEH = ['suket', 'general-consent', 'inform-consent', 'penundaan-pelayanan', 'pelayanan-bedah'];
+
     #[On('emr-rj.modul-dokumen.open')]
-    public function openModulDokumen(int $rjNo): void
+    public function openModulDokumen(int $rjNo, string $tab = 'suket'): void
     {
         $this->resetForm();
         $this->rjNo = $rjNo;
+
+        // SESUDAH resetForm — fungsi itu mengembalikan tabAwal ke default,
+        // jadi menaruhnya di atas membuat permintaan tab pemanggil terhapus.
+        $this->tabAwal = in_array($tab, self::TAB_BOLEH, true) ? $tab : 'suket';
         $this->resetValidation();
 
         $dataDaftarPoliRJ = $this->findDataRJ($rjNo);
@@ -74,6 +88,7 @@ new class extends Component {
 
     protected function resetForm(): void
     {
+        $this->tabAwal = 'suket';
         $this->reset(['rjNo', 'dataDaftarPoliRJ']);
         $this->resetVersion();
         $this->isFormLocked = false;
@@ -124,7 +139,7 @@ new class extends Component {
                         class="p-4 space-y-6 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
                         {{-- TAB NAVIGATOR --}}
-                        <div x-data="{ activeTab: 'suket' }">
+                        <div x-data="{ activeTab: @js($tabAwal) }">
 
                             <div class="border-b border-hairline dark:border-gray-700 mb-4">
                                 <div class="flex flex-wrap gap-1 -mb-px">
@@ -188,6 +203,19 @@ new class extends Component {
                                         @endif
                                     </x-tab>
 
+                                    <x-tab variant="underline" active-expr="activeTab === 'pelayanan-bedah'"
+                                        x-on:click="activeTab = 'pelayanan-bedah'"
+                                        class="inline-flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        Pelayanan Bedah
+                                        @if (collect(['pengkajianPreOpRJ', 'praAnestesiRJ', 'siteMarkingRJ', 'praInduksiRJ', 'laporanOperasiRJ', 'laporanAnestesiRJ', 'pascaAnestesiRJ', 'instruksiPascaBedahRJ'])->first(fn($k) => !empty($dataDaftarPoliRJ[$k])))
+                                            <x-badge variant="success" class="text-[10px] px-1.5 py-0">&#10003;</x-badge>
+                                        @endif
+                                    </x-tab>
+
                                 </div>
                             </div>
 
@@ -216,6 +244,13 @@ new class extends Component {
                                 <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.penundaan-pelayanan.rm-penundaan-pelayanan-rj-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="penundaan-pelayanan-rj-{{ $rjNo ?? 'init' }}" />
+                            </div>
+
+                            {{-- Panel: Pelayanan Bedah — 8 form operasi (pola sama dengan EMR RI). --}}
+                            <div x-show="activeTab === 'pelayanan-bedah'" x-transition.opacity.duration.300ms>
+                                <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.pelayanan-bedah.rm-pelayanan-bedah-rj-actions
+                                    :rjNo="$rjNo" :disabled="$isFormLocked"
+                                    wire:key="pelayanan-bedah-rj-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                         </div>

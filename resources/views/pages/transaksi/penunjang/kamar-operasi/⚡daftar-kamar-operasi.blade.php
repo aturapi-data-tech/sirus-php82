@@ -18,7 +18,17 @@ new class extends Component {
      | Filter & Pagination state
      * ------------------------- */
     public string $searchKeyword = '';
+
+    /**
+     * Mode periode — penamaan & nilainya mengikuti rekap Casemix ('bulanan'|'harian')
+     * supaya petugas menemukan kontrol yang sama di dua tempat.
+     * Default 'harian': worklist ini dipakai harian oleh petugas OK; bulanan
+     * disediakan untuk penelusuran yang lebih luas.
+     */
+    public string $filterMode = 'harian';
     public string $filterTanggal = '';
+    /** mm/yyyy — dipakai saat filterMode 'bulanan'. */
+    public string $filterBulan = '';
     public string $filterStatus = '';
     public string $filterLayanan = '';
     public int $itemsPerPage = 10;
@@ -27,6 +37,7 @@ new class extends Component {
     {
         $this->registerAreas($this->renderAreas);
         $this->filterTanggal = Carbon::now()->format('d/m/Y');
+        $this->filterBulan = Carbon::now()->format('m/Y');
     }
 
     public function updatedSearchKeyword(): void
@@ -40,6 +51,17 @@ new class extends Component {
     {
         $this->resetPage();
         $this->incrementVersion('daftar-kamar-operasi-toolbar');
+    }
+
+    public function updatedFilterMode(): void
+    {
+        $this->resetPage();
+        $this->incrementVersion('daftar-kamar-operasi-toolbar');
+    }
+
+    public function updatedFilterBulan(): void
+    {
+        $this->resetPage();
     }
 
     public function updatedFilterLayanan(): void
@@ -59,8 +81,9 @@ new class extends Component {
      * ------------------------- */
     public function resetFilters(): void
     {
-        $this->reset(['searchKeyword', 'filterStatus', 'filterLayanan']);
+        $this->reset(['searchKeyword', 'filterStatus', 'filterLayanan', 'filterMode']);
         $this->filterTanggal = Carbon::now()->format('d/m/Y');
+        $this->filterBulan = Carbon::now()->format('m/Y');
         $this->incrementVersion('daftar-kamar-operasi-toolbar');
         $this->resetPage();
     }
@@ -74,24 +97,34 @@ new class extends Component {
     }
 
     /* -------------------------
-     | Dokumen Pelayanan Bedah (RI saja)
+     | Dokumen Pelayanan Bedah
      |
      | Form operasi (Laporan Operasi, Pra/Pasca Anestesi, Site Marking, dst.)
-     | tinggal di modul dokumen EMR RI. Dari sini modalnya dibuka langsung ke
-     | tab 'pelayananBedah' supaya petugas OK tak perlu menyusuri tab dulu.
+     | tinggal di modul dokumen EMR masing-masing unit. Dari sini modalnya dibuka
+     | langsung ke tab Pelayanan Bedah supaya petugas OK tak perlu menyusuri tab.
      |
-     | HANYA untuk transaksi ber-sumber RI: modul dokumen itu memang milik
-     | kunjungan rawat inap (butuh rihdr_no). Operasi RJ/UGD belum punya
-     | padanannya, jadi menunya tidak ditawarkan di sana.
+     | Tiap unit punya modul & nama tab sendiri — RI memakai camelCase warisan,
+     | RJ/UGD kebab-case. Dipetakan eksplisit, JANGAN ditebak dari string.
      * ------------------------- */
+    private const DOKUMEN_BEDAH = [
+        'RJ' => ['emr-rj.modul-dokumen.open', 'pelayanan-bedah'],
+        'UGD' => ['emr-ugd.modul-dokumen.open', 'pelayanan-bedah'],
+        'RI' => ['emr-ri.modul-dokumen.open', 'pelayananBedah'],
+    ];
+
     public function openDokumenBedah(string $sumber, $indukNo): void
     {
-        if ($sumber !== 'RI' || empty($indukNo)) {
-            $this->dispatch('toast', type: 'error', message: 'Dokumen Pelayanan Bedah baru tersedia untuk operasi rawat inap.');
+        if (!isset(self::DOKUMEN_BEDAH[$sumber]) || empty($indukNo)) {
+            $this->dispatch('toast', type: 'error', message: 'Kunjungan induk transaksi ini tidak dikenali.');
             return;
         }
 
-        $this->dispatch('emr-ri.modul-dokumen.open', riHdrNo: (string) $indukNo, tab: 'pelayananBedah');
+        [$event, $tab] = self::DOKUMEN_BEDAH[$sumber];
+
+        // Nama parameter nomor kunjungan beda per unit (rihdrNo vs rjNo).
+        $sumber === 'RI'
+            ? $this->dispatch($event, riHdrNo: (string) $indukNo, tab: $tab)
+            : $this->dispatch($event, rjNo: (int) $indukNo, tab: $tab);
     }
 
     /* -------------------------
@@ -107,13 +140,32 @@ new class extends Component {
     /* -------------------------
      | Date range helper
      * ------------------------- */
+    /**
+     * Rentang tanggal untuk query — SATU tempat, dipakai mode harian & bulanan.
+     *
+     * Sengaja mengembalikan rentang (bukan EXTRACT MONTH/YEAR) supaya query tetap
+     * memakai `whereBetween` pada ok_date; EXTRACT mematikan pemakaian index.
+     * Input tak terbaca → jatuh ke periode berjalan, bukan ke rentang kosong,
+     * supaya daftar tidak mendadak kosong saat petugas salah ketik.
+     */
     private function dateRange(): array
     {
+        if ($this->filterMode === 'bulanan') {
+            try {
+                $awal = Carbon::createFromFormat('m/Y', trim($this->filterBulan))->startOfMonth();
+            } catch (\Exception $exception) {
+                $awal = now()->startOfMonth();
+            }
+
+            return [$awal, (clone $awal)->endOfMonth()];
+        }
+
         try {
             $tanggal = Carbon::createFromFormat('d/m/Y', trim($this->filterTanggal))->startOfDay();
         } catch (\Exception $exception) {
             $tanggal = now()->startOfDay();
         }
+
         return [$tanggal, (clone $tanggal)->endOfDay()];
     }
 
@@ -147,7 +199,17 @@ new class extends Component {
                     WHEN 'RJ'  THEN (SELECT po.poli_desc  FROM rstxn_rjhdrs  h JOIN rsmst_polis      po ON po.poli_id  = h.poli_id  WHERE h.rj_no    = k.ref_no)
                     WHEN 'UGD' THEN (SELECT e.entry_desc  FROM rstxn_ugdhdrs h JOIN rsmst_entrytypes e  ON e.entry_id  = h.entry_id WHERE h.rj_no    = k.ref_no)
                     ELSE            (SELECT r.room_name   FROM rstxn_rihdrs  h JOIN rsmst_rooms      r  ON r.room_id   = h.room_id  WHERE h.rihdr_no = NVL(k.ref_no, k.rihdr_no))
-                END AS unit_name
+                END AS unit_name,
+                CASE NVL(k.status_rjri, 'RI')
+                    WHEN 'RJ'  THEN (SELECT h.klaim_id FROM rstxn_rjhdrs  h WHERE h.rj_no    = k.ref_no)
+                    WHEN 'UGD' THEN (SELECT h.klaim_id FROM rstxn_ugdhdrs h WHERE h.rj_no    = k.ref_no)
+                    ELSE            (SELECT h.klaim_id FROM rstxn_rihdrs  h WHERE h.rihdr_no = NVL(k.ref_no, k.rihdr_no))
+                END AS klaim_id,
+                CASE NVL(k.status_rjri, 'RI')
+                    WHEN 'RJ'  THEN (SELECT h.vno_sep FROM rstxn_rjhdrs  h WHERE h.rj_no    = k.ref_no)
+                    WHEN 'UGD' THEN (SELECT h.vno_sep FROM rstxn_ugdhdrs h WHERE h.rj_no    = k.ref_no)
+                    ELSE            (SELECT h.vno_sep FROM rstxn_rihdrs  h WHERE h.rihdr_no = NVL(k.ref_no, k.rihdr_no))
+                END AS vno_sep
            FROM rstxn_oks k) o
         SQL;
 
@@ -160,6 +222,7 @@ new class extends Component {
             ->leftJoin('rsmst_pasiens as p', 'p.reg_no', '=', 'o.reg_no')
             ->leftJoin('rsmst_doctors as dopr', 'dopr.dr_id', '=', 'o.dr_id')
             ->leftJoin('rsmst_doctors as danes', 'danes.dr_id', '=', 'o.dr_id_ok')
+            ->leftJoin('rsmst_klaimtypes as kt', 'kt.klaim_id', '=', 'o.klaim_id')
             ->select(
                 'o.ok_reg',
                 'o.sumber',
@@ -169,6 +232,10 @@ new class extends Component {
                 'o.reg_no',
                 'o.status_induk',
                 'o.unit_name',
+                'o.klaim_id',
+                'o.vno_sep',
+                'kt.klaim_desc',
+                'kt.klaim_status',
                 'p.reg_name',
                 'p.sex',
                 DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"),
@@ -206,7 +273,8 @@ new class extends Component {
                         ->orWhere('o.reg_no', 'like', "%{$search}%")
                         ->orWhere('o.induk_no', 'like', "%{$search}%");
                 }
-                $subQuery->orWhere(DB::raw('UPPER(p.reg_name)'), 'like', "%{$keyword}%");
+                $subQuery->orWhere(DB::raw('UPPER(p.reg_name)'), 'like', "%{$keyword}%")
+                    ->orWhere(DB::raw('UPPER(o.vno_sep)'), 'like', "%{$keyword}%");
             });
         }
 
@@ -253,20 +321,51 @@ new class extends Component {
                         </div>
                     </div>
 
-                    {{-- FILTER TANGGAL --}}
+                    {{-- MODE FILTER: Bulanan / Harian (pola rekap Casemix) --}}
                     <div class="w-full sm:w-auto">
-                        <x-input-label value="Tanggal" />
-                        <div class="relative mt-1">
-                            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                            </div>
-                            <x-text-input type="text" wire:model.live="filterTanggal"
-                                class="block w-full pl-10 sm:w-40" placeholder="dd/mm/yyyy" />
+                        <x-input-label value="Mode" />
+                        <div class="inline-flex mt-1 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+                            <button type="button" wire:click="$set('filterMode', 'bulanan')"
+                                class="px-3 py-1.5 text-xs font-medium transition-colors
+                                    {{ $filterMode === 'bulanan' ? 'bg-brand text-white dark:bg-brand-lime dark:text-gray-900' : 'bg-canvas text-muted hover:bg-surface-soft dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700' }}">
+                                Bulanan
+                            </button>
+                            <button type="button" wire:click="$set('filterMode', 'harian')"
+                                class="px-3 py-1.5 text-xs font-medium transition-colors border-l border-gray-300 dark:border-gray-600
+                                    {{ $filterMode === 'harian' ? 'bg-brand text-white dark:bg-brand-lime dark:text-gray-900' : 'bg-canvas text-muted hover:bg-surface-soft dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700' }}">
+                                Harian
+                            </button>
                         </div>
                     </div>
+
+                    {{-- FILTER BULAN / TANGGAL (Tgl Operasi) --}}
+                    @if ($filterMode === 'bulanan')
+                        <div class="w-full sm:w-auto">
+                            <x-input-label value="Bulan (Tgl Operasi)" />
+                            <div class="relative mt-1">
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                    <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <x-text-input type="text" wire:model.live.debounce.500ms="filterBulan"
+                                    class="block w-full pl-10 sm:w-40" placeholder="mm/yyyy" maxlength="7" />
+                            </div>
+                        </div>
+                    @else
+                        <div class="w-full sm:w-auto">
+                            <x-input-label value="Tanggal (Tgl Operasi)" />
+                            <div class="relative mt-1">
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                    <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <x-text-input type="text" wire:model.live.debounce.500ms="filterTanggal"
+                                    class="block w-full pl-10 sm:w-44" placeholder="dd/mm/yyyy" maxlength="10" />
+                            </div>
+                        </div>
+                    @endif
 
                     {{-- FILTER LAYANAN --}}
                     <div class="w-full sm:w-auto">
@@ -440,6 +539,12 @@ new class extends Component {
                                                 <span class="ml-1">&middot; {{ $row->unit_name }}</span>
                                             @endif
                                         </div>
+
+                                        {{-- Cara bayar & No. SEP — komponen standar list transaksi,
+                                             supaya warna badge & format SEP sama dengan Daftar RJ/UGD/RI. --}}
+                                        <x-list.klaim-badge :status="$row->klaim_status" :desc="$row->klaim_desc" :id="$row->klaim_id" />
+                                        <x-list.sep-spri :sep="$row->vno_sep" />
+
                                         @if ($transferTerkunci)
                                             <div class="text-xs font-semibold text-red-700 dark:text-red-300">
                                                 Belum ditransfer &mdash; {{ $sebabTerkunci }}
@@ -515,8 +620,7 @@ new class extends Component {
                                                             </div>
                                                         </x-dropdown-link>
 
-                                                        @if ($sumberRow === 'RI')
-                                                            <x-dropdown-link href="#"
+                                                        <x-dropdown-link href="#"
                                                                 wire:click.prevent="openDokumenBedah('{{ $sumberRow }}', '{{ $row->induk_no }}')"
                                                                 class="px-3 py-2 text-sm rounded-lg bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20">
                                                                 <div class="flex items-start gap-2">
@@ -529,22 +633,6 @@ new class extends Component {
                                                                     </span>
                                                                 </div>
                                                             </x-dropdown-link>
-                                                        @else
-                                                            <div class="px-3 py-2 text-sm rounded-lg cursor-not-allowed bg-surface-soft dark:bg-gray-800/40">
-                                                                <div class="flex items-start gap-2 text-muted">
-                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                                    </svg>
-                                                                    <span>Dokumen Pelayanan Bedah
-                                                                        <span class="block mt-1 text-xs">
-                                                                            Form operasi tersimpan di kunjungan rawat inap.
-                                                                            Operasi {{ $sumberLabel }} belum punya berkasnya.
-                                                                        </span>
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        @endif
                                                     </div>
                                                 </x-slot>
                                             </x-dropdown>
@@ -588,8 +676,12 @@ new class extends Component {
     {{-- CHILD: Tambah transaksi operasi baru --}}
     <livewire:pages::transaksi.penunjang.kamar-operasi.daftar-kamar-operasi-tambah-actions wire:key="kamar-operasi-tambah-modal" />
 
-    {{-- CHILD: modul dokumen EMR RI — dipakai menu titik-3 untuk membuka
-         form Pelayanan Bedah tanpa pindah halaman. Komponen yang SAMA dengan
-         yang dipakai Daftar RI, jadi form & aturan penguncian ikut apa adanya. --}}
+    {{-- CHILD: modul dokumen tiap unit — dipakai menu titik-3 untuk membuka form
+         Pelayanan Bedah tanpa pindah halaman. Komponen yang SAMA dengan yang
+         dipakai Daftar RI / Pelayanan RJ / Pelayanan UGD, jadi form & aturan
+         penguncian ikut apa adanya. Ketiganya dipasang karena satu worklist bisa
+         memuat operasi dari ketiga layanan sekaligus. --}}
     <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.modul-dokumen-ri wire:key="modul-dokumen-ri-ok" />
+    <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.modul-dokumen-rj wire:key="modul-dokumen-rj-ok" />
+    <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.modul-dokumen-ugd wire:key="modul-dokumen-ugd-ok" />
 </div>
