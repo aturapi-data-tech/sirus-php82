@@ -39,4 +39,17 @@
         </div>
     </div>
 
+    <div class="p-4 bg-canvas border border-hairline rounded-xl shadow-sm dark:bg-gray-900 dark:border-gray-700">
+        <h3 class="text-base font-semibold text-body dark:text-gray-300 mb-3">Kamar Operasi</h3>
+        <livewire:pages::transaksi.rj.emr-rj.pemeriksaan.penunjang.kamar-operasi.rm-kamar-operasi-rj-actions
+            :rjNo="$dataDaftarPoliRJ['rjNo'] ?? ''" :disabled="$isFormLocked"
+            wire:key="kamar-operasi-rj-actions-{{ $dataDaftarPoliRJ['rjNo'] ?? 'new' }}" />
+
+        <div class="mt-3">
+            <livewire:pages::transaksi.rj.emr-rj.pemeriksaan.penunjang.kamar-operasi.rm-daftar-kamar-operasi-rj
+                :rjNo="$dataDaftarPoliRJ['rjNo'] ?? ''"
+                wire:key="daftar-kamar-operasi-rj-{{ $dataDaftarPoliRJ['rjNo'] ?? 'new' }}" />
+        </div>
+    </div>
+
 </div>

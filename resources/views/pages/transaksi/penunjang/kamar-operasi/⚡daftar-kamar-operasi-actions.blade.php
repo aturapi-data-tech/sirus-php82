@@ -12,7 +12,7 @@ use App\Support\KamarOperasiTarif;
  *
  * Dipecah per bagian mengikuti Administrasi RJ: shell ini hanya memegang
  * identitas, total, status, dan aksi tingkat transaksi (Hitung Tarif OK,
- * Trf Biaya-INAP, Batal Transaksi). Isi tiap bagian ada di komponen anaknya:
+ * Kirim ke Tagihan, Batal Transaksi). Isi tiap bagian ada di komponen anaknya:
  *
  *   crew-jasa-kamar-operasi   — crew + pos tarif + jasa on call
  *   tindakan-kamar-operasi    — tab Tindakan Operasi
@@ -32,6 +32,10 @@ new class extends Component {
     public string $okReg = '';
     public string $activeTab = 'Tindakan'; // Tindakan | BahanAlat | Omlop
     public array $headerData = [];
+
+    /** Sumber layanan kunjungan induk (RJ | UGD | RI) + nomornya. */
+    public string $sumber = 'RI';
+    public int $refNo = 0;
 
     public int $sumTotal = 0;
     public int $sumOncall = 0;
@@ -79,7 +83,7 @@ new class extends Component {
     public function closeActions(): void
     {
         $this->dispatch('close-modal', name: 'kamar-operasi-actions');
-        $this->reset(['okReg', 'headerData', 'sumTotal', 'sumOncall', 'isFormLocked', 'indukTerkunci', 'indukTerkunciSebab']);
+        $this->reset(['okReg', 'headerData', 'sumber', 'refNo', 'sumTotal', 'sumOncall', 'isFormLocked', 'indukTerkunci', 'indukTerkunciSebab']);
     }
 
     /**
@@ -106,12 +110,26 @@ new class extends Component {
         $kolomFee = array_keys(KamarOperasiTarif::POS);
         $kolomOncall = array_keys(KamarOperasiTarif::POS_ONCALL);
 
-        $header = DB::table('rstxn_oks as o')
-            ->join('rstxn_rihdrs as h', 'h.rihdr_no', '=', 'o.rihdr_no')
-            ->join('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
-            ->select('o.ok_reg', 'o.rihdr_no', 'o.ok_status', DB::raw("to_char(o.ok_date,'dd/mm/yyyy hh24:mi:ss') as ok_date"), 'h.reg_no', 'h.ri_status', 'p.reg_name', ...$kolomFee, ...$kolomOncall)
-            ->where('o.ok_reg', $this->okReg)
-            ->first();
+        ['sumber' => $this->sumber, 'refNo' => $this->refNo] = $this->sumberRefOk($this->okReg);
+
+        // Kunjungan induk di-join sesuai sumber; `status_induk` diseragamkan
+        // supaya sisa komponen tidak perlu tahu kolom aslinya (ri_status vs rj_status).
+        //
+        // Urutan join MENGIKAT: kunjungan dulu, baru rsmst_pasiens. Oracle
+        // menyusun FROM sesuai urutan pemanggilan, jadi menaruh pasiens lebih
+        // dulu membuat alias h belum dikenal → ORA-00904 "H"."REG_NO".
+        $query = DB::table('rstxn_oks as o')
+            ->select('o.ok_reg', 'o.status_rjri', 'o.ref_no', 'o.ok_status', DB::raw("to_char(o.ok_date,'dd/mm/yyyy hh24:mi:ss') as ok_date"), 'h.reg_no', ...$kolomFee, ...$kolomOncall)
+            ->where('o.ok_reg', $this->okReg);
+
+        if ($this->sumber === 'RI') {
+            $query->join('rstxn_rihdrs as h', 'h.rihdr_no', '=', 'o.ref_no')->addSelect(DB::raw('h.ri_status as status_induk'));
+        } else {
+            $tabelInduk = $this->sumber === 'UGD' ? 'rstxn_ugdhdrs' : 'rstxn_rjhdrs';
+            $query->join($tabelInduk . ' as h', 'h.rj_no', '=', 'o.ref_no')->addSelect(DB::raw('h.rj_status as status_induk'));
+        }
+
+        $header = $query->join('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')->addSelect('p.reg_name')->first();
 
         $this->headerData = $header ? (array) $header : [];
 
@@ -128,9 +146,10 @@ new class extends Component {
     }
 
     /**
-     * Transfer DAN batal sama-sama hanya sah selama pasien masih dirawat
-     * (`ri_status = 'I'`) — keduanya menulis ke tagihan rawat inap yang sudah
-     * ditutup kalau pasien pulang. Ini menyamai aturan Batal Transfer UGD→RI.
+     * Transfer DAN batal sama-sama hanya sah selama kunjungan induk masih aktif
+     * (RI `ri_status='I'`, RJ/UGD `rj_status='A'`) — keduanya menulis ke tagihan
+     * yang sudah ditutup kalau kunjungannya selesai. Ini menyamai aturan Batal
+     * Transfer UGD→RI.
      *
      * Yang disimpan hanya SEBAB-nya; kalimat lengkapnya disusun per aksi
      * (lihat pesanTerkunci) supaya tombol Batal tidak memakai kalimat transfer.
@@ -140,17 +159,19 @@ new class extends Component {
         $this->indukTerkunci = false;
         $this->indukTerkunciSebab = '';
 
-        $riStatus = strtoupper($this->headerData['ri_status'] ?? '');
-        if ($riStatus === '' || $riStatus === 'I') {
+        $statusInduk = strtoupper($this->headerData['status_induk'] ?? '');
+        if ($this->indukAktifOk($this->sumber, $statusInduk)) {
             return;
         }
 
-        $this->indukTerkunciSebab = match ($riStatus) {
-            'P', 'L' => 'Pasien sudah pulang',
-            'F' => 'Kunjungan rawat inap dibatalkan',
-            default => 'Kunjungan rawat inap tidak aktif',
-        };
+        $this->indukTerkunciSebab = $this->sebabIndukTerkunciOk($this->sumber, $statusInduk);
         $this->indukTerkunci = true;
+    }
+
+    /** Nama layanan tujuan transfer — dipakai di label tombol, banner, dan toast. */
+    public function labelSumber(): string
+    {
+        return $this->labelSumberOk($this->sumber);
     }
 
     /** Kalimat lengkap sesuai aksi yang sedang tertutup. */
@@ -161,7 +182,7 @@ new class extends Component {
         }
 
         return $this->indukTerkunciSebab . ' — ' . match ($aksi) {
-            'transfer' => 'biaya tidak bisa ditransfer ke rawat inap.',
+            'transfer' => 'biaya tidak bisa ditransfer ke tagihan ' . $this->labelSumber() . '.',
             'batal' => 'transfer tidak bisa dibatalkan lagi.',
             default => 'transaksi terkunci.',
         };
@@ -207,16 +228,17 @@ new class extends Component {
             return;
         }
 
-        $riHdrNo = (int) ($this->headerData['rihdr_no'] ?? 0);
+        $sumber = $this->sumber;
+        $refNo = $this->refNo;
         $totalBaru = 0;
 
-        $berhasil = $this->jalankanDenganRetryOk(function () use ($riHdrNo, &$totalBaru) {
+        $berhasil = $this->jalankanDenganRetryOk(function () use ($sumber, $refNo, &$totalBaru) {
             $row = $this->kunciBarisOk($this->okReg);
 
             [, $totalBaru, $berubah] = KamarOperasiTarif::hitungUlang($this->okReg, $row);
 
             $ringkasan = $berubah === [] ? 'tidak ada pos yang berubah' : implode(', ', $berubah);
-            $this->catatLogOk($riHdrNo, "Hitung Tarif OK No.{$this->okReg} — {$ringkasan}. Total Rp " . number_format($totalBaru));
+            $this->catatLogOk($sumber, $refNo, "Hitung Tarif OK No.{$this->okReg} — {$ringkasan}. Total Rp " . number_format($totalBaru));
         }, 'Gagal menghitung tarif');
 
         if (!$berhasil) {
@@ -230,7 +252,11 @@ new class extends Component {
     }
 
     /* =======================
-     | TRANSFER BIAYA KE RAWAT INAP (A -> L)
+     | TRANSFER BIAYA KE TAGIHAN KUNJUNGAN (A -> L)
+     |
+     | Tujuannya mengikuti sumber layanan: rstxn_rjoks / rstxn_ugdoks / rstxn_rioks.
+     | Ketiganya tabel terpisah — bukan dititipkan ke pos Lain-Lain — supaya di
+     | jurnal pendapatan operasi tidak menyamar sebagai pendapatan lain-lain.
      |
      | Beda dari form legacy: seluruh INSERT + UPDATE status dibungkus SATU
      | transaksi. Legacy melakukan COMMIT di tengah, sehingga kegagalan pada pos
@@ -248,31 +274,33 @@ new class extends Component {
             return;
         }
 
-        $riHdrNo = (int) ($this->headerData['rihdr_no'] ?? 0);
-        if ($riHdrNo <= 0) {
-            $this->dispatch('toast', type: 'error', message: 'Transaksi ini tidak terkait kunjungan rawat inap.');
+        $sumber = $this->sumber;
+        $refNo = $this->refNo;
+
+        if ($refNo <= 0) {
+            $this->dispatch('toast', type: 'error', message: 'Transaksi ini tidak terkait kunjungan mana pun.');
             return;
         }
 
+        $tabelBiaya = $this->tabelBiayaOk($sumber);
+        $kolomInduk = $this->kolomIndukBiayaOk($sumber);
         $jumlahPos = 0;
         $totalTransfer = 0;
 
-        $berhasil = $this->jalankanDenganRetryOk(function () use ($riHdrNo, &$jumlahPos, &$totalTransfer) {
+        $berhasil = $this->jalankanDenganRetryOk(function () use ($sumber, $refNo, $tabelBiaya, $kolomInduk, &$jumlahPos, &$totalTransfer) {
             $jumlahPos = 0;
             $totalTransfer = 0;
 
             $row = $this->kunciBarisOk($this->okReg);
 
-            $this->lockRIRow($riHdrNo);
-
-            $riStatus = DB::table('rstxn_rihdrs')->where('rihdr_no', $riHdrNo)->value('ri_status');
-            if (strtoupper((string) $riStatus) !== 'I') {
-                throw new \RuntimeException('Proses dibatalkan: pasien sudah pulang atau bukan dalam status dirawat.');
+            $statusInduk = $this->kunciIndukOk($sumber, $refNo);
+            if (!$this->indukAktifOk($sumber, $statusInduk)) {
+                throw new \RuntimeException('Proses dibatalkan: ' . lcfirst($this->sebabIndukTerkunciOk($sumber, $statusInduk)) . '.');
             }
 
             // Oracle menolak FOR UPDATE pada query agregat (ORA-01786), jadi nomor
             // diambil MAX+1 seperti konvensi repo; tabrakan ditangani retry.
-            $nomorBerikut = (int) DB::scalar('SELECT NVL(MAX(ok_no),0) FROM rstxn_rioks');
+            $nomorBerikut = (int) DB::scalar("SELECT NVL(MAX(ok_no),0) FROM {$tabelBiaya}");
 
             foreach (KamarOperasiTarif::POS as $kolom => $keterangan) {
                 $nilai = (int) ($row->{$kolom} ?? 0);
@@ -281,7 +309,7 @@ new class extends Component {
                 }
 
                 $nomorBerikut++;
-                DB::table('rstxn_rioks')->insert(['ok_no' => $nomorBerikut, 'ok_date' => $row->ok_date, 'ok_desc' => $keterangan, 'ok_price' => $nilai, 'rihdr_no' => $riHdrNo, 'ok_reg' => $this->okReg]);
+                DB::table($tabelBiaya)->insert(['ok_no' => $nomorBerikut, 'ok_date' => $row->ok_date, 'ok_desc' => $keterangan, 'ok_price' => $nilai, $kolomInduk => $refNo, 'ok_reg' => $this->okReg]);
 
                 $jumlahPos++;
                 $totalTransfer += $nilai;
@@ -293,7 +321,7 @@ new class extends Component {
 
             DB::table('rstxn_oks')->where('ok_reg', $this->okReg)->update(['ok_status' => 'L']);
 
-            $this->appendAdminLogRI($riHdrNo, "Transfer biaya OK No.{$this->okReg} ke rawat inap — {$jumlahPos} pos, total Rp " . number_format($totalTransfer), 'ADMIN');
+            $this->catatLogOk($sumber, $refNo, "Transfer biaya OK No.{$this->okReg} ke tagihan {$this->labelSumberOk($sumber)} — {$jumlahPos} pos, total Rp " . number_format($totalTransfer));
         }, 'Gagal transfer biaya');
 
         if (!$berhasil) {
@@ -303,9 +331,19 @@ new class extends Component {
         $this->findData();
         $this->dispatch('kamar-operasi.updated');
         $this->dispatch('refresh-after-kamar-operasi.saved');
-        $this->dispatch('administrasi-ri.updated');
+        $this->dispatchAdministrasi();
         $regName = $this->headerData['reg_name'] ?? '';
-        $this->dispatch('toast', type: 'success', message: "Biaya operasi pasien {$regName} berhasil ditransfer ke biaya rawat inap.");
+        $this->dispatch('toast', type: 'success', message: "Biaya operasi pasien {$regName} berhasil ditransfer ke tagihan {$this->labelSumber()}.");
+    }
+
+    /** Beri tahu layar Administrasi yang sesuai supaya totalnya ikut segar. */
+    private function dispatchAdministrasi(): void
+    {
+        $eventPerSumber = ['RJ' => 'administrasi-rj.updated', 'UGD' => 'administrasi-ugd.updated', 'RI' => 'administrasi-ri.updated'];
+
+        if (isset($eventPerSumber[$this->sumber])) {
+            $this->dispatch($eventPerSumber[$this->sumber]);
+        }
     }
 
     /* =======================
@@ -323,10 +361,13 @@ new class extends Component {
             return;
         }
 
-        $riHdrNo = (int) ($this->headerData['rihdr_no'] ?? 0);
+        $sumber = $this->sumber;
+        $refNo = $this->refNo;
+        $tabelBiaya = $this->tabelBiayaOk($sumber);
+        $kolomInduk = $this->kolomIndukBiayaOk($sumber);
         $jumlahHapus = 0;
 
-        $berhasil = $this->jalankanDenganRetryOk(function () use ($riHdrNo, &$jumlahHapus) {
+        $berhasil = $this->jalankanDenganRetryOk(function () use ($sumber, $refNo, $tabelBiaya, $kolomInduk, &$jumlahHapus) {
             $row = DB::table('rstxn_oks')->where('ok_reg', $this->okReg)->lockForUpdate()->first();
 
             if (!$row) {
@@ -337,25 +378,21 @@ new class extends Component {
                 throw new \RuntimeException('Status transaksi sudah berubah — silakan tutup dan buka ulang.');
             }
 
-            if ($riHdrNo > 0) {
-                $this->lockRIRow($riHdrNo);
-
-                // Sama seperti Batal Transfer UGD→RI: begitu kunjungan RI tidak aktif,
-                // pembatalan ikut tertutup — menghapus biaya dari tagihan yang sudah
-                // ditutup membuat total kwitansi tidak lagi cocok.
-                $riStatus = DB::table('rstxn_rihdrs')->where('rihdr_no', $riHdrNo)->value('ri_status');
-                if (strtoupper((string) $riStatus) !== 'I') {
-                    throw new \RuntimeException('Pasien sudah pulang — transfer tidak bisa dibatalkan lagi.');
+            if ($refNo > 0) {
+                // Sama seperti Batal Transfer UGD→RI: begitu kunjungan induk tidak
+                // aktif, pembatalan ikut tertutup — menghapus biaya dari tagihan yang
+                // sudah ditutup membuat total kwitansi tidak lagi cocok.
+                $statusInduk = $this->kunciIndukOk($sumber, $refNo);
+                if (!$this->indukAktifOk($sumber, $statusInduk)) {
+                    throw new \RuntimeException($this->sebabIndukTerkunciOk($sumber, $statusInduk) . ' — transfer tidak bisa dibatalkan lagi.');
                 }
 
-                $jumlahHapus = DB::table('rstxn_rioks')->where('ok_reg', $this->okReg)->where('rihdr_no', $riHdrNo)->delete();
+                $jumlahHapus = DB::table($tabelBiaya)->where('ok_reg', $this->okReg)->where($kolomInduk, $refNo)->delete();
             }
 
             DB::table('rstxn_oks')->where('ok_reg', $this->okReg)->update(['ok_status' => 'A']);
 
-            if ($riHdrNo > 0) {
-                $this->appendAdminLogRI($riHdrNo, "Batal transfer biaya OK No.{$this->okReg} — {$jumlahHapus} baris biaya dihapus, status kembali Proses Transaksi", 'ADMIN');
-            }
+            $this->catatLogOk($sumber, $refNo, "Batal transfer biaya OK No.{$this->okReg} — {$jumlahHapus} baris biaya dihapus, status kembali Proses Transaksi");
         }, 'Gagal membatalkan transaksi');
 
         if (!$berhasil) {
@@ -365,7 +402,7 @@ new class extends Component {
         $this->findData();
         $this->dispatch('kamar-operasi.updated');
         $this->dispatch('refresh-after-kamar-operasi.saved');
-        $this->dispatch('administrasi-ri.updated');
+        $this->dispatchAdministrasi();
         $this->dispatch('toast', type: 'success', message: 'Pembatalan berhasil — status kembali ke Proses Transaksi.');
     }
 };
@@ -382,13 +419,9 @@ new class extends Component {
                 </div>
 
                 @php
+                    // Hanya KODE statusnya yang dipakai di sini (untuk gating tombol &
+                    // kalimat terkunci). Teks + warna badge-nya urusan display-pasien.
                     $statusOk = $headerData['ok_status'] ?? 'A';
-                    [$statusText, $statusVariant] = match ($statusOk) {
-                        'A' => ['Proses Transaksi', 'warning'],
-                        'L' => ['Transaksi Selesai', 'success'],
-                        'F' => ['Dibatalkan', 'error'],
-                        default => [$statusOk, 'gray'],
-                    };
                 @endphp
 
                 <div class="relative flex items-start justify-between gap-4">
@@ -418,7 +451,9 @@ new class extends Component {
                         </div>
                     </div>
 
-                    <div class="flex flex-col items-end flex-shrink-0 gap-2">
+                    {{-- Badge status TIDAK diulang di sini — display-pasien di kiri
+                         sudah menampilkannya bersama layanan & status kunjungan. --}}
+                    <div class="flex-shrink-0">
                         <x-icon-button color="gray" type="button" wire:click="closeActions">
                             <span class="sr-only">Tutup</span>
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
@@ -427,9 +462,6 @@ new class extends Component {
                                     clip-rule="evenodd" />
                             </svg>
                         </x-icon-button>
-                        @if (!empty($headerData))
-                            <x-badge :variant="$statusVariant">{{ $statusText }}</x-badge>
-                        @endif
                     </div>
                 </div>
             </div>
@@ -449,15 +481,15 @@ new class extends Component {
                                 <p class="font-semibold">{{ $indukTerkunciSebab }}</p>
                                 @if ($statusOk === 'L')
                                     <p class="mt-1">
-                                        Biaya operasi ini sudah masuk tagihan rawat inap dan
+                                        Biaya operasi ini sudah masuk tagihan {{ $this->labelSumber() }} dan
                                         <span class="font-semibold">tidak bisa dibatalkan lagi</span> —
                                         membatalkan berarti menghapus biaya dari tagihan yang sudah ditutup.
                                     </p>
                                 @else
                                     <p class="mt-1">
-                                        Biaya <span class="font-semibold">tidak bisa ditransfer</span> ke rawat inap
-                                        karena kunjungannya sudah tidak aktif. Tarif masih boleh dilengkapi,
-                                        tetapi tidak akan sampai ke tagihan pasien.
+                                        Biaya <span class="font-semibold">tidak bisa ditransfer</span> ke tagihan
+                                        {{ $this->labelSumber() }} karena kunjungannya sudah tidak aktif. Tarif masih
+                                        boleh dilengkapi, tetapi tidak akan sampai ke tagihan pasien.
                                     </p>
                                 @endif
                             </div>
@@ -549,7 +581,7 @@ new class extends Component {
                                 <span title="{{ $pesanTerkunci }}">
                                     <x-confirm-button variant="danger" action="batalkanTransaksi()"
                                         :disabled="$indukTerkunci" title="Batalkan Transaksi"
-                                        message="Batalkan transfer biaya operasi ini? Seluruh baris biaya di rawat inap akan dihapus dan status kembali ke Proses Transaksi."
+                                        :message="'Batalkan transfer biaya operasi ini? Seluruh baris biaya di tagihan ' . $this->labelSumber() . ' akan dihapus dan status kembali ke Proses Transaksi.'"
                                         confirmText="Ya, batalkan" cancelText="Batal" class="text-xs">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -577,22 +609,34 @@ new class extends Component {
                         @if ($statusOk === 'A')
                             <x-secondary-button type="button" wire:click="hitungTarifOk" wire:loading.attr="disabled"
                                 wire:target="hitungTarifOk" class="text-xs">
-                                <span wire:loading.remove wire:target="hitungTarifOk">Hitung Tarif OK</span>
+                                <span wire:loading.remove wire:target="hitungTarifOk">Hitung Ulang Tarif</span>
                                 <span wire:loading wire:target="hitungTarifOk" class="flex items-center gap-1.5">
                                     <x-loading /> Menghitung...
                                 </span>
                             </x-secondary-button>
 
+                            @php
+                                // Tujuan transfer ikut sumber layanan. "Trf Biaya-INAP" adalah
+                                // istilah form legacy — di layar ditulis apa adanya supaya petugas
+                                // baru tidak perlu menebak singkatan "Trf".
+                                $labelTombolTransfer = 'Kirim ke Tagihan ' . match ($sumber) {
+                                    'RJ' => 'RJ',
+                                    'UGD' => 'UGD',
+                                    default => 'Rawat Inap',
+                                };
+                                $labelTujuanTransfer = $this->labelSumber();
+                            @endphp
+
                             <span title="{{ $pesanTerkunci }}">
                                 <x-confirm-button id="ok-tombol-transfer" variant="primary" action="transferBiayaInap()"
-                                    :disabled="$indukTerkunci" title="Transfer Biaya ke Rawat Inap"
-                                    message="Transfer seluruh pos tarif operasi ini ke biaya rawat inap? Setelah ditransfer, tarif tidak bisa diubah lagi."
+                                    :disabled="$indukTerkunci" :title="'Transfer Biaya ke ' . $labelTujuanTransfer"
+                                    :message="'Transfer seluruh pos tarif operasi ini ke tagihan ' . $labelTujuanTransfer . '? Setelah ditransfer, tarif tidak bisa diubah lagi.'"
                                     confirmText="Ya, transfer" cancelText="Batal" class="text-xs">
-                                    Trf Biaya-INAP
+                                    {{ $labelTombolTransfer }}
                                 </x-confirm-button>
                             </span>
                         @elseif ($statusOk === 'L')
-                            <x-badge variant="success">Biaya sudah masuk tagihan rawat inap</x-badge>
+                            <x-badge variant="success">Biaya sudah masuk tagihan {{ $this->labelSumber() }}</x-badge>
                         @endif
 
                         <x-secondary-button type="button" wire:click="closeActions">Tutup</x-secondary-button>

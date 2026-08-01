@@ -29,6 +29,7 @@ new class extends Component {
     public int $sumObat = 0;
     public int $sumLaboratorium = 0;
     public int $sumRadiologi = 0;
+    public int $sumKamarOperasi = 0;
     public int $sumLainLain = 0;
     public int $sumtrfRJ = 0;
     public int $sumTotalRJ = 0;
@@ -45,7 +46,7 @@ new class extends Component {
 
     // ── Sub-Tab ──
     public string $activeTabAdministrasi = 'JasaKaryawan';
-    public array $EmrMenuAdministrasi = [['ermMenuId' => 'JasaKaryawan', 'ermMenuName' => 'Jasa Karyawan'], ['ermMenuId' => 'JasaDokter', 'ermMenuName' => 'Jasa Dokter'], ['ermMenuId' => 'JasaMedis', 'ermMenuName' => 'Jasa Medis'], ['ermMenuId' => 'Obat', 'ermMenuName' => 'Obat'], ['ermMenuId' => 'Laboratorium', 'ermMenuName' => 'Laboratorium'], ['ermMenuId' => 'Radiologi', 'ermMenuName' => 'Radiologi'], ['ermMenuId' => 'LainLain', 'ermMenuName' => 'Lain-Lain'], ['ermMenuId' => 'Transfer', 'ermMenuName' => 'Transfer'], ['ermMenuId' => 'Kasir', 'ermMenuName' => 'Kasir']];
+    public array $EmrMenuAdministrasi = [['ermMenuId' => 'JasaKaryawan', 'ermMenuName' => 'Jasa Karyawan'], ['ermMenuId' => 'JasaDokter', 'ermMenuName' => 'Jasa Dokter'], ['ermMenuId' => 'JasaMedis', 'ermMenuName' => 'Jasa Medis'], ['ermMenuId' => 'Obat', 'ermMenuName' => 'Obat'], ['ermMenuId' => 'Laboratorium', 'ermMenuName' => 'Laboratorium'], ['ermMenuId' => 'Radiologi', 'ermMenuName' => 'Radiologi'], ['ermMenuId' => 'KamarOperasi', 'ermMenuName' => 'Kamar Operasi'], ['ermMenuId' => 'LainLain', 'ermMenuName' => 'Lain-Lain'], ['ermMenuId' => 'Transfer', 'ermMenuName' => 'Transfer'], ['ermMenuId' => 'Kasir', 'ermMenuName' => 'Kasir']];
 
     /* ===============================
      | MOUNT
@@ -133,7 +134,7 @@ new class extends Component {
         $this->sumRsAdmin = $this->sumRjAdmin = $this->sumPoliPrice = 0;
         $this->sumJasaKaryawan = $this->sumJasaDokter = $this->sumJasaMedis = 0;
         $this->sumObat = $this->sumLaboratorium = $this->sumRadiologi = 0;
-        $this->sumLainLain = $this->sumtrfRJ = $this->sumTotalRJ = 0;
+        $this->sumKamarOperasi = $this->sumLainLain = $this->sumtrfRJ = $this->sumTotalRJ = 0;
         $this->statusResep = ['status' => 'DITUNGGU', 'keterangan' => ''];
     }
 
@@ -230,11 +231,13 @@ new class extends Component {
 
         $this->sumLaboratorium = (int) DB::table('rstxn_ugdlabs')->where('rj_no', $rjNo)->sum('lab_price');
         $this->sumRadiologi = (int) DB::table('rstxn_ugdrads')->where('rj_no', $rjNo)->sum('rad_price');
+        // Biaya operasi hasil transfer dari modul Penunjang -> Kamar Operasi.
+        $this->sumKamarOperasi = (int) DB::table('rstxn_ugdoks')->where('rj_no', $rjNo)->sum('ok_price');
         $this->sumLainLain = (int) DB::table('rstxn_ugdothers')->where('rj_no', $rjNo)->sum('other_price');
 
-        $this->sumtrfRJ = (int) DB::table('rstxn_ugdtempadmins')->where('rj_no', $rjNo)->selectRaw('nvl(sum(rj_admin + poli_price + acte_price + actp_price + actd_price + obat + lab + rad + other + rs_admin), 0) as total')->value('total');
+        $this->sumtrfRJ = (int) DB::table('rstxn_ugdtempadmins')->where('rj_no', $rjNo)->selectRaw('nvl(sum(rj_admin + poli_price + acte_price + actp_price + actd_price + obat + lab + rad + other + rs_admin + nvl(ok,0)), 0) as total')->value('total');
 
-        $this->sumTotalRJ = $this->sumRsAdmin + $this->sumRjAdmin + $this->sumPoliPrice + $this->sumJasaKaryawan + $this->sumJasaDokter + $this->sumJasaMedis + $this->sumObat + $this->sumLaboratorium + $this->sumRadiologi + $this->sumLainLain + $this->sumtrfRJ;
+        $this->sumTotalRJ = $this->sumRsAdmin + $this->sumRjAdmin + $this->sumPoliPrice + $this->sumJasaKaryawan + $this->sumJasaDokter + $this->sumJasaMedis + $this->sumObat + $this->sumLaboratorium + $this->sumRadiologi + $this->sumKamarOperasi + $this->sumLainLain + $this->sumtrfRJ;
     }
 
     /* ===============================
@@ -536,7 +539,7 @@ new class extends Component {
                                 @endforeach
 
                                 {{-- 8 Item Read Only (termasuk Transfer untuk UGD) --}}
-                                @foreach ([['label' => 'Jasa Karyawan', 'value' => $sumJasaKaryawan], ['label' => 'Jasa Dokter', 'value' => $sumJasaDokter], ['label' => 'Jasa Medis', 'value' => $sumJasaMedis], ['label' => 'Obat', 'value' => $sumObat], ['label' => 'Laboratorium', 'value' => $sumLaboratorium], ['label' => 'Radiologi', 'value' => $sumRadiologi], ['label' => 'Lain-Lain', 'value' => $sumLainLain], ['label' => 'Transfer', 'value' => $sumtrfRJ]] as $item)
+                                @foreach ([['label' => 'Jasa Karyawan', 'value' => $sumJasaKaryawan], ['label' => 'Jasa Dokter', 'value' => $sumJasaDokter], ['label' => 'Jasa Medis', 'value' => $sumJasaMedis], ['label' => 'Obat', 'value' => $sumObat], ['label' => 'Laboratorium', 'value' => $sumLaboratorium], ['label' => 'Radiologi', 'value' => $sumRadiologi], ['label' => 'Kamar Operasi', 'value' => $sumKamarOperasi], ['label' => 'Lain-Lain', 'value' => $sumLainLain], ['label' => 'Transfer', 'value' => $sumtrfRJ]] as $item)
                                     <div
                                         class="px-2.5 py-1.5 bg-canvas border border-hairline rounded-xl dark:bg-gray-900 dark:border-gray-700">
                                         <p class="text-xs text-muted dark:text-gray-400 mb-0.5 truncate">
@@ -620,6 +623,14 @@ new class extends Component {
                                     <livewire:pages::transaksi.ugd.administrasi-ugd.radiologi-ugd :rjNo="$rjNo"
                                         wire:key="tab-radiologi-{{ $rjNo }}" />
                                 </div>
+                                <div x-show="tab === 'KamarOperasi'" x-cloak
+                                    x-transition:enter="transition ease-out duration-150"
+                                    x-transition:enter-start="opacity-0 translate-y-1"
+                                    x-transition:enter-end="opacity-100 translate-y-0">
+                                    <livewire:pages::transaksi.ugd.administrasi-ugd.kamar-operasi-ugd :rjNo="$rjNo"
+                                        wire:key="tab-kamar-operasi-{{ $rjNo }}" />
+                                </div>
+
                                 <div x-show="tab === 'LainLain'" x-cloak
                                     x-transition:enter="transition ease-out duration-150"
                                     x-transition:enter-start="opacity-0 translate-y-1"

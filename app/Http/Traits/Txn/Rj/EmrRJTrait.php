@@ -342,6 +342,40 @@ trait EmrRJTrait
     }
 
     /**
+     * Ada transaksi Kamar Operasi yang belum ditransfer (`ok_status = 'A'`)
+     * untuk kunjungan ini?
+     *
+     * Konsepnya sama dengan checkLabPendingRJ: kunjungan yang pasiennya sedang
+     * di kamar operasi belum boleh ditutup di kasir sebelum petugas OK menekan
+     * Trf Biaya-RJ — kalau lolos, biayanya tidak akan pernah bisa masuk tagihan
+     * karena transfer mensyaratkan `rj_status='A'`.
+     *
+     * `ok_status` NULL diperlakukan 'A' mengikuti NVL di form legacy rit006x.fmb.
+     */
+    protected function checkOkPendingRJ(int $rjNo): bool
+    {
+        return $this->queryOkPendingRJ($rjNo)->exists();
+    }
+
+    /** Nomor transaksi OK yang masih menggantung — untuk pesan ke petugas. */
+    protected function daftarOkPendingRJ(int $rjNo): array
+    {
+        return $this->queryOkPendingRJ($rjNo)
+            ->orderBy('ok_reg')
+            ->pluck('ok_reg')
+            ->map(fn($nomor) => (string) $nomor)
+            ->all();
+    }
+
+    private function queryOkPendingRJ(int $rjNo)
+    {
+        return DB::table('rstxn_oks')
+            ->where('status_rjri', 'RJ')
+            ->where('ref_no', $rjNo)
+            ->whereRaw("NVL(ok_status,'A') = 'A'");
+    }
+
+    /**
      * Hitung semua komponen biaya RJ — reusable di kasir & transfer.
      */
     protected function calculateRJCosts(int $rjNo): array
@@ -363,6 +397,10 @@ trait EmrRJTrait
             'lab'       => (int) DB::table('rstxn_rjlabs')->where('rj_no', $rjNo)->sum('lab_price'),
             'rad'       => (int) DB::table('rstxn_rjrads')->where('rj_no', $rjNo)->sum('rad_price'),
             'other'     => (int) DB::table('rstxn_rjothers')->where('rj_no', $rjNo)->sum('other_price'),
+            // Hasil "Trf Biaya" dari modul Penunjang -> Kamar Operasi. Tabel biaya
+            // sendiri (bukan menumpang 'other') supaya di jurnal pendapatan operasi
+            // tidak menyamar sebagai pendapatan lain-lain.
+            'kamarOperasi' => (int) DB::table('rstxn_rjoks')->where('rj_no', $rjNo)->sum('ok_price'),
         ];
     }
 }

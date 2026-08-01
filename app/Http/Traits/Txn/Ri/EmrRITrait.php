@@ -115,22 +115,31 @@ trait EmrRITrait
      */
     protected function checkOkPendingRI($riHdrNo): bool
     {
-        return DB::table('rstxn_oks')
-            ->where('rihdr_no', $riHdrNo)
-            ->whereRaw("NVL(ok_status,'A') = 'A'")
-            ->exists();
+        return $this->queryOkPendingRI($riHdrNo)->exists();
     }
 
     /** Nomor transaksi OK yang masih menggantung — untuk pesan ke petugas. */
     protected function daftarOkPendingRI($riHdrNo): array
     {
-        return DB::table('rstxn_oks')
-            ->where('rihdr_no', $riHdrNo)
-            ->whereRaw("NVL(ok_status,'A') = 'A'")
+        return $this->queryOkPendingRI($riHdrNo)
             ->orderBy('ok_reg')
             ->pluck('ok_reg')
-            ->map(fn($n) => (string) $n)
+            ->map(fn($nomor) => (string) $nomor)
             ->all();
+    }
+
+    /**
+     * Sesudah rstxn_oks melayani RJ/UGD juga, kunjungan induk ditentukan oleh
+     * `status_rjri` + `ref_no`; `rihdr_no` hanya cadangan untuk baris lama yang
+     * belum sempat ter-backfill. NVL dipasang di keduanya karena CHECK constraint
+     * tidak menangkap NULL — baris cacat tidak boleh lolos dari guard ini.
+     */
+    private function queryOkPendingRI($riHdrNo)
+    {
+        return DB::table('rstxn_oks')
+            ->whereRaw("NVL(status_rjri,'RI') = 'RI'")
+            ->whereRaw('NVL(ref_no, rihdr_no) = ?', [$riHdrNo])
+            ->whereRaw("NVL(ok_status,'A') = 'A'");
     }
 
     protected function lockRIRow($riHdrNo): void
@@ -380,7 +389,7 @@ trait EmrRITrait
             'lab'           => (int) DB::table('rstxn_rilabs')->where('rihdr_no', $riHdrNo)->sum('lab_price'),
             'rad'           => (int) DB::table('rstxn_riradiologs')->where('rihdr_no', $riHdrNo)->sum('rirad_price'),
             'trfUgdRj'      => (int) DB::table('rstxn_ritempadmins')->where('rihdr_no', $riHdrNo)
-                                    ->selectRaw('nvl(sum(nvl(rj_admin,0)+nvl(poli_price,0)+nvl(acte_price,0)+nvl(actp_price,0)+nvl(actd_price,0)+nvl(obat,0)+nvl(rad,0)+nvl(lab,0)+nvl(other,0)+nvl(rs_admin,0)),0) as total')
+                                    ->selectRaw('nvl(sum(nvl(rj_admin,0)+nvl(poli_price,0)+nvl(acte_price,0)+nvl(actp_price,0)+nvl(actd_price,0)+nvl(obat,0)+nvl(rad,0)+nvl(lab,0)+nvl(other,0)+nvl(rs_admin,0)+nvl(ok,0)),0) as total')
                                     ->value('total'),
             'lainLain'      => (int) DB::table('rstxn_riothers')->where('rihdr_no', $riHdrNo)->sum('other_price'),
             'ok'            => (int) DB::table('rstxn_rioks')->where('rihdr_no', $riHdrNo)->sum('ok_price'),

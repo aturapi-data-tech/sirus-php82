@@ -68,7 +68,8 @@ trait PiutangPasienTrait
     {
         $ekspresiBiaya = "NVL(h.rs_admin,0) + NVL(h.rj_admin,0) + NVL(h.poli_price,0)
                           + NVL(acte.v,0) + NVL(actp.v,0) + NVL(actd.v,0)
-                          + NVL(obt.v,0)  + NVL(lab.v,0)  + NVL(rad.v,0) + NVL(oth.v,0)";
+                          + NVL(obt.v,0)  + NVL(lab.v,0)  + NVL(rad.v,0) + NVL(oth.v,0)
+                      + NVL(ok.v,0)";
 
         // Batasi agregasi tiap pos biaya HANYA ke transaksi belum lunas (txn_status='H').
         // Tanpa ini, GROUP BY menggilas seluruh tabel biaya (mis. rstxn_rjobats jutaan baris).
@@ -86,6 +87,7 @@ trait PiutangPasienTrait
             ->leftJoinSub(DB::table('rstxn_rjlabs')->select('rj_no', DB::raw('NVL(SUM(lab_price),0) as v'))->whereIn('rj_no', $hanyaH)->groupBy('rj_no'),       'lab',  'lab.rj_no', '=', 'h.rj_no')
             ->leftJoinSub(DB::table('rstxn_rjrads')->select('rj_no', DB::raw('NVL(SUM(rad_price),0) as v'))->whereIn('rj_no', $hanyaH)->groupBy('rj_no'),       'rad',  'rad.rj_no', '=', 'h.rj_no')
             ->leftJoinSub(DB::table('rstxn_rjothers')->select('rj_no', DB::raw('NVL(SUM(other_price),0) as v'))->whereIn('rj_no', $hanyaH)->groupBy('rj_no'),   'oth',  'oth.rj_no', '=', 'h.rj_no')
+            ->leftJoinSub(DB::table('rstxn_rjoks')->select('rj_no', DB::raw('NVL(SUM(ok_price),0) as v'))->whereIn('rj_no', $hanyaH)->groupBy('rj_no'),         'ok',   'ok.rj_no', '=', 'h.rj_no')
             ->leftJoinSub(DB::table('rstxn_rjcashins')->select('rj_no', DB::raw('NVL(SUM(rjc_nominal),0) as v'))->whereIn('rj_no', $hanyaH)->groupBy('rj_no'),  'cash', 'cash.rj_no', '=', 'h.rj_no')
             ->where('h.txn_status', 'H')
             ->when($start && $end, fn($subQuery) => $subQuery->whereBetween('h.rj_date', [$start, $end]));
@@ -110,7 +112,8 @@ trait PiutangPasienTrait
     {
         $ekspresiBiaya = "NVL(h.rs_admin,0) + NVL(h.rj_admin,0) + NVL(h.poli_price,0)
                           + NVL(acte.v,0) + NVL(actp.v,0) + NVL(actd.v,0)
-                          + NVL(obt.v,0)  + NVL(lab.v,0)  + NVL(rad.v,0) + NVL(oth.v,0)";
+                          + NVL(obt.v,0)  + NVL(lab.v,0)  + NVL(rad.v,0) + NVL(oth.v,0)
+                      + NVL(ok.v,0)";
 
         // Batasi agregasi tiap pos biaya HANYA ke transaksi belum lunas (txn_status='H').
         $hanyaH = fn($sub) => $sub->select('rj_no')->from('rstxn_ugdhdrs')->where('txn_status', 'H');
@@ -126,6 +129,7 @@ trait PiutangPasienTrait
             ->leftJoinSub(DB::table('rstxn_ugdlabs')->select('rj_no', DB::raw('NVL(SUM(lab_price),0) as v'))->whereIn('rj_no', $hanyaH)->groupBy('rj_no'),       'lab',  'lab.rj_no', '=', 'h.rj_no')
             ->leftJoinSub(DB::table('rstxn_ugdrads')->select('rj_no', DB::raw('NVL(SUM(rad_price),0) as v'))->whereIn('rj_no', $hanyaH)->groupBy('rj_no'),       'rad',  'rad.rj_no', '=', 'h.rj_no')
             ->leftJoinSub(DB::table('rstxn_ugdothers')->select('rj_no', DB::raw('NVL(SUM(other_price),0) as v'))->whereIn('rj_no', $hanyaH)->groupBy('rj_no'),   'oth',  'oth.rj_no', '=', 'h.rj_no')
+            ->leftJoinSub(DB::table('rstxn_ugdoks')->select('rj_no', DB::raw('NVL(SUM(ok_price),0) as v'))->whereIn('rj_no', $hanyaH)->groupBy('rj_no'),         'ok',   'ok.rj_no', '=', 'h.rj_no')
             ->leftJoinSub(DB::table('rstxn_ugdcashins')->select('rj_no', DB::raw('NVL(SUM(rjc_nominal),0) as v'))->whereIn('rj_no', $hanyaH)->groupBy('rj_no'),  'cash', 'cash.rj_no', '=', 'h.rj_no')
             ->where('h.txn_status', 'H')
             ->when($start && $end, fn($subQuery) => $subQuery->whereBetween('h.rj_date', [$start, $end]));
@@ -175,7 +179,7 @@ trait PiutangPasienTrait
             ->leftJoinSub(DB::table('rstxn_riactdocs')->select('rihdr_no', DB::raw('NVL(SUM(actd_price * actd_qty),0) as v'))->whereIn('rihdr_no', $hanyaH)->groupBy('rihdr_no'),            'jd',  'jd.rihdr_no',  '=', 'h.rihdr_no')
             ->leftJoinSub(DB::table('rstxn_rilabs')->select('rihdr_no', DB::raw('NVL(SUM(lab_price),0) as v'))->whereIn('rihdr_no', $hanyaH)->groupBy('rihdr_no'),                           'lab', 'lab.rihdr_no', '=', 'h.rihdr_no')
             ->leftJoinSub(DB::table('rstxn_riradiologs')->select('rihdr_no', DB::raw('NVL(SUM(rirad_price),0) as v'))->whereIn('rihdr_no', $hanyaH)->groupBy('rihdr_no'),                    'rad', 'rad.rihdr_no', '=', 'h.rihdr_no')
-            ->leftJoinSub(DB::table('rstxn_ritempadmins')->select('rihdr_no', DB::raw('NVL(SUM(NVL(rj_admin,0)+NVL(poli_price,0)+NVL(acte_price,0)+NVL(actp_price,0)+NVL(actd_price,0)+NVL(obat,0)+NVL(rad,0)+NVL(lab,0)+NVL(other,0)+NVL(rs_admin,0)),0) as v'))->whereIn('rihdr_no', $hanyaH)->groupBy('rihdr_no'), 'trf', 'trf.rihdr_no', '=', 'h.rihdr_no')
+            ->leftJoinSub(DB::table('rstxn_ritempadmins')->select('rihdr_no', DB::raw('NVL(SUM(NVL(rj_admin,0)+NVL(poli_price,0)+NVL(acte_price,0)+NVL(actp_price,0)+NVL(actd_price,0)+NVL(obat,0)+NVL(rad,0)+NVL(lab,0)+NVL(other,0)+NVL(rs_admin,0)+NVL(ok,0)),0) as v'))->whereIn('rihdr_no', $hanyaH)->groupBy('rihdr_no'), 'trf', 'trf.rihdr_no', '=', 'h.rihdr_no')
             ->leftJoinSub(DB::table('rstxn_riothers')->select('rihdr_no', DB::raw('NVL(SUM(other_price),0) as v'))->whereIn('rihdr_no', $hanyaH)->groupBy('rihdr_no'),                       'oth', 'oth.rihdr_no', '=', 'h.rihdr_no')
             ->leftJoinSub(DB::table('rstxn_rioks')->select('rihdr_no', DB::raw('NVL(SUM(ok_price),0) as v'))->whereIn('rihdr_no', $hanyaH)->groupBy('rihdr_no'),                             'ok',  'ok.rihdr_no',  '=', 'h.rihdr_no')
             ->leftJoinSub($subQueryKamar, 'rm', 'rm.rihdr_no', '=', 'h.rihdr_no')

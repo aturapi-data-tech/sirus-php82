@@ -22,7 +22,8 @@ new class extends Component {
 
     public string $okReg = '';
     public bool $isFormLocked = true;
-    public int $riHdrNo = 0;
+    public string $sumber = 'RI';
+    public int $refNo = 0;
 
     public array $rows = [];
 
@@ -44,7 +45,7 @@ new class extends Component {
         }
 
         $this->isFormLocked = $this->statusOk($this->okReg) !== 'A';
-        $this->riHdrNo = $this->riHdrNoOk($this->okReg);
+        ['sumber' => $this->sumber, 'refNo' => $this->refNo] = $this->sumberRefOk($this->okReg);
 
         $this->rows = DB::table('rstxn_okomlops as t')
             ->leftJoin('hrmst_employees as e', 'e.emp_id', '=', 't.emp_id')
@@ -103,16 +104,17 @@ new class extends Component {
             return;
         }
 
-        $riHdrNo = $this->riHdrNo;
+        $sumber = $this->sumber;
+        $refNo = $this->refNo;
 
-        $berhasil = $this->jalankanDenganRetryOk(function () use ($riHdrNo, $empId, $empName) {
+        $berhasil = $this->jalankanDenganRetryOk(function () use ($sumber, $refNo, $empId, $empName) {
             $this->kunciBarisOk($this->okReg);
 
             $nomor = (int) DB::scalar('SELECT NVL(MAX(omlop_dtl),0) + 1 FROM rstxn_okomlops');
 
             DB::table('rstxn_okomlops')->insert(['omlop_dtl' => $nomor, 'emp_id' => $empId, 'ok_reg' => $this->okReg]);
 
-            $this->catatLogOk($riHdrNo, "Tambah crew OM LOP OK No.{$this->okReg} — {$empName} ({$empId})");
+            $this->catatLogOk($sumber, $refNo, "Tambah crew OM LOP OK No.{$this->okReg} — {$empName} ({$empId})");
         }, 'Gagal menambah crew OM LOP');
 
         if (!$berhasil) {
@@ -132,9 +134,10 @@ new class extends Component {
             return;
         }
 
-        $riHdrNo = $this->riHdrNo;
+        $sumber = $this->sumber;
+        $refNo = $this->refNo;
 
-        $berhasil = $this->jalankanDenganRetryOk(function () use ($riHdrNo, $omlopDtl) {
+        $berhasil = $this->jalankanDenganRetryOk(function () use ($sumber, $refNo, $omlopDtl) {
             $this->kunciBarisOk($this->okReg);
 
             $baris = DB::table('rstxn_okomlops')->where('omlop_dtl', $omlopDtl)->where('ok_reg', $this->okReg)->first();
@@ -145,7 +148,7 @@ new class extends Component {
 
             DB::table('rstxn_okomlops')->where('omlop_dtl', $omlopDtl)->where('ok_reg', $this->okReg)->delete();
 
-            $this->catatLogOk($riHdrNo, "Hapus crew OM LOP OK No.{$this->okReg} — {$baris->emp_id}");
+            $this->catatLogOk($sumber, $refNo, "Hapus crew OM LOP OK No.{$this->okReg} — {$baris->emp_id}");
         }, 'Gagal menghapus crew OM LOP');
 
         if (!$berhasil) {
@@ -211,18 +214,19 @@ new class extends Component {
             return;
         }
 
-        $riHdrNo = $this->riHdrNo;
+        $sumber = $this->sumber;
+        $refNo = $this->refNo;
         $label = $kolom === 'omlop_fee' ? 'Jasa OM LOP' : 'Jasa On Call OM LOP';
         $namaPetugas = collect($this->rows)->firstWhere('omlop_dtl', $omlopDtl)['emp_name'] ?? $barisDb->emp_id;
 
-        $berhasil = $this->jalankanDenganRetryOk(function () use ($omlopDtl, $kolom, $nilaiBaru, $nilaiLama, $riHdrNo, $label, $namaPetugas) {
+        $berhasil = $this->jalankanDenganRetryOk(function () use ($omlopDtl, $kolom, $nilaiBaru, $nilaiLama, $sumber, $refNo, $label, $namaPetugas) {
             $this->kunciBarisOk($this->okReg);
 
             DB::table('rstxn_okomlops')->where('omlop_dtl', $omlopDtl)->where('ok_reg', $this->okReg)->update([$kolom => $nilaiBaru]);
 
             $teksLama = $nilaiLama === null ? '(belum diisi)' : 'Rp ' . number_format($nilaiLama);
             $teksBaru = $nilaiBaru === null ? '(belum diisi)' : 'Rp ' . number_format($nilaiBaru);
-            $this->catatLogOk($riHdrNo, "Ubah {$label} OK No.{$this->okReg} — {$namaPetugas}: {$teksLama} → {$teksBaru}");
+            $this->catatLogOk($sumber, $refNo, "Ubah {$label} OK No.{$this->okReg} — {$namaPetugas}: {$teksLama} → {$teksBaru}");
         }, 'Gagal menyimpan jasa OM LOP');
 
         if (!$berhasil) {

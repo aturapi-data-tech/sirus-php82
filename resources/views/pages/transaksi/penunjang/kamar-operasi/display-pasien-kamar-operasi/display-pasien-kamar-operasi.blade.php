@@ -5,6 +5,7 @@ use Livewire\Attributes\Reactive;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Http\Traits\Txn\Penunjang\KamarOperasiTrait;
 
 /**
  * Display pasien + info transaksi Kamar Operasi.
@@ -14,7 +15,7 @@ use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
  * NIK/BPJS/telepon/RT-RW via MasterPasienTrait), kanan info transaksi.
  */
 new class extends Component {
-    use MasterPasienTrait;
+    use MasterPasienTrait, KamarOperasiTrait;
 
     #[Reactive]
     public ?string $okReg = null;
@@ -54,20 +55,34 @@ new class extends Component {
         // Sengaja RINGKAS: dokter, tindakan, dan diagnosa pra-op TIDAK diambil di
         // sini karena sudah ditampilkan di kartu "Crew & Tindakan Operasi" — kalau
         // ikut ditarik, informasinya dobel dan kolom kanan memanjang ke bawah.
-        $header = DB::table('rstxn_oks as o')
-            ->join('rstxn_rihdrs as h', 'h.rihdr_no', '=', 'o.rihdr_no')
-            ->leftJoin('rsmst_rooms as r', 'r.room_id', '=', 'h.room_id')
-            ->select(
-                'o.ok_reg',
-                'o.ok_status',
-                'o.rihdr_no',
-                DB::raw("to_char(o.ok_date,'dd/mm/yyyy hh24:mi:ss') as ok_date"),
-                'h.reg_no',
-                'h.ri_status',
-                'r.room_name',
-            )
-            ->where('o.ok_reg', $this->okReg)
-            ->first();
+        ['sumber' => $sumber, 'refNo' => $refNo] = $this->sumberRefOk($this->okReg);
+
+        // Kunjungan induk di-join sesuai layanan asalnya; nama kolom hasil
+        // diseragamkan (status_induk / unit_name) supaya template tidak perlu
+        // tahu apakah sumbernya ri_status atau rj_status.
+        $query = DB::table('rstxn_oks as o')
+            ->select('o.ok_reg', 'o.ok_status', DB::raw("to_char(o.ok_date,'dd/mm/yyyy hh24:mi:ss') as ok_date"), 'h.reg_no', DB::raw((string) $refNo . ' as induk_no'))
+            ->where('o.ok_reg', $this->okReg);
+
+        if ($sumber === 'RI') {
+            $query->join('rstxn_rihdrs as h', 'h.rihdr_no', '=', 'o.ref_no')
+                ->leftJoin('rsmst_rooms as r', 'r.room_id', '=', 'h.room_id')
+                ->addSelect(DB::raw('h.ri_status as status_induk'), DB::raw('r.room_name as unit_name'));
+        } elseif ($sumber === 'UGD') {
+            $query->join('rstxn_ugdhdrs as h', 'h.rj_no', '=', 'o.ref_no')
+                ->leftJoin('rsmst_entrytypes as e', 'e.entry_id', '=', 'h.entry_id')
+                ->addSelect(DB::raw('h.rj_status as status_induk'), DB::raw('e.entry_desc as unit_name'));
+        } else {
+            $query->join('rstxn_rjhdrs as h', 'h.rj_no', '=', 'o.ref_no')
+                ->leftJoin('rsmst_polis as po', 'po.poli_id', '=', 'h.poli_id')
+                ->addSelect(DB::raw('h.rj_status as status_induk'), DB::raw('po.poli_desc as unit_name'));
+        }
+
+        $header = $query->first();
+
+        if ($header) {
+            $header->sumber = $sumber;
+        }
 
         if (!$header) {
             $this->headerData = [];
@@ -96,14 +111,32 @@ new class extends Component {
                 default => [$statusKode, 'bg-surface-soft text-muted border-hairline'],
             };
 
-            $riStatus = strtoupper($header['ri_status'] ?? '');
-            [$indukLabel, $indukClass] = match ($riStatus) {
-                'I' => ['Dirawat', 'bg-brand/10 text-brand border-brand/30'],
-                'P' => ['Pulang', 'bg-amber-100 text-amber-700 border-amber-200'],
-                'L' => ['Pulang', 'bg-surface-soft text-muted border-hairline'],
-                'F' => ['Batal', 'bg-error/10 text-error border-error/30'],
-                default => [$riStatus ?: '-', 'bg-surface-soft text-muted border-hairline'],
+            $sumberOk = strtoupper($header['sumber'] ?? 'RI');
+            [$sumberLabel, $sumberClass, $labelNomorInduk, $labelUnit] = match ($sumberOk) {
+                'RJ' => ['Rawat Jalan', 'bg-sky-100 text-sky-700 border-sky-200', 'No Reg', 'Poli'],
+                'UGD' => ['Gawat Darurat', 'bg-rose-100 text-rose-700 border-rose-200', 'No Reg', 'Cara Masuk'],
+                default => ['Rawat Inap', 'bg-purple-100 text-purple-700 border-purple-200', 'No Inap', 'Kamar'],
             };
+
+            // Status kunjungan induk — RI memakai ri_status, RJ/UGD rj_status;
+            // query sudah menyeragamkannya jadi status_induk.
+            $statusIndukKode = strtoupper($header['status_induk'] ?? '');
+            $indukNetral = 'bg-surface-soft text-muted border-hairline';
+            [$indukLabel, $indukClass] = $sumberOk === 'RI'
+                ? match ($statusIndukKode) {
+                    'I' => ['Dirawat', 'bg-brand/10 text-brand border-brand/30'],
+                    'P' => ['Pulang', 'bg-amber-100 text-amber-700 border-amber-200'],
+                    'L' => ['Pulang', $indukNetral],
+                    'F' => ['Batal', 'bg-error/10 text-error border-error/30'],
+                    default => [$statusIndukKode ?: '-', $indukNetral],
+                }
+                : match ($statusIndukKode) {
+                    'A' => ['Aktif', 'bg-brand/10 text-brand border-brand/30'],
+                    'L' => ['Sudah Dibayar', 'bg-amber-100 text-amber-700 border-amber-200'],
+                    'I' => ['Dirawat Inap', $indukNetral],
+                    'F' => ['Batal', 'bg-error/10 text-error border-error/30'],
+                    default => [$statusIndukKode ?: '-', $indukNetral],
+                };
 
             $alamat = trim($pasien['identitas']['alamat'] ?? '');
             $rt = trim($pasien['identitas']['rt'] ?? '');
@@ -187,8 +220,8 @@ new class extends Component {
                     {{-- Badge + No Txn --}}
                     <div class="flex items-center justify-between gap-2">
                         <div class="flex flex-wrap items-center gap-1.5">
-                            <span class="inline-block border rounded-full px-2.5 py-0.5 text-xs font-semibold bg-purple-100 text-purple-700 border-purple-200">
-                                Rawat Inap
+                            <span class="inline-block border rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $sumberClass }}">
+                                {{ $sumberLabel }}
                             </span>
                             <span class="inline-block border rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $indukClass }}">
                                 {{ $indukLabel }}
@@ -209,11 +242,11 @@ new class extends Component {
                     </div>
 
                     <div>
-                        <span class="text-muted">No Inap:</span>
-                        <span class="ml-1 font-mono text-body dark:text-gray-300">{{ $header['rihdr_no'] }}</span>
-                        @if (!empty($header['room_name']))
-                            <span class="ml-2 text-muted">Kamar:</span>
-                            <span class="ml-1 text-body dark:text-gray-300">{{ $header['room_name'] }}</span>
+                        <span class="text-muted">{{ $labelNomorInduk }}:</span>
+                        <span class="ml-1 font-mono text-body dark:text-gray-300">{{ $header['induk_no'] }}</span>
+                        @if (!empty($header['unit_name']))
+                            <span class="ml-2 text-muted">{{ $labelUnit }}:</span>
+                            <span class="ml-1 text-body dark:text-gray-300">{{ $header['unit_name'] }}</span>
                         @endif
                     </div>
                 </div>

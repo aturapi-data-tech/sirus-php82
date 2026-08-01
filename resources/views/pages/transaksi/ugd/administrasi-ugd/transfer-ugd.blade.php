@@ -42,7 +42,7 @@ new class extends Component {
      =============================== */
     private function loadData(int $rjNo): void
     {
-        $rows = DB::table('rstxn_ugdtempadmins')->select('rj_no', 'tempadm_flag', 'tempadm_ref', 'rj_admin', 'poli_price', 'acte_price', 'actp_price', 'actd_price', 'obat', 'lab', 'rad', 'other', 'rs_admin')->where('rj_no', $rjNo)->get();
+        $rows = DB::table('rstxn_ugdtempadmins')->select('rj_no', 'tempadm_flag', 'tempadm_ref', 'rj_admin', 'poli_price', 'acte_price', 'actp_price', 'actd_price', 'obat', 'lab', 'rad', 'other', 'ok', 'rs_admin')->where('rj_no', $rjNo)->get();
 
         $this->rjTransfer = $rows
             ->map(
@@ -57,13 +57,14 @@ new class extends Component {
                     'lab' => (int) ($r->lab ?? 0),
                     'rad' => (int) ($r->rad ?? 0),
                     'other' => (int) ($r->other ?? 0),
+                    'ok' => (int) ($r->ok ?? 0),
                     'rsAdmin' => (int) ($r->rs_admin ?? 0),
-                    'total' => (int) ($r->rj_admin ?? 0) + (int) ($r->poli_price ?? 0) + (int) ($r->acte_price ?? 0) + (int) ($r->actp_price ?? 0) + (int) ($r->actd_price ?? 0) + (int) ($r->obat ?? 0) + (int) ($r->lab ?? 0) + (int) ($r->rad ?? 0) + (int) ($r->other ?? 0) + (int) ($r->rs_admin ?? 0),
+                    'total' => (int) ($r->rj_admin ?? 0) + (int) ($r->poli_price ?? 0) + (int) ($r->acte_price ?? 0) + (int) ($r->actp_price ?? 0) + (int) ($r->actd_price ?? 0) + (int) ($r->obat ?? 0) + (int) ($r->lab ?? 0) + (int) ($r->rad ?? 0) + (int) ($r->other ?? 0) + (int) ($r->ok ?? 0) + (int) ($r->rs_admin ?? 0),
                 ],
             )
             ->toArray();
 
-        $this->sumTransfer = (int) DB::table('rstxn_ugdtempadmins')->where('rj_no', $rjNo)->selectRaw('nvl(sum(rj_admin + poli_price + acte_price + actp_price + actd_price + obat + lab + rad + other + rs_admin), 0) as total')->value('total');
+        $this->sumTransfer = (int) DB::table('rstxn_ugdtempadmins')->where('rj_no', $rjNo)->selectRaw('nvl(sum(rj_admin + poli_price + acte_price + actp_price + actd_price + obat + lab + rad + other + rs_admin + nvl(ok,0)), 0) as total')->value('total');
     }
 
     /* ===============================
@@ -117,6 +118,7 @@ new class extends Component {
                         <th class="px-4 py-3 text-right">Obat</th>
                         <th class="px-4 py-3 text-right">Laborat</th>
                         <th class="px-4 py-3 text-right">Radiologi</th>
+                        <th class="px-4 py-3 text-right">Operasi</th>
                         <th class="px-4 py-3 text-right">Lain-lain</th>
                         <th class="px-4 py-3 text-right">Total</th>
                     </tr>
@@ -143,13 +145,15 @@ new class extends Component {
                             <td class="px-4 py-1.5 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
                                 {{ number_format($item['rad']) }}</td>
                             <td class="px-4 py-1.5 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
+                                {{ number_format($item['ok']) }}</td>
+                            <td class="px-4 py-1.5 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp
                                 {{ number_format($item['other']) }}</td>
                             <td class="px-4 py-1.5 text-right font-bold text-ink dark:text-white whitespace-nowrap">
                                 Rp {{ number_format($item['total']) }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="11" class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
+                            <td colspan="12" class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
                                 <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -163,7 +167,7 @@ new class extends Component {
                 @if (!empty($rjTransfer))
                     <tfoot class="border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
                         <tr>
-                            <td colspan="10" class="px-4 py-3 text-sm font-semibold text-muted dark:text-gray-400">
+                            <td colspan="11" class="px-4 py-3 text-sm font-semibold text-muted dark:text-gray-400">
                                 Total Transfer</td>
                             <td
                                 class="px-4 py-3 text-sm font-bold text-right text-brand-green dark:text-brand-lime whitespace-nowrap">

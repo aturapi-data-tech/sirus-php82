@@ -151,9 +151,10 @@ new class extends Component {
         //   calculateUGDCosts karena fungsi itu dipakai transfer UGD→RI (biaya UGD sendiri saja).
         $trfRj = (int) DB::table('rstxn_ugdtempadmins')
             ->where('rj_no', $this->rjNo)
-            ->selectRaw('nvl(sum(rj_admin + poli_price + acte_price + actp_price + actd_price + obat + lab + rad + other + rs_admin), 0) as total')
+            ->selectRaw('nvl(sum(rj_admin + poli_price + acte_price + actp_price + actd_price + obat + lab + rad + other + rs_admin + nvl(ok,0)), 0) as total')
             ->value('total');
 
+        // Biaya Kamar Operasi ikut di calculateUGDCosts (komponen 'kamarOperasi').
         $this->rjTotal = array_sum($costs) + $trfRj;
 
         $this->recalcSisa();
@@ -247,6 +248,15 @@ new class extends Component {
         // 6. Cek lab pending
         if ($this->checkLabPendingUGD($this->rjNo)) {
             $this->dispatch('toast', type: 'error', message: 'Hasil Laborat belum selesai, pembayaran tidak bisa diproses.');
+            return;
+        }
+
+        // 6b. Cek transaksi Kamar Operasi yang belum ditransfer. Tanpa guard ini
+        // kunjungan bisa ditutup lebih dulu, dan biaya operasinya tidak akan pernah
+        // bisa masuk tagihan karena transfer mensyaratkan rj_status = 'A'.
+        if ($this->checkOkPendingUGD($this->rjNo)) {
+            $nomorOk = implode(', ', $this->daftarOkPendingUGD($this->rjNo));
+            $this->dispatch('toast', type: 'error', message: "Transaksi Kamar Operasi No. {$nomorOk} belum ditransfer ke biaya UGD, pembayaran tidak bisa diproses.");
             return;
         }
 
@@ -467,6 +477,7 @@ new class extends Component {
                     || DB::table('rstxn_ugdlabs')->where('rj_no', $this->rjNo)->exists()
                     || DB::table('rstxn_ugdrads')->where('rj_no', $this->rjNo)->exists()
                     || DB::table('rstxn_ugdothers')->where('rj_no', $this->rjNo)->exists()
+                    || DB::table('rstxn_ugdoks')->where('rj_no', $this->rjNo)->exists()
                     || DB::table('rstxn_ugdcashins')->where('rj_no', $this->rjNo)->exists();
 
                 if ($adaTransaksi) {
@@ -1015,7 +1026,7 @@ new class extends Component {
                     @forelse ($cashins as $cash)
                         <tr wire:key="cashin-ugd-{{ $cash->rjc_dtl ?? $loop->index }}" class="transition hover:bg-surface-soft dark:hover:bg-gray-800/40">
                             <td class="px-4 py-1.5 text-muted dark:text-gray-400 whitespace-nowrap">
-                                {{ Carbon::parse($cash->rjc_date)->format('d/m/Y') }}
+                                {{ Carbon::parse($cash->rjc_date)->format('d/m/Y H:i:s') }}
                             </td>
                             <td class="px-4 py-1.5 font-mono text-sm text-muted dark:text-gray-400 whitespace-nowrap">
                                 {{ $cash->acc_id }}

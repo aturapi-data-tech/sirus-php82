@@ -37,17 +37,25 @@ final class KamarOperasiTarif
         'rentequipment_fee' => 'SEWA ALAT',
     ];
 
-    /** Label ringkas untuk tampilan form (bukan untuk disimpan ke rstxn_rioks). */
+    /**
+     * Label ringkas untuk tampilan form & teks audit log — BUKAN untuk disimpan
+     * ke `rstxn_*oks.ok_desc` (itu tugas POS, dan POS tidak boleh diubah).
+     * Karena itu label di sini bebas dirapikan tanpa memengaruhi data.
+     *
+     * Ditulis LENGKAP tanpa singkatan — sebelumnya ada yang menempel
+     * ("JAsisten Operator", "JPerawat / RR") sehingga terbaca seperti salah
+     * ketik, dan "JD" tidak semua orang tahu artinya Jasa Dokter.
+     */
     public const LABEL = [
-        'oprdoc_fee'        => 'JD Operator',
-        'anesdoc_fee'       => 'JD Anestesi',
-        'changeanesdoc_fee' => 'JPengganti Anestesi',
-        'instrument_fee'    => 'Instrument',
-        'asistopr_fee'      => 'JAsisten Operator',
-        'asistanes_fee'     => 'JAsisten Anestesi',
-        'omlop_fee'         => 'OM LOP',
+        'oprdoc_fee'        => 'Jasa Dokter Operator',
+        'anesdoc_fee'       => 'Jasa Dokter Anestesi',
+        'changeanesdoc_fee' => 'Jasa Pengganti Anestesi',
+        'instrument_fee'    => 'Biaya Instrument',
+        'asistopr_fee'      => 'Jasa Asisten Operator',
+        'asistanes_fee'     => 'Jasa Asisten Anestesi',
+        'omlop_fee'         => 'Biaya OM LOP',
         'ok_fee'            => 'Sewa OK',
-        'rr_fee'            => 'JPerawat / RR',
+        'rr_fee'            => 'Jasa Perawat / RR',
         'equipment_fee'     => 'Bahan & Alat',
         'rentequipment_fee' => 'Sewa Alat',
     ];
@@ -79,7 +87,7 @@ final class KamarOperasiTarif
      * Pemetaan CREW => pos jasa miliknya.
      *
      * Tiap baris tarif operasi sebenarnya jasa untuk orang tertentu, jadi nama dan
-     * angkanya ditampilkan berpasangan (Dr. Operator ↔ JD Operator, dst.) — bukan
+     * angkanya ditampilkan berpasangan (Operator ↔ Jasa Dokter Operator, dst.) — bukan
      * dua daftar terpisah yang harus dicocokkan sendiri oleh petugas.
      *
      * `oncall` null berarti posisi itu memang tidak punya kolom jasa on call di
@@ -88,8 +96,8 @@ final class KamarOperasiTarif
      * @var array<string,array{label:string,fee:string,oncall:?string,jenis:string}>
      */
     public const CREW = [
-        'dr_id' => ['label' => 'Dr. Operator', 'fee' => 'oprdoc_fee', 'oncall' => null, 'jenis' => 'dokter'],
-        'dr_id_ok' => ['label' => 'Dr. Anestesi', 'fee' => 'anesdoc_fee', 'oncall' => null, 'jenis' => 'dokter'],
+        'dr_id' => ['label' => 'Operator', 'fee' => 'oprdoc_fee', 'oncall' => null, 'jenis' => 'dokter'],
+        'dr_id_ok' => ['label' => 'Anestesi', 'fee' => 'anesdoc_fee', 'oncall' => null, 'jenis' => 'dokter'],
         'emp_id_changeanesdoc' => ['label' => 'Pengganti Anestesi', 'fee' => 'changeanesdoc_fee', 'oncall' => null, 'jenis' => 'karyawan'],
         'emp_id_asistopr' => ['label' => 'Asisten Operator', 'fee' => 'asistopr_fee', 'oncall' => 'oncallasistopr_fee', 'jenis' => 'karyawan'],
         'emp_id_asistanes' => ['label' => 'Asisten Anestesi', 'fee' => 'asistanes_fee', 'oncall' => 'oncallasistanes_fee', 'jenis' => 'karyawan'],

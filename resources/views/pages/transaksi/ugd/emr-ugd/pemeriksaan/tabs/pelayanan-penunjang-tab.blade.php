@@ -40,4 +40,17 @@
         </div>
     </div>
 
+    <div class="p-4 bg-canvas border border-hairline rounded-xl shadow-sm dark:bg-gray-900 dark:border-gray-700">
+        <h3 class="text-base font-semibold text-body dark:text-gray-300 mb-3">Kamar Operasi</h3>
+        <livewire:pages::transaksi.ugd.emr-ugd.pemeriksaan.penunjang.kamar-operasi.rm-kamar-operasi-ugd-actions
+            :rjNo="$dataDaftarUGD['rjNo'] ?? ''" :disabled="$isFormLocked"
+            wire:key="kamar-operasi-ugd-actions-{{ $dataDaftarUGD['rjNo'] ?? 'new' }}" />
+
+        <div class="mt-3">
+            <livewire:pages::transaksi.ugd.emr-ugd.pemeriksaan.penunjang.kamar-operasi.rm-daftar-kamar-operasi-ugd
+                :rjNo="$dataDaftarUGD['rjNo'] ?? ''"
+                wire:key="daftar-kamar-operasi-ugd-{{ $dataDaftarUGD['rjNo'] ?? 'new' }}" />
+        </div>
+    </div>
+
 </div>

@@ -345,6 +345,40 @@ trait EmrUGDTrait
     }
 
     /**
+     * Ada transaksi Kamar Operasi yang belum ditransfer (`ok_status = 'A'`)
+     * untuk kunjungan ini?
+     *
+     * Konsepnya sama dengan checkLabPendingUGD: kunjungan yang pasiennya sedang
+     * di kamar operasi belum boleh ditutup di kasir sebelum petugas OK menekan
+     * Trf Biaya-UGD — kalau lolos, biayanya tidak akan pernah bisa masuk tagihan
+     * karena transfer mensyaratkan `rj_status='A'`.
+     *
+     * `ok_status` NULL diperlakukan 'A' mengikuti NVL di form legacy rit006x.fmb.
+     */
+    protected function checkOkPendingUGD(int $rjNo): bool
+    {
+        return $this->queryOkPendingUGD($rjNo)->exists();
+    }
+
+    /** Nomor transaksi OK yang masih menggantung — untuk pesan ke petugas. */
+    protected function daftarOkPendingUGD(int $rjNo): array
+    {
+        return $this->queryOkPendingUGD($rjNo)
+            ->orderBy('ok_reg')
+            ->pluck('ok_reg')
+            ->map(fn($nomor) => (string) $nomor)
+            ->all();
+    }
+
+    private function queryOkPendingUGD(int $rjNo)
+    {
+        return DB::table('rstxn_oks')
+            ->where('status_rjri', 'UGD')
+            ->where('ref_no', $rjNo)
+            ->whereRaw("NVL(ok_status,'A') = 'A'");
+    }
+
+    /**
      * Hitung semua komponen biaya UGD — reusable di kasir & transfer.
      */
     protected function calculateUGDCosts(int $rjNo): array
@@ -366,6 +400,10 @@ trait EmrUGDTrait
             'lab'       => (int) DB::table('rstxn_ugdlabs')->where('rj_no', $rjNo)->sum('lab_price'),
             'rad'       => (int) DB::table('rstxn_ugdrads')->where('rj_no', $rjNo)->sum('rad_price'),
             'other'     => (int) DB::table('rstxn_ugdothers')->where('rj_no', $rjNo)->sum('other_price'),
+            // Hasil "Trf Biaya" dari modul Penunjang -> Kamar Operasi. Tabel biaya
+            // sendiri (bukan menumpang 'other') supaya di jurnal pendapatan operasi
+            // tidak menyamar sebagai pendapatan lain-lain.
+            'kamarOperasi' => (int) DB::table('rstxn_ugdoks')->where('rj_no', $rjNo)->sum('ok_price'),
         ];
     }
 }

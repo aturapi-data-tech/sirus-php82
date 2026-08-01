@@ -66,7 +66,8 @@ trait PendapatanRsTrait
 
         $perRjExpr = "NVL(h.rs_admin,0) + NVL(h.rj_admin,0) + NVL(h.poli_price,0)
                       + NVL(acte.v,0) + NVL(actp.v,0) + NVL(actd.v,0)
-                      + NVL(obt.v,0)  + NVL(lab.v,0)  + NVL(rad.v,0) + NVL(oth.v,0)";
+                      + NVL(obt.v,0)  + NVL(lab.v,0)  + NVL(rad.v,0) + NVL(oth.v,0)
+                      + NVL(ok.v,0)";
 
         return DB::table('rstxn_rjhdrs as h')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
@@ -77,6 +78,7 @@ trait PendapatanRsTrait
             ->leftJoinSub(DB::table('rstxn_rjlabs')->select('rj_no', DB::raw('NVL(SUM(lab_price),0) as v'))->groupBy('rj_no'),         'lab',  'lab.rj_no', '=', 'h.rj_no')
             ->leftJoinSub(DB::table('rstxn_rjrads')->select('rj_no', DB::raw('NVL(SUM(rad_price),0) as v'))->groupBy('rj_no'),         'rad',  'rad.rj_no', '=', 'h.rj_no')
             ->leftJoinSub(DB::table('rstxn_rjothers')->select('rj_no', DB::raw('NVL(SUM(other_price),0) as v'))->groupBy('rj_no'),     'oth',  'oth.rj_no', '=', 'h.rj_no')
+            ->leftJoinSub(DB::table('rstxn_rjoks')->select('rj_no', DB::raw('NVL(SUM(ok_price),0) as v'))->groupBy('rj_no'),         'ok',   'ok.rj_no', '=', 'h.rj_no')
             ->where('h.rj_status', 'L')
             ->whereBetween('h.rj_date', [$start, $end])
             ->selectRaw("{$periodeExpr} as periode,
@@ -94,7 +96,8 @@ trait PendapatanRsTrait
 
         $perRjExpr = "NVL(h.rs_admin,0) + NVL(h.rj_admin,0) + NVL(h.poli_price,0)
                       + NVL(acte.v,0) + NVL(actp.v,0) + NVL(actd.v,0)
-                      + NVL(obt.v,0)  + NVL(lab.v,0)  + NVL(rad.v,0) + NVL(oth.v,0)";
+                      + NVL(obt.v,0)  + NVL(lab.v,0)  + NVL(rad.v,0) + NVL(oth.v,0)
+                      + NVL(ok.v,0)";
 
         return DB::table('rstxn_ugdhdrs as h')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
@@ -105,6 +108,7 @@ trait PendapatanRsTrait
             ->leftJoinSub(DB::table('rstxn_ugdlabs')->select('rj_no', DB::raw('NVL(SUM(lab_price),0) as v'))->groupBy('rj_no'),        'lab',  'lab.rj_no', '=', 'h.rj_no')
             ->leftJoinSub(DB::table('rstxn_ugdrads')->select('rj_no', DB::raw('NVL(SUM(rad_price),0) as v'))->groupBy('rj_no'),        'rad',  'rad.rj_no', '=', 'h.rj_no')
             ->leftJoinSub(DB::table('rstxn_ugdothers')->select('rj_no', DB::raw('NVL(SUM(other_price),0) as v'))->groupBy('rj_no'),    'oth',  'oth.rj_no', '=', 'h.rj_no')
+            ->leftJoinSub(DB::table('rstxn_ugdoks')->select('rj_no', DB::raw('NVL(SUM(ok_price),0) as v'))->groupBy('rj_no'),         'ok',   'ok.rj_no', '=', 'h.rj_no')
             ->where('h.rj_status', 'L')
             ->whereBetween('h.rj_date', [$start, $end])
             ->selectRaw("{$periodeExpr} as periode,
@@ -138,7 +142,7 @@ trait PendapatanRsTrait
             ->select('rihdr_no', DB::raw(
                 "NVL(SUM(NVL(rj_admin,0)+NVL(poli_price,0)+NVL(acte_price,0)+NVL(actp_price,0)
                        +NVL(actd_price,0)+NVL(obat,0)+NVL(rad,0)+NVL(lab,0)
-                       +NVL(other,0)+NVL(rs_admin,0)),0) as v"
+                       +NVL(other,0)+NVL(rs_admin,0)+NVL(ok,0)),0) as v"
             ))
             ->groupBy('rihdr_no');
 
@@ -212,7 +216,8 @@ trait PendapatanRsTrait
     {
         $perRjExpr = "NVL(h.rs_admin,0) + NVL(h.rj_admin,0) + NVL(h.poli_price,0)
                       + NVL(acte.v,0) + NVL(actp.v,0) + NVL(actd.v,0)
-                      + NVL(obt.v,0)  + NVL(lab.v,0)  + NVL(rad.v,0) + NVL(oth.v,0)";
+                      + NVL(obt.v,0)  + NVL(lab.v,0)  + NVL(rad.v,0) + NVL(oth.v,0)
+                      + NVL(ok.v,0)";
 
         $rows = DB::table('rstxn_rjhdrs as h')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
@@ -225,6 +230,7 @@ trait PendapatanRsTrait
             ->leftJoinSub(DB::table('rstxn_rjlabs')->select('rj_no', DB::raw('NVL(SUM(lab_price),0) as v'))->groupBy('rj_no'),         'lab',  'lab.rj_no', '=', 'h.rj_no')
             ->leftJoinSub(DB::table('rstxn_rjrads')->select('rj_no', DB::raw('NVL(SUM(rad_price),0) as v'))->groupBy('rj_no'),         'rad',  'rad.rj_no', '=', 'h.rj_no')
             ->leftJoinSub(DB::table('rstxn_rjothers')->select('rj_no', DB::raw('NVL(SUM(other_price),0) as v'))->groupBy('rj_no'),     'oth',  'oth.rj_no', '=', 'h.rj_no')
+            ->leftJoinSub(DB::table('rstxn_rjoks')->select('rj_no', DB::raw('NVL(SUM(ok_price),0) as v'))->groupBy('rj_no'),         'ok',   'ok.rj_no', '=', 'h.rj_no')
             ->where('h.rj_status', 'L')
             ->whereBetween('h.rj_date', [$start, $end])
             ->selectRaw("h.dr_id as dr_id,
@@ -255,7 +261,8 @@ trait PendapatanRsTrait
     {
         $perRjExpr = "NVL(h.rs_admin,0) + NVL(h.rj_admin,0) + NVL(h.poli_price,0)
                       + NVL(acte.v,0) + NVL(actp.v,0) + NVL(actd.v,0)
-                      + NVL(obt.v,0)  + NVL(lab.v,0)  + NVL(rad.v,0) + NVL(oth.v,0)";
+                      + NVL(obt.v,0)  + NVL(lab.v,0)  + NVL(rad.v,0) + NVL(oth.v,0)
+                      + NVL(ok.v,0)";
 
         $rows = DB::table('rstxn_ugdhdrs as h')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
@@ -267,6 +274,7 @@ trait PendapatanRsTrait
             ->leftJoinSub(DB::table('rstxn_ugdlabs')->select('rj_no', DB::raw('NVL(SUM(lab_price),0) as v'))->groupBy('rj_no'),        'lab',  'lab.rj_no', '=', 'h.rj_no')
             ->leftJoinSub(DB::table('rstxn_ugdrads')->select('rj_no', DB::raw('NVL(SUM(rad_price),0) as v'))->groupBy('rj_no'),        'rad',  'rad.rj_no', '=', 'h.rj_no')
             ->leftJoinSub(DB::table('rstxn_ugdothers')->select('rj_no', DB::raw('NVL(SUM(other_price),0) as v'))->groupBy('rj_no'),    'oth',  'oth.rj_no', '=', 'h.rj_no')
+            ->leftJoinSub(DB::table('rstxn_ugdoks')->select('rj_no', DB::raw('NVL(SUM(ok_price),0) as v'))->groupBy('rj_no'),         'ok',   'ok.rj_no', '=', 'h.rj_no')
             ->where('h.rj_status', 'L')
             ->whereBetween('h.rj_date', [$start, $end])
             ->selectRaw("h.dr_id as dr_id,
@@ -312,7 +320,7 @@ trait PendapatanRsTrait
             ->select('rihdr_no', DB::raw(
                 "NVL(SUM(NVL(rj_admin,0)+NVL(poli_price,0)+NVL(acte_price,0)+NVL(actp_price,0)
                        +NVL(actd_price,0)+NVL(obat,0)+NVL(rad,0)+NVL(lab,0)
-                       +NVL(other,0)+NVL(rs_admin,0)),0) as v"
+                       +NVL(other,0)+NVL(rs_admin,0)+NVL(ok,0)),0) as v"
             ))
             ->groupBy('rihdr_no');
 

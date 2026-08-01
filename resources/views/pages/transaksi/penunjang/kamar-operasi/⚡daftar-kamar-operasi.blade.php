@@ -20,6 +20,7 @@ new class extends Component {
     public string $searchKeyword = '';
     public string $filterTanggal = '';
     public string $filterStatus = '';
+    public string $filterLayanan = '';
     public int $itemsPerPage = 10;
 
     public function mount(): void
@@ -41,6 +42,12 @@ new class extends Component {
         $this->incrementVersion('daftar-kamar-operasi-toolbar');
     }
 
+    public function updatedFilterLayanan(): void
+    {
+        $this->resetPage();
+        $this->incrementVersion('daftar-kamar-operasi-toolbar');
+    }
+
     public function updatedItemsPerPage(): void
     {
         $this->resetPage();
@@ -52,7 +59,7 @@ new class extends Component {
      * ------------------------- */
     public function resetFilters(): void
     {
-        $this->reset(['searchKeyword', 'filterStatus']);
+        $this->reset(['searchKeyword', 'filterStatus', 'filterLayanan']);
         $this->filterTanggal = Carbon::now()->format('d/m/Y');
         $this->incrementVersion('daftar-kamar-operasi-toolbar');
         $this->resetPage();
@@ -64,6 +71,27 @@ new class extends Component {
     public function openDetail($okReg): void
     {
         $this->dispatch('kamar-operasi-actions.open', okReg: (string) $okReg);
+    }
+
+    /* -------------------------
+     | Dokumen Pelayanan Bedah (RI saja)
+     |
+     | Form operasi (Laporan Operasi, Pra/Pasca Anestesi, Site Marking, dst.)
+     | tinggal di modul dokumen EMR RI. Dari sini modalnya dibuka langsung ke
+     | tab 'pelayananBedah' supaya petugas OK tak perlu menyusuri tab dulu.
+     |
+     | HANYA untuk transaksi ber-sumber RI: modul dokumen itu memang milik
+     | kunjungan rawat inap (butuh rihdr_no). Operasi RJ/UGD belum punya
+     | padanannya, jadi menunya tidak ditawarkan di sana.
+     * ------------------------- */
+    public function openDokumenBedah(string $sumber, $indukNo): void
+    {
+        if ($sumber !== 'RI' || empty($indukNo)) {
+            $this->dispatch('toast', type: 'error', message: 'Dokumen Pelayanan Bedah baru tersedia untuk operasi rawat inap.');
+            return;
+        }
+
+        $this->dispatch('emr-ri.modul-dokumen.open', riHdrNo: (string) $indukNo, tab: 'pelayananBedah');
     }
 
     /* -------------------------
@@ -92,33 +120,59 @@ new class extends Component {
     /* -------------------------
      | Base Query — RSTXN_OKS
      |
+     | Kunjungan induk bisa berasal dari tiga layanan (status_rjri + ref_no),
+     | jadi identitasnya diresolve lewat inline view: rstxn_oks kecil (±5rb
+     | baris), sehingga tiga scalar subquery ber-PK jauh lebih murah daripada
+     | UNION tiga tabel kunjungan yang masing-masing ratusan ribu baris.
+     |
      | Total tarif = 11 pos yang sama persis dengan pos yang ditransfer ke
-     | rstxn_rioks (lihat KamarOperasiTrait::POS_TARIF). Dijumlah di SQL supaya
+     | rstxn_{rj,ugd,ri}oks (lihat KamarOperasiTarif::POS). Dijumlah di SQL supaya
      | tidak perlu tarik semua kolom fee ke PHP hanya untuk menampilkan total.
      * ------------------------- */
+    private const OK_DENGAN_KUNJUNGAN = <<<'SQL'
+        (SELECT k.*,
+                NVL(k.status_rjri, 'RI') AS sumber,
+                NVL(k.ref_no, k.rihdr_no) AS induk_no,
+                CASE NVL(k.status_rjri, 'RI')
+                    WHEN 'RJ'  THEN (SELECT h.reg_no FROM rstxn_rjhdrs  h WHERE h.rj_no    = k.ref_no)
+                    WHEN 'UGD' THEN (SELECT h.reg_no FROM rstxn_ugdhdrs h WHERE h.rj_no    = k.ref_no)
+                    ELSE            (SELECT h.reg_no FROM rstxn_rihdrs  h WHERE h.rihdr_no = NVL(k.ref_no, k.rihdr_no))
+                END AS reg_no,
+                CASE NVL(k.status_rjri, 'RI')
+                    WHEN 'RJ'  THEN (SELECT h.rj_status FROM rstxn_rjhdrs  h WHERE h.rj_no    = k.ref_no)
+                    WHEN 'UGD' THEN (SELECT h.rj_status FROM rstxn_ugdhdrs h WHERE h.rj_no    = k.ref_no)
+                    ELSE            (SELECT h.ri_status FROM rstxn_rihdrs  h WHERE h.rihdr_no = NVL(k.ref_no, k.rihdr_no))
+                END AS status_induk,
+                CASE NVL(k.status_rjri, 'RI')
+                    WHEN 'RJ'  THEN (SELECT po.poli_desc  FROM rstxn_rjhdrs  h JOIN rsmst_polis      po ON po.poli_id  = h.poli_id  WHERE h.rj_no    = k.ref_no)
+                    WHEN 'UGD' THEN (SELECT e.entry_desc  FROM rstxn_ugdhdrs h JOIN rsmst_entrytypes e  ON e.entry_id  = h.entry_id WHERE h.rj_no    = k.ref_no)
+                    ELSE            (SELECT r.room_name   FROM rstxn_rihdrs  h JOIN rsmst_rooms      r  ON r.room_id   = h.room_id  WHERE h.rihdr_no = NVL(k.ref_no, k.rihdr_no))
+                END AS unit_name
+           FROM rstxn_oks k) o
+        SQL;
+
     #[Computed]
     public function baseQuery()
     {
         [$start, $end] = $this->dateRange();
 
-        $query = DB::table('rstxn_oks as o')
-            ->join('rstxn_rihdrs as h', 'h.rihdr_no', '=', 'o.rihdr_no')
-            ->join('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
-            ->leftJoin('rsmst_rooms as r', 'r.room_id', '=', 'h.room_id')
+        $query = DB::table(DB::raw(self::OK_DENGAN_KUNJUNGAN))
+            ->leftJoin('rsmst_pasiens as p', 'p.reg_no', '=', 'o.reg_no')
             ->leftJoin('rsmst_doctors as dopr', 'dopr.dr_id', '=', 'o.dr_id')
             ->leftJoin('rsmst_doctors as danes', 'danes.dr_id', '=', 'o.dr_id_ok')
             ->select(
                 'o.ok_reg',
-                'o.rihdr_no',
+                'o.sumber',
+                'o.induk_no',
                 'o.ok_status',
                 DB::raw("to_char(o.ok_date,'dd/mm/yyyy hh24:mi:ss') as ok_date_display"),
-                'h.reg_no',
-                'h.ri_status',
+                'o.reg_no',
+                'o.status_induk',
+                'o.unit_name',
                 'p.reg_name',
                 'p.sex',
                 DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"),
                 'p.address',
-                'r.room_name',
                 'dopr.dr_name as operator_name',
                 'danes.dr_name as anestesi_name',
                 DB::raw('(NVL(o.oprdoc_fee,0) + NVL(o.anesdoc_fee,0) + NVL(o.changeanesdoc_fee,0)
@@ -139,13 +193,18 @@ new class extends Component {
             $query->where('o.ok_status', $this->filterStatus);
         }
 
+        if (in_array($this->filterLayanan, ['RJ', 'UGD', 'RI'], true)) {
+            $query->where('o.sumber', $this->filterLayanan);
+        }
+
         $search = trim($this->searchKeyword);
         if ($search !== '' && mb_strlen($search) >= 2) {
             $keyword = mb_strtoupper($search);
             $query->where(function ($subQuery) use ($search, $keyword) {
                 if (ctype_digit($search)) {
                     $subQuery->orWhere('o.ok_reg', 'like', "%{$search}%")
-                        ->orWhere('h.reg_no', 'like', "%{$search}%");
+                        ->orWhere('o.reg_no', 'like', "%{$search}%")
+                        ->orWhere('o.induk_no', 'like', "%{$search}%");
                 }
                 $subQuery->orWhere(DB::raw('UPPER(p.reg_name)'), 'like', "%{$keyword}%");
             });
@@ -209,6 +268,17 @@ new class extends Component {
                         </div>
                     </div>
 
+                    {{-- FILTER LAYANAN --}}
+                    <div class="w-full sm:w-auto">
+                        <x-input-label value="Layanan" />
+                        <x-select-input wire:model.live="filterLayanan" class="w-full mt-1 sm:w-36">
+                            <option value="">Semua</option>
+                            <option value="RJ">Rawat Jalan</option>
+                            <option value="UGD">UGD</option>
+                            <option value="RI">Rawat Inap</option>
+                        </x-select-input>
+                    </div>
+
                     {{-- FILTER STATUS --}}
                     <div class="w-full sm:w-auto">
                         <x-input-label value="Status" />
@@ -222,7 +292,10 @@ new class extends Component {
 
                     {{-- RIGHT ACTIONS --}}
                     <div class="flex items-center gap-2 ml-auto">
-                        <x-primary-button type="button" wire:click="$dispatch('kamar-operasi-tambah.open')">
+                        {{-- Layanan yang sedang difilter dibawa ke modal Tambah supaya
+                             petugas tidak perlu memilihnya dua kali (pola daftar-laborat). --}}
+                        <x-primary-button type="button"
+                            wire:click="$dispatch('kamar-operasi-tambah.open', { sumber: '{{ $filterLayanan ?: 'RI' }}' })">
                             <span class="flex items-center gap-1.5">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -283,23 +356,48 @@ new class extends Component {
                                         default => [$statusCode, 'gray'],
                                     };
 
-                                    // Status kunjungan induk (rawat inap).
-                                    $statusInduk = strtoupper($row->ri_status ?? '');
-                                    $statusIndukMuted = 'bg-surface-soft text-muted border-hairline';
-                                    [$indukLabel, $indukClass] = match ($statusInduk) {
-                                        ''  => ['-', $statusIndukMuted],
-                                        'I' => ['Dirawat', 'bg-brand/10 text-brand border-brand/30'],
-                                        'P' => ['Pulang', 'bg-amber-100 text-amber-700 border-amber-200'],
-                                        'L' => ['Pulang', $statusIndukMuted],
-                                        'F' => ['Batal', 'bg-error/10 text-error border-error/30'],
-                                        default => [$statusInduk, $statusIndukMuted],
+                                    // Layanan asal kunjungan.
+                                    $sumberRow = strtoupper($row->sumber ?? 'RI');
+                                    [$sumberLabel, $sumberClass, $labelNomorInduk] = match ($sumberRow) {
+                                        'RJ' => ['Rawat Jalan', 'bg-sky-100 text-sky-700 border-sky-200', 'No Reg'],
+                                        'UGD' => ['Gawat Darurat', 'bg-rose-100 text-rose-700 border-rose-200', 'No Reg'],
+                                        default => ['Rawat Inap', 'bg-purple-100 text-purple-700 border-purple-200', 'No Inap'],
                                     };
 
-                                    // Transfer biaya ke rawat inap hanya boleh saat pasien masih
-                                    // dirawat (ri_status = 'I'). Transaksi yang masih 'A' sementara
-                                    // pasiennya sudah pulang = biaya TIDAK akan pernah masuk tagihan;
-                                    // ditandai supaya petugas/supervisor melihatnya.
-                                    $transferTerkunci = $statusCode === 'A' && $statusInduk !== 'I';
+                                    // Status kunjungan induk — kolomnya beda per layanan
+                                    // (ri_status vs rj_status), sudah diseragamkan di query.
+                                    $statusInduk = strtoupper($row->status_induk ?? '');
+                                    $statusIndukMuted = 'bg-surface-soft text-muted border-hairline';
+
+                                    if ($sumberRow === 'RI') {
+                                        [$indukLabel, $indukClass] = match ($statusInduk) {
+                                            '' => ['-', $statusIndukMuted],
+                                            'I' => ['Dirawat', 'bg-brand/10 text-brand border-brand/30'],
+                                            'P' => ['Pulang', 'bg-amber-100 text-amber-700 border-amber-200'],
+                                            'L' => ['Pulang', $statusIndukMuted],
+                                            'F' => ['Batal', 'bg-error/10 text-error border-error/30'],
+                                            default => [$statusInduk, $statusIndukMuted],
+                                        };
+                                        $indukAktif = $statusInduk === 'I';
+                                        $sebabTerkunci = 'pasien sudah tidak dirawat';
+                                    } else {
+                                        [$indukLabel, $indukClass] = match ($statusInduk) {
+                                            '' => ['-', $statusIndukMuted],
+                                            'A' => ['Aktif', 'bg-brand/10 text-brand border-brand/30'],
+                                            'L' => ['Sudah Dibayar', 'bg-amber-100 text-amber-700 border-amber-200'],
+                                            'I' => ['Dirawat Inap', $statusIndukMuted],
+                                            'F' => ['Batal', 'bg-error/10 text-error border-error/30'],
+                                            default => [$statusInduk, $statusIndukMuted],
+                                        };
+                                        $indukAktif = $statusInduk === 'A';
+                                        $sebabTerkunci = 'kunjungan sudah ditutup di kasir';
+                                    }
+
+                                    // Transfer biaya hanya boleh saat kunjungan induk masih aktif.
+                                    // Transaksi yang masih 'A' sementara kunjungannya sudah ditutup =
+                                    // biaya TIDAK akan pernah masuk tagihan; ditandai supaya
+                                    // petugas/supervisor melihatnya.
+                                    $transferTerkunci = $statusCode === 'A' && !$indukAktif;
                                 @endphp
 
                                 <tr wire:key="daftar-kamar-operasi-{{ $row->ok_reg ?? $index }}"
@@ -326,8 +424,8 @@ new class extends Component {
                                             No Txn: {{ $row->ok_reg }}
                                         </div>
                                         <div class="flex flex-wrap items-center gap-2">
-                                            <span class="inline-flex px-2.5 py-0.5 text-xs font-semibold border rounded-full bg-purple-100 text-purple-700 border-purple-200">
-                                                Rawat Inap
+                                            <span class="inline-flex px-2.5 py-0.5 text-xs font-semibold border rounded-full {{ $sumberClass }}">
+                                                {{ $sumberLabel }}
                                             </span>
                                             <span class="inline-flex px-2.5 py-0.5 text-xs font-semibold border rounded-full {{ $indukClass }}">
                                                 {{ $indukLabel }}
@@ -337,14 +435,14 @@ new class extends Component {
                                             {{ $row->ok_date_display ?? '-' }}
                                         </div>
                                         <div class="text-sm text-muted dark:text-gray-400">
-                                            No Inap: {{ $row->rihdr_no }}
-                                            @if (!empty($row->room_name))
-                                                <span class="ml-1">&middot; {{ $row->room_name }}</span>
+                                            {{ $labelNomorInduk }}: {{ $row->induk_no }}
+                                            @if (!empty($row->unit_name))
+                                                <span class="ml-1">&middot; {{ $row->unit_name }}</span>
                                             @endif
                                         </div>
                                         @if ($transferTerkunci)
                                             <div class="text-xs font-semibold text-red-700 dark:text-red-300">
-                                                Belum ditransfer &mdash; pasien sudah tidak dirawat
+                                                Belum ditransfer &mdash; {{ $sebabTerkunci }}
                                             </div>
                                         @endif
                                     </td>
@@ -380,24 +478,78 @@ new class extends Component {
                                     </td>
 
                                     {{-- AKSI --}}
-                                    <td class="px-6 py-4 text-center align-top">
-                                        <x-primary-button type="button"
-                                            wire:click="openDetail('{{ $row->ok_reg }}')"
-                                            wire:loading.attr="disabled"
-                                            wire:target="openDetail('{{ $row->ok_reg }}')">
-                                            <span wire:loading.remove wire:target="openDetail('{{ $row->ok_reg }}')"
-                                                class="flex items-center gap-1.5">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                                </svg>
-                                                Detail Operasi
-                                            </span>
-                                            <span wire:loading wire:target="openDetail('{{ $row->ok_reg }}')"
-                                                class="flex items-center gap-1.5">
-                                                <x-loading /> Memuat...
-                                            </span>
-                                        </x-primary-button>
+                                    <td class="px-6 py-4 align-top">
+                                        {{-- Semua aksi baris masuk SATU menu titik-3 (pola Pelayanan RJ):
+                                             kolom Aksi tetap ramping walau menunya nanti bertambah. --}}
+                                        <div class="flex items-center justify-center">
+                                        {{-- Menunya SELALU tampil,
+                                             termasuk di baris RJ/UGD — menyembunyikannya bikin petugas
+                                             mengira fiturnya rusak. Untuk RJ/UGD isinya dinonaktifkan
+                                             berikut alasannya. --}}
+                                        @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr|Gizi')
+                                            <x-dropdown align="right" width="w-72">
+                                                <x-slot name="trigger">
+                                                    <x-secondary-button type="button" class="p-2">
+                                                        <span class="sr-only">Menu lainnya</span>
+                                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
+                                                        </svg>
+                                                    </x-secondary-button>
+                                                </x-slot>
+
+                                                <x-slot name="content">
+                                                    <div class="p-2 space-y-1">
+
+                                                        {{-- Aksi utama: modal kerja transaksi OK --}}
+                                                        <x-dropdown-link href="#"
+                                                            wire:click.prevent="openDetail('{{ $row->ok_reg }}')"
+                                                            class="px-3 py-2 text-sm rounded-lg bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40">
+                                                            <div class="flex items-start gap-2">
+                                                                <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                                </svg>
+                                                                <span>Transaksi Operasi<br>
+                                                                    <span class="font-semibold">Tindakan, tarif &amp; transfer biaya</span>
+                                                                </span>
+                                                            </div>
+                                                        </x-dropdown-link>
+
+                                                        @if ($sumberRow === 'RI')
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openDokumenBedah('{{ $sumberRow }}', '{{ $row->induk_no }}')"
+                                                                class="px-3 py-2 text-sm rounded-lg bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                    </svg>
+                                                                    <span>Dokumen Pelayanan Bedah<br>
+                                                                        <span class="font-semibold">{{ $row->reg_name }}</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+                                                        @else
+                                                            <div class="px-3 py-2 text-sm rounded-lg cursor-not-allowed bg-surface-soft dark:bg-gray-800/40">
+                                                                <div class="flex items-start gap-2 text-muted">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                    </svg>
+                                                                    <span>Dokumen Pelayanan Bedah
+                                                                        <span class="block mt-1 text-xs">
+                                                                            Form operasi tersimpan di kunjungan rawat inap.
+                                                                            Operasi {{ $sumberLabel }} belum punya berkasnya.
+                                                                        </span>
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </x-slot>
+                                            </x-dropdown>
+                                        @endhasanyrole
+                                        </div>
                                     </td>
 
                                 </tr>
@@ -435,4 +587,9 @@ new class extends Component {
 
     {{-- CHILD: Tambah transaksi operasi baru --}}
     <livewire:pages::transaksi.penunjang.kamar-operasi.daftar-kamar-operasi-tambah-actions wire:key="kamar-operasi-tambah-modal" />
+
+    {{-- CHILD: modul dokumen EMR RI — dipakai menu titik-3 untuk membuka
+         form Pelayanan Bedah tanpa pindah halaman. Komponen yang SAMA dengan
+         yang dipakai Daftar RI, jadi form & aturan penguncian ikut apa adanya. --}}
+    <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.modul-dokumen-ri wire:key="modul-dokumen-ri-ok" />
 </div>

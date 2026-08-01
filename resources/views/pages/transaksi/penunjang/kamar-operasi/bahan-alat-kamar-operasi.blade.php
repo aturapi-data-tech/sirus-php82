@@ -19,7 +19,8 @@ new class extends Component {
 
     public string $okReg = '';
     public bool $isFormLocked = true;
-    public int $riHdrNo = 0;
+    public string $sumber = 'RI';
+    public int $refNo = 0;
 
     public array $rows = [];
 
@@ -44,7 +45,7 @@ new class extends Component {
         }
 
         $this->isFormLocked = $this->statusOk($this->okReg) !== 'A';
-        $this->riHdrNo = $this->riHdrNoOk($this->okReg);
+        ['sumber' => $this->sumber, 'refNo' => $this->refNo] = $this->sumberRefOk($this->okReg);
 
         $this->rows = DB::table('rstxn_okobats as t')
             ->leftJoin('immst_products as p', 'p.product_id', '=', 't.product_id')
@@ -110,14 +111,15 @@ new class extends Component {
             return;
         }
 
-        $riHdrNo = $this->riHdrNo;
+        $sumber = $this->sumber;
+        $refNo = $this->refNo;
         $productId = $this->formProductId;
         $productName = $this->formProductName;
         $qty = (int) str_replace(['.', ',', ' '], '', trim($this->formQty));
         $harga = (int) $this->formHarga;
         $totalBaru = 0;
 
-        $berhasil = $this->jalankanDenganRetryOk(function () use ($riHdrNo, $productId, $productName, $qty, $harga, &$totalBaru) {
+        $berhasil = $this->jalankanDenganRetryOk(function () use ($sumber, $refNo, $productId, $productName, $qty, $harga, &$totalBaru) {
             $row = $this->kunciBarisOk($this->okReg);
 
             $nomor = (int) DB::scalar('SELECT NVL(MAX(okobat_id),0) + 1 FROM rstxn_okobats');
@@ -126,7 +128,7 @@ new class extends Component {
 
             [, $totalBaru] = KamarOperasiTarif::hitungUlang($this->okReg, $row);
 
-            $this->catatLogOk($riHdrNo, "Tambah bahan/alat OK No.{$this->okReg} — {$productId} {$productName} {$qty} x Rp " . number_format($harga) . '. Total Rp ' . number_format($totalBaru));
+            $this->catatLogOk($sumber, $refNo, "Tambah bahan/alat OK No.{$this->okReg} — {$productId} {$productName} {$qty} x Rp " . number_format($harga) . '. Total Rp ' . number_format($totalBaru));
         }, 'Gagal menambah bahan/alat');
 
         if (!$berhasil) {
@@ -146,10 +148,11 @@ new class extends Component {
             return;
         }
 
-        $riHdrNo = $this->riHdrNo;
+        $sumber = $this->sumber;
+        $refNo = $this->refNo;
         $totalBaru = 0;
 
-        $berhasil = $this->jalankanDenganRetryOk(function () use ($riHdrNo, $okobatId, &$totalBaru) {
+        $berhasil = $this->jalankanDenganRetryOk(function () use ($sumber, $refNo, $okobatId, &$totalBaru) {
             $row = $this->kunciBarisOk($this->okReg);
 
             $baris = DB::table('rstxn_okobats')->where('okobat_id', $okobatId)->where('ok_reg', $this->okReg)->first();
@@ -162,7 +165,7 @@ new class extends Component {
 
             [, $totalBaru] = KamarOperasiTarif::hitungUlang($this->okReg, $row);
 
-            $this->catatLogOk($riHdrNo, "Hapus bahan/alat OK No.{$this->okReg} — {$baris->product_id} " . (int) $baris->okobat_qty . ' x Rp ' . number_format((int) $baris->okobat_price) . '. Total Rp ' . number_format($totalBaru));
+            $this->catatLogOk($sumber, $refNo, "Hapus bahan/alat OK No.{$this->okReg} — {$baris->product_id} " . (int) $baris->okobat_qty . ' x Rp ' . number_format((int) $baris->okobat_price) . '. Total Rp ' . number_format($totalBaru));
         }, 'Gagal menghapus bahan/alat');
 
         if (!$berhasil) {

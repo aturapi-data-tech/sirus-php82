@@ -23,7 +23,8 @@ new class extends Component {
     public bool $isFormLocked = true;
     /** Dipakai LOV tarif per kelas kamar; disimpan sebagai properti supaya
         view tidak perlu memanggil method trait yang protected. */
-    public int $riHdrNo = 0;
+    public string $sumber = 'RI';
+    public int $refNo = 0;
 
     public array $rows = [];
 
@@ -47,7 +48,7 @@ new class extends Component {
         }
 
         $this->isFormLocked = $this->statusOk($this->okReg) !== 'A';
-        $this->riHdrNo = $this->riHdrNoOk($this->okReg);
+        ['sumber' => $this->sumber, 'refNo' => $this->refNo] = $this->sumberRefOk($this->okReg);
 
         $this->rows = DB::table('rstxn_okacts as t')
             ->leftJoin('rsmst_accdocs as a', 'a.accdoc_id', '=', 't.accdoc_id')
@@ -110,13 +111,14 @@ new class extends Component {
             return;
         }
 
-        $riHdrNo = $this->riHdrNo;
+        $sumber = $this->sumber;
+        $refNo = $this->refNo;
         $accdocId = $this->formAccdocId;
         $harga = (int) $this->formHarga;
         $desc = $this->formAccdocDesc;
         $totalBaru = 0;
 
-        $berhasil = $this->jalankanDenganRetryOk(function () use ($riHdrNo, $accdocId, $harga, $desc, &$totalBaru) {
+        $berhasil = $this->jalankanDenganRetryOk(function () use ($sumber, $refNo, $accdocId, $harga, $desc, &$totalBaru) {
             $row = $this->kunciBarisOk($this->okReg);
 
             $nomor = (int) DB::scalar('SELECT NVL(MAX(okact_id),0) + 1 FROM rstxn_okacts');
@@ -126,7 +128,7 @@ new class extends Component {
             // Tindakan bertambah → jasa operator dan pos persentasenya ikut naik.
             [, $totalBaru] = KamarOperasiTarif::hitungUlang($this->okReg, $row);
 
-            $this->catatLogOk($riHdrNo, "Tambah tindakan OK No.{$this->okReg} — {$accdocId} {$desc} Rp " . number_format($harga) . '. Total Rp ' . number_format($totalBaru));
+            $this->catatLogOk($sumber, $refNo, "Tambah tindakan OK No.{$this->okReg} — {$accdocId} {$desc} Rp " . number_format($harga) . '. Total Rp ' . number_format($totalBaru));
         }, 'Gagal menambah tindakan');
 
         if (!$berhasil) {
@@ -146,10 +148,11 @@ new class extends Component {
             return;
         }
 
-        $riHdrNo = $this->riHdrNo;
+        $sumber = $this->sumber;
+        $refNo = $this->refNo;
         $totalBaru = 0;
 
-        $berhasil = $this->jalankanDenganRetryOk(function () use ($riHdrNo, $okactId, &$totalBaru) {
+        $berhasil = $this->jalankanDenganRetryOk(function () use ($sumber, $refNo, $okactId, &$totalBaru) {
             $row = $this->kunciBarisOk($this->okReg);
 
             $baris = DB::table('rstxn_okacts')->where('okact_id', $okactId)->where('ok_reg', $this->okReg)->first();
@@ -162,7 +165,7 @@ new class extends Component {
 
             [, $totalBaru] = KamarOperasiTarif::hitungUlang($this->okReg, $row);
 
-            $this->catatLogOk($riHdrNo, "Hapus tindakan OK No.{$this->okReg} — {$baris->accdoc_id} Rp " . number_format((int) $baris->okact_price) . '. Total Rp ' . number_format($totalBaru));
+            $this->catatLogOk($sumber, $refNo, "Hapus tindakan OK No.{$this->okReg} — {$baris->accdoc_id} Rp " . number_format((int) $baris->okact_price) . '. Total Rp ' . number_format($totalBaru));
         }, 'Gagal menghapus tindakan');
 
         if (!$berhasil) {
@@ -178,7 +181,7 @@ new class extends Component {
 
 <div>
     <p class="mb-3 text-xs text-muted dark:text-gray-400">
-        Total tindakan membentuk pos <span class="font-semibold">JD Operator</span> —
+        Total tindakan membentuk pos <span class="font-semibold">Jasa Dokter Operator</span> —
         ditagihkan ke pasien, sekaligus tercatat sebagai pendapatan dokter operator.
     </p>
 
@@ -187,9 +190,19 @@ new class extends Component {
             {{-- Enter saat kolom cari masih kosong = selesai di tab ini. --}}
             <div class="lg:col-span-7" id="ok-lov-tindakan"
                 x-on:keydown.enter="if (!$event.target.value?.trim()) $dispatch('kamar-operasi-lanjut-tab', { ke: 'BahanAlat' })">
-                <livewire:lov.jasa-dokter.lov-jasa-dokter-ri target="kamar-operasi-tindakan" label="Jenis Tindakan"
-                    :riHdrNo="$riHdrNo" :initialAccdocId="$formAccdocId"
-                    wire:key="lov-tindakan-{{ $okReg }}-{{ $formAccdocId }}" />
+                {{-- Tarif rawat inap bertingkat per kelas kamar → LOV khusus RI.
+                     RJ & UGD tidak punya kelas kamar, jadi memakai LOV tarif dasar
+                     yang sama dengan Administrasi RJ/UGD. Payload keduanya identik
+                     (accdoc_id / accdoc_desc / accdoc_price). --}}
+                @if ($sumber === 'RI')
+                    <livewire:lov.jasa-dokter.lov-jasa-dokter-ri target="kamar-operasi-tindakan" label="Jenis Tindakan"
+                        :riHdrNo="$refNo" :initialAccdocId="$formAccdocId"
+                        wire:key="lov-tindakan-ri-{{ $okReg }}-{{ $formAccdocId }}" />
+                @else
+                    <livewire:lov.jasa-dokter.lov-jasa-dokter target="kamar-operasi-tindakan" label="Jenis Tindakan"
+                        :initialAccdocId="$formAccdocId"
+                        wire:key="lov-tindakan-{{ $sumber }}-{{ $okReg }}-{{ $formAccdocId }}" />
+                @endif
             </div>
             <div class="lg:col-span-3">
                 <x-input-label value="Tarif" />

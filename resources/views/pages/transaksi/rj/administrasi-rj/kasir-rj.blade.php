@@ -124,6 +124,8 @@ new class extends Component {
             return;
         }
 
+        // Biaya Kamar Operasi ikut di calculateRJCosts (komponen 'kamarOperasi') —
+        // satu daftar komponen untuk kasir DAN transfer RJ→UGD.
         $costs = $this->calculateRJCosts($this->rjNo);
         $this->rjTotal = array_sum($costs);
 
@@ -225,6 +227,15 @@ new class extends Component {
         // 5. Cek lab pending
         if ($this->checkLabPendingRJ($this->rjNo)) {
             $this->dispatch('toast', type: 'error', message: 'Hasil Laborat belum selesai, pembayaran tidak bisa diproses.');
+            return;
+        }
+
+        // 5b. Cek transaksi Kamar Operasi yang belum ditransfer. Tanpa guard ini
+        // kunjungan bisa ditutup lebih dulu, dan biaya operasinya tidak akan pernah
+        // bisa masuk tagihan karena transfer mensyaratkan rj_status = 'A'.
+        if ($this->checkOkPendingRJ($this->rjNo)) {
+            $nomorOk = implode(', ', $this->daftarOkPendingRJ($this->rjNo));
+            $this->dispatch('toast', type: 'error', message: "Transaksi Kamar Operasi No. {$nomorOk} belum ditransfer ke biaya rawat jalan, pembayaran tidak bisa diproses.");
             return;
         }
 
@@ -451,6 +462,7 @@ new class extends Component {
                     || DB::table('rstxn_rjlabs')->where('rj_no', $this->rjNo)->exists()
                     || DB::table('rstxn_rjrads')->where('rj_no', $this->rjNo)->exists()
                     || DB::table('rstxn_rjothers')->where('rj_no', $this->rjNo)->exists()
+                    || DB::table('rstxn_rjoks')->where('rj_no', $this->rjNo)->exists()
                     || DB::table('rstxn_rjcashins')->where('rj_no', $this->rjNo)->exists();
 
                 if ($adaTransaksi) {
@@ -990,7 +1002,7 @@ new class extends Component {
                     @forelse ($cashins as $cash)
                         <tr wire:key="cashin-rj-{{ $cash->rjc_dtl ?? $loop->index }}" class="transition hover:bg-surface-soft dark:hover:bg-gray-800/40">
                             <td class="px-4 py-1.5 text-muted dark:text-gray-400 whitespace-nowrap">
-                                {{ Carbon::parse($cash->rjc_date)->format('d/m/Y') }}
+                                {{ Carbon::parse($cash->rjc_date)->format('d/m/Y H:i:s') }}
                             </td>
                             <td class="px-4 py-1.5 font-mono text-sm text-muted dark:text-gray-400 whitespace-nowrap">
                                 {{ $cash->acc_id }}

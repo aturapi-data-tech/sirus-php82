@@ -171,7 +171,7 @@ new class extends Component {
             ->selectRaw('nvl(sum(
                 nvl(rj_admin,0) + nvl(poli_price,0) + nvl(acte_price,0) +
                 nvl(actp_price,0) + nvl(actd_price,0) + nvl(obat,0) +
-                nvl(rad,0) + nvl(lab,0) + nvl(other,0) + nvl(rs_admin,0)
+                nvl(rad,0) + nvl(lab,0) + nvl(other,0) + nvl(rs_admin,0) + nvl(ok,0)
             ),0) as total')
             ->value('total');
 

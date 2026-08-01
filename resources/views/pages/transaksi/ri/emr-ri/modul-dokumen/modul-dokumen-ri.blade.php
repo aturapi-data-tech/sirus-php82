@@ -13,8 +13,19 @@ new class extends Component {
     public ?string $riHdrNo = null;
     public array $dataDaftarRi = [];
 
+    /**
+     * Tab yang langsung terbuka. Default General Consent (perilaku lama).
+     * Pemanggil dari luar EMR boleh meminta tab tertentu — mis. modul Kamar
+     * Operasi membuka langsung ke 'pelayananBedah' supaya petugas OK tidak
+     * perlu menyusuri tab dulu.
+     */
+    public string $tabAwal = 'generalConsent';
+
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-modul-dokumen-ri'];
+
+    /** Tab yang boleh diminta pemanggil lewat event open(). */
+    private const TAB_BOLEH = ['generalConsent', 'informConsent', 'pelayananBedah', 'vkKebidanan', 'surveilansHais'];
 
     public function mount(): void
     {
@@ -22,7 +33,7 @@ new class extends Component {
     }
 
     #[On('emr-ri.modul-dokumen.open')]
-    public function open(string $riHdrNo): void
+    public function open(string $riHdrNo, string $tab = 'generalConsent'): void
     {
         if (empty($riHdrNo)) {
             return;
@@ -31,6 +42,11 @@ new class extends Component {
         $this->riHdrNo = $riHdrNo;
         $this->resetForm();
         $this->resetValidation();
+
+        // SESUDAH resetForm — fungsi itu mengembalikan tabAwal ke default,
+        // jadi menaruhnya di atas membuat permintaan tab pemanggil terhapus.
+        // Whitelist: nilai tak dikenal jangan membuat modal terbuka tanpa tab aktif.
+        $this->tabAwal = in_array($tab, self::TAB_BOLEH, true) ? $tab : 'generalConsent';
 
         $data = $this->findDataRI($riHdrNo);
         if (!$data) {
@@ -57,6 +73,7 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
+        $this->tabAwal = 'generalConsent';
         $this->dataDaftarRi = [];
     }
 };
@@ -92,7 +109,7 @@ new class extends Component {
             </div>
 
             {{-- BODY --}}
-            <div class="flex-1 px-4 py-4 bg-surface-soft dark:bg-gray-950/20" x-data="{ activeTab: 'generalConsent' }">
+            <div class="flex-1 px-4 py-4 bg-surface-soft dark:bg-gray-950/20" x-data="{ activeTab: @js($tabAwal) }">
 
                 {{-- TAB NAV --}}
                 <div class="border-b border-hairline dark:border-gray-700 mb-4">

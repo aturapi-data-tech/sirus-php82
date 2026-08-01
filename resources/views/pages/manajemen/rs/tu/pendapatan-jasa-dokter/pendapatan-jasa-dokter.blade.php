@@ -136,6 +136,26 @@ new class extends Component {
                     ->where('a.ok_reg', $txnNo)
                     ->first();
 
+            // Operasi pada kunjungan RJ/UGD — rstxn_oks.ref_no menunjuk rj_no,
+            // bukan rihdr_no (lihat database/sql/2026_07_31_alter_kamar_operasi_rj_ugd.sql).
+            case 'OPERATOR RJ':
+            case 'ANASTESI RJ':
+                return DB::table('rstxn_oks as a')
+                    ->join('rstxn_rjhdrs as b', 'a.ref_no', '=', 'b.rj_no')
+                    ->select('b.datadaftarpolirj_json', 'b.rj_no', 'b.vno_sep')
+                    ->where('a.ok_reg', $txnNo)
+                    ->where('a.status_rjri', 'RJ')
+                    ->first();
+
+            case 'OPERATOR UGD':
+            case 'ANASTESI UGD':
+                return DB::table('rstxn_oks as a')
+                    ->join('rstxn_ugdhdrs as b', 'a.ref_no', '=', 'b.rj_no')
+                    ->select('b.datadaftarugd_json', 'b.rj_no', 'b.vno_sep')
+                    ->where('a.ok_reg', $txnNo)
+                    ->where('a.status_rjri', 'UGD')
+                    ->first();
+
             case 'VISIT':
                 return DB::table('rstxn_rivisits as v')
                     ->join('rstxn_rihdrs as ri', 'v.rihdr_no', '=', 'ri.rihdr_no')

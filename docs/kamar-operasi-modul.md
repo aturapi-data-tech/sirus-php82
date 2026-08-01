@@ -1,7 +1,8 @@
 # Modul Kamar Operasi (OK) — sirus-php82
 
 Port penuh dari Oracle Forms **`rit006x.fmb`** (blok `TRANSAKSI_OK`) ke Laravel/Livewire.
-Ditulis sebagai **acuan porting ke RJ dan UGD** — kerjakan bertahap, urutan tahapnya ada di §9.
+Modul ini melayani **RJ, UGD, dan RI**. Cara kerja per layanan + seluruh titik hilir
+(tagihan, kwitansi, jurnal) ada di §9.
 
 Terkait: `docs/laborat-architecture.md` (pola satelit penunjang), skill `laborat`,
 skill `administrasi-inline-edit`, skill `livewire-input-patterns`, skill `oracle-quirks`.
@@ -125,7 +126,7 @@ dipecah supaya tiap bagian bisa dibuka & diubah sendiri.
 
 **`KamarOperasiTrait`** memuat guard yang dipakai SEMUA anak: `isAllowedRoleOk`,
 `isAllowedBatalOk`, `kunciBarisOk`, `catatLogOk`, `jalankanDenganRetryOk`,
-`statusOk`, `riHdrNoOk`. Jangan disalin per komponen — satu anak bisa ketinggalan
+`statusOk`, `sumberRefOk`, `kunciIndukOk`, `indukAktifOk`. Jangan disalin per komponen — satu anak bisa ketinggalan
 saat aturannya berubah lalu diam-diam melewati penguncian atau audit log.
 
 ---
@@ -276,65 +277,195 @@ lainnya boleh mengikuti RJ kalau tab-nya dipecah jadi komponen terpisah.
 
 ---
 
-## 9. Porting ke RJ / UGD — tahapan
+## 9. Layanan RJ / UGD / RI — status & cara kerja
 
-### Temuan awal yang menentukan
-Struktur OK **hanya mengenal rawat inap**:
-- `rstxn_oks.rihdr_no` FK ke `rstxn_rihdrs` — tidak ada kolom untuk `rj_no`.
-- Penampung biaya hanya `rstxn_rioks`; **tidak ada** `rstxn_rjoks` / `rstxn_ugdoks`.
-- `sl_codefrom` seluruhnya `'01'` (5.091 baris) — tidak pernah dipakai membedakan layanan.
+Sejak 2026-07-31 modul ini melayani **tiga** layanan, mengikuti pola modul Laboratorium.
 
-Jadi porting ke RJ/UGD **bukan sekadar menyalin komponen** — perlu keputusan DDL lebih dulu.
+### Sumber kebenaran layanan
+`rstxn_oks.status_rjri` (`'RJ' | 'UGD' | 'RI'`) + `ref_no` — persis padanan
+`lbtxn_checkuphdrs.status_rjri` + `ref_no`. `ref_no` menunjuk `rj_no` untuk RJ/UGD dan
+`rihdr_no` untuk RI.
 
-### Tahap 0 — keputusan model data (WAJIB sebelum koding)
-Pilihannya:
-- **(a) Tabel biaya baru** `rstxn_rjoks` / `rstxn_ugdoks` + kolom referensi baru di
-  `rstxn_oks` (mis. `rj_no` + penanda layanan). Paling bersih, paling mirip pola lab
-  (`rstxn_rjlabs`/`rstxn_ugdlabs`), tapi butuh DDL di dev **dan** prod.
-- **(b) Menumpang `rstxn_rjothers` / `rstxn_ugdothers`** sebagai baris biaya. Tanpa DDL,
-  tapi rincian 11 pos hilang jadi satu baris dan laporan lama tak bisa membedakannya.
+`rihdr_no` **hanya diisi untuk RI** (kolomnya FK ke `rstxn_rihdrs`, jadi `rj_no` RJ/UGD
+tidak boleh dititipkan ke sana). Kolom itu dipertahankan karena view
+`RSVIEW_NEWDOCSALARIES` dan laporan lama masih membacanya.
 
-Ikuti pola lab: `status_rjri` + `ref_no` di header adalah cara repo ini membedakan layanan.
-Padanannya di OK berarti menambah kolom penanda + kolom referensi di `rstxn_oks`.
+Semua percabangan ada di **satu tempat** — `KamarOperasiTrait`:
 
-> DDL kolom/tabel baru **wajib dijalankan di tiap environment** — SELECT di modul ini
-> menyebut kolom eksplisit, kolom yang belum ada → `ORA-00904`, halaman rusak total.
+| Helper | Gunanya |
+|---|---|
+| `sumberRefOk($okReg)` | `['sumber' => 'RJ\|UGD\|RI', 'refNo' => int]`, ber-NVL untuk baris cacat |
+| `tabelBiayaOk($sumber)` | `rstxn_rjoks` / `rstxn_ugdoks` / `rstxn_rioks` |
+| `kolomIndukBiayaOk($sumber)` | `rj_no` / `rj_no` / `rihdr_no` |
+| `kunciIndukOk($sumber,$refNo)` | lock baris kunjungan + kembalikan statusnya |
+| `indukAktifOk($sumber,$status)` | RI `'I'`, RJ/UGD `'A'` |
+| `sebabIndukTerkunciOk()` | kalimat sebab, dirakit per aksi oleh pemanggil |
+| `catatLogOk($sumber,$refNo,$teks)` | arahkan ke `appendAdminLog{RJ,UGD,RI}` |
 
-### Tahap 1 — generalisasi mesin tarif & guard
-`KamarOperasiTarif::hitungUlang()` sudah netral layanan. Yang perlu ditambah: pemetaan
-layanan → tabel biaya tujuan, sejajar `rstxn_*labs` di lab.
+Jangan menyalin ulang percabangan ini ke komponen anak — aturan "boleh transfer / boleh
+batal" harus persis sama di semua pintu.
 
-`KamarOperasiTrait` juga netral kecuali `catatLogOk()` yang masih memakai
-`lockRIRow`+`appendAdminLogRI`. Untuk RJ/UGD perlu bercabang ke
-`lockRJRow`/`appendAdminLogRJ` dan `lockUGDRow`/`appendAdminLogUGD` — pola yang sama
-dipakai `logKeParent()` di modul Laboratorium (`⚡daftar-laborat-actions`).
+### Tabel biaya terpisah, bukan menumpang Lain-Lain
+`rstxn_rjoks` & `rstxn_ugdoks` dibuat khusus (DDL
+`database/sql/2026_07_31_alter_kamar_operasi_rj_ugd.sql`). **Keputusan user 2026-07-31:**
+menitipkannya ke `rstxn_*others` membuat pendapatan operasi menyamar sebagai pendapatan
+lain-lain di jurnal. Strukturnya identik `rstxn_rioks` (`ok_no` PK global, `ok_desc`,
+`ok_price`, `ok_reg`) dengan FK kunjungan `rj_no`.
 
-> Karena strukturnya sudah dipecah per bagian (§3b), tiap komponen anak bisa diport
-> sendiri-sendiri tanpa menyentuh yang lain — inilah alasan utama pemecahan itu.
+### Status kunjungan yang mengizinkan transfer / batal
+RI `ri_status='I'`, RJ & UGD `rj_status='A'`. Jangan disamakan begitu saja — lihat
+memory `feedback_ugd_rj_struktur_beda`.
 
-### Tahap 2 — guard pulang untuk RJ/UGD
-- `checkOkPendingRJ()` / `checkOkPendingUGD()` di `EmrRJTrait`/`EmrUGDTrait`, dipasang di
-  kasir RJ/UGD persis seperti `checkOkPendingRI()` di `kasir-ri`.
-- Status induk yang mengizinkan transfer: RJ/UGD memakai `rj_status` (`A` aktif), bukan
-  `ri_status='I'` — jangan disamakan begitu saja, lihat memory `feedback_ugd_rj_struktur_beda`.
+### Guard supaya biaya tidak pernah tersangkut
+| Titik | Guard |
+|---|---|
+| `kasir-ri::postTransaksi` | `checkOkPendingRI` — pasien tak bisa pulang |
+| `kasir-rj::postTransaksi` | `checkOkPendingRJ` — kunjungan tak bisa dibayar |
+| `kasir-ugd::postTransaksi` | `checkOkPendingUGD` — idem |
+| `transfer-rj-ke-ugd` | `checkOkPendingRJ` **+** tolak bila `rstxn_rjoks` sudah terisi |
+| `transfer-ugd-ke-ri` | `checkOkPendingUGD` **+** tolak bila `rstxn_ugdoks` sudah terisi |
 
-### Tahap 3 — worklist
-Tambah filter **Layanan** (RJ/UGD/RI) di `⚡daftar-kamar-operasi`, meniru `filterLayanan`
-di `⚡daftar-laborat`. Query induk jadi bercabang per layanan.
+Alasan guard kedua pada transfer antar-unit: `rstxn_*tempadmins` memetakan biaya ke
+**kolom tetap** (`rj_admin, poli_price, acte_price, actp_price, actd_price, obat, lab,
+rad, other, rs_admin`) dan **tidak punya kolom operasi**. Tanpa guard itu, biaya operasi
+yang sudah masuk tagihan RJ/UGD akan hilang diam-diam saat pasien dipindah.
 
-### Tahap 4 — order dari EMR RJ & UGD
-Klon `rm-kamar-operasi-ri-actions` ke `rj/emr-rj/pemeriksaan/penunjang/` dan
-`ugd/emr-ugd/pemeriksaan/penunjang/`, pasang di tab Pelayanan Penunjang masing-masing.
-Perhatikan: LOV tarif tindakan RI memakai `lov-jasa-dokter-ri` (harga per kelas kamar) —
-RJ/UGD tidak punya kelas kamar, jadi pakai `lov-jasa-dokter` biasa.
+Biaya operasi **ikut berpindah** antar unit lewat kolom `ok` di `rstxn_ugdtempadmins` &
+`rstxn_ritempadmins` (DDL `database/sql/2026_07_31_alter_tempadmins_kolom_ok.sql`).
+Tanpa kolom itu nominalnya hilang senyap, karena kedua tabel memetakan biaya ke **kolom
+tetap** — tidak ada tempat menitipkannya.
 
-### Tahap 5 — administrasi
-Tab O.K. read-only di Administrasi RJ/UGD, meniru `o-k-ri.blade.php`.
+### Total tagihan — SATU daftar komponen
+Biaya operasi jadi komponen `'kamarOperasi'` di `calculate{RJ,UGD}Costs()`, sejajar
+`lab`/`rad`/`other`. Fungsi itu dipakai kasir **dan** transfer antar-unit, jadi jangan
+menambahkan biaya operasi lagi di `hitungTotal()` — nanti dobel.
 
-### Yang belum ada di modul RI (kerjakan sekalian atau catat)
-`diag_id_ok` (diagnosa pasca-op), `case_id`, `crew_id_crew*` (LOV `rsmst_okcrews`),
-parameter `omlop_jm`/`omlop_person`/`countomlop_crew`, cetak, viewer Rekam Medis,
-tautan ke dokumen klinis Laporan Operasi RI, dan penanganan `ok_status='F'`.
+Tiap komponen transfer memetakan `'ok' => $costs['kamarOperasi']` saat insert, dan
+`'ok' => $temp->ok` saat cascade UGD→RI.
+
+> **Menambah komponen biaya baru?** Kolomnya harus ada di `rstxn_*tempadmins` DAN
+> ditambahkan ke **semua** ekspresi yang menjumlah kolom tetap. Saat kolom `ok` dipasang
+> ada **11** tempat: `calculateRICosts` (EmrRITrait), kasir RI/UGD, administrasi RI/UGD,
+> `transfer-ugd`, `transfer-ugd-ke-ri`, `trf-ugd-rj-ri`, PendapatanRs (2), PiutangPasien.
+> Cara mencarinya: grep baris yang menyebut `rs_admin` bersama `obat|lab|rad` — penulisan
+> `nvl()`-nya tidak seragam (ada yang berspasi, ada yang rapat), jadi grep satu pola saja
+> akan meleset. `calculateRICosts` sempat terlewat persis karena ini.
+
+### Kwitansi
+Rincian kwitansi RJ & UGD **tidak** dihitung di PHP — dibaca dari view `RSVIEW_RJSTRS` /
+`RSVIEW_UGDSTRS` (`ORDER BY txn_no`). Pos operasi ditambahkan sebagai satu cabang
+`UNION ALL` di masing-masing view: `database/sql/2026_08_01_view_kwitansi_rj_ugd_operasi.sql`
+(`txn_id` = `KAMAR OPERASI`, txn_no 10 di RJ dan 11 di UGD), dikelompokkan per `ok_desc`
+supaya tiap pos tarif jadi barisnya sendiri seperti LABORAT.
+
+Nomor pos lama **tidak** dinomori ulang — view ini juga dibaca Oracle Dev 6i
+(lihat [[project_dual_system_oradev_php82]]).
+
+Tidak dobel hitung: cabang `TRF RJ` di view UGD menjumlah `total_biayarj` yang sudah
+memuat operasi RJ; cabang baru hanya membaca `rstxn_ugdoks` (operasi kunjungan UGD sendiri).
+
+Kwitansi RI memakai `calculateRICosts()` — pos `ok` (operasi RI sendiri) dan `trfUgdRj`
+(termasuk operasi yang dibawa dari RJ/UGD).
+
+### Jurnal & arus kas — `TKVIEW_ACCOUNTS`
+
+**Saldo kas tidak terpengaruh** pos biaya mana pun. Halaman Cek Saldo Kas
+(`transaksi/keuangan/saldo-kas`) memakai rumus `txn_acc_k = akun, SUM(K − D)`, dan akun kas
+hanya muncul di cabang **BAYAR** — yaitu uang yang benar-benar diterima.
+
+Yang menuntut penyesuaian adalah sisi **pendapatan**. Tiap pos biaya punya sepasang cabang
+di `TKVIEW_ACCOUNTS`: piutang unit (`RJ1` 4.1AA / `UGD1` 4.1BB / `RI1` 4.1CA) ↔ akun
+pendapatan pos. Kamar Operasi sudah punya 11 akun (`OK1`–`OK11` → 4.1F01–4.1F11, dinamai
+per PERAN: OPERATOR, ANASTESI, INSTRUMENT, …) — tapi 22 cabangnya membaca
+`RSTXN_OKS ... where rihdr_no = a.rihdr_no FROM RSTXN_RIHDRS`, sehingga operasi RJ/UGD
+(yang `rihdr_no`-nya NULL) tidak pernah terjaring.
+
+Diukur pada kunjungan uji: tagihan Rp 1.115.000, terjurnal hanya Rp 179.000 — **selisih
+Rp 936.000 persis nilai operasi**. Kasir menagih penuh & pembayaran mengkredit piutang
+penuh, tapi pendapatannya tak pernah diakui → piutang unit melenceng.
+
+Diperbaiki dengan 44 cabang baru (11 pos × 2 arah × 2 unit) di
+`database/sql/2026_08_01_view_tkview_accounts_ok_rj_ugd.sql`, memakai pemetaan pos yang
+sama persis dengan cabang RI. Akun pendapatan **dipakai bersama** dengan RI karena dinamai
+per peran, bukan per unit; kalau nanti ingin dipisah, cukup ganti `conf_id` di cabang baru
++ tambah barisnya di `TKACC_CONFACCTXNS` — struktur view tak perlu disentuh.
+
+> **`EXISTS` di tiap cabang baru JANGAN dihapus.** Cabang lama menerbitkan satu baris untuk
+> SETIAP kunjungan walau nilainya nol. Meniru itu apa adanya membengkakkan view dari
+> 26 juta jadi **44 juta baris**, karena RJ/UGD punya ratusan ribu kunjungan. Dengan
+> `and exists (select 1 from RSTXN_OKS x where ... x.ok_status='L')` jumlah baris kembali
+> persis 26.102.285.
+
+**Laporan lain** — Pendapatan RS harian/bulanan/tahunan, Piutang Pasien, Pembayaran Piutang
+semuanya lewat `PendapatanRsTrait` / `PiutangPasienTrait` yang sudah memuat pos operasi.
+Bagian **Kas & Bank** di `monitoring-keuangan` masih placeholder "Dalam pengembangan".
+
+Pendapatan Jasa Medis & Jasa Karyawan membaca `rstxn_*actparams` / `*actemps`; jasa crew OK
+tidak pernah masuk situ — sama seperti perlakuan di RI selama ini, sengaja tidak diubah.
+
+> **Jebakan saat menguji jurnal:** label baris jurnal hanya memuat nomor kunjungan
+> (`'LAB ('||rj_no||'/'||reg_no||')'`), dan **nomor RJ lama beririsan dengan nomor UGD**
+> (mis. 203858 ada di kedua tabel). Menyaring dengan `txn_name LIKE '%(no/%'` akan
+> menjaring baris unit lain. Ukur berbasis **selisih sebelum vs sesudah**, jangan
+> berbasis total.
+
+### Titik yang sudah ikut menghitung biaya operasi RJ/UGD
+- Tab **Kamar Operasi** (read-only) di Administrasi RJ & UGD — `kamar-operasi-{rj,ugd}.blade.php`,
+  disisipkan sesudah Radiologi; ikut ke `sumTotalRJ` lewat `$sumKamarOperasi`.
+- `kasir-rj` / `kasir-ugd` — `rjTotal`.
+- `PendapatanRsTrait` (4 agregat RJ/UGD) & `PiutangPasienTrait` (2 agregat) — join
+  `rstxn_{rj,ugd}oks` + komponen `NVL(ok.v,0)`.
+- `RSVIEW_NEWDOCSALARIES` — 4 cabang baru seq 19-22 (`database/sql/2026_07_31_view_docsalaries_ok_rj_ugd.sql`),
+  plus 4 `case` DESC_DOC di `pendapatan-jasa-dokter::fetchSourceJson()`.
+- **Kwitansi RJ & UGD** — cabang `KAMAR OPERASI` di `RSVIEW_RJSTRS` / `RSVIEW_UGDSTRS`
+  (`database/sql/2026_08_01_view_kwitansi_rj_ugd_operasi.sql`).
+- **Rantai transfer** — kolom `ok` di `rstxn_{ugd,ri}tempadmins`
+  (`database/sql/2026_07_31_alter_tempadmins_kolom_ok.sql`) + tampil sebagai kolom
+  **Operasi** di `transfer-ugd` dan `trf-ugd-rj-ri`.
+
+**Urutan menjalankan SQL** (tiga skrip, boleh sekaligus):
+`2026_07_31_alter_kamar_operasi_rj_ugd.sql` → `2026_07_31_alter_tempadmins_kolom_ok.sql` →
+`2026_07_31_view_docsalaries_ok_rj_ugd.sql` → `2026_08_01_view_kwitansi_rj_ugd_operasi.sql` →
+`2026_08_01_view_tkview_accounts_ok_rj_ugd.sql`.
+
+### Worklist & tampilan
+`⚡daftar-kamar-operasi` memakai inline view `OK_DENGAN_KUNJUNGAN`: tiga scalar subquery
+ber-PK meresolve `reg_no` / `status_induk` / `unit_name` sesuai `status_rjri`. Dipilih
+karena `rstxn_oks` kecil (±5rb baris) sehingga jauh lebih murah daripada UNION tiga tabel
+kunjungan ratusan ribu baris. Ada filter **Layanan**, dan nilainya dibawa ke modal Tambah.
+
+> Urutan join **mengikat**: tabel kunjungan dulu, baru `rsmst_pasiens`. Menaruh pasiens
+> lebih dahulu membuat alias `h` belum dikenal → `ORA-00904 "H"."REG_NO"`.
+> Lihat memory `feedback_oracle_yajra_join_binding_order`.
+
+Label kolom ikut layanan: RI "No Inap"/"Kamar", RJ "No Reg"/"Poli", UGD "No Reg"/"Cara Masuk".
+Tombol transfer pun ikut: `Trf Biaya-RJ` / `Trf Biaya-UGD` / `Trf Biaya-INAP`.
+
+### LOV tarif tindakan
+RI memakai `lov-jasa-dokter-ri` (harga per kelas kamar, butuh `riHdrNo`). RJ/UGD tidak
+punya kelas kamar → memakai `lov-jasa-dokter` biasa. Payload keduanya identik
+(`accdoc_id` / `accdoc_desc` / `accdoc_price`), jadi handler `pilihTindakan()` tetap satu.
+
+### Dua pintu masuk — lengkap di tiga layanan
+| Pintu | Komponen |
+|---|---|
+| Petugas OK | `penunjang/kamar-operasi/⚡daftar-kamar-operasi-tambah-actions` (pilih RJ/UGD/RI) |
+| Ruangan/poli mengirim | `{ri/emr-ri/pemeriksaan-ri, rj/emr-rj/pemeriksaan, ugd/emr-ugd/pemeriksaan}/penunjang/kamar-operasi/rm-kamar-operasi-{ri,rj,ugd}-actions` |
+
+Ketiganya dipasang di tab **Pelayanan Penunjang** masing-masing, sesudah Radiologi,
+berpasangan dengan daftar read-only `rm-daftar-kamar-operasi-{ri,rj,ugd}`.
+
+Beda RJ/UGD dari RI:
+- LOV tarif tindakan memakai `lov-jasa-dokter` (tarif dasar), **bukan** `-ri` — RJ/UGD
+  tidak punya kelas kamar. Payload keduanya identik.
+- Guard status kunjungan `rj_status='A'` (bukan `ri_status='I'`), lewat
+  `check{RJ,UGD}Status` + `lock{RJ,UGD}Row` + `appendAdminLog{RJ,UGD}` kategori `MR`.
+- `rihdr_no` diisi **NULL** — kolomnya FK ke `rstxn_rihdrs`.
+
+### Yang BELUM ada
+- Dari modul RI sendiri: `diag_id_ok`, `case_id`, `crew_id_crew*` (LOV `rsmst_okcrews`),
+  parameter `omlop_jm`/`omlop_person`/`countomlop_crew`, cetak, viewer Rekam Medis,
+  tautan ke dokumen klinis Laporan Operasi RI, dan penanganan `ok_status='F'`.
 
 ---
 

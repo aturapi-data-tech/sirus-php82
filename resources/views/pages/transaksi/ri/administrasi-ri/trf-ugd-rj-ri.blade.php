@@ -32,7 +32,7 @@ new class extends Component {
             ->select(
                 DB::raw("to_char(tempadm_date, 'dd/mm/yyyy hh24:mi:ss') as tempadm_date"),
                 'rj_admin', 'poli_price', 'acte_price', 'actp_price', 'actd_price',
-                'obat', 'lab', 'rad', 'other', 'rs_admin',
+                'obat', 'lab', 'rad', 'other', 'ok', 'rs_admin',
                 'tempadm_no', 'tempadm_flag',
             )
             ->where('rihdr_no', $riHdrNo)
@@ -46,7 +46,7 @@ new class extends Component {
 
 @php
     // Kolom uang yang dijumlahkan
-    $moneyCols = ['rs_admin', 'rj_admin', 'poli_price', 'acte_price', 'actp_price', 'actd_price', 'obat', 'lab', 'rad', 'other'];
+    $moneyCols = ['rs_admin', 'rj_admin', 'poli_price', 'acte_price', 'actp_price', 'actd_price', 'obat', 'lab', 'rad', 'ok', 'other'];
 
     // Total per-kolom (untuk <tfoot>)
     $colTotals = array_fill_keys($moneyCols, 0);
@@ -82,6 +82,7 @@ new class extends Component {
                         <th class="px-4 py-3 text-right">Obat</th>
                         <th class="px-4 py-3 text-right">Laborat</th>
                         <th class="px-4 py-3 text-right">Radiologi</th>
+                        <th class="px-4 py-3 text-right">Operasi</th>
                         <th class="px-4 py-3 text-right">Lain</th>
                         <th class="px-4 py-3 text-right">Total</th>
                     </tr>
@@ -106,12 +107,13 @@ new class extends Component {
                             <td class="px-4 py-1.5 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp {{ number_format($item['obat'] ?? 0) }}</td>
                             <td class="px-4 py-1.5 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp {{ number_format($item['lab'] ?? 0) }}</td>
                             <td class="px-4 py-1.5 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp {{ number_format($item['rad'] ?? 0) }}</td>
+                            <td class="px-4 py-1.5 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp {{ number_format($item['ok'] ?? 0) }}</td>
                             <td class="px-4 py-1.5 text-right text-body dark:text-gray-300 whitespace-nowrap">Rp {{ number_format($item['other'] ?? 0) }}</td>
                             <td class="px-4 py-1.5 text-right font-semibold text-ink dark:text-white whitespace-nowrap">Rp {{ number_format($rowTotal) }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="13" class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
+                            <td colspan="14" class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
                                 Tidak ada transfer dari UGD/RJ
                             </td>
                         </tr>
@@ -130,6 +132,7 @@ new class extends Component {
                             <td class="px-4 py-3 text-right text-body dark:text-gray-200 whitespace-nowrap">Rp {{ number_format($colTotals['obat']) }}</td>
                             <td class="px-4 py-3 text-right text-body dark:text-gray-200 whitespace-nowrap">Rp {{ number_format($colTotals['lab']) }}</td>
                             <td class="px-4 py-3 text-right text-body dark:text-gray-200 whitespace-nowrap">Rp {{ number_format($colTotals['rad']) }}</td>
+                            <td class="px-4 py-3 text-right text-body dark:text-gray-200 whitespace-nowrap">Rp {{ number_format($colTotals['ok']) }}</td>
                             <td class="px-4 py-3 text-right text-body dark:text-gray-200 whitespace-nowrap">Rp {{ number_format($colTotals['other']) }}</td>
                             <td class="px-4 py-3 text-right text-sm text-emerald-700 dark:text-emerald-300 whitespace-nowrap">Rp {{ number_format($grandTotal) }}</td>
                         </tr>

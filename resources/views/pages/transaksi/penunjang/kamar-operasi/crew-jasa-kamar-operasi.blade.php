@@ -23,7 +23,8 @@ new class extends Component {
 
     public string $okReg = '';
     public bool $isFormLocked = true;
-    public int $riHdrNo = 0;
+    public string $sumber = 'RI';
+    public int $refNo = 0;
 
     /** Nilai pos; key = kolom rstxn_oks. Null = belum pernah diisi. */
     public array $tarif = [];
@@ -85,7 +86,7 @@ new class extends Component {
 
         $data = (array) $row;
         $this->nilaiDb = $data;
-        $this->riHdrNo = (int) $data['rihdr_no'];
+        ['sumber' => $this->sumber, 'refNo' => $this->refNo] = $this->sumberRefOk($this->okReg);
         $this->isFormLocked = ($data['ok_status'] ?? 'A') !== 'A';
 
         // NULL dipertahankan — beda makna dengan 0 (belum pernah diisi = boleh
@@ -242,19 +243,20 @@ new class extends Component {
             return;
         }
 
-        $riHdrNo = $this->riHdrNo;
+        $sumber = $this->sumber;
+        $refNo = $this->refNo;
         $label = $labelPeta[$kolom] ?? $kolom;
         // NULL punya makna sendiri (belum diisi → boleh diisi otomatis), jadi ditulis
         // eksplisit di log supaya tidak tertukar dengan nol rupiah.
         $teksLama = $nilaiLama === null ? '(belum diisi)' : 'Rp ' . number_format($nilaiLama);
         $teksBaru = $nilaiBaru === null ? '(belum diisi)' : 'Rp ' . number_format($nilaiBaru);
 
-        $berhasil = $this->jalankanDenganRetryOk(function () use ($kolom, $nilaiBaru, $riHdrNo, $label, $teksLama, $teksBaru) {
+        $berhasil = $this->jalankanDenganRetryOk(function () use ($kolom, $nilaiBaru, $sumber, $refNo, $label, $teksLama, $teksBaru) {
             $this->kunciBarisOk($this->okReg);
 
             DB::table('rstxn_oks')->where('ok_reg', $this->okReg)->update([$kolom => $nilaiBaru]);
 
-            $this->catatLogOk($riHdrNo, "Ubah tarif OK No.{$this->okReg} — {$label}: {$teksLama} → {$teksBaru}");
+            $this->catatLogOk($sumber, $refNo, "Ubah tarif OK No.{$this->okReg} — {$label}: {$teksLama} → {$teksBaru}");
         }, 'Gagal menyimpan tarif');
 
         $this->findData();
@@ -271,13 +273,13 @@ new class extends Component {
     #[On('lov.selected.kamar-operasi-operator')]
     public function pilihOperator($target = null, $payload = null): void
     {
-        $this->simpanCrew('dr_id', $payload['dr_id'] ?? null, 'Dr. Operator');
+        $this->simpanCrew('dr_id', $payload['dr_id'] ?? null, 'Operator');
     }
 
     #[On('lov.selected.kamar-operasi-anestesi')]
     public function pilihAnestesi($target = null, $payload = null): void
     {
-        $this->simpanCrew('dr_id_ok', $payload['dr_id'] ?? null, 'Dr. Anestesi');
+        $this->simpanCrew('dr_id_ok', $payload['dr_id'] ?? null, 'Anestesi');
     }
 
     #[On('lov.selected.kamar-operasi-changeanesdoc')]
@@ -341,17 +343,18 @@ new class extends Component {
             return;
         }
 
-        $riHdrNo = $this->riHdrNo;
+        $sumber = $this->sumber;
+        $refNo = $this->refNo;
         $namaLama = $this->namaCrew($kolom, $nilaiLama);
         $namaBaru = $this->namaCrew($kolom, $nilaiBaru);
         $catatanGaji = $wajibIsi ? ' (memindahkan pendapatan dokter di Laporan Pendapatan Jasa Dokter)' : '';
 
-        $berhasil = $this->jalankanDenganRetryOk(function () use ($kolom, $nilaiBaru, $riHdrNo, $label, $namaLama, $namaBaru, $catatanGaji) {
+        $berhasil = $this->jalankanDenganRetryOk(function () use ($kolom, $nilaiBaru, $sumber, $refNo, $label, $namaLama, $namaBaru, $catatanGaji) {
             $this->kunciBarisOk($this->okReg);
 
             DB::table('rstxn_oks')->where('ok_reg', $this->okReg)->update([$kolom => $nilaiBaru]);
 
-            $this->catatLogOk($riHdrNo, "Ubah crew OK No.{$this->okReg} — {$label}: {$namaLama} → {$namaBaru}{$catatanGaji}");
+            $this->catatLogOk($sumber, $refNo, "Ubah crew OK No.{$this->okReg} — {$label}: {$namaLama} → {$namaBaru}{$catatanGaji}");
         }, 'Gagal menyimpan crew');
 
         $this->findData();
@@ -427,7 +430,7 @@ new class extends Component {
                     <span class="font-semibold">pendapatan dokter</span> di Laporan Pendapatan Jasa Dokter.
                     Jadi mengubah angka ini menggeser dua hal: tagihan pasien dan penghasilan dokter
                     yang tercatat. Penandanya menyebut siapa penerimanya, bukan nama posnya
-                    (nama pos tetap JD Operator / JD Anestesi).
+                    (nama pos tetap Jasa Dokter Operator / Jasa Dokter Anestesi).
                 </span>
             </div>
             <div class="flex items-start gap-2">
@@ -437,7 +440,7 @@ new class extends Component {
             <div class="flex items-start gap-2">
                 <span class="mt-0.5 text-xs italic shrink-0 text-blue-700 dark:text-blue-300">50% / 10%</span>
                 <span>
-                    Angka usulan, dihitung dari pos <span class="font-semibold">JD Operator</span>.
+                    Angka usulan, dihitung dari pos <span class="font-semibold">Jasa Dokter Operator</span>.
                     Disegarkan tiap kali tombol <span class="font-semibold">Hitung Tarif OK</span> ditekan.
                     Boleh Anda ubah manual — total tetap mengikuti nilai yang tersimpan, bukan persentasenya.
                 </span>
@@ -499,7 +502,7 @@ new class extends Component {
                                 <span class="italic" title="Dijumlah dari tabel tindakan">&middot; otomatis</span>
                             @elseif ($persen !== null)
                                 <span class="italic"
-                                    title="Usulan {{ $persen }}% dari pos JD Operator; disegarkan tiap kali tarif dihitung ulang. Boleh diedit — total tetap mengikuti nilai yang Anda isi.">&middot; {{ $persen }}%</span>
+                                    title="Usulan {{ $persen }}% dari pos Jasa Dokter Operator; disegarkan tiap kali tarif dihitung ulang. Boleh diedit — total tetap mengikuti nilai yang Anda isi.">&middot; {{ $persen }}%</span>
                             @endif
                         </span>
                     </div>

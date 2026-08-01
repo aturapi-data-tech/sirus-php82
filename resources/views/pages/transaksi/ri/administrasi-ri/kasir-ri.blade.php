@@ -229,7 +229,7 @@ new class extends Component {
             ->selectRaw('nvl(sum(
                 nvl(rj_admin,0) + nvl(poli_price,0) + nvl(acte_price,0) +
                 nvl(actp_price,0) + nvl(actd_price,0) + nvl(obat,0) +
-                nvl(rad,0) + nvl(lab,0) + nvl(other,0) + nvl(rs_admin,0)
+                nvl(rad,0) + nvl(lab,0) + nvl(other,0) + nvl(rs_admin,0) + nvl(ok,0)
             ),0) as total')
             ->value('total');
 
@@ -1101,7 +1101,7 @@ new class extends Component {
                     @forelse ($payments as $pay)
                         <tr wire:key="kasir-ri-pay-{{ $pay->ripay_no ?? $loop->index }}" class="transition hover:bg-surface-soft dark:hover:bg-gray-800/40">
                             <td class="px-4 py-1.5 text-muted dark:text-gray-400 whitespace-nowrap">
-                                {{ Carbon::parse($pay->ripay_date)->format('d/m/Y') }}
+                                {{ Carbon::parse($pay->ripay_date)->format('d/m/Y H:i:s') }}
                             </td>
                             <td class="px-4 py-1.5 font-mono text-sm text-muted dark:text-gray-400">
                                 {{ $pay->acc_id ?? '-' }}

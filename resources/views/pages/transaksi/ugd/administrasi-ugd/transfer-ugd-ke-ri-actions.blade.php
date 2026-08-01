@@ -111,7 +111,7 @@ new class extends Component {
         // ikut dipindahkan ke RI (cascade di transferKeRI). Konsisten dgn sumtrfRJ/sumTotalRJ kasir.
         $this->transferRJ = (int) DB::table('rstxn_ugdtempadmins')
             ->where('rj_no', $rjNo)
-            ->selectRaw('nvl(sum(rj_admin + poli_price + acte_price + actp_price + actd_price + obat + lab + rad + other + rs_admin), 0) as total')
+            ->selectRaw('nvl(sum(rj_admin + poli_price + acte_price + actp_price + actd_price + obat + lab + rad + other + rs_admin + nvl(ok,0)), 0) as total')
             ->value('total');
 
         $this->totalBiayaUGD = array_sum($this->biayaUGD) + $this->transferRJ;
@@ -263,6 +263,16 @@ new class extends Component {
             return;
         }
 
+        // Guard: transaksi Kamar Operasi belum ditransfer. Transfer ke RI mengubah
+        // rj_status jadi 'I', sedangkan Trf Biaya-UGD mensyaratkan 'A' — kalau lolos,
+        // biaya operasinya tidak akan pernah bisa masuk tagihan mana pun.
+        if ($this->checkOkPendingUGD($this->rjNo)) {
+            $nomorOk = implode(', ', $this->daftarOkPendingUGD($this->rjNo));
+            $this->dispatch('toast', type: 'error', message: "Transaksi Kamar Operasi No. {$nomorOk} belum ditransfer ke biaya UGD, transfer tidak bisa dilakukan.");
+            return;
+        }
+
+
         // Cek sudah pernah transfer
         if (DB::table('rstxn_ribiayaselamadugds')->where('rj_no', $this->rjNo)->exists()) {
             $this->dispatch('toast', type: 'error', message: 'Transfer ke RI sudah pernah dilakukan untuk UGD ini.');
@@ -384,6 +394,7 @@ new class extends Component {
                     'lab'          => $costs['lab'],
                     'rad'          => $costs['rad'],
                     'other'        => $costs['other'],
+                    'ok'           => $costs['kamarOperasi'],
                     'rs_admin'     => $costs['rsAdmin'],
                 ]);
 
@@ -409,6 +420,7 @@ new class extends Component {
                         'lab'          => $temp->lab,
                         'rad'          => $temp->rad,
                         'other'        => $temp->other,
+                        'ok'           => $temp->ok,
                         'rs_admin'     => $temp->rs_admin,
                     ]);
                 }

@@ -335,9 +335,10 @@ public function saveAllEreseptoTerapi(): void
 TXT,
 
 'emr-penunjang' => <<<'TXT'
-// KIRIM LAB & KIRIM RADIOLOGI — order penunjang dari SECTION PEMERIKSAAN.
-// Komponen: emr-rj/pemeriksaan/penunjang/{laborat,radiologi}/rm-*-rj-actions
+// ORDER PENUNJANG dari SECTION PEMERIKSAAN — LAB, RADIOLOGI, KAMAR OPERASI.
+// Komponen: emr-rj/pemeriksaan/penunjang/{laborat,radiologi,kamar-operasi}/rm-*-rj-actions
 // (+ rm-daftar-* utk tampil hasil, + laborat LUAR utk hasil dari luar RS).
+// Pola & letaknya sama persis di EMR UGD dan EMR RI (tab Pelayanan Penunjang).
 
 // Modal picker: pilih item dari master (multi-select, cari + paginate).
 // Diagnosis/Keterangan Klinis WAJIB — order tanpa indikasi klinis ditolak:
@@ -372,6 +373,16 @@ public function kirimLaboratorium(): void
 // KIRIM RADIOLOGI — kirimRadiologi(): pola sama, target rstxn_rjrads
 // (rad_dtl max+1, klinis_desc juga wajib) → modul Radiologi (upload-based,
 // TIDAK punya siklus status P/C/H/F seperti lab).
+
+// KIRIM KAMAR OPERASI — kirimKamarOperasi(): TIDAK punya tabel order terpisah.
+// Order LANGSUNG membuat header rstxn_oks status 'A' — sama dengan transaksi yang
+// dibuat petugas OK sendiri; pembedanya cuma audit log (MR vs ADMIN).
+//   status_rjri = 'RJ'|'UGD'|'RI' · ref_no = rj_no (RJ/UGD) / rihdr_no (RI)
+//   rihdr_no HANYA diisi untuk RI — kolomnya FK ke rstxn_rihdrs.
+// Rencana tindakan opsional → rstxn_okacts, lalu KamarOperasiTarif::hitungUlang().
+// Biaya BARU masuk tagihan setelah petugas OK menekan Trf Biaya (ok_status 'A'→'L').
+// LOV tarif: RJ/UGD pakai lov-jasa-dokter (tarif dasar), RI pakai varian -ri
+// (harga per kelas kamar). Detail: docs/kamar-operasi-modul.md.
 
 // HASIL KEMBALI ke EMR — petugas lab menekan kirim hasil, Pemeriksaan menerima:
 #[On('laborat-kirim-penunjang')]
@@ -552,7 +563,8 @@ TXT,
 
 'administrasi' => <<<'TXT'
 // Administrasi = modal rekap biaya per kunjungan. Tiap POS = file partial sendiri
-// (jasa-dokter, jasa-medis, jasa-karyawan, obat, laboratorium, radiologi, lain-lain...).
+// (jasa-dokter, jasa-medis, jasa-karyawan, obat, laboratorium, radiologi,
+//  kamar operasi, lain-lain...).
 
 public int $sumTotalRJ = 0;
 
@@ -562,7 +574,7 @@ public function sumAll(): void
         $this->sumRsAdmin + $this->sumRjAdmin + $this->sumPoliPrice
         + $this->sumJasaKaryawan + $this->sumJasaDokter + $this->sumJasaMedis
         + $this->sumObat + $this->sumLaboratorium + $this->sumRadiologi
-        + $this->sumLainLain;
+        + $this->sumKamarOperasi + $this->sumLainLain;
 }
 
 // Selesai administrasi → setSelesaiAdministrasiStatus()
@@ -656,11 +668,21 @@ TXT,
 // SEMUA pintu mutasi tagihan memeriksa ini: insertProduct e-resep,
 // kirimLaboratorium / kirimRadiologi, pos administrasi, posting kasir (idempoten).
 
-// L2 · KUNCI URUTAN — order lab pending MENAHAN kasir:
+// L2 · KUNCI URUTAN — order penunjang yang MASIH MENGGANTUNG menahan kasir.
+// Berlaku untuk penunjang yang biayanya baru masuk SETELAH ditransfer petugas:
 if ($this->checkLabPendingRJ($this->rjNo)) {      // ada checkup_status = 'P'
     // 'Hasil Laborat belum selesai, pembayaran tidak bisa diproses.'
-    // → tagihan belum final; posting ditolak sampai order lab selesai.
 }
+if ($this->checkOkPendingRJ($this->rjNo)) {       // ada rstxn_oks ok_status = 'A'
+    // 'Transaksi Kamar Operasi No. X belum ditransfer ke biaya rawat jalan...'
+    // nomornya dari daftarOkPendingRJ() — supaya petugas tahu mana yang ditunggu.
+}
+// → tagihan belum final; posting ditolak sampai order penunjang itu selesai.
+// Guard yang sama dipasang di transfer antar-unit (RJ→UGD, UGD→RI), karena
+// transfer mengubah rj_status jadi 'I' padahal Trf Biaya mensyaratkan 'A'.
+//
+// Radiologi & Apotek TIDAK punya guard ini — biayanya langsung masuk saat
+// diorder, tidak ada jeda yang perlu dijaga.
 
 // L3 · KUNCI KEPEMILIKAN — administrasi yang sudah disimpan petugas lain:
 //   JSON AdministrasiRj.userLog terisi → 'Administrasi sudah tersimpan oleh X'.
@@ -1253,7 +1275,7 @@ TXT,
 
                         <div class="ds-card-dark mt-4" style="padding:0; overflow:hidden">
                             <div class="px-4 py-2.5" style="background:var(--surface-dark-soft)">
-                                <span class="ds-caption-up" style="color:var(--on-dark-soft)">Kirim Lab &amp; Kirim Radiologi — order penunjang dari section Pemeriksaan</span>
+                                <span class="ds-caption-up" style="color:var(--on-dark-soft)">Order penunjang dari section Pemeriksaan — Lab, Radiologi &amp; Kamar Operasi</span>
                             </div>
                             <pre class="ds-code" style="margin:0; padding:20px 24px; color:var(--on-dark-soft); overflow-x:auto; line-height:1.7">{{ $snip['emr-penunjang'] }}</pre>
                         </div>

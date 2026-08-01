@@ -74,6 +74,14 @@ new class extends Component {
             return;
         }
 
+        // Guard: transaksi Kamar Operasi belum ditransfer (lihat transferKeUGD).
+        if ($this->checkOkPendingRJ($rjNo)) {
+            $nomorOk = implode(', ', $this->daftarOkPendingRJ($rjNo));
+            $this->dispatch('toast', type: 'error', message: "Transaksi Kamar Operasi No. {$nomorOk} belum ditransfer ke biaya RJ, transfer tidak bisa dilakukan.");
+            return;
+        }
+
+
         // Guard: belum pernah ditransfer
         if (DB::table('rstxn_ugdbiayaselamadirjs')->where('rj_no', $rjNo)->exists()) {
             $this->dispatch('toast', type: 'error', message: 'Transfer ke UGD sudah pernah dilakukan untuk RJ ini.');
@@ -206,6 +214,16 @@ new class extends Component {
             return;
         }
 
+        // Guard: transaksi Kamar Operasi belum ditransfer. Transfer ke UGD mengubah
+        // rj_status jadi 'I', sedangkan Trf Biaya-RJ mensyaratkan 'A' — kalau lolos,
+        // biaya operasinya tidak akan pernah bisa masuk tagihan mana pun.
+        if ($this->checkOkPendingRJ($this->rjNo)) {
+            $nomorOk = implode(', ', $this->daftarOkPendingRJ($this->rjNo));
+            $this->dispatch('toast', type: 'error', message: "Transaksi Kamar Operasi No. {$nomorOk} belum ditransfer ke biaya RJ, transfer tidak bisa dilakukan.");
+            return;
+        }
+
+
         // Cek sudah pernah transfer
         if (DB::table('rstxn_ugdbiayaselamadirjs')->where('rj_no', $this->rjNo)->exists()) {
             $this->dispatch('toast', type: 'error', message: 'Transfer ke UGD sudah pernah dilakukan untuk RJ ini.');
@@ -306,6 +324,7 @@ new class extends Component {
                                 'lab'          => $costs['lab'],
                                 'rad'          => $costs['rad'],
                                 'other'        => $costs['other'],
+                                'ok'           => $costs['kamarOperasi'],
                                 'rs_admin'     => $costs['rsAdmin'],
                             ]);
 

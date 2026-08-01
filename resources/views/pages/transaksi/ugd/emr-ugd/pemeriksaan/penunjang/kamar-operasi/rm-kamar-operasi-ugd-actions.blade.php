@@ -1,5 +1,5 @@
 <?php
-// resources/views/pages/transaksi/ri/emr-ri/pemeriksaan-ri/penunjang/kamar-operasi/rm-kamar-operasi-ri-actions.blade.php
+// resources/views/pages/transaksi/ugd/emr-ugd/pemeriksaan/penunjang/kamar-operasi/rm-kamar-operasi-ugd-actions.blade.php
 
 use Livewire\Component;
 use Livewire\Attributes\Computed;
@@ -7,14 +7,14 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
-use App\Http\Traits\Txn\Ri\EmrRITrait;
+use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Support\KamarOperasiTarif;
 
 /**
- * Order Kamar Operasi dari EMR Rawat Inap — ruangan mengirim pasien ke OK.
+ * Order Kamar Operasi dari EMR Gawat Darurat — unit mengirim pasien ke OK.
  *
  * Sejajar dengan order Laboratorium/Radiologi: dokter ruangan mengirim, petugas
- * OK yang memproses, biayanya kembali ke tagihan rawat inap. Bedanya, OK tidak
+ * OK yang memproses, biayanya kembali ke tagihan gawat darurat. Bedanya, OK tidak
  * punya tabel order terpisah — order langsung membuat header `rstxn_oks` dengan
  * `ok_status='A'` (Proses Transaksi), yaitu status yang sama dengan transaksi
  * yang dibuat petugas OK sendiri lewat menu Penunjang. Jadi dari sisi petugas OK
@@ -27,12 +27,12 @@ use App\Support\KamarOperasiTarif;
  * selama status masih 'A'.
  */
 new class extends Component {
-    use WithRenderVersioningTrait, WithValidationToastTrait, EmrRITrait;
+    use WithRenderVersioningTrait, WithValidationToastTrait, EmrUGDTrait;
 
     public array $renderVersions = [];
-    protected array $renderAreas = ['kamar-operasi-order-modal-ri'];
+    protected array $renderAreas = ['kamar-operasi-order-modal-ugd'];
 
-    public ?string $riHdrNo = null;
+    public ?string $rjNo = null;
     public bool $disabled = false;
 
     /* ── State Modal ── */
@@ -60,20 +60,20 @@ new class extends Component {
         ];
     }
 
-    public function mount(?string $riHdrNo = null, bool $disabled = false): void
+    public function mount(?string $rjNo = null, bool $disabled = false): void
     {
-        $this->riHdrNo = $riHdrNo;
+        $this->rjNo = $rjNo;
         $this->disabled = $disabled;
         $this->registerAreas($this->renderAreas);
     }
 
-    #[On('open-rm-kamar-operasi-ri')]
-    public function open(string $riHdrNo): void
+    #[On('open-rm-kamar-operasi-ugd')]
+    public function open(string $rjNo): void
     {
-        if (empty($riHdrNo)) {
+        if (empty($rjNo)) {
             return;
         }
-        $this->riHdrNo = $riHdrNo;
+        $this->rjNo = $rjNo;
     }
 
     /* ═══════════════════════════════════════
@@ -85,24 +85,24 @@ new class extends Component {
             return;
         }
 
-        if ($this->checkRIStatus($this->riHdrNo)) {
-            $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, tidak dapat mengirim ke kamar operasi.');
+        if ($this->checkUGDStatus($this->rjNo)) {
+            $this->dispatch('toast', type: 'error', message: 'Kunjungan sudah ditutup di kasir, tidak dapat mengirim ke kamar operasi.');
             return;
         }
 
         $this->resetForm();
 
-        // DPJP rawat inap dipakai sebagai usulan operator; dokter boleh menggantinya.
-        $this->drId = (string) (DB::table('rstxn_rihdrs')->where('rihdr_no', $this->riHdrNo)->value('dr_id') ?? '');
+        // Dokter kunjungan dipakai sebagai usulan operator; dokter boleh menggantinya.
+        $this->drId = (string) (DB::table('rstxn_ugdhdrs')->where('rj_no', $this->rjNo)->value('dr_id') ?? '');
 
         $this->resetValidation();
-        $this->incrementVersion('kamar-operasi-order-modal-ri');
-        $this->dispatch('open-modal', name: 'kamar-operasi-order-ri');
+        $this->incrementVersion('kamar-operasi-order-modal-ugd');
+        $this->dispatch('open-modal', name: 'kamar-operasi-order-ugd');
     }
 
     public function closeModal(): void
     {
-        $this->dispatch('close-modal', name: 'kamar-operasi-order-ri');
+        $this->dispatch('close-modal', name: 'kamar-operasi-order-ugd');
         $this->resetForm();
     }
 
@@ -114,19 +114,19 @@ new class extends Component {
     /* ═══════════════════════════════════════
     | LOV listeners
     ═══════════════════════════════════════ */
-    #[On('lov.selected.order-ok-ri-operator')]
+    #[On('lov.selected.order-ok-ugd-operator')]
     public function pilihOperator($target = null, $payload = null): void
     {
         $this->drId = (string) ($payload['dr_id'] ?? '');
     }
 
-    #[On('lov.selected.order-ok-ri-anestesi')]
+    #[On('lov.selected.order-ok-ugd-anestesi')]
     public function pilihAnestesi($target = null, $payload = null): void
     {
         $this->drIdOk = (string) ($payload['dr_id'] ?? '');
     }
 
-    #[On('lov.selected.order-ok-ri-diagnosa')]
+    #[On('lov.selected.order-ok-ugd-diagnosa')]
     public function pilihDiagnosa($target = null, $payload = null): void
     {
         // Simpan diag_id (PK), BUKAN icdx — icdx hanya untuk sistem eksternal.
@@ -134,7 +134,7 @@ new class extends Component {
         $this->diagDesc = $payload['diag_desc'] ?? '';
     }
 
-    #[On('lov.selected.order-ok-ri-tindakan')]
+    #[On('lov.selected.order-ok-ugd-tindakan')]
     public function pilihTindakan($target = null, $payload = null): void
     {
         $accdocId = $payload['accdoc_id'] ?? null;
@@ -145,7 +145,7 @@ new class extends Component {
         $this->selectedTindakan[$accdocId] = [
             'accdoc_id' => (string) $accdocId,
             'accdoc_desc' => (string) ($payload['accdoc_desc'] ?? ''),
-            // accdoc_price dari lov-jasa-dokter-ri sudah harga efektif per kelas kamar.
+            // accdoc_price dari lov-jasa-dokter = tarif dasar (RJ/UGD tanpa kelas kamar).
             'accdoc_price' => (int) ($payload['accdoc_price'] ?? 0),
         ];
     }
@@ -172,12 +172,12 @@ new class extends Component {
 
         $this->validateWithToast();
 
-        if ($this->checkRIStatus($this->riHdrNo)) {
-            $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang, tidak dapat mengirim ke kamar operasi.');
+        if ($this->checkUGDStatus($this->rjNo)) {
+            $this->dispatch('toast', type: 'error', message: 'Kunjungan sudah ditutup di kasir, tidak dapat mengirim ke kamar operasi.');
             return;
         }
 
-        $riHdrNo = (int) $this->riHdrNo;
+        $rjNo = (int) $this->rjNo;
         $drId = $this->drId;
         $drIdOk = $this->drIdOk;
         $diagId = $this->diagId;
@@ -187,12 +187,12 @@ new class extends Component {
         // ok_reg & okact_id = PK tanpa sequence → tabrakan ditangani dengan mengulang.
         for ($percobaan = 1; ; $percobaan++) {
             try {
-                DB::transaction(function () use ($riHdrNo, $drId, $drIdOk, $diagId, $tindakan, &$okRegBaru) {
-                    $this->lockRIRow($riHdrNo);
+                DB::transaction(function () use ($rjNo, $drId, $drIdOk, $diagId, $tindakan, &$okRegBaru) {
+                    $this->lockUGDRow($rjNo);
 
-                    $riStatus = DB::table('rstxn_rihdrs')->where('rihdr_no', $riHdrNo)->value('ri_status');
-                    if (strtoupper((string) $riStatus) !== 'I') {
-                        throw new \RuntimeException('Pasien sudah pulang, tidak dapat mengirim ke kamar operasi.');
+                    $statusInduk = DB::table('rstxn_ugdhdrs')->where('rj_no', $rjNo)->value('rj_status');
+                    if (strtoupper((string) ($statusInduk ?? 'A')) !== 'A') {
+                        throw new \RuntimeException('Kunjungan sudah ditutup di kasir, tidak dapat mengirim ke kamar operasi.');
                     }
 
                     $okRegBaru = (int) DB::scalar('SELECT NVL(MAX(TO_NUMBER(ok_reg)),0) + 1 FROM rstxn_oks');
@@ -201,11 +201,10 @@ new class extends Component {
                         'ok_reg' => $okRegBaru,
                         'ok_date' => DB::raw('SYSDATE'),
                         // status_rjri + ref_no = sumber kebenaran layanan (pola lab).
-                        // rihdr_no tetap diisi untuk kompatibilitas mundur: view
-                        // RSVIEW_NEWDOCSALARIES & laporan lama masih membacanya.
-                        'status_rjri' => 'RI',
-                        'ref_no' => $riHdrNo,
-                        'rihdr_no' => $riHdrNo,
+                        'status_rjri' => 'UGD',
+                        'ref_no' => $rjNo,
+                        // rihdr_no HANYA untuk RI — kolomnya FK ke rstxn_rihdrs.
+                        'rihdr_no' => null,
                         'dr_id' => $drId,
                         'dr_id_ok' => $drIdOk,
                         'diag_id' => $diagId,
@@ -229,7 +228,7 @@ new class extends Component {
                     }
 
                     $ringkasTindakan = $tindakan === [] ? 'tanpa rencana tindakan' : collect($tindakan)->pluck('accdoc_desc')->implode(', ');
-                    $this->appendAdminLogRI($riHdrNo, "Order Kamar Operasi No.{$okRegBaru} — operator {$drId}, anestesi {$drIdOk}" . ($diagId ? ", diagnosa pra-op {$diagId}" : '') . " — {$ringkasTindakan}", 'MR');
+                    $this->appendAdminLogUGD($rjNo, "Order Kamar Operasi No.{$okRegBaru} — operator {$drId}, anestesi {$drIdOk}" . ($diagId ? ", diagnosa pra-op {$diagId}" : '') . " — {$ringkasTindakan}", 'MR');
                 });
 
                 break;
@@ -250,7 +249,7 @@ new class extends Component {
         }
 
         $this->closeModal();
-        $this->dispatch('kamar-operasi-ri.updated');
+        $this->dispatch('kamar-operasi-ugd.updated');
         $this->dispatch('refresh-after-kamar-operasi.saved');
         $this->dispatch('toast', type: 'success', message: "Pasien dikirim ke Kamar Operasi — No. Txn {$okRegBaru}.");
     }
@@ -273,8 +272,8 @@ new class extends Component {
     </x-primary-button>
 
     {{-- MODAL ORDER --}}
-    <x-modal name="kamar-operasi-order-ri" size="full" height="full" focusable>
-        <div class="flex flex-col h-full" wire:key="{{ $this->renderKey('kamar-operasi-order-modal-ri', [$riHdrNo ?: 'kosong']) }}">
+    <x-modal name="kamar-operasi-order-ugd" size="full" height="full" focusable>
+        <div class="flex flex-col h-full" wire:key="{{ $this->renderKey('kamar-operasi-order-modal-ugd', [$rjNo ?: 'kosong']) }}">
 
             {{-- HEADER --}}
             <div class="flex items-center justify-between px-6 py-4 border-b shrink-0 border-hairline dark:border-gray-700">
@@ -299,14 +298,14 @@ new class extends Component {
                     <x-border-form title="Dokter Operasi">
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
-                                <livewire:lov.dokter.lov-dokter target="order-ok-ri-operator" label="Dokter Operator"
-                                    :initialDrId="$drId ?: null" wire:key="order-ok-ri-operator-{{ $riHdrNo }}-{{ $drId }}" />
+                                <livewire:lov.dokter.lov-dokter target="order-ok-ugd-operator" label="Dokter Operator"
+                                    :initialDrId="$drId ?: null" wire:key="order-ok-ugd-operator-{{ $rjNo }}-{{ $drId }}" />
                                 <x-input-error :messages="$errors->get('drId')" class="mt-1" />
                                 <p class="mt-1 text-xs italic text-amber-700 dark:text-amber-400">Pendapatan pos Jasa Dokter Operator tercatat atas nama dokter ini.</p>
                             </div>
                             <div>
-                                <livewire:lov.dokter.lov-dokter target="order-ok-ri-anestesi" label="Dokter Anestesi"
-                                    :initialDrId="$drIdOk ?: null" wire:key="order-ok-ri-anestesi-{{ $riHdrNo }}-{{ $drIdOk }}" />
+                                <livewire:lov.dokter.lov-dokter target="order-ok-ugd-anestesi" label="Dokter Anestesi"
+                                    :initialDrId="$drIdOk ?: null" wire:key="order-ok-ugd-anestesi-{{ $rjNo }}-{{ $drIdOk }}" />
                                 <x-input-error :messages="$errors->get('drIdOk')" class="mt-1" />
                                 <p class="mt-1 text-xs italic text-amber-700 dark:text-amber-400">Pendapatan pos Jasa Dokter Anestesi tercatat atas nama dokter ini.</p>
                             </div>
@@ -320,15 +319,16 @@ new class extends Component {
 
                         <x-border-form title="Diagnosa Pra-Operasi" class="lg:col-span-1 h-full">
                             {{-- Label tak mengulang judul bingkai. --}}
-                            <livewire:lov.diagnosa.lov-diagnosa target="order-ok-ri-diagnosa" label="Cari Diagnosa (opsional)"
-                                :initialDiagnosaId="$diagId" wire:key="order-ok-ri-diagnosa-{{ $riHdrNo }}-{{ $diagId }}" />
+                            <livewire:lov.diagnosa.lov-diagnosa target="order-ok-ugd-diagnosa" label="Cari Diagnosa (opsional)"
+                                :initialDiagnosaId="$diagId" wire:key="order-ok-ugd-diagnosa-{{ $rjNo }}-{{ $diagId }}" />
                         </x-border-form>
 
                         <div class="lg:col-span-1">
                             <x-border-form title="Rencana Tindakan" class="h-full">
-                        {{-- RI: tarif tindakan bertingkat per kelas kamar -> LOV khusus -ri. --}}
-                        <livewire:lov.jasa-dokter.lov-jasa-dokter-ri target="order-ok-ri-tindakan" label="Cari Tindakan Operasi"
-                            :riHdrNo="(int) $riHdrNo" wire:key="order-ok-ri-tindakan-{{ $riHdrNo }}-{{ count($selectedTindakan) }}" />
+                        {{-- RJ/UGD tak punya kelas kamar -> LOV tarif dasar, bukan varian -ri.
+                             Payload-nya identik (accdoc_id / accdoc_desc / accdoc_price). --}}
+                        <livewire:lov.jasa-dokter.lov-jasa-dokter target="order-ok-ugd-tindakan" label="Cari Tindakan Operasi"
+                            wire:key="order-ok-ugd-tindakan-{{ $rjNo }}-{{ count($selectedTindakan) }}" />
                         @if (!empty($selectedTindakan))
                             <table class="w-full mt-3 text-sm text-left">
                                 <thead class="text-xs font-semibold tracking-wide uppercase text-muted">
@@ -380,7 +380,7 @@ new class extends Component {
                         <div class="p-3 text-xs border rounded-xl lg:col-span-1 h-full border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200">
                         Order ini membuat transaksi berstatus <span class="font-semibold">Proses Transaksi</span> di modul Kamar Operasi.
                         Biaya <span class="font-semibold">belum</span> masuk tagihan pasien — baru masuk setelah petugas OK menekan
-                        Trf Biaya-INAP.
+                        Trf Biaya-UGD.
                         </div>
 
                     </div>

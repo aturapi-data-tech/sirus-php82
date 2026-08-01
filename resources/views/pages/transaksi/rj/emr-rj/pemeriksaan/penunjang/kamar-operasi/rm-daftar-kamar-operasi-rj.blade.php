@@ -1,34 +1,34 @@
 <?php
-// resources/views/pages/transaksi/ri/emr-ri/pemeriksaan-ri/penunjang/kamar-operasi/rm-daftar-kamar-operasi-ri.blade.php
+// resources/views/pages/transaksi/rj/emr-rj/pemeriksaan/penunjang/kamar-operasi/rm-daftar-kamar-operasi-rj.blade.php
 
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Daftar operasi yang sudah dikirim untuk SATU kunjungan rawat inap — baca saja.
+ * Daftar operasi yang sudah dikirim untuk SATU kunjungan rawat jalan — baca saja.
  *
- * Model tabelnya disamakan dengan `rm-daftar-radiologi-ri`: tabel polos tanpa
+ * Model tabelnya disamakan dengan `rm-daftar-radiologi-rj`: tabel polos tanpa
  * kartu pembungkus (pembungkusnya sudah disediakan tab Pelayanan Penunjang).
  *
  * TIDAK menampilkan nominal tagihan — itu ranah Administrasi/Kasir. Di EMR yang
  * dibutuhkan hanya: sudah dikirim atau belum, tindakannya apa, dan siapa dokternya.
  */
 new class extends Component {
-    public ?string $riHdrNo = null;
+    public string $rjNo = '';
     public array $rows = [];
 
-    public function mount(?string $riHdrNo = null): void
+    public function mount(string $rjNo = ''): void
     {
-        $this->riHdrNo = $riHdrNo;
+        $this->rjNo = $rjNo;
         $this->findData();
     }
 
-    #[On('kamar-operasi-ri.updated')]
+    #[On('kamar-operasi-rj.updated')]
     #[On('refresh-after-kamar-operasi.saved')]
     public function findData(): void
     {
-        if (empty($this->riHdrNo)) {
+        if (empty($this->rjNo)) {
             $this->rows = [];
             return;
         }
@@ -46,8 +46,8 @@ new class extends Component {
                 'dg.diag_desc',
                 DB::raw("(SELECT string_agg(a.accdoc_desc) FROM rstxn_okacts t JOIN rsmst_accdocs a ON a.accdoc_id = t.accdoc_id WHERE t.ok_reg = o.ok_reg) AS tindakan_desc"),
             )
-            ->where('o.status_rjri', 'RI')
-            ->where('o.ref_no', $this->riHdrNo)
+            ->where('o.status_rjri', 'RJ')
+            ->where('o.ref_no', $this->rjNo)
             ->orderByDesc('o.ok_reg')
             ->get()
             ->map(fn($transaksiOk) => (array) $transaksiOk)
@@ -77,7 +77,7 @@ new class extends Component {
                         default => [$statusOk, 'gray'],
                     };
                 @endphp
-                <tr wire:key="daftar-ok-ri-{{ $row['ok_reg'] }}" class="border-b group">
+                <tr wire:key="daftar-ok-rj-{{ $row['ok_reg'] }}" class="border-b group">
                     <td class="px-2 py-2 text-sm font-mono text-muted group-hover:bg-surface-soft whitespace-nowrap">
                         {{ $row['ok_date'] ?? '-' }}
                     </td>
