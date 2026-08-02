@@ -36,8 +36,12 @@ class GajiDokter
      * model per kapita. Dokter per-kepala TIDAK dibayar per komponen untuk jalur
      * tersebut, jadi barisnya dibuang dan diganti satu baris 'KAPITA %'.
      * Jalur lain (OK, radiologi, dst) tetap dihitung normal.
+     *
+     * Publik karena GajiDokterLampiran perlu tahu grup mana yang digantikan,
+     * supaya barisnya bisa ditandai "dasar hitung" alih-alih dibaca sebagai
+     * uang yang diterima. Satu-satunya sumber daftar ini tetap di sini.
      */
-    protected const GRUP_KAPITA = [
+    public const GRUP_KAPITA = [
         'ri' => ['RI'],
         'rj' => ['RJ'],
     ];

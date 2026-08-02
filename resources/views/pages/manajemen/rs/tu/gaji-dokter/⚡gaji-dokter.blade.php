@@ -16,6 +16,7 @@ use Livewire\Attributes\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Support\GajiDokter;
+use App\Support\GajiDokterLampiran;
 use Carbon\Carbon;
 
 new class extends Component {
@@ -291,6 +292,94 @@ new class extends Component {
         return response()->streamDownload(fn () => print $pdf->output(), $namaBerkas);
     }
 
+    /**
+     * Cetak lampiran rincian pasien seluruh slip pada tampilan ini jadi SATU
+     * berkas, tiap dokter mulai di halaman baru.
+     *
+     * Transaksinya ditarik lewat GajiDokterLampiran::barisMassal() — SEKALI
+     * untuk semua dokter, bukan sekali per dokter. Lookup identitas pasien di
+     * sana dikelompokkan per komponen, jadi 36 dokter tetap ~23 kueri; kalau
+     * dipanggil per dokter jumlahnya menjadi 36 x 23.
+     *
+     * Berkasnya bisa tebal — dokter poli yang ramai sendirian bisa belasan
+     * halaman. Itu memang sifat lampiran, dan alasan tombolnya berdiri sendiri
+     * di samping Cetak Semua alih-alih ikut menempel di tiap slip.
+     */
+    public function cetakLampiranSemua(): mixed
+    {
+        // Berkas ini menampung seluruh dokter sekaligus, jadi batas 60 detik
+        // bawaan PHP hampir pasti kurang. Penyebab terbesarnya sudah dibereskan
+        // — lampiran tidak lagi menyuntikkan build Tailwind ke dompdf, lihat
+        // partial gaya-lampiran — tapi volumenya memang besar.
+        set_time_limit(600);
+
+        $headerList = $this->slipQuery()
+            ->orderBy('d.dr_name')
+            ->select('h.*', 'd.dr_name')
+            ->get();
+
+        if ($headerList->isEmpty()) {
+            $this->dispatch('toast', type: 'warning', message: 'Tidak ada slip untuk dicetak.');
+            return null;
+        }
+
+        $drIdList = $headerList->pluck('dr_id')->unique()->values()->all();
+
+        $lampiranPerDokter = GajiDokterLampiran::barisMassal($drIdList, $this->tahunJasa, $this->bulanJasa);
+
+        if ($lampiranPerDokter->isEmpty()) {
+            $this->dispatch('toast', type: 'warning', message: 'Tidak ada transaksi pasien pada periode ini — lampiran tidak dicetak.');
+            return null;
+        }
+
+        $grupKapitaPerDokter = GajiDokterLampiran::grupKapitaMassal($drIdList);
+
+        // Detail slip ditarik sekali lalu dikelompokkan di memori — pola yang
+        // sama dengan cetakSemua(), supaya tidak jadi N+1.
+        $detailPerSlip = DB::table('rstxn_gajidoctordtls')
+            ->whereIn('gajidoctor_no', $headerList->pluck('gajidoctor_no'))
+            ->orderBy('jenis')->orderBy('urutan')->orderBy('gajidoctor_dtl')
+            ->get()
+            ->groupBy('gajidoctor_no');
+
+        // Dokter tanpa satu pun transaksi pasien dilewati, bukan dicetak sebagai
+        // halaman kosong. Yang punya slip tapi nihil transaksi biasanya dokter
+        // bergaji pokok murni — halaman "tidak ada transaksi" untuk mereka hanya
+        // menambah kertas tanpa menambah keterangan apa pun.
+        $lampiranList = $headerList
+            ->filter(fn ($header) => ($lampiranPerDokter[$header->dr_id] ?? collect())->isNotEmpty())
+            ->map(fn ($header) => [
+                'header' => $header,
+                'detail' => $detailPerSlip[$header->gajidoctor_no] ?? collect(),
+                'lampiran' => $lampiranPerDokter[$header->dr_id],
+                'grupKapita' => $grupKapitaPerDokter[$header->dr_id] ?? [],
+            ])
+            ->values();
+
+        if ($lampiranList->isEmpty()) {
+            $this->dispatch('toast', type: 'warning', message: 'Tidak ada transaksi pasien pada periode ini — lampiran tidak dicetak.');
+            return null;
+        }
+
+        $identitasRs = DB::table('rsmst_identitases')
+            ->select('int_name', 'int_address', 'int_city', 'int_phone1')
+            ->first();
+
+        $kota = trim((string) ($identitasRs->int_city ?? ''));
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pages.components.manajemen.cetak-slip-gaji.cetak-lampiran-pasien-massal-print', [
+            'lampiranList' => $lampiranList,
+            'judulPeriode' => $this->periodeGajiLabel,
+            'identitasRs' => $identitasRs,
+            // locale('id') WAJIB — APP_LOCALE repo ini 'en'.
+            'tanggalCetak' => trim($kota . ($kota !== '' ? ', ' : '') . now()->locale('id')->translatedFormat('d F Y')),
+        ])->setPaper('A4');
+
+        $namaBerkas = 'lampiran-pasien-' . $this->tahunJasa . $this->bulanJasa . '-semua.pdf';
+
+        return response()->streamDownload(fn () => print $pdf->output(), $namaBerkas);
+    }
+
     /** Cetak slip tanpa membuka rincian — payload sama dengan tombol di modal. */
     public function cetak(int $gajidoctorNo): mixed
     {
@@ -355,11 +444,15 @@ new class extends Component {
 
             {{-- TOOLBAR --}}
             <div class="sticky z-30 px-4 pt-1 pb-2 bg-surface-soft border-b border-hairline top-16 dark:bg-gray-900 dark:border-gray-700">
+                {{-- Lebar saringan sengaja dipangkas dari ukuran semula (bulan 40,
+                     tahun 24, cari 56) supaya seluruh tombol muat sebaris dengannya.
+                     Sejak tombol Lampiran Semua ikut di baris ini, ukuran lama
+                     mendorong kelompok tombol turun ke baris kedua. --}}
                 <div class="flex flex-wrap items-end gap-3">
 
                     <div class="w-full sm:w-auto">
                         <x-input-label value="Bulan Jasa" />
-                        <x-select-input wire:model.live="bulanJasa" class="mt-1 block w-full sm:w-40">
+                        <x-select-input wire:model.live="bulanJasa" class="mt-1 block w-full sm:w-32">
                             @foreach (['01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April', '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus', '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'] as $kode => $nama)
                                 <option value="{{ $kode }}">{{ $nama }}</option>
                             @endforeach
@@ -369,7 +462,7 @@ new class extends Component {
                     <div class="w-full sm:w-auto">
                         <x-input-label value="Tahun Jasa" />
                         <x-text-input type="text" wire:model.live.debounce.500ms="tahunJasa" inputmode="numeric"
-                            maxlength="4" class="mt-1 block w-full sm:w-24 text-right" />
+                            maxlength="4" class="mt-1 block w-full sm:w-20 text-right" />
                     </div>
 
                     <div class="w-full sm:w-auto">
@@ -384,7 +477,7 @@ new class extends Component {
                     <div class="w-full sm:w-auto">
                         <x-input-label value="Cari Dokter" />
                         <x-text-input type="text" wire:model.live.debounce.500ms="cariDokter"
-                            class="mt-1 block w-full sm:w-56" placeholder="nama dokter" />
+                            class="mt-1 block w-full sm:w-40" placeholder="nama dokter" />
                     </div>
 
                     {{-- Generate, Refresh/Reset, dan Kembali disatukan di baris toolbar
@@ -434,6 +527,26 @@ new class extends Component {
                                 <x-loading /> Menyiapkan...
                             </span>
                         </x-info-button>
+
+                        {{-- Lampiran = outline, bukan info: cetakan pendamping yang
+                             berdiri sendiri, bukan dokumen utama periode ini. Berkasnya
+                             bisa tebal, jadi sengaja tidak digabung ke Cetak Semua. --}}
+                        <x-outline-button type="button" class="gap-2" wire:click="cetakLampiranSemua"
+                            wire:loading.attr="disabled" wire:target="cetakLampiranSemua"
+                            :disabled="$this->ringkasan['slip'] === 0"
+                            title="Cetak lampiran rincian pasien semua slip pada tampilan ini — tanggal layanan, no. RM, nama, nominal">
+                            <span wire:loading.remove wire:target="cetakLampiranSemua" class="inline-flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                    stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                                </svg>
+                                Lampiran Semua
+                            </span>
+                            <span wire:loading wire:target="cetakLampiranSemua" class="inline-flex items-center gap-2">
+                                <x-loading /> Menyiapkan...
+                            </span>
+                        </x-outline-button>
 
                         {{-- Tombol baku toolbar list: Refresh (muat ulang tanpa mengubah
                              filter) + Reset (kembalikan filter ke awal). --}}
