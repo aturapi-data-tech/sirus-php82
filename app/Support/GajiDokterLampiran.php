@@ -90,6 +90,10 @@ class GajiDokterLampiran
                         DB::raw('SUM(v.doc_nominal) AS nominal'),
                         DB::raw('SUM(v.jml_pasien) AS pasien'),
                         DB::raw('MIN(v.group_seq) AS seq'),
+                        // MIN, bukan ikut GROUP BY: klaim_id berasal dari header
+                        // transaksinya, jadi satu TXN_NO pasti satu klaim. Dipakai
+                        // MIN supaya pengelompokan barisnya tidak ikut berubah.
+                        DB::raw('MIN(v.klaim_id) AS klaim_id'),
                     ])
                     ->whereRaw("to_char(to_date(v.doc_date, 'dd/mm/yyyy'), 'mm/yyyy') = ?", [$periode])
                     ->whereIn('v.dr_id', $bagianDokter->values()->all())
@@ -101,6 +105,12 @@ class GajiDokterLampiran
         if ($transaksi->isEmpty()) {
             return collect();
         }
+
+        // Sekali untuk seluruh berkas — isinya belasan baris master, jadi lebih
+        // murah dipetakan di PHP daripada di-join ke view yang menyapu seluruh
+        // riwayat.
+        $petaKlaim = DB::table('rsmst_klaimtypes')->get()
+            ->keyBy(fn ($jenis) => trim((string) $jenis->klaim_id));
 
         // Lookup identitas dikumpulkan LINTAS DOKTER: satu komponen = satu
         // kueri untuk seluruh berkas. Nomor transaksi unik per tabel sumber,
@@ -114,7 +124,7 @@ class GajiDokterLampiran
         }
 
         return $transaksi
-            ->map(function ($baris) use ($identitas) {
+            ->map(function ($baris) use ($identitas, $petaKlaim) {
                 $sumber = $identitas[$baris->desc_doc][self::kunci($baris->txn_no)] ?? null;
 
                 // Tanpa sumber (nomor transaksi tak ketemu, atau tabelnya
@@ -122,6 +132,8 @@ class GajiDokterLampiran
                 // pulang lebih baik daripada baris tanpa tanggal sama sekali,
                 // asalkan barisnya tetap tampil dan nominalnya tetap benar.
                 $tanggal = $sumber->tgl ?? $baris->doc_date;
+
+                $klaim = $petaKlaim[trim((string) $baris->klaim_id)] ?? null;
 
                 return [
                     'dr_id' => (string) $baris->dr_id,
@@ -136,6 +148,12 @@ class GajiDokterLampiran
                     'nama' => trim((string) ($sumber->nama ?? '')),
                     'nominal' => (float) $baris->nominal,
                     'pasien' => (int) $baris->pasien,
+                    'klaim_id' => trim((string) $baris->klaim_id),
+                    // Kode mentah dipakai apa adanya bila tidak ada di master —
+                    // lebih berguna daripada sel kosong saat menelusuri.
+                    'klaim' => trim((string) ($klaim->klaim_desc ?? $baris->klaim_id)),
+                    'klaim_status' => trim((string) ($klaim->klaim_status ?? '')),
+                    'no_sep' => trim((string) ($sumber->no_sep ?? '')),
                 ];
             })
             ->sortBy([['seq', 'asc'], ['tgl_sort', 'asc'], ['nama', 'asc']])
@@ -390,6 +408,7 @@ class GajiDokterLampiran
             'UP KLINIK', 'JD KLINIK' => self::bentuk(
                 DB::table('rstxn_rjhdrks as h'),
                 'h.rj_no', 'h.rj_date', $nomorTransaksiList,
+                adaSep: false,
             ),
 
             'RAD RJ' => self::bentuk(
@@ -423,8 +442,16 @@ class GajiDokterLampiran
      * baris jasa). Tanpa agregat keduanya menghasilkan kunci kembar yang
      * diam-diam saling menimpa di peta.
      */
-    protected static function bentuk($kueri, string $kolomKunci, string $kolomTanggal, array $nomorTransaksiList)
+    protected static function bentuk($kueri, string $kolomKunci, string $kolomTanggal, array $nomorTransaksiList, bool $adaSep = true)
     {
+        // RSTXN_RJHDRKS (klinik) TIDAK punya kolom VNO_SEP — diperiksa langsung
+        // ke USER_TAB_COLUMNS 2026-08-02, sementara RJHDRS/UGDHDRS/RIHDRS
+        // punya. Menyeragamkannya berarti ORA-00904 pada cabang klinik saja,
+        // dan itu tipe kegagalan yang baru ketahuan di produksi karena komponen
+        // klinik tidak muncul pada tiap dokter. NULL di-cast supaya Oracle tahu
+        // tipe kolomnya saat cabang ini digabungkan di sisi PHP.
+        $ekspresiSep = $adaSep ? 'MIN(h.vno_sep)' : "CAST(NULL AS VARCHAR2(30))";
+
         return $kueri
             ->leftJoin('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
             ->whereIn($kolomKunci, $nomorTransaksiList)
@@ -434,6 +461,7 @@ class GajiDokterLampiran
                 DB::raw('MIN(p.reg_name) AS nama'),
                 DB::raw("to_char(MIN({$kolomTanggal}), 'dd/mm/yyyy') AS tgl"),
                 DB::raw("to_char(MIN({$kolomTanggal}), 'yyyymmdd') AS tgl_sort"),
+                DB::raw("{$ekspresiSep} AS no_sep"),
             ])
             ->groupBy(DB::raw($kolomKunci));
     }

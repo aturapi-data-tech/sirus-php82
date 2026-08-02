@@ -16,7 +16,6 @@ use Livewire\Attributes\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Support\GajiDokter;
-use App\Support\GajiDokterLampiran;
 use Carbon\Carbon;
 
 new class extends Component {
@@ -293,91 +292,23 @@ new class extends Component {
     }
 
     /**
-     * Cetak lampiran rincian pasien seluruh slip pada tampilan ini jadi SATU
-     * berkas, tiap dokter mulai di halaman baru.
+     * Buka lampiran rincian pasien SELURUH slip pada tampilan ini di layar.
      *
-     * Transaksinya ditarik lewat GajiDokterLampiran::barisMassal() — SEKALI
-     * untuk semua dokter, bukan sekali per dokter. Lookup identitas pasien di
-     * sana dikelompokkan per komponen, jadi 36 dokter tetap ~23 kueri; kalau
-     * dipanggil per dokter jumlahnya menjadi 36 x 23.
-     *
-     * Berkasnya bisa tebal — dokter poli yang ramai sendirian bisa belasan
-     * halaman. Itu memang sifat lampiran, dan alasan tombolnya berdiri sendiri
-     * di samping Cetak Semua alih-alih ikut menempel di tiap slip.
+     * Dulu ini mengunduh PDF. Diganti 2026-08-02 karena dompdf harus
+     * mencocokkan build Tailwind ke tiap elemen: satu dokter 123 baris saja
+     * butuh 14 detik, dan berkas massal jauh lebih berat lagi. Yang dikirim
+     * ke modal cuma daftar nomor slip; datanya ditarik komponen lampiran.
      */
-    public function cetakLampiranSemua(): mixed
+    public function lihatLampiranSemua(): void
     {
-        // Berkas ini menampung seluruh dokter sekaligus, jadi batas 60 detik
-        // bawaan PHP hampir pasti kurang. Penyebab terbesarnya sudah dibereskan
-        // — lampiran tidak lagi menyuntikkan build Tailwind ke dompdf, lihat
-        // partial gaya-lampiran — tapi volumenya memang besar.
-        set_time_limit(600);
+        $gajidoctorNoList = $this->slipQuery()->pluck('h.gajidoctor_no');
 
-        $headerList = $this->slipQuery()
-            ->orderBy('d.dr_name')
-            ->select('h.*', 'd.dr_name')
-            ->get();
-
-        if ($headerList->isEmpty()) {
-            $this->dispatch('toast', type: 'warning', message: 'Tidak ada slip untuk dicetak.');
-            return null;
+        if ($gajidoctorNoList->isEmpty()) {
+            $this->dispatch('toast', type: 'warning', message: 'Tidak ada slip pada tampilan ini.');
+            return;
         }
 
-        $drIdList = $headerList->pluck('dr_id')->unique()->values()->all();
-
-        $lampiranPerDokter = GajiDokterLampiran::barisMassal($drIdList, $this->tahunJasa, $this->bulanJasa);
-
-        if ($lampiranPerDokter->isEmpty()) {
-            $this->dispatch('toast', type: 'warning', message: 'Tidak ada transaksi pasien pada periode ini — lampiran tidak dicetak.');
-            return null;
-        }
-
-        $grupKapitaPerDokter = GajiDokterLampiran::grupKapitaMassal($drIdList);
-
-        // Detail slip ditarik sekali lalu dikelompokkan di memori — pola yang
-        // sama dengan cetakSemua(), supaya tidak jadi N+1.
-        $detailPerSlip = DB::table('rstxn_gajidoctordtls')
-            ->whereIn('gajidoctor_no', $headerList->pluck('gajidoctor_no'))
-            ->orderBy('jenis')->orderBy('urutan')->orderBy('gajidoctor_dtl')
-            ->get()
-            ->groupBy('gajidoctor_no');
-
-        // Dokter tanpa satu pun transaksi pasien dilewati, bukan dicetak sebagai
-        // halaman kosong. Yang punya slip tapi nihil transaksi biasanya dokter
-        // bergaji pokok murni — halaman "tidak ada transaksi" untuk mereka hanya
-        // menambah kertas tanpa menambah keterangan apa pun.
-        $lampiranList = $headerList
-            ->filter(fn ($header) => ($lampiranPerDokter[$header->dr_id] ?? collect())->isNotEmpty())
-            ->map(fn ($header) => [
-                'header' => $header,
-                'detail' => $detailPerSlip[$header->gajidoctor_no] ?? collect(),
-                'lampiran' => $lampiranPerDokter[$header->dr_id],
-                'grupKapita' => $grupKapitaPerDokter[$header->dr_id] ?? [],
-            ])
-            ->values();
-
-        if ($lampiranList->isEmpty()) {
-            $this->dispatch('toast', type: 'warning', message: 'Tidak ada transaksi pasien pada periode ini — lampiran tidak dicetak.');
-            return null;
-        }
-
-        $identitasRs = DB::table('rsmst_identitases')
-            ->select('int_name', 'int_address', 'int_city', 'int_phone1')
-            ->first();
-
-        $kota = trim((string) ($identitasRs->int_city ?? ''));
-
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pages.components.manajemen.cetak-slip-gaji.cetak-lampiran-pasien-massal-print', [
-            'lampiranList' => $lampiranList,
-            'judulPeriode' => $this->periodeGajiLabel,
-            'identitasRs' => $identitasRs,
-            // locale('id') WAJIB — APP_LOCALE repo ini 'en'.
-            'tanggalCetak' => trim($kota . ($kota !== '' ? ', ' : '') . now()->locale('id')->translatedFormat('d F Y')),
-        ])->setPaper('A4');
-
-        $namaBerkas = 'lampiran-pasien-' . $this->tahunJasa . $this->bulanJasa . '-semua.pdf';
-
-        return response()->streamDownload(fn () => print $pdf->output(), $namaBerkas);
+        $this->dispatch('gaji.dokter.openLampiranSemua', gajidoctorNoList: $gajidoctorNoList->values()->all());
     }
 
     /** Cetak slip tanpa membuka rincian — payload sama dengan tombol di modal. */
@@ -416,6 +347,18 @@ new class extends Component {
         $namaBerkas = 'slip-gaji-' . $header->dr_id . '-' . $header->tahun_gaji . $header->bulan_gaji . '.pdf';
 
         return response()->streamDownload(fn () => print $pdf->output(), $namaBerkas);
+    }
+
+    /**
+     * Buka lampiran rincian pasien satu dokter di layar.
+     *
+     * Ada di baris daftar karena inilah yang paling sering diminta menyusul
+     * slipnya: pertanyaan "angka ini dari pasien mana" muncul saat memandang
+     * barisnya, bukan setelah membuka rinciannya.
+     */
+    public function lihatLampiran(int $gajidoctorNo): void
+    {
+        $this->dispatch('gaji.dokter.openLampiran', gajidoctorNo: $gajidoctorNo);
     }
 
     public function lihatRincian(int $gajidoctorNo): void
@@ -528,14 +471,14 @@ new class extends Component {
                             </span>
                         </x-info-button>
 
-                        {{-- Lampiran = outline, bukan info: cetakan pendamping yang
-                             berdiri sendiri, bukan dokumen utama periode ini. Berkasnya
-                             bisa tebal, jadi sengaja tidak digabung ke Cetak Semua. --}}
-                        <x-outline-button type="button" class="gap-2" wire:click="cetakLampiranSemua"
-                            wire:loading.attr="disabled" wire:target="cetakLampiranSemua"
+                        {{-- Lampiran = outline, bukan info: tampilan pendamping yang
+                             berdiri sendiri, bukan dokumen utama periode ini. Dibuka di
+                             layar sebagai tabel, tidak diunduh sebagai PDF. --}}
+                        <x-outline-button type="button" class="gap-2" wire:click="lihatLampiranSemua"
+                            wire:loading.attr="disabled" wire:target="lihatLampiranSemua"
                             :disabled="$this->ringkasan['slip'] === 0"
-                            title="Cetak lampiran rincian pasien semua slip pada tampilan ini — tanggal layanan, no. RM, nama, nominal">
-                            <span wire:loading.remove wire:target="cetakLampiranSemua" class="inline-flex items-center gap-2">
+                            title="Lihat lampiran rincian pasien semua slip pada tampilan ini — tanggal layanan, no. RM, nama, nominal">
+                            <span wire:loading.remove wire:target="lihatLampiranSemua" class="inline-flex items-center gap-2">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                                     stroke-width="1.8">
                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -543,7 +486,7 @@ new class extends Component {
                                 </svg>
                                 Lampiran Semua
                             </span>
-                            <span wire:loading wire:target="cetakLampiranSemua" class="inline-flex items-center gap-2">
+                            <span wire:loading wire:target="lihatLampiranSemua" class="inline-flex items-center gap-2">
                                 <x-loading /> Menyiapkan...
                             </span>
                         </x-outline-button>
@@ -1056,6 +999,28 @@ new class extends Component {
                                             </span>
                                         </x-icon-button>
 
+                                        {{-- Lampiran: abu-abu, bukan biru. Biru dipakai Cetak slip di
+                                             sebelahnya, dan yang ini bukan cetakan — ia membuka
+                                             tabel di layar. Ikonnya garis-garis daftar,
+                                             menandakan isinya rincian baris. --}}
+                                        <x-icon-button color="gray" type="button"
+                                            class="!p-2.5 shrink-0"
+                                            wire:click="lihatLampiran({{ $row->gajidoctor_no }})"
+                                            wire:loading.attr="disabled"
+                                            wire:target="lihatLampiran({{ $row->gajidoctor_no }})"
+                                            title="Lihat lampiran rincian pasien {{ $row->dr_name }}">
+                                            <span wire:loading.remove wire:target="lihatLampiran({{ $row->gajidoctor_no }})">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                                    stroke-width="1.8">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                                                </svg>
+                                            </span>
+                                            <span wire:loading wire:target="lihatLampiran({{ $row->gajidoctor_no }})">
+                                                <x-loading size="md" />
+                                            </span>
+                                        </x-icon-button>
+
                                         </div>
 
                                         {{-- Hapus paling ujung & hanya untuk draft. Sengaja dipisah dari
@@ -1103,4 +1068,9 @@ new class extends Component {
     </div>
 
     <livewire:pages::manajemen.rs.tu.gaji-dokter.gaji-dokter-rincian wire:key="gaji-dokter-rincian" />
+
+    {{-- Modal lampiran berdiri SEJAJAR dengan modal rincian, bukan di dalamnya:
+         tombol Lampiran ada di dua tempat (baris daftar & footer modal rincian),
+         dan modal bersarang membuat yang kedua tidak pernah tampil benar. --}}
+    <livewire:pages::manajemen.rs.tu.gaji-dokter.gaji-dokter-lampiran wire:key="gaji-dokter-lampiran" />
 </div>

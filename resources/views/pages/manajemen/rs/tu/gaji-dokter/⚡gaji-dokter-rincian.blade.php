@@ -16,7 +16,6 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Support\GajiDokter;
-use App\Support\GajiDokterLampiran;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 new class extends Component {
@@ -246,60 +245,20 @@ new class extends Component {
     }
 
     /**
-     * Cetak lampiran rincian pasien — berkas TERPISAH dari slip.
+     * Buka lampiran rincian pasien dokter ini di layar.
      *
-     * Sengaja tidak digabung ke slip: slip adalah satu lembar yang
-     * ditandatangani, sedangkan lampiran ini bisa puluhan halaman untuk dokter
-     * poli yang ramai. Menempelkannya di belakang slip berarti setiap cetak
-     * biasa ikut menghabiskan kertas sebanyak itu.
-     *
-     * Datanya LIVE dari transaksi, bukan snapshot slip — lihat catatan
-     * rekonsiliasi di GajiDokterLampiran dan di kaki cetakannya.
+     * Dulu mengunduh PDF; diganti 2026-08-02 karena dompdf terlalu lambat untuk
+     * ratusan baris. Modalnya komponen TERPISAH yang berdiri sejajar dengan
+     * modal ini di halaman induk — modal bersarang tidak tampil benar.
      */
-    public function cetakLampiran(): mixed
+    public function lihatLampiran(): void
     {
         if (!$this->header) {
             $this->dispatch('toast', type: 'error', message: 'Slip tidak ditemukan.');
-            return null;
+            return;
         }
 
-        // Batas 60 detik bawaan PHP pernah terlampaui di sini. Penyebab
-        // utamanya sudah dibereskan — lampiran tidak lagi menyuntikkan build
-        // Tailwind ke dompdf (lihat partial gaya-lampiran) — tapi dokter dengan
-        // ratusan transaksi tetap butuh ruang lebih dari cetakan satu halaman.
-        set_time_limit(300);
-
-        $lampiran = GajiDokterLampiran::baris(
-            $this->header->dr_id,
-            $this->header->tahun_jasa,
-            $this->header->bulan_jasa,
-        );
-
-        if ($lampiran->isEmpty()) {
-            $this->dispatch('toast', type: 'warning', message: 'Tidak ada transaksi pasien pada periode ini — lampiran tidak dicetak.');
-            return null;
-        }
-
-        $identitasRs = DB::table('rsmst_identitases')
-            ->select('int_name', 'int_address', 'int_city', 'int_phone1')
-            ->first();
-
-        $kota = trim((string) ($identitasRs->int_city ?? ''));
-
-        $pdf = Pdf::loadView('pages.components.manajemen.cetak-slip-gaji.cetak-lampiran-pasien-print', [
-            'header' => $this->header,
-            'detail' => $this->detail,
-            'lampiran' => $lampiran,
-            'grupKapita' => GajiDokterLampiran::grupKapita($this->header->dr_id),
-            'identitasRs' => $identitasRs,
-            // locale('id') WAJIB — APP_LOCALE repo ini 'en'.
-            'tanggalCetak' => trim($kota . ($kota !== '' ? ', ' : '') . now()->locale('id')->translatedFormat('d F Y')),
-        ])->setPaper('A4');
-
-        $namaBerkas = 'lampiran-pasien-' . $this->header->dr_id . '-'
-            . $this->header->tahun_gaji . $this->header->bulan_gaji . '.pdf';
-
-        return response()->streamDownload(fn () => print $pdf->output(), $namaBerkas);
+        $this->dispatch('gaji.dokter.openLampiran', gajidoctorNo: $this->gajidoctorNo);
     }
 
     #[Computed]
@@ -1094,19 +1053,19 @@ new class extends Component {
                         <div class="flex items-center gap-2 shrink-0">
                             {{-- Warna mengikuti docs/standar-komponen-tombol.md:
                                  Tutup    -> secondary (aksi netral di footer modal)
-                                 Lampiran -> outline   (cetakan pendamping, bukan dokumen utama)
+                                 Lampiran -> outline   (tampilan pendamping, bukan dokumen utama)
                                  Cetak    -> info      (biru, aksi cetak bertext)
                                  Final    -> primary   (aksi utama modal ini)
                                  BukaKunci-> warning   (perlu perhatian, tidak destruktif) --}}
                             <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
 
-                            {{-- Lampiran berdiri sendiri sebagai berkas terpisah: yang
+                            {{-- Lampiran dibuka sebagai tabel di layar, bukan diunduh: yang
                                  ditandatangani tetap slip satu lembar, sementara daftar
-                                 pasiennya bisa puluhan halaman. --}}
-                            <x-outline-button type="button" class="gap-2" wire:click="cetakLampiran"
-                                wire:loading.attr="disabled" wire:target="cetakLampiran"
-                                title="Cetak lampiran rincian pasien (tanggal layanan, no. RM, nama, nominal)">
-                                <span wire:loading.remove wire:target="cetakLampiran" class="inline-flex items-center gap-2">
+                                 pasiennya bisa ratusan baris. --}}
+                            <x-outline-button type="button" class="gap-2" wire:click="lihatLampiran"
+                                wire:loading.attr="disabled" wire:target="lihatLampiran"
+                                title="Lihat lampiran rincian pasien (tanggal layanan, no. RM, nama, nominal)">
+                                <span wire:loading.remove wire:target="lihatLampiran" class="inline-flex items-center gap-2">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                                         stroke-width="1.8">
                                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -1114,7 +1073,7 @@ new class extends Component {
                                     </svg>
                                     Lampiran
                                 </span>
-                                <span wire:loading wire:target="cetakLampiran" class="inline-flex items-center gap-2">
+                                <span wire:loading wire:target="lihatLampiran" class="inline-flex items-center gap-2">
                                     <x-loading /> Menyiapkan...
                                 </span>
                             </x-outline-button>
