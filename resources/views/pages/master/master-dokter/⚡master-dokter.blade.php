@@ -56,6 +56,16 @@ new class extends Component {
         $this->dispatch('master.dokter.openEdit', drId: $drId);
     }
 
+    /**
+     * Parameter penggajian punya modal sendiri (master-dokter-penggajian-actions) —
+     * pemakainya bagian keuangan, bukan petugas master, dan kolom yang ditulis
+     * pun terpisah dari data dokter.
+     */
+    public function openPenggajian(string $drId): void
+    {
+        $this->dispatch('master.dokter.openPenggajian', drId: $drId);
+    }
+
     public function requestDelete(string $drId): void
     {
         $this->dispatch('master.dokter.requestDelete', drId: $drId);
@@ -499,7 +509,19 @@ new class extends Component {
                                          sementara klik input tidak ikut re-select (edit inline aman). --}}
                                     <td class="px-6 py-4 align-top">
                                         {{-- Aksi (Edit/Hapus) di atas sendiri — kolom Tarif & Aksi digabung 1 --}}
-                                        <div class="flex justify-end gap-2 mb-3" wire:click.stop>
+                                        <div class="flex flex-wrap justify-end gap-2 mb-3" wire:click.stop>
+                                            {{-- Struktur Gaji — modal terpisah dari Edit; lihat openPenggajian() --}}
+                                            <x-secondary-button type="button"
+                                                wire:click="openPenggajian('{{ $row->dr_id }}')"
+                                                class="px-2.5 py-1.5 text-sm" title="Struktur Gaji">
+                                                {{-- Lembar uang — sengaja bukan ikon dolar, mata uangnya rupiah --}}
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24" stroke-width="1.8">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M2.25 8.25h19.5v9a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5v-9zm0 0V6.75a1.5 1.5 0 011.5-1.5h16.5a1.5 1.5 0 011.5 1.5v1.5M14.25 13.5a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zM5.25 13.5h.008v.008H5.25V13.5zm13.5 0h.008v.008h-.008V13.5z" />
+                                                </svg>
+                                                Struktur Gaji
+                                            </x-secondary-button>
                                             <x-action-edit wire:click="openEdit('{{ $row->dr_id }}')" />
                                             <x-action-delete :action="'requestDelete(\'' . $row->dr_id . '\')'"
                                                 title="Hapus Dokter"
@@ -682,6 +704,7 @@ new class extends Component {
 
             {{-- Child actions component --}}
             <livewire:pages::master.master-dokter.master-dokter-actions wire:key="master-dokter-actions" />
+            <livewire:pages::master.master-dokter.master-dokter-penggajian-actions wire:key="master-dokter-penggajian-actions" />
 
         </div>
     </div>

@@ -24,6 +24,35 @@ grep -c '<x-modal' file.blade.php; grep -c '</x-modal' file.blade.php
 ```
 Diff-stat yang membengkak = tanda match melebar → batalkan.
 
+## 2b. Komentar Blade WAJIB seimbang — teks bocor ke layar
+
+Mengedit ISI komentar `{{-- --}}` yang panjang gampang menyisipkan `--}}` di tengah.
+Sisa komentarnya lalu jadi **teks biasa yang tercetak ke layar**, lengkap dengan `--}}`.
+`php -l` lolos (hasil kompilasinya PHP yang sah), dan uji render yang cuma memeriksa
+"apakah teks X ada" juga lolos — yang bocor justru teks yang tidak dicari siapa pun.
+
+Kejadian nyata 2026-08-02: komentar lebar kolom di `master-dokter-penggajian-actions`
+diganti isinya, `--}}` ikut tertulis di akhir teks baru, sementara paragraf lama masih
+menyusul sesudahnya. Panel "Gaji Pokok & Skema" menampilkan kalimat tentang
+`x-text-input-number` ke pengguna.
+
+Cek setelah menyentuh komentar mana pun:
+
+```bash
+# jumlahnya harus sama persis
+grep -c '{{--' file.blade.php; grep -c -- '--}}' file.blade.php
+```
+
+Lebih tuntas — pastikan hasil render tidak memuat penanda komentar sama sekali:
+
+```php
+$html = Livewire::test('...')->call('open', $id)->html();
+assert(!str_contains($html, '--}}') && !str_contains($html, '{{--'));
+```
+
+Saat mengganti isi komentar panjang, sertakan `--}}` penutup lama di dalam
+`old_string` supaya tidak mungkin tertinggal dua penutup.
+
 ## 3. Volt: hindari kata "use" di komentar PHP
 Compiler Volt salah-strip komentar `//` bila ada substring `re-use` / `reuse` — sisanya terbaca sebagai statement `use` → **ParseError**.
 

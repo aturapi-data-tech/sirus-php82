@@ -24,12 +24,19 @@ new class extends Component {
     public ?string $drNik = null;
     public ?string $poliPrice = null;
     public ?string $ugdPrice = null;
-    public ?string $basicSalary = null;
     public ?string $poliPriceBpjs = null;
     public ?string $ugdPriceBpjs = null;
     public string $contributionStatus = '0';
     public string $activeStatus = '1';
     public string $rsAdmin = '0';
+
+    // Gaji pokok & parameter penggajian TIDAK di sini — punya modal sendiri,
+    // lihat master-dokter-penggajian-actions.blade.php. Dipisah karena diisi orang &
+    // momen yang berbeda: panel ini untuk petugas master saat dokter baru
+    // masuk, yang di sana untuk keuangan saat kesepakatan gaji berubah.
+    // Catatan: rs_admin di atas BUKAN potongan gaji, melainkan tarif administrasi
+    // RS yang dibebankan ke pasien. Jangan tertukar dengan potongan RS di modal
+    // penggajian.
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal'];
@@ -120,7 +127,6 @@ new class extends Component {
             'drPhone' => 'nullable|string|max:100',
             'drAddress' => 'nullable|string|max:255',
             'poliId' => 'required|string|max:250|exists:rsmst_polis,poli_id',
-            'basicSalary' => 'nullable|numeric',
             'poliPrice' => 'nullable|numeric',
             'ugdPrice' => 'nullable|numeric',
             'poliPriceBpjs' => 'nullable|numeric',
@@ -155,7 +161,6 @@ new class extends Component {
             'drPhone' => 'Telepon',
             'drAddress' => 'Alamat',
             'poliId' => 'Poli',
-            'basicSalary' => 'Gaji Pokok',
             'poliPrice' => 'Tarif Poli',
             'ugdPrice' => 'Tarif UGD',
             'poliPriceBpjs' => 'Tarif Poli BPJS',
@@ -236,7 +241,6 @@ new class extends Component {
             'dr_address' => $data['drAddress'],
             'dr_phone' => $data['drPhone'],
             'poli_id' => $data['poliId'],
-            'basic_salary' => $data['basicSalary'],
             'poli_price' => $data['poliPrice'],
             'ugd_price' => $data['ugdPrice'],
             'poli_price_bpjs' => $data['poliPriceBpjs'],
@@ -247,6 +251,13 @@ new class extends Component {
             'kd_dr_bpjs' => $data['kdDrBpjs'],
             'dr_uuid' => $data['drUuid'],
             'dr_nik' => $data['drNik'],
+
+            // basic_salary & parameter penggajian SENGAJA tidak ada di payload
+            // ini — diurus modal Parameter Penggajian. Menyertakannya di sini
+            // berarti tiap simpan data dokter ikut menulis ulang kolom gaji
+            // yang tidak sedang disunting. Pada mode create kolom-kolom itu
+            // tidak disebut sama sekali, jadi Oracle mengisinya dengan DEFAULT
+            // dari DDL (skema 'A', basis 'T', 10%, PPh 2,5%).
         ];
 
         if ($this->formMode === 'create') {
@@ -298,7 +309,7 @@ new class extends Component {
      =============================== */
     protected function resetFormFields(): void
     {
-        $this->reset(['drId', 'drName', 'drAddress', 'drPhone', 'poliId', 'kdDrBpjs', 'drUuid', 'drNik', 'poliPrice', 'ugdPrice', 'basicSalary', 'poliPriceBpjs', 'ugdPriceBpjs']);
+        $this->reset(['drId', 'drName', 'drAddress', 'drPhone', 'poliId', 'kdDrBpjs', 'drUuid', 'drNik', 'poliPrice', 'ugdPrice', 'poliPriceBpjs', 'ugdPriceBpjs']);
 
         $this->resetVersion();
         $this->formMode = 'create';
@@ -314,7 +325,6 @@ new class extends Component {
         $this->drAddress = $row->dr_address;
         $this->drPhone = $row->dr_phone;
         $this->poliId = $row->poli_id;
-        $this->basicSalary = $row->basic_salary !== null ? (string) $row->basic_salary : null;
         $this->poliPrice = $row->poli_price !== null ? (string) $row->poli_price : null;
         $this->ugdPrice = $row->ugd_price !== null ? (string) $row->ugd_price : null;
         $this->poliPriceBpjs = $row->poli_price_bpjs !== null ? (string) $row->poli_price_bpjs : null;
@@ -465,7 +475,7 @@ new class extends Component {
                                 <div>
                                     <x-input-label value="NIK" class="mb-1" />
                                     <x-text-input wire:model.live="drNik" x-ref="inputDrNik" :error="$errors->has('drNik')"
-                                        class="w-full" x-on:keydown.enter.prevent="$refs.inputBasicSalary?.focus()" />
+                                        class="w-full" x-on:keydown.enter.prevent="$refs.inputRsAdmin?.focus()" />
                                     <x-input-error :messages="$errors->get('drNik')" class="mt-1" />
                                 </div>
 
@@ -482,14 +492,10 @@ new class extends Component {
                             <x-border-form title="Tarif & Administrasi">
                                 <div class="space-y-4">
 
-                                {{-- Gaji Pokok --}}
-                                <div>
-                                    <x-input-label value="Gaji Pokok" class="mb-1" />
-                                    <x-text-input-number wire:model="basicSalary" x-ref="inputBasicSalary"
-                                        :error="$errors->has('basicSalary')" class="w-full"
-                                        x-on:keydown.enter.prevent="$refs.inputRsAdmin?.focus()" />
-                                    <x-input-error :messages="$errors->get('basicSalary')" class="mt-1" />
-                                </div>
+                                {{-- Gaji Pokok pindah ke modal Parameter Penggajian (tombol "Gaji"
+                                     di daftar dokter) — di sana nilainya dibaca bersama skema &
+                                     basis potongan, sementara panel ini khusus tarif yang
+                                     dibebankan ke pasien. --}}
 
                                 {{-- RS Admin --}}
                                 <div>
@@ -543,6 +549,7 @@ new class extends Component {
                                 </div>
                                 </div>
                             </x-border-form>
+
 
                         </div>
                     </div>

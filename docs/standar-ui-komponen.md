@@ -304,6 +304,50 @@ Semua field yang berisi nominal uang (harga, tarif, gaji, biaya) **wajib** mengg
 - Sync integer bersih ke Livewire saat blur via `$wire.set()`
 - `inputmode="numeric"` untuk keyboard mobile
 - Alignment kanan (`text-right`) + `tabular-nums`
+- **Posisi kursor dipertahankan saat menyunting di tengah angka** (lihat di bawah)
+
+**JANGAN sederhanakan handler `x-on:input`-nya.**
+
+Handler itu terlihat bertele-tele, tapi setiap barisnya perlu. Format ribuan menuntut
+`$el.value` ditulis ulang tiap ketikan, dan menulis `.value` **selalu** melempar caret ke
+ujung. Akibatnya menyunting angka yang sudah terisi jadi kacau:
+
+| Isi | Aksi | Tanpa perbaikan | Seharusnya |
+|-----|------|-----------------|------------|
+| `12,000` | hapus digit `2` di tengah | kursor lompat ke ujung → ketikan berikutnya bikin `10,002` | `1,000`, kursor tetap di tengah |
+
+Solusinya BUKAN menyimpan posisi karakter — posisi itu bergeser sendiri saat koma
+bertambah/berkurang. Yang disimpan **berapa DIGIT ada sebelum kursor**, lalu setelah
+format ulang kursor dikembalikan ke posisi setelah digit ke-N yang sama:
+
+```js
+const digitSebelumKursor = $el.value.slice(0, $el.selectionStart).replace(/\D/g, '').length;
+const terformat = $el.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+$el.value = terformat;
+// cari indeks tepat setelah digit ke-N, lalu setSelectionRange
+```
+
+Berlaku untuk SEMUA input nominal di aplikasi — komponen ini dipakai lintas modul
+(master dokter saja punya 77 input).
+
+**Field berdesimal — sebutkan `:decimals`:**
+
+```blade
+{{-- persen, PPN — 2 angka di belakang koma --}}
+<x-text-input-number wire:model="pph21Persen" :decimals="2" />
+```
+
+Bawaannya `decimals="0"` = integer, persis perilaku lama. Tanpa prop ini input
+di-strip `/\D/g` sehingga titik desimal ikut terbuang dan `7.5` tersimpan sebagai
+`75` — sepuluh kali lipat. Prop ini ditambahkan 2026-08-02 setelah tujuh tempat di
+aplikasi (PPN penerimaan medis & non-medis, PPN master identitas, persen potongan RS
+& PPh 21 di modul gaji) mengulang akal-akalan `<x-text-input inputmode="decimal">`
+yang kehilangan pemisah ribuan, rata kanan, dan font tabular.
+
+Pada mode desimal, "karakter penting" yang dihitung untuk menjaga kursor mencakup
+titik desimal, bukan hanya digit — kalau tidak, kursor yang berada tepat sesudah
+titik akan melompat ke sebelum titik. Mode integer diuji berpasangan terhadap
+algoritma lama pada 126 kombinasi input × posisi kursor: **nol perbedaan**.
 
 **Jangan lakukan:**
 ```blade

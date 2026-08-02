@@ -15,6 +15,42 @@ Komponen `x-text-input-number` menyinkron nilai lewat `$wire.set` saat blur. Mak
 @keydown.enter.prevent="$el.blur(); $wire.simpan()"
 ```
 
+## 2b. Caret melompat saat menyunting angka berformat — JANGAN sederhanakan `x-on:input`
+
+`x-text-input-number` menulis ulang `$el.value` tiap ketikan untuk menyisipkan pemisah
+ribuan. Menulis `.value` **selalu** memindahkan caret ke ujung → menyunting angka yang
+sudah terisi jadi kacau: pada `12,000`, menghapus `2` di tengah membuat kursor lompat ke
+belakang, ketikan berikutnya menghasilkan `10,002`.
+
+Perbaikannya bukan menyimpan posisi karakter (bergeser saat koma bertambah/berkurang),
+melainkan **berapa digit sebelum kursor**, lalu kembalikan caret ke posisi setelah digit
+ke-N yang sama:
+
+```js
+const digitSebelumKursor = $el.value.slice(0, $el.selectionStart).replace(/\D/g, '').length;
+const terformat = $el.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+$el.value = terformat;   // lalu setSelectionRange ke indeks setelah digit ke-N
+```
+
+Sudah terpasang di komponennya (2026-08-02) — kalau ada yang "merapikan" handler itu jadi
+satu baris, bug-nya balik. Detail + tabel kasus di `docs/standar-ui-komponen.md` §4.
+
+## 2c. Field berdesimal → `:decimals`, JANGAN x-text-input polos
+
+```blade
+<x-text-input-number wire:model="pph21Persen" :decimals="2" />   {{-- persen, PPN --}}
+<x-text-input-number wire:model="basicSalary" />                 {{-- integer, bawaan --}}
+```
+
+Tanpa `:decimals`, input di-strip `/\D/g` → titik desimal terbuang → `7.5` tersimpan `75`.
+Dulu jalan keluarnya `<x-text-input inputmode="decimal">` polos, dan itu terulang di 7
+tempat sambil kehilangan pemisah ribuan, rata kanan, dan font tabular. Prop ini menutup
+celahnya (2026-08-02); mode integer terbukti identik dengan algoritma lama pada 126
+kombinasi input × posisi kursor.
+
+Pada mode desimal, yang dihitung untuk menjaga caret adalah digit **dan titik** — kalau
+hanya digit, kursor tepat sesudah titik melompat ke sebelum titik.
+
 ## 3. Enter→$wire race condition (double-fire)
 `@keyup.enter="$wire.X()"` bisa double-fire saat user pencet Enter 2x cepat. Pola aman:
 

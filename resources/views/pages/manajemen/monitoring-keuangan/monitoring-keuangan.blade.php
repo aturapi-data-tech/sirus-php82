@@ -65,6 +65,25 @@ new class extends Component {
                         </div>
                     </a>
 
+                    {{-- Slip gaji dokter — hilir dari Pendapatan Jasa Dokter di atas:
+                         komponen jasa yang sama, ditambah gaji pokok & potongan,
+                         lalu dikunci per periode jadi slip. --}}
+                    <a href="{{ route('manajemen.rs.tu.gaji-dokter') }}" wire:navigate
+                        class="flex items-start gap-3 p-4 transition-colors bg-canvas border border-hairline group rounded-xl hover:bg-brand-green/10 dark:bg-gray-900 dark:border-gray-700 dark:hover:bg-brand-lime/15">
+                        <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-amber-50 text-amber-700 group-hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M2.25 8.25h19.5v9a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5v-9zm0 0V6.75a1.5 1.5 0 011.5-1.5h16.5a1.5 1.5 0 011.5 1.5v1.5M14.25 13.5a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zM5.25 13.5h.008v.008H5.25V13.5zm13.5 0h.008v.008h-.008V13.5z" />
+                            </svg>
+                        </span>
+                        <div class="min-w-0">
+                            <div class="font-semibold text-ink dark:text-gray-100">Slip Gaji Dokter</div>
+                            <div class="mt-0.5 text-xs text-muted dark:text-gray-400">
+                                Generate slip per periode &mdash; jasa, gaji pokok, potongan RS &amp; PPh 21
+                            </div>
+                        </div>
+                    </a>
+
                     <a href="{{ route('manajemen.rs.tu.pendapatan-jasa-medis') }}" wire:navigate
                         class="flex items-start gap-3 p-4 transition-colors bg-canvas border border-hairline group rounded-xl hover:bg-brand-green/10 dark:bg-gray-900 dark:border-gray-700 dark:hover:bg-brand-lime/15">
                         <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-sky-50 text-sky-700 group-hover:bg-sky-100 dark:bg-sky-900/30 dark:text-sky-300">
