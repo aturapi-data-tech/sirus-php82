@@ -251,12 +251,24 @@ new class extends Component {
             return collect();
         }
 
-        return DB::table('rstxn_gajidoctordtls')
-            ->where('gajidoctor_no', $this->gajidoctorNo)
-            ->orderBy('jenis')
-            ->orderBy('urutan')
-            ->orderBy('gajidoctor_dtl')
-            ->get();
+        // denganLabel() menempelkan properti `label` ke tiap baris. Dikerjakan di
+        // sini, bukan di template: `use` pada blok <?php Volt tidak menjangkau
+        // ekspresi {{ }} — keduanya dikompilasi terpisah — sehingga memanggilnya
+        // dari template akan memaksa FQCN.
+        return GajiDokter::denganLabel(
+            DB::table('rstxn_gajidoctordtls')
+                ->where('gajidoctor_no', $this->gajidoctorNo)
+                ->orderBy('jenis')
+                ->orderBy('urutan')
+                ->orderBy('gajidoctor_dtl')
+                ->get()
+        );
+    }
+
+    /** Pilihan kode untuk form tambah baris: [kode => label]. */
+    public function pilihanKode(string $jenis): array
+    {
+        return GajiDokter::pilihanKode($jenis);
     }
 
     /**
@@ -811,7 +823,7 @@ new class extends Component {
                                                             ? 'bg-surface-soft dark:bg-gray-800 hover:shadow-lg'
                                                             : 'bg-canvas dark:bg-gray-900 hover:shadow-lg hover:bg-surface-soft dark:hover:bg-gray-800') }}">
                                                     <td class="px-4 py-2 align-middle rounded-l-2xl" title="Kode: {{ $item->kode }}">
-                                                        {{ $item->keterangan }}
+                                                        {{ $item->label }}
                                                         @if ($disesuaikan)
                                                             <button type="button"
                                                                 class="ml-1 text-sm text-brand-green hover:underline dark:text-brand-lime"
@@ -938,8 +950,12 @@ new class extends Component {
                                                 :error="$errors->has('entri.' . $jenis . '.kode')"
                                                 x-on:keydown.enter.prevent="$refs.entriKet{{ $jenis }}?.focus()">
                                                 <option value="">— pilih —</option>
-                                                @foreach (\App\Support\GajiDokter::kodeUntukJenis($jenis) as $kode)
-                                                    <option value="{{ $kode }}">{{ $kode }}</option>
+                                                {{-- Nilai yang tersimpan tetap KODE-nya; yang ditampilkan
+                                                     nama panjangnya. Kode itu kunci teknis (dipakai
+                                                     uq_gajidoctordtls & aturan berjenjang), bukan bacaan
+                                                     petugas. --}}
+                                                @foreach ($this->pilihanKode($jenis) as $kode => $label)
+                                                    <option value="{{ $kode }}">{{ $label }}</option>
                                                 @endforeach
                                             </x-select-input>
                                             <x-input-error :messages="$errors->get('entri.' . $jenis . '.kode')" class="mt-1" />

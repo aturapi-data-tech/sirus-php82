@@ -7,6 +7,7 @@
      RSTXN_GAJIDOCTORDTLS), $tanggalCetak (teks kota + tanggal). --}}
 
 @php
+    use App\Support\GajiDokter;
     use App\Support\Terbilang;
 
     $rupiah = fn($nilai) => number_format((float) $nilai, 0, ',', '.');
@@ -65,7 +66,7 @@
         @forelse ($jasa as $baris)
             <tr>
                 <td class="py-1 text-gray-800">
-                    {{ $baris->keterangan }}
+                    {{ GajiDokter::labelKomponen($baris->kode, $baris->keterangan) }}
                     @if ((int) $baris->jumlah_pasien > 0)
                         <span class="text-sm text-gray-500">({{ $baris->jumlah_pasien }} pasien)</span>
                     @endif
@@ -80,7 +81,7 @@
 
         @foreach ($tunjangan as $baris)
             <tr>
-                <td class="py-1 text-gray-800">{{ $baris->keterangan }}</td>
+                <td class="py-1 text-gray-800">{{ GajiDokter::labelKomponen($baris->kode, $baris->keterangan) }}</td>
                 <td class="py-1 text-right whitespace-nowrap text-gray-900">{{ $rupiah($baris->nilai) }}</td>
             </tr>
         @endforeach
@@ -109,7 +110,7 @@
         </tr>
         @forelse ($potongan as $baris)
             <tr>
-                <td class="py-1 text-gray-800">{{ $baris->keterangan }}</td>
+                <td class="py-1 text-gray-800">{{ GajiDokter::labelKomponen($baris->kode, $baris->keterangan) }}</td>
                 <td class="py-1 text-right whitespace-nowrap text-gray-900">{{ $rupiah($baris->nilai) }}</td>
             </tr>
         @empty
@@ -124,7 +125,7 @@
             </tr>
             @foreach ($tambahan as $baris)
                 <tr>
-                    <td class="py-1 text-gray-800">{{ $baris->keterangan }}</td>
+                    <td class="py-1 text-gray-800">{{ GajiDokter::labelKomponen($baris->kode, $baris->keterangan) }}</td>
                     <td class="py-1 text-right whitespace-nowrap text-gray-900">{{ $rupiah($baris->nilai) }}</td>
                 </tr>
             @endforeach

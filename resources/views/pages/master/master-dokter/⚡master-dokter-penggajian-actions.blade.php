@@ -20,6 +20,7 @@
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
+use App\Support\GajiDokter;
 
 new class extends Component {
     public ?string $drId = null;
@@ -194,9 +195,28 @@ new class extends Component {
     /* ===============================
      | ATURAN BERJENJANG
      =============================== */
+    /**
+     * Aturan berjenjang + nama panjang tiap komponennya.
+     *
+     * Labelnya ditempelkan di sini, bukan dipanggil dari template: `use` pada
+     * blok <?php Volt tidak menjangkau ekspresi {{ }} — keduanya dikompilasi
+     * terpisah — sehingga memanggil GajiDokter dari template memaksa FQCN.
+     */
     public function getAturanListProperty(): array
     {
-        return \App\Support\GajiDokter::parseAturan($this->potonganRsAturan);
+        $aturan = GajiDokter::parseAturan($this->potonganRsAturan);
+
+        foreach ($aturan as $kode => $item) {
+            $aturan[$kode]['label'] = GajiDokter::labelKomponen($kode);
+        }
+
+        return $aturan;
+    }
+
+    /** Pilihan komponen jasa untuk form aturan berjenjang: [kode => label]. */
+    public function pilihanKomponenJasa(): array
+    {
+        return GajiDokter::pilihanKomponenJasa();
     }
 
     public function tambahAturan(): void
@@ -226,7 +246,7 @@ new class extends Component {
 
         // Belum menyentuh database: baru tersimpan saat tombol Simpan ditekan,
         // sama seperti field lain di form ini.
-        $this->potonganRsAturan = \App\Support\GajiDokter::susunAturan($aturan);
+        $this->potonganRsAturan = GajiDokter::susunAturan($aturan);
 
         $this->aturanKode = '';
         $this->aturanTipe = 'P';
@@ -238,7 +258,7 @@ new class extends Component {
     {
         $aturan = $this->aturanList;
         unset($aturan[$kode]);
-        $this->potonganRsAturan = \App\Support\GajiDokter::susunAturan($aturan);
+        $this->potonganRsAturan = GajiDokter::susunAturan($aturan);
     }
 
     /* ===============================
@@ -258,7 +278,7 @@ new class extends Component {
         // tidak pernah berbeda. Sengaja di sini, bukan di rules(), supaya
         // pesannya bisa menjelaskan formatnya.
         if ($data['potonganRsBasis'] === 'B') {
-            $pesan = \App\Support\GajiDokter::validasiAturan($data['potonganRsAturan'] ?? null);
+            $pesan = GajiDokter::validasiAturan($data['potonganRsAturan'] ?? null);
 
             if ($pesan !== null) {
                 $this->addError('potonganRsAturan', $pesan);
@@ -921,8 +941,10 @@ new class extends Component {
                                             <x-input-label value="Komponen" class="mb-1" />
                                             <x-select-input wire:model="aturanKode" :error="$errors->has('aturanKode')">
                                                 <option value="">— pilih komponen —</option>
-                                                @foreach (\App\Support\GajiDokter::KOMPONEN_JASA as $kode)
-                                                    <option value="{{ $kode }}">{{ $kode }}</option>
+                                                {{-- Nilai tersimpan tetap kodenya (jadi kunci JSON aturan);
+                                                     yang dibaca petugas nama panjangnya. --}}
+                                                @foreach ($this->pilihanKomponenJasa() as $kode => $label)
+                                                    <option value="{{ $kode }}">{{ $label }}</option>
                                                 @endforeach
                                             </x-select-input>
                                             <x-input-error :messages="$errors->get('aturanKode')" class="mt-1" />
@@ -979,7 +1001,9 @@ new class extends Component {
                                             <tbody>
                                                 @forelse ($this->aturanList as $kode => $item)
                                                     <tr class="rounded-2xl shadow-sm ring-1 ring-hairline bg-canvas dark:bg-gray-900 dark:ring-gray-700">
-                                                        <td class="px-4 py-2 font-mono text-xs align-middle">{{ $kode }}</td>
+                                                        <td class="px-4 py-2 align-middle" title="Kode: {{ $kode }}">
+                                                            {{ $item['label'] }}
+                                                        </td>
                                                         <td class="px-4 py-2 align-middle">
                                                             {{ $item['tipe'] === 'N' ? 'Nominal' : 'Persen' }}
                                                         </td>

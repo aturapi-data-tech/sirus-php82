@@ -93,6 +93,143 @@ class GajiDokter
     ];
 
     /**
+     * Nama panjang tiap kode komponen, untuk layar & cetak.
+     *
+     * Kodenya sendiri warisan RSVIEW_NEWDOCSALARIES (DESC_DOC) dan sengaja
+     * TIDAK diubah — dipakai sebagai kunci di uq_gajidoctordtls, di aturan
+     * potongan berjenjang, dan di sisi Oracle Dev 6i. Yang diganti hanya
+     * teks yang dibaca orang: "UP RJ" tidak berarti apa-apa bagi dokter yang
+     * menerima slipnya, "Uang Periksa Rawat Jalan" berarti.
+     *
+     * TRF = transfer, yaitu pasien yang berpindah unit; tarifnya terpisah dari
+     * kunjungan biasa sehingga komponennya pun berdiri sendiri.
+     */
+    public const LABEL_KOMPONEN = [
+        // ---- jasa: rawat jalan ----
+        'UP RJ' => 'Uang Periksa Rawat Jalan',
+        'JD RJ' => 'Jasa Dokter Rawat Jalan',
+        'UP RJTRF' => 'Uang Periksa Rawat Jalan Transfer',
+        'JD RJTRF' => 'Jasa Dokter Rawat Jalan Transfer',
+
+        // ---- jasa: gawat darurat ----
+        'UP UGD' => 'Uang Periksa UGD',
+        'JD UGD' => 'Jasa Dokter UGD',
+        'UP UGDTRF' => 'Uang Periksa UGD Transfer',
+        'JD UGDTRF' => 'Jasa Dokter UGD Transfer',
+
+        // ---- jasa: rawat inap ----
+        'VISIT' => 'Visite Rawat Inap',
+        'KONSUL' => 'Konsultasi Rawat Inap',
+        'JD RI' => 'Jasa Dokter Rawat Inap',
+
+        // ---- jasa: kamar operasi ----
+        'OPERATOR' => 'Operator Bedah',
+        'ANASTESI' => 'Anestesi',
+        'OPERATOR RJ' => 'Operator Bedah Rawat Jalan',
+        'ANASTESI RJ' => 'Anestesi Rawat Jalan',
+        'OPERATOR UGD' => 'Operator Bedah UGD',
+        'ANASTESI UGD' => 'Anestesi UGD',
+
+        // ---- jasa: klinik & radiologi ----
+        'UP KLINIK' => 'Uang Periksa Klinik',
+        'JD KLINIK' => 'Jasa Dokter Klinik',
+        'RAD RJ' => 'Bacaan Radiologi Rawat Jalan',
+        'RAD UGD' => 'Bacaan Radiologi UGD',
+        'RAD RI' => 'Bacaan Radiologi Rawat Inap',
+
+        // ---- jasa: model per kapita ----
+        // Baris ini keterangannya dibuat khusus saat generate (memuat tarifnya),
+        // jadi label di sini hanya jaring pengaman.
+        'KAPITA RI' => 'Per Pasien Rawat Inap',
+        'KAPITA RJ' => 'Per Kunjungan Rawat Jalan',
+
+        // ---- tunjangan rutin (tetap jenis 'J', kena pajak) ----
+        'TUNJ STRUKTURAL' => 'Tunjangan Struktural',
+        'TUNJ FUNGSIONAL' => 'Tunjangan Fungsional',
+        'TUNJ HADIR' => 'Tunjangan Kehadiran',
+
+        // ---- potongan ----
+        'RS' => 'Potongan Rumah Sakit',
+        'PPH21' => 'PPh 21',
+        'KASBON' => 'Kasbon / Telah Diambil',
+        'IDI' => 'Iuran IDI',
+        'ARISAN' => 'Arisan',
+        'KOPERASI' => 'Koperasi',
+        'ANGSURAN' => 'Angsuran',
+        'BPJS' => 'BPJS Kesehatan',
+        'ZARIYAH' => 'Zariyah',
+
+        // ---- tambahan ----
+        'BONUS' => 'Bonus',
+        'RAPEL' => 'Rapel',
+        'KOREKSI' => 'Koreksi Bulan Lalu',
+
+        'LAIN' => 'Lain-lain',
+    ];
+
+    /**
+     * Teks yang ditampilkan untuk satu baris detail.
+     *
+     * Keterangan tersimpan yang BERBEDA dari kodenya berarti sudah ada teks
+     * pilihan manusia di sana — entah label hasil generate, keterangan per
+     * kapita yang memuat tarif, atau ketikan bagian keuangan pada baris manual.
+     * Itu dipakai apa adanya; snapshot tidak boleh ditimpa.
+     *
+     * Pemetaan baru dipakai kalau keterangannya masih sama persis dengan kode.
+     * Itu bukan pilihan kata siapa pun, melainkan slip lama yang dibuat sebelum
+     * peta ini ada — jadi aman diperbarui tanpa melanggar maksud snapshot.
+     */
+    public static function labelKomponen(string $kode, ?string $keterangan = null): string
+    {
+        $tersimpan = trim((string) $keterangan);
+
+        if ($tersimpan !== '' && $tersimpan !== trim($kode)) {
+            return $tersimpan;
+        }
+
+        return self::LABEL_KOMPONEN[$kode] ?? $kode;
+    }
+
+    /**
+     * Tempelkan properti `label` ke tiap baris detail.
+     *
+     * Dipanggil dari blok kelas komponen, bukan dari template. Alasannya
+     * teknis: `use` di blok <?php Volt TIDAK menjangkau ekspresi {{ }} —
+     * keduanya dikompilasi terpisah — sehingga memanggil labelKomponen()
+     * langsung dari template memaksa FQCN, yang dilarang skill
+     * naming-conventions. Menyiapkan datanya di sini membuat template cukup
+     * menulis {{ $baris->label }}.
+     */
+    public static function denganLabel($detail)
+    {
+        return $detail->map(function ($baris) {
+            $baris->label = self::labelKomponen($baris->kode, $baris->keterangan ?? null);
+
+            return $baris;
+        });
+    }
+
+    /** Pilihan kode untuk form tambah baris: [kode => label]. */
+    public static function pilihanKode(string $jenis): array
+    {
+        $kodeList = self::kodeUntukJenis($jenis);
+
+        return array_combine($kodeList, array_map(
+            fn (string $kode) => self::labelKomponen($kode),
+            $kodeList
+        ));
+    }
+
+    /** Pilihan komponen jasa untuk aturan berjenjang: [kode => label]. */
+    public static function pilihanKomponenJasa(): array
+    {
+        return array_combine(self::KOMPONEN_JASA, array_map(
+            fn (string $kode) => self::labelKomponen($kode),
+            self::KOMPONEN_JASA
+        ));
+    }
+
+    /**
      * 'Y' bila dokter ber-NPWP, 'N' bila tidak.
      *
      * Yang menentukan adalah kolom npwp_status, BUKAN terisi atau tidaknya
@@ -409,7 +546,7 @@ class GajiDokter
                 'urutan' => 100 + count($detail),
                 'jenis' => 'J',
                 'kode' => $baris->desc_doc,
-                'keterangan' => $baris->desc_doc,
+                'keterangan' => self::labelKomponen($baris->desc_doc),
                 'nilai' => (float) $baris->nominal,
                 'jumlah_pasien' => (int) $baris->pasien,
             ];
@@ -418,7 +555,7 @@ class GajiDokter
         foreach (self::TUNJANGAN_RUTIN as $kolom => $kode) {
             $nilai = (float) ($dokter->{$kolom} ?? 0);
             if ($nilai > 0) {
-                $detail[] = ['urutan' => 200 + count($detail), 'jenis' => 'J', 'kode' => $kode, 'keterangan' => ucwords(strtolower($kode)), 'nilai' => $nilai, 'jumlah_pasien' => 0];
+                $detail[] = ['urutan' => 200 + count($detail), 'jenis' => 'J', 'kode' => $kode, 'keterangan' => self::labelKomponen($kode), 'nilai' => $nilai, 'jumlah_pasien' => 0];
             }
         }
 
@@ -429,7 +566,7 @@ class GajiDokter
                 // urutan 400+: potongan rutin ditaruh DI BAWAH baris RS & PPh 21
                 // (urutan 10 & 11) karena keduanya tidak ikut membentuk dasar
                 // pajak — memisahkannya secara visual mencegah salah baca.
-                $detail[] = ['urutan' => 400 + count($detail), 'jenis' => 'P', 'kode' => $kode, 'keterangan' => ucwords(strtolower($kode)), 'nilai' => -$nilai, 'jumlah_pasien' => 0];
+                $detail[] = ['urutan' => 400 + count($detail), 'jenis' => 'P', 'kode' => $kode, 'keterangan' => self::labelKomponen($kode), 'nilai' => -$nilai, 'jumlah_pasien' => 0];
             }
         }
 
