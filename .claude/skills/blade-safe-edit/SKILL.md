@@ -61,8 +61,66 @@ Compiler Volt salah-strip komentar `//` bila ada substring `re-use` / `reuse` �
 // BENAR: tulis ulang tanpa "use", mis. "pakai ulang komponen ini"
 ```
 
+## 3b. JANGAN menambah `@php use App\...; @endphp` di berkas blade
+
+Merapikan FQCN jadi impor terlihat sepele, tapi gagal di DUA tempat berbeda
+(kejadian nyata 2026-08-03, RM cetak & display nyeri):
+
+| Jenis berkas | Yang terjadi |
+|---|---|
+| Berkas cetak PDF (isinya di dalam `<x-pdf.layout-a4...>`) | impor ditaruh di atas tag komponen → **tag PEMBUKA komponen tidak ikut terkompilasi**, `@endif` bawaan komponen jadi yatim → `ParseError: unexpected token "endif", expecting end of file` |
+| Komponen file-tunggal (`<?php ... ?>` + template) | berkas kompilasi di `storage/framework/views/livewire/views/` **tetap memuat blok `use` milik bagian kelas** → `Cannot use App\Support\X as X because the name is already in use` |
+
+Aturannya:
+
+- **Komponen file-tunggal:** bagian template SUDAH otomatis mengenal nama pendek dari
+  `use` di blok kelas. Tulis `NyeriOptions::...` langsung — jangan impor ulang.
+- **Berkas cetak / blade biasa:** pakai nama kelas lengkap (`\App\Support\NyeriOptions::`).
+  Blok `@php` di dalam tag komponen bukan scope berkas, jadi `use` di situ pun ditolak.
+
 ## 4. Pola UI sudah terdokumentasi — jangan reinvent
 Sebelum bikin komponen, cek `docs/` (lihat skill `ui-pattern-docs`): tombol standar, now-button, print PDF/TTD, page-frame, dirty-modal, stable-lookup, tinymce. Ikuti pola yang ada agar konsisten.
+
+## 5. Keseimbangan `<div>` harus dihitung PER CABANG, bukan per berkas
+
+`grep -c '<div'` vs `grep -c '</div>'` bisa **0/0 tapi tetap rusak**: tag pembuka ada di
+dalam `@if`, penutupnya di luar. Cabang yang tidak dirender membuat `</div>` kelebihan.
+
+```blade
+{{-- SALAH — saat $isFormLocked true, </div> terakhir jadi kelebihan --}}
+@if (!$isFormLocked)
+    <div class="grid ...">
+        <div>form entri</div>
+@endif
+    <div>tabel data</div>
+    </div>
+
+{{-- BENAR — pembungkus di luar @if, isinya saja yang dikondisikan --}}
+<div class="grid ...">
+    @if (!$isFormLocked)
+        <div>form entri</div>
+    @endif
+    <div>tabel data</div>
+</div>
+```
+
+**Gejala khasnya:** "tab/blok pertama normal, yang lain turun jauh ke bawah". `</div>`
+liar menutup container induk lebih awal sehingga blok-blok berikutnya terlempar KELUAR
+container; container yang menyisakan panel tersembunyi tetap memakan `min-h-*` dan
+tampak sebagai pita kosong. Terjadi 2026-08-03 di `visit-ri.blade.php` (Administrasi RI):
+1 dari 14 panel tab yang masih di tempat, pita kosong ±310px di semua tab selain Visit.
+
+Cek sebelum lapor selesai — simulasikan cabangnya, lalu sapu SEMUA berkas yang memakai
+flag yang sama sekaligus (`$isFormLocked` dipakai ~221 berkas):
+
+```bash
+# buang isi @if (!$flag) untuk mensimulasikan $flag = true, lalu hitung <div> vs </div>
+# (bandingkan hasilnya dengan cabang normal — dua-duanya harus 0)
+```
+
+Perkecualian sah: `components/signature/ttd-petugas.blade.php` sengaja membelah wrapper
+dengan `@if ($framed)` berpasangan di dua ujung — alasannya ditulis di berkasnya.
+Diagnosa lanjutannya (render + parse DOM) ada di §2 dan skill `ui-pattern-docs`.
 
 ## Escape ganda pada prop komponen (tampil `&amp;` di layar)
 

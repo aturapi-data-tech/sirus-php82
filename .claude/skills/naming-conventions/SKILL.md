@@ -17,6 +17,9 @@ Di repo ini singkatan berikut SELALU berarti modul/unit, bukan yang lain:
 | `rm` | Rekam Medis / No. RM | — |
 
 Contoh kasus nyata: variable risiko jatuh sempat dinamai `$rjList`, `$rjKategori` — di file RJ, `$rj` adalah data rawat jalan → tabrakan makna, ditolak user.
+Terulang 2026-08-03 di Rekam Medis: `$rjRec` (maksudnya daftar entri resiko jatuh) berada
+di berkas RJ → dibenahi jadi `$resikoJatuhList`, sekalian `$txn`→`$dataDaftarTxn`,
+`$idn`→`$identitas`, `$tv`→`$tandaVital`, item loop `$x`/`$n`/`$g`→`$entri`/`$entriNyeri`/`$entriGizi`.
 
 **Aturan:** konsep domain ditulis LENGKAP, camelCase bahasa Indonesia, ikut idiom field JSON-nya:
 `$resikoJatuhTerakhir`, `hitungResikoJatuhTerakhir()`, `$kategoriResiko`, `$tglPenilaian`.
