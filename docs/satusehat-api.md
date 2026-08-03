@@ -3,10 +3,13 @@
 Dokumen ini menjelaskan **cara sistem mengirim data ke SATUSEHAT** (platform interoperabilitas Kemenkes, FHIR R4) dan **standarisasi data** tiap resource. Berbasis implementasi nyata di repo, bukan teori.
 
 - Lapisan trait: `app/Http/Traits/SATUSEHAT/*.php` (20 file, ~3.200 baris)
-- Lapisan UI (aktif): `resources/views/pages/transaksi/rj/satu-sehat/*.blade.php` + `daftar-rj/satu-sehat-rj-actions.blade.php`
+- Lapisan UI (aktif): `resources/views/pages/transaksi/{rj,ugd,ri}/satu-sehat/*.blade.php` + `daftar-*/satu-sehat-*-actions.blade.php`
+- Helper data (dipakai bersama): `App\Support\{EresepJson, ObatKfa, RacikanKfa, MedicationRequestItem, AlergiSnomed}`
 - Orkestrator batch (referensi): `app/Http/Traits/SATUSEHAT/KirimRawatJalanTrait.php`
 
-> **Ruang lingkup aktif = Rawat Jalan (RJ).** UGD/RI belum punya alur kirim SATUSEHAT.
+> **Ruang lingkup aktif = RJ, UGD, dan RI.** Masing-masing punya modal kirim sendiri
+> (`resources/views/pages/transaksi/{rj,ugd,ri}/satu-sehat/*.blade.php`, 12–16 kartu per modul).
+> Diperbarui 2026-08-03 sesudah uji kirim pertama ke server — lihat §11.
 
 ---
 
@@ -175,15 +178,18 @@ Kolom di dashboard platform SATUSEHAT (jumlah resource per bulan) vs kondisi di 
 1. **`env()` tanpa config wrapper** → mati senyap bila `config:cache`. **Rekomendasi:** buat `config/satusehat.php` dan baca via `config('satusehat.*')`.
 2. **5 resource belum di-wire** (Dispense/ServiceRequest/Specimen/DiagnosticReport/Allergy) → dashboard SATUSEHAT untuk kolom itu akan 0 walau trait tersedia. Orkestrator `KirimRawatJalanTrait` sudah memuat semuanya tapi belum dipanggil UI.
 3. **Timeout 10s tanpa retry/connectTimeout** — samakan pola dengan integrasi lain (BPJS `timeout(8)->connectTimeout(3)`), lihat memori "BPJS sync call = freeze".
-4. **KFA/kode di-skip diam-diam** bila master belum diisi → tambahkan peringatan "N item tanpa kode dilewati". *(Sebagian sudah: kartu MedicationRequest RJ/UGD/RI kini menampilkan "N racikan belum didukung" via `EresepJson::jumlahRacikan()`. Item non-racikan tanpa KFA **masih** di-skip diam-diam.)*
-5. **`registrationId == medicationCode == kfaCode`** di `kirim-medication-request.blade.php:89-90` — perlu ditinjau apakah field registrasi obat harus beda dari KFA.
+4. **KFA/kode di-skip diam-diam** — SUDAH ditutup untuk obat: kartu MedicationRequest menampilkan jumlah siap kirim, racikan yang bahannya belum ber-KFA, dan obat tanpa KFA; toast menyebut hal yang sama sesudah kirim. Diagnosa tanpa `kodeIcdx`, tindakan tanpa `kodeIcd9`, dan lab tanpa `loincCode` **masih** di-skip diam-diam.
+5. **`registrationId == medicationCode == kfaCode`** untuk obat non-racikan — perlu ditinjau apakah field registrasi obat harus beda dari KFA. Racikan memakai `RACIKAN-{noKunjungan}-{n}`.
 6. **DiagnosticReport default kategori `MB`/Microbiology** — set eksplisit `LAB`/`RAD` saat mengaktifkan lab/radiologi.
 7. **Diagnosa tidak menandai primer/sekunder** (`Encounter.diagnosis.rank` tidak diisi) — semua Condition setara.
 8. **Token TTL hardcoded 3500** mengabaikan `expires_in`, tak ada invalidasi cache saat 401.
 9. **Tidak ada sandbox — dan `.env` menunjuk PRODUKSI.** `SATUSEHAT_BASE_URL` = `api-satusehat.kemkes.go.id` (**tanpa `-stg`**), sementara `CLIENT_ID`/`SECRET_ID`/`ORGANIZATION_ID` **kosong**. Artinya: begitu kredensial diisi di file itu, kiriman uji pertama **langsung menembak produksi**. **Siapkan kredensial `-stg` dulu sebelum uji apa pun.** Konsekuensi: seluruh resource RI/UGD (termasuk Penilaian) **benar secara konstruksi tapi belum pernah divalidasi server** — yang perlu dibuktikan lebih dulu: `category=survey` dan unit UCUM anotasi `{score}`.
-10. **Racikan obat — buntu ganda (spek + data).**
-    - *Spek:* kode `medicationType` untuk compound belum terverifikasi. Sender menulis `'SD' => 'Compound'` tapi **'SD' tak ada di dokumentasi mana pun**, dan ternary `isCompound` **tak pernah aktif** (selalu `'NC'`). Racikan juga tak punya KFA tunggal → belum jelas `Medication.code` harus diisi apa. `ingredient[]` sudah ditulis tapi **di-comment out** di `MedicationRequestTrait` & `MedicationDispenseTrait`.
-    - *Data (probe 2026-07-15):* **~97% baris racikan RJ/UGD tanpa `productId`** (hanya `productName` teks) → tak bisa dipetakan ke KFA. Volume: **RJ 17.428 record / 19.404 grup / 50.823 bahan**; **UGD 2.417 / 2.958 / 8.335**; **RI 142 / 294 / 710**. Sebaran RJ 2026: Jan–Mar **0** ber-productId, Apr **53 vs 3.150**, Mei **86 vs 2.376** → hanya 2–3% ditulis aplikasi PHP ini; **dugaan (belum dibuktikan): sisanya dari sistem lama Oracle Dev 6i** yang berbagi DB.
+10. **Racikan obat — TERPECAHKAN 2026-08-03** *(sebelumnya buntu spek + data)*.
+    - *Spek:* dikirim sebagai compound — `Medication.contained` dengan `ingredient[]` ber-KFA per bahan, `medicationType` **SD/Compound**, dan `Medication.code` cukup `code.text` karena campurannya memang tak punya KFA tunggal. `ingredient[]` di `MedicationRequestTrait` & `MedicationDispenseTrait` sudah diaktifkan.
+    - *Data:* kuncinya bukan `productId` melainkan **nama** — probe 200 kunjungan RJ: 38 nama bahan tanpa `productId` (393 baris) semuanya cocok **persis satu** produk ber-KFA di master. `App\Support\RacikanKfa` memetakan `productId` → KFA, dan bila kosong mencocokkan `productName` **hanya bila kandidatnya tepat satu** (nama kembar ditolak — menebak berarti salah obat).
+    - *Hasil:* RJ **203/205 grup (99%)**, UGD **198/214 (93%)**, RI 2/2 — dari sebelumnya 13%/11%. Grup yang gagal dilaporkan **beserta nama bahannya** (mis. `VITAMIN B KOMPLEKS`, `SIRPLUS TABLET`), tinggal dilengkapi KFA-nya di Master Obat.
+    - *Sisa:* `ingredient.strength` tidak diisi (dosis di JSON teks bebas: "1/2", "sesuai bb"), dan bentuk sediaan racikan masih default Tablet.
+
 11. **⚠️ Satuan dosis `gr` = GRAM, bukan GRAIN.** Di EMR, `"1 gr"` (669 baris) berarti 1 gram; di UCUM `gr` adalah **grain** (~0,065 g) → kalau dikirim apa adanya, dosis salah ~15×. `ObservasiLanjutanMap::SATUAN_UCUM` memaksa `gr/gram/g → 'g'`. Satuan non-UCUM (`amp`, `tab`, `unit`, `flash`) pakai anotasi UCUM `{ampul}` dsb. (dimensionless, jujur). Satuan tak dikenal → dosis `null` → **seluruh `dosage` dibuang** karena constraint FHIR **mad-1** (`dosage` wajib punya `dose` atau `rate`); route ikut dibuang, jangan kirim setengah.
 12. **`rute` pemberian obat = 63 varian teks bebas** (`iv` 6.449, `IV` 684, `Iv` 27, `inheler` 35 — salah ketik). Dipetakan ke SNOMED atas teks ternormalkan; yang tak dikenal **tidak dipetakan** (lebih baik tanpa route daripada salah kode). Perbaikan hulu: jadikan rute picklist, bukan teks bebas.
 13. **Hanya ~31% baris pemberian obat punya `productId`** (2.497 dari 8.078) — cairan (RL/NaCl) tampaknya diketik bebas tanpa memilih master obat. Baris tanpa productId/KFA dilewati tapi **dihitung & dilaporkan** di kartu 13. Perbaikan hulu: wajibkan pilih dari master obat untuk cairan.
@@ -623,3 +629,69 @@ public function createImmunization(array $data): array
 4. Verifikasi via tabel `web_log_status` (http_req/http_payload/response).
 
 > Lihat juga: `docs/trait-template-api-eksternal.md` (pola trait API eksternal), memori "BPJS sync call = freeze" (timeout), `docs/diagnosa-architecture.md` (kode ICD-10/diagnosa).
+
+---
+
+## 11. Pelajaran uji kirim pertama (2026-08-03)
+
+Semua yang di bawah ini **ditemukan dari respons server**, bukan dari membaca spek. Pola
+errornya seragam: `OperationOutcome` dengan `expression` menunjuk elemen yang salah dan
+`RuleNumber` Kemkes.
+
+### 11.1 Aturan validator yang menolak
+
+| Error dari server | Sebab | Perbaikan |
+|---|---|---|
+| `invalid value (expected a DispenseRequest object): []` — `MedicationRequest.dispenseRequest` | elemen ber-kardinalitas 0..1 (objek) dikirim sebagai array kosong | field opsional hanya disertakan bila ada isinya (`MedicationRequestTrait`, `MedicationDispenseTrait`) |
+| `Invalid coding system: …/CodeSystem/kfa-satuan (RuleNumber 10050)` — `MedicationDispense.quantity.system` | CodeSystem `kfa-satuan` tidak dikenal | pakai `http://terminology.hl7.org/CodeSystem/v3-orderableDrugForm` kode `TAB` (pola yang sudah dipakai `KirimRawatJalanTrait`) |
+| `Element not found: AllergyIntolerance.category (RuleNumber 10075)` | `category` dihilangkan untuk pernyataan "tidak ada alergi" | `category` WAJIB selalu ada → `AlergiSnomed::kategoriFhir()`; `type`/`criticality` tetap boleh dihilangkan |
+| `every statusHistory period start and end must be filled (Rule 10122)` — `Encounter.statusHistory` | entri dari `createNewEncounter()`/`startRoomEncounter()` hanya punya `start` | `EncounterTrait::siapkanFinishEncounter()` mengisi `end` tiap entri dari `start` entri berikutnya |
+| `Element not found: Encounter.diagnosis (RuleNumber 10457)` | finish dikirim tanpa diagnosis | `Encounter.diagnosis` diisi dari `conditionIds` (`use` = `DD`, `rank` berurutan); tombol Finish menolak lebih dulu bila diagnosa belum dikirim |
+
+### 11.2 Uji payload TANPA mengirim
+
+Trik yang jauh lebih cepat daripada trial-and-error ke API: pakai anonymous class yang
+me-`use` trait-nya lalu **menimpa `makeRequest()`** supaya payload ditangkap, bukan dikirim.
+
+```php
+$dryRun = new class {
+    use MedicationRequestTrait;
+    public array $payloadList = [];
+    public function makeRequest($method, $url, $payload = []) { $this->payloadList[] = $payload; return ['id' => 'dry']; }
+};
+$dryRun->createMedicationRequest([...]);   // periksa $dryRun->payloadList[0]
+```
+
+### 11.3 Sumber data yang ternyata salah alamat
+
+Dua sender membaca key yang **tak pernah ada** di JSON EMR, dan keduanya gagal senyap
+("berhasil, 0 item") — pola yang wajib dicurigai saat menambah sender baru:
+
+| Sender | Dibaca (salah) | Yang benar |
+|---|---|---|
+| Observation RJ | `pemeriksaanFisik` / `tandaVital` di akar; key `sistole`, `diastole`, `nadi`, `rr` | `pemeriksaan.tandaVital`; key `sistolik`, `distolik`, `frekuensiNadi`, `frekuensiNafas`, `spo2` |
+| MedicationRequest & Dispense RJ/UGD | `kfaCode` / `product_id_satusehat` di item e-resep | lookup `immst_products.product_id_satusehat` lewat `productId` (`App\Support\ObatKfa`) |
+
+Pelajarannya: **verifikasi key ke data nyata** (`findDataRJ()` lalu `array_keys()`), jangan
+percaya nama field di kode lama.
+
+### 11.4 Waktu "selesai" berbeda tiap modul
+
+`Encounter.period.end` harus jam layanan berakhir, bukan `now()` (jam petugas mengklik):
+
+| Modul | Urutan sumber | Alasan |
+|---|---|---|
+| RJ | `taskId7` → `taskId5` → `now()` | probe 150 kunjungan: task5 terisi 125× |
+| UGD | `taskId7` → `perencanaan.pengkajianMedis.selesaiPemeriksaan` → `now()` | task5 terisi **0×**, "Selesai Pemeriksaan" 91× |
+| RI | `exitDate` (tgl pulang) → `now()` | rawat inap tak memakai task antrean |
+
+Lihat skill `bpjs-antrean-task-id` untuk arti taskId 1–7 & 99.
+
+### 11.5 Pasangan resep → penyerahan
+
+`MedicationDispense.authorizingPrescription` dulu ditebak dari **urutan** daftar
+`medicationRequestIds`. Sejak racikan ikut dikirim, urutan itu makin rawan. Sekarang resep
+mencatat peta eksplisit `satusehat.medicationRequestItems` (`id`, `jenis`, `kunci`, `kode`,
+`display`, `qty`), dan `App\Support\MedicationRequestItem::ambil()` menyusun ulang peta itu
+untuk kunjungan lama — **ditolak bila jumlahnya tak cocok**, bukan menebak.
+
