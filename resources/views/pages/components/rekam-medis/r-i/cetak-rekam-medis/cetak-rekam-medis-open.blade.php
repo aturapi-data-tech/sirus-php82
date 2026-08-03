@@ -267,11 +267,15 @@ new class extends Component {
      * Sub-penilaian lain menyimpan datanya di node bernama sama (nyeri.nyeri,
      * gizi.gizi, dst). C-SSRS beda: field-nya DATAR di level entri, dan key
      * `resikoBunuhDiri` justru berisi 'Ya'/'Tidak'.
+     *
+     * $entriPenilaian sengaja mixed: record lama bisa menyimpan penilaian sebagai
+     * SATU entri (assoc), sehingga yang teriterasi pemanggil adalah isi kolomnya
+     * (string) — bukan entri. Bentuk begitu diringkas jadi baris kosong, bukan error.
      */
-    public function ringkasPenilaian(string $jenisPenilaian, array $entriPenilaian): array
+    public function ringkasPenilaian(string $jenisPenilaian, mixed $entriPenilaian): array
     {
         $dataPenilaian = $jenisPenilaian === 'resikoBunuhDiri'
-            ? $entriPenilaian
+            ? (array) $entriPenilaian
             : (array) data_get($entriPenilaian, $jenisPenilaian, []);
 
         $gabung = fn(array $bagian) => trim(implode(' · ', array_filter($bagian, fn($teks) => filled($teks))));

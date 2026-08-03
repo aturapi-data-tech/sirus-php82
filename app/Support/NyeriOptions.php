@@ -557,13 +557,92 @@ class NyeriOptions
     }
 
     /**
+     * Samakan satu entri penilaian ke bentuk baku ['nyeri' => [...]].
+     *
+     * Tiga bentuk yang beredar di JSON EMR:
+     *  1. entri baku      : ['nyeri' => ['nyeriMetode' => ['nyeriMetode' => 'NRS', 'nyeriMetodeScore' => 5], ...]]
+     *  2. node nyeri saja : ['nyeriMetode' => [...], ...]           — dipakai RM RI
+     *  3. record lama     : nyeriMetode masih berupa string, skor di skalaNyeri / vas.vas,
+     *                       dan nyeriKet berisi Akut/Kronis (bukan label interpretasi)
+     * Parameter sengaja mixed: record lama menyimpan `penilaian.nyeri` sebagai SATU
+     * entri (assoc), sehingga end() di pemanggil bisa mengirim string ke sini.
+     */
+    public static function normalisasiEntri(mixed $entri): array
+    {
+        if (!is_array($entri) || $entri === []) {
+            return [];
+        }
+
+        // Entri baku punya key 'nyeri' berisi array; pada record lama key 'nyeri'
+        // justru berisi string 'Ya'/'Tidak', jadi entri itu sendiri adalah node-nya.
+        $adalahEntriBaku = is_array($entri['nyeri'] ?? null);
+        $node = $adalahEntriBaku ? $entri['nyeri'] : $entri;
+
+        if (!is_array($node['nyeriMetode'] ?? null)) {
+            $skor = $node['skalaNyeri'] ?? null;
+            if ($skor === null || $skor === '') {
+                $skor = data_get($node, 'vas.vas');
+            }
+            $node['nyeriMetode'] = [
+                'nyeriMetode' => is_string($node['nyeriMetode'] ?? null) ? $node['nyeriMetode'] : '',
+                'nyeriMetodeScore' => $skor,
+            ];
+        }
+
+        return ['nyeri' => $node] + ($adalahEntriBaku ? $entri : []);
+    }
+
+    /**
+     * Riwayat penilaian nyeri sebagai DAFTAR entri baku.
+     *
+     * Record lama menyimpan `penilaian.nyeri` sebagai SATU entri (assoc), bukan
+     * daftar; bila record itu dinilai lagi lewat EMR, entri baru ditambahkan
+     * berkunci angka di samping key lama sehingga isinya campuran. Entri lama
+     * ditaruh paling depan supaya urutannya tetap kronologis.
+     */
+    public static function daftarEntri(mixed $riwayat): array
+    {
+        if (!is_array($riwayat) || $riwayat === []) {
+            return [];
+        }
+
+        $daftar = [];
+        $entriLama = [];
+        foreach ($riwayat as $kunci => $nilai) {
+            if (is_int($kunci)) {
+                if (is_array($nilai) && $nilai !== []) {
+                    $daftar[] = self::normalisasiEntri($nilai);
+                }
+                continue;
+            }
+            $entriLama[$kunci] = $nilai;
+        }
+
+        if ($entriLama !== []) {
+            array_unshift($daftar, self::normalisasiEntri($entriLama));
+        }
+
+        return $daftar;
+    }
+
+    /** Entri penilaian nyeri terakhir (bentuk baku), [] bila belum dinilai. */
+    public static function entriTerakhir(mixed $riwayat): array
+    {
+        $daftar = self::daftarEntri($riwayat);
+
+        return $daftar === [] ? [] : end($daftar);
+    }
+
+    /**
      * Tafsir satu entri riwayat: interpretasi dihitung ulang dari metode + skor,
      * plus catatan bebas petugas (bila ada) supaya tidak tertimpa.
      *
      * @return array{label:string, tingkat:string, badge:string, tataLaksana:string, catatan:string}
      */
-    public static function tafsirEntri(array $entri): array
+    public static function tafsirEntri(mixed $entri): array
     {
+        $entri = self::normalisasiEntri($entri);
+
         $kode = data_get($entri, 'nyeri.nyeriMetode.nyeriMetode');
         $skor = data_get($entri, 'nyeri.nyeriMetode.nyeriMetodeScore');
         $keterangan = trim((string) data_get($entri, 'nyeri.nyeriKet', ''));
@@ -585,11 +664,13 @@ class NyeriOptions
     /**
      * Ringkasan satu entri penilaian nyeri untuk display & cetak Rekam Medis.
      *
-     * @param  array  $entri  satu entri penilaian (punya key 'nyeri')
+     * @param  mixed  $entri  satu entri penilaian — bentuk apa pun yang dikenali normalisasiEntri()
      * @return array{metode:string, sasaran:string, skor:string, label:string, tataLaksana:string, catatan:string}
      */
-    public static function ringkasEntri(array $entri): array
+    public static function ringkasEntri(mixed $entri): array
     {
+        $entri = self::normalisasiEntri($entri);
+
         $kode = data_get($entri, 'nyeri.nyeriMetode.nyeriMetode');
         $skor = data_get($entri, 'nyeri.nyeriMetode.nyeriMetodeScore');
         $skala = self::skala($kode);

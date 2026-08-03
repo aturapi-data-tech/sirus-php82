@@ -31,10 +31,13 @@
 
     @php
         $txn = $data['dataDaftarTxn'];
-        $lastNyeri = !empty($txn['penilaian']['nyeri']) ? end($txn['penilaian']['nyeri']) : null;
-        // FQCN: `use` tak bisa dipakai di sini — blok @php ini terkompilasi di dalam
-        // blok if milik komponen <x-pdf.layout-a4...>, sedangkan `use` wajib di scope file.
-        $ringkasNyeri = \App\Support\NyeriOptions::ringkasEntri($lastNyeri ?? []);
+        // entriTerakhir(): record lama menyimpan penilaian.nyeri sebagai SATU entri
+        // (assoc) — end() di atasnya mengembalikan isi kolom terakhir, bukan entri.
+        // Nama kelas ditulis lengkap: berkas cetak ini tidak bisa mengimpor kelas —
+        // di dalam komponen PDF blok ini terkompilasi bukan di scope berkas, dan
+        // impor di atas tag komponen bikin tag pembuka gagal terkompilasi.
+        $lastNyeri = \App\Support\NyeriOptions::entriTerakhir($txn['penilaian']['nyeri'] ?? null);
+        $ringkasNyeri = \App\Support\NyeriOptions::ringkasEntri($lastNyeri);
         $lastResikoJatuh = !empty($txn['penilaian']['resikoJatuh']) ? end($txn['penilaian']['resikoJatuh']) : null;
         $lastResikoBunuhDiri = !empty($txn['penilaian']['resikoBunuhDiri']) ? end($txn['penilaian']['resikoBunuhDiri']) : null;
         $lastDekubitus = !empty($txn['penilaian']['dekubitus']) ? end($txn['penilaian']['dekubitus']) : null;

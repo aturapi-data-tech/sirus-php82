@@ -126,7 +126,8 @@ new class extends Component {
             $d = $this->dataDaftarUGD;
             $txn = $d['dataDaftarTxn'] ?? [];
 
-            $lastNyeri = !empty($txn['penilaian']['nyeri']) ? end($txn['penilaian']['nyeri']) : null;
+            // entriTerakhir(): record lama menyimpan penilaian.nyeri sebagai SATU entri (assoc).
+            $lastNyeri = NyeriOptions::entriTerakhir($txn['penilaian']['nyeri'] ?? null);
             $lastResikoJatuh = !empty($txn['penilaian']['resikoJatuh']) ? end($txn['penilaian']['resikoJatuh']) : null;
             $lastDekubitus = !empty($txn['penilaian']['dekubitus']) ? end($txn['penilaian']['dekubitus']) : null;
             $lastGizi = !empty($txn['penilaian']['gizi']) ? end($txn['penilaian']['gizi']) : null;
@@ -347,7 +348,7 @@ new class extends Component {
                             <p class="flex gap-3 text-base leading-relaxed pb-1.5 border-b border-hairline-soft dark:border-gray-800 last:border-0"><span class="w-56 shrink-0 text-right text-muted">Status Medik :</span><span
                                     class="text-body dark:text-gray-300">{{ $statusMedikVal !== '' ? $statusMedikVal : '-' }}</span>
                             </p>
-                            @php $nyeriRec = collect($txn['penilaian']['nyeri'] ?? [])->filter(fn($x) => filled(data_get($x, 'nyeri.nyeriMetode.nyeriMetode'))); @endphp
+                            @php $nyeriRec = collect(NyeriOptions::daftarEntri($txn['penilaian']['nyeri'] ?? null))->filter(fn($x) => filled(data_get($x, 'nyeri.nyeriMetode.nyeriMetode'))); @endphp
                                                             <div class="flex gap-3 pb-1.5 border-b border-hairline-soft dark:border-gray-800">
                                     <span class="w-56 shrink-0 text-right text-muted">Skala Nyeri :</span>
                                     <div class="space-y-1 text-body dark:text-gray-300">
