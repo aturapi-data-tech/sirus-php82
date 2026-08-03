@@ -5,13 +5,13 @@
     {{-- IDENTITAS PASIEN — sejajar dengan logo --}}
     <x-slot name="patientData">
         @php
-            $idn = $data['identitas'] ?? [];
+            $identitas = $data['identitas'] ?? [];
             $alamatFull = trim(
-                ($idn['alamat'] ?? '') .
-                    (!empty($idn['rt']) ? ' RT ' . $idn['rt'] : '') .
-                    (!empty($idn['rw']) ? '/RW ' . $idn['rw'] : '') .
-                    (!empty($idn['desaName']) ? ', ' . $idn['desaName'] : '') .
-                    (!empty($idn['kecamatanName']) ? ', ' . $idn['kecamatanName'] : ''),
+                ($identitas['alamat'] ?? '') .
+                    (!empty($identitas['rt']) ? ' RT ' . $identitas['rt'] : '') .
+                    (!empty($identitas['rw']) ? '/RW ' . $identitas['rw'] : '') .
+                    (!empty($identitas['desaName']) ? ', ' . $identitas['desaName'] : '') .
+                    (!empty($identitas['kecamatanName']) ? ', ' . $identitas['kecamatanName'] : ''),
             );
         @endphp
         <x-pdf.identitas-pasien
@@ -34,18 +34,18 @@
     {{-- ASSESMENT AWAL RAWAT JALAN                                        --}}
     {{-- ================================================================ --}}
     @php
-        $txn = $data['dataDaftarTxn'];
+        $dataDaftarTxn = $data['dataDaftarTxn'];
         // entriTerakhir(): record lama menyimpan penilaian.nyeri sebagai SATU entri
         // (assoc) — end() di atasnya mengembalikan isi kolom terakhir, bukan entri.
         // Nama kelas ditulis lengkap: berkas cetak ini tidak bisa mengimpor kelas —
         // di dalam komponen PDF blok ini terkompilasi bukan di scope berkas, dan
         // impor di atas tag komponen bikin tag pembuka gagal terkompilasi.
-        $lastNyeri = \App\Support\NyeriOptions::entriTerakhir($txn['penilaian']['nyeri'] ?? null);
-        $ringkasNyeri = \App\Support\NyeriOptions::ringkasEntri($lastNyeri);
-        $lastResikoJatuh = !empty($txn['penilaian']['resikoJatuh']) ? end($txn['penilaian']['resikoJatuh']) : null;
-        $lastResikoBunuhDiri = !empty($txn['penilaian']['resikoBunuhDiri']) ? end($txn['penilaian']['resikoBunuhDiri']) : null;
-        $lastDekubitus = !empty($txn['penilaian']['dekubitus']) ? end($txn['penilaian']['dekubitus']) : null;
-        $lastGizi = !empty($txn['penilaian']['gizi']) ? end($txn['penilaian']['gizi']) : null;
+        $nyeriTerakhir = \App\Support\NyeriOptions::entriTerakhir($dataDaftarTxn['penilaian']['nyeri'] ?? null);
+        $ringkasNyeri = \App\Support\NyeriOptions::ringkasEntri($nyeriTerakhir);
+        $resikoJatuhTerakhir = !empty($dataDaftarTxn['penilaian']['resikoJatuh']) ? end($dataDaftarTxn['penilaian']['resikoJatuh']) : null;
+        $resikoBunuhDiriTerakhir = !empty($dataDaftarTxn['penilaian']['resikoBunuhDiri']) ? end($dataDaftarTxn['penilaian']['resikoBunuhDiri']) : null;
+        $dekubitusTerakhir = !empty($dataDaftarTxn['penilaian']['dekubitus']) ? end($dataDaftarTxn['penilaian']['dekubitus']) : null;
+        $giziTerakhir = !empty($dataDaftarTxn['penilaian']['gizi']) ? end($dataDaftarTxn['penilaian']['gizi']) : null;
     @endphp
 
     <table class="w-full text-[10px] border-collapse">
@@ -57,26 +57,26 @@
             </td>
             <td class="border border-black px-1.5 py-0.5 align-top" colspan="2">
                 <span class="font-bold">Status Psikologis :</span>
-                {{ isset($txn['anamnesa']['statusPsikologis']['tidakAdaKelainan']) ? ($txn['anamnesa']['statusPsikologis']['tidakAdaKelainan'] ? 'Tidak Ada Kelainan' : '-') : '-' }}
-                {{ isset($txn['anamnesa']['statusPsikologis']['marah']) ? ($txn['anamnesa']['statusPsikologis']['marah'] ? '/ Marah' : '') : '' }}
-                {{ isset($txn['anamnesa']['statusPsikologis']['ccemas']) ? ($txn['anamnesa']['statusPsikologis']['ccemas'] ? '/ Cemas' : '') : '' }}
-                {{ isset($txn['anamnesa']['statusPsikologis']['takut']) ? ($txn['anamnesa']['statusPsikologis']['takut'] ? '/ Takut' : '') : '' }}
-                {{ isset($txn['anamnesa']['statusPsikologis']['sedih']) ? ($txn['anamnesa']['statusPsikologis']['sedih'] ? '/ Sedih' : '') : '' }}
-                {{ isset($txn['anamnesa']['statusPsikologis']['cenderungBunuhDiri']) ? ($txn['anamnesa']['statusPsikologis']['cenderungBunuhDiri'] ? '/ Resiko Bunuh Diri' : '') : '' }}
-                @if (!empty($txn['anamnesa']['statusPsikologis']['sebutstatusPsikologis']))
-                    &mdash; {{ $txn['anamnesa']['statusPsikologis']['sebutstatusPsikologis'] }}
+                {{ isset($dataDaftarTxn['anamnesa']['statusPsikologis']['tidakAdaKelainan']) ? ($dataDaftarTxn['anamnesa']['statusPsikologis']['tidakAdaKelainan'] ? 'Tidak Ada Kelainan' : '-') : '-' }}
+                {{ isset($dataDaftarTxn['anamnesa']['statusPsikologis']['marah']) ? ($dataDaftarTxn['anamnesa']['statusPsikologis']['marah'] ? '/ Marah' : '') : '' }}
+                {{ isset($dataDaftarTxn['anamnesa']['statusPsikologis']['ccemas']) ? ($dataDaftarTxn['anamnesa']['statusPsikologis']['ccemas'] ? '/ Cemas' : '') : '' }}
+                {{ isset($dataDaftarTxn['anamnesa']['statusPsikologis']['takut']) ? ($dataDaftarTxn['anamnesa']['statusPsikologis']['takut'] ? '/ Takut' : '') : '' }}
+                {{ isset($dataDaftarTxn['anamnesa']['statusPsikologis']['sedih']) ? ($dataDaftarTxn['anamnesa']['statusPsikologis']['sedih'] ? '/ Sedih' : '') : '' }}
+                {{ isset($dataDaftarTxn['anamnesa']['statusPsikologis']['cenderungBunuhDiri']) ? ($dataDaftarTxn['anamnesa']['statusPsikologis']['cenderungBunuhDiri'] ? '/ Resiko Bunuh Diri' : '') : '' }}
+                @if (!empty($dataDaftarTxn['anamnesa']['statusPsikologis']['sebutstatusPsikologis']))
+                    &mdash; {{ $dataDaftarTxn['anamnesa']['statusPsikologis']['sebutstatusPsikologis'] }}
                 @endif
                 &nbsp;&nbsp;
                 <span class="font-bold">Keterangan Status Psikologis</span>
                 <br>
                 <span class="font-bold">Status Mental :</span>
-                {{ $txn['anamnesa']['statusMental']['statusMental'] ?? '-' }}
-                @if (!empty($txn['anamnesa']['statusMental']['sebutstatusPsikologis']))
-                    &mdash; {{ $txn['anamnesa']['statusMental']['sebutstatusPsikologis'] }}
+                {{ $dataDaftarTxn['anamnesa']['statusMental']['statusMental'] ?? '-' }}
+                @if (!empty($dataDaftarTxn['anamnesa']['statusMental']['sebutstatusPsikologis']))
+                    &mdash; {{ $dataDaftarTxn['anamnesa']['statusMental']['sebutstatusPsikologis'] }}
                 @endif
                 &nbsp;&nbsp;
                 <span class="font-bold">Keterangan Status Mental :</span>
-                {{ $txn['anamnesa']['statusMental']['keteranganStatusMental'] ?? '-' }}
+                {{ $dataDaftarTxn['anamnesa']['statusMental']['keteranganStatusMental'] ?? '-' }}
             </td>
         </tr>
 
@@ -87,10 +87,10 @@
             </td>
             <td class="border border-black px-1.5 py-0.5 align-top">
                 <span class="font-bold">Keluhan Utama :</span>
-                {!! nl2br(e($txn['anamnesa']['keluhanUtama']['keluhanUtama'] ?? '-')) !!}
+                {!! nl2br(e($dataDaftarTxn['anamnesa']['keluhanUtama']['keluhanUtama'] ?? '-')) !!}
                 <br>
                 <span class="font-bold">Screening Batuk :</span>
-                {{ $txn['anamnesa']['screeningBatuk'] ?? '-' }}
+                {{ $dataDaftarTxn['anamnesa']['screeningBatuk'] ?? '-' }}
                 <br>
 
                 {{-- ── SKALA NYERI ── --}}
@@ -98,60 +98,60 @@
                 Metode : {{ $ringkasNyeri['metode'] }} /
                 Skor : {{ $ringkasNyeri['skor'] }} /
                 {{ $ringkasNyeri['label'] }}@if ($ringkasNyeri['catatan']) ({{ $ringkasNyeri['catatan'] }})@endif /
-                Pencetus : {{ $lastNyeri['nyeri']['pencetus'] ?? '-' }} /
-                Durasi : {{ $lastNyeri['nyeri']['durasi'] ?? '-' }} /
-                Lokasi : {{ $lastNyeri['nyeri']['lokasi'] ?? '-' }}
+                Pencetus : {{ $nyeriTerakhir['nyeri']['pencetus'] ?? '-' }} /
+                Durasi : {{ $nyeriTerakhir['nyeri']['durasi'] ?? '-' }} /
+                Lokasi : {{ $nyeriTerakhir['nyeri']['lokasi'] ?? '-' }}
                 <br>
 
                 {{-- ── RESIKO JATUH ── --}}
                 <span class="font-bold">Resiko Jatuh :</span>
-                Metode : {{ $lastResikoJatuh['resikoJatuh']['resikoJatuhMetode']['resikoJatuhMetode'] ?? '-' }} /
-                Skor : {{ $lastResikoJatuh['resikoJatuh']['resikoJatuhMetode']['resikoJatuhMetodeScore'] ?? '-' }} /
-                {{ $lastResikoJatuh['resikoJatuh']['kategoriResiko'] ?? '-' }}
+                Metode : {{ $resikoJatuhTerakhir['resikoJatuh']['resikoJatuhMetode']['resikoJatuhMetode'] ?? '-' }} /
+                Skor : {{ $resikoJatuhTerakhir['resikoJatuh']['resikoJatuhMetode']['resikoJatuhMetodeScore'] ?? '-' }} /
+                {{ $resikoJatuhTerakhir['resikoJatuh']['kategoriResiko'] ?? '-' }}
                 <br>
 
                 {{-- ── RISIKO BUNUH DIRI C-SSRS (tampil hanya jika ada data) ── --}}
-                @if ($lastResikoBunuhDiri)
+                @if ($resikoBunuhDiriTerakhir)
                     <span class="font-bold">Risiko Bunuh Diri (C-SSRS) :</span>
-                    Skor keparahan : {{ $lastResikoBunuhDiri['skorKeparahan'] ?? '-' }} /
-                    {{ $lastResikoBunuhDiri['kategoriResiko'] ?? '-' }}{{ !empty($lastResikoBunuhDiri['tindakLanjut']) ? ' / ' . implode(', ', $lastResikoBunuhDiri['tindakLanjut']) : '' }}
+                    Skor keparahan : {{ $resikoBunuhDiriTerakhir['skorKeparahan'] ?? '-' }} /
+                    {{ $resikoBunuhDiriTerakhir['kategoriResiko'] ?? '-' }}{{ !empty($resikoBunuhDiriTerakhir['tindakLanjut']) ? ' / ' . implode(', ', $resikoBunuhDiriTerakhir['tindakLanjut']) : '' }}
                     <br>
                 @endif
 
                 {{-- ── DEKUBITUS (tampil hanya jika ada data) ── --}}
-                @if ($lastDekubitus)
+                @if ($dekubitusTerakhir)
                     <span class="font-bold">Dekubitus :</span>
-                    {{ $lastDekubitus['dekubitus']['dekubitus'] ?? '-' }} /
-                    Skor Braden : {{ $lastDekubitus['dekubitus']['bradenScore'] ?? '-' }} /
-                    {{ $lastDekubitus['dekubitus']['kategoriResiko'] ?? '-' }}
-                    @if (!empty($lastDekubitus['dekubitus']['rekomendasi']))
-                        / {{ $lastDekubitus['dekubitus']['rekomendasi'] }}
+                    {{ $dekubitusTerakhir['dekubitus']['dekubitus'] ?? '-' }} /
+                    Skor Braden : {{ $dekubitusTerakhir['dekubitus']['bradenScore'] ?? '-' }} /
+                    {{ $dekubitusTerakhir['dekubitus']['kategoriResiko'] ?? '-' }}
+                    @if (!empty($dekubitusTerakhir['dekubitus']['rekomendasi']))
+                        / {{ $dekubitusTerakhir['dekubitus']['rekomendasi'] }}
                     @endif
                     <br>
                 @endif
 
                 {{-- ── GIZI (tampil hanya jika ada data) ── --}}
-                @if ($lastGizi)
+                @if ($giziTerakhir)
                     <span class="font-bold">Gizi :</span>
-                    BB : {{ $lastGizi['gizi']['beratBadan'] ?? '-' }} kg /
-                    TB : {{ $lastGizi['gizi']['tinggiBadan'] ?? '-' }} cm /
-                    IMT : {{ $lastGizi['gizi']['imt'] ?? '-' }} /
-                    Skor Skrining : {{ $lastGizi['gizi']['skorSkrining'] ?? '-' }} /
-                    {{ $lastGizi['gizi']['kategoriGizi'] ?? '-' }}
-                    @if (!empty($lastGizi['gizi']['catatan']))
-                        / {{ $lastGizi['gizi']['catatan'] }}
+                    BB : {{ $giziTerakhir['gizi']['beratBadan'] ?? '-' }} kg /
+                    TB : {{ $giziTerakhir['gizi']['tinggiBadan'] ?? '-' }} cm /
+                    IMT : {{ $giziTerakhir['gizi']['imt'] ?? '-' }} /
+                    Skor Skrining : {{ $giziTerakhir['gizi']['skorSkrining'] ?? '-' }} /
+                    {{ $giziTerakhir['gizi']['kategoriGizi'] ?? '-' }}
+                    @if (!empty($giziTerakhir['gizi']['catatan']))
+                        / {{ $giziTerakhir['gizi']['catatan'] }}
                     @endif
                     <br>
                 @endif
 
                 <span class="font-bold">Riwayat Penyakit Sekarang :</span>
-                {!! nl2br(e($txn['anamnesa']['riwayatPenyakitSekarangUmum']['riwayatPenyakitSekarangUmum'] ?? '-')) !!}
+                {!! nl2br(e($dataDaftarTxn['anamnesa']['riwayatPenyakitSekarangUmum']['riwayatPenyakitSekarangUmum'] ?? '-')) !!}
                 <br>
                 <span class="font-bold">Riwayat Penyakit Dahulu :</span>
-                {!! nl2br(e($txn['anamnesa']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? '-')) !!}
+                {!! nl2br(e($dataDaftarTxn['anamnesa']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? '-')) !!}
                 <br>
                 <span class="font-bold">Alergi :</span>
-                {!! nl2br(e(\App\Support\AlergiSnomed::untukCetak($txn['anamnesa']['alergi'] ?? []))) !!}
+                {!! nl2br(e(\App\Support\AlergiSnomed::untukCetak($dataDaftarTxn['anamnesa']['alergi'] ?? []))) !!}
                 <br>
                 {{-- Rekonsiliasi Obat — TIDAK dicetak di RJ: entry-nya memang tidak ada di
                      EMR RJ (skema rekonsiliasiObat dikomentari di rm-anamnesa-rj-actions.blade.php),
@@ -166,7 +166,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($txn['anamnesa']['rekonsiliasiObat'] ?? [] as $obat)
+                        @forelse ($dataDaftarTxn['anamnesa']['rekonsiliasiObat'] ?? [] as $obat)
                             <tr>
                                 <td class="border border-gray-500 px-1 py-0.5">{{ $obat['namaObat'] ?? '-' }}</td>
                                 <td class="border border-gray-500 px-1 py-0.5">{{ $obat['dosis'] ?? '-' }}</td>
@@ -189,14 +189,14 @@
                 <p class="font-bold mb-0.5">PERAWAT / TERAPIS :</p>
 
                 {{-- TTD Perawat --}}
-                @isset($txn['anamnesa']['pengkajianPerawatan']['perawatPenerima'])
-                    @if ($txn['anamnesa']['pengkajianPerawatan']['perawatPenerima'])
-                        @isset($txn['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'])
-                            @if ($txn['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'])
+                @isset($dataDaftarTxn['anamnesa']['pengkajianPerawatan']['perawatPenerima'])
+                    @if ($dataDaftarTxn['anamnesa']['pengkajianPerawatan']['perawatPenerima'])
+                        @isset($dataDaftarTxn['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'])
+                            @if ($dataDaftarTxn['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'])
                                 @php
                                     $ttdPerawat = App\Models\User::where(
                                         'myuser_code',
-                                        $txn['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'],
+                                        $dataDaftarTxn['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'],
                                     )->value('myuser_ttd_image');
                                 @endphp
                                 @if (!empty($ttdPerawat))
@@ -208,8 +208,8 @@
                 @endisset
 
                 <p class="mb-1.5">
-                    {{ isset($txn['anamnesa']['pengkajianPerawatan']['perawatPenerima'])
-                        ? strtoupper($txn['anamnesa']['pengkajianPerawatan']['perawatPenerima'])
+                    {{ isset($dataDaftarTxn['anamnesa']['pengkajianPerawatan']['perawatPenerima'])
+                        ? strtoupper($dataDaftarTxn['anamnesa']['pengkajianPerawatan']['perawatPenerima'])
                         : '-' }}
                 </p>
 
@@ -217,28 +217,28 @@
                 <table cellpadding="0" cellspacing="0" class="w-full text-[10px]">
                     <tr>
                         <td class="w-20">TD</td>
-                        <td>:&nbsp;{{ $txn['pemeriksaan']['tandaVital']['sistolik'] ?? '-' }} /
-                            {{ $txn['pemeriksaan']['tandaVital']['distolik'] ?? '-' }} mmhg</td>
+                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['tandaVital']['sistolik'] ?? '-' }} /
+                            {{ $dataDaftarTxn['pemeriksaan']['tandaVital']['distolik'] ?? '-' }} mmhg</td>
                     </tr>
                     <tr>
                         <td>Nadi</td>
-                        <td>:&nbsp;{{ $txn['pemeriksaan']['tandaVital']['frekuensiNadi'] ?? '-' }} x/mnt</td>
+                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['tandaVital']['frekuensiNadi'] ?? '-' }} x/mnt</td>
                     </tr>
                     <tr>
                         <td>Suhu</td>
-                        <td>:&nbsp;{{ $txn['pemeriksaan']['tandaVital']['suhu'] ?? '-' }} °C</td>
+                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['tandaVital']['suhu'] ?? '-' }} °C</td>
                     </tr>
                     <tr>
                         <td>Pernafasan</td>
-                        <td>:&nbsp;{{ $txn['pemeriksaan']['tandaVital']['frekuensiNafas'] ?? '-' }} x/mnt</td>
+                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['tandaVital']['frekuensiNafas'] ?? '-' }} x/mnt</td>
                     </tr>
                     <tr>
                         <td>SPO2</td>
-                        <td>:&nbsp;{{ $txn['pemeriksaan']['tandaVital']['spo2'] ?? '-' }} %</td>
+                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['tandaVital']['spo2'] ?? '-' }} %</td>
                     </tr>
                     <tr>
                         <td>GDA</td>
-                        <td>:&nbsp;{{ $txn['pemeriksaan']['tandaVital']['gda'] ?? '-' }} mg/dL</td>
+                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['tandaVital']['gda'] ?? '-' }} mg/dL</td>
                     </tr>
                 </table>
 
@@ -246,23 +246,23 @@
                 <table cellpadding="0" cellspacing="0" class="w-full text-[10px]">
                     <tr>
                         <td class="w-20">Berat Badan</td>
-                        <td>:&nbsp;{{ $txn['pemeriksaan']['nutrisi']['bb'] ?? '-' }} Kg</td>
+                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['nutrisi']['bb'] ?? '-' }} Kg</td>
                     </tr>
                     <tr>
                         <td>Tinggi Badan</td>
-                        <td>:&nbsp;{{ $txn['pemeriksaan']['nutrisi']['tb'] ?? '-' }} cm</td>
+                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['nutrisi']['tb'] ?? '-' }} cm</td>
                     </tr>
                     <tr>
                         <td>Index Masa Tubuh</td>
-                        <td>:&nbsp;{{ $txn['pemeriksaan']['nutrisi']['imt'] ?? '-' }} Kg/M2</td>
+                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['nutrisi']['imt'] ?? '-' }} Kg/M2</td>
                     </tr>
                     <tr>
                         <td>Lingkar Kepala</td>
-                        <td>:&nbsp;{{ $txn['pemeriksaan']['nutrisi']['lk'] ?? '-' }} cm</td>
+                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['nutrisi']['lk'] ?? '-' }} cm</td>
                     </tr>
                     <tr>
                         <td>Lingkar Lengan Atas</td>
-                        <td>:&nbsp;{{ $txn['pemeriksaan']['nutrisi']['lila'] ?? '-' }} cm</td>
+                        <td>:&nbsp;{{ $dataDaftarTxn['pemeriksaan']['nutrisi']['lila'] ?? '-' }} cm</td>
                     </tr>
                 </table>
             </td>
@@ -274,10 +274,10 @@
                 KEADAAN UMUM
             </td>
             <td class="border border-black px-1.5 py-0.5 align-middle" colspan="2">
-                {{ $txn['pemeriksaan']['tandaVital']['keadaanUmum'] ?? 'BAIK' }}
+                {{ $dataDaftarTxn['pemeriksaan']['tandaVital']['keadaanUmum'] ?? 'BAIK' }}
                 &nbsp;/&nbsp;
                 <span class="font-bold">Tingkat Kesadaran :</span>
-                {{ $txn['pemeriksaan']['tandaVital']['tingkatKesadaran'] ?? '-' }}
+                {{ $dataDaftarTxn['pemeriksaan']['tandaVital']['tingkatKesadaran'] ?? '-' }}
             </td>
         </tr>
 
@@ -287,17 +287,17 @@
                 FUNGSIONAL
             </td>
             <td class="border border-black px-1.5 py-0.5 align-middle" colspan="2">
-                <span class="font-bold">Alat Bantu :</span> {{ $txn['pemeriksaan']['fungsional']['alatBantu'] ?? '-' }}
+                <span class="font-bold">Alat Bantu :</span> {{ $dataDaftarTxn['pemeriksaan']['fungsional']['alatBantu'] ?? '-' }}
                 &nbsp;/&nbsp;
-                <span class="font-bold">Prothesa :</span> {{ $txn['pemeriksaan']['fungsional']['prothesa'] ?? '-' }}
+                <span class="font-bold">Prothesa :</span> {{ $dataDaftarTxn['pemeriksaan']['fungsional']['prothesa'] ?? '-' }}
                 &nbsp;/&nbsp;
                 <span class="font-bold">Cacat Tubuh :</span>
-                {{ $txn['pemeriksaan']['fungsional']['cacatTubuh'] ?? '-' }}
+                {{ $dataDaftarTxn['pemeriksaan']['fungsional']['cacatTubuh'] ?? '-' }}
                 &nbsp;/&nbsp;
                 <span class="font-bold">Suspek Akibat Kecelakaan Kerja :</span>
                 @php
-                    $suspekAK = $txn['pemeriksaan']['suspekAkibatKerja']['suspekAkibatKerja'] ?? '-';
-                    $ketAK = trim($txn['pemeriksaan']['suspekAkibatKerja']['keteranganSuspekAkibatKerja'] ?? '');
+                    $suspekAK = $dataDaftarTxn['pemeriksaan']['suspekAkibatKerja']['suspekAkibatKerja'] ?? '-';
+                    $ketAK = trim($dataDaftarTxn['pemeriksaan']['suspekAkibatKerja']['keteranganSuspekAkibatKerja'] ?? '');
                 @endphp
                 {{ $suspekAK }}@if ($suspekAK === 'Ya' && $ketAK !== '') &nbsp;({{ $ketAK }})@endif
             </td>
@@ -310,13 +310,13 @@
             </td>
             <td class="border border-black px-1.5 py-0.5 align-top">
                 <span class="font-bold">Fisik dan Uji Fungsi:</span><br>
-                {!! nl2br(e($txn['pemeriksaan']['fisik'] ?? '-')) !!}
-                {!! nl2br(e($txn['pemeriksaan']['FisikujiFungsi']['FisikujiFungsi'] ?? '')) !!}
+                {!! nl2br(e($dataDaftarTxn['pemeriksaan']['fisik'] ?? '-')) !!}
+                {!! nl2br(e($dataDaftarTxn['pemeriksaan']['FisikujiFungsi']['FisikujiFungsi'] ?? '')) !!}
             </td>
             <td class="border border-black px-1.5 py-0.5 align-top">
                 <span class="font-bold">Anatomi :</span><br>
-                @if (!empty($txn['pemeriksaan']['anatomi']))
-                    @foreach ($txn['pemeriksaan']['anatomi'] as $key => $pAnatomi)
+                @if (!empty($dataDaftarTxn['pemeriksaan']['anatomi']))
+                    @foreach ($dataDaftarTxn['pemeriksaan']['anatomi'] as $key => $pAnatomi)
                         @php $kelainan = $pAnatomi['kelainan'] ?? false; @endphp
                         @if ($kelainan && $kelainan !== 'Tidak Diperiksa')
                             <span class="font-semibold">{{ strtoupper($key) }}</span>:
@@ -334,16 +334,16 @@
             </td>
             <td class="border border-black px-1.5 py-0.5 align-top" colspan="2">
                 <span class="font-bold">Pemeriksaan Penunjang Lab / Foto / EKG / Lan-lain :</span><br>
-                {!! nl2br(e($txn['pemeriksaan']['penunjang'] ?? '-')) !!}
+                {!! nl2br(e($dataDaftarTxn['pemeriksaan']['penunjang'] ?? '-')) !!}
             </td>
         </tr>
 
         {{-- ── DIAGNOSIS ────────────────────────────────────────────────── --}}
         @php
             // Prioritas freetext dari dokter; fallback ke keterangan ICD-10 (kode disembunyikan).
-            $diagnosisText = trim((string) ($txn['diagnosisFreeText'] ?? ''));
+            $diagnosisText = trim((string) ($dataDaftarTxn['diagnosisFreeText'] ?? ''));
             if ($diagnosisText === '') {
-                $diagnosisDescriptions = collect($txn['diagnosis'] ?? [])
+                $diagnosisDescriptions = collect($dataDaftarTxn['diagnosis'] ?? [])
                     ->pluck('diagDesc')
                     ->map(fn($desc) => trim((string) $desc))
                     ->filter()
@@ -353,9 +353,9 @@
             }
 
             // Prioritas freetext dari dokter; fallback ke keterangan ICD-9-CM (kode disembunyikan).
-            $procedureText = trim((string) ($txn['procedureFreeText'] ?? ''));
+            $procedureText = trim((string) ($dataDaftarTxn['procedureFreeText'] ?? ''));
             if ($procedureText === '') {
-                $procedureDescriptions = collect($txn['procedure'] ?? [])
+                $procedureDescriptions = collect($dataDaftarTxn['procedure'] ?? [])
                     ->pluck('procedureDesc')
                     ->map(fn($desc) => trim((string) $desc))
                     ->filter()
@@ -389,9 +389,9 @@
                 TINDAK LANJUT
             </td>
             <td class="border border-black px-1.5 py-0.5 align-middle" colspan="2">
-                {{ $txn['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '-' }}
-                @if (!empty($txn['perencanaan']['tindakLanjut']['keteranganTindakLanjut']))
-                    / {{ $txn['perencanaan']['tindakLanjut']['keteranganTindakLanjut'] }}
+                {{ $dataDaftarTxn['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '-' }}
+                @if (!empty($dataDaftarTxn['perencanaan']['tindakLanjut']['keteranganTindakLanjut']))
+                    / {{ $dataDaftarTxn['perencanaan']['tindakLanjut']['keteranganTindakLanjut'] }}
                 @endif
             </td>
         </tr>
@@ -402,17 +402,17 @@
                 TERAPI
             </td>
             <td class="border border-black px-1.5 py-0.5 align-top">
-                {!! nl2br(e($txn['perencanaan']['terapi']['terapi'] ?? '-')) !!}
+                {!! nl2br(e($dataDaftarTxn['perencanaan']['terapi']['terapi'] ?? '-')) !!}
             </td>
             <td class="border border-black px-1.5 py-0.5 align-top text-center">
                 Tulungagung, {{ $data['tglCetak'] ?? \Carbon\Carbon::now()->format('d/m/Y') }}
                 <br>
 
                 {{-- TTD Dokter --}}
-                @isset($txn['perencanaan']['pengkajianMedis']['drPemeriksa'])
-                    @if ($txn['perencanaan']['pengkajianMedis']['drPemeriksa'])
+                @isset($dataDaftarTxn['perencanaan']['pengkajianMedis']['drPemeriksa'])
+                    @if ($dataDaftarTxn['perencanaan']['pengkajianMedis']['drPemeriksa'])
                         @php
-                            $ttdDokter = App\Models\User::where('myuser_code', $txn['drId'] ?? '')->value(
+                            $ttdDokter = App\Models\User::where('myuser_code', $dataDaftarTxn['drId'] ?? '')->value(
                                 'myuser_ttd_image',
                             );
                         @endphp
