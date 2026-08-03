@@ -155,12 +155,29 @@ new class extends Component {
                 return;
             }
 
-            $rjDate = $this->parseDate($dataRJ['rjDate'] ?? '');
-            $encounterTersimpan = $this->getEncounter($satuSehat['encounterId']);
-            $encounterTersimpan['status'] = 'finished';
-            $encounterTersimpan['statusHistory'][] = ['status' => 'finished', 'period' => ['start' => $rjDate->toIso8601String(), 'end' => now()->toIso8601String()]];
-            $encounterTersimpan['period']['end'] = now()->toIso8601String();
+            // Waktu selesai = jam layanan berakhir, bukan now() (jam petugas mengklik):
+            // task 7 (obat diserahkan), atau task 5 (keluar poli) bila tak ada obat.
+            $task = $dataRJ['taskIdPelayanan'] ?? [];
+            $waktuSelesai = trim((string) ($task['taskId7'] ?? '')) ?: trim((string) ($task['taskId5'] ?? ''));
+            $akhirIso = $waktuSelesai !== ''
+                ? $this->parseDate($waktuSelesai)->toIso8601String()
+                : now()->toIso8601String();
+
+            // Encounter.diagnosis wajib (RuleNumber 10457) dan harus merujuk Condition yang
+            // sudah dikirim — tolak lebih dulu, jangan kirim lalu pasti ditolak server.
+            $conditionIdList = $satuSehat['conditionIds'] ?? [];
+            if (empty($conditionIdList)) {
+                $this->dispatch('toast', type: 'error',
+                    message: 'Kirim Diagnosa (Condition) dulu — SATUSEHAT mewajibkan Encounter.diagnosis saat finish.');
+                return;
+            }
+
+            // statusHistory tiap entri wajib start+end (Rule 10122) — dirapikan di trait.
+            $encounterTersimpan = $this->siapkanFinishEncounter(
+                $this->getEncounter($satuSehat['encounterId']), $akhirIso, $conditionIdList
+            );
             $this->makeRequest('put', "Encounter/{$satuSehat['encounterId']}", $encounterTersimpan);
+
             $satuSehat['encounterFinished'] = true;
 
             $this->saveResult($rjNo, $dataRJ, $satuSehat);

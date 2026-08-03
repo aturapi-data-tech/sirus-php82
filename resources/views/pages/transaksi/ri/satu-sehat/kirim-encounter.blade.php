@@ -168,18 +168,23 @@ new class extends Component {
                 return;
             }
 
-            // period.end = tgl pulang (exitDate) kalau ada, kalau tidak now()
+            // RI: waktu selesai = tgl pulang (exitDate) — bukan task antrean seperti
+            // RJ/UGD, dan bukan now() yang berarti jam klik petugas.
             $exitStr = trim((string) ($dataRI['exitDate'] ?? ''));
-            $endDate = $exitStr !== '' ? $this->parseDate($exitStr) : Carbon::now();
-            $startDate = $this->parseDate($dataRI['entryDate'] ?? '');
+            $akhirIso = ($exitStr !== '' ? $this->parseDate($exitStr) : Carbon::now())->toIso8601String();
 
-            $encounterTersimpan = $this->getEncounter($satuSehat['encounterId']);
-            $encounterTersimpan['status'] = 'finished';
-            $encounterTersimpan['statusHistory'][] = [
-                'status' => 'finished',
-                'period' => ['start' => $startDate->toIso8601String(), 'end' => $endDate->toIso8601String()],
-            ];
-            $encounterTersimpan['period']['end'] = $endDate->toIso8601String();
+            // Encounter.diagnosis wajib (RuleNumber 10457) dan harus merujuk Condition
+            // yang sudah dikirim — jangan dikirim tanpa itu, pasti ditolak.
+            $conditionIdList = $satuSehat['conditionIds'] ?? [];
+            if (empty($conditionIdList)) {
+                $this->dispatch('toast', type: 'error',
+                    message: 'Kirim Diagnosa (Condition) dulu — SATUSEHAT mewajibkan Encounter.diagnosis saat finish.');
+                return;
+            }
+
+            $encounterTersimpan = $this->siapkanFinishEncounter(
+                $this->getEncounter($satuSehat['encounterId']), $akhirIso, $conditionIdList
+            );
 
             // Status pulang → hospitalization.dischargeDisposition (SNOMED, sudah tersimpan di EMR).
             // Kode tak dikenal → field TIDAK diisi, jangan menebak.

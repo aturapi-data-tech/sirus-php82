@@ -203,4 +203,59 @@ trait EncounterTrait
 
         return $this->makeRequest('put', "Encounter/{$encounterId}", $payload);
     }
+
+    /**
+     * Siapkan Encounter untuk di-finish: status, period.end, statusHistory yang lengkap,
+     * dan diagnosis. Dipakai bersama RJ/UGD/RI supaya aturannya tak beda-beda.
+     *
+     * Dua aturan SATUSEHAT yang gampang kena:
+     *  - "every statusHistory period start and end must be filled (Rule 10122)" — entri
+     *    yang ditulis createNewEncounter()/startRoomEncounter() hanya punya `start`,
+     *    jadi `end` tiap entri diisi dari `start` entri BERIKUTNYA (entri terakhir
+     *    memakai waktu selesai).
+     *  - "Element not found: Encounter.diagnosis (RuleNumber: 10457)" — wajib merujuk
+     *    Condition yang sudah dikirim; pemanggil harus menolak lebih dulu bila
+     *    conditionIdList kosong, jangan mengirim tanpa diagnosis.
+     *
+     * @param  array  $encounter  hasil getEncounter()
+     * @param  string $akhirIso   waktu pasien benar-benar selesai dilayani
+     * @param  array  $conditionIdList  id Condition hasil kirim diagnosa
+     */
+    public function siapkanFinishEncounter(array $encounter, string $akhirIso, array $conditionIdList): array
+    {
+        $encounter['status'] = 'finished';
+        $encounter['period']['end'] = $akhirIso;
+
+        $riwayat = array_values(array_filter($encounter['statusHistory'] ?? [], 'is_array'));
+        $riwayat[] = ['status' => 'finished', 'period' => ['start' => $akhirIso]];
+
+        foreach ($riwayat as $indeks => $entri) {
+            $mulai = $entri['period']['start'] ?? $akhirIso;
+            $selesai = $entri['period']['end'] ?? null;
+            if (empty($selesai)) {
+                // Satu status berakhir saat status berikutnya dimulai.
+                $selesai = $riwayat[$indeks + 1]['period']['start'] ?? $akhirIso;
+            }
+            // Jaga urutan: end tak boleh mendahului start (data waktu bisa tak rapi).
+            $riwayat[$indeks]['period'] = ['start' => $mulai, 'end' => max($mulai, $selesai)];
+        }
+        $encounter['statusHistory'] = $riwayat;
+
+        $encounter['diagnosis'] = [];
+        foreach (array_values($conditionIdList) as $indeks => $conditionId) {
+            $encounter['diagnosis'][] = [
+                'condition' => ['reference' => "Condition/{$conditionId}"],
+                'use' => [
+                    'coding' => [[
+                        'system' => 'http://terminology.hl7.org/CodeSystem/diagnosis-role',
+                        'code' => 'DD',
+                        'display' => 'Discharge diagnosis',
+                    ]],
+                ],
+                'rank' => $indeks + 1,
+            ];
+        }
+
+        return $encounter;
+    }
 }
