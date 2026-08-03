@@ -110,12 +110,13 @@ new class extends Component {
             // pasien beraksen jadi rusak.
             fwrite($keluaran, "\xEF\xBB\xBF");
 
-            // Petunjuk pemisah untuk Excel. Pemisahnya sendiri ';' karena Excel
-            // berlokal Indonesia membaca ',' sebagai desimal — berkas berkoma
-            // masuk jadi SATU kolom. Baris ini membuatnya benar juga di Excel
-            // berlokal Inggris, yang sebaliknya mengharapkan ','.
-            fwrite($keluaran, "sep=;\r\n");
-
+            // JANGAN menambahkan baris "sep=;" di sini. Sempat dipasang supaya
+            // berkasnya juga benar di Excel berlokal Inggris, dan hasilnya
+            // justru barisnya TERCETAK sebagai data di baris pertama: Excel
+            // tidak mengenali petunjuk itu bila didahului BOM, sementara BOM-nya
+            // wajib demi nama pasien. Tidak perlu juga — Excel berlokal
+            // Indonesia sudah memakai ';' sebagai pemisah daftar, jadi berkas
+            // ini terbaca benar apa adanya.
             fputcsv($keluaran, self::KOLOM_CSV, ';');
 
             foreach ($data as $satuDokter) {
