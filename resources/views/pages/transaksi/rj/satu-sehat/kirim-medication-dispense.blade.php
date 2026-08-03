@@ -16,6 +16,8 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\SATUSEHAT\MedicationDispenseTrait;
+use App\Support\MedicationRequestItem;
+use App\Support\RacikanKfa;
 
 new class extends Component {
     use EmrRJTrait, MedicationDispenseTrait;
@@ -88,38 +90,62 @@ new class extends Component {
             $patientName = $dataRJ['regName'] ?? '';
             $nowIso      = Carbon::now()->toIso8601String();
 
-            $resepList = $dataRJ['eresep'] ?? ($dataRJ['resepObat'] ?? []);
-            if (empty($resepList)) { $this->dispatch('toast', type: 'error', message: 'Tidak ada data resep obat.'); return; }
+            // Sumber pasangan resep→penyerahan: peta yang dicatat saat MedicationRequest
+            // dikirim. Sebelumnya dipasangkan lewat URUTAN daftar — geser satu item saja,
+            // obat tertaut ke resep yang salah tanpa ada yang tahu.
+            // Resep yang dikirim sebelum peta ini ada disusun ulang dari urutan
+            // pengirimannya (non-racikan dulu, lalu racikan) — dan ditolak bila
+            // jumlahnya tak cocok, daripada memasangkan obat ke resep yang salah.
+            $itemList = MedicationRequestItem::ambil($satuSehat, $dataRJ);
+            if (empty($itemList)) {
+                $this->dispatch('toast', type: 'error',
+                    message: 'Rincian item resep tak bisa dipastikan (daftar obat berubah setelah resep dikirim). Dispense dibatalkan.');
+                return;
+            }
+
+            $racikanPerNomor = [];
+            foreach (RacikanKfa::grupList($dataRJ) as $grup) {
+                $racikanPerNomor[$grup['noRacikan']] = $grup;
+            }
 
             $satuSehat['medicationDispenseIds'] = [];
-            $indeksMedicationRequest = 0;
-            foreach ($resepList as $indeks => $obat) {
-                $kfaCode = $obat['kfaCode'] ?? ($obat['product_id_satusehat'] ?? '');
-                $kfaDisplay = $obat['kfaDisplay'] ?? ($obat['product_name_satusehat'] ?? ($obat['namaObat'] ?? ''));
-                if (empty($kfaCode)) continue;
+            $dilewati = [];
+            foreach ($itemList as $indeks => $item) {
+                $adalahRacikan = ($item['jenis'] ?? '') === 'racikan';
+                $ingredient = [];
 
-                // authorizingPrescription = MedicationRequest hasil kirim resep (index-match ke item ber-KFA)
-                $mrId = $mrIds[$indeksMedicationRequest] ?? null;
-                $indeksMedicationRequest++;
-                if (empty($mrId)) continue;
+                if ($adalahRacikan) {
+                    $grup = $racikanPerNomor[$item['kunci']] ?? null;
+                    if ($grup === null || !$grup['siap']) {
+                        $dilewati[] = 'racikan ' . $item['kunci'];
+                        continue;
+                    }
+                    $ingredient = RacikanKfa::fhirIngredient($grup['bahanList']);
+                }
 
-                $itemId = "{$rjNo}-" . ($indeks + 1);
-                $qty    = (int) ($obat['qty'] ?? ($obat['jumlah'] ?? ($obat['jml'] ?? 1)));
+                $itemId = "$rjNo-" . ($indeks + 1);
+                $quantity = (int) ($item['qty'] ?? 1) ?: 1;
 
                 $respons = $this->createMedicationDispense([
-                    'orgId' => $orgId, 'registrationId' => $kfaCode, 'prescriptionItemId' => $itemId,
+                    'orgId' => $orgId,
+                    'registrationId' => $adalahRacikan ? "RACIKAN-{$itemId}" : $item['kode'],
+                    'prescriptionItemId' => $itemId,
                     'medContainedId' => "meddisp-{$itemId}",
-                    'medicationCode' => $kfaCode, 'medicationDisplay' => $kfaDisplay,
-                    'medicationFormCode' => $obat['formCode'] ?? 'BS066', 'medicationFormDisplay' => $obat['formDisplay'] ?? 'Tablet',
-                    'medicationTypeCode' => ($obat['isCompound'] ?? false) ? 'SD' : 'NC',
-                    'medicationTypeDisplay' => ($obat['isCompound'] ?? false) ? 'Compound' : 'Non-compound',
+                    'medicationCode' => $item['kode'], 'medicationDisplay' => $item['display'],
+                    'ingredient' => $ingredient,
+                    'medicationFormCode' => 'BS066', 'medicationFormDisplay' => 'Tablet',
+                    'medicationTypeCode' => $adalahRacikan ? 'SD' : 'NC',
+                    'medicationTypeDisplay' => $adalahRacikan ? 'Compound' : 'Non-compound',
                     'patientId' => $patientId, 'patientName' => $patientName, 'encounterId' => $satuSehat['encounterId'],
                     'status' => 'completed', 'category' => 'outpatient',
                     'whenPrepared' => $nowIso, 'whenHandedOver' => $nowIso,
                     'performer' => [['actor' => ['reference' => "Practitioner/{$performerId}"]]],
-                    'dosageInstruction' => $obat['dosageInstruction'] ?? [],
-                    'authorizingPrescription' => ['reference' => "MedicationRequest/{$mrId}"],
-                    'quantity' => ['value' => $qty, 'unit' => 'unit', 'system' => 'http://terminology.kemkes.go.id/CodeSystem/kfa-satuan', 'code' => 'unit'],
+                    'dosageInstruction' => [],
+                    'authorizingPrescription' => ['reference' => "MedicationRequest/{$item['id']}"],
+                    // Satuan pakai v3-orderableDrugForm (pola yang sudah dipakai
+                    // KirimRawatJalanTrait). CodeSystem kfa-satuan DITOLAK SATUSEHAT:
+                    // "Invalid coding system ... kfa-satuan (RuleNumber: 10050)".
+                    'quantity' => ['value' => $quantity, 'unit' => 'Tablet', 'system' => 'http://terminology.hl7.org/CodeSystem/v3-orderableDrugForm', 'code' => 'TAB'],
                     'daysSupply' => ['value' => 1, 'unit' => 'Hari', 'system' => 'http://unitsofmeasure.org', 'code' => 'd'],
                     'receiver' => ['reference' => "Patient/{$patientId}", 'display' => $patientName],
                 ]);
@@ -127,8 +153,11 @@ new class extends Component {
             }
 
             $this->saveResult($rjNo, $satuSehat);
-            $count = count($satuSehat['medicationDispenseIds']);
-            $this->dispatch('toast', type: 'success', message: "Obat pulang berhasil dikirim ({$count} item).");
+            $pesan = 'Obat pulang berhasil dikirim (' . count($satuSehat['medicationDispenseIds']) . ' item).';
+            if ($dilewati !== []) {
+                $pesan .= ' Dilewati: ' . implode(', ', $dilewati) . '.';
+            }
+            $this->dispatch('toast', type: 'success', message: $pesan);
             $this->dispatch('rj-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Obat pulang gagal: ' . $e->getMessage());

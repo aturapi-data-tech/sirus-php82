@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\SATUSEHAT\MedicationRequestTrait;
 use App\Support\EresepJson;
+use App\Support\ObatKfa;
 use App\Support\RacikanKfa;
 
 new class extends Component {
@@ -56,59 +57,10 @@ new class extends Component {
         $this->racikanTakSiap = $ringkasRacikan['takSiap'];
 
         $tanpaKfa = 0;
-        $this->siapKirim = count($this->obatList($data, $tanpaKfa));
+        $this->siapKirim = count(ObatKfa::nonRacikanList($data, $tanpaKfa));
         $this->obatTanpaKfa = $tanpaKfa;
     }
 
-    /**
-     * Obat non-racikan yang siap dikirim: kode KFA diambil dari master obat
-     * (immst_products.product_id_satusehat) lewat productId — JSON e-resep sendiri
-     * tidak menyimpan kode KFA.
-     *
-     * $obatTanpaKfa diisi jumlah item yang terpaksa dilewati (productId kosong atau
-     * master belum punya KFA) supaya bisa dilaporkan, bukan hilang diam-diam.
-     *
-     * @return array<int, array{code:string, display:string}>
-     */
-    private function obatList(array $dataRJ, ?int &$obatTanpaKfa = null): array
-    {
-        $obatTanpaKfa = 0;
-        $itemList = [];
-        foreach (EresepJson::lembar($dataRJ) as $lembar) {
-            foreach ($lembar['nonRacikan'] as $obat) {
-                $productId = trim((string) ($obat['productId'] ?? ''));
-                if ($productId === '') {
-                    $obatTanpaKfa++;
-                    continue;
-                }
-                $itemList[] = ['productId' => $productId, 'productName' => (string) ($obat['productName'] ?? '')];
-            }
-        }
-        if (empty($itemList)) {
-            return [];
-        }
-
-        $kfaMap = DB::table('immst_products')
-            ->whereIn('product_id', array_values(array_unique(array_column($itemList, 'productId'))))
-            ->get(['product_id', 'product_id_satusehat', 'product_name_satusehat'])
-            ->keyBy('product_id');
-
-        $obatKfaList = [];
-        foreach ($itemList as $obat) {
-            $master = $kfaMap->get($obat['productId']);
-            $kfaCode = trim((string) ($master->product_id_satusehat ?? ''));
-            if ($kfaCode === '') {
-                $obatTanpaKfa++;
-                continue;
-            }
-            $obatKfaList[] = [
-                'code' => $kfaCode,
-                'display' => trim((string) ($master->product_name_satusehat ?? '')) ?: $obat['productName'],
-            ];
-        }
-
-        return $obatKfaList;
-    }
 
     public function kirimForCurrent(): void
     {
@@ -141,7 +93,7 @@ new class extends Component {
             $patientName = $dataRJ['regName'] ?? '';
 
             $obatTanpaKfa = 0;
-            $obatList = $this->obatList($dataRJ, $obatTanpaKfa);
+            $obatList = ObatKfa::nonRacikanList($dataRJ, $obatTanpaKfa);
             $racikanList = RacikanKfa::grupList($dataRJ);
             $adaRacikanSiap = array_filter($racikanList, fn($grup) => $grup['siap']) !== [];
 
@@ -152,6 +104,7 @@ new class extends Component {
             }
 
             $satuSehat['medicationRequestIds'] = [];
+            $satuSehat['medicationRequestItems'] = [];
             foreach ($obatList as $indeks => $obat) {
                 $kfaCode = $obat['code'];
                 $kfaDisplay = $obat['display'];
@@ -168,7 +121,19 @@ new class extends Component {
                     'authoredOn' => $rjDate->toIso8601String(), 'category' => 'outpatient',
                     'dosageInstruction' => [], 'dispenseRequest' => [], 'reasonReference' => [],
                 ]);
-                if (!empty($respons['id'])) $satuSehat['medicationRequestIds'][] = $respons['id'];
+                if (!empty($respons['id'])) {
+                    $satuSehat['medicationRequestIds'][] = $respons['id'];
+                    // Peta eksplisit untuk MedicationDispense: tanpa ini dispense harus
+                    // menebak pasangan resepnya lewat urutan daftar.
+                    $satuSehat['medicationRequestItems'][] = [
+                        'id' => $respons['id'],
+                        'jenis' => 'nonRacikan',
+                        'kunci' => $obat['productId'],
+                        'kode' => $kfaCode,
+                        'display' => $kfaDisplay,
+                        'qty' => $obat['qty'],
+                    ];
+                }
             }
 
 
@@ -202,6 +167,14 @@ new class extends Component {
                 ]);
                 if (!empty($respons['id'])) {
                     $satuSehat['medicationRequestIds'][] = $respons['id'];
+                    $satuSehat['medicationRequestItems'][] = [
+                        'id' => $respons['id'],
+                        'jenis' => 'racikan',
+                        'kunci' => $grup['noRacikan'],
+                        'kode' => '',
+                        'display' => $namaRacikan,
+                        'qty' => 1,
+                    ];
                     $racikanTerkirim++;
                 }
             }

@@ -143,7 +143,10 @@ new class extends Component {
                     'performer' => [['actor' => ['reference' => "Practitioner/{$performerId}"]]],
                     'dosageInstruction' => [],
                     'authorizingPrescription' => ['reference' => "MedicationRequest/{$mrId}"],
-                    'quantity' => ['value' => max(1, $obat['qty']), 'unit' => 'unit', 'system' => 'http://terminology.kemkes.go.id/CodeSystem/kfa-satuan', 'code' => 'unit'],
+                    // Satuan pakai v3-orderableDrugForm (pola yang sudah dipakai
+                    // KirimRawatJalanTrait). CodeSystem kfa-satuan DITOLAK SATUSEHAT:
+                    // "Invalid coding system ... kfa-satuan (RuleNumber: 10050)".
+                    'quantity' => ['value' => max(1, $obat['qty']), 'unit' => 'Tablet', 'system' => 'http://terminology.hl7.org/CodeSystem/v3-orderableDrugForm', 'code' => 'TAB'],
                     'daysSupply' => ['value' => 1, 'unit' => 'Hari', 'system' => 'http://unitsofmeasure.org', 'code' => 'd'],
                     'receiver' => ['reference' => "Patient/{$patientId}", 'display' => $patientName],
                 ]);
