@@ -23,6 +23,22 @@ new class extends Component {
                     Laporan Internal
                 </h3>
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <a href="{{ route('manajemen.rs.satu-sehat.monitoring-satu-sehat') }}" wire:navigate
+                        class="flex items-start gap-3 p-4 transition-colors bg-canvas border border-hairline group rounded-xl hover:bg-brand-green/10 hover:border-brand-green/40 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-brand-lime/10">
+                        <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-teal-50 text-teal-700 group-hover:bg-teal-100 dark:bg-teal-900/30 dark:text-teal-400">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </span>
+                        <div class="min-w-0">
+                            <div class="font-semibold text-ink dark:text-gray-100">Monitoring Pengiriman SATUSEHAT</div>
+                            <div class="mt-0.5 text-xs text-muted dark:text-gray-400">
+                                Kunjungan sudah/belum terkirim per bulan &mdash; capaian kelengkapan &amp; konsistensi
+                            </div>
+                        </div>
+                    </a>
+
                     <a href="{{ route('manajemen.rs.rj.laporan-task-id-rj') }}" wire:navigate
                         class="flex items-start gap-3 p-4 transition-colors bg-canvas border border-hairline group rounded-xl hover:bg-brand-green/10 dark:bg-gray-900 dark:border-gray-700 dark:hover:bg-brand-lime/15">
                         <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 group-hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300">
