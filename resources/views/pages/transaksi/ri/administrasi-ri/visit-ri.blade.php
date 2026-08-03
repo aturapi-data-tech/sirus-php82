@@ -253,10 +253,14 @@ new class extends Component {
         </div>
     @endif
 
-    {{-- FORM INPUT --}}
-    @if (!$isFormLocked)
-        {{-- Kiri: form entri · Kanan: daftar data --}}
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
+    {{-- Kiri: form entri · Kanan: daftar data.
+         Grid dibuka DI LUAR @if: kalau dibuka di dalamnya, penutupnya (yang selalu
+         dirender) jadi </div> kelebihan saat form terkunci — container tab ikut
+         tertutup lebih awal dan tab lain terlempar ke bawahnya. --}}
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
+
+        {{-- FORM INPUT --}}
+        @if (!$isFormLocked)
             <div class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40"
                 x-data
                 x-on:focus-input-visit-price.window="$nextTick(() => $refs.inputVisitPrice?.focus())"
@@ -395,6 +399,6 @@ new class extends Component {
                 </table>
             </div>
         </div>
-        </div>
+    </div>
 
 </div>
