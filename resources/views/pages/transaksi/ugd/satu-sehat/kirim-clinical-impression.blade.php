@@ -40,9 +40,9 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->hasEncounter = !empty($ss['encounterId']);
-        $this->count = !empty($ss['clinicalImpressionId']) ? 1 : 0;
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->hasEncounter = !empty($satuSehat['encounterId']);
+        $this->count = !empty($satuSehat['clinicalImpressionId']) ? 1 : 0;
     }
 
     public function kirimForCurrent(): void
@@ -62,9 +62,9 @@ new class extends Component {
             $dataUGD = $this->findDataUGD($rjNo);
             if (empty($dataUGD)) { $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.'); return; }
 
-            $ss = $dataUGD['satusehat'] ?? [];
-            if (empty($ss['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($ss['clinicalImpressionId'])) { $this->dispatch('toast', type: 'info', message: 'Impresi klinik sudah pernah dikirim.'); return; }
+            $satuSehat = $dataUGD['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
+            if (!empty($satuSehat['clinicalImpressionId'])) { $this->dispatch('toast', type: 'info', message: 'Impresi klinik sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataUGD['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -72,30 +72,30 @@ new class extends Component {
             $assessorId = (string) (DB::table('rsmst_doctors')->where('dr_id', $dataUGD['drId'] ?? '')->value('dr_uuid') ?? '');
             if (empty($assessorId)) { $this->dispatch('toast', type: 'error', message: 'IHS dokter (dr_uuid) kosong.'); return; }
 
-            $parts = [];
-            foreach (($dataUGD['diagnosis'] ?? []) as $diag) {
-                $code = $diag['icdX'] ?? ($diag['diagId'] ?? '');
-                $desc = $diag['diagDesc'] ?? '';
-                if ($code !== '' || $desc !== '') { $parts[] = trim("{$code} - {$desc}", ' -'); }
+            $bagianList = [];
+            foreach (($dataUGD['diagnosis'] ?? []) as $diagnosa) {
+                $kode = $diagnosa['icdX'] ?? ($diagnosa['diagId'] ?? '');
+                $deskripsi = $diagnosa['diagDesc'] ?? '';
+                if ($kode !== '' || $deskripsi !== '') { $bagianList[] = trim("{$kode} - {$deskripsi}", ' -'); }
             }
-            $summary = $parts ? ('Kesimpulan klinis UGD: ' . implode('; ', $parts)) : '';
+            $summary = $bagianList ? ('Kesimpulan klinis UGD: ' . implode('; ', $bagianList)) : '';
             if ($summary === '') { $this->dispatch('toast', type: 'error', message: 'Belum ada diagnosa sebagai dasar impresi klinik.'); return; }
 
-            $when = $this->parseDate($dataUGD['rjDate'] ?? '')->toIso8601String();
+            $waktu = $this->parseDate($dataUGD['rjDate'] ?? '')->toIso8601String();
 
-            $res = $this->createClinicalImpression([
+            $respons = $this->createClinicalImpression([
                 'patientId'   => $patientId,
-                'encounterId' => $ss['encounterId'],
+                'encounterId' => $satuSehat['encounterId'],
                 'assessorId'  => $assessorId,
                 'summary'     => $summary,
                 'description' => 'Asesmen kunjungan gawat darurat',
-                'effective'   => $when,
+                'effective'   => $waktu,
             ]);
 
-            if (empty($res['id'])) { $this->dispatch('toast', type: 'error', message: 'Impresi klinik gagal: respons tanpa id.'); return; }
+            if (empty($respons['id'])) { $this->dispatch('toast', type: 'error', message: 'Impresi klinik gagal: respons tanpa id.'); return; }
 
-            $ss['clinicalImpressionId'] = $res['id'];
-            $this->saveResult($rjNo, $ss);
+            $satuSehat['clinicalImpressionId'] = $respons['id'];
+            $this->saveResult($rjNo, $satuSehat);
             $this->dispatch('toast', type: 'success', message: 'Impresi klinik berhasil dikirim.');
             $this->dispatch('ugd-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
@@ -109,21 +109,21 @@ new class extends Component {
         return (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
-    private function saveResult(string $rjNo, array $ss): void
+    private function saveResult(string $rjNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($rjNo, $ss) {
+        DB::transaction(function () use ($rjNo, $satuSehat) {
             $this->lockUGDRow($rjNo);
             $data = $this->findDataUGD($rjNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonUGD((int) $rjNo, $data);
         });
     }
 
-    private function parseDate(string $str): Carbon
+    private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($str)) return Carbon::now();
-        try { return Carbon::createFromFormat('d/m/Y H:i:s', $str); } catch (\Throwable) {
-            try { return Carbon::parse($str); } catch (\Throwable) { return Carbon::now(); }
+        if (empty($teksTanggal)) return Carbon::now();
+        try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
         }
     }
 };

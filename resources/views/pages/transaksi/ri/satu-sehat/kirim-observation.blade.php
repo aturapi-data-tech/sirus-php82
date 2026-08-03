@@ -48,9 +48,9 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->hasEncounter = !empty($ss['encounterId']);
-        $this->count = count($ss['observationIds'] ?? []);
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->hasEncounter = !empty($satuSehat['encounterId']);
+        $this->count = count($satuSehat['observationIds'] ?? []);
         $this->entryCount = count($this->tandaVitalEntries($data));
     }
 
@@ -77,9 +77,9 @@ new class extends Component {
             $dataRI = $this->findDataRI($riHdrNo);
             if (empty($dataRI)) { $this->dispatch('toast', type: 'error', message: 'Data Rawat Inap tidak ditemukan.'); return; }
 
-            $ss = $dataRI['satusehat'] ?? [];
-            if (empty($ss['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($ss['observationIds'])) { $this->dispatch('toast', type: 'info', message: 'Tanda vital sudah pernah dikirim.'); return; }
+            $satuSehat = $dataRI['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
+            if (!empty($satuSehat['observationIds'])) { $this->dispatch('toast', type: 'info', message: 'Tanda vital sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataRI['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -89,47 +89,47 @@ new class extends Component {
             $entries = $this->tandaVitalEntries($dataRI);
             if (empty($entries)) { $this->dispatch('toast', type: 'error', message: 'Tidak ada data tanda vital (Observasi Lanjutan).'); return; }
 
-            $ss['observationIds'] = [];
-            foreach ($entries as $e) {
-                $when = trim((string) ($e['waktuPemeriksaan'] ?? ''));
-                $isoDate = ($when !== '' ? $this->parseDate($when) : $this->parseDate($dataRI['entryDate'] ?? ''))->toIso8601String();
-                $base = ['patientId' => $patientId, 'encounterId' => $ss['encounterId'], 'performerId' => $practitionerId, 'effectiveDate' => $isoDate];
+            $satuSehat['observationIds'] = [];
+            foreach ($entries as $entri) {
+                $waktu = trim((string) ($entri['waktuPemeriksaan'] ?? ''));
+                $isoDate = ($waktu !== '' ? $this->parseDate($waktu) : $this->parseDate($dataRI['entryDate'] ?? ''))->toIso8601String();
+                $payloadDasar = ['patientId' => $patientId, 'encounterId' => $satuSehat['encounterId'], 'performerId' => $practitionerId, 'effectiveDate' => $isoDate];
 
                 // Tekanan Darah (panel)
-                $sistole = $e['sistolik'] ?? null;
-                $diastole = $e['distolik'] ?? null;
+                $sistole = $entri['sistolik'] ?? null;
+                $diastole = $entri['distolik'] ?? null;
                 if (!empty($sistole) && !empty($diastole)) {
-                    $res = $this->createObservation(array_merge($base, [
+                    $respons = $this->createObservation(array_merge($payloadDasar, [
                         'code' => ['system' => 'http://loinc.org', 'code' => '85354-9', 'display' => 'Blood pressure panel with all children optional'],
                         'components' => [
                             ['code' => ['coding' => [['system' => 'http://loinc.org', 'code' => '8480-6', 'display' => 'Systolic blood pressure']]], 'valueQuantity' => ['value' => (float) $sistole, 'unit' => 'mm[Hg]', 'system' => 'http://unitsofmeasure.org', 'code' => 'mm[Hg]']],
                             ['code' => ['coding' => [['system' => 'http://loinc.org', 'code' => '8462-4', 'display' => 'Diastolic blood pressure']]], 'valueQuantity' => ['value' => (float) $diastole, 'unit' => 'mm[Hg]', 'system' => 'http://unitsofmeasure.org', 'code' => 'mm[Hg]']],
                         ],
                     ]));
-                    if (!empty($res['id'])) $ss['observationIds'][] = $res['id'];
+                    if (!empty($respons['id'])) $satuSehat['observationIds'][] = $respons['id'];
                 }
 
                 // Vital tunggal
-                $singles = [
-                    ['val' => $e['frekuensiNadi'] ?? null,  'loinc' => '8867-4', 'display' => 'Heart rate',        'unit' => 'beats/minute',   'ucum' => '/min'],
-                    ['val' => $e['suhu'] ?? null,           'loinc' => '8310-5', 'display' => 'Body temperature',  'unit' => 'C',              'ucum' => 'Cel'],
-                    ['val' => $e['frekuensiNafas'] ?? null, 'loinc' => '9279-1', 'display' => 'Respiratory rate',  'unit' => 'breaths/minute', 'ucum' => '/min'],
-                    ['val' => $e['spo2'] ?? null,           'loinc' => '59408-5','display' => 'Oxygen saturation in Arterial blood by Pulse oximetry', 'unit' => '%', 'ucum' => '%'],
+                $vitalTunggal = [
+                    ['val' => $entri['frekuensiNadi'] ?? null,  'loinc' => '8867-4', 'display' => 'Heart rate',        'unit' => 'beats/minute',   'ucum' => '/min'],
+                    ['val' => $entri['suhu'] ?? null,           'loinc' => '8310-5', 'display' => 'Body temperature',  'unit' => 'C',              'ucum' => 'Cel'],
+                    ['val' => $entri['frekuensiNafas'] ?? null, 'loinc' => '9279-1', 'display' => 'Respiratory rate',  'unit' => 'breaths/minute', 'ucum' => '/min'],
+                    ['val' => $entri['spo2'] ?? null,           'loinc' => '59408-5','display' => 'Oxygen saturation in Arterial blood by Pulse oximetry', 'unit' => '%', 'ucum' => '%'],
                 ];
-                foreach ($singles as $v) {
-                    if (empty($v['val'])) continue;
-                    $res = $this->createObservation(array_merge($base, [
-                        'code' => ['system' => 'http://loinc.org', 'code' => $v['loinc'], 'display' => $v['display']],
-                        'valueQuantity' => ['value' => (float) $v['val'], 'unit' => $v['unit'], 'system' => 'http://unitsofmeasure.org', 'code' => $v['ucum']],
+                foreach ($vitalTunggal as $vital) {
+                    if (empty($vital['val'])) continue;
+                    $respons = $this->createObservation(array_merge($payloadDasar, [
+                        'code' => ['system' => 'http://loinc.org', 'code' => $vital['loinc'], 'display' => $vital['display']],
+                        'valueQuantity' => ['value' => (float) $vital['val'], 'unit' => $vital['unit'], 'system' => 'http://unitsofmeasure.org', 'code' => $vital['ucum']],
                     ]));
-                    if (!empty($res['id'])) $ss['observationIds'][] = $res['id'];
+                    if (!empty($respons['id'])) $satuSehat['observationIds'][] = $respons['id'];
                 }
             }
 
-            if (empty($ss['observationIds'])) { $this->dispatch('toast', type: 'error', message: 'Tidak ada nilai vital valid untuk dikirim.'); return; }
+            if (empty($satuSehat['observationIds'])) { $this->dispatch('toast', type: 'error', message: 'Tidak ada nilai vital valid untuk dikirim.'); return; }
 
-            $this->saveResult($riHdrNo, $ss);
-            $this->dispatch('toast', type: 'success', message: 'Tanda vital berhasil dikirim (' . count($ss['observationIds']) . ' observation dari ' . count($entries) . ' waktu).');
+            $this->saveResult($riHdrNo, $satuSehat);
+            $this->dispatch('toast', type: 'success', message: 'Tanda vital berhasil dikirim (' . count($satuSehat['observationIds']) . ' observation dari ' . count($entries) . ' waktu).');
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Tanda vital gagal: ' . $e->getMessage());
@@ -142,21 +142,21 @@ new class extends Component {
         return (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
-    private function saveResult(string $riHdrNo, array $ss): void
+    private function saveResult(string $riHdrNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($riHdrNo, $ss) {
+        DB::transaction(function () use ($riHdrNo, $satuSehat) {
             $this->lockRIRow($riHdrNo);
             $data = $this->findDataRI($riHdrNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonRI((int) $riHdrNo, $data);
         });
     }
 
-    private function parseDate(string $str): Carbon
+    private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($str)) return Carbon::now();
-        try { return Carbon::createFromFormat('d/m/Y H:i:s', $str); } catch (\Throwable) {
-            try { return Carbon::parse($str); } catch (\Throwable) { return Carbon::now(); }
+        if (empty($teksTanggal)) return Carbon::now();
+        try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
         }
     }
 };

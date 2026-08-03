@@ -45,9 +45,9 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->hasEncounter = !empty($ss['encounterId']);
-        $this->count = count($ss['labDiagnosticReportIds'] ?? []);
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->hasEncounter = !empty($satuSehat['encounterId']);
+        $this->count = count($satuSehat['labDiagnosticReportIds'] ?? []);
     }
 
     public function kirimForCurrent(): void
@@ -67,9 +67,9 @@ new class extends Component {
             $dataRI = $this->findDataRI($riHdrNo);
             if (empty($dataRI)) { $this->dispatch('toast', type: 'error', message: 'Data Rawat Inap tidak ditemukan.'); return; }
 
-            $ss = $dataRI['satusehat'] ?? [];
-            if (empty($ss['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($ss['labDiagnosticReportIds'])) { $this->dispatch('toast', type: 'info', message: 'Lab sudah pernah dikirim.'); return; }
+            $satuSehat = $dataRI['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
+            if (!empty($satuSehat['labDiagnosticReportIds'])) { $this->dispatch('toast', type: 'info', message: 'Lab sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataRI['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -78,7 +78,7 @@ new class extends Component {
             if (empty($practitionerId)) { $this->dispatch('toast', type: 'error', message: 'IHS dokter (dr_uuid) kosong.'); return; }
 
             $orgId       = env('SATUSEHAT_ORGANIZATION_ID');
-            $encounterId = $ss['encounterId'];
+            $encounterId = $satuSehat['encounterId'];
             $drDesc      = $dataRI['drDesc'] ?? '';
 
             $checkups = DB::table('lbtxn_checkuphdrs')
@@ -89,101 +89,101 @@ new class extends Component {
                 ->get();
             if ($checkups->isEmpty()) { $this->dispatch('toast', type: 'error', message: 'Tidak ada hasil lab RI (paket selesai) untuk dikirim.'); return; }
 
-            $ss['labServiceRequestIds']   = $ss['labServiceRequestIds']   ?? [];
-            $ss['labSpecimenIds']         = $ss['labSpecimenIds']         ?? [];
-            $ss['labObservationIds']      = $ss['labObservationIds']      ?? [];
-            $ss['labDiagnosticReportIds'] = $ss['labDiagnosticReportIds'] ?? [];
+            $satuSehat['labServiceRequestIds']   = $satuSehat['labServiceRequestIds']   ?? [];
+            $satuSehat['labSpecimenIds']         = $satuSehat['labSpecimenIds']         ?? [];
+            $satuSehat['labObservationIds']      = $satuSehat['labObservationIds']      ?? [];
+            $satuSehat['labDiagnosticReportIds'] = $satuSehat['labDiagnosticReportIds'] ?? [];
 
             $skippedNoLoinc = 0;
             $totalObs = 0;
 
-            foreach ($checkups as $chk) {
-                $cno = trim((string) $chk->checkup_no);
-                $when = $this->parseDate($chk->checkup_date ?? ($dataRI['entryDate'] ?? ''))->toIso8601String();
+            foreach ($checkups as $checkup) {
+                $checkupNo = trim((string) $checkup->checkup_no);
+                $waktu = $this->parseDate($checkup->checkup_date ?? ($dataRI['entryDate'] ?? ''))->toIso8601String();
 
-                $items = DB::table('lbtxn_checkupdtls as b')
+                $itemList = DB::table('lbtxn_checkupdtls as b')
                     ->join('lbmst_clabitems as d', 'b.clabitem_id', '=', 'd.clabitem_id')
-                    ->where('b.checkup_no', $chk->checkup_no)
+                    ->where('b.checkup_no', $checkup->checkup_no)
                     ->whereRaw("nvl(d.hidden_status,'N') = 'N'")
                     ->whereRaw("nvl(d.is_group,'N') <> 'Y'")
                     ->select('d.clabitem_desc', 'd.loinc_code', 'd.loinc_display', 'd.unit_desc', 'b.lab_result')
                     ->get();
 
-                $itemsWithLoinc = $items->filter(fn ($i) => trim((string) ($i->loinc_code ?? '')) !== '');
-                $skippedNoLoinc += $items->count() - $itemsWithLoinc->count();
+                $itemsWithLoinc = $itemList->filter(fn ($itemLab) => trim((string) ($itemLab->loinc_code ?? '')) !== '');
+                $skippedNoLoinc += $itemList->count() - $itemsWithLoinc->count();
                 if ($itemsWithLoinc->isEmpty()) { continue; }
 
-                $sr = $this->postServiceRequest([
-                    'identifier' => ['system' => "http://sys-ids.kemkes.go.id/servicerequest/{$orgId}", 'value' => "ri-{$riHdrNo}-{$cno}"],
+                $serviceRequest = $this->postServiceRequest([
+                    'identifier' => ['system' => "http://sys-ids.kemkes.go.id/servicerequest/{$orgId}", 'value' => "ri-{$riHdrNo}-{$checkupNo}"],
                     'status' => 'active', 'intent' => 'original-order', 'priority' => 'routine',
                     'category' => ['system' => 'http://snomed.info/sct', 'code' => '108252007', 'display' => 'Laboratory procedure'],
                     'code' => ['system' => 'http://loinc.org', 'code' => '26436-6', 'display' => 'Laboratory studies'],
                     'subject' => "Patient/{$patientId}", 'encounter' => "Encounter/{$encounterId}",
-                    'occurrenceDateTime' => $when, 'authoredOn' => $when,
+                    'occurrenceDateTime' => $waktu, 'authoredOn' => $waktu,
                     'requester' => "Practitioner/{$practitionerId}", 'requesterDisplay' => $drDesc,
                 ]);
-                $srId = $sr['id'] ?? null;
-                if (empty($srId)) { continue; }
-                $ss['labServiceRequestIds'][] = $srId;
+                $serviceRequestId = $serviceRequest['id'] ?? null;
+                if (empty($serviceRequestId)) { continue; }
+                $satuSehat['labServiceRequestIds'][] = $serviceRequestId;
 
-                $sp = $this->postSpecimen([
-                    'identifier' => ['system' => "http://sys-ids.kemkes.go.id/specimen/{$orgId}", 'value' => "ri-{$riHdrNo}-{$cno}", 'assigner' => "Organization/{$orgId}"],
+                $specimen = $this->postSpecimen([
+                    'identifier' => ['system' => "http://sys-ids.kemkes.go.id/specimen/{$orgId}", 'value' => "ri-{$riHdrNo}-{$checkupNo}", 'assigner' => "Organization/{$orgId}"],
                     'status' => 'available', 'subject' => "Patient/{$patientId}",
                     'type' => ['system' => 'http://snomed.info/sct', 'code' => '119297000', 'display' => 'Blood specimen'],
-                    'collection' => ['collectedDateTime' => $when, 'method' => ['system' => 'http://snomed.info/sct', 'code' => '129300006', 'display' => 'Puncture - action']],
-                    'receivedTime' => $when, 'request' => ["ServiceRequest/{$srId}"],
+                    'collection' => ['collectedDateTime' => $waktu, 'method' => ['system' => 'http://snomed.info/sct', 'code' => '129300006', 'display' => 'Puncture - action']],
+                    'receivedTime' => $waktu, 'request' => ["ServiceRequest/{$serviceRequestId}"],
                 ]);
-                $spId = $sp['id'] ?? null;
-                if (!empty($spId)) { $ss['labSpecimenIds'][] = $spId; }
+                $specimenId = $specimen['id'] ?? null;
+                if (!empty($specimenId)) { $satuSehat['labSpecimenIds'][] = $specimenId; }
 
                 $obsIdsThisPaket = [];
-                foreach ($itemsWithLoinc as $it) {
-                    $loinc = trim((string) $it->loinc_code);
-                    $result = trim((string) ($it->lab_result ?? ''));
+                foreach ($itemsWithLoinc as $item) {
+                    $loinc = trim((string) $item->loinc_code);
+                    $result = trim((string) ($item->lab_result ?? ''));
                     if ($result === '') { continue; }
 
                     $obsData = [
                         'patientId' => $patientId, 'encounterId' => $encounterId, 'performerId' => $practitionerId,
-                        'effectiveDate' => $when,
+                        'effectiveDate' => $waktu,
                         'category' => [['coding' => [['system' => 'http://terminology.hl7.org/CodeSystem/observation-category', 'code' => 'laboratory', 'display' => 'Laboratory']]]],
-                        'code' => ['system' => 'http://loinc.org', 'code' => $loinc, 'display' => $it->loinc_display ?: $it->clabitem_desc],
+                        'code' => ['system' => 'http://loinc.org', 'code' => $loinc, 'display' => $item->loinc_display ?: $item->clabitem_desc],
                     ];
                     if (is_numeric(str_replace(',', '.', $result))) {
-                        $unit = trim((string) ($it->unit_desc ?? '')) ?: '1';
+                        $unit = trim((string) ($item->unit_desc ?? '')) ?: '1';
                         $obsData['valueQuantity'] = ['value' => (float) str_replace(',', '.', $result), 'unit' => $unit, 'system' => 'http://unitsofmeasure.org', 'code' => $unit];
                     } else {
                         $obsData['valueString'] = $result;
                     }
 
-                    $obs = $this->createObservation($obsData);
-                    if (!empty($obs['id'])) { $obsIdsThisPaket[] = $obs['id']; $ss['labObservationIds'][] = $obs['id']; $totalObs++; }
+                    $observation = $this->createObservation($obsData);
+                    if (!empty($observation['id'])) { $obsIdsThisPaket[] = $observation['id']; $satuSehat['labObservationIds'][] = $observation['id']; $totalObs++; }
                 }
 
                 if (empty($obsIdsThisPaket)) { continue; }
 
-                $dr = $this->createDiagnosticReport([
-                    'identifier' => [['system' => "http://sys-ids.kemkes.go.id/diagnostic/{$orgId}", 'use' => 'official', 'value' => "ri-{$riHdrNo}-{$cno}"]],
+                $dokter = $this->createDiagnosticReport([
+                    'identifier' => [['system' => "http://sys-ids.kemkes.go.id/diagnostic/{$orgId}", 'use' => 'official', 'value' => "ri-{$riHdrNo}-{$checkupNo}"]],
                     'status' => 'final', 'categoryCode' => 'LAB', 'categoryDisplay' => 'Laboratory',
                     'codeSystem' => 'http://loinc.org', 'code' => '26436-6', 'display' => 'Laboratory studies',
                     'patientId' => $patientId, 'encounterId' => $encounterId,
-                    'effectiveDate' => $when, 'issued' => $when,
+                    'effectiveDate' => $waktu, 'issued' => $waktu,
                     'performer' => ["Practitioner/{$practitionerId}"],
-                    'specimen' => $spId ? ["Specimen/{$spId}"] : [],
-                    'observationIds' => $obsIdsThisPaket, 'basedOn' => [$srId],
+                    'specimen' => $specimenId ? ["Specimen/{$specimenId}"] : [],
+                    'observationIds' => $obsIdsThisPaket, 'basedOn' => [$serviceRequestId],
                 ]);
-                if (!empty($dr['id'])) { $ss['labDiagnosticReportIds'][] = $dr['id']; }
+                if (!empty($dokter['id'])) { $satuSehat['labDiagnosticReportIds'][] = $dokter['id']; }
             }
 
-            if (empty($ss['labDiagnosticReportIds'])) {
-                $msg = $skippedNoLoinc > 0
+            if (empty($satuSehat['labDiagnosticReportIds'])) {
+                $pesan = $skippedNoLoinc > 0
                     ? "Gagal: {$skippedNoLoinc} item lab belum punya kode LOINC di Master Lab."
                     : 'Tidak ada hasil lab yang bisa dikirim.';
-                $this->dispatch('toast', type: 'error', message: $msg);
+                $this->dispatch('toast', type: 'error', message: $pesan);
                 return;
             }
 
-            $this->saveResult($riHdrNo, $ss);
-            $drCount = count($ss['labDiagnosticReportIds']);
+            $this->saveResult($riHdrNo, $satuSehat);
+            $drCount = count($satuSehat['labDiagnosticReportIds']);
             $note = $skippedNoLoinc > 0 ? " ({$skippedNoLoinc} item tanpa LOINC dilewati)" : '';
             $this->dispatch('toast', type: 'success', message: "Lab terkirim: {$drCount} laporan, {$totalObs} observasi{$note}.");
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
@@ -198,21 +198,21 @@ new class extends Component {
         return (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
-    private function saveResult(string $riHdrNo, array $ss): void
+    private function saveResult(string $riHdrNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($riHdrNo, $ss) {
+        DB::transaction(function () use ($riHdrNo, $satuSehat) {
             $this->lockRIRow($riHdrNo);
             $data = $this->findDataRI($riHdrNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonRI((int) $riHdrNo, $data);
         });
     }
 
-    private function parseDate(string $str): Carbon
+    private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($str)) return Carbon::now();
-        try { return Carbon::createFromFormat('d/m/Y H:i:s', $str); } catch (\Throwable) {
-            try { return Carbon::parse($str); } catch (\Throwable) { return Carbon::now(); }
+        if (empty($teksTanggal)) return Carbon::now();
+        try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
         }
     }
 };

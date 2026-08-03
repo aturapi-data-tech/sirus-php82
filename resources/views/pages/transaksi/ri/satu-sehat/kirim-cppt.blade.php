@@ -51,23 +51,23 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->hasEncounter = !empty($ss['encounterId']);
-        $this->count = count($ss['cpptClinicalImpressionIds'] ?? []);
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->hasEncounter = !empty($satuSehat['encounterId']);
+        $this->count = count($satuSehat['cpptClinicalImpressionIds'] ?? []);
         $this->entryCount = count($data['cppt'] ?? []);
     }
 
     /** Ringkas SOAP jadi satu teks summary. */
     private function soapSummary(array $soap): string
     {
-        $parts = [];
+        $bagianList = [];
         foreach (['subjective' => 'S', 'objective' => 'O', 'assessment' => 'A', 'plan' => 'P'] as $key => $label) {
-            $val = trim((string) ($soap[$key] ?? ''));
-            if ($val !== '') {
-                $parts[] = "{$label}: {$val}";
+            $nilai = trim((string) ($soap[$key] ?? ''));
+            if ($nilai !== '') {
+                $bagianList[] = "{$label}: {$nilai}";
             }
         }
-        return implode("\n", $parts);
+        return implode("\n", $bagianList);
     }
 
     public function kirimForCurrent(): void
@@ -87,8 +87,8 @@ new class extends Component {
             $dataRI = $this->findDataRI($riHdrNo);
             if (empty($dataRI)) { $this->dispatch('toast', type: 'error', message: 'Data Rawat Inap tidak ditemukan.'); return; }
 
-            $ss = $dataRI['satusehat'] ?? [];
-            if (empty($ss['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
+            $satuSehat = $dataRI['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
 
             $patientId = $this->getPatientIHS($dataRI['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -100,7 +100,7 @@ new class extends Component {
             $entries = $dataRI['cppt'] ?? [];
             if (empty($entries)) { $this->dispatch('toast', type: 'error', message: 'Belum ada CPPT untuk dikirim.'); return; }
 
-            $sentMap = $ss['cpptClinicalImpressionIds'] ?? [];
+            $sentMap = $satuSehat['cpptClinicalImpressionIds'] ?? [];
             $newSent = 0;
 
             foreach ($entries as $entry) {
@@ -117,17 +117,17 @@ new class extends Component {
                 $effective = $this->parseDate((string) ($entry['tglCPPT'] ?? ($dataRI['entryDate'] ?? '')));
                 $profesi = trim((string) ($entry['profession'] ?? ''));
 
-                $res = $this->createClinicalImpression([
+                $respons = $this->createClinicalImpression([
                     'patientId'   => $patientId,
-                    'encounterId' => $ss['encounterId'],
+                    'encounterId' => $satuSehat['encounterId'],
                     'assessorId'  => $assessorId,
                     'summary'     => $summary,
                     'description' => trim('CPPT ' . $profesi . ' — ' . (string) ($entry['tglCPPT'] ?? '')),
                     'effective'   => $effective->toIso8601String(),
                 ]);
 
-                if (!empty($res['id'])) {
-                    $sentMap[$cpptId] = $res['id'];
+                if (!empty($respons['id'])) {
+                    $sentMap[$cpptId] = $respons['id'];
                     $newSent++;
                 }
             }
@@ -137,8 +137,8 @@ new class extends Component {
                 return;
             }
 
-            $ss['cpptClinicalImpressionIds'] = $sentMap;
-            $this->saveResult($riHdrNo, $ss);
+            $satuSehat['cpptClinicalImpressionIds'] = $sentMap;
+            $this->saveResult($riHdrNo, $satuSehat);
             $this->dispatch('toast', type: 'success', message: "CPPT berhasil dikirim ({$newSent} entri baru).");
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
         } catch (\Throwable $e) {
@@ -152,21 +152,21 @@ new class extends Component {
         return (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
-    private function saveResult(string $riHdrNo, array $ss): void
+    private function saveResult(string $riHdrNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($riHdrNo, $ss) {
+        DB::transaction(function () use ($riHdrNo, $satuSehat) {
             $this->lockRIRow($riHdrNo);
             $data = $this->findDataRI($riHdrNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonRI((int) $riHdrNo, $data);
         });
     }
 
-    private function parseDate(string $str): Carbon
+    private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($str)) return Carbon::now();
-        try { return Carbon::createFromFormat('d/m/Y H:i:s', $str); } catch (\Throwable) {
-            try { return Carbon::parse($str); } catch (\Throwable) { return Carbon::now(); }
+        if (empty($teksTanggal)) return Carbon::now();
+        try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
         }
     }
 };

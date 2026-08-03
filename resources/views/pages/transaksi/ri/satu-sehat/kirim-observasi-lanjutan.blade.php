@@ -58,9 +58,9 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->hasEncounter = !empty($ss['encounterId']);
-        $this->count = count($ss['observasiLanjutanIds'] ?? []);
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->hasEncounter = !empty($satuSehat['encounterId']);
+        $this->count = count($satuSehat['observasiLanjutanIds'] ?? []);
 
         $obat = $this->obatEntries($data);
         $siap = $this->enrichKfa($obat);
@@ -95,36 +95,36 @@ new class extends Component {
      */
     private function enrichKfa(array $rows): array
     {
-        $pids = [];
-        foreach ($rows as $r) {
-            $p = trim((string) ($r['productId'] ?? ''));
-            if ($p !== '') {
-                $pids[$p] = true;
+        $productIdList = [];
+        foreach ($rows as $entriRiwayat) {
+            $productId = trim((string) ($entriRiwayat['productId'] ?? ''));
+            if ($productId !== '') {
+                $productIdList[$productId] = true;
             }
         }
-        if ($pids === []) {
+        if ($productIdList === []) {
             return [];
         }
 
         $master = DB::table('immst_products')
-            ->whereIn('product_id', array_keys($pids))
+            ->whereIn('product_id', array_keys($productIdList))
             ->whereRaw('product_id_satusehat IS NOT NULL AND LENGTH(TRIM(product_id_satusehat)) > 0')
             ->get(['product_id', 'product_id_satusehat', 'product_name_satusehat'])
             ->keyBy('product_id');
 
-        $out = [];
-        foreach ($rows as $r) {
-            $p = trim((string) ($r['productId'] ?? ''));
-            if ($p === '' || !$master->has($p)) {
+        $entriList = [];
+        foreach ($rows as $entriRiwayat) {
+            $productId = trim((string) ($entriRiwayat['productId'] ?? ''));
+            if ($productId === '' || !$master->has($productId)) {
                 continue;
             }
-            $m = $master->get($p);
-            $r['_kfaCode'] = (string) $m->product_id_satusehat;
-            $r['_kfaName'] = (string) ($m->product_name_satusehat ?: ($r['namaObatAtauJenisCairan'] ?? ''));
-            $out[] = $r;
+            $masterObat = $master->get($productId);
+            $entriRiwayat['_kfaCode'] = (string) $masterObat->product_id_satusehat;
+            $entriRiwayat['_kfaName'] = (string) ($masterObat->product_name_satusehat ?: ($entriRiwayat['namaObatAtauJenisCairan'] ?? ''));
+            $entriList[] = $entriRiwayat;
         }
 
-        return $out;
+        return $entriList;
     }
 
     public function kirimForCurrent(): void
@@ -144,9 +144,9 @@ new class extends Component {
             $dataRI = $this->findDataRI($riHdrNo);
             if (empty($dataRI)) { $this->dispatch('toast', type: 'error', message: 'Data Rawat Inap tidak ditemukan.'); return; }
 
-            $ss = $dataRI['satusehat'] ?? [];
-            if (empty($ss['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($ss['observasiLanjutanIds'])) { $this->dispatch('toast', type: 'info', message: 'Observasi lanjutan sudah pernah dikirim.'); return; }
+            $satuSehat = $dataRI['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
+            if (!empty($satuSehat['observasiLanjutanIds'])) { $this->dispatch('toast', type: 'info', message: 'Observasi lanjutan sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataRI['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -164,68 +164,68 @@ new class extends Component {
                 return;
             }
 
-            $ids = [];
+            $idList = [];
 
             // 1) Pemberian obat & cairan → MedicationAdministration
-            foreach ($obat as $i => $o) {
-                $when = $this->parseDate((string) ($o['waktuPemberian'] ?? ''))->toIso8601String();
-                $dose = ObservasiLanjutanMap::dosis((string) ($o['dosis'] ?? ''));
-                $rute = ObservasiLanjutanMap::rute((string) ($o['rute'] ?? ''));
+            foreach ($obat as $indeks => $entriObat) {
+                $waktu = $this->parseDate((string) ($entriObat['waktuPemberian'] ?? ''))->toIso8601String();
+                $dosis = ObservasiLanjutanMap::dosis((string) ($entriObat['dosis'] ?? ''));
+                $rute = ObservasiLanjutanMap::rute((string) ($entriObat['rute'] ?? ''));
 
                 $payload = [
-                    'medContainedId'    => 'medadm-' . ($o['id'] ?? $i),
+                    'medContainedId'    => 'medadm-' . ($entriObat['id'] ?? $indeks),
                     'orgId'             => $orgId,
-                    'medicationCode'    => $o['_kfaCode'],
-                    'medicationDisplay' => $o['_kfaName'],
+                    'medicationCode'    => $entriObat['_kfaCode'],
+                    'medicationDisplay' => $entriObat['_kfaName'],
                     'patientId'         => $patientId,
                     'patientName'       => $patientName,
-                    'encounterId'       => $ss['encounterId'],
-                    'effectiveDate'     => $when,
+                    'encounterId'       => $satuSehat['encounterId'],
+                    'effectiveDate'     => $waktu,
                     'performerId'       => $practitionerId,
                 ];
                 // mad-1: route hanya ikut bila dose ada (dosage wajib punya dose/rate).
-                if ($dose !== null) {
-                    $payload['dose'] = $dose;
-                    $payload['dosageText'] = trim((string) ($o['dosis'] ?? '')) ?: null;
+                if ($dosis !== null) {
+                    $payload['dose'] = $dosis;
+                    $payload['dosageText'] = trim((string) ($entriObat['dosis'] ?? '')) ?: null;
                     if ($rute !== null) {
                         $payload['routeCode'] = $rute['code'];
                         $payload['routeDisplay'] = $rute['display'];
                     }
                 }
-                $res = $this->createMedicationAdministration($payload);
-                if (!empty($res['id'])) $ids[] = $res['id'];
+                $respons = $this->createMedicationAdministration($payload);
+                if (!empty($respons['id'])) $idList[] = $respons['id'];
             }
 
             // 2) Oksigen & 3) pengeluaran cairan → Observation
             foreach ([[$oksigen, 'oksigen', 'tanggalWaktuMulai'], [$keluar, 'pengeluaran', 'waktuPengeluaran']] as [$rows, $jenis, $waktuKey]) {
-                foreach ($rows as $e) {
-                    $when = $this->parseDate((string) ($e[$waktuKey] ?? ''))->toIso8601String();
-                    $base = [
+                foreach ($rows as $entri) {
+                    $waktu = $this->parseDate((string) ($entri[$waktuKey] ?? ''))->toIso8601String();
+                    $payloadDasar = [
                         'patientId'     => $patientId,
-                        'encounterId'   => $ss['encounterId'],
+                        'encounterId'   => $satuSehat['encounterId'],
                         'performerId'   => $practitionerId,
-                        'effectiveDate' => $when,
+                        'effectiveDate' => $waktu,
                     ];
                     $obsList = $jenis === 'oksigen'
-                        ? ObservasiLanjutanMap::oksigen($e)
-                        : ObservasiLanjutanMap::pengeluaran($e);
-                    foreach ($obsList as $obs) {
-                        $res = $this->createObservation(array_merge($base, $obs));
-                        if (!empty($res['id'])) $ids[] = $res['id'];
+                        ? ObservasiLanjutanMap::oksigen($entri)
+                        : ObservasiLanjutanMap::pengeluaran($entri);
+                    foreach ($obsList as $observation) {
+                        $respons = $this->createObservation(array_merge($payloadDasar, $observation));
+                        if (!empty($respons['id'])) $idList[] = $respons['id'];
                     }
                 }
             }
 
-            if (empty($ids)) { $this->dispatch('toast', type: 'error', message: 'Tidak ada nilai observasi lanjutan valid untuk dikirim.'); return; }
+            if (empty($idList)) { $this->dispatch('toast', type: 'error', message: 'Tidak ada nilai observasi lanjutan valid untuk dikirim.'); return; }
 
-            $ss['observasiLanjutanIds'] = $ids;
-            $this->saveResult($riHdrNo, $ss);
+            $satuSehat['observasiLanjutanIds'] = $idList;
+            $this->saveResult($riHdrNo, $satuSehat);
 
-            $msg = 'Observasi lanjutan berhasil dikirim (' . count($ids) . ' resource).';
+            $pesan = 'Observasi lanjutan berhasil dikirim (' . count($idList) . ' resource).';
             if ($this->obatSkipped > 0) {
-                $msg .= ' ' . $this->obatSkipped . ' baris obat dilewati (tanpa productId/KFA).';
+                $pesan .= ' ' . $this->obatSkipped . ' baris obat dilewati (tanpa productId/KFA).';
             }
-            $this->dispatch('toast', type: 'success', message: $msg);
+            $this->dispatch('toast', type: 'success', message: $pesan);
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Observasi lanjutan gagal: ' . $e->getMessage());
@@ -238,21 +238,21 @@ new class extends Component {
         return (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
-    private function saveResult(string $riHdrNo, array $ss): void
+    private function saveResult(string $riHdrNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($riHdrNo, $ss) {
+        DB::transaction(function () use ($riHdrNo, $satuSehat) {
             $this->lockRIRow($riHdrNo);
             $data = $this->findDataRI($riHdrNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonRI((int) $riHdrNo, $data);
         });
     }
 
-    private function parseDate(string $str): Carbon
+    private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($str)) return Carbon::now();
-        try { return Carbon::createFromFormat('d/m/Y H:i:s', $str); } catch (\Throwable) {
-            try { return Carbon::parse($str); } catch (\Throwable) { return Carbon::now(); }
+        if (empty($teksTanggal)) return Carbon::now();
+        try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
         }
     }
 };

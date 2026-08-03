@@ -44,9 +44,9 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->hasEncounter = !empty($ss['encounterId']);
-        $this->count = count($ss['radDiagnosticReportIds'] ?? []);
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->hasEncounter = !empty($satuSehat['encounterId']);
+        $this->count = count($satuSehat['radDiagnosticReportIds'] ?? []);
     }
 
     public function kirimForCurrent(): void
@@ -66,9 +66,9 @@ new class extends Component {
             $dataRI = $this->findDataRI($riHdrNo);
             if (empty($dataRI)) { $this->dispatch('toast', type: 'error', message: 'Data Rawat Inap tidak ditemukan.'); return; }
 
-            $ss = $dataRI['satusehat'] ?? [];
-            if (empty($ss['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($ss['radDiagnosticReportIds'])) { $this->dispatch('toast', type: 'info', message: 'Radiologi sudah pernah dikirim.'); return; }
+            $satuSehat = $dataRI['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
+            if (!empty($satuSehat['radDiagnosticReportIds'])) { $this->dispatch('toast', type: 'info', message: 'Radiologi sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataRI['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -77,9 +77,9 @@ new class extends Component {
             if (empty($practitionerId)) { $this->dispatch('toast', type: 'error', message: 'IHS dokter (dr_uuid) kosong.'); return; }
 
             $orgId       = env('SATUSEHAT_ORGANIZATION_ID');
-            $encounterId = $ss['encounterId'];
+            $encounterId = $satuSehat['encounterId'];
             $drDesc      = $dataRI['drDesc'] ?? '';
-            $when        = $this->parseDate($dataRI['entryDate'] ?? '')->toIso8601String();
+            $waktu        = $this->parseDate($dataRI['entryDate'] ?? '')->toIso8601String();
 
             $orders = DB::table('rstxn_riradiologs as a')
                 ->leftJoin('rsmst_radiologis as m', 'a.rad_id', '=', 'm.rad_id')
@@ -88,51 +88,51 @@ new class extends Component {
                 ->get();
             if ($orders->isEmpty()) { $this->dispatch('toast', type: 'error', message: 'Tidak ada order radiologi RI untuk dikirim.'); return; }
 
-            $ss['radServiceRequestIds']   = $ss['radServiceRequestIds']   ?? [];
-            $ss['radDiagnosticReportIds'] = $ss['radDiagnosticReportIds'] ?? [];
+            $satuSehat['radServiceRequestIds']   = $satuSehat['radServiceRequestIds']   ?? [];
+            $satuSehat['radDiagnosticReportIds'] = $satuSehat['radDiagnosticReportIds'] ?? [];
 
-            foreach ($orders as $ord) {
-                $dtl  = trim((string) ($ord->rirad_no ?? ''));
-                $desc = trim((string) ($ord->rad_desc ?? 'Pemeriksaan Radiologi'));
-                $key  = "{$riHdrNo}-{$dtl}";
+            foreach ($orders as $order) {
+                $nomorDetail  = trim((string) ($order->rirad_no ?? ''));
+                $deskripsi = trim((string) ($order->rad_desc ?? 'Pemeriksaan Radiologi'));
+                $key  = "{$riHdrNo}-{$nomorDetail}";
 
                 // LOINC spesifik bila master terisi, else generik 18748-4.
-                $loincCode    = trim((string) ($ord->loinc_code ?? ''));
-                $loincDisplay = trim((string) ($ord->loinc_display ?? ''));
+                $loincCode    = trim((string) ($order->loinc_code ?? ''));
+                $loincDisplay = trim((string) ($order->loinc_display ?? ''));
                 if ($loincCode === '') {
                     $loincCode = '18748-4';
-                    $loincDisplay = $desc;
+                    $loincDisplay = $deskripsi;
                 }
 
-                $sr = $this->postServiceRequest([
+                $serviceRequest = $this->postServiceRequest([
                     'identifier' => ['system' => "http://sys-ids.kemkes.go.id/servicerequest/{$orgId}", 'value' => "ri-rad-{$key}"],
                     'status' => 'active', 'intent' => 'original-order', 'priority' => 'routine',
                     'category' => ['system' => 'http://snomed.info/sct', 'code' => '363679005', 'display' => 'Imaging'],
-                    'code' => ['system' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $desc],
+                    'code' => ['system' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi],
                     'subject' => "Patient/{$patientId}", 'encounter' => "Encounter/{$encounterId}",
-                    'occurrenceDateTime' => $when, 'authoredOn' => $when,
+                    'occurrenceDateTime' => $waktu, 'authoredOn' => $waktu,
                     'requester' => "Practitioner/{$practitionerId}", 'requesterDisplay' => $drDesc,
                 ]);
-                $srId = $sr['id'] ?? null;
-                if (empty($srId)) { continue; }
-                $ss['radServiceRequestIds'][] = $srId;
+                $serviceRequestId = $serviceRequest['id'] ?? null;
+                if (empty($serviceRequestId)) { continue; }
+                $satuSehat['radServiceRequestIds'][] = $serviceRequestId;
 
-                $dr = $this->createDiagnosticReport([
+                $dokter = $this->createDiagnosticReport([
                     'identifier' => [['system' => "http://sys-ids.kemkes.go.id/diagnostic/{$orgId}", 'use' => 'official', 'value' => "ri-rad-{$key}"]],
                     'status' => 'final', 'categoryCode' => 'RAD', 'categoryDisplay' => 'Radiology',
-                    'codeSystem' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $desc,
+                    'codeSystem' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi,
                     'patientId' => $patientId, 'encounterId' => $encounterId,
-                    'effectiveDate' => $when, 'issued' => $when,
-                    'performer' => ["Practitioner/{$practitionerId}"], 'basedOn' => [$srId],
+                    'effectiveDate' => $waktu, 'issued' => $waktu,
+                    'performer' => ["Practitioner/{$practitionerId}"], 'basedOn' => [$serviceRequestId],
                 ]);
-                if (!empty($dr['id'])) { $ss['radDiagnosticReportIds'][] = $dr['id']; }
+                if (!empty($dokter['id'])) { $satuSehat['radDiagnosticReportIds'][] = $dokter['id']; }
             }
 
-            if (empty($ss['radServiceRequestIds'])) { $this->dispatch('toast', type: 'error', message: 'Tidak ada order radiologi yang bisa dikirim.'); return; }
+            if (empty($satuSehat['radServiceRequestIds'])) { $this->dispatch('toast', type: 'error', message: 'Tidak ada order radiologi yang bisa dikirim.'); return; }
 
-            $this->saveResult($riHdrNo, $ss);
-            $srCount = count($ss['radServiceRequestIds']);
-            $drCount = count($ss['radDiagnosticReportIds']);
+            $this->saveResult($riHdrNo, $satuSehat);
+            $srCount = count($satuSehat['radServiceRequestIds']);
+            $drCount = count($satuSehat['radDiagnosticReportIds']);
             $this->dispatch('toast', type: 'success', message: "Radiologi terkirim: {$srCount} order, {$drCount} laporan (ImagingStudy dilewati — no DICOM).");
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
         } catch (\Throwable $e) {
@@ -146,21 +146,21 @@ new class extends Component {
         return (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
-    private function saveResult(string $riHdrNo, array $ss): void
+    private function saveResult(string $riHdrNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($riHdrNo, $ss) {
+        DB::transaction(function () use ($riHdrNo, $satuSehat) {
             $this->lockRIRow($riHdrNo);
             $data = $this->findDataRI($riHdrNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonRI((int) $riHdrNo, $data);
         });
     }
 
-    private function parseDate(string $str): Carbon
+    private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($str)) return Carbon::now();
-        try { return Carbon::createFromFormat('d/m/Y H:i:s', $str); } catch (\Throwable) {
-            try { return Carbon::parse($str); } catch (\Throwable) { return Carbon::now(); }
+        if (empty($teksTanggal)) return Carbon::now();
+        try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
         }
     }
 };

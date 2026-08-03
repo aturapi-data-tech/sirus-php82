@@ -53,11 +53,11 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->encounterId         = $ss['encounterId'] ?? null;
-        $this->encounterInProgress = !empty($ss['encounterInProgress']);
-        $this->encounterFinished   = !empty($ss['encounterFinished']);
-        $this->encounterRooms      = $ss['encounterRooms'] ?? [];
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->encounterId         = $satuSehat['encounterId'] ?? null;
+        $this->encounterInProgress = !empty($satuSehat['encounterInProgress']);
+        $this->encounterFinished   = !empty($satuSehat['encounterFinished']);
+        $this->encounterRooms      = $satuSehat['encounterRooms'] ?? [];
         $this->currentRoomId       = (string) ($data['roomId'] ?? '');
         $this->currentRoomDesc     = (string) ($data['roomDesc'] ?? '');
     }
@@ -85,7 +85,7 @@ new class extends Component {
     {
         try {
             $this->initializeSatuSehat();
-            [$dataRI, $ss] = $this->loadData($riHdrNo);
+            [$dataRI, $satuSehat] = $this->loadData($riHdrNo);
 
             // Ambil 3 IHS dari DB — pola sama RJ.
             $regNo = $dataRI['regNo'] ?? '';
@@ -115,8 +115,8 @@ new class extends Component {
             $entryDate = $this->parseDate($dataRI['entryDate'] ?? '');
 
             // 1) Buat Encounter (IMP) kalau belum ada
-            if (empty($ss['encounterId'])) {
-                $res = $this->createNewEncounter([
+            if (empty($satuSehat['encounterId'])) {
+                $respons = $this->createNewEncounter([
                     'encounterId'      => 'RI-' . $riHdrNo,
                     'patientId'        => $patientId,
                     'patientName'      => $dataRI['regName'] ?? '',
@@ -126,26 +126,26 @@ new class extends Component {
                     'class_code'       => 'IMP',
                     'startDate'        => $entryDate->toIso8601String(),
                 ]);
-                $ss['encounterId'] = $res['id'] ?? null;
+                $satuSehat['encounterId'] = $respons['id'] ?? null;
             }
 
             // 2) Set in-progress + catat kamar pertama sebagai location
-            if (!empty($ss['encounterId']) && empty($ss['encounterInProgress'])) {
-                $this->startRoomEncounter($ss['encounterId'], [
+            if (!empty($satuSehat['encounterId']) && empty($satuSehat['encounterInProgress'])) {
+                $this->startRoomEncounter($satuSehat['encounterId'], [
                     'startDate'  => $entryDate->toIso8601String(),
                     'locationId' => $locationId,
                 ]);
-                $ss['encounterInProgress'] = true;
-                $ss['encounterRooms'] = [$roomId];
+                $satuSehat['encounterInProgress'] = true;
+                $satuSehat['encounterRooms'] = [$roomId];
             }
             // 2b) Pindah kamar → append location baru untuk kamar yang belum tercatat
-            elseif (!empty($ss['encounterId']) && $roomId !== '' && !in_array($roomId, $ss['encounterRooms'] ?? [], true)) {
-                $this->appendEncounterLocation($ss['encounterId'], $locationId);
-                $ss['encounterRooms'][] = $roomId;
+            elseif (!empty($satuSehat['encounterId']) && $roomId !== '' && !in_array($roomId, $satuSehat['encounterRooms'] ?? [], true)) {
+                $this->appendEncounterLocation($satuSehat['encounterId'], $locationId);
+                $satuSehat['encounterRooms'][] = $roomId;
             }
 
-            $this->saveResult($riHdrNo, $ss);
-            $this->dispatch('toast', type: 'success', message: 'Encounter (Rawat Inap) berhasil dikirim: ' . ($ss['encounterId'] ?? '-'));
+            $this->saveResult($riHdrNo, $satuSehat);
+            $this->dispatch('toast', type: 'success', message: 'Encounter (Rawat Inap) berhasil dikirim: ' . ($satuSehat['encounterId'] ?? '-'));
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Encounter gagal: ' . $e->getMessage());
@@ -157,13 +157,13 @@ new class extends Component {
     {
         try {
             $this->initializeSatuSehat();
-            [$dataRI, $ss] = $this->loadData($riHdrNo);
+            [$dataRI, $satuSehat] = $this->loadData($riHdrNo);
 
-            if (empty($ss['encounterId'])) {
+            if (empty($satuSehat['encounterId'])) {
                 $this->dispatch('toast', type: 'error', message: 'Encounter belum dibuat.');
                 return;
             }
-            if (!empty($ss['encounterFinished'])) {
+            if (!empty($satuSehat['encounterFinished'])) {
                 $this->dispatch('toast', type: 'info', message: 'Encounter sudah finished.');
                 return;
             }
@@ -173,13 +173,13 @@ new class extends Component {
             $endDate = $exitStr !== '' ? $this->parseDate($exitStr) : Carbon::now();
             $startDate = $this->parseDate($dataRI['entryDate'] ?? '');
 
-            $existing = $this->getEncounter($ss['encounterId']);
-            $existing['status'] = 'finished';
-            $existing['statusHistory'][] = [
+            $encounterTersimpan = $this->getEncounter($satuSehat['encounterId']);
+            $encounterTersimpan['status'] = 'finished';
+            $encounterTersimpan['statusHistory'][] = [
                 'status' => 'finished',
                 'period' => ['start' => $startDate->toIso8601String(), 'end' => $endDate->toIso8601String()],
             ];
-            $existing['period']['end'] = $endDate->toIso8601String();
+            $encounterTersimpan['period']['end'] = $endDate->toIso8601String();
 
             // Status pulang → hospitalization.dischargeDisposition (SNOMED, sudah tersimpan di EMR).
             // Kode tak dikenal → field TIDAK diisi, jangan menebak.
@@ -187,7 +187,7 @@ new class extends Component {
                 $dataRI['perencanaan']['tindakLanjut']['tindakLanjutKode'] ?? null
             );
             if ($disposisi !== null) {
-                $existing['hospitalization']['dischargeDisposition'] = [
+                $encounterTersimpan['hospitalization']['dischargeDisposition'] = [
                     'coding' => [[
                         'system'  => 'http://snomed.info/sct',
                         'code'    => $disposisi['code'],
@@ -197,10 +197,10 @@ new class extends Component {
                 ];
             }
 
-            $this->makeRequest('put', "Encounter/{$ss['encounterId']}", $existing);
-            $ss['encounterFinished'] = true;
+            $this->makeRequest('put', "Encounter/{$satuSehat['encounterId']}", $encounterTersimpan);
+            $satuSehat['encounterFinished'] = true;
 
-            $this->saveResult($riHdrNo, $ss);
+            $this->saveResult($riHdrNo, $satuSehat);
             $this->dispatch('toast', type: 'success', message: 'Encounter (Rawat Inap) finished.');
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
         } catch (\Throwable $e) {
@@ -213,13 +213,13 @@ new class extends Component {
      */
     private function appendEncounterLocation(string $encounterId, string $locationId): void
     {
-        $existing = $this->getEncounter($encounterId);
-        $existing['location'][] = [
+        $encounterTersimpan = $this->getEncounter($encounterId);
+        $encounterTersimpan['location'][] = [
             'location' => ['reference' => 'Location/' . $locationId],
             'status'   => 'active',
             'period'   => ['start' => Carbon::now()->toIso8601String()],
         ];
-        $this->makeRequest('put', "Encounter/{$encounterId}", $existing);
+        $this->makeRequest('put', "Encounter/{$encounterId}", $encounterTersimpan);
     }
 
     private function loadData(string $riHdrNo): array
@@ -231,26 +231,26 @@ new class extends Component {
         return [$dataRI, $dataRI['satusehat'] ?? []];
     }
 
-    private function saveResult(string $riHdrNo, array $ss): void
+    private function saveResult(string $riHdrNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($riHdrNo, $ss) {
+        DB::transaction(function () use ($riHdrNo, $satuSehat) {
             $this->lockRIRow($riHdrNo);
             $data = $this->findDataRI($riHdrNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonRI((int) $riHdrNo, $data);
         });
     }
 
-    private function parseDate(string $str): Carbon
+    private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($str)) {
+        if (empty($teksTanggal)) {
             return Carbon::now();
         }
         try {
-            return Carbon::createFromFormat('d/m/Y H:i:s', $str);
+            return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal);
         } catch (\Throwable) {
             try {
-                return Carbon::parse($str);
+                return Carbon::parse($teksTanggal);
             } catch (\Throwable) {
                 return Carbon::now();
             }

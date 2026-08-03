@@ -40,9 +40,9 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->hasEncounter = !empty($ss['encounterId']);
-        $this->count = count($ss['procedureIds'] ?? []);
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->hasEncounter = !empty($satuSehat['encounterId']);
+        $this->count = count($satuSehat['procedureIds'] ?? []);
     }
 
     public function kirimForCurrent(): void
@@ -62,9 +62,9 @@ new class extends Component {
             $dataRJ = $this->findDataRJ($rjNo);
             if (empty($dataRJ)) { $this->dispatch('toast', type: 'error', message: 'Data RJ tidak ditemukan.'); return; }
 
-            $ss = $dataRJ['satusehat'] ?? [];
-            if (empty($ss['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($ss['procedureIds'])) { $this->dispatch('toast', type: 'info', message: 'Tindakan sudah pernah dikirim.'); return; }
+            $satuSehat = $dataRJ['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
+            if (!empty($satuSehat['procedureIds'])) { $this->dispatch('toast', type: 'info', message: 'Tindakan sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataRJ['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -75,22 +75,22 @@ new class extends Component {
             $tindakanList = $dataRJ['tindakanList'] ?? ($dataRJ['tindakan'] ?? []);
             if (empty($tindakanList)) { $this->dispatch('toast', type: 'error', message: 'Tidak ada data tindakan.'); return; }
 
-            $ss['procedureIds'] = [];
-            foreach ($tindakanList as $t) {
-                $code = $t['kodeIcd9'] ?? ($t['icd9'] ?? '');
-                $display = $t['descIcd9'] ?? ($t['icd9Desc'] ?? '');
-                if (empty($code)) continue;
+            $satuSehat['procedureIds'] = [];
+            foreach ($tindakanList as $tindakan) {
+                $kode = $tindakan['kodeIcd9'] ?? ($tindakan['icd9'] ?? '');
+                $display = $tindakan['descIcd9'] ?? ($tindakan['icd9Desc'] ?? '');
+                if (empty($kode)) continue;
 
-                $res = $this->createProcedure([
-                    'patientId' => $patientId, 'encounterId' => $ss['encounterId'], 'performerId' => $practitionerId,
-                    'code' => $code, 'display' => $display, 'codeSystem' => 'http://hl7.org/fhir/sid/icd-9-cm',
+                $respons = $this->createProcedure([
+                    'patientId' => $patientId, 'encounterId' => $satuSehat['encounterId'], 'performerId' => $practitionerId,
+                    'code' => $kode, 'display' => $display, 'codeSystem' => 'http://hl7.org/fhir/sid/icd-9-cm',
                     'performedDateTime' => $rjDate->toIso8601String(),
                 ]);
-                if (!empty($res['id'])) $ss['procedureIds'][] = $res['id'];
+                if (!empty($respons['id'])) $satuSehat['procedureIds'][] = $respons['id'];
             }
 
-            $this->saveResult($rjNo, $ss);
-            $count = count($ss['procedureIds']);
+            $this->saveResult($rjNo, $satuSehat);
+            $count = count($satuSehat['procedureIds']);
             $this->dispatch('toast', type: 'success', message: "Tindakan berhasil dikirim ({$count} item).");
             $this->dispatch('rj-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
@@ -104,21 +104,21 @@ new class extends Component {
         return (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
-    private function saveResult(string $rjNo, array $ss): void
+    private function saveResult(string $rjNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($rjNo, $ss) {
+        DB::transaction(function () use ($rjNo, $satuSehat) {
             $this->lockRJRow($rjNo);
             $data = $this->findDataRJ($rjNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonRJ($rjNo, $data);
         });
     }
 
-    private function parseDate(string $str): Carbon
+    private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($str)) return Carbon::now();
-        try { return Carbon::createFromFormat('d/m/Y H:i:s', $str); } catch (\Throwable) {
-            try { return Carbon::parse($str); } catch (\Throwable) { return Carbon::now(); }
+        if (empty($teksTanggal)) return Carbon::now();
+        try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
         }
     }
 };

@@ -42,9 +42,9 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->hasEncounter = !empty($ss['encounterId']);
-        $this->count = !empty($ss['chiefComplaintId']) ? 1 : 0;
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->hasEncounter = !empty($satuSehat['encounterId']);
+        $this->count = !empty($satuSehat['chiefComplaintId']) ? 1 : 0;
     }
 
     public function kirimForCurrent(): void
@@ -64,17 +64,17 @@ new class extends Component {
             $dataRJ = $this->findDataRJ($rjNo);
             if (empty($dataRJ)) { $this->dispatch('toast', type: 'error', message: 'Data RJ tidak ditemukan.'); return; }
 
-            $ss = $dataRJ['satusehat'] ?? [];
-            if (empty($ss['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($ss['chiefComplaintId'])) { $this->dispatch('toast', type: 'info', message: 'Keluhan utama sudah pernah dikirim.'); return; }
+            $satuSehat = $dataRJ['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
+            if (!empty($satuSehat['chiefComplaintId'])) { $this->dispatch('toast', type: 'info', message: 'Keluhan utama sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataRJ['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
 
             // Struktur NESTED anamnesa (bukan key flat blueprint).
-            $ku = $dataRJ['anamnesa']['keluhanUtama'] ?? [];
-            $keluhanText = trim((string) ($ku['keluhanUtama'] ?? ''));
-            $snomedCode  = trim((string) ($ku['snomedCode'] ?? ''));
+            $keluhanUtama = $dataRJ['anamnesa']['keluhanUtama'] ?? [];
+            $keluhanText = trim((string) ($keluhanUtama['keluhanUtama'] ?? ''));
+            $snomedCode  = trim((string) ($keluhanUtama['snomedCode'] ?? ''));
 
             if ($keluhanText === '') { $this->dispatch('toast', type: 'error', message: 'Keluhan utama belum diisi di anamnesa.'); return; }
             // createChiefComplaint WAJIB snomed_code (throw bila kosong) → guard ramah dulu.
@@ -82,19 +82,19 @@ new class extends Component {
 
             $rjDate = $this->parseDate($dataRJ['rjDate'] ?? '');
 
-            $res = $this->createChiefComplaint([
+            $respons = $this->createChiefComplaint([
                 'patientId'      => $patientId,
-                'encounterId'    => $ss['encounterId'],
+                'encounterId'    => $satuSehat['encounterId'],
                 'snomed_code'    => $snomedCode,
-                'snomed_display' => $ku['snomedDisplayEn'] ?? '',
-                'complaint_text' => $ku['snomedDisplayId'] ?? $keluhanText,
+                'snomed_display' => $keluhanUtama['snomedDisplayEn'] ?? '',
+                'complaint_text' => $keluhanUtama['snomedDisplayId'] ?? $keluhanText,
                 'recordedDate'   => $rjDate->toIso8601String(),
             ]);
 
-            if (empty($res['id'])) { $this->dispatch('toast', type: 'error', message: 'Keluhan utama gagal: respons tanpa id.'); return; }
+            if (empty($respons['id'])) { $this->dispatch('toast', type: 'error', message: 'Keluhan utama gagal: respons tanpa id.'); return; }
 
-            $ss['chiefComplaintId'] = $res['id'];
-            $this->saveResult($rjNo, $ss);
+            $satuSehat['chiefComplaintId'] = $respons['id'];
+            $this->saveResult($rjNo, $satuSehat);
             $this->dispatch('toast', type: 'success', message: 'Keluhan utama berhasil dikirim.');
             $this->dispatch('rj-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
@@ -108,21 +108,21 @@ new class extends Component {
         return (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
-    private function saveResult(string $rjNo, array $ss): void
+    private function saveResult(string $rjNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($rjNo, $ss) {
+        DB::transaction(function () use ($rjNo, $satuSehat) {
             $this->lockRJRow($rjNo);
             $data = $this->findDataRJ($rjNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonRJ($rjNo, $data);
         });
     }
 
-    private function parseDate(string $str): Carbon
+    private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($str)) return Carbon::now();
-        try { return Carbon::createFromFormat('d/m/Y H:i:s', $str); } catch (\Throwable) {
-            try { return Carbon::parse($str); } catch (\Throwable) { return Carbon::now(); }
+        if (empty($teksTanggal)) return Carbon::now();
+        try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
         }
     }
 };

@@ -49,10 +49,10 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->hasEncounter = !empty($ss['encounterId']);
-        $this->hasResep     = !empty($ss['medicationRequestIds']);
-        $this->count        = count($ss['medicationDispenseIds'] ?? []);
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->hasEncounter = !empty($satuSehat['encounterId']);
+        $this->hasResep     = !empty($satuSehat['medicationRequestIds']);
+        $this->count        = count($satuSehat['medicationDispenseIds'] ?? []);
     }
 
     public function kirimForCurrent(): void
@@ -72,11 +72,11 @@ new class extends Component {
             $dataRJ = $this->findDataRJ($rjNo);
             if (empty($dataRJ)) { $this->dispatch('toast', type: 'error', message: 'Data RJ tidak ditemukan.'); return; }
 
-            $ss = $dataRJ['satusehat'] ?? [];
-            if (empty($ss['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            $mrIds = $ss['medicationRequestIds'] ?? [];
+            $satuSehat = $dataRJ['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
+            $mrIds = $satuSehat['medicationRequestIds'] ?? [];
             if (empty($mrIds)) { $this->dispatch('toast', type: 'error', message: 'Kirim Resep (MedicationRequest) terlebih dahulu.'); return; }
-            if (!empty($ss['medicationDispenseIds'])) { $this->dispatch('toast', type: 'info', message: 'Obat pulang sudah pernah dikirim.'); return; }
+            if (!empty($satuSehat['medicationDispenseIds'])) { $this->dispatch('toast', type: 'info', message: 'Obat pulang sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataRJ['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -91,29 +91,29 @@ new class extends Component {
             $resepList = $dataRJ['eresep'] ?? ($dataRJ['resepObat'] ?? []);
             if (empty($resepList)) { $this->dispatch('toast', type: 'error', message: 'Tidak ada data resep obat.'); return; }
 
-            $ss['medicationDispenseIds'] = [];
-            $mrIdx = 0;
-            foreach ($resepList as $idx => $obat) {
+            $satuSehat['medicationDispenseIds'] = [];
+            $indeksMedicationRequest = 0;
+            foreach ($resepList as $indeks => $obat) {
                 $kfaCode = $obat['kfaCode'] ?? ($obat['product_id_satusehat'] ?? '');
                 $kfaDisplay = $obat['kfaDisplay'] ?? ($obat['product_name_satusehat'] ?? ($obat['namaObat'] ?? ''));
                 if (empty($kfaCode)) continue;
 
                 // authorizingPrescription = MedicationRequest hasil kirim resep (index-match ke item ber-KFA)
-                $mrId = $mrIds[$mrIdx] ?? null;
-                $mrIdx++;
+                $mrId = $mrIds[$indeksMedicationRequest] ?? null;
+                $indeksMedicationRequest++;
                 if (empty($mrId)) continue;
 
-                $itemId = "{$rjNo}-" . ($idx + 1);
+                $itemId = "{$rjNo}-" . ($indeks + 1);
                 $qty    = (int) ($obat['qty'] ?? ($obat['jumlah'] ?? ($obat['jml'] ?? 1)));
 
-                $res = $this->createMedicationDispense([
+                $respons = $this->createMedicationDispense([
                     'orgId' => $orgId, 'registrationId' => $kfaCode, 'prescriptionItemId' => $itemId,
                     'medContainedId' => "meddisp-{$itemId}",
                     'medicationCode' => $kfaCode, 'medicationDisplay' => $kfaDisplay,
                     'medicationFormCode' => $obat['formCode'] ?? 'BS066', 'medicationFormDisplay' => $obat['formDisplay'] ?? 'Tablet',
                     'medicationTypeCode' => ($obat['isCompound'] ?? false) ? 'SD' : 'NC',
                     'medicationTypeDisplay' => ($obat['isCompound'] ?? false) ? 'Compound' : 'Non-compound',
-                    'patientId' => $patientId, 'patientName' => $patientName, 'encounterId' => $ss['encounterId'],
+                    'patientId' => $patientId, 'patientName' => $patientName, 'encounterId' => $satuSehat['encounterId'],
                     'status' => 'completed', 'category' => 'outpatient',
                     'whenPrepared' => $nowIso, 'whenHandedOver' => $nowIso,
                     'performer' => [['actor' => ['reference' => "Practitioner/{$performerId}"]]],
@@ -123,11 +123,11 @@ new class extends Component {
                     'daysSupply' => ['value' => 1, 'unit' => 'Hari', 'system' => 'http://unitsofmeasure.org', 'code' => 'd'],
                     'receiver' => ['reference' => "Patient/{$patientId}", 'display' => $patientName],
                 ]);
-                if (!empty($res['id'])) $ss['medicationDispenseIds'][] = $res['id'];
+                if (!empty($respons['id'])) $satuSehat['medicationDispenseIds'][] = $respons['id'];
             }
 
-            $this->saveResult($rjNo, $ss);
-            $count = count($ss['medicationDispenseIds']);
+            $this->saveResult($rjNo, $satuSehat);
+            $count = count($satuSehat['medicationDispenseIds']);
             $this->dispatch('toast', type: 'success', message: "Obat pulang berhasil dikirim ({$count} item).");
             $this->dispatch('rj-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
@@ -141,12 +141,12 @@ new class extends Component {
         return (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
-    private function saveResult(string $rjNo, array $ss): void
+    private function saveResult(string $rjNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($rjNo, $ss) {
+        DB::transaction(function () use ($rjNo, $satuSehat) {
             $this->lockRJRow($rjNo);
             $data = $this->findDataRJ($rjNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonRJ($rjNo, $data);
         });
     }

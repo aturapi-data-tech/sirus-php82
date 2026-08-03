@@ -43,10 +43,10 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->encounterId = $ss['encounterId'] ?? null;
-        $this->encounterInProgress = !empty($ss['encounterInProgress']);
-        $this->encounterFinished = !empty($ss['encounterFinished']);
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->encounterId = $satuSehat['encounterId'] ?? null;
+        $this->encounterInProgress = !empty($satuSehat['encounterInProgress']);
+        $this->encounterFinished = !empty($satuSehat['encounterFinished']);
     }
 
     public function kirimForCurrent(): void
@@ -74,7 +74,7 @@ new class extends Component {
             $this->initializeSatuSehat();
             $dataUGD = $this->findDataUGD($rjNo);
             if (empty($dataUGD)) { $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.'); return; }
-            $ss = $dataUGD['satusehat'] ?? [];
+            $satuSehat = $dataUGD['satusehat'] ?? [];
 
             $regNo = $dataUGD['regNo'] ?? '';
             $patientId = $regNo ? (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '') : '';
@@ -90,8 +90,8 @@ new class extends Component {
 
             $ugdDate = $this->parseDate($dataUGD['rjDate'] ?? '');
 
-            if (empty($ss['encounterId'])) {
-                $res = $this->createNewEncounter([
+            if (empty($satuSehat['encounterId'])) {
+                $respons = $this->createNewEncounter([
                     'encounterId' => 'UGD-' . $rjNo,
                     'patientId' => $patientId,
                     'patientName' => $dataUGD['regName'] ?? '',
@@ -101,19 +101,19 @@ new class extends Component {
                     'class_code' => 'EMER',
                     'startDate' => $ugdDate->toIso8601String(),
                 ]);
-                $ss['encounterId'] = $res['id'] ?? null;
+                $satuSehat['encounterId'] = $respons['id'] ?? null;
             }
 
-            if (!empty($ss['encounterId']) && empty($ss['encounterInProgress'])) {
-                $this->startRoomEncounter($ss['encounterId'], [
+            if (!empty($satuSehat['encounterId']) && empty($satuSehat['encounterInProgress'])) {
+                $this->startRoomEncounter($satuSehat['encounterId'], [
                     'startDate' => $ugdDate->toIso8601String(),
                     'locationId' => $locationId,
                 ]);
-                $ss['encounterInProgress'] = true;
+                $satuSehat['encounterInProgress'] = true;
             }
 
-            $this->saveResult($rjNo, $ss);
-            $this->dispatch('toast', type: 'success', message: 'Encounter UGD dikirim: ' . ($ss['encounterId'] ?? '-'));
+            $this->saveResult($rjNo, $satuSehat);
+            $this->dispatch('toast', type: 'success', message: 'Encounter UGD dikirim: ' . ($satuSehat['encounterId'] ?? '-'));
             $this->dispatch('ugd-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Encounter gagal: ' . $e->getMessage());
@@ -126,19 +126,19 @@ new class extends Component {
         try {
             $this->initializeSatuSehat();
             $dataUGD = $this->findDataUGD($rjNo);
-            $ss = $dataUGD['satusehat'] ?? [];
-            if (empty($ss['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Encounter belum dibuat.'); return; }
-            if (!empty($ss['encounterFinished'])) { $this->dispatch('toast', type: 'info', message: 'Encounter sudah finished.'); return; }
+            $satuSehat = $dataUGD['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Encounter belum dibuat.'); return; }
+            if (!empty($satuSehat['encounterFinished'])) { $this->dispatch('toast', type: 'info', message: 'Encounter sudah finished.'); return; }
 
             $ugdDate = $this->parseDate($dataUGD['rjDate'] ?? '');
-            $existing = $this->getEncounter($ss['encounterId']);
-            $existing['status'] = 'finished';
-            $existing['statusHistory'][] = ['status' => 'finished', 'period' => ['start' => $ugdDate->toIso8601String(), 'end' => now()->toIso8601String()]];
-            $existing['period']['end'] = now()->toIso8601String();
-            $this->makeRequest('put', "Encounter/{$ss['encounterId']}", $existing);
-            $ss['encounterFinished'] = true;
+            $encounterTersimpan = $this->getEncounter($satuSehat['encounterId']);
+            $encounterTersimpan['status'] = 'finished';
+            $encounterTersimpan['statusHistory'][] = ['status' => 'finished', 'period' => ['start' => $ugdDate->toIso8601String(), 'end' => now()->toIso8601String()]];
+            $encounterTersimpan['period']['end'] = now()->toIso8601String();
+            $this->makeRequest('put', "Encounter/{$satuSehat['encounterId']}", $encounterTersimpan);
+            $satuSehat['encounterFinished'] = true;
 
-            $this->saveResult($rjNo, $ss);
+            $this->saveResult($rjNo, $satuSehat);
             $this->dispatch('toast', type: 'success', message: 'Encounter finished.');
             $this->dispatch('ugd-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
@@ -154,21 +154,21 @@ new class extends Component {
         return (string) (env('SATUSEHAT_IGD_LOCATION_ID') ?: self::UGD_LOCATION_UUID);
     }
 
-    private function saveResult(string $rjNo, array $ss): void
+    private function saveResult(string $rjNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($rjNo, $ss) {
+        DB::transaction(function () use ($rjNo, $satuSehat) {
             $this->lockUGDRow($rjNo);
             $data = $this->findDataUGD($rjNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonUGD((int) $rjNo, $data);
         });
     }
 
-    private function parseDate(string $str): Carbon
+    private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($str)) return Carbon::now();
-        try { return Carbon::createFromFormat('d/m/Y H:i:s', $str); } catch (\Throwable) {
-            try { return Carbon::parse($str); } catch (\Throwable) { return Carbon::now(); }
+        if (empty($teksTanggal)) return Carbon::now();
+        try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
         }
     }
 };

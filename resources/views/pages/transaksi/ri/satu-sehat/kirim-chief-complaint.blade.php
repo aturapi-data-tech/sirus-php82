@@ -41,9 +41,9 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->hasEncounter = !empty($ss['encounterId']);
-        $this->count = !empty($ss['chiefComplaintId']) ? 1 : 0;
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->hasEncounter = !empty($satuSehat['encounterId']);
+        $this->count = !empty($satuSehat['chiefComplaintId']) ? 1 : 0;
     }
 
     public function kirimForCurrent(): void
@@ -63,35 +63,35 @@ new class extends Component {
             $dataRI = $this->findDataRI($riHdrNo);
             if (empty($dataRI)) { $this->dispatch('toast', type: 'error', message: 'Data Rawat Inap tidak ditemukan.'); return; }
 
-            $ss = $dataRI['satusehat'] ?? [];
-            if (empty($ss['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($ss['chiefComplaintId'])) { $this->dispatch('toast', type: 'info', message: 'Keluhan utama sudah pernah dikirim.'); return; }
+            $satuSehat = $dataRI['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
+            if (!empty($satuSehat['chiefComplaintId'])) { $this->dispatch('toast', type: 'info', message: 'Keluhan utama sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataRI['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
 
-            $an = $dataRI['pengkajianDokter']['anamnesa'] ?? [];
-            $keluhanText = trim((string) ($an['keluhanUtama'] ?? ''));
-            $snomedCode  = trim((string) ($an['keluhanUtamaSnomedCode'] ?? ''));
+            $anamnesa = $dataRI['pengkajianDokter']['anamnesa'] ?? [];
+            $keluhanText = trim((string) ($anamnesa['keluhanUtama'] ?? ''));
+            $snomedCode  = trim((string) ($anamnesa['keluhanUtamaSnomedCode'] ?? ''));
 
             if ($keluhanText === '') { $this->dispatch('toast', type: 'error', message: 'Keluhan utama belum diisi di Pengkajian Dokter.'); return; }
             if ($snomedCode === '') { $this->dispatch('toast', type: 'error', message: 'Kode SNOMED Keluhan Utama belum diisi di Pengkajian Dokter (wajib utk Satu Sehat).'); return; }
 
             $recordedDate = $this->parseDate($dataRI['entryDate'] ?? '');
 
-            $res = $this->createChiefComplaint([
+            $respons = $this->createChiefComplaint([
                 'patientId'      => $patientId,
-                'encounterId'    => $ss['encounterId'],
+                'encounterId'    => $satuSehat['encounterId'],
                 'snomed_code'    => $snomedCode,
-                'snomed_display' => $an['keluhanUtamaSnomedDisplayEn'] ?? '',
-                'complaint_text' => $an['keluhanUtamaSnomedDisplayId'] ?? $keluhanText,
+                'snomed_display' => $anamnesa['keluhanUtamaSnomedDisplayEn'] ?? '',
+                'complaint_text' => $anamnesa['keluhanUtamaSnomedDisplayId'] ?? $keluhanText,
                 'recordedDate'   => $recordedDate->toIso8601String(),
             ]);
 
-            if (empty($res['id'])) { $this->dispatch('toast', type: 'error', message: 'Keluhan utama gagal: respons tanpa id.'); return; }
+            if (empty($respons['id'])) { $this->dispatch('toast', type: 'error', message: 'Keluhan utama gagal: respons tanpa id.'); return; }
 
-            $ss['chiefComplaintId'] = $res['id'];
-            $this->saveResult($riHdrNo, $ss);
+            $satuSehat['chiefComplaintId'] = $respons['id'];
+            $this->saveResult($riHdrNo, $satuSehat);
             $this->dispatch('toast', type: 'success', message: 'Keluhan utama berhasil dikirim.');
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
         } catch (\Throwable $e) {
@@ -105,21 +105,21 @@ new class extends Component {
         return (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
-    private function saveResult(string $riHdrNo, array $ss): void
+    private function saveResult(string $riHdrNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($riHdrNo, $ss) {
+        DB::transaction(function () use ($riHdrNo, $satuSehat) {
             $this->lockRIRow($riHdrNo);
             $data = $this->findDataRI($riHdrNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonRI((int) $riHdrNo, $data);
         });
     }
 
-    private function parseDate(string $str): Carbon
+    private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($str)) return Carbon::now();
-        try { return Carbon::createFromFormat('d/m/Y H:i:s', $str); } catch (\Throwable) {
-            try { return Carbon::parse($str); } catch (\Throwable) { return Carbon::now(); }
+        if (empty($teksTanggal)) return Carbon::now();
+        try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
         }
     }
 };

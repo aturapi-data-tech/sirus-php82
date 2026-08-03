@@ -46,9 +46,9 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->hasEncounter = !empty($ss['encounterId']);
-        $this->count = count($ss['radDiagnosticReportIds'] ?? []);
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->hasEncounter = !empty($satuSehat['encounterId']);
+        $this->count = count($satuSehat['radDiagnosticReportIds'] ?? []);
     }
 
     public function kirimForCurrent(): void
@@ -68,9 +68,9 @@ new class extends Component {
             $dataRJ = $this->findDataRJ($rjNo);
             if (empty($dataRJ)) { $this->dispatch('toast', type: 'error', message: 'Data RJ tidak ditemukan.'); return; }
 
-            $ss = $dataRJ['satusehat'] ?? [];
-            if (empty($ss['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($ss['radDiagnosticReportIds'])) { $this->dispatch('toast', type: 'info', message: 'Radiologi sudah pernah dikirim.'); return; }
+            $satuSehat = $dataRJ['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
+            if (!empty($satuSehat['radDiagnosticReportIds'])) { $this->dispatch('toast', type: 'info', message: 'Radiologi sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataRJ['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -79,9 +79,9 @@ new class extends Component {
             if (empty($practitionerId)) { $this->dispatch('toast', type: 'error', message: 'IHS dokter (dr_uuid) kosong.'); return; }
 
             $orgId       = env('SATUSEHAT_ORGANIZATION_ID');
-            $encounterId = $ss['encounterId'];
+            $encounterId = $satuSehat['encounterId'];
             $drDesc      = $dataRJ['drDesc'] ?? '';
-            $when        = $this->parseDate($dataRJ['rjDate'] ?? '')->toIso8601String();
+            $waktu        = $this->parseDate($dataRJ['rjDate'] ?? '')->toIso8601String();
 
             $orders = DB::table('rstxn_rjrads as a')
                 ->leftJoin('rsmst_radiologis as m', 'a.rad_id', '=', 'm.rad_id')
@@ -90,45 +90,45 @@ new class extends Component {
                 ->get();
             if ($orders->isEmpty()) { $this->dispatch('toast', type: 'error', message: 'Tidak ada order radiologi untuk dikirim.'); return; }
 
-            $ss['radServiceRequestIds']   = $ss['radServiceRequestIds']   ?? [];
-            $ss['radDiagnosticReportIds'] = $ss['radDiagnosticReportIds'] ?? [];
+            $satuSehat['radServiceRequestIds']   = $satuSehat['radServiceRequestIds']   ?? [];
+            $satuSehat['radDiagnosticReportIds'] = $satuSehat['radDiagnosticReportIds'] ?? [];
 
-            foreach ($orders as $ord) {
-                $dtl  = trim((string) ($ord->rad_dtl ?? ''));
-                $desc = trim((string) ($ord->rad_desc ?? 'Pemeriksaan Radiologi'));
-                $key  = "{$rjNo}-{$dtl}";
+            foreach ($orders as $order) {
+                $nomorDetail  = trim((string) ($order->rad_dtl ?? ''));
+                $deskripsi = trim((string) ($order->rad_desc ?? 'Pemeriksaan Radiologi'));
+                $key  = "{$rjNo}-{$nomorDetail}";
 
                 // 1) ServiceRequest — order radiologi (kode generik imaging).
-                $sr = $this->postServiceRequest([
+                $serviceRequest = $this->postServiceRequest([
                     'identifier' => ['system' => "http://sys-ids.kemkes.go.id/servicerequest/{$orgId}", 'value' => "rad-{$key}"],
                     'status' => 'active', 'intent' => 'original-order', 'priority' => 'routine',
                     'category' => ['system' => 'http://snomed.info/sct', 'code' => '363679005', 'display' => 'Imaging'],
-                    'code' => ['system' => 'http://loinc.org', 'code' => '18748-4', 'display' => $desc],
+                    'code' => ['system' => 'http://loinc.org', 'code' => '18748-4', 'display' => $deskripsi],
                     'subject' => "Patient/{$patientId}", 'encounter' => "Encounter/{$encounterId}",
-                    'occurrenceDateTime' => $when, 'authoredOn' => $when,
+                    'occurrenceDateTime' => $waktu, 'authoredOn' => $waktu,
                     'requester' => "Practitioner/{$practitionerId}", 'requesterDisplay' => $drDesc,
                 ]);
-                $srId = $sr['id'] ?? null;
-                if (empty($srId)) { continue; }
-                $ss['radServiceRequestIds'][] = $srId;
+                $serviceRequestId = $serviceRequest['id'] ?? null;
+                if (empty($serviceRequestId)) { continue; }
+                $satuSehat['radServiceRequestIds'][] = $serviceRequestId;
 
                 // 2) DiagnosticReport — pelaporan (generik; hasil = PDF terlampir, tanpa ImagingStudy/Observation).
-                $dr = $this->createDiagnosticReport([
+                $dokter = $this->createDiagnosticReport([
                     'identifier' => [['system' => "http://sys-ids.kemkes.go.id/diagnostic/{$orgId}", 'use' => 'official', 'value' => "rad-{$key}"]],
                     'status' => 'final', 'categoryCode' => 'RAD', 'categoryDisplay' => 'Radiology',
-                    'codeSystem' => 'http://loinc.org', 'code' => '18748-4', 'display' => $desc,
+                    'codeSystem' => 'http://loinc.org', 'code' => '18748-4', 'display' => $deskripsi,
                     'patientId' => $patientId, 'encounterId' => $encounterId,
-                    'effectiveDate' => $when, 'issued' => $when,
-                    'performer' => ["Practitioner/{$practitionerId}"], 'basedOn' => [$srId],
+                    'effectiveDate' => $waktu, 'issued' => $waktu,
+                    'performer' => ["Practitioner/{$practitionerId}"], 'basedOn' => [$serviceRequestId],
                 ]);
-                if (!empty($dr['id'])) { $ss['radDiagnosticReportIds'][] = $dr['id']; }
+                if (!empty($dokter['id'])) { $satuSehat['radDiagnosticReportIds'][] = $dokter['id']; }
             }
 
-            if (empty($ss['radServiceRequestIds'])) { $this->dispatch('toast', type: 'error', message: 'Tidak ada order radiologi yang bisa dikirim.'); return; }
+            if (empty($satuSehat['radServiceRequestIds'])) { $this->dispatch('toast', type: 'error', message: 'Tidak ada order radiologi yang bisa dikirim.'); return; }
 
-            $this->saveResult($rjNo, $ss);
-            $srCount = count($ss['radServiceRequestIds']);
-            $drCount = count($ss['radDiagnosticReportIds']);
+            $this->saveResult($rjNo, $satuSehat);
+            $srCount = count($satuSehat['radServiceRequestIds']);
+            $drCount = count($satuSehat['radDiagnosticReportIds']);
             $this->dispatch('toast', type: 'success', message: "Radiologi terkirim: {$srCount} order, {$drCount} laporan (ImagingStudy dilewati — no DICOM).");
             $this->dispatch('rj-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
@@ -142,21 +142,21 @@ new class extends Component {
         return (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
-    private function saveResult(string $rjNo, array $ss): void
+    private function saveResult(string $rjNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($rjNo, $ss) {
+        DB::transaction(function () use ($rjNo, $satuSehat) {
             $this->lockRJRow($rjNo);
             $data = $this->findDataRJ($rjNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonRJ($rjNo, $data);
         });
     }
 
-    private function parseDate(string $str): Carbon
+    private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($str)) return Carbon::now();
-        try { return Carbon::createFromFormat('d/m/Y H:i:s', $str); } catch (\Throwable) {
-            try { return Carbon::parse($str); } catch (\Throwable) { return Carbon::now(); }
+        if (empty($teksTanggal)) return Carbon::now();
+        try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
         }
     }
 };

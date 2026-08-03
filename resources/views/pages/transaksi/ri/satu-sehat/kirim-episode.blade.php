@@ -46,10 +46,10 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->hasEncounter = !empty($ss['encounterId']);
-        $this->episodeId = $ss['episodeOfCareId'] ?? null;
-        $this->episodeFinished = !empty($ss['episodeOfCareFinished']);
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->hasEncounter = !empty($satuSehat['encounterId']);
+        $this->episodeId = $satuSehat['episodeOfCareId'] ?? null;
+        $this->episodeFinished = !empty($satuSehat['episodeOfCareFinished']);
     }
 
     public function kirimForCurrent(): void
@@ -78,9 +78,9 @@ new class extends Component {
             $dataRI = $this->findDataRI($riHdrNo);
             if (empty($dataRI)) { $this->dispatch('toast', type: 'error', message: 'Data Rawat Inap tidak ditemukan.'); return; }
 
-            $ss = $dataRI['satusehat'] ?? [];
-            if (empty($ss['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($ss['episodeOfCareId'])) { $this->dispatch('toast', type: 'info', message: 'EpisodeOfCare sudah pernah dikirim.'); return; }
+            $satuSehat = $dataRI['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
+            if (!empty($satuSehat['episodeOfCareId'])) { $this->dispatch('toast', type: 'info', message: 'EpisodeOfCare sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataRI['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -90,32 +90,32 @@ new class extends Component {
 
             $start = $this->parseDate($dataRI['entryDate'] ?? '')->toIso8601String();
 
-            $res = $this->createEpisodeOfCare([
+            $respons = $this->createEpisodeOfCare([
                 'episodeNo'     => (string) $riHdrNo,
                 'patientId'     => $patientId,
                 'careManagerId' => $careManagerId,
                 'start'         => $start,
                 'status'        => 'active',
             ]);
-            $episodeId = $res['id'] ?? null;
+            $episodeId = $respons['id'] ?? null;
             if (empty($episodeId)) { $this->dispatch('toast', type: 'error', message: 'EpisodeOfCare gagal: respons tanpa id.'); return; }
 
-            $ss['episodeOfCareId'] = $episodeId;
+            $satuSehat['episodeOfCareId'] = $episodeId;
 
             // Link Encounter → EpisodeOfCare (Encounter.episodeOfCare[]).
             try {
-                $enc = $this->getEncounter($ss['encounterId']);
+                $enc = $this->getEncounter($satuSehat['encounterId']);
                 $ref = 'EpisodeOfCare/' . $episodeId;
                 $existingRefs = collect($enc['episodeOfCare'] ?? [])->pluck('reference')->all();
                 if (!in_array($ref, $existingRefs, true)) {
                     $enc['episodeOfCare'][] = ['reference' => $ref];
-                    $this->makeRequest('put', "Encounter/{$ss['encounterId']}", $enc);
+                    $this->makeRequest('put', "Encounter/{$satuSehat['encounterId']}", $enc);
                 }
             } catch (\Throwable $e) {
                 // link opsional — episode tetap tersimpan meski link gagal
             }
 
-            $this->saveResult($riHdrNo, $ss);
+            $this->saveResult($riHdrNo, $satuSehat);
             $this->dispatch('toast', type: 'success', message: 'EpisodeOfCare berhasil dikirim: ' . $episodeId);
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
         } catch (\Throwable $e) {
@@ -131,9 +131,9 @@ new class extends Component {
             $dataRI = $this->findDataRI($riHdrNo);
             if (empty($dataRI)) { $this->dispatch('toast', type: 'error', message: 'Data Rawat Inap tidak ditemukan.'); return; }
 
-            $ss = $dataRI['satusehat'] ?? [];
-            if (empty($ss['episodeOfCareId'])) { $this->dispatch('toast', type: 'error', message: 'EpisodeOfCare belum dibuat.'); return; }
-            if (!empty($ss['episodeOfCareFinished'])) { $this->dispatch('toast', type: 'info', message: 'EpisodeOfCare sudah finished.'); return; }
+            $satuSehat = $dataRI['satusehat'] ?? [];
+            if (empty($satuSehat['episodeOfCareId'])) { $this->dispatch('toast', type: 'error', message: 'EpisodeOfCare belum dibuat.'); return; }
+            if (!empty($satuSehat['episodeOfCareFinished'])) { $this->dispatch('toast', type: 'info', message: 'EpisodeOfCare sudah finished.'); return; }
 
             $patientId = $this->getPatientIHS($dataRI['regNo'] ?? '');
             $careManagerId = (string) (DB::table('rsmst_doctors')->where('dr_id', $dataRI['drId'] ?? '')->value('dr_uuid') ?? '');
@@ -142,7 +142,7 @@ new class extends Component {
             $end = ($exitStr !== '' ? $this->parseDate($exitStr) : Carbon::now())->toIso8601String();
             $start = $this->parseDate($dataRI['entryDate'] ?? '')->toIso8601String();
 
-            $this->updateEpisodeOfCare($ss['episodeOfCareId'], [
+            $this->updateEpisodeOfCare($satuSehat['episodeOfCareId'], [
                 'episodeNo'     => (string) $riHdrNo,
                 'patientId'     => $patientId,
                 'careManagerId' => $careManagerId,
@@ -150,9 +150,9 @@ new class extends Component {
                 'end'           => $end,
                 'status'        => 'finished',
             ]);
-            $ss['episodeOfCareFinished'] = true;
+            $satuSehat['episodeOfCareFinished'] = true;
 
-            $this->saveResult($riHdrNo, $ss);
+            $this->saveResult($riHdrNo, $satuSehat);
             $this->dispatch('toast', type: 'success', message: 'EpisodeOfCare finished.');
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
         } catch (\Throwable $e) {
@@ -166,21 +166,21 @@ new class extends Component {
         return (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
-    private function saveResult(string $riHdrNo, array $ss): void
+    private function saveResult(string $riHdrNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($riHdrNo, $ss) {
+        DB::transaction(function () use ($riHdrNo, $satuSehat) {
             $this->lockRIRow($riHdrNo);
             $data = $this->findDataRI($riHdrNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonRI((int) $riHdrNo, $data);
         });
     }
 
-    private function parseDate(string $str): Carbon
+    private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($str)) return Carbon::now();
-        try { return Carbon::createFromFormat('d/m/Y H:i:s', $str); } catch (\Throwable) {
-            try { return Carbon::parse($str); } catch (\Throwable) { return Carbon::now(); }
+        if (empty($teksTanggal)) return Carbon::now();
+        try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
         }
     }
 };

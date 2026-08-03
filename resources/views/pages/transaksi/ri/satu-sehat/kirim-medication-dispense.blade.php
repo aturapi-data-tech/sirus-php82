@@ -45,9 +45,9 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->hasRequest = !empty($ss['encounterId']) && !empty($ss['medicationRequestIds']);
-        $this->count = count($ss['medicationDispenseIds'] ?? []);
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->hasRequest = !empty($satuSehat['encounterId']) && !empty($satuSehat['medicationRequestIds']);
+        $this->count = count($satuSehat['medicationDispenseIds'] ?? []);
     }
 
     /**
@@ -57,34 +57,34 @@ new class extends Component {
      */
     private function obatList(array $dataRI): array
     {
-        $items = [];
-        foreach ($dataRI['eresepHdr'] ?? [] as $hdr) {
-            foreach ($hdr['eresep'] ?? [] as $obat) {
-                $pid = trim((string) ($obat['productId'] ?? ''));
-                if ($pid === '') continue;
-                $items[] = ['productId' => $pid, 'productName' => (string) ($obat['productName'] ?? ''), 'qty' => (int) ($obat['qty'] ?? 1)];
+        $itemList = [];
+        foreach ($dataRI['eresepHdr'] ?? [] as $resepHeader) {
+            foreach ($resepHeader['eresep'] ?? [] as $obat) {
+                $productId = trim((string) ($obat['productId'] ?? ''));
+                if ($productId === '') continue;
+                $itemList[] = ['productId' => $productId, 'productName' => (string) ($obat['productName'] ?? ''), 'qty' => (int) ($obat['qty'] ?? 1)];
             }
         }
-        if (empty($items)) return [];
+        if (empty($itemList)) return [];
 
-        $pids = array_values(array_unique(array_column($items, 'productId')));
+        $productIdList = array_values(array_unique(array_column($itemList, 'productId')));
         $kfaMap = DB::table('immst_products')
-            ->whereIn('product_id', $pids)
+            ->whereIn('product_id', $productIdList)
             ->get(['product_id', 'product_id_satusehat', 'product_name_satusehat'])
             ->keyBy('product_id');
 
-        $out = [];
-        foreach ($items as $it) {
-            $master = $kfaMap->get($it['productId']);
+        $obatKfaList = [];
+        foreach ($itemList as $obat) {
+            $master = $kfaMap->get($obat['productId']);
             $kfaCode = (string) ($master->product_id_satusehat ?? '');
             if ($kfaCode === '') continue;
-            $out[] = [
+            $obatKfaList[] = [
                 'code'    => $kfaCode,
-                'display' => (string) ($master->product_name_satusehat ?? '') ?: $it['productName'],
-                'qty'     => $it['qty'],
+                'display' => (string) ($master->product_name_satusehat ?? '') ?: $obat['productName'],
+                'qty'     => $obat['qty'],
             ];
         }
-        return $out;
+        return $obatKfaList;
     }
 
     public function kirimForCurrent(): void
@@ -104,11 +104,11 @@ new class extends Component {
             $dataRI = $this->findDataRI($riHdrNo);
             if (empty($dataRI)) { $this->dispatch('toast', type: 'error', message: 'Data Rawat Inap tidak ditemukan.'); return; }
 
-            $ss = $dataRI['satusehat'] ?? [];
-            if (empty($ss['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            $mrIds = $ss['medicationRequestIds'] ?? [];
+            $satuSehat = $dataRI['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
+            $mrIds = $satuSehat['medicationRequestIds'] ?? [];
             if (empty($mrIds)) { $this->dispatch('toast', type: 'error', message: 'Kirim Resep (MedicationRequest) terlebih dahulu.'); return; }
-            if (!empty($ss['medicationDispenseIds'])) { $this->dispatch('toast', type: 'info', message: 'Obat diserahkan sudah pernah dikirim.'); return; }
+            if (!empty($satuSehat['medicationDispenseIds'])) { $this->dispatch('toast', type: 'info', message: 'Obat diserahkan sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataRI['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -123,21 +123,21 @@ new class extends Component {
             $obatList = $this->obatList($dataRI);
             if (empty($obatList)) { $this->dispatch('toast', type: 'error', message: 'Tidak ada obat ber-KFA untuk diserahkan.'); return; }
 
-            $ss['medicationDispenseIds'] = [];
-            foreach ($obatList as $idx => $obat) {
-                $mrId = $mrIds[$idx] ?? null;
+            $satuSehat['medicationDispenseIds'] = [];
+            foreach ($obatList as $indeks => $obat) {
+                $mrId = $mrIds[$indeks] ?? null;
                 if (empty($mrId)) continue; // tak sejajar dgn MedicationRequest → skip
 
-                $no = $idx + 1;
-                $itemId = "{$riHdrNo}-{$no}";
+                $nomorUrut = $indeks + 1;
+                $itemId = "{$riHdrNo}-{$nomorUrut}";
 
-                $res = $this->createMedicationDispense([
+                $respons = $this->createMedicationDispense([
                     'orgId' => $orgId, 'registrationId' => $obat['code'], 'prescriptionItemId' => $itemId,
                     'medContainedId' => "meddisp-{$itemId}",
                     'medicationCode' => $obat['code'], 'medicationDisplay' => $obat['display'],
                     'medicationFormCode' => 'BS066', 'medicationFormDisplay' => 'Tablet',
                     'medicationTypeCode' => 'NC', 'medicationTypeDisplay' => 'Non-compound',
-                    'patientId' => $patientId, 'patientName' => $patientName, 'encounterId' => $ss['encounterId'],
+                    'patientId' => $patientId, 'patientName' => $patientName, 'encounterId' => $satuSehat['encounterId'],
                     'status' => 'completed', 'category' => 'inpatient',
                     'whenPrepared' => $nowIso, 'whenHandedOver' => $nowIso,
                     'performer' => [['actor' => ['reference' => "Practitioner/{$performerId}"]]],
@@ -147,13 +147,13 @@ new class extends Component {
                     'daysSupply' => ['value' => 1, 'unit' => 'Hari', 'system' => 'http://unitsofmeasure.org', 'code' => 'd'],
                     'receiver' => ['reference' => "Patient/{$patientId}", 'display' => $patientName],
                 ]);
-                if (!empty($res['id'])) $ss['medicationDispenseIds'][] = $res['id'];
+                if (!empty($respons['id'])) $satuSehat['medicationDispenseIds'][] = $respons['id'];
             }
 
-            if (empty($ss['medicationDispenseIds'])) { $this->dispatch('toast', type: 'error', message: 'Tidak ada obat yang bisa diserahkan.'); return; }
+            if (empty($satuSehat['medicationDispenseIds'])) { $this->dispatch('toast', type: 'error', message: 'Tidak ada obat yang bisa diserahkan.'); return; }
 
-            $this->saveResult($riHdrNo, $ss);
-            $count = count($ss['medicationDispenseIds']);
+            $this->saveResult($riHdrNo, $satuSehat);
+            $count = count($satuSehat['medicationDispenseIds']);
             $this->dispatch('toast', type: 'success', message: "Obat diserahkan berhasil dikirim ({$count} item).");
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
         } catch (\Throwable $e) {
@@ -167,12 +167,12 @@ new class extends Component {
         return (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
-    private function saveResult(string $riHdrNo, array $ss): void
+    private function saveResult(string $riHdrNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($riHdrNo, $ss) {
+        DB::transaction(function () use ($riHdrNo, $satuSehat) {
             $this->lockRIRow($riHdrNo);
             $data = $this->findDataRI($riHdrNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonRI((int) $riHdrNo, $data);
         });
     }

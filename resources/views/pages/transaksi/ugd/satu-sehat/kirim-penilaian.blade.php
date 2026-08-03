@@ -49,9 +49,9 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->hasEncounter = !empty($ss['encounterId']);
-        $this->count = count($ss['penilaianObservationIds'] ?? []);
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->hasEncounter = !empty($satuSehat['encounterId']);
+        $this->count = count($satuSehat['penilaianObservationIds'] ?? []);
         $this->jatuhCount = count($this->resikoJatuhEntries($data));
         $this->giziCount = count($this->giziEntries($data));
     }
@@ -85,9 +85,9 @@ new class extends Component {
             $dataUGD = $this->findDataUGD($rjNo);
             if (empty($dataUGD)) { $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.'); return; }
 
-            $ss = $dataUGD['satusehat'] ?? [];
-            if (empty($ss['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($ss['penilaianObservationIds'])) { $this->dispatch('toast', type: 'info', message: 'Penilaian sudah pernah dikirim.'); return; }
+            $satuSehat = $dataUGD['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
+            if (!empty($satuSehat['penilaianObservationIds'])) { $this->dispatch('toast', type: 'info', message: 'Penilaian sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataUGD['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -101,29 +101,29 @@ new class extends Component {
                 return;
             }
 
-            $ids = [];
+            $idList = [];
 
-            foreach ($jatuhEntries as $e) {
-                $base = $this->baseFor($e, $dataUGD, $patientId, $ss['encounterId'], $practitionerId);
-                foreach (PenilaianObservationMap::resikoJatuh($e) as $obs) {
-                    $res = $this->createObservation(array_merge($base, $obs));
-                    if (!empty($res['id'])) $ids[] = $res['id'];
+            foreach ($jatuhEntries as $entri) {
+                $payloadDasar = $this->baseFor($entri, $dataUGD, $patientId, $satuSehat['encounterId'], $practitionerId);
+                foreach (PenilaianObservationMap::resikoJatuh($entri) as $observation) {
+                    $respons = $this->createObservation(array_merge($payloadDasar, $observation));
+                    if (!empty($respons['id'])) $idList[] = $respons['id'];
                 }
             }
 
-            foreach ($giziEntries as $e) {
-                $base = $this->baseFor($e, $dataUGD, $patientId, $ss['encounterId'], $practitionerId);
-                foreach (PenilaianObservationMap::gizi($e) as $obs) {
-                    $res = $this->createObservation(array_merge($base, $obs));
-                    if (!empty($res['id'])) $ids[] = $res['id'];
+            foreach ($giziEntries as $entri) {
+                $payloadDasar = $this->baseFor($entri, $dataUGD, $patientId, $satuSehat['encounterId'], $practitionerId);
+                foreach (PenilaianObservationMap::gizi($entri) as $observation) {
+                    $respons = $this->createObservation(array_merge($payloadDasar, $observation));
+                    if (!empty($respons['id'])) $idList[] = $respons['id'];
                 }
             }
 
-            if (empty($ids)) { $this->dispatch('toast', type: 'error', message: 'Tidak ada nilai penilaian valid untuk dikirim.'); return; }
+            if (empty($idList)) { $this->dispatch('toast', type: 'error', message: 'Tidak ada nilai penilaian valid untuk dikirim.'); return; }
 
-            $ss['penilaianObservationIds'] = $ids;
-            $this->saveResult($rjNo, $ss);
-            $this->dispatch('toast', type: 'success', message: 'Penilaian berhasil dikirim (' . count($ids) . ' observation).');
+            $satuSehat['penilaianObservationIds'] = $idList;
+            $this->saveResult($rjNo, $satuSehat);
+            $this->dispatch('toast', type: 'success', message: 'Penilaian berhasil dikirim (' . count($idList) . ' observation).');
             $this->dispatch('ugd-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Penilaian gagal: ' . $e->getMessage());
@@ -133,8 +133,8 @@ new class extends Component {
     /** Payload dasar (subject/encounter/performer/waktu) untuk satu entri penilaian. */
     private function baseFor(array $entry, array $dataUGD, string $patientId, string $encounterId, string $practitionerId): array
     {
-        $when = trim((string) ($entry['tglPenilaian'] ?? ''));
-        $isoDate = ($when !== '' ? $this->parseDate($when) : $this->parseDate($dataUGD['rjDate'] ?? ''))->toIso8601String();
+        $waktu = trim((string) ($entry['tglPenilaian'] ?? ''));
+        $isoDate = ($waktu !== '' ? $this->parseDate($waktu) : $this->parseDate($dataUGD['rjDate'] ?? ''))->toIso8601String();
 
         return [
             'patientId'     => $patientId,
@@ -150,21 +150,21 @@ new class extends Component {
         return (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
-    private function saveResult(string $rjNo, array $ss): void
+    private function saveResult(string $rjNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($rjNo, $ss) {
+        DB::transaction(function () use ($rjNo, $satuSehat) {
             $this->lockUGDRow($rjNo);
             $data = $this->findDataUGD($rjNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonUGD((int) $rjNo, $data);
         });
     }
 
-    private function parseDate(string $str): Carbon
+    private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($str)) return Carbon::now();
-        try { return Carbon::createFromFormat('d/m/Y H:i:s', $str); } catch (\Throwable) {
-            try { return Carbon::parse($str); } catch (\Throwable) { return Carbon::now(); }
+        if (empty($teksTanggal)) return Carbon::now();
+        try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
         }
     }
 };

@@ -40,9 +40,9 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->hasEncounter = !empty($ss['encounterId']);
-        $this->count = count($ss['conditionIds'] ?? []);
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->hasEncounter = !empty($satuSehat['encounterId']);
+        $this->count = count($satuSehat['conditionIds'] ?? []);
     }
 
     public function kirimForCurrent(): void
@@ -62,9 +62,9 @@ new class extends Component {
             $dataUGD = $this->findDataUGD($rjNo);
             if (empty($dataUGD)) { $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.'); return; }
 
-            $ss = $dataUGD['satusehat'] ?? [];
-            if (empty($ss['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($ss['conditionIds'])) { $this->dispatch('toast', type: 'info', message: 'Diagnosa sudah pernah dikirim.'); return; }
+            $satuSehat = $dataUGD['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
+            if (!empty($satuSehat['conditionIds'])) { $this->dispatch('toast', type: 'info', message: 'Diagnosa sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataUGD['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -73,25 +73,25 @@ new class extends Component {
             $diagnosaList = $dataUGD['diagnosis'] ?? [];
             if (empty($diagnosaList)) { $this->dispatch('toast', type: 'error', message: 'Tidak ada data diagnosa UGD untuk dikirim.'); return; }
 
-            $ss['conditionIds'] = [];
+            $satuSehat['conditionIds'] = [];
             $count = 0;
-            foreach ($diagnosaList as $diag) {
-                $code = $diag['icdX'] ?? ($diag['diagId'] ?? '');
-                $display = $diag['diagDesc'] ?? '';
-                if (empty($code)) continue;
+            foreach ($diagnosaList as $diagnosa) {
+                $kode = $diagnosa['icdX'] ?? ($diagnosa['diagId'] ?? '');
+                $display = $diagnosa['diagDesc'] ?? '';
+                if (empty($kode)) continue;
 
-                $res = $this->createFinalDiagnosis([
-                    'patientId' => $patientId, 'encounterId' => $ss['encounterId'],
-                    'icd10_code' => $code, 'icd10_display' => $display,
-                    'diagnosis_text' => trim("{$code} - {$display}", ' -'),
+                $respons = $this->createFinalDiagnosis([
+                    'patientId' => $patientId, 'encounterId' => $satuSehat['encounterId'],
+                    'icd10_code' => $kode, 'icd10_display' => $display,
+                    'diagnosis_text' => trim("{$kode} - {$display}", ' -'),
                     'recordedDate' => $ugdDate->toIso8601String(),
                 ]);
-                if (!empty($res['id'])) { $ss['conditionIds'][] = $res['id']; $count++; }
+                if (!empty($respons['id'])) { $satuSehat['conditionIds'][] = $respons['id']; $count++; }
             }
 
             if ($count === 0) { $this->dispatch('toast', type: 'error', message: 'Semua diagnosa tanpa kode ICD-10 — tidak ada yang dikirim.'); return; }
 
-            $this->saveResult($rjNo, $ss);
+            $this->saveResult($rjNo, $satuSehat);
             $this->dispatch('toast', type: 'success', message: "Diagnosa berhasil dikirim ({$count} item).");
             $this->dispatch('ugd-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
@@ -105,21 +105,21 @@ new class extends Component {
         return (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
-    private function saveResult(string $rjNo, array $ss): void
+    private function saveResult(string $rjNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($rjNo, $ss) {
+        DB::transaction(function () use ($rjNo, $satuSehat) {
             $this->lockUGDRow($rjNo);
             $data = $this->findDataUGD($rjNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonUGD((int) $rjNo, $data);
         });
     }
 
-    private function parseDate(string $str): Carbon
+    private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($str)) return Carbon::now();
-        try { return Carbon::createFromFormat('d/m/Y H:i:s', $str); } catch (\Throwable) {
-            try { return Carbon::parse($str); } catch (\Throwable) { return Carbon::now(); }
+        if (empty($teksTanggal)) return Carbon::now();
+        try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
         }
     }
 };
