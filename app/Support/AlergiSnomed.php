@@ -69,10 +69,11 @@ class AlergiSnomed
     /**
      * Apakah kode ini pernyataan "tidak ada alergi" (bukan zat penyebab)?
      *
-     * Dipakai sender SATUSEHAT: AllergyIntolerance untuk "no known allergy" TIDAK boleh
-     * membawa `category`/`criticality`/`type` — itu atribut alergi yang ADA. Mengirim
-     * category='medication' bersama 716186003 malah kontradiktif: "tidak ada alergi obat"
-     * punya kodenya sendiri (409137002), bukan 716186003.
+     * Dipakai sender SATUSEHAT untuk memutuskan `type`/`criticality` — keduanya atribut
+     * alergi yang ADA, jadi dihilangkan pada pernyataan "no known allergy".
+     * `category` TIDAK bisa ikut dihilangkan: SATUSEHAT menolaknya dengan
+     * "Element not found: AllergyIntolerance.category (RuleNumber: 10075)" — lihat
+     * kategoriFhir().
      */
     public static function adalahTidakAdaAlergi(?string $kode): bool
     {
@@ -87,6 +88,29 @@ class AlergiSnomed
             self::TIDAK_ADA_MAKANAN['snomedCode'],
             self::TIDAK_ADA_LINGKUNGAN['snomedCode'],
         ], true);
+    }
+
+    /**
+     * Kategori FHIR AllergyIntolerance (food | medication | environment | biologic).
+     *
+     * SATUSEHAT MEWAJIBKAN elemen ini — termasuk pada pernyataan "tidak ada alergi",
+     * walau di sana ia janggal ("tidak ada alergi" umum bukan pernyataan tentang obat).
+     * Ditolak dengan "Element not found: AllergyIntolerance.category (RuleNumber: 10075)"
+     * kalau dikosongkan, jadi tidak ada pilihan selain mengisinya.
+     *
+     * Kode "tidak ada alergi" yang SPESIFIK dipetakan apa adanya; sisanya (termasuk
+     * 716186003 yang umum dan semua zat penyebab) jatuh ke 'medication' karena kolom
+     * alergi di anamnesa dipakai untuk alergi obat. Kalau kelak alergi makanan/lingkungan
+     * mau dibedakan, sumber datanya harus menyimpan kategorinya dulu — jangan ditebak
+     * dari teks bebas.
+     */
+    public static function kategoriFhir(?string $kode): string
+    {
+        return match (trim((string) $kode)) {
+            self::TIDAK_ADA_MAKANAN['snomedCode'] => 'food',
+            self::TIDAK_ADA_LINGKUNGAN['snomedCode'] => 'environment',
+            default => 'medication',
+        };
     }
 
     /** Normalkan teks bebas: huruf kecil, buang spasi & tanda baca. */

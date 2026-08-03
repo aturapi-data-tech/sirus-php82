@@ -91,11 +91,12 @@ new class extends Component {
                 'recorderId'  => $recorderId,
                 'code'        => $snomedCode,
                 'display'     => $alergi['snomedDisplayEn'] ?? ($alergi['snomedDisplayId'] ?? $alergiText),
-                // "Tidak ada alergi" (mis. 716186003) = pernyataan TIADA alergi -> type/category/
-                // criticality DIHILANGKAN (null). Mengirim category='medication' bersamanya
-                // kontradiktif: "tidak ada alergi obat" punya kode sendiri (409137002).
+                // "Tidak ada alergi" (mis. 716186003) = pernyataan TIADA alergi → type &
+                // criticality DIHILANGKAN (null), keduanya atribut alergi yang ADA.
+                // category TETAP dikirim: SATUSEHAT mewajibkannya (RuleNumber 10075),
+                // pemetaannya di AlergiSnomed::kategoriFhir().
                 'type'        => $tidakAdaAlergi ? null : 'allergy',
-                'category'    => $tidakAdaAlergi ? null : 'medication',
+                'category'    => AlergiSnomed::kategoriFhir($snomedCode),
                 'criticality' => $tidakAdaAlergi ? null : 'low',
                 'note'        => $alergiText,
                 'onset'       => $this->parseDate($dataRJ['rjDate'] ?? '')->toIso8601String(),
