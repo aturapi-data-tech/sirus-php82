@@ -17,9 +17,18 @@ new class extends Component {
     public bool $encounterInProgress = false;
     public bool $encounterFinished = false;
 
-    public function mount(?string $rjNo = null): void
+    /**
+     * Kartu mana yang dirender: 'kirim' (langkah 1, paling atas) atau 'selesai'
+     * (Selesaikan Encounter, dipasang paling bawah setelah semua resource dikirim).
+     * Satu komponen dua kartu supaya logika Encounter tetap di satu berkas —
+     * induk merender komponen ini dua kali dengan $bagian berbeda.
+     */
+    public string $bagian = 'kirim';
+
+    public function mount(?string $rjNo = null, string $bagian = 'kirim'): void
     {
         $this->rjNo = $rjNo;
+        $this->bagian = $bagian;
         $this->reloadState();
     }
 
@@ -41,10 +50,10 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->encounterId = $ss['encounterId'] ?? null;
-        $this->encounterInProgress = !empty($ss['encounterInProgress']);
-        $this->encounterFinished = !empty($ss['encounterFinished']);
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->encounterId = $satuSehat['encounterId'] ?? null;
+        $this->encounterInProgress = !empty($satuSehat['encounterInProgress']);
+        $this->encounterFinished = !empty($satuSehat['encounterFinished']);
     }
 
     public function kirimForCurrent(): void
@@ -70,7 +79,7 @@ new class extends Component {
     {
         try {
             $this->initializeSatuSehat();
-            [$dataRJ, $pasien, $ss] = $this->loadData($rjNo);
+            [$dataRJ, $pasien, $satuSehat] = $this->loadData($rjNo);
 
             // Ambil 3 IHS (patient/dokter/poli) dari DB — pola sama rujukan-kompetensi.
             // Patient UUID registration (SATUSEHAT) di-handle di master-pasien,
@@ -100,8 +109,8 @@ new class extends Component {
 
             $rjDate = $this->parseDate($dataRJ['rjDate'] ?? '');
 
-            if (empty($ss['encounterId'])) {
-                $res = $this->createNewEncounter([
+            if (empty($satuSehat['encounterId'])) {
+                $respons = $this->createNewEncounter([
                     'encounterId' => 'RJ-' . $rjNo,
                     'patientId' => $patientId,
                     'patientName' => $pasien['regName'] ?? '',
@@ -111,19 +120,19 @@ new class extends Component {
                     'class_code' => 'AMB',
                     'startDate' => $rjDate->toIso8601String(),
                 ]);
-                $ss['encounterId'] = $res['id'] ?? null;
+                $satuSehat['encounterId'] = $respons['id'] ?? null;
             }
 
-            if (!empty($ss['encounterId']) && empty($ss['encounterInProgress'])) {
-                $this->startRoomEncounter($ss['encounterId'], [
+            if (!empty($satuSehat['encounterId']) && empty($satuSehat['encounterInProgress'])) {
+                $this->startRoomEncounter($satuSehat['encounterId'], [
                     'startDate' => $rjDate->toIso8601String(),
                     'locationId' => $locationId,
                 ]);
-                $ss['encounterInProgress'] = true;
+                $satuSehat['encounterInProgress'] = true;
             }
 
-            $this->saveResult($rjNo, $dataRJ, $ss);
-            $this->dispatch('toast', type: 'success', message: 'Encounter berhasil dikirim: ' . ($ss['encounterId'] ?? '-'));
+            $this->saveResult($rjNo, $dataRJ, $satuSehat);
+            $this->dispatch('toast', type: 'success', message: 'Encounter berhasil dikirim: ' . ($satuSehat['encounterId'] ?? '-'));
             $this->dispatch('rj-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Encounter gagal: ' . $e->getMessage());
@@ -135,26 +144,26 @@ new class extends Component {
     {
         try {
             $this->initializeSatuSehat();
-            [$dataRJ, , $ss] = $this->loadData($rjNo);
+            [$dataRJ, , $satuSehat] = $this->loadData($rjNo);
 
-            if (empty($ss['encounterId'])) {
+            if (empty($satuSehat['encounterId'])) {
                 $this->dispatch('toast', type: 'error', message: 'Encounter belum dibuat.');
                 return;
             }
-            if (!empty($ss['encounterFinished'])) {
+            if (!empty($satuSehat['encounterFinished'])) {
                 $this->dispatch('toast', type: 'info', message: 'Encounter sudah finished.');
                 return;
             }
 
             $rjDate = $this->parseDate($dataRJ['rjDate'] ?? '');
-            $existing = $this->getEncounter($ss['encounterId']);
-            $existing['status'] = 'finished';
-            $existing['statusHistory'][] = ['status' => 'finished', 'period' => ['start' => $rjDate->toIso8601String(), 'end' => now()->toIso8601String()]];
-            $existing['period']['end'] = now()->toIso8601String();
-            $this->makeRequest('put', "Encounter/{$ss['encounterId']}", $existing);
-            $ss['encounterFinished'] = true;
+            $encounterTersimpan = $this->getEncounter($satuSehat['encounterId']);
+            $encounterTersimpan['status'] = 'finished';
+            $encounterTersimpan['statusHistory'][] = ['status' => 'finished', 'period' => ['start' => $rjDate->toIso8601String(), 'end' => now()->toIso8601String()]];
+            $encounterTersimpan['period']['end'] = now()->toIso8601String();
+            $this->makeRequest('put', "Encounter/{$satuSehat['encounterId']}", $encounterTersimpan);
+            $satuSehat['encounterFinished'] = true;
 
-            $this->saveResult($rjNo, $dataRJ, $ss);
+            $this->saveResult($rjNo, $dataRJ, $satuSehat);
             $this->dispatch('toast', type: 'success', message: 'Encounter finished.');
             $this->dispatch('rj-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
@@ -173,19 +182,19 @@ new class extends Component {
         return [$dataRJ, $pasien, $dataRJ['satusehat'] ?? []];
     }
 
-    private function saveResult(string $rjNo, array $dataRJ, array $ss): void
+    private function saveResult(string $rjNo, array $dataRJ, array $satuSehat): void
     {
-        DB::transaction(function () use ($rjNo, $ss) {
+        DB::transaction(function () use ($rjNo, $satuSehat) {
             $this->lockRJRow($rjNo);
             $data = $this->findDataRJ($rjNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonRJ($rjNo, $data);
         });
     }
 
-    private function getIHS(string $table, string $col, string $val): string
+    private function getIHS(string $table, string $col, string $nilai): string
     {
-        if (empty($val)) {
+        if (empty($nilai)) {
             return '';
         }
         $uuidCol = match ($table) {
@@ -194,19 +203,19 @@ new class extends Component {
             'rsmst_pasiens' => 'patient_uuid',
             default => 'dr_uuid',
         };
-        return (string) (DB::table($table)->where($col, $val)->value($uuidCol) ?? '');
+        return (string) (DB::table($table)->where($col, $nilai)->value($uuidCol) ?? '');
     }
 
-    private function parseDate(string $str): Carbon
+    private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($str)) {
+        if (empty($teksTanggal)) {
             return Carbon::now();
         }
         try {
-            return Carbon::createFromFormat('d/m/Y H:i:s', $str);
+            return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal);
         } catch (\Throwable) {
             try {
-                return Carbon::parse($str);
+                return Carbon::parse($teksTanggal);
             } catch (\Throwable) {
                 return Carbon::now();
             }
@@ -216,6 +225,7 @@ new class extends Component {
 ?>
 
 <div class="space-y-3">
+    @if ($bagian !== 'selesai')
     {{-- Step 1: Encounter --}}
     <div class="flex items-center justify-between p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex items-center gap-3">
@@ -241,9 +251,11 @@ new class extends Component {
             <span wire:loading wire:target="kirimForCurrent"><x-loading />...</span>
         </x-primary-button>
     </div>
+    @endif
 
-    {{-- Selesaikan Encounter (visible setelah encounter ada) --}}
-    @if (!empty($encounterId))
+    {{-- Selesaikan Encounter — kartu penutup, dirender oleh instance $bagian='selesai'
+         yang dipasang paling bawah di modal (baru muncul setelah encounter ada). --}}
+    @if ($bagian === 'selesai' && !empty($encounterId))
         <div class="flex items-center justify-between p-4 bg-canvas border-2 border-teal-300 shadow-sm rounded-xl dark:bg-gray-900 dark:border-teal-700">
             <div class="flex items-center gap-3">
                 <div

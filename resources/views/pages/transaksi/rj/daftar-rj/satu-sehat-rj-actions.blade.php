@@ -126,6 +126,11 @@ new class extends Component {
                         wire:key="ss-clinical-impression-rj-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.rj.satu-sehat.kirim-penilaian :rjNo="$rjNo"
                         wire:key="ss-penilaian-rj-{{ $rjNo ?? 'none' }}" />
+
+                    {{-- Penutup: status encounter jadi finished. Sengaja paling bawah —
+                         dikerjakan setelah semua resource di atasnya terkirim. --}}
+                    <livewire:pages::transaksi.rj.satu-sehat.kirim-encounter :rjNo="$rjNo" bagian="selesai"
+                        wire:key="ss-encounter-selesai-rj-{{ $rjNo ?? 'none' }}" />
                 </div>
             </div>
         </div>
