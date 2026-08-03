@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\SATUSEHAT\MedicationRequestTrait;
 use App\Support\EresepJson;
+use App\Support\RacikanKfa;
 
 new class extends Component {
     use EmrRITrait, MedicationRequestTrait;
@@ -21,7 +22,8 @@ new class extends Component {
     public ?string $riHdrNo = null;
     public bool $hasEncounter = false;
     public int $count = 0;
-    public int $racikanSkipped = 0;
+    public int $racikanSiap = 0;    // grup racikan yang semua bahannya ber-KFA
+    public int $racikanTakSiap = 0; // grup racikan yang bahannya belum bisa dipetakan
 
     public function mount(?string $riHdrNo = null): void
     {
@@ -51,10 +53,12 @@ new class extends Component {
         $this->hasEncounter = !empty($satuSehat['encounterId']);
         $this->count = count($satuSehat['medicationRequestIds'] ?? []);
 
-        // Racikan belum didukung (compound). Dihitung per GRUP noRacikan (= jumlah obat
-        // racikan), bukan per baris bahan — sebelumnya keliru menghitung baris.
-        $racikan = EresepJson::jumlahRacikan($data);
-        $this->racikanSkipped = $racikan;
+        // Racikan dikirim sebagai compound bila SEMUA bahannya bisa dipetakan ke
+        // KFA; sisanya dilaporkan di kartu supaya tak hilang diam-diam. Dihitung per
+        // GRUP noRacikan (= satu obat racikan), bukan per baris bahan.
+        $ringkasRacikan = RacikanKfa::ringkas($data);
+        $this->racikanSiap = $ringkasRacikan['siap'];
+        $this->racikanTakSiap = $ringkasRacikan['takSiap'];
     }
 
     /**
@@ -126,9 +130,12 @@ new class extends Component {
 
             $obatTanpaKfa = 0;
             $obatList = $this->obatList($dataRI, $obatTanpaKfa);
-            if (empty($obatList)) {
+            $racikanList = RacikanKfa::grupList($dataRI);
+            $adaRacikanSiap = array_filter($racikanList, fn($grup) => $grup['siap']) !== [];
+
+            if (empty($obatList) && !$adaRacikanSiap) {
                 $this->dispatch('toast', type: 'error',
-                    message: 'Tidak ada obat non-racikan ber-KFA untuk dikirim. Pastikan product_id_satusehat terisi di Master Obat.');
+                    message: 'Tidak ada obat yang bisa dikirim: belum ada padanan kode KFA di Master Obat.');
                 return;
             }
 
@@ -144,7 +151,8 @@ new class extends Component {
                     'medicationCode' => $kfaCode, 'medicationDisplay' => $kfaDisplay,
                     'medicationFormCode' => 'BS066', 'medicationFormDisplay' => 'Tablet',
                     'medicationTypeCode' => 'NC', 'medicationTypeDisplay' => 'Non-compound',
-                    'prescriptionId' => $riHdrNo, 'patientId' => $patientId, 'patientName' => $patientName,
+                    'prescriptionId' => $riHdrNo, 'prescriptionItemId' => $itemId,
+                    'patientId' => $patientId, 'patientName' => $patientName,
                     'encounterId' => $satuSehat['encounterId'], 'requesterId' => $practitionerId, 'requesterName' => $drDesc,
                     'authoredOn' => $authoredOn, 'category' => 'inpatient',
                     'dosageInstruction' => [], 'dispenseRequest' => [], 'reasonReference' => [],
@@ -152,11 +160,49 @@ new class extends Component {
                 if (!empty($respons['id'])) $satuSehat['medicationRequestIds'][] = $respons['id'];
             }
 
+
+            // ── RACIKAN (compound) ──────────────────────────────────────────
+            // Campurannya tak punya kode KFA; yang ber-KFA adalah tiap bahannya.
+            // Grup yang bahannya tak lengkap TIDAK dikirim dan dilaporkan apa adanya.
+            $racikanTerkirim = 0;
+            $racikanGagal = [];
+            foreach ($racikanList as $grup) {
+                if (!$grup['siap']) {
+                    $racikanGagal[] = "{$grup['noRacikan']} ({$grup['alasan']})";
+                    continue;
+                }
+
+                $nomorItem = count($satuSehat['medicationRequestIds']) + 1;
+                $itemIdRacikan = "$riHdrNo-{$nomorItem}";
+                $namaRacikan = 'Racikan ' . $grup['noRacikan'] . ' (' . $grup['jumlahBahan'] . ' bahan)';
+
+                $respons = $this->createMedicationRequest([
+                    'registrationId' => "RACIKAN-{$itemIdRacikan}", 'orgId' => $orgId,
+                    'medContainedId' => "med-{$itemIdRacikan}",
+                    'medicationCode' => '', 'medicationDisplay' => $namaRacikan,
+                    'ingredient' => RacikanKfa::fhirIngredient($grup['bahanList']),
+                    'medicationFormCode' => 'BS066', 'medicationFormDisplay' => 'Tablet',
+                    'medicationTypeCode' => 'SD', 'medicationTypeDisplay' => 'Compound',
+                    'prescriptionId' => $riHdrNo, 'prescriptionItemId' => $itemIdRacikan,
+                    'patientId' => $patientId, 'patientName' => $patientName,
+                    'encounterId' => $satuSehat['encounterId'], 'requesterId' => $practitionerId, 'requesterName' => $drDesc,
+                    'authoredOn' => $authoredOn, 'category' => 'inpatient',
+                    'dosageInstruction' => [], 'dispenseRequest' => [], 'reasonReference' => [],
+                ]);
+                if (!empty($respons['id'])) {
+                    $satuSehat['medicationRequestIds'][] = $respons['id'];
+                    $racikanTerkirim++;
+                }
+            }
+
             $this->saveResult($riHdrNo, $satuSehat);
 
             $pesan = 'Resep obat berhasil dikirim (' . count($satuSehat['medicationRequestIds']) . ' item).';
-            if ($this->racikanSkipped > 0) {
-                $pesan .= " Catatan: {$this->racikanSkipped} obat racikan belum dikirim (belum didukung).";
+            if ($racikanTerkirim > 0) {
+                $pesan .= " Termasuk {$racikanTerkirim} obat racikan.";
+            }
+            if ($racikanGagal !== []) {
+                $pesan .= ' ' . count($racikanGagal) . ' racikan tidak dikirim — ' . implode('; ', $racikanGagal) . '.';
             }
             if ($obatTanpaKfa > 0) {
                 $pesan .= " {$obatTanpaKfa} obat dilewati karena belum ada kode KFA di Master Obat.";
@@ -204,8 +250,11 @@ new class extends Component {
             <div class="font-semibold text-ink dark:text-gray-100">MedicationRequest</div>
             <div class="text-xs text-muted dark:text-gray-400">
                 Resep obat (KFA). Non-racikan.
-                @if ($racikanSkipped > 0)
-                    <span class="text-amber-600 dark:text-amber-400">{{ $racikanSkipped }} racikan belum didukung.</span>
+                @if ($racikanSiap > 0)
+                    Racikan: {{ $racikanSiap }} siap kirim.
+                @endif
+                @if ($racikanTakSiap > 0)
+                    <span class="text-amber-600 dark:text-amber-400">{{ $racikanTakSiap }} racikan bahannya belum ber-KFA.</span>
                 @endif
             </div>
             @if ($count > 0)
