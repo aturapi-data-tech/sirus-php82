@@ -17,6 +17,8 @@ new class extends Component {
     public bool $hasEncounter = false;
     public int $count = 0;
     public int $racikanSkipped = 0; // grup racikan yang belum didukung (compound)
+    public int $siapKirim = 0;      // obat non-racikan yang sudah punya kode KFA
+    public int $obatTanpaKfa = 0;   // non-racikan yang dilewati: productId/KFA kosong
 
     public function mount(?string $rjNo = null): void
     {
@@ -42,12 +44,66 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $ss = $data['satusehat'] ?? [];
-        $this->hasEncounter = !empty($ss['encounterId']);
-        $this->count = count($ss['medicationRequestIds'] ?? []);
+        $satuSehat = $data['satusehat'] ?? [];
+        $this->hasEncounter = !empty($satuSehat['encounterId']);
+        $this->count = count($satuSehat['medicationRequestIds'] ?? []);
         // Racikan belum didukung (compound). Dihitung & ditampilkan supaya tidak
         // hilang diam-diam — sebelumnya UGD sama sekali tak menyadarinya.
         $this->racikanSkipped = EresepJson::jumlahRacikan($data);
+
+        $tanpaKfa = 0;
+        $this->siapKirim = count($this->obatList($data, $tanpaKfa));
+        $this->obatTanpaKfa = $tanpaKfa;
+    }
+
+    /**
+     * Obat non-racikan yang siap dikirim: kode KFA diambil dari master obat
+     * (immst_products.product_id_satusehat) lewat productId — JSON e-resep sendiri
+     * tidak menyimpan kode KFA.
+     *
+     * $obatTanpaKfa diisi jumlah item yang terpaksa dilewati (productId kosong atau
+     * master belum punya KFA) supaya bisa dilaporkan, bukan hilang diam-diam.
+     *
+     * @return array<int, array{code:string, display:string}>
+     */
+    private function obatList(array $dataUGD, ?int &$obatTanpaKfa = null): array
+    {
+        $obatTanpaKfa = 0;
+        $itemList = [];
+        foreach (EresepJson::lembar($dataUGD) as $lembar) {
+            foreach ($lembar['nonRacikan'] as $obat) {
+                $productId = trim((string) ($obat['productId'] ?? ''));
+                if ($productId === '') {
+                    $obatTanpaKfa++;
+                    continue;
+                }
+                $itemList[] = ['productId' => $productId, 'productName' => (string) ($obat['productName'] ?? '')];
+            }
+        }
+        if (empty($itemList)) {
+            return [];
+        }
+
+        $kfaMap = DB::table('immst_products')
+            ->whereIn('product_id', array_values(array_unique(array_column($itemList, 'productId'))))
+            ->get(['product_id', 'product_id_satusehat', 'product_name_satusehat'])
+            ->keyBy('product_id');
+
+        $obatKfaList = [];
+        foreach ($itemList as $obat) {
+            $master = $kfaMap->get($obat['productId']);
+            $kfaCode = trim((string) ($master->product_id_satusehat ?? ''));
+            if ($kfaCode === '') {
+                $obatTanpaKfa++;
+                continue;
+            }
+            $obatKfaList[] = [
+                'code' => $kfaCode,
+                'display' => trim((string) ($master->product_name_satusehat ?? '')) ?: $obat['productName'],
+            ];
+        }
+
+        return $obatKfaList;
     }
 
     public function kirimForCurrent(): void
@@ -67,9 +123,9 @@ new class extends Component {
             $dataUGD = $this->findDataUGD($rjNo);
             if (empty($dataUGD)) { $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.'); return; }
 
-            $ss = $dataUGD['satusehat'] ?? [];
-            if (empty($ss['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($ss['medicationRequestIds'])) { $this->dispatch('toast', type: 'info', message: 'Resep obat sudah pernah dikirim.'); return; }
+            $satuSehat = $dataUGD['satusehat'] ?? [];
+            if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
+            if (!empty($satuSehat['medicationRequestIds'])) { $this->dispatch('toast', type: 'info', message: 'Resep obat sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataUGD['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -80,36 +136,48 @@ new class extends Component {
             $drDesc = $dataUGD['drDesc'] ?? '';
             $patientName = $dataUGD['regName'] ?? '';
 
-            $resepList = $dataUGD['eresep'] ?? ($dataUGD['resepObat'] ?? []);
-            if (empty($resepList)) { $this->dispatch('toast', type: 'error', message: 'Tidak ada data resep obat.'); return; }
-
-            $ss['medicationRequestIds'] = [];
-            foreach ($resepList as $idx => $obat) {
-                $kfaCode = $obat['kfaCode'] ?? ($obat['product_id_satusehat'] ?? '');
-                $kfaDisplay = $obat['kfaDisplay'] ?? ($obat['product_name_satusehat'] ?? ($obat['namaObat'] ?? ''));
-                if (empty($kfaCode)) continue;
-
-                $itemId = "{$rjNo}-" . ($idx + 1);
-                $res = $this->createMedicationRequest([
-                    'registrationId' => $kfaCode, 'orgId' => $orgId, 'medContainedId' => "med-{$itemId}",
-                    'medicationCode' => $kfaCode, 'medicationDisplay' => $kfaDisplay,
-                    'medicationFormCode' => $obat['formCode'] ?? 'BS066', 'medicationFormDisplay' => $obat['formDisplay'] ?? 'Tablet',
-                    'medicationTypeCode' => ($obat['isCompound'] ?? false) ? 'SD' : 'NC',
-                    'medicationTypeDisplay' => ($obat['isCompound'] ?? false) ? 'Compound' : 'Non-compound',
-                    'prescriptionId' => $rjNo, 'patientId' => $patientId, 'patientName' => $patientName,
-                    'encounterId' => $ss['encounterId'], 'requesterId' => $practitionerId, 'requesterName' => $drDesc,
-                    'authoredOn' => $ugdDate->toIso8601String(), 'category' => 'inpatient',
-                    'dosageInstruction' => $obat['dosageInstruction'] ?? [], 'dispenseRequest' => $obat['dispenseRequest'] ?? [],
-                    'reasonReference' => [],
-                ]);
-                if (!empty($res['id'])) $ss['medicationRequestIds'][] = $res['id'];
+            $obatTanpaKfa = 0;
+            $obatList = $this->obatList($dataUGD, $obatTanpaKfa);
+            if (empty($obatList)) {
+                $pesan = $this->racikanSkipped > 0 && $obatTanpaKfa === 0
+                    ? 'Resep pasien ini hanya racikan — pengiriman racikan (compound) belum didukung.'
+                    : 'Tidak ada obat non-racikan ber-KFA untuk dikirim. Pastikan product_id_satusehat terisi di Master Obat.';
+                $this->dispatch('toast', type: 'error', message: $pesan);
+                return;
             }
 
-            if (empty($ss['medicationRequestIds'])) { $this->dispatch('toast', type: 'error', message: 'Semua obat tanpa KFA — tidak ada yang dikirim.'); return; }
+            $satuSehat['medicationRequestIds'] = [];
+            foreach ($obatList as $indeks => $obat) {
+                $kfaCode = $obat['code'];
+                $kfaDisplay = $obat['display'];
 
-            $this->saveResult($rjNo, $ss);
-            $count = count($ss['medicationRequestIds']);
-            $this->dispatch('toast', type: 'success', message: "Resep obat berhasil dikirim ({$count} item).");
+                $itemId = "{$rjNo}-" . ($indeks + 1);
+                $respons = $this->createMedicationRequest([
+                    'registrationId' => $kfaCode, 'orgId' => $orgId, 'medContainedId' => "med-{$itemId}",
+                    'medicationCode' => $kfaCode, 'medicationDisplay' => $kfaDisplay,
+                    'medicationFormCode' => 'BS066', 'medicationFormDisplay' => 'Tablet',
+                    'medicationTypeCode' => 'NC', 'medicationTypeDisplay' => 'Non-compound',
+                    'prescriptionId' => $rjNo, 'patientId' => $patientId, 'patientName' => $patientName,
+                    'encounterId' => $satuSehat['encounterId'], 'requesterId' => $practitionerId, 'requesterName' => $drDesc,
+                    // Encounter UGD kelasnya EMER (rawat jalan darurat), bukan rawat inap —
+                    // kategorinya ikut 'outpatient' seperti RJ, bukan 'inpatient'.
+                    'authoredOn' => $ugdDate->toIso8601String(), 'category' => 'outpatient',
+                    'dosageInstruction' => [], 'dispenseRequest' => [], 'reasonReference' => [],
+                ]);
+                if (!empty($respons['id'])) $satuSehat['medicationRequestIds'][] = $respons['id'];
+            }
+
+            $this->saveResult($rjNo, $satuSehat);
+
+            // Yang tak terkirim WAJIB dilaporkan — lihat catatan App\Support\EresepJson.
+            $pesan = 'Resep obat berhasil dikirim (' . count($satuSehat['medicationRequestIds']) . ' item).';
+            if ($this->racikanSkipped > 0) {
+                $pesan .= " Catatan: {$this->racikanSkipped} obat racikan belum dikirim (belum didukung).";
+            }
+            if ($obatTanpaKfa > 0) {
+                $pesan .= " {$obatTanpaKfa} obat dilewati karena belum ada kode KFA di Master Obat.";
+            }
+            $this->dispatch('toast', type: 'success', message: $pesan);
             $this->dispatch('ugd-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Resep obat gagal: ' . $e->getMessage());
@@ -122,21 +190,21 @@ new class extends Component {
         return (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
-    private function saveResult(string $rjNo, array $ss): void
+    private function saveResult(string $rjNo, array $satuSehat): void
     {
-        DB::transaction(function () use ($rjNo, $ss) {
+        DB::transaction(function () use ($rjNo, $satuSehat) {
             $this->lockUGDRow($rjNo);
             $data = $this->findDataUGD($rjNo);
-            $data['satusehat'] = $ss;
+            $data['satusehat'] = $satuSehat;
             $this->updateJsonUGD((int) $rjNo, $data);
         });
     }
 
-    private function parseDate(string $str): Carbon
+    private function parseDate(string $teksTanggal): Carbon
     {
-        if (empty($str)) return Carbon::now();
-        try { return Carbon::createFromFormat('d/m/Y H:i:s', $str); } catch (\Throwable) {
-            try { return Carbon::parse($str); } catch (\Throwable) { return Carbon::now(); }
+        if (empty($teksTanggal)) return Carbon::now();
+        try { return Carbon::createFromFormat('d/m/Y H:i:s', $teksTanggal); } catch (\Throwable) {
+            try { return Carbon::parse($teksTanggal); } catch (\Throwable) { return Carbon::now(); }
         }
     }
 };
@@ -151,9 +219,12 @@ new class extends Component {
         <div>
             <div class="font-semibold text-ink dark:text-gray-100">Medication Request</div>
             <div class="text-xs text-muted dark:text-gray-400">
-                Resep obat (KFA). Non-racikan.
+                Resep obat (KFA). Non-racikan: {{ $siapKirim }} siap kirim.
                 @if ($racikanSkipped > 0)
                     <span class="text-amber-600 dark:text-amber-400">{{ $racikanSkipped }} racikan belum didukung.</span>
+                @endif
+                @if ($obatTanpaKfa > 0)
+                    <span class="text-amber-600 dark:text-amber-400">{{ $obatTanpaKfa }} obat belum ber-KFA di Master Obat.</span>
                 @endif
             </div>
             @if ($count > 0)
