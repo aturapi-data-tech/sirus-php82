@@ -139,6 +139,7 @@ class AppMenu
             // ── Rawat Inap ─────────────────────────────────────────────
             $entry(['group' => 'Rawat Inap', 'groupOrder' => 7, 'order' => 1, 'route' => 'ri.daftar', 'title' => 'Daftar Rawat Inap', 'desc' => 'Pendaftaran, transfer kamar, & manajemen pasien rawat inap', 'roles' => ['admin', 'manager medis', 'manager umum', 'supervisor tu', 'mr', 'perawat', 'dokter', 'casemix', 'tu', 'apoteker', 'gizi', 'laboratorium'], 'badge' => 'RI']),
             $entry(['group' => 'Rawat Inap', 'groupOrder' => 7, 'order' => 2, 'route' => 'ri.update-tt-ri', 'title' => 'Sinkronisasi Tempat Tidur', 'desc' => 'Sync ketersediaan TT rawat inap → Aplicares BPJS & SIRS Kemenkes', 'roles' => ['admin', 'mr', 'perawat', 'dokter'], 'badge' => 'TT']),
+            $entry(['group' => 'Rawat Inap', 'groupOrder' => 7, 'order' => 3, 'route' => 'ri.gizi', 'title' => 'Gizi Rawat Inap', 'desc' => 'Program diet harian pasien RI & rekap porsi dapur', 'roles' => ['admin', 'manager medis', 'manager umum', 'gizi'], 'badge' => 'GIZI']),
 
             // ── Casemix ──────────────────────────────────────
             $entry(['group' => 'Casemix', 'groupOrder' => 8, 'order' => 1, 'route' => 'transaksi.casemix', 'title' => 'Casemix', 'desc' => 'Daftar pasien bulanan — tab RJ, UGD, RI dalam 1 halaman', 'roles' => ['admin', 'manager umum', 'casemix', 'tu'], 'badge' => 'CSX']),

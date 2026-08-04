@@ -295,6 +295,7 @@ new class extends Component {
                 'TB ' . (data_get($dataPenilaian, 'tinggiBadan') ?: '-') . ' cm',
                 'IMT ' . (data_get($dataPenilaian, 'imt') ?: '-'),
                 data_get($dataPenilaian, 'kategoriGizi'),
+                filled(data_get($dataPenilaian, 'programDiet')) ? 'diet: ' . data_get($dataPenilaian, 'programDiet') : null,
             ]),
             'dekubitus' => $gabung([data_get($dataPenilaian, 'dekubitus'), data_get($dataPenilaian, 'kategoriResiko')]),
             'resikoBunuhDiri' => $gabung([data_get($dataPenilaian, 'resikoBunuhDiri'), data_get($dataPenilaian, 'kategoriResiko')]),

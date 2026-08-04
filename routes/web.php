@@ -310,6 +310,10 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/ri/daftar-bulanan', 'pages::transaksi.ri.daftar-ri-bulanan.daftar-ri-bulanan')
         ->name('ri.daftar-bulanan');
 
+    // Gizi Rawat Inap — worklist unit gizi (program diet harian + rekap porsi)
+    Route::livewire('/ri/gizi', 'pages::transaksi.ri.gizi-ri.gizi-ri')
+        ->name('ri.gizi');
+
     // ===========================================
     // RI — UPDATE TEMPAT TIDUR (Aplicares + SIRS)
     // ===========================================

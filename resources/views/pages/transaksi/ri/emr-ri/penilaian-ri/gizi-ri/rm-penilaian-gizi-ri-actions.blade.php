@@ -5,6 +5,7 @@ use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
+use App\Support\GiziOptions;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
@@ -31,9 +32,16 @@ new class extends Component {
             'skorSkrining' => 0,
             'kategoriGizi' => '',
             'skriningGizi' => [],
+            'programDiet' => '',
+            'programDietKet' => '',
             'catatan' => '',
         ],
     ];
+
+    // Port list GIZIM_DIET dari Oracle Forms rit003gizi.fmb (ANTRI_RI_GIZI → RSTXN_RIGIZIS),
+    // urutan & redaksi persis list item legacy. Sumber tunggal: App\Support\GiziOptions
+    // (dipakai juga worklist Gizi Rawat Inap /ri/gizi).
+    public array $programDietOptions = GiziOptions::PROGRAM_DIET;
 
     public array $skriningGiziAwalOptions = [
         'perubahanBeratBadan' => [['perubahan' => 'Tidak ada perubahan', 'score' => 0], ['perubahan' => 'Turun 5-10%', 'score' => 1], ['perubahan' => 'Turun >10%', 'score' => 2]],
@@ -223,89 +231,119 @@ new class extends Component {
         <x-border-form title="Form Penilaian Gizi" align="start" bgcolor="bg-surface-soft">
             <div class="mt-4 space-y-4">
 
-                <div>
-                    <x-input-label value="Tanggal Penilaian *" />
-                    <div class="flex gap-2 mt-1 sm:max-w-md">
-                        <x-text-input wire:model="formEntryGizi.tglPenilaian" placeholder="dd/mm/yyyy hh:ii:ss"
-                            :error="$errors->has('formEntryGizi.tglPenilaian')" class="w-full" />
-                        <x-now-button wire:click="setTglPenilaianGizi" />
-                    </div>
-                </div>
+                {{-- Antropometri & Skrining — dua frame sebelahan --}}
+                <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
 
-                {{-- Berat Badan / Tinggi Badan / IMT / Kebutuhan Gizi — 1 baris --}}
-                <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                    <div>
-                        <x-input-label value="Berat Badan (kg) *" />
-                        <x-text-input type="number" step="0.1" wire:model.live="formEntryGizi.gizi.beratBadan"
-                            :error="$errors->has('formEntryGizi.gizi.beratBadan')" class="w-full mt-1" />
-                        <x-input-error :messages="$errors->get('formEntryGizi.gizi.beratBadan')" class="mt-1" />
-                    </div>
-                    <div>
-                        <x-input-label value="Tinggi Badan (cm) *" />
-                        <x-text-input type="number" step="0.1" wire:model.live="formEntryGizi.gizi.tinggiBadan"
-                            :error="$errors->has('formEntryGizi.gizi.tinggiBadan')" class="w-full mt-1" />
-                        <x-input-error :messages="$errors->get('formEntryGizi.gizi.tinggiBadan')" class="mt-1" />
-                    </div>
-                    <div>
-                        <x-input-label value="IMT (auto)" />
-                        <x-text-input wire:model="formEntryGizi.gizi.imt" readonly
-                            class="w-full mt-1 bg-surface-soft cursor-not-allowed" />
-                    </div>
-                    <div>
-                        <x-input-label value="Kebutuhan Gizi" />
-                        <x-text-input wire:model="formEntryGizi.gizi.kebutuhanGizi" placeholder="1800 kkal/hari"
-                            class="w-full mt-1" />
-                    </div>
-                </div>
-
-                <x-border-form title="Skrining Gizi Awal" align="start" bgcolor="bg-canvas">
-                    <div class="mt-3 space-y-3">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <span class="px-2 py-0.5 text-xs font-bold text-white rounded-full bg-brand">
-                                Skor: {{ $formEntryGizi['gizi']['skorSkrining'] ?? 0 }}
-                            </span>
-                            @if ($formEntryGizi['gizi']['kategoriGizi'] ?? '')
-                                <span
-                                    class="px-2 py-0.5 text-xs font-bold rounded-full
-                                    {{ ($formEntryGizi['gizi']['kategoriGizi'] ?? '') == 'Berisiko Malnutrisi' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700' }}">
-                                    {{ $formEntryGizi['gizi']['kategoriGizi'] }}
-                                </span>
-                            @endif
-                            <span class="text-xs text-muted-soft">Skor ≥2 = Berisiko Malnutrisi</span>
-                        </div>
-                        @php $fieldKeys = ['perubahanBeratBadan' => 'perubahan', 'asupanMakanan' => 'asupan', 'penyakit' => 'penyakit']; @endphp
-                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        @foreach ($skriningGiziAwalOptions as $key => $options)
-                            @php
-                                $fk = $fieldKeys[$key] ?? $key;
-                                $lb = match ($key) {
-                                    'perubahanBeratBadan' => 'Perubahan Berat Badan',
-                                    'asupanMakanan' => 'Asupan Makanan',
-                                    'penyakit' => 'Kondisi Penyakit',
-                                    default => ucwords($key),
-                                };
-                            @endphp
+                    {{-- Frame: tanggal + antropometri + kebutuhan gizi --}}
+                    <x-border-form title="Antropometri & Kebutuhan Gizi" align="start" bgcolor="bg-canvas">
+                        <div class="mt-3 space-y-4">
                             <div>
-                                <x-input-label :value="$lb" />
-                                <x-select-input wire:model.live="formEntryGizi.gizi.skriningGizi.{{ $key }}"
-                                    class="w-full mt-1">
-                                    <option value="">-- Pilih --</option>
-                                    @foreach ($options as $opt)
-                                        <option value="{{ $opt[$fk] }}">
-                                            {{ $opt[$fk] }} (Skor: {{ $opt['score'] }})
-                                        </option>
-                                    @endforeach
-                                </x-select-input>
+                                <x-input-label value="Tanggal Penilaian *" />
+                                <div class="flex gap-2 mt-1 sm:max-w-md">
+                                    <x-text-input wire:model="formEntryGizi.tglPenilaian" placeholder="dd/mm/yyyy hh:ii:ss"
+                                        :error="$errors->has('formEntryGizi.tglPenilaian')" class="w-full" />
+                                    <x-now-button wire:click="setTglPenilaianGizi" />
+                                </div>
                             </div>
-                        @endforeach
+
+                            {{-- Berat Badan / Tinggi Badan / IMT / Kebutuhan Gizi — 1 baris --}}
+                            <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                                <div>
+                                    <x-input-label value="Berat Badan (kg) *" />
+                                    <x-text-input type="number" step="0.1" wire:model.live="formEntryGizi.gizi.beratBadan"
+                                        :error="$errors->has('formEntryGizi.gizi.beratBadan')" class="w-full mt-1" />
+                                    <x-input-error :messages="$errors->get('formEntryGizi.gizi.beratBadan')" class="mt-1" />
+                                </div>
+                                <div>
+                                    <x-input-label value="Tinggi Badan (cm) *" />
+                                    <x-text-input type="number" step="0.1" wire:model.live="formEntryGizi.gizi.tinggiBadan"
+                                        :error="$errors->has('formEntryGizi.gizi.tinggiBadan')" class="w-full mt-1" />
+                                    <x-input-error :messages="$errors->get('formEntryGizi.gizi.tinggiBadan')" class="mt-1" />
+                                </div>
+                                <div>
+                                    <x-input-label value="IMT (auto)" />
+                                    <x-text-input wire:model="formEntryGizi.gizi.imt" readonly
+                                        class="w-full mt-1 bg-surface-soft cursor-not-allowed" />
+                                </div>
+                                <div>
+                                    <x-input-label value="Kebutuhan Gizi" />
+                                    <x-text-input wire:model="formEntryGizi.gizi.kebutuhanGizi" placeholder="1800 kkal/hari"
+                                        class="w-full mt-1" />
+                                </div>
+                            </div>
+                        </div>
+                    </x-border-form>
+
+                    <x-border-form title="Skrining Gizi" align="start" bgcolor="bg-canvas">
+                        <div class="mt-3 space-y-3">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="px-2 py-0.5 text-xs font-bold text-white rounded-full bg-brand">
+                                    Skor: {{ $formEntryGizi['gizi']['skorSkrining'] ?? 0 }}
+                                </span>
+                                @if ($formEntryGizi['gizi']['kategoriGizi'] ?? '')
+                                    <span
+                                        class="px-2 py-0.5 text-xs font-bold rounded-full
+                                        {{ ($formEntryGizi['gizi']['kategoriGizi'] ?? '') == 'Berisiko Malnutrisi' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700' }}">
+                                        {{ $formEntryGizi['gizi']['kategoriGizi'] }}
+                                    </span>
+                                @endif
+                                <span class="text-xs text-muted-soft">Skor ≥2 = Berisiko Malnutrisi</span>
+                            </div>
+                            @php $fieldKeys = ['perubahanBeratBadan' => 'perubahan', 'asupanMakanan' => 'asupan', 'penyakit' => 'penyakit']; @endphp
+                            {{-- 3 dropdown skrining — 1 baris --}}
+                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            @foreach ($skriningGiziAwalOptions as $key => $options)
+                                @php
+                                    $fk = $fieldKeys[$key] ?? $key;
+                                    $lb = match ($key) {
+                                        'perubahanBeratBadan' => 'Perubahan Berat Badan',
+                                        'asupanMakanan' => 'Asupan Makanan',
+                                        'penyakit' => 'Kondisi Penyakit',
+                                        default => ucwords($key),
+                                    };
+                                @endphp
+                                <div>
+                                    <x-input-label :value="$lb" />
+                                    <x-select-input wire:model.live="formEntryGizi.gizi.skriningGizi.{{ $key }}"
+                                        class="w-full mt-1">
+                                        <option value="">-- Pilih --</option>
+                                        @foreach ($options as $opt)
+                                            <option value="{{ $opt[$fk] }}">
+                                                {{ $opt[$fk] }} (Skor: {{ $opt['score'] }})
+                                            </option>
+                                        @endforeach
+                                    </x-select-input>
+                                </div>
+                            @endforeach
+                            </div>
+                        </div>
+                    </x-border-form>
+
+                </div>
+
+                {{-- Frame: program diet (port "Jenis Diet" rit003gizi.fmb) + catatan — sebaris --}}
+                <x-border-form title="Program Diet & Catatan" align="start" bgcolor="bg-canvas">
+                    <div class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div>
+                            <x-input-label value="Program Diet" />
+                            <x-select-input wire:model="formEntryGizi.gizi.programDiet" class="w-full mt-1">
+                                <option value="">-- Pilih Jenis Diet --</option>
+                                @foreach ($programDietOptions as $diet)
+                                    <option value="{{ $diet }}">{{ $diet }}</option>
+                                @endforeach
+                            </x-select-input>
+                        </div>
+                        <div>
+                            <x-input-label value="Keterangan Diet" />
+                            <x-text-input wire:model="formEntryGizi.gizi.programDietKet"
+                                placeholder="mis. bertahap, sesuai toleransi" class="w-full mt-1" />
+                        </div>
+                        <div>
+                            <x-input-label value="Catatan" />
+                            <x-text-input wire:model="formEntryGizi.gizi.catatan" class="w-full mt-1" />
                         </div>
                     </div>
                 </x-border-form>
-
-                <div>
-                    <x-input-label value="Catatan" />
-                    <x-textarea wire:model="formEntryGizi.gizi.catatan" class="w-full mt-1" rows="2" />
-                </div>
 
             </div>
         </x-border-form>
@@ -314,16 +352,13 @@ new class extends Component {
     @if (collect($dataDaftarRi['penilaian']['gizi'] ?? [])->filter(fn($r) => filled(data_get($r, 'tglPenilaian')))->isNotEmpty())
         <x-border-form title="Riwayat Penilaian Gizi" align="start" bgcolor="bg-canvas">
             <div class="mt-3 overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
-                <table class="w-full text-xs text-left text-muted dark:text-gray-300">
+                <table class="w-full text-sm text-left text-muted dark:text-gray-300">
                     <thead class="bg-surface-soft dark:bg-gray-700 text-muted dark:text-gray-400">
                         <tr>
-                            <th class="px-3 py-2">Tgl Penilaian</th>
-                            <th class="px-3 py-2">Petugas</th>
-                            <th class="px-3 py-2">BB (kg)</th>
-                            <th class="px-3 py-2">TB (cm)</th>
-                            <th class="px-3 py-2">IMT</th>
-                            <th class="px-3 py-2">Skor</th>
-                            <th class="px-3 py-2">Kategori</th>
+                            <th class="px-3 py-2">Tgl Penilaian / Petugas</th>
+                            <th class="px-3 py-2">BB / TB / IMT</th>
+                            <th class="px-3 py-2">Skrining</th>
+                            <th class="px-3 py-2">Program Diet</th>
                             <th class="px-3 py-2">Catatan</th>
                             @if (!$isFormLocked)
                                 <th class="px-3 py-2"></th>
@@ -342,21 +377,34 @@ new class extends Component {
                                             : 'hover:bg-surface-soft');
                             @endphp
                             <tr class="{{ $rowBg }}">
-                                <td class="px-3 py-2 whitespace-nowrap">{{ $row['tglPenilaian'] ?? '-' }}</td>
-                                <td class="px-3 py-2">{{ $row['petugasPenilai'] ?? '-' }}</td>
-                                <td class="px-3 py-2">{{ $row['gizi']['beratBadan'] ?? '-' }}</td>
-                                <td class="px-3 py-2">{{ $row['gizi']['tinggiBadan'] ?? '-' }}</td>
-                                <td class="px-3 py-2 font-bold">{{ $row['gizi']['imt'] ?? '-' }}</td>
-                                <td class="px-3 py-2 font-bold">{{ $row['gizi']['skorSkrining'] ?? '-' }}</td>
+                                <td class="px-3 py-2 whitespace-nowrap">
+                                    {{ $row['tglPenilaian'] ?? '-' }}
+                                    <span class="block text-xs text-muted-soft">{{ $row['petugasPenilai'] ?? '-' }}</span>
+                                </td>
+                                <td class="px-3 py-2 whitespace-nowrap">
+                                    {{ $row['gizi']['beratBadan'] ?? '' ?: '-' }} kg
+                                    · {{ $row['gizi']['tinggiBadan'] ?? '' ?: '-' }} cm
+                                    · IMT <span class="font-bold">{{ $row['gizi']['imt'] ?? '' ?: '-' }}</span>
+                                </td>
                                 <td class="px-3 py-2">
-                                    <span
-                                        class="px-2 py-0.5 rounded-full text-xs font-medium
-                                        {{ $kat === 'Berisiko Malnutrisi' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700' }}">
-                                        {{ $kat }}
-                                    </span>
+                                    @if (filled($kat) && $kat !== '-')
+                                        <span
+                                            class="px-2 py-0.5 rounded-full text-sm font-medium whitespace-nowrap
+                                            {{ $kat === 'Berisiko Malnutrisi' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700' }}">
+                                            {{ $kat }} (skor {{ $row['gizi']['skorSkrining'] ?? '-' }})
+                                        </span>
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2">
+                                    {{ $row['gizi']['programDiet'] ?? '' ?: '-' }}
+                                    @if (filled($row['gizi']['programDietKet'] ?? ''))
+                                        <span class="block text-xs text-muted-soft">{{ $row['gizi']['programDietKet'] }}</span>
+                                    @endif
                                 </td>
                                 <td class="px-3 py-2 text-muted max-w-xs truncate">
-                                    {{ $row['gizi']['catatan'] ?? '-' }}</td>
+                                    {{ $row['gizi']['catatan'] ?? '' ?: '-' }}</td>
                                 @if (!$isFormLocked)
                                     <td class="px-3 py-2">
                                         <x-outline-button type="button"
@@ -379,6 +427,6 @@ new class extends Component {
             </div>
         </x-border-form>
     @else
-        <p class="text-xs text-center text-muted-soft py-6">Belum ada data penilaian gizi.</p>
+        <p class="text-sm text-center text-muted-soft py-6">Belum ada data penilaian gizi.</p>
     @endif
 </div>
