@@ -36,9 +36,18 @@ new class extends Component {
                 'rj-radiologi' => 'Order Rad → Modul Radiologi',
                 'rj-eresep' => 'E-Resep → Apotek',
             ],
-            'Jalur Lain' => [
-                'ugd' => 'UGD',
-                'ri' => 'Rawat Inap',
+            'UGD' => [
+                'ugd-daftar' => '1. Daftar UGD',
+                'ugd-pelayanan' => '2. Pelayanan UGD (EMR)',
+                'ugd-apotek' => '3. Apotek UGD',
+                'ugd-kasir' => '4. Kasir UGD',
+            ],
+            'Rawat Inap' => [
+                'ri-daftar' => '1. Masuk RI (Pendaftaran)',
+                'ri-emr' => '2. EMR RI Harian',
+                'ri-apotek' => '3. Apotek RI (per lembar)',
+                'ri-administrasi' => '4. Administrasi & Pulang',
+                'ri-kasir' => '5. Kasir RI',
             ],
         ];
 
@@ -935,55 +944,92 @@ new class extends Component {
                         </div>
                     </section>
 
-                    {{-- ====== UGD ====== --}}
-                    <section x-show="section === 'ugd'" x-cloak>
-                        <div class="ds-eyebrow mb-3">Jalur Lain</div>
-                        <h1 class="ds-display-md mb-4">UGD — Unit Gawat Darurat</h1>
+                    {{-- ====== UGD 1 — DAFTAR ====== --}}
+                    <section x-show="section === 'ugd-daftar'" x-cloak>
+                        <div class="ds-eyebrow mb-3">UGD — Tahap 1</div>
+                        <h1 class="ds-display-md mb-4">Daftar UGD (Pendaftaran)</h1>
                         <p class="ds-body-md mb-6" style="max-width:62ch">
-                            Kerangkanya sama dengan RJ (Daftar → Pelayanan/EMR → Apotek → Kasir) dengan dua
-                            perbedaan watak: pasien datang <strong>tanpa booking/poli</strong> sehingga
-                            pendaftaran dibuat seringkas mungkin, dan pelayanan dibuka dengan
-                            <strong>triase</strong> — memilah kegawatan sebelum apa pun.
+                            Pasien gawat darurat datang <strong>tanpa booking dan tanpa poli</strong>, jadi
+                            pendaftaran dibuat seringkas mungkin — pelayanan tidak menunggu administrasi
+                            lengkap. Menu: <span class="ds-code">/ugd/daftar</span>
+                            (Mr, Admin, Supervisor Tu, Manager Umum).
                         </p>
 
                         <div class="ds-card-outline mb-6" style="padding:20px">
                             @include('pages.panduan-dev.alur-pelayanan.partial-pipeline', ['steps' => [
-                                ['chip' => null, 'judul' => 'Pasien datang', 'sub' => 'tanpa booking'],
-                                ['chip' => 'Mr/Tu', 'judul' => 'Daftar UGD', 'sub' => 'identitas · klaim · SEP', 'chipWarna' => 'sky'],
-                                ['chip' => 'Triase', 'judul' => 'P0–P3', 'sub' => 'pilah kegawatan', 'chipWarna' => 'red'],
-                                ['chip' => 'EMR', 'judul' => 'Asesmen & tindakan', 'sub' => 'obat/cairan · observasi', 'chipWarna' => 'sky'],
-                                ['chip' => null, 'judul' => 'Tindak lanjut', 'sub' => 'MRS · Rujuk · Selesai · Meninggal'],
-                                ['chip' => null, 'judul' => 'Apotek & Kasir UGD', 'sub' => 'pola sama RJ', 'chipWarna' => 'green'],
+                                ['chip' => null, 'judul' => 'Pasien datang', 'sub' => 'tanpa booking / rujukan'],
+                                ['chip' => 'Mr/Tu', 'judul' => 'Input pendaftaran', 'sub' => 'pasien · cara masuk · dokter jaga · klaim', 'chipWarna' => 'sky'],
+                                ['chip' => 'BPJS', 'judul' => 'SEP UGD', 'sub' => 'VClaim — bisa menyusul'],
+                                ['chip' => 'A', 'judul' => 'Langsung dilayani', 'sub' => 'tanpa antre poli', 'chipWarna' => 'green'],
                             ]])
                         </div>
 
-                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Menu & role</div>
+                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Yang diisi saat mendaftar</div>
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            <ol class="ds-body-md space-y-3" style="list-style:decimal; padding-left:1.4em">
+                                <li>Cari pasien dari Master Pasien — pasien tak dikenal/tak sadar bisa
+                                    didaftarkan dengan data minimal dulu, dilengkapi belakangan.</li>
+                                <li><strong>Cara masuk</strong> (datang sendiri / rujukan — daftar dari master
+                                    cara masuk, menentukan status rujukan) + <strong>dokter jaga</strong> +
+                                    <strong>klaim</strong> (UMUM/BPJS) + shift.</li>
+                                <li>Pasien BPJS: buat <strong>SEP</strong> dari aksi baris (VClaim) —
+                                    boleh menyusul setelah pasien tertangani.</li>
+                            </ol>
+                        </div>
+
+                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Aksi per baris — sama keluarga dengan Daftar RJ</div>
                         <div class="ds-card-outline mb-6" style="padding:0;overflow:hidden">
                             <div class="overflow-x-auto">
                                 <table class="ds-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Menu (URL)</th>
-                                            <th>Role</th>
-                                            <th>Fungsi</th>
-                                        </tr>
-                                    </thead>
                                     <tbody>
                                         @foreach ([
-                                            ['Daftar UGD — /ugd/daftar', 'Mr, Admin, Supervisor Tu, Manager Umum', 'Pendaftaran & manajemen pasien UGD harian'],
-                                            ['Pelayanan UGD — /ugd/pelayanan', 'Dokter, Perawat, Admin, Manager Medis', 'EMR UGD: triase, asesmen, tindakan, resep'],
-                                            ['Antrian Apotek UGD — /transaksi/ugd/antrian-apotek-ugd', 'Apoteker, Admin, Manager Medis', 'Telaah & serah obat pasien UGD'],
-                                            ['Antrian Kasir UGD — /transaksi/ugd/antrian-kasir-ugd', 'Tu, Admin, Supervisor Tu, Manager Umum', 'Administrasi & pembayaran pasien UGD'],
-                                        ] as [$menu, $role, $fungsi])
+                                            ['Edit Pendaftaran', 'Lengkapi/ubah data; batal daftar'],
+                                            ['SEP / VClaim', 'Buat & kelola SEP UGD'],
+                                            ['Diagnosa · iDRG · SATUSEHAT · Berkas BPJS', 'Sama seperti RJ — klaim & pelaporan'],
+                                            ['Info kelengkapan EMR', 'Persentase EMR + bagian yang belum terisi'],
+                                        ] as [$aksi, $untuk])
                                             <tr>
-                                                <td class="ds-td-strong">{{ $menu }}</td>
-                                                <td class="ds-td-meta">{{ $role }}</td>
-                                                <td>{{ $fungsi }}</td>
+                                                <td class="ds-td-token">{{ $aksi }}</td>
+                                                <td>{{ $untuk }}</td>
                                             </tr>
                                         @endforeach
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+
+                        <div class="ds-card-outline" style="padding:16px 20px">
+                            <span class="ds-spike" style="vertical-align:middle"></span>
+                            <span class="ds-body-sm" style="color:var(--body-strong)">
+                                Satu kunjungan UGD = satu baris <span class="ds-code">rstxn_ugdhdrs</span> +
+                                JSON <span class="ds-code">datadaftarugd_json</span> — pola kembar dengan RJ.
+                                Kolom status di list menyesuaikan role: petugas pendaftaran melihat
+                                <span class="ds-code">rj_status</span>, dokter/perawat melihat
+                                <span class="ds-code">erm_status</span>. Badge <strong>triase</strong> ikut
+                                tampil di list begitu perawat mengisinya.
+                            </span>
+                        </div>
+                    </section>
+
+                    {{-- ====== UGD 2 — PELAYANAN ====== --}}
+                    <section x-show="section === 'ugd-pelayanan'" x-cloak>
+                        <div class="ds-eyebrow mb-3">UGD — Tahap 2</div>
+                        <h1 class="ds-display-md mb-4">Pelayanan UGD (EMR)</h1>
+                        <p class="ds-body-md mb-6" style="max-width:62ch">
+                            Worklist dokter &amp; perawat UGD (<span class="ds-code">/ugd/pelayanan</span>) —
+                            filter <span class="ds-code">erm_status</span>: A = Proses Dilayani (default),
+                            L = Selesai. Pelayanan selalu dibuka dengan <strong>triase</strong>: memilah
+                            kegawatan sebelum apa pun.
+                        </p>
+
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            @include('pages.panduan-dev.alur-pelayanan.partial-pipeline', ['steps' => [
+                                ['chip' => 'Triase', 'judul' => 'P0–P3', 'sub' => 'tingkat kegawatan', 'chipWarna' => 'red'],
+                                ['chip' => 'Perawat', 'judul' => 'Screening & penilaian', 'sub' => 'TTV · nyeri · risiko jatuh', 'chipWarna' => 'sky'],
+                                ['chip' => 'Dokter', 'judul' => 'Asesmen & diagnosa', 'sub' => 'status medik · ICD-10', 'chipWarna' => 'sky'],
+                                ['chip' => null, 'judul' => 'Tindakan', 'sub' => 'obat & cairan · observasi berkala'],
+                                ['chip' => null, 'judul' => 'Tindak lanjut', 'sub' => 'ujung kunjungan', 'chipWarna' => 'green'],
+                            ]])
                         </div>
 
                         <div class="ds-caption-up mb-3" style="color:var(--muted)">Triase — kartu pasien diberi warna kegawatan</div>
@@ -1015,57 +1061,160 @@ new class extends Component {
                             </div>
                         </div>
 
-                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Yang beda dari RJ</div>
-                        <div class="ds-card-outline mb-6" style="padding:20px">
-                            <ul class="ds-body-md space-y-3" style="list-style:disc; padding-left:1.2em">
-                                <li><strong>Triase</strong> diisi perawat di awal EMR (tingkat kegawatan) —
-                                    badge warnanya menempel di list Daftar &amp; Pelayanan UGD.</li>
-                                <li>EMR punya tab khas: <strong>Obat &amp; Cairan</strong> (pemberian langsung
-                                    di UGD), <strong>Observasi</strong> berkala, <strong>Status Medik</strong>,
-                                    dan <strong>Rujukan antar RS</strong>.</li>
-                                <li><strong>Tindak lanjut</strong> di Perencanaan menentukan ujung kunjungan:
-                                    MRS (masuk rawat inap — modal transfer dua sisi dengan pilihan kamar &amp;
-                                    penjaminan), Kontrol, Rujuk, Perawatan Selesai, PRB, Meninggal, Lain-lain.</li>
-                                <li>Status &amp; antrean BPJS memakai pola yang sama dengan RJ
-                                    (<span class="ds-code">rj_status</span> A/L/F + <span class="ds-code">erm_status</span>
-                                    A/L + taskId) — satu keluarga tabel <span class="ds-code">rstxn_ugdhdrs</span>.</li>
-                                <li>Apotek &amp; Kasir UGD identik polanya dengan RJ — hanya antriannya
-                                    terpisah per jalur.</li>
-                            </ul>
+                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Isi EMR UGD — tab khasnya beda dari RJ</div>
+                        <div class="ds-card-outline mb-6" style="padding:0;overflow:hidden">
+                            <div class="overflow-x-auto">
+                                <table class="ds-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Tab</th>
+                                            <th>Isi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ([
+                                            ['Screening', 'Skrining awal + tanda vital'],
+                                            ['Anamnesa', 'Pengkajian perawat (termasuk TRIASE & alergi) + Status Medik dokter'],
+                                            ['Pemeriksaan', 'Fisik + order Lab/Radiologi (cabang sama dengan RJ)'],
+                                            ['Penilaian', 'Nyeri, risiko jatuh, skrining gizi, risiko bunuh diri'],
+                                            ['Diagnosa', 'ICD-10'],
+                                            ['Obat & Cairan', 'KHAS UGD — pemberian obat/infus langsung saat tindakan'],
+                                            ['Observasi', 'KHAS UGD — observasi berkala (TTV per jam)'],
+                                            ['Perencanaan', 'Tindak lanjut: MRS · Kontrol · Rujuk · Perawatan Selesai · PRB · Meninggal · Lain-lain'],
+                                            ['Rujukan antar RS', 'KHAS UGD — rujukan berbasis kompetensi'],
+                                            ['Modul Dokumen & E-Resep', 'Sama seperti RJ'],
+                                        ] as [$tab, $isi])
+                                            <tr>
+                                                <td class="ds-td-token">{{ $tab }}</td>
+                                                <td>{{ $isi }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
 
                         <div class="ds-card-outline" style="padding:16px 20px">
                             <span class="ds-spike" style="vertical-align:middle"></span>
                             <span class="ds-body-sm" style="color:var(--body-strong)">
-                                Pasien MRS: kunjungan UGD ditutup sebagai transfer, dan biaya UGD ikut
-                                ditagihkan di Rawat Inap (pos "Trf UGD/RJ" di Administrasi RI) — pasien
-                                membayar sekali di ujung perawatan.
+                                Tindak lanjut menentukan ujung kunjungan: <strong>MRS</strong> membuka modal
+                                <em>Transfer ke Rawat Inap</em> (pilih kamar + penjaminan; form dua sisi —
+                                perawat UGD mengirim, perawat ruangan menerima), <strong>Meninggal</strong>
+                                tercatat sebagai death-on-IGD, sisanya menutup kunjungan seperti RJ.
                             </span>
                         </div>
                     </section>
 
-                    {{-- ====== RI ====== --}}
-                    <section x-show="section === 'ri'" x-cloak>
-                        <div class="ds-eyebrow mb-3">Jalur Lain</div>
-                        <h1 class="ds-display-md mb-4">Rawat Inap</h1>
+                    {{-- ====== UGD 3 — APOTEK ====== --}}
+                    <section x-show="section === 'ugd-apotek'" x-cloak>
+                        <div class="ds-eyebrow mb-3">UGD — Tahap 3</div>
+                        <h1 class="ds-display-md mb-4">Apotek UGD</h1>
                         <p class="ds-body-md mb-6" style="max-width:62ch">
-                            Alur paling panjang: bukan satu kali lewat seperti RJ/UGD, melainkan
-                            <strong>berhari-hari dan berulang</strong> — EMR diisi tiap shift, resep ditulis
-                            berkali-kali per lembar, dan biaya menumpuk sampai pasien pulang.
+                            Antrian farmasi khusus pasien UGD
+                            (<span class="ds-code">/transaksi/ugd/antrian-apotek-ugd</span>, atau tab UGD di
+                            <span class="ds-code">/transaksi/apotek</span>) — polanya <strong>identik dengan
+                            Apotek RJ</strong>: filter default "belum serah obat", telaah resep &amp; telaah
+                            obat ber-TTD, stempel taskId 6/7.
                         </p>
 
                         <div class="ds-card-outline mb-6" style="padding:20px">
                             @include('pages.panduan-dev.alur-pelayanan.partial-pipeline', ['steps' => [
-                                ['chip' => null, 'judul' => 'Masuk RI', 'sub' => 'transfer UGD/poli · langsung'],
-                                ['chip' => 'BPJS', 'judul' => 'SEP RI + SPRI', 'sub' => 'penjaminan & surat perintah'],
-                                ['chip' => 'harian', 'judul' => 'EMR RI', 'sub' => 'CPPT · visite · askep · gizi', 'chipWarna' => 'sky'],
-                                ['chip' => 'per lembar', 'judul' => 'E-resep → Apotek RI', 'sub' => 'administrasi obat', 'chipWarna' => 'sky'],
-                                ['chip' => null, 'judul' => 'Pasien pulang', 'sub' => 'guard lab/OK pending'],
-                                ['chip' => 'Kasir', 'judul' => 'Administrasi & bayar', 'sub' => 'ri_status = P', 'chipWarna' => 'green'],
+                                ['chip' => 'taskId 6', 'judul' => 'Resep masuk', 'sub' => 'e-resep UGD'],
+                                ['chip' => 'TTD', 'judul' => 'Telaah resep', 'sub' => 'apoteker', 'chipWarna' => 'sky'],
+                                ['chip' => null, 'judul' => 'Siapkan obat', 'sub' => 'harga → pos Obat'],
+                                ['chip' => 'TTD', 'judul' => 'Telaah obat', 'sub' => '5T', 'chipWarna' => 'sky'],
+                                ['chip' => 'taskId 7', 'judul' => 'Serah obat', 'sub' => 'selesai', 'chipWarna' => 'green'],
                             ]])
                         </div>
 
-                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Menu & role</div>
+                        <div class="ds-card-outline" style="padding:16px 20px">
+                            <span class="ds-spike" style="vertical-align:middle"></span>
+                            <span class="ds-body-sm" style="color:var(--body-strong)">
+                                Bedanya dari RJ: obat &amp; cairan yang dipakai <em>selama tindakan</em> sudah
+                                dicatat perawat/dokter di tab <strong>Obat &amp; Cairan</strong> EMR dan ikut
+                                tertagih sebagai obat UGD — antrian apotek terutama melayani
+                                <strong>resep pulang</strong> pasien.
+                            </span>
+                        </div>
+                    </section>
+
+                    {{-- ====== UGD 4 — KASIR ====== --}}
+                    <section x-show="section === 'ugd-kasir'" x-cloak>
+                        <div class="ds-eyebrow mb-3">UGD — Tahap 4</div>
+                        <h1 class="ds-display-md mb-4">Kasir UGD</h1>
+                        <p class="ds-body-md mb-6" style="max-width:62ch">
+                            Antrian kasir khusus pasien UGD
+                            (<span class="ds-code">/transaksi/ugd/antrian-kasir-ugd</span>, atau tab UGD di
+                            <span class="ds-code">/transaksi/kasir</span>) → buka layar
+                            <strong>Administrasi UGD</strong>. Alur pembayarannya sama dengan Kasir RJ; yang
+                            beda susunan pos biayanya.
+                        </p>
+
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            @include('pages.panduan-dev.alur-pelayanan.partial-pipeline', ['steps' => [
+                                ['chip' => 'otomatis', 'judul' => 'Pos biaya terkumpul', 'sub' => 'tindakan · obat · penunjang'],
+                                ['chip' => null, 'judul' => 'Periksa ringkasan', 'sub' => 'Total − Diskon − Sudah Bayar'],
+                                ['chip' => 'kasir', 'judul' => 'Terima pembayaran', 'sub' => 'atau transfer ke RI (MRS)', 'chipWarna' => 'sky'],
+                                ['chip' => 'rj_status L', 'judul' => 'Kwitansi & tutup', 'sub' => 'jurnal kas terbentuk', 'chipWarna' => 'green'],
+                            ]])
+                        </div>
+
+                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Pos biaya Administrasi UGD</div>
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            <div class="flex flex-wrap gap-2">
+                                @foreach (['RS Admin', 'Admin OB', 'Uang Periksa', 'Jasa Karyawan', 'Jasa Dokter', 'Jasa Medis', 'Obat', 'Laboratorium', 'Radiologi', 'Kamar Operasi', 'Lain-lain', 'Transfer (biaya RJ ikut)'] as $pos)
+                                    <span class="px-2.5 py-1 text-sm rounded-full"
+                                        style="background:var(--surface-card); color:var(--body)">{{ $pos }}</span>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div class="ds-card-outline" style="padding:16px 20px">
+                            <span class="ds-spike" style="vertical-align:middle"></span>
+                            <span class="ds-body-sm" style="color:var(--body-strong)">
+                                Pasien <strong>MRS</strong> tidak membayar di UGD: kunjungan ditutup sebagai
+                                transfer dan seluruh biaya UGD dibawa ke Rawat Inap (pos "Trf UGD/RJ" di
+                                Administrasi RI) — pasien membayar sekali di ujung perawatan.
+                            </span>
+                        </div>
+                    </section>
+
+                    {{-- ====== RI 1 — MASUK ====== --}}
+                    <section x-show="section === 'ri-daftar'" x-cloak>
+                        <div class="ds-eyebrow mb-3">Rawat Inap — Tahap 1</div>
+                        <h1 class="ds-display-md mb-4">Masuk RI (Pendaftaran)</h1>
+                        <p class="ds-body-md mb-6" style="max-width:62ch">
+                            Alur RI beda watak dari RJ/UGD: bukan satu kali lewat, melainkan
+                            <strong>berhari-hari dan berulang</strong>. Semua berawal di
+                            <strong>Daftar Rawat Inap</strong> (<span class="ds-code">/ri/daftar</span>) —
+                            halaman pusat kerja RI yang diakses hampir semua role klinis.
+                        </p>
+
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            @include('pages.panduan-dev.alur-pelayanan.partial-pipeline', ['steps' => [
+                                ['chip' => null, 'judul' => 'Asal pasien', 'sub' => 'transfer UGD · rujukan poli · langsung'],
+                                ['chip' => 'Mr/Tu', 'judul' => 'Pendaftaran RI', 'sub' => 'cara masuk · dokter penerima', 'chipWarna' => 'sky'],
+                                ['chip' => null, 'judul' => 'Tempati kamar', 'sub' => 'bangsal · kamar (bed internal)'],
+                                ['chip' => 'BPJS', 'judul' => 'SEP RI + SPRI', 'sub' => 'DPJP sinkron', 'chipWarna' => 'green'],
+                            ]])
+                        </div>
+
+                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Tiga pintu masuk</div>
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            <ul class="ds-body-md space-y-3" style="list-style:disc; padding-left:1.2em">
+                                <li><strong>Transfer dari UGD</strong> — paling umum. Modal transfer dua sisi:
+                                    perawat UGD mengirim (pilih kamar + penjaminan), perawat ruangan menerima;
+                                    biaya UGD ikut terbawa.</li>
+                                <li><strong>Rujukan poli (RJ)</strong> — dokter poli memutuskan rawat inap.</li>
+                                <li><strong>Daftar langsung</strong> — pasien datang membawa surat/rencana MRS.</li>
+                            </ul>
+                            <p class="ds-body-sm mt-3" style="color:var(--muted-soft)">
+                                Cara masuk tercatat dari master cara masuk (rujukan / UGD / langsung) — dipakai
+                                pelaporan & klaim.
+                            </p>
+                        </div>
+
+                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Menu pendukung RI</div>
                         <div class="ds-card-outline mb-6" style="padding:0;overflow:hidden">
                             <div class="overflow-x-auto">
                                 <table class="ds-table">
@@ -1079,10 +1228,8 @@ new class extends Component {
                                     <tbody>
                                         @foreach ([
                                             ['Daftar Rawat Inap — /ri/daftar', 'hampir semua role klinis + admin', 'Pendaftaran, kamar, EMR, dokumen, administrasi — pusat kerja RI'],
-                                            ['Antrian Apotek RI — /transaksi/ri-resep/antrian-ri-resep', 'Apoteker, Admin, Manager Medis', 'Telaah & layani e-resep RI per lembar'],
-                                            ['PTO — /ri/pto', 'Apoteker', 'Pemantauan seluruh terapi obat pasien RI'],
                                             ['Gizi Rawat Inap — /ri/gizi', 'Gizi, Admin, Manager', 'Program diet harian + rekap porsi dapur + etiket diet'],
-                                            ['Antrian Kasir RI & Daftar Pasien RI — /transaksi/kasir/*', 'Tu, Admin, Supervisor Tu, Manager Umum', 'Administrasi & pembayaran rawat inap'],
+                                            ['PTO — /ri/pto', 'Apoteker', 'Pemantauan seluruh terapi obat pasien RI'],
                                             ['Sinkronisasi Tempat Tidur — /ri/update-tt-ri', 'Admin, Mr, Perawat, Dokter', 'Ketersediaan TT → Aplicares BPJS & SIRS'],
                                         ] as [$menu, $role, $fungsi])
                                             <tr>
@@ -1096,34 +1243,146 @@ new class extends Component {
                             </div>
                         </div>
 
-                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Tahap demi tahap</div>
+                        <div class="ds-card-outline" style="padding:16px 20px">
+                            <span class="ds-spike" style="vertical-align:middle"></span>
+                            <span class="ds-body-sm" style="color:var(--body-strong)">
+                                Pasien BPJS butuh dua surat: <strong>SEP rawat inap</strong> (penjaminan) dan
+                                <strong>SPRI</strong> (surat perintah rawat inap) — DPJP di SEP dijaga sinkron
+                                dengan dokter kontrol di SPRI. Satu perawatan = satu baris
+                                <span class="ds-code">rstxn_rihdrs</span> + JSON
+                                <span class="ds-code">datadaftarri_json</span>.
+                            </span>
+                        </div>
+                    </section>
+
+                    {{-- ====== RI 2 — EMR HARIAN ====== --}}
+                    <section x-show="section === 'ri-emr'" x-cloak>
+                        <div class="ds-eyebrow mb-3">Rawat Inap — Tahap 2</div>
+                        <h1 class="ds-display-md mb-4">EMR RI Harian</h1>
+                        <p class="ds-body-md mb-6" style="max-width:62ch">
+                            EMR RI adalah <strong>dokumen hidup</strong>: diisi banyak PPA (dokter, perawat,
+                            apoteker, gizi, fisioterapis) setiap shift, selama berhari-hari. Dibuka dari tombol
+                            <strong>Rekam Medis</strong> di Daftar RI.
+                        </p>
+
                         <div class="ds-card-outline mb-6" style="padding:20px">
-                            <ol class="ds-body-md space-y-3" style="list-style:decimal; padding-left:1.4em">
-                                <li><strong>Masuk RI</strong> — dari transfer UGD (form dua sisi + pilihan
-                                    kamar &amp; penjaminan), rujukan poli, atau daftar langsung. Cara masuk
-                                    tercatat (rujukan/UGD/langsung); pasien menempati bangsal/kamar.
-                                    BPJS: buat <strong>SEP rawat inap</strong> + <strong>SPRI</strong>
-                                    (DPJP SEP sinkron dengan dokter kontrol SPRI).</li>
-                                <li><strong>EMR RI harian</strong> — pengkajian awal ≤24 jam, lalu berulang:
-                                    <strong>CPPT</strong> (multi-entri semua PPA, di-review/TTD DPJP),
-                                    <strong>SBAR</strong>, asuhan keperawatan (SDKI/SLKI/SIKI),
-                                    penilaian (nyeri/risiko jatuh/gizi/dekubitus), pemeriksaan + order
-                                    lab/rad (cabang yang sama dengan RJ), visite &amp; konsul dokter,
-                                    modul dokumen (consent, edukasi, transfer).</li>
-                                <li><strong>Obat</strong> — e-resep RI ditulis <strong>per lembar</strong>
-                                    (satu perawatan bisa banyak lembar). Tiap lembar mengantri di Apotek RI →
-                                    telaah → administrasi obat → bisa dibayar duluan di kasir apotek
-                                    (kwitansi "RESEP LUNAS"); stempel antrean apotek juga per lembar.</li>
-                                <li><strong>Pindah kamar</strong> — modal pindah kamar mencatat riwayat kamar;
-                                    tarif kamar per hari mengikuti riwayat itu.</li>
-                                <li><strong>Pasien pulang</strong> — dokter menutup perawatan (ringkasan
-                                    pulang/resume). Sistem menahan pemulangan bila masih ada
-                                    <strong>lab pending</strong> atau <strong>transaksi OK belum ditransfer
-                                    biayanya</strong>. Status menjadi <span class="ds-code">ri_status = 'P'</span>.</li>
-                                <li><strong>Kasir RI</strong> — periksa seluruh pos biaya, terima pembayaran
-                                    (termasuk titipan/deposit selama dirawat), cetak kwitansi; sisa tagihan
-                                    tak terbayar masuk monitoring piutang.</li>
-                            </ol>
+                            @include('pages.panduan-dev.alur-pelayanan.partial-pipeline', ['steps' => [
+                                ['chip' => '≤24 jam', 'judul' => 'Pengkajian awal', 'sub' => 'perawat + dokter', 'chipWarna' => 'amber'],
+                                ['chip' => 'tiap shift', 'judul' => 'CPPT & SBAR', 'sub' => 'semua PPA · review DPJP', 'chipWarna' => 'sky'],
+                                ['chip' => 'harian', 'judul' => 'Visite & konsul', 'sub' => 'DPJP · dokter konsul', 'chipWarna' => 'sky'],
+                                ['chip' => 'harian', 'judul' => 'Askep & penilaian', 'sub' => 'SDKI/SLKI/SIKI · risiko', 'chipWarna' => 'sky'],
+                                ['chip' => null, 'judul' => 'Order & dokumen', 'sub' => 'lab · rad · consent · edukasi'],
+                            ]])
+                        </div>
+
+                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Isi EMR RI</div>
+                        <div class="ds-card-outline mb-6" style="padding:0;overflow:hidden">
+                            <div class="overflow-x-auto">
+                                <table class="ds-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Bagian</th>
+                                            <th>Sifat</th>
+                                            <th>Isi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ([
+                                            ['Pengkajian Awal', 'sekali, ≤24 jam', 'Perawat + dokter: anamnesis, fisik, leveling DPJP (Utama/Rawat Gabung)'],
+                                            ['CPPT', 'multi-entri harian', 'Catatan terintegrasi semua PPA (tab per profesi), di-review & TTD DPJP'],
+                                            ['SBAR', 'multi-entri', 'Komunikasi antar shift/PPA'],
+                                            ['Asuhan Keperawatan', 'harian', 'Diagnosa SDKI + luaran SLKI + intervensi SIKI'],
+                                            ['Penilaian', 'berulang', 'Nyeri, risiko jatuh, dekubitus (Braden), gizi + program diet, C-SSRS'],
+                                            ['Pemeriksaan & Order', 'sesuai kebutuhan', 'TTV + order Lab/Radiologi (cabang sama dgn RJ)'],
+                                            ['Observasi & Obat', 'harian', 'Monitoring + administrasi pemberian obat'],
+                                            ['Modul Dokumen', 'sesuai kebutuhan', 'Consent, edukasi terintegrasi, transfer, surveilans HAIs, akhir hayat, dll.'],
+                                            ['E-Resep', 'per lembar', 'Resep harian — lihat tahap Apotek RI'],
+                                        ] as [$bagian, $sifat, $isi])
+                                            <tr>
+                                                <td class="ds-td-token">{{ $bagian }}</td>
+                                                <td class="ds-td-meta">{{ $sifat }}</td>
+                                                <td>{{ $isi }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="ds-card-outline" style="padding:16px 20px">
+                            <span class="ds-spike" style="vertical-align:middle"></span>
+                            <span class="ds-body-sm" style="color:var(--body-strong)">
+                                Karena banyak tangan menulis bersamaan, aturan mainnya ketat: entri CPPT hanya
+                                bisa di-edit pemiliknya (hapus oleh supervisor), review/TTD oleh DPJP Utama,
+                                dan semua aksi penting tercatat di <strong>Log Aktivitas</strong> kunjungan.
+                            </span>
+                        </div>
+                    </section>
+
+                    {{-- ====== RI 3 — APOTEK ====== --}}
+                    <section x-show="section === 'ri-apotek'" x-cloak>
+                        <div class="ds-eyebrow mb-3">Rawat Inap — Tahap 3</div>
+                        <h1 class="ds-display-md mb-4">Apotek RI (per lembar resep)</h1>
+                        <p class="ds-body-md mb-6" style="max-width:62ch">
+                            Beda kunci dari RJ/UGD: e-resep RI ditulis <strong>per lembar</strong> — satu
+                            perawatan bisa punya banyak lembar resep (resep hari ke-1, ke-2, resep pulang…).
+                            Setiap lembar berjalan sendiri di <strong>Antrian Apotek RI</strong>
+                            (<span class="ds-code">/transaksi/ri-resep/antrian-ri-resep</span>).
+                        </p>
+
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            @include('pages.panduan-dev.alur-pelayanan.partial-pipeline', ['steps' => [
+                                ['chip' => 'Dokter', 'judul' => 'Tulis lembar resep', 'sub' => 'di EMR — bisa tiap hari', 'chipWarna' => 'sky'],
+                                ['chip' => 'per lembar', 'judul' => 'Antrian Apotek RI', 'sub' => 'telaah resep & obat'],
+                                ['chip' => null, 'judul' => 'Administrasi obat', 'sub' => 'harga menempel ke lembar'],
+                                ['chip' => 'opsional', 'judul' => 'Kasir apotek', 'sub' => 'bayar duluan — kwitansi RESEP LUNAS', 'chipWarna' => 'amber'],
+                                ['chip' => null, 'judul' => 'Obat ke ruangan', 'sub' => 'diberikan perawat', 'chipWarna' => 'green'],
+                            ]])
+                        </div>
+
+                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Yang khas di farmasi RI</div>
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            <ul class="ds-body-md space-y-3" style="list-style:disc; padding-left:1.2em">
+                                <li><strong>Stempel antrean BPJS per lembar</strong> — taskId 6/7 hidup di
+                                    tiap lembar resep, bukan di kunjungan.</li>
+                                <li><strong>Kasir apotek RI</strong> — lembar resep bisa dilunasi duluan
+                                    (kwitansi "RESEP LUNAS") tanpa menunggu pasien pulang; sisanya ikut
+                                    tagihan akhir.</li>
+                                <li><strong>PTO</strong> (<span class="ds-code">/ri/pto</span>) — apoteker
+                                    memantau seluruh terapi obat pasien lintas lembar tanpa mengganggu
+                                    e-resep dokter.</li>
+                                <li><strong>Bon resep &amp; obat pinjam</strong> punya pos biayanya sendiri;
+                                    retur obat menjadi pengurang (Rtn Obat).</li>
+                            </ul>
+                        </div>
+
+                        <div class="ds-card-outline" style="padding:16px 20px">
+                            <span class="ds-spike" style="vertical-align:middle"></span>
+                            <span class="ds-body-sm" style="color:var(--body-strong)">
+                                Pemberian obat di ruangan dicatat perawat di EMR (administrasi obat) —
+                                terpisah dari pelayanan lembar resep oleh apotek.
+                            </span>
+                        </div>
+                    </section>
+
+                    {{-- ====== RI 4 — ADMINISTRASI & PULANG ====== --}}
+                    <section x-show="section === 'ri-administrasi'" x-cloak>
+                        <div class="ds-eyebrow mb-3">Rawat Inap — Tahap 4</div>
+                        <h1 class="ds-display-md mb-4">Administrasi &amp; Pasien Pulang</h1>
+                        <p class="ds-body-md mb-6" style="max-width:62ch">
+                            Selama dirawat, biaya menumpuk otomatis di layar <strong>Administrasi RI</strong>
+                            (dibuka dari Daftar RI). Saat dokter menyatakan boleh pulang, perawatan ditutup —
+                            dengan beberapa penjaga agar tidak ada biaya yang tertinggal.
+                        </p>
+
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            @include('pages.panduan-dev.alur-pelayanan.partial-pipeline', ['steps' => [
+                                ['chip' => 'harian', 'judul' => 'Biaya menumpuk', 'sub' => 'kamar · visite · konsul · obat'],
+                                ['chip' => null, 'judul' => 'Pindah kamar?', 'sub' => 'riwayat kamar → tarif per hari'],
+                                ['chip' => 'Dokter', 'judul' => 'Boleh pulang', 'sub' => 'resume / ringkasan pulang', 'chipWarna' => 'sky'],
+                                ['chip' => 'guard', 'judul' => 'Cek gantungan', 'sub' => 'lab pending · OK belum transfer', 'chipWarna' => 'amber'],
+                                ['chip' => 'ri_status P', 'judul' => 'Perawatan ditutup', 'sub' => 'EMR terkunci', 'chipWarna' => 'green'],
+                            ]])
                         </div>
 
                         <div class="ds-caption-up mb-3" style="color:var(--muted)">Pos biaya Administrasi RI</div>
@@ -1136,7 +1395,8 @@ new class extends Component {
                             </div>
                             <p class="ds-body-sm mt-3" style="color:var(--muted-soft)">
                                 Semua terisi otomatis dari modulnya masing-masing; "Trf UGD/RJ" membawa biaya
-                                kunjungan asal saat pasien ditransfer.
+                                kunjungan asal saat pasien ditransfer. Tarif kamar & visite/konsul bisa
+                                dikoreksi inline oleh role berwenang — setiap koreksi tercatat di audit log.
                             </p>
                         </div>
 
@@ -1163,12 +1423,54 @@ new class extends Component {
                             <div class="ds-card-outline" style="padding:16px 20px">
                                 <span class="ds-spike" style="vertical-align:middle"></span>
                                 <span class="ds-body-sm" style="color:var(--body-strong)">
-                                    Beda mendasar dari RJ/UGD: EMR RI adalah <strong>dokumen hidup</strong> —
-                                    CPPT/SBAR/penilaian bertambah setiap hari oleh banyak PPA sekaligus, jadi
-                                    hampir semua modul RI menulis ke JSON kunjungan yang sama dengan kunci
-                                    baris + urutan entri, dan aksi penting tercatat di Log Aktivitas.
+                                    Guard pulang: pemulangan <strong>ditahan sistem</strong> bila masih ada
+                                    pemeriksaan <strong>lab berstatus pending</strong> atau transaksi
+                                    <strong>Kamar Operasi yang biayanya belum ditransfer</strong> — mencegah
+                                    tagihan bocor karena transfer biaya mensyaratkan pasien masih dirawat.
                                 </span>
                             </div>
+                        </div>
+                    </section>
+
+                    {{-- ====== RI 5 — KASIR ====== --}}
+                    <section x-show="section === 'ri-kasir'" x-cloak>
+                        <div class="ds-eyebrow mb-3">Rawat Inap — Tahap 5</div>
+                        <h1 class="ds-display-md mb-4">Kasir RI</h1>
+                        <p class="ds-body-md mb-6" style="max-width:62ch">
+                            Petugas Tu memakai <strong>Antrian Kasir RI</strong> dan <strong>Daftar Pasien
+                            RI</strong> (<span class="ds-code">/transaksi/kasir/*</span>) untuk menutup
+                            tagihan perawatan — termasuk menerima <strong>titipan/deposit</strong> selama
+                            pasien masih dirawat.
+                        </p>
+
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            @include('pages.panduan-dev.alur-pelayanan.partial-pipeline', ['steps' => [
+                                ['chip' => 'selama dirawat', 'judul' => 'Terima titipan', 'sub' => 'deposit mengurangi sisa', 'chipWarna' => 'amber'],
+                                ['chip' => null, 'judul' => 'Pasien pulang', 'sub' => 'tagihan final terbentuk'],
+                                ['chip' => 'kasir', 'judul' => 'Pembayaran', 'sub' => 'tunai/transfer · kwitansi', 'chipWarna' => 'sky'],
+                                ['chip' => null, 'judul' => 'Lunas / piutang', 'sub' => 'sisa masuk monitoring piutang', 'chipWarna' => 'green'],
+                            ]])
+                        </div>
+
+                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Catatan kasir RI</div>
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            <ul class="ds-body-md space-y-3" style="list-style:disc; padding-left:1.2em">
+                                <li>Pasien BPJS murni: tagihan ditanggung penjamin — kasir menutup dengan
+                                    selisih 0 (naik kelas / iur biaya dibayar pasien).</li>
+                                <li>Lembar resep yang sudah dilunasi di kasir apotek (RESEP LUNAS) tidak
+                                    tertagih dua kali.</li>
+                                <li>Sisa tagihan yang tidak terbayar saat pulang masuk
+                                    <strong>monitoring piutang pasien</strong> — ditagih/diangsur belakangan
+                                    lewat modul Pembayaran Piutang.</li>
+                            </ul>
+                        </div>
+
+                        <div class="ds-card-outline" style="padding:16px 20px">
+                            <span class="ds-spike" style="vertical-align:middle"></span>
+                            <span class="ds-body-sm" style="color:var(--body-strong)">
+                                Setelah lunas, pembayaran membentuk jurnal kas di modul keuangan — sama
+                                seperti RJ/UGD, hanya nilainya akumulasi seluruh perawatan.
+                            </span>
                         </div>
                     </section>
 
