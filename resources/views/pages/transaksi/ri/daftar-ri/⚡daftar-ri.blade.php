@@ -780,8 +780,8 @@ new class extends Component {
                                                                 </x-dropdown-link>
                                                             @endhasanyrole
 
-                                                            {{-- Administrasi — Admin, Perawat, Casemix, Tu --}}
-                                                            @hasanyrole('Admin|Perawat|Casemix|Tu')
+                                                            {{-- Administrasi — Admin, Perawat, Casemix, Tu, Gizi --}}
+                                                            @hasanyrole('Admin|Perawat|Casemix|Tu|Gizi')
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="openAdministrasiPasien('{{ $row->rihdr_no }}')"
                                                                     class="px-3 py-2 text-sm rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20">
