@@ -52,6 +52,10 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/panduan-dev/koding-skill', 'pages::panduan-dev.koding-skill.koding-skill')
         ->name('panduan-dev.koding-skill');
 
+    // Tutorial alur pelayanan pasien (pendaftaran → EMR → apotek → kasir) per jalur RJ/UGD/RI
+    Route::livewire('/panduan-dev/alur-pelayanan', 'pages::panduan-dev.alur-pelayanan.alur-pelayanan')
+        ->name('panduan-dev.alur-pelayanan');
+
     // ===========================================
     // DOWN TIME — FORMULIR MANUAL WAKTU HENTI SIMRS
     // ===========================================
