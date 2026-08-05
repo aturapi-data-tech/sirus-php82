@@ -52,6 +52,7 @@ new class extends Component {
             ],
             'Gudang' => [
                 'gudang-penerimaan' => 'Penerimaan Medis & Non-Medis',
+                'gudang-transfer' => 'Transfer Stok (Distribusi)',
             ],
         ];
 
@@ -1683,6 +1684,71 @@ new class extends Component {
                                 <span class="ds-code">tktxn_saldoawalstocks</span>. Setelah posting, transaksi
                                 terkunci (edit hanya di status Daftar Tunggu) — koreksi lewat Batal, dan
                                 semua mutasi stok terlacak di Kartu Stock.
+                            </span>
+                        </div>
+                    </section>
+
+                    {{-- ====== GUDANG — TRANSFER STOK ====== --}}
+                    <section x-show="section === 'gudang-transfer'" x-cloak>
+                        <div class="ds-eyebrow mb-3">Gudang</div>
+                        <h1 class="ds-display-md mb-4">Transfer Stok (Distribusi)</h1>
+                        <p class="ds-body-md mb-6" style="max-width:62ch">
+                            Jembatan antara penerimaan dan pemakaian: memindahkan barang dari gudang ke titik
+                            pakainya. Medis: <span class="ds-code">/gudang/transfer-stock</span> — sumber
+                            <strong>Gudang Medis</strong> atau <strong>Apotek</strong> (dua tab), tujuan bebas
+                            dipilih dari <strong>Master Lokasi Stok</strong> (±40 lokasi: apotek, UGD, ICU, VK,
+                            OK, bangsal, laborat, dapur…). Non-medis kembarannya:
+                            <span class="ds-code">/gudang/transfer-stock-non</span>.
+                        </p>
+
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            @include('pages.panduan-dev.alur-pelayanan.partial-pipeline', ['steps' => [
+                                ['chip' => null, 'judul' => 'Pilih sumber', 'sub' => 'Gudang Medis · Apotek'],
+                                ['chip' => 'LOV', 'judul' => 'Pilih tujuan', 'sub' => 'lokasi mana pun (Master Lokasi Stok)', 'chipWarna' => 'sky'],
+                                ['chip' => 'A', 'judul' => 'Isi item & qty', 'sub' => 'draft — masih bisa diubah/dihapus', 'chipWarna' => 'amber'],
+                                ['chip' => 'L', 'judul' => 'Posting', 'sub' => 'stok sumber berkurang', 'chipWarna' => 'green'],
+                                ['chip' => 'F', 'judul' => 'Batal', 'sub' => 'bila salah — hanya dari posted', 'chipWarna' => 'red'],
+                            ]])
+                        </div>
+
+                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Status transfer (imtxn_trfhdrs)</div>
+                        <div class="ds-card-outline mb-6" style="padding:0;overflow:hidden">
+                            <div class="overflow-x-auto">
+                                <table class="ds-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Status</th>
+                                            <th>Arti</th>
+                                            <th>Boleh apa</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ([
+                                            ['A', 'Draft', 'Item & qty masih bisa diubah; bisa dihapus utuh'],
+                                            ['L', 'Posted', 'Stok sumber terpotong — final'],
+                                            ['F', 'Batal', 'Pembatalan transfer yang terlanjur posted'],
+                                        ] as [$kode, $arti, $boleh])
+                                            <tr>
+                                                <td class="ds-td-token">{{ $kode }}</td>
+                                                <td class="ds-td-strong">{{ $arti }}</td>
+                                                <td>{{ $boleh }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="ds-card-outline" style="padding:16px 20px">
+                            <span class="ds-spike" style="vertical-align:middle"></span>
+                            <span class="ds-body-sm" style="color:var(--body-strong)">
+                                Kaitan ledger: posting menulis mutasi <strong>keluar</strong> di ledger lokasi
+                                sumber; tujuan <strong>Apotek</strong> tercatat masuk di ledger apotek
+                                (rantai RCV → TRF → e-resep tetap utuh). Tujuan <strong>ruangan</strong>:
+                                pengiriman tercatat, tapi ledger berhenti di situ — ruangan belum ber-kartu
+                                stok (lihat catatan di seksi Penerimaan). Model data:
+                                <span class="ds-code">imtxn_trfhdrs</span> +
+                                <span class="ds-code">imtxn_trfdtls</span>, qty + tanggal ED per baris.
                             </span>
                         </div>
                     </section>
