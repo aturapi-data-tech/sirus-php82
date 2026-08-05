@@ -647,6 +647,7 @@ errornya seragam: `OperationOutcome` dengan `expression` menunjuk elemen yang sa
 | `Element not found: AllergyIntolerance.category (RuleNumber 10075)` | `category` dihilangkan untuk pernyataan "tidak ada alergi" | `category` WAJIB selalu ada → `AlergiSnomed::kategoriFhir()`; `type`/`criticality` tetap boleh dihilangkan |
 | `every statusHistory period start and end must be filled (Rule 10122)` — `Encounter.statusHistory` | entri dari `createNewEncounter()`/`startRoomEncounter()` hanya punya `start` | `EncounterTrait::siapkanFinishEncounter()` mengisi `end` tiap entri dari `start` entri berikutnya |
 | `Element not found: Encounter.diagnosis (RuleNumber 10457)` | finish dikirim tanpa diagnosis | `Encounter.diagnosis` diisi dari `conditionIds` (`use` = `DD`, `rank` berurutan); tombol Finish menolak lebih dulu bila diagnosa belum dikirim |
+| `Code not found: '1306548008' in system: http://snomed.info/sct (RuleNumber 10003)` — `Condition.code[0].code` (Chief Complaint, 2026-08-04) | edisi SNOMED server SATUSEHAT lebih tua dari tx.fhir.org — LOV keluhan bisa memilih konsep baru (contoh ini effective 2024-04-01) yang belum dikenal Kemkes | pin edisi via `config/txfhir.php` `snomed_version` (default International Edition `20240201`): `SnomedTrait` kirim `system-version` di `$expand` & `version` di `$lookup`; cache lama dibersihkan `php artisan snomed:bersihkan-cache` (`--dry-run` dulu); EMR yang terlanjur menyimpan kode baru → pilih ulang kode induk yang mapan (kasus ini `254837009` Malignant neoplasm of breast) |
 
 ### 11.2 Uji payload TANPA mengirim
 
