@@ -176,6 +176,16 @@ new class extends Component {
                     try {
                         Cache::lock('lock:rihdrno-seq', 15)->block(5, function () use (&$message, &$riHdrNo) {
                             DB::transaction(function () use (&$message, &$riHdrNo) {
+                                // Guard otoritatif anti-duplikat: checkLockStatus() di awal
+                                // save() berjalan DI LUAR lock, jadi dua request kembar
+                                // (double submit) bisa sama-sama lolos. Di sini mereka
+                                // antre — yang menang set lockstatus='RI', yang kalah
+                                // terdeteksi dan ditolak.
+                                $lockError = $this->checkLockStatus($this->dataDaftarRi['regNo'] ?? '');
+                                if ($lockError) {
+                                    throw new \RuntimeException($lockError . ' Pendaftaran ganda dibatalkan.');
+                                }
+
                                 $riHdrNo = (string) ((int) DB::table('rstxn_rihdrs')->max('rihdr_no') + 1);
                                 $this->dataDaftarRi['riHdrNo'] = $riHdrNo;
                                 DB::table('rstxn_rihdrs')->insert($this->buildPayload($riHdrNo, 'create'));
@@ -1144,7 +1154,12 @@ new class extends Component {
                     </a>
                     <div class="flex gap-3">
                         <x-secondary-button x-on:click="tryClose()">Batal</x-secondary-button>
-                        <x-primary-button wire:click.prevent="save()" class="min-w-[120px]"
+                        {{-- Guard sekali-klik: wire:loading.attr="disabled" punya jendela
+                             sepersekian detik sebelum atribut terpasang — double-click cepat
+                             bisa mengirim save() dua kali (pasien terdaftar ganda). Flag
+                             dataset.busy menahan klik kedua sampai request pertama selesai. --}}
+                        <x-primary-button class="min-w-[120px]"
+                            x-on:click.prevent="if ($el.dataset.busy) return; $el.dataset.busy = '1'; $wire.save().finally(() => { delete $el.dataset.busy })"
                             wire:loading.attr="disabled" :disabled="$isFormLocked">
                             <span wire:loading.remove>
                                 <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"

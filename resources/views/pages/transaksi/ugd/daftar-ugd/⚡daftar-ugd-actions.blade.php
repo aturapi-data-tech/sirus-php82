@@ -154,6 +154,22 @@ new class extends Component {
 
         try {
             // ============================================================
+            // 0. GUARD ANTI-DUPLIKAT (cek dini) — double submit / dua tab
+            //    membuat pasien yang sama terdaftar 2x dengan kode booking
+            //    beda sepersekian detik. Beda dari RJ (blok per dokter+hari):
+            //    pasien UGD sah datang 2x sehari, jadi bloknya berbasis
+            //    jendela waktu 30 menit. Cek otoritatif diulang di dalam
+            //    Cache::lock sebelum insert (menutup race antar request).
+            // ============================================================
+            if ($this->formMode === 'create') {
+                $rjNoDuplikat = $this->cekDuplikatPendaftaran();
+                if ($rjNoDuplikat) {
+                    $this->dispatch('toast', type: 'error', message: "Pasien sudah terdaftar di UGD dalam 30 menit terakhir (No. UGD {$rjNoDuplikat}). Pendaftaran ganda dibatalkan.", title: 'Pendaftaran Ganda', position: 'top-end', duration: 8000);
+                    return;
+                }
+            }
+
+            // ============================================================
             // 1. SEP API — di luar transaksi
             // ============================================================
             $isBpjs = ($this->dataDaftarUGD['klaimStatus'] ?? '') === 'BPJS' || ($this->dataDaftarUGD['klaimId'] ?? '') === 'JM';
@@ -175,6 +191,13 @@ new class extends Component {
                     try {
                         Cache::lock('lock:ugd-rjno-seq', 15)->block(5, function () use (&$message, &$rjNo) {
                             DB::transaction(function () use (&$message, &$rjNo) {
+                                // Guard otoritatif: request kembar yang lolos cek dini
+                                // tertahan lock ini — yang kalah terdeteksi di sini.
+                                $rjNoDuplikat = $this->cekDuplikatPendaftaran();
+                                if ($rjNoDuplikat) {
+                                    throw new \RuntimeException("Pasien sudah terdaftar di UGD dalam 30 menit terakhir (No. UGD {$rjNoDuplikat}). Pendaftaran ganda dibatalkan.");
+                                }
+
                                 $rjNo = (string) ((int) DB::table('rstxn_ugdhdrs')->max('rj_no') + 1);
                                 $this->dataDaftarUGD['rjNo'] = $rjNo;
                                 DB::table('rstxn_ugdhdrs')->insert($this->buildPayload($rjNo, 'create'));
@@ -303,6 +326,30 @@ new class extends Component {
         $this->dataDaftarUGD['poliPrice'] = (int) ($klaimStatus === 'BPJS'
             ? ($dokter->ugd_price_bpjs ?? 0)
             : ($dokter->ugd_price ?? 0));
+    }
+
+    /**
+     * Cek pasien sudah punya pendaftaran UGD aktif (bukan txn_status 'H') dengan
+     * rj_date berselisih < 30 menit dari kunjungan yang akan disimpan. Return
+     * rj_no existing bila ada, null bila aman. Dipanggil 2x saat create: cek dini
+     * (sebelum SEP BPJS) dan cek otoritatif di dalam Cache::lock sebelum insert.
+     * Jendela 30 menit (bukan blok per-hari seperti RJ) karena pasien UGD sah
+     * datang lebih dari sekali dalam sehari.
+     */
+    private function cekDuplikatPendaftaran(): ?string
+    {
+        $regNo  = $this->dataDaftarUGD['regNo'] ?? '';
+        $rjDate = $this->dataDaftarUGD['rjDate'] ?? '';
+
+        if (empty($regNo) || empty($rjDate)) return null;
+
+        $rjNoExisting = DB::table('rstxn_ugdhdrs')
+            ->where('reg_no', $regNo)
+            ->whereRaw("NVL(txn_status,'A') != 'H'")
+            ->whereRaw("ABS(rj_date - to_date(?,'dd/mm/yyyy hh24:mi:ss')) * 1440 < 30", [$rjDate])
+            ->value('rj_no');
+
+        return $rjNoExisting ? (string) $rjNoExisting : null;
     }
 
     /* ===============================
@@ -906,7 +953,12 @@ new class extends Component {
                         <x-secondary-button x-on:click="tryClose()">
                             Batal
                         </x-secondary-button>
-                        <x-primary-button wire:click.prevent="save()" class="min-w-[120px]"
+                        {{-- Guard sekali-klik: wire:loading.attr="disabled" punya jendela
+                             sepersekian detik sebelum atribut terpasang — double-click cepat
+                             bisa mengirim save() dua kali (pasien terdaftar ganda). Flag
+                             dataset.busy menahan klik kedua sampai request pertama selesai. --}}
+                        <x-primary-button class="min-w-[120px]"
+                            x-on:click.prevent="if ($el.dataset.busy) return; $el.dataset.busy = '1'; $wire.save().finally(() => { delete $el.dataset.busy })"
                             wire:loading.attr="disabled" :disabled="$isFormLocked">
                             <span wire:loading.remove>
                                 <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"

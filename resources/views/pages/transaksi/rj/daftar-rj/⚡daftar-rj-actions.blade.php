@@ -141,6 +141,21 @@ new class extends Component {
 
         try {
             // ============================================================
+            // 0. GUARD ANTI-DUPLIKAT (cek dini) — double submit / dua tab
+            //    membuat pasien yang sama terdaftar 2x dengan kode booking
+            //    beda sepersekian detik. Cek dini di sini mencegah push
+            //    antrean/SEP BPJS ganda; cek OTORITATIF diulang di dalam
+            //    Cache::lock sebelum insert (menutup race antar request).
+            // ============================================================
+            if ($this->formMode === 'create') {
+                $rjNoDuplikat = $this->cekDuplikatPendaftaran();
+                if ($rjNoDuplikat) {
+                    $this->dispatch('toast', type: 'error', message: "Pasien sudah terdaftar di dokter yang sama hari ini (No. RJ {$rjNoDuplikat}). Pendaftaran ganda dibatalkan.", title: 'Pendaftaran Ganda', position: 'top-end', duration: 8000);
+                    return;
+                }
+            }
+
+            // ============================================================
             // 1. QUERY isPoliSpesialis SEKALI — dipakai di step 2 & 3
             // ============================================================
             $isPoliSpesialis = DB::table('rsmst_polis')->where('poli_id', $this->dataDaftarPoliRJ['poliId'])->where('spesialis_status', '1')->exists();
@@ -216,6 +231,14 @@ new class extends Component {
                     try {
                         Cache::lock('lock:rjno-seq', 15)->block(5, function () use ($drId, $rjDateCarbon, &$message, &$rjNo) {
                             DB::transaction(function () use ($drId, $rjDateCarbon, &$message, &$rjNo) {
+                                // Guard otoritatif: request kembar yang lolos cek dini
+                                // (masuk hampir bersamaan) tertahan lock ini — yang
+                                // menang insert duluan, yang kalah terdeteksi di sini.
+                                $rjNoDuplikat = $this->cekDuplikatPendaftaran();
+                                if ($rjNoDuplikat) {
+                                    throw new \RuntimeException("Pasien sudah terdaftar di dokter yang sama hari ini (No. RJ {$rjNoDuplikat}). Pendaftaran ganda dibatalkan.");
+                                }
+
                                 if (!empty($this->dataDaftarPoliRJ['klaimId']) && $this->dataDaftarPoliRJ['klaimId'] !== 'KR') {
                                     $this->dataDaftarPoliRJ['noAntrian'] = $this->hitungNoAntrian($drId, $rjDateCarbon);
                                 }
@@ -464,6 +487,32 @@ new class extends Component {
         $this->dataDaftarPoliRJ['poliPrice'] = (int) ($klaimStatus === 'BPJS'
             ? ($dokter->poli_price_bpjs ?? 0)
             : ($dokter->poli_price ?? 0));
+    }
+
+    /**
+     * Cek pasien sudah punya pendaftaran aktif (bukan txn_status 'H') di dokter
+     * yang sama pada tanggal kunjungan yang sama. Return rj_no existing bila ada,
+     * null bila aman. Dipanggil 2x saat create: cek dini (sebelum push antrean/SEP
+     * BPJS) dan cek otoritatif di dalam Cache::lock sebelum insert.
+     */
+    private function cekDuplikatPendaftaran(): ?string
+    {
+        $regNo  = $this->dataDaftarPoliRJ['regNo'] ?? '';
+        $drId   = $this->dataDaftarPoliRJ['drId'] ?? '';
+        $rjDate = $this->dataDaftarPoliRJ['rjDate'] ?? '';
+
+        if (empty($regNo) || empty($drId) || empty($rjDate)) return null;
+
+        $rjDateCarbon = Carbon::createFromFormat('d/m/Y H:i:s', $rjDate);
+
+        $rjNoExisting = DB::table('rstxn_rjhdrs')
+            ->where('reg_no', $regNo)
+            ->where('dr_id', $drId)
+            ->whereRaw("NVL(txn_status,'A') != 'H'")
+            ->whereRaw("to_char(rj_date,'ddmmyyyy') = ?", [$rjDateCarbon->format('dmY')])
+            ->value('rj_no');
+
+        return $rjNoExisting ? (string) $rjNoExisting : null;
     }
 
     /* ===============================
@@ -1539,7 +1588,12 @@ new class extends Component {
                         <x-secondary-button x-on:click="tryClose()">
                             Batal
                         </x-secondary-button>
-                        <x-primary-button x-ref="btnSimpan" wire:click.prevent="save()" class="min-w-[120px]"
+                        {{-- Guard sekali-klik: wire:loading.attr="disabled" punya jendela
+                             sepersekian detik sebelum atribut terpasang — double-click cepat
+                             bisa mengirim save() dua kali (pasien terdaftar ganda). Flag
+                             dataset.busy menahan klik kedua sampai request pertama selesai. --}}
+                        <x-primary-button x-ref="btnSimpan" class="min-w-[120px]"
+                            x-on:click.prevent="if ($el.dataset.busy) return; $el.dataset.busy = '1'; $wire.save().finally(() => { delete $el.dataset.busy })"
                             wire:loading.attr="disabled" :disabled="$isFormLocked">
                             <span wire:loading.remove>
                                 <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
