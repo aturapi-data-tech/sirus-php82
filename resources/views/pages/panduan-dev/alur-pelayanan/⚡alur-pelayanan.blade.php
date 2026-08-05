@@ -49,6 +49,9 @@ new class extends Component {
                 'ri-administrasi' => '4. Administrasi & Pulang',
                 'ri-kasir' => '5. Kasir RI',
             ],
+            'Gudang' => [
+                'gudang-penerimaan' => 'Penerimaan Medis & Non-Medis',
+            ],
         ];
 
         $labels = array_merge(...array_values($menuGroups));
@@ -1470,6 +1473,119 @@ new class extends Component {
                             <span class="ds-body-sm" style="color:var(--body-strong)">
                                 Setelah lunas, pembayaran membentuk jurnal kas di modul keuangan — sama
                                 seperti RJ/UGD, hanya nilainya akumulasi seluruh perawatan.
+                            </span>
+                        </div>
+                    </section>
+
+                    {{-- ====== GUDANG — PENERIMAAN ====== --}}
+                    <section x-show="section === 'gudang-penerimaan'" x-cloak>
+                        <div class="ds-eyebrow mb-3">Gudang</div>
+                        <h1 class="ds-display-md mb-4">Penerimaan Barang Medis &amp; Non-Medis</h1>
+                        <p class="ds-body-md mb-6" style="max-width:62ch">
+                            Alur di luar pelayanan pasien tapi menghidupinya: <strong>stok</strong>. Barang
+                            datang dari PBF/supplier beserta faktur → dientri sebagai penerimaan →
+                            di-<strong>posting</strong> → stok gudang bertambah dan siap didistribusikan
+                            (Transfer Stok) ke apotek/ruangan. Modul non-medis adalah kembaran modul medis —
+                            alurnya sama, beda gudang, barang, dan role.
+                        </p>
+
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            @include('pages.panduan-dev.alur-pelayanan.partial-pipeline', ['steps' => [
+                                ['chip' => null, 'judul' => 'Barang + faktur datang', 'sub' => 'dari PBF / supplier'],
+                                ['chip' => 'Gudang', 'judul' => 'Entri penerimaan', 'sub' => 'supplier · item · qty · harga beli', 'chipWarna' => 'sky'],
+                                ['chip' => 'cek', 'judul' => 'Harga vs master', 'sub' => 'beda? tawarkan update master', 'chipWarna' => 'amber'],
+                                ['chip' => null, 'judul' => 'Hitung total', 'sub' => 'Diskon → PPN → Materai → Bayar'],
+                                ['chip' => 'posting', 'judul' => 'Simpan & Posting', 'sub' => 'Lunas / Hutang', 'chipWarna' => 'sky'],
+                                ['chip' => 'stok +', 'judul' => 'Masuk gudang', 'sub' => 'siap ditransfer', 'chipWarna' => 'green'],
+                            ]])
+                        </div>
+
+                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Medis vs Non-Medis</div>
+                        <div class="ds-card-outline mb-6" style="padding:0;overflow:hidden">
+                            <div class="overflow-x-auto">
+                                <table class="ds-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Aspek</th>
+                                            <th>Medis — "Obat dari PBF"</th>
+                                            <th>Non-Medis — "Barang dari Supplier"</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ([
+                                            ['Menu', '/gudang/penerimaan-medis', '/gudang/penerimaan-non-medis'],
+                                            ['Role', 'Gudang Obat, Apoteker, Admin, Manager Umum, Supervisor Tu', 'Gudang Non Medis, Tu, Admin, Manager Umum, Supervisor Tu'],
+                                            ['Barang', 'Obat & alkes (master produk medis)', 'ATK, rumah tangga, dan barang umum lainnya'],
+                                            ['Stok masuk ke', 'Gudang Medis', 'Gudang Non-Medis'],
+                                            ['Distribusi lanjutan', 'Transfer Stok Medis (→ Apotek / ruangan)', 'Transfer Stok Non-Medis (→ unit)'],
+                                            ['Audit mutasi', 'Kartu Stock Gudang Medis & Apotek', 'Kartu Stock Non-Medis'],
+                                        ] as [$aspek, $medis, $non])
+                                            <tr>
+                                                <td class="ds-td-token">{{ $aspek }}</td>
+                                                <td>{{ $medis }}</td>
+                                                <td>{{ $non }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Langkah petugas gudang</div>
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            <ol class="ds-body-md space-y-3" style="list-style:decimal; padding-left:1.4em">
+                                <li><strong>Penerimaan baru</strong> → pilih <strong>supplier</strong> (LOV
+                                    master supplier), isi nomor/tanggal faktur.</li>
+                                <li>Tambah barang per item: produk (LOV master), qty, <strong>harga
+                                    beli</strong>. Bila harga beli beda dari harga master, sistem menawarkan
+                                    <strong>update harga master</strong> — boleh diterima atau dilewati.</li>
+                                <li>Urutan penutup yang dipandu form: <strong>Diskon → PPN → Materai →
+                                    Bayar → Akun Kas → Simpan &amp; Posting</strong>.</li>
+                                <li>Jumlah bayar menentukan status: bayar penuh = <strong>Lunas</strong>,
+                                    kurang = <strong>Hutang</strong> (dilunasi belakangan lewat tombol
+                                    Bayar pada transaksi tersebut).</li>
+                            </ol>
+                        </div>
+
+                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Status penerimaan</div>
+                        <div class="ds-card-outline mb-6" style="padding:0;overflow:hidden">
+                            <div class="overflow-x-auto">
+                                <table class="ds-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Status</th>
+                                            <th>Arti</th>
+                                            <th>Boleh apa</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ([
+                                            ['A', 'Daftar Tunggu', 'Masih bisa di-edit / dihapus — belum posting'],
+                                            ['L', 'Lunas', 'Final — stok & pembayaran terposting'],
+                                            ['H', 'Hutang', 'Final — stok terposting, sisa tagihan menunggu pelunasan'],
+                                            ['F', 'Batal', 'Dibatalkan; bisa dihapus'],
+                                        ] as [$kode, $arti, $boleh])
+                                            <tr>
+                                                <td class="ds-td-token">{{ $kode }}</td>
+                                                <td class="ds-td-strong">{{ $arti }}</td>
+                                                <td>{{ $boleh }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="ds-card-outline" style="padding:16px 20px">
+                            <span class="ds-spike" style="vertical-align:middle"></span>
+                            <span class="ds-body-sm" style="color:var(--body-strong)">
+                                Model datanya header–detail
+                                (<span class="ds-code">imtxn_receivehdrs</span> +
+                                <span class="ds-code">imtxn_receivedtls</span>, master
+                                <span class="ds-code">immst_suppliers</span> /
+                                <span class="ds-code">immst_products</span>). Setelah posting, transaksi
+                                terkunci (edit hanya di status Daftar Tunggu) — koreksi lewat Batal, dan
+                                semua mutasi stok terlacak di Kartu Stock.
                             </span>
                         </div>
                     </section>
