@@ -494,6 +494,10 @@ new class extends Component {
      * yang sama pada tanggal kunjungan yang sama. Return rj_no existing bila ada,
      * null bila aman. Dipanggil 2x saat create: cek dini (sebelum push antrean/SEP
      * BPJS) dan cek otoritatif di dalam Cache::lock sebelum insert.
+     *
+     * Jalur klaim KR (resep kronis) dipisah: pasien sah punya kunjungan biasa
+     * DAN entri kronis di dokter+hari yang sama — jadi KR hanya dibandingkan
+     * dengan KR, non-KR hanya dengan non-KR.
      */
     private function cekDuplikatPendaftaran(): ?string
     {
@@ -505,12 +509,19 @@ new class extends Component {
 
         $rjDateCarbon = Carbon::createFromFormat('d/m/Y H:i:s', $rjDate);
 
-        $rjNoExisting = DB::table('rstxn_rjhdrs')
+        $query = DB::table('rstxn_rjhdrs')
             ->where('reg_no', $regNo)
             ->where('dr_id', $drId)
             ->whereRaw("NVL(txn_status,'A') != 'H'")
-            ->whereRaw("to_char(rj_date,'ddmmyyyy') = ?", [$rjDateCarbon->format('dmY')])
-            ->value('rj_no');
+            ->whereRaw("to_char(rj_date,'ddmmyyyy') = ?", [$rjDateCarbon->format('dmY')]);
+
+        if (($this->dataDaftarPoliRJ['klaimId'] ?? '') === 'KR') {
+            $query->where('klaim_id', 'KR');
+        } else {
+            $query->whereRaw("NVL(klaim_id,'UM') != 'KR'");
+        }
+
+        $rjNoExisting = $query->value('rj_no');
 
         return $rjNoExisting ? (string) $rjNoExisting : null;
     }
