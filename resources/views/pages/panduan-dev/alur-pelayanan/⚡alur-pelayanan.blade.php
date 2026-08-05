@@ -23,6 +23,7 @@ new class extends Component {
             'Mulai' => [
                 'pendahuluan' => 'Pendahuluan',
                 'peta-modul' => 'Peta Modul & Role',
+                'master-pasien' => 'Master Pasien (Identitas)',
             ],
             'Rawat Jalan' => [
                 'rj-daftar' => '1. Daftar RJ (Pendaftaran)',
@@ -344,6 +345,37 @@ new class extends Component {
                                 setiap tahap membaca &amp; menambal JSON yang sama.
                             </span>
                         </div>
+                    </section>
+
+                    {{-- ====== MASTER PASIEN ====== --}}
+                    <section x-show="section === 'master-pasien'" x-cloak>
+                        <div class="ds-eyebrow mb-3">03 — Mulai</div>
+                        <h1 class="ds-display-md mb-4">Master Pasien — Fondasi Identitas</h1>
+                        <p class="ds-body-md mb-6" style="max-width:62ch">
+                            Sebelum alur mana pun berjalan, pasien harus punya <strong>satu No. RM</strong> di
+                            Master Pasien (<span class="ds-code">/master/pasien</span>) — sumber identitas
+                            tunggal yang dipakai pendaftaran RJ, UGD, dan RI. Dari sini pula tombol pintas ke
+                            tiga pendaftaran tersedia, dan LOV "Cari Pasien" di semua form membaca data ini.
+                        </p>
+
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            @include('pages.panduan-dev.alur-pelayanan.partial-pipeline', ['steps' => [
+                                ['chip' => null, 'judul' => 'Pasien baru?', 'sub' => 'cari dulu — cegah RM ganda'],
+                                ['chip' => 'RM', 'judul' => 'Tambah Data Pasien', 'sub' => 'identitas + NIK + BPJS', 'chipWarna' => 'sky'],
+                                ['chip' => 'IHS', 'judul' => 'Patient UUID', 'sub' => 'ID SATUSEHAT per pasien', 'chipWarna' => 'green'],
+                                ['chip' => null, 'judul' => 'Siap didaftarkan', 'sub' => 'RJ · UGD · RI'],
+                            ]])
+                        </div>
+
+                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Tampilan program</div>
+                        @include('pages.panduan-dev.alur-pelayanan.partial-galeri', ['gambarList' => [
+                            ['src' => 'images/panduan-dev/alur/master-pasien/01-list.png', 'caption' => 'Master Pasien — ±133 ribu pasien; cari nama/NRM/NIK, tombol pintas Pendaftaran Rawat Jalan / UGD / Rawat Inap, Tambah Data Pasien Baru, dan Edit/Hapus per baris.'],
+                            ['src' => 'images/panduan-dev/alur/master-pasien/02-data-pasien.png', 'caption' => 'Tab Data Pasien — data dasar (nama + gelar, tempat/tanggal lahir dengan umur auto), data sosial (JK, agama, pendidikan, pekerjaan), dan data budaya; toggle "Pasien Tidak Dikenal" untuk pasien tak sadar.'],
+                            ['src' => 'images/panduan-dev/alur/master-pasien/03-identitas-alamat.png', 'caption' => 'Tab Identitas & Alamat — Patient UUID (IHS SATUSEHAT, bisa di-generate ulang), NIK, ID BPJS, paspor; alamat KTP vs domisili dengan LOV desa berkode wilayah (desa → kecamatan → kab → provinsi).'],
+                            ['src' => 'images/panduan-dev/alur/master-pasien/04-kontak-keluarga.png', 'caption' => 'Tab Kontak & Keluarga — No. HP pasien + penanggung jawab (nama, HP, hubungan) + data ayah/ibu; penting untuk consent & penjamin.'],
+                            ['src' => 'images/panduan-dev/alur/master-pasien/05-rekam-medis.png', 'caption' => 'Tab Rekam Medis — riwayat kunjungan pasien lintas jalur langsung dari master (poli/dokter, diagnosis, terapi, Copy Resep / Resume Medis).'],
+                            ['src' => 'images/panduan-dev/alur/master-pasien/06-status-kunci.png', 'caption' => 'Tab Status Kunci — lockstatus menandai pasien sedang aktif di satu jalur (cegah daftar ganda UGD/RJ/RI); otomatis lepas saat pulang, tombol Reset hanya untuk yang nyangkut.'],
+                        ]])
                     </section>
 
                     {{-- ====== RJ 1 — DAFTAR ====== --}}
@@ -890,7 +922,7 @@ new class extends Component {
                             </ol>
                         </div>
 
-                        <div class="ds-card-outline" style="padding:16px 20px">
+                        <div class="ds-card-outline mb-6" style="padding:16px 20px">
                             <span class="ds-spike" style="vertical-align:middle"></span>
                             <span class="ds-body-sm" style="color:var(--body-strong)">
                                 Rel administrasinya: biaya lab menempel otomatis ke kunjungan induk, dan tab
@@ -899,6 +931,24 @@ new class extends Component {
                                 Penunjang, bukan petugas lab sendiri).
                             </span>
                         </div>
+
+                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Proses order end-to-end: EMR → Modul Lab → kembali ke EMR</div>
+                        @include('pages.panduan-dev.alur-pelayanan.partial-galeri', ['gambarList' => [
+                            ['src' => 'images/panduan-dev/alur/rj-pelayanan/14-order-lab.png', 'caption' => 'TAHAP 1 · EMR RJ — dokter membuat Order Pemeriksaan Laboratorium: pilih item dari katalog, toggle CITO bila mendesak, isi Diagnosis/Keterangan Klinis (wajib) → Kirim Order.'],
+                            ['src' => 'images/panduan-dev/alur/rj-pelayanan/17-tab-penunjang.png', 'caption' => 'TAHAP 1b · EMR RJ — order tercatat di tab Pelayanan Penunjang kunjungan dengan statusnya; dokter bisa memantau tanpa meninggalkan EMR.'],
+                            ['src' => 'images/panduan-dev/alur/laborat/01-list.png', 'caption' => 'TAHAP 2 · Modul Lab — order otomatis muncul di worklist Transaksi Laboratorium (satu antrian lintas RJ/UGD/RI, badge jalur + status Terdaftar/Proses/Selesai; keterangan klinis dokter ikut tampil).'],
+                            ['src' => 'images/panduan-dev/alur/laborat/02-detail-terdaftar.png', 'caption' => 'TAHAP 3 · Fase Administrasi (Terdaftar) — petugas membuka detail: identitas, dokter pengirim, klinis, Ref No kunjungan induk; item masih bisa ditambah/dihapus. Cetak Etiket spesimen → klik Proses Administrasi.'],
+                            ['src' => 'images/panduan-dev/alur/laborat/03-item-terpilih.png', 'caption' => 'TAHAP 3b — paket (mis. Hematologi 3 Diff) otomatis membawa sub-itemnya; total pemeriksaan terhitung.'],
+                            ['src' => 'images/panduan-dev/alur/laborat/04-pemeriksaan-luar.png', 'caption' => 'TAHAP 3c (opsional) — tab Pemeriksaan Luar untuk rujukan lab luar (deskripsi + tarif) dalam transaksi yang sama.'],
+                            ['src' => 'images/panduan-dev/alur/laborat/05-obat-bahan.png', 'caption' => 'TAHAP 3d (opsional) — tab Obat dan Bahan untuk BHP lab yang dibebankan ke transaksi.'],
+                            ['src' => 'images/panduan-dev/alur/laborat/06-input-hasil.png', 'caption' => 'TAHAP 4 · Fase Proses — entry hasil per item atau Import Hasil Mindray (tarik otomatis dari alat). Nilai lewat ambang langsung tersorot: LEUKOSIT 17.3 → Tinggi + badge KRITIS merah.'],
+                            ['src' => 'images/panduan-dev/alur/laborat/07-flag-otomatis.png', 'caption' => 'TAHAP 4b — flag Tinggi/Rendah dihitung otomatis dari rentang normal per item (per gender); petugas cukup mengisi angka.'],
+                            ['src' => 'images/panduan-dev/alur/laborat/08-kesimpulan.png', 'caption' => 'TAHAP 4c — isi Kesimpulan (tersimpan otomatis) → Simpan Hasil Laboratorium.'],
+                            ['src' => 'images/panduan-dev/alur/laborat/09-selesai.png', 'caption' => 'TAHAP 5 · Selesai — hasil terkunci, badge KRITIS tetap terlihat (Haemoglobin 9.4 Rendah-KRITIS), siap Cetak Hasil; pembatalan transaksi hanya via eskalasi role.'],
+                            ['src' => 'images/panduan-dev/alur/laborat/10-selesai-detail.png', 'caption' => 'TAHAP 5b — detail hasil final: seluruh item + rentang normal + kesimpulan.'],
+                            ['src' => 'images/panduan-dev/alur/rj-pelayanan/21-hasil-lab-riwayat.png', 'caption' => 'TAHAP 6 · kembali ke EMR — hasil muncul di tab Hasil Penunjang kunjungan (berikut riwayat lab dari UGD/RI); dokter tinggal klik Hasil Laboratorium.'],
+                            ['src' => 'images/panduan-dev/alur/rj-pelayanan/20-hasil-lab.png', 'caption' => 'TAHAP 6b · EMR — dokter membaca hasil lengkap dengan flag Tinggi/Rendah, langsung dari layar pelayanan. Lingkaran tertutup: order → proses → hasil, tanpa kertas.'],
+                        ]])
                     </section>
 
                     {{-- ====== CABANG — RADIOLOGI ====== --}}
@@ -963,13 +1013,24 @@ new class extends Component {
                             </div>
                         </div>
 
-                        <div class="ds-card-outline" style="padding:16px 20px">
+                        <div class="ds-card-outline mb-6" style="padding:16px 20px">
                             <span class="ds-spike" style="vertical-align:middle"></span>
                             <span class="ds-body-sm" style="color:var(--body-strong)">
                                 Pembatalan order radiologi dari modul ini ikut menghapus biayanya di kunjungan
                                 induk dan tercatat di audit log kunjungan — sama disiplinnya dengan lab.
                             </span>
                         </div>
+
+                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Proses order end-to-end: EMR → Modul Radiologi → kembali ke EMR</div>
+                        @include('pages.panduan-dev.alur-pelayanan.partial-galeri', ['gambarList' => [
+                            ['src' => 'images/panduan-dev/alur/rj-pelayanan/16-order-radiologi.png', 'caption' => 'TAHAP 1 · EMR RJ — dokter membuat Order Pemeriksaan Radiologi: pilih item dari katalog 154 pemeriksaan, toggle CITO, isi Diagnosis/Keterangan Klinis (wajib) → Kirim Order.'],
+                            ['src' => 'images/panduan-dev/alur/radiologi/01-list.png', 'caption' => 'TAHAP 2 · Modul Radiologi — order muncul di worklist Upload Hasil Radiologi (lintas jalur, badge UGD/RI/RJ; status Antrian → Selesai, tarif terkunci setelah final). Petugas melakukan pemeriksaan lalu meng-upload Foto dari modalitas.'],
+                            ['src' => 'images/panduan-dev/alur/radiologi/02-tulis-bacaan.png', 'caption' => 'TAHAP 3 · Hasil Bacaan — dokter radiologi menulis expertise di editor rich-text (dukung tabel ukuran) + memilih penanda tangan → Generate & Simpan menyusun PDF bacaan otomatis.'],
+                            ['src' => 'images/panduan-dev/alur/radiologi/03-upload-bacaan.png', 'caption' => 'TAHAP 3b (alternatif) — Upload Hasil Bacaan PDF/JPG (maks 5 MB) bila bacaan dibuat di luar sistem.'],
+                            ['src' => 'images/panduan-dev/alur/radiologi/04-foto.png', 'caption' => 'TAHAP 4 — foto & bacaan tersimpan menempel ke order; viewer membuka file modalitas (THORAX PA/AP) langsung dari sistem.'],
+                            ['src' => 'images/panduan-dev/alur/rj-pelayanan/22-radiologi-riwayat.png', 'caption' => 'TAHAP 5 · kembali ke EMR — di tab Hasil Penunjang kunjungan, order berstatus "Hasil Tersedia" dengan tombol Hasil Bacaan & Foto Radiologi (termasuk riwayat dari UGD/RI).'],
+                            ['src' => 'images/panduan-dev/alur/rj-pelayanan/24-hasil-bacaan.png', 'caption' => 'TAHAP 5b · EMR — dokter pengirim membaca expertise resmi (kop Instalasi Radiologi) tanpa meninggalkan layar pelayanan. Lingkaran tertutup: order → foto+bacaan → terbaca dokter.'],
+                        ]])
                     </section>
 
                     {{-- ====== CABANG — E-RESEP ====== --}}
