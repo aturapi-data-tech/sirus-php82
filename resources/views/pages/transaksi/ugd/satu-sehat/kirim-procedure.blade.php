@@ -1,8 +1,8 @@
 <?php
 // resources/views/pages/transaksi/ugd/satu-sehat/kirim-procedure.blade.php
 // Step 4: Kirim Tindakan (Procedure, ICD-9-CM).
-// CATATAN: UGD belum jelas menyimpan tindakan ber-ICD9 di JSON (RJ: tindakanList).
-//   Dibaca dari tindakanList/tindakan bila ada; kalau kosong → guard (bukan error fatal).
+// Sumber JSON: dataUGD['procedure'][] { procedureId = ICD-9, procedureDesc } —
+//   ditulis rm-diagnosa-ugd-actions (identik RJ/RI); kalau kosong → guard (bukan error fatal).
 
 use Livewire\Component;
 use Livewire\Attributes\On;
@@ -74,14 +74,17 @@ new class extends Component {
             $practitionerId = (string) (DB::table('rsmst_doctors')->where('dr_id', $dataUGD['drId'] ?? '')->value('dr_uuid') ?? '');
             $ugdDate = $this->parseDate($dataUGD['rjDate'] ?? '');
 
-            $tindakanList = $dataUGD['tindakanList'] ?? ($dataUGD['tindakan'] ?? []);
+            // Sumber JSON: dataUGD['procedure'][] { procedureId = ICD-9, procedureDesc } —
+            // ditulis rm-diagnosa-ugd-actions; sama dengan sender RI. (Key lama
+            // tindakanList/kodeIcd9 tidak pernah ditulis siapa pun → selalu "tidak ada data".)
+            $tindakanList = $dataUGD['procedure'] ?? [];
             if (empty($tindakanList) || !is_array($tindakanList)) { $this->dispatch('toast', type: 'error', message: 'Tidak ada data tindakan ber-ICD9 di UGD.'); return; }
 
             $satuSehat['procedureIds'] = [];
             foreach ($tindakanList as $tindakan) {
                 if (!is_array($tindakan)) continue;
-                $kode = $tindakan['kodeIcd9'] ?? ($tindakan['icd9'] ?? '');
-                $display = $tindakan['descIcd9'] ?? ($tindakan['icd9Desc'] ?? '');
+                $kode = $tindakan['procedureId'] ?? '';
+                $display = $tindakan['procedureDesc'] ?? '';
                 if (empty($kode)) continue;
 
                 $respons = $this->createProcedure([

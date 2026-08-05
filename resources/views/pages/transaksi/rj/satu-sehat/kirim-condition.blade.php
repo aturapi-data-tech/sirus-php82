@@ -70,17 +70,17 @@ new class extends Component {
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
 
             $rjDate = $this->parseDate($dataRJ['rjDate'] ?? '');
-            $diagnosaList = $dataRJ['diagnpinaList'] ?? [];
-            if (empty($diagnosaList) && !empty($dataRJ['diagnosaPinaUtama']['kodeIcdx'])) {
-                $diagnosaList = [$dataRJ['diagnosaPinaUtama']];
-            }
+            // Sumber JSON: dataRJ['diagnosis'][] { icdX/diagId, diagDesc } — ditulis
+            // rm-diagnosa-rj-actions; sama dengan sender UGD. (Key lama diagnpinaList
+            // tidak pernah ditulis siapa pun → selalu "tidak ada data diagnosa".)
+            $diagnosaList = $dataRJ['diagnosis'] ?? [];
             if (empty($diagnosaList)) { $this->dispatch('toast', type: 'error', message: 'Tidak ada data diagnosa untuk dikirim.'); return; }
 
             $satuSehat['conditionIds'] = [];
             $count = 0;
             foreach ($diagnosaList as $diagnosa) {
-                $kode = $diagnosa['kodeIcdx'] ?? ($diagnosa['icdx'] ?? '');
-                $display = $diagnosa['descIcdx'] ?? ($diagnosa['icdxDesc'] ?? '');
+                $kode = $diagnosa['icdX'] ?? ($diagnosa['diagId'] ?? '');
+                $display = $diagnosa['diagDesc'] ?? '';
                 if (empty($kode)) continue;
 
                 $respons = $this->createFinalDiagnosis([

@@ -3,7 +3,7 @@
 // Step 11: Kirim Impresi Klinik (ClinicalImpression, asesmen "A" SOAP)
 //
 // CATATAN: EMR RJ tak punya satu field "narasi impresi"; penilaian = alat skoring.
-// Sumber summary = ringkasan daftar diagnosa (kodeIcdx - descIcdx) + catatan penilaian bila ada.
+// Sumber summary = ringkasan daftar diagnosa (icdX - diagDesc dari dataRJ['diagnosis']) + catatan penilaian bila ada.
 // findings SNOMED dikosongkan (diagnosa = ICD-10, bukan SNOMED).
 
 use Livewire\Component;
@@ -76,15 +76,14 @@ new class extends Component {
             $assessorId = (string) (DB::table('rsmst_doctors')->where('dr_id', $dataRJ['drId'] ?? '')->value('dr_uuid') ?? '');
             if (empty($assessorId)) { $this->dispatch('toast', type: 'error', message: 'IHS dokter (dr_uuid) kosong.'); return; }
 
-            // Ringkas diagnosa jadi teks impresi.
-            $diagnosaList = $dataRJ['diagnpinaList'] ?? [];
-            if (empty($diagnosaList) && !empty($dataRJ['diagnosaPinaUtama']['kodeIcdx'])) {
-                $diagnosaList = [$dataRJ['diagnosaPinaUtama']];
-            }
+            // Ringkas diagnosa jadi teks impresi. Sumber JSON: dataRJ['diagnosis'][]
+            // { icdX/diagId, diagDesc } — ditulis rm-diagnosa-rj-actions; sama dengan
+            // sender UGD. (Key lama diagnpinaList tidak pernah ditulis siapa pun.)
+            $diagnosaList = $dataRJ['diagnosis'] ?? [];
             $bagianList = [];
             foreach ($diagnosaList as $diagnosa) {
-                $kode = $diagnosa['kodeIcdx'] ?? ($diagnosa['icdx'] ?? '');
-                $deskripsi = $diagnosa['descIcdx'] ?? ($diagnosa['icdxDesc'] ?? '');
+                $kode = $diagnosa['icdX'] ?? ($diagnosa['diagId'] ?? '');
+                $deskripsi = $diagnosa['diagDesc'] ?? '';
                 if ($kode !== '' || $deskripsi !== '') { $bagianList[] = trim("{$kode} - {$deskripsi}", ' -'); }
             }
             $summary = $bagianList ? ('Kesimpulan klinis: ' . implode('; ', $bagianList)) : '';

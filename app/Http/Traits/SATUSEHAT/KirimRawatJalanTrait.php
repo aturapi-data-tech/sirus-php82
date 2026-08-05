@@ -180,16 +180,16 @@ trait KirimRawatJalanTrait
     private function stepDiagnosa(array $ss, array $dataRJ, string $patientId, Carbon $rjDate, array &$results, array &$errors): array
     {
         try {
-            $diagnosaList = $dataRJ['diagnpinaList'] ?? [];
-            if (empty($diagnosaList) && !empty($dataRJ['diagnosaPinaUtama']['kodeIcdx'])) {
-                $diagnosaList = [$dataRJ['diagnosaPinaUtama']];
-            }
+            // Sumber JSON: dataRJ['diagnosis'][] { icdX/diagId, diagDesc } — ditulis
+            // rm-diagnosa-rj-actions; sama dengan sender UGD. (Key lama diagnpinaList
+            // tidak pernah ditulis siapa pun → step ini dulu selalu terlewati senyap.)
+            $diagnosaList = $dataRJ['diagnosis'] ?? [];
 
             if (!empty($diagnosaList) && empty($ss['conditionIds'])) {
                 $ss['conditionIds'] = [];
-                foreach ($diagnosaList as $diag) {
-                    $icdCode = $diag['kodeIcdx'] ?? ($diag['icdx'] ?? '');
-                    $icdDisplay = $diag['descIcdx'] ?? ($diag['icdxDesc'] ?? '');
+                foreach ($diagnosaList as $diagnosa) {
+                    $icdCode = $diagnosa['icdX'] ?? ($diagnosa['diagId'] ?? '');
+                    $icdDisplay = $diagnosa['diagDesc'] ?? '';
                     if (empty($icdCode)) continue;
 
                     $condRes = $this->createFinalDiagnosis([
@@ -268,13 +268,16 @@ trait KirimRawatJalanTrait
     private function stepTindakan(array $ss, array $dataRJ, string $patientId, string $practitionerId, Carbon $rjDate, array &$results, array &$errors): array
     {
         try {
-            $tindakanList = $dataRJ['tindakanList'] ?? ($dataRJ['tindakan'] ?? []);
+            // Sumber JSON: dataRJ['procedure'][] { procedureId = ICD-9, procedureDesc } —
+            // ditulis rm-diagnosa-rj-actions; sama dengan sender RI. (Key lama
+            // tindakanList/kodeIcd9 tidak pernah ditulis siapa pun → step ini terlewati senyap.)
+            $tindakanList = $dataRJ['procedure'] ?? [];
             if (empty($tindakanList) || !empty($ss['procedureIds'])) return $ss;
 
             $ss['procedureIds'] = [];
-            foreach ($tindakanList as $t) {
-                $code = $t['kodeIcd9'] ?? ($t['icd9'] ?? '');
-                $display = $t['descIcd9'] ?? ($t['icd9Desc'] ?? '');
+            foreach ($tindakanList as $tindakan) {
+                $code = $tindakan['procedureId'] ?? '';
+                $display = $tindakan['procedureDesc'] ?? '';
                 if (empty($code)) continue;
 
                 $res = $this->createProcedure([

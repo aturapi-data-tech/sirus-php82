@@ -10,13 +10,15 @@ Skill ini isinya yang paling sering bikin salah.
 
 ## 1. Verifikasi sumber data ke DATA NYATA, jangan percaya kode lama
 
-Dua sender pernah membaca key yang **tak pernah ada** di JSON EMR dan gagal SENYAP —
-"berhasil dikirim (0 item)", tanpa error:
+Empat kelompok sender pernah membaca key yang **tak pernah ada** di JSON EMR dan gagal
+SENYAP — "berhasil dikirim (0 item)" atau "tidak ada data", tanpa error:
 
 | Sender | Dibaca (salah) | Yang benar |
 |---|---|---|
 | Observation RJ | `pemeriksaanFisik`/`tandaVital` di akar, key `sistole`/`diastole`/`nadi`/`rr` | `pemeriksaan.tandaVital`, key `sistolik`/`distolik`/`frekuensiNadi`/`frekuensiNafas`/`spo2` |
 | MedicationRequest & Dispense RJ/UGD | `kfaCode`/`product_id_satusehat` di item e-resep | lookup master obat lewat `productId` |
+| Condition & ClinicalImpression RJ (+ `stepDiagnosa` bundel) | `diagnpinaList[]`/`diagnosaPinaUtama`, key `kodeIcdx`/`descIcdx` | `diagnosis[]` (ditulis rm-diagnosa-rj-actions), key `icdX ?? diagId` + `diagDesc` — sama dengan sender UGD |
+| Procedure RJ & UGD (+ `stepTindakan` bundel) | `tindakanList`/`tindakan`, key `kodeIcd9`/`descIcd9` | `procedure[]` (ditulis rm-diagnosa-*-actions), key `procedureId` (= ICD-9, mis. `93.39`) + `procedureDesc` — sama dengan sender RI |
 
 Sebelum menulis sender: `findDataRJ('...')` lalu `array_keys()` node yang dipakai. Sekali
 saja, tapi wajib.

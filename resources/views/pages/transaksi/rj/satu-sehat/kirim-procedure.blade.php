@@ -72,13 +72,16 @@ new class extends Component {
             $practitionerId = (string) (DB::table('rsmst_doctors')->where('dr_id', $dataRJ['drId'] ?? '')->value('dr_uuid') ?? '');
             $rjDate = $this->parseDate($dataRJ['rjDate'] ?? '');
 
-            $tindakanList = $dataRJ['tindakanList'] ?? ($dataRJ['tindakan'] ?? []);
+            // Sumber JSON: dataRJ['procedure'][] { procedureId = ICD-9, procedureDesc } —
+            // ditulis rm-diagnosa-rj-actions; sama dengan sender RI. (Key lama
+            // tindakanList/kodeIcd9 tidak pernah ditulis siapa pun → selalu "tidak ada data".)
+            $tindakanList = $dataRJ['procedure'] ?? [];
             if (empty($tindakanList)) { $this->dispatch('toast', type: 'error', message: 'Tidak ada data tindakan.'); return; }
 
             $satuSehat['procedureIds'] = [];
             foreach ($tindakanList as $tindakan) {
-                $kode = $tindakan['kodeIcd9'] ?? ($tindakan['icd9'] ?? '');
-                $display = $tindakan['descIcd9'] ?? ($tindakan['icd9Desc'] ?? '');
+                $kode = $tindakan['procedureId'] ?? '';
+                $display = $tindakan['procedureDesc'] ?? '';
                 if (empty($kode)) continue;
 
                 $respons = $this->createProcedure([
