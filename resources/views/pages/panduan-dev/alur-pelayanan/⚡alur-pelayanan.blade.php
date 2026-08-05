@@ -1576,6 +1576,36 @@ new class extends Component {
                             </div>
                         </div>
 
+                        <div class="ds-caption-up mb-3" style="color:var(--muted)">Hubungan dengan Kartu Stock — buku besar stok per produk</div>
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            @include('pages.panduan-dev.alur-pelayanan.partial-pipeline', ['steps' => [
+                                ['chip' => 'per tahun', 'judul' => 'Saldo awal', 'sub' => 'saldo pembukaan produk'],
+                                ['chip' => 'RCV +', 'judul' => 'Penerimaan PBF', 'sub' => 'posting modul ini → masuk', 'chipWarna' => 'green'],
+                                ['chip' => '±', 'judul' => 'Transfer stok', 'sub' => 'gudang ↔ apotek/ruangan', 'chipWarna' => 'sky'],
+                                ['chip' => 'SLS/RJ −', 'judul' => 'Keluar via e-resep', 'sub' => 'resep RJ/UGD/RI · obat bebas', 'chipWarna' => 'amber'],
+                                ['chip' => 'SO', 'judul' => 'Stock opname', 'sub' => 'koreksi stok fisik'],
+                                ['chip' => '=', 'judul' => 'Saldo akhir', 'sub' => 'terlihat di Kartu Stock', 'chipWarna' => 'green'],
+                            ]])
+                            <p class="ds-body-sm mt-4" style="color:var(--muted-soft)">
+                                Kartu Stock (menu Gudang, read-only) = <strong>buku besar per produk per
+                                tahun</strong>: saldo awal + seluruh mutasi masuk/keluar = saldo akhir. Setiap
+                                <em>Simpan &amp; Posting</em> di modul penerimaan otomatis menulis satu baris
+                                mutasi berlabel <strong>RCV — Beli PBF</strong> (masuk); label lain: SLS obat
+                                bebas, RJ pelayanan rawat jalan, SO stock opname. Ada tiga kartu sesuai
+                                lokasinya: Gudang Medis, Apotek, dan Non-Medis — dan koreksi
+                                <strong>stock opname</strong> juga diinput dari layar kartu ini.
+                            </p>
+                            <p class="ds-body-sm mt-2" style="color:var(--muted-soft)">
+                                Rantai lengkap satu butir obat: <strong>RCV</strong> masuk Gudang Medis →
+                                <strong>Transfer Stok</strong> memindahkannya ke Apotek (atau ruangan) →
+                                keluar dari Apotek saat <strong>e-resep dilayani</strong> (RJ/UGD/RI —
+                                menjadi pos Obat di administrasi pasien) atau terjual bebas (SLS).
+                                ⚠️ Catatan: <strong>ruangan tidak punya kartu stok sendiri</strong> —
+                                transfer ke ruangan tercatat sebagai keluar dari gudang/apotek, tapi
+                                pemakaian di ruangan tidak ber-ledger per produk.
+                            </p>
+                        </div>
+
                         <div class="ds-card-outline" style="padding:16px 20px">
                             <span class="ds-spike" style="vertical-align:middle"></span>
                             <span class="ds-body-sm" style="color:var(--body-strong)">
@@ -1583,7 +1613,9 @@ new class extends Component {
                                 (<span class="ds-code">imtxn_receivehdrs</span> +
                                 <span class="ds-code">imtxn_receivedtls</span>, master
                                 <span class="ds-code">immst_suppliers</span> /
-                                <span class="ds-code">immst_products</span>). Setelah posting, transaksi
+                                <span class="ds-code">immst_products</span>); ledger mutasi dibaca dari view
+                                <span class="ds-code">tkview_iostockwhs</span> + saldo awal
+                                <span class="ds-code">tktxn_saldoawalstocks</span>. Setelah posting, transaksi
                                 terkunci (edit hanya di status Daftar Tunggu) — koreksi lewat Batal, dan
                                 semua mutasi stok terlacak di Kartu Stock.
                             </span>
