@@ -208,38 +208,48 @@ new class extends Component {
                                     <text x="562" y="62" text-anchor="middle" font-size="11" fill="var(--muted)">selesai
                                         dilayani</text>
 
-                                    {{-- ── Cabang dari EMR ── --}}
-                                    <rect x="120" y="220" width="150" height="56" rx="12" fill="var(--surface-card)" />
-                                    <text x="195" y="244" text-anchor="middle" font-size="13" font-weight="600"
+                                    {{-- ── Cabang dari EMR (4 cabang) ── --}}
+                                    <rect x="45" y="220" width="145" height="56" rx="12" fill="var(--surface-card)" />
+                                    <text x="117" y="244" text-anchor="middle" font-size="13" font-weight="600"
                                         fill="var(--ink)">Modul Laborat</text>
-                                    <text x="195" y="262" text-anchor="middle" font-size="11"
+                                    <text x="117" y="262" text-anchor="middle" font-size="11"
                                         fill="var(--muted)">P → C → H</text>
 
-                                    <rect x="310" y="220" width="160" height="56" rx="12" fill="var(--surface-card)" />
-                                    <text x="390" y="244" text-anchor="middle" font-size="13" font-weight="600"
+                                    <rect x="205" y="220" width="155" height="56" rx="12" fill="var(--surface-card)" />
+                                    <text x="282" y="244" text-anchor="middle" font-size="13" font-weight="600"
                                         fill="var(--ink)">Modul Radiologi</text>
-                                    <text x="390" y="262" text-anchor="middle" font-size="11"
+                                    <text x="282" y="262" text-anchor="middle" font-size="11"
                                         fill="var(--muted)">foto + bacaan</text>
 
-                                    <rect x="510" y="220" width="180" height="56" rx="12" fill="var(--surface-card)" />
-                                    <text x="600" y="238" text-anchor="middle" font-size="12" fill="var(--primary)"
+                                    <rect x="375" y="220" width="150" height="56" rx="12" fill="var(--surface-card)" />
+                                    <text x="450" y="244" text-anchor="middle" font-size="13" font-weight="600"
+                                        fill="var(--ink)">Kamar Operasi</text>
+                                    <text x="450" y="262" text-anchor="middle" font-size="11"
+                                        fill="var(--muted)">OK — A → L</text>
+
+                                    <rect x="540" y="220" width="170" height="56" rx="12" fill="var(--surface-card)" />
+                                    <text x="625" y="238" text-anchor="middle" font-size="12" fill="var(--primary)"
                                         font-weight="700">TAHAP 3</text>
-                                    <text x="600" y="256" text-anchor="middle" font-size="13" font-weight="600"
+                                    <text x="625" y="256" text-anchor="middle" font-size="13" font-weight="600"
                                         fill="var(--ink)">Apotek RJ</text>
-                                    <text x="600" y="270" text-anchor="middle" font-size="11"
+                                    <text x="625" y="270" text-anchor="middle" font-size="11"
                                         fill="var(--muted)">e-resep → serah obat</text>
 
-                                    <line x1="300" y1="104" x2="215" y2="214" stroke="var(--muted)" stroke-width="2"
+                                    <line x1="285" y1="104" x2="135" y2="214" stroke="var(--muted)" stroke-width="2"
                                         marker-end="url(#panah)" />
-                                    <text x="230" y="160" text-anchor="middle" font-size="11"
+                                    <text x="180" y="150" text-anchor="middle" font-size="11"
                                         fill="var(--muted)">order lab</text>
-                                    <line x1="360" y1="104" x2="388" y2="214" stroke="var(--muted)" stroke-width="2"
+                                    <line x1="330" y1="104" x2="285" y2="214" stroke="var(--muted)" stroke-width="2"
                                         marker-end="url(#panah)" />
-                                    <text x="402" y="160" text-anchor="middle" font-size="11"
+                                    <text x="290" y="165" text-anchor="middle" font-size="11"
                                         fill="var(--muted)">order rad</text>
-                                    <line x1="425" y1="104" x2="580" y2="214" stroke="var(--muted)" stroke-width="2"
+                                    <line x1="380" y1="104" x2="445" y2="214" stroke="var(--muted)" stroke-width="2"
                                         marker-end="url(#panah)" />
-                                    <text x="540" y="150" text-anchor="middle" font-size="11"
+                                    <text x="432" y="150" text-anchor="middle" font-size="11"
+                                        fill="var(--muted)">kirim OK</text>
+                                    <line x1="430" y1="104" x2="605" y2="214" stroke="var(--muted)" stroke-width="2"
+                                        marker-end="url(#panah)" />
+                                    <text x="555" y="140" text-anchor="middle" font-size="11"
                                         fill="var(--muted)">e-resep</text>
 
                                     {{-- ── Aliran biaya (putus-putus) → pos biaya → kasir ── --}}
@@ -250,13 +260,16 @@ new class extends Component {
                                     <text x="765" y="356" text-anchor="middle" font-size="11"
                                         fill="var(--primary)">kunjungan</text>
 
-                                    <line x1="195" y1="276" x2="195" y2="344" stroke="var(--primary)" stroke-width="1.5"
+                                    <line x1="117" y1="276" x2="117" y2="344" stroke="var(--primary)" stroke-width="1.5"
                                         stroke-dasharray="5 4" />
-                                    <line x1="195" y1="344" x2="684" y2="344" stroke="var(--primary)" stroke-width="1.5"
+                                    <line x1="117" y1="344" x2="684" y2="344" stroke="var(--primary)" stroke-width="1.5"
                                         stroke-dasharray="5 4" marker-end="url(#panah-biaya)" />
-                                    <line x1="390" y1="276" x2="390" y2="344" stroke="var(--primary)" stroke-width="1.5"
+                                    <line x1="282" y1="276" x2="282" y2="344" stroke="var(--primary)" stroke-width="1.5"
                                         stroke-dasharray="5 4" />
-                                    <line x1="600" y1="276" x2="600" y2="344" stroke="var(--primary)" stroke-width="1.5"
+                                    <line x1="450" y1="276" x2="450" y2="344" stroke="var(--primary)" stroke-width="1.5"
+                                        stroke-dasharray="5 4" />
+                                    <text x="462" y="316" font-size="10" fill="var(--primary)">Trf Biaya</text>
+                                    <line x1="625" y1="276" x2="625" y2="344" stroke="var(--primary)" stroke-width="1.5"
                                         stroke-dasharray="5 4" />
                                     <line x1="765" y1="320" x2="765" y2="110" stroke="var(--primary)" stroke-width="1.5"
                                         stroke-dasharray="5 4" marker-end="url(#panah-biaya)" />
