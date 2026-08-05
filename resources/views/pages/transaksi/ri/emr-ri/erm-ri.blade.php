@@ -38,8 +38,9 @@ new class extends Component {
         }
         $this->dataDaftarRi = $data;
 
-        $riStatus = DB::scalar('select ri_status from rstxn_rihdrs where rihdr_no = :r', ['r' => $riHdrNo]);
-        $this->isFormLocked = $riStatus !== 'I';
+        // Kunci klinis mengikuti kebijakan trait (sengaja longgar — audit log saja),
+        // BUKAN inline ri_status; kunci finansial tetap via checkRIStatus() di administrasi.
+        $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
 
         $this->dispatch('open-modal', name: 'rm-ri-actions');
 

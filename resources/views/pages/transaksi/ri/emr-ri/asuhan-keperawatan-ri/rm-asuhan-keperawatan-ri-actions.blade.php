@@ -67,8 +67,8 @@ new class extends Component {
         $this->dataDaftarRi = $data;
         $this->dataDaftarRi['asuhanKeperawatan'] ??= [];
         $this->incrementVersion('modal-asuhan-keperawatan-ri');
-        $riStatus = DB::scalar('select ri_status from rstxn_rihdrs where rihdr_no = :r', ['r' => $riHdrNo]);
-        $this->isFormLocked = $riStatus !== 'I';
+        // Kunci klinis mengikuti kebijakan trait (sengaja longgar), bukan inline ri_status.
+        $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
     }
 
     #[On('lov.selected.riFormAsuhanKeperawatan')]
