@@ -135,7 +135,7 @@ new class extends Component {
             'obatDanCairan.rute' => 'Rute pemberian',
             'obatDanCairan.keterangan' => 'Keterangan',
             'obatDanCairan.waktuPemberian' => 'Waktu pemberian',
-            'obatDanCairan.pemeriksa' => 'Pemeriksa',
+            'obatDanCairan.pemeriksa' => 'Pemberi',
         ];
     }
 
@@ -452,7 +452,7 @@ new class extends Component {
                             class="text-xs font-semibold text-muted uppercase bg-surface-soft dark:bg-gray-800/50 dark:text-gray-400">
                             <tr>
                                 <th class="px-4 py-3">No</th>
-                                <th class="px-4 py-3">Waktu / Pemeriksa</th>
+                                <th class="px-4 py-3">Waktu / Pemberi</th>
                                 <th class="px-4 py-3">Nama Obat / Cairan</th>
                                 <th class="px-4 py-3 text-center">Jumlah</th>
                                 <th class="px-4 py-3">Dosis</th>
