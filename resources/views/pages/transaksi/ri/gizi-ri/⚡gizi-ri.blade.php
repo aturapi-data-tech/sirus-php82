@@ -235,8 +235,9 @@ new class extends Component {
 
     /**
      * Unduh daftar diet pasien sebagai CSV siap-Excel (pola gaji-dokter-lampiran:
-     * BOM UTF-8 + pemisah ';' + bentuk pipih tanpa subtotal, CSV bukan .xlsx
-     * karena proyek tidak memuat PhpSpreadsheet).
+     * BOM UTF-8 + pemisah ';', CSV bukan .xlsx karena proyek tidak memuat
+     * PhpSpreadsheet). Baris data pipih (aman dipivot); di bawahnya ada blok
+     * rekap porsi per program diet, dipisah satu baris kosong.
      *
      * KHUSUS PASIEN DIRAWAT (ri_status='I') — daftar produksi dapur; filter
      * bangsal & pencarian di layar tetap dihormati, filter status TIDAK.
@@ -259,7 +260,30 @@ new class extends Component {
         $tglExport = Carbon::now(config('app.timezone'))->format('d/m/Y H:i');
         $namaBerkas = 'program-diet-pasien-' . Carbon::now(config('app.timezone'))->format('Ymd-Hi') . '.csv';
 
-        return response()->streamDownload(function () use ($rowList, $tglExport) {
+        // Rekap per jenis diet utk blok bawah CSV — dari baris yang sama dgn
+        // isi file (pasien dirawat, filter bangsal & pencarian dihormati).
+        // Urutan mengikuti daftar baku; diet lama di luar daftar menyusul.
+        $rekapDiet = [];
+        $belumAdaDiet = 0;
+        foreach ($rowList as $row) {
+            $namaDiet = trim((string) ($row->diet_terakhir['nilai'] ?? ''));
+            if ($namaDiet === '') {
+                $belumAdaDiet++;
+                continue;
+            }
+            $rekapDiet[$namaDiet] = ($rekapDiet[$namaDiet] ?? 0) + 1;
+        }
+        $rekapUrut = [];
+        foreach (GiziOptions::PROGRAM_DIET as $namaDiet) {
+            if (isset($rekapDiet[$namaDiet])) {
+                $rekapUrut[$namaDiet] = $rekapDiet[$namaDiet];
+                unset($rekapDiet[$namaDiet]);
+            }
+        }
+        ksort($rekapDiet);
+        $rekapUrut += $rekapDiet;
+
+        return response()->streamDownload(function () use ($rowList, $tglExport, $rekapUrut, $belumAdaDiet) {
             $keluaran = fopen('php://output', 'w');
 
             // BOM UTF-8 — tanpa ini Excel membaca berkas sebagai ANSI.
@@ -291,6 +315,23 @@ new class extends Component {
                     $row->alergi_dokter,
                 ], ';');
             }
+
+            // ── REKAP PORSI PER PROGRAM DIET (blok bawah) ──
+            // Baris data di atas tetap pipih (aman dipivot); blok rekap
+            // dipisah baris kosong agar mudah dikenali/dibuang di Excel.
+            fputcsv($keluaran, [], ';');
+            fputcsv($keluaran, ['REKAP PORSI PER PROGRAM DIET'], ';');
+            fputcsv($keluaran, ['Program Diet', 'Jumlah Pasien'], ';');
+            $totalPasien = 0;
+            foreach ($rekapUrut as $namaDiet => $jumlah) {
+                fputcsv($keluaran, [$namaDiet, $jumlah], ';');
+                $totalPasien += $jumlah;
+            }
+            if ($belumAdaDiet > 0) {
+                fputcsv($keluaran, ['(Belum ada program diet)', $belumAdaDiet], ';');
+                $totalPasien += $belumAdaDiet;
+            }
+            fputcsv($keluaran, ['TOTAL', $totalPasien], ';');
 
             fclose($keluaran);
         }, $namaBerkas, [
