@@ -196,27 +196,11 @@ new class extends Component {
             }
 
             // ============================================================
-            // 3. BPJS SEP — cek dengan mempertimbangkan isPoliSpesialis
-            // ============================================================
-            $isBpjs = ($this->dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($this->dataDaftarPoliRJ['klaimId'] ?? '') === 'JM';
-
-            if ($isBpjs) {
-                $statusTambahPendaftaran = $this->dataDaftarPoliRJ['taskIdPelayanan']['tambahPendaftaran'] ?? '';
-                $statusTaskId3 = $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3Status'] ?? '';
-                $antrianSudahOk = $statusTambahPendaftaran == 200 || $statusTambahPendaftaran == 208 || $statusTaskId3 == 200 || $statusTaskId3 == 208;
-
-                // SEP diblok HANYA jika poli spesialis DAN antrian belum berhasil
-                if ($isPoliSpesialis && !$antrianSudahOk) {
-                    $this->dispatch('toast', type: 'warning', message: 'Harap selesaikan tambah antrian BPJS terlebih dahulu sebelum membuat SEP.', title: 'Antrian Belum Terdaftar', position: 'top-right', duration: 6000);
-                    // Lanjut simpan data tanpa SEP — tidak return di sini
-                    // agar data RJ tetap tersimpan meski SEP belum ada
-                } else {
-                    $this->handleSepCreation();
-                }
-            }
-
-            // ============================================================
-            // 4. DB TRANSACTION
+            // 3. DB TRANSACTION — SENGAJA SEBELUM SEP.
+            //    Dulu SEP dibuat dulu baru simpan DB: bila simpan gagal
+            //    (duplikat/ORA-00001/lock timeout), SEP sudah tercipta di BPJS
+            //    tapi tak tercatat di vno_sep & JSON (SEP yatim). Kini row RJ
+            //    dipastikan ada dulu, SEP menyusul lalu langsung di-persist.
             // ============================================================
             $message = '';
 
@@ -265,6 +249,27 @@ new class extends Component {
                     $this->updateJsonData($rjNo);
                     $message = 'Data Rawat Jalan berhasil diperbarui.';
                 });
+            }
+
+            // ============================================================
+            // 4. BPJS SEP — setelah row RJ tersimpan; sukses insert/update
+            //    langsung di-persist sendiri (persistSepNode) sehingga SEP
+            //    tidak pernah yatim walau ada kegagalan lain setelahnya.
+            // ============================================================
+            $isBpjs = ($this->dataDaftarPoliRJ['klaimStatus'] ?? '') === 'BPJS' || ($this->dataDaftarPoliRJ['klaimId'] ?? '') === 'JM';
+
+            if ($isBpjs) {
+                $statusTambahPendaftaran = $this->dataDaftarPoliRJ['taskIdPelayanan']['tambahPendaftaran'] ?? '';
+                $statusTaskId3 = $this->dataDaftarPoliRJ['taskIdPelayanan']['taskId3Status'] ?? '';
+                $antrianSudahOk = $statusTambahPendaftaran == 200 || $statusTambahPendaftaran == 208 || $statusTaskId3 == 200 || $statusTaskId3 == 208;
+
+                // SEP diblok HANYA jika poli spesialis DAN antrian belum berhasil
+                if ($isPoliSpesialis && !$antrianSudahOk) {
+                    $this->dispatch('toast', type: 'warning', message: 'Harap selesaikan tambah antrian BPJS terlebih dahulu sebelum membuat SEP.', title: 'Antrian Belum Terdaftar', position: 'top-right', duration: 6000);
+                    // Data RJ sudah tersimpan; SEP bisa dibuat ulang dari modal
+                } else {
+                    $this->handleSepCreation();
+                }
             }
 
             // ============================================================
@@ -943,8 +948,48 @@ new class extends Component {
 
         $this->dataDaftarPoliRJ['noReferensi'] = $this->resolveNoReferensi($reqSep);
 
+        // Persist SEGERA — jangan menunggu alur simpan lain; SEP di BPJS
+        // sudah tercipta dan tidak boleh yatim.
+        $this->persistSepNode();
+
         $this->dispatch('toast', type: 'success', message: "SEP berhasil dibuat: {$sepData['noSep']}");
         $this->incrementVersion('modal');
+    }
+
+    /**
+     * Tulis node sep + noReferensi + kolom vno_sep dalam transaksi kecil
+     * TERPISAH dari alur simpan utama. Baca fresh dari DB lalu timpa hanya
+     * key terkait SEP (pola array_replace parsial — jangan replace penuh,
+     * lihat catatan reload-DB+replace).
+     */
+    private function persistSepNode(): void
+    {
+        $rjNo = $this->dataDaftarPoliRJ['rjNo'] ?? null;
+        if (empty($rjNo)) {
+            // Row RJ belum ada — seharusnya tak terjadi setelah reorder simpan-dulu.
+            $this->dispatch('toast', type: 'warning', message: 'SEP tercipta tapi No. RJ belum ada — noSep: ' . ($this->dataDaftarPoliRJ['sep']['noSep'] ?? '-') . '. Simpan ulang pendaftaran.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($rjNo) {
+                $this->lockRJRow($rjNo);
+
+                $fresh = $this->findDataRJ($rjNo) ?: $this->dataDaftarPoliRJ;
+                $fresh['sep'] = $this->dataDaftarPoliRJ['sep'] ?? [];
+                if (array_key_exists('noReferensi', $this->dataDaftarPoliRJ)) {
+                    $fresh['noReferensi'] = $this->dataDaftarPoliRJ['noReferensi'];
+                }
+                $this->updateJsonRJ($rjNo, $fresh);
+
+                DB::table('rstxn_rjhdrs')
+                    ->where('rj_no', $rjNo)
+                    ->update(['vno_sep' => $this->dataDaftarPoliRJ['sep']['noSep'] ?? '']);
+            });
+        } catch (\Throwable $e) {
+            // SEP sudah ada di BPJS — beri tahu noSep-nya supaya bisa dicatat manual.
+            $this->dispatch('toast', type: 'error', message: 'SEP ' . ($this->dataDaftarPoliRJ['sep']['noSep'] ?? '-') . ' tercipta di BPJS tapi GAGAL tercatat lokal: ' . $e->getMessage() . ' — ulangi Simpan tanpa menutup form.', duration: 10000);
+        }
     }
 
     private function handleInsertSepError(array $response): void
@@ -1041,6 +1086,7 @@ new class extends Component {
         $message = $response['metadata']['message'] ?? 'SEP berhasil diupdate';
         $this->dispatch('toast', type: 'success', message: "Update SEP ({$code}): {$message}");
         $this->dataDaftarPoliRJ['sep']['updated_at'] = Carbon::now()->format('d/m/Y H:i:s');
+        $this->persistSepNode();
     }
 
     private function handleUpdateSepError(array $response): void
