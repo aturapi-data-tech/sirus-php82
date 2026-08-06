@@ -302,13 +302,74 @@ new class extends Component {
 
                     {{-- KANAN: Tutup + Simpan (Simpan hanya di tab Penilaian Gizi — tab lain punya alur simpan sendiri) --}}
                     <div class="flex items-center gap-2">
-                        <x-outline-button type="button"
+                        <x-secondary-button type="button"
                             x-on:click="$dispatch('close-modal', { name: 'gizi-ri-entri' })">
                             Tutup
-                        </x-outline-button>
+                        </x-secondary-button>
                         <x-primary-button type="button" wire:click="simpan" wire:loading.attr="disabled"
-                            x-show="activeTab === 'gizi'">
+                            x-show="activeTab === 'gizi'" class="min-w-[120px]">
+                            <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
+                            </svg>
                             Simpan Penilaian Gizi
+                        </x-primary-button>
+
+                        {{-- Simpan Pengkajian Perawat/Dokter — hanya role yang boleh simpan
+                             di komponennya (Gizi read-only, tidak melihat tombol ini) --}}
+                        @hasanyrole('Perawat|Admin')
+                            <x-primary-button type="button" x-show="activeTab === 'pengkajian-perawat'" x-cloak
+                                class="min-w-[120px]"
+                                x-on:click="Livewire.dispatch('save-rm-pengkajian-awal-ri')">
+                                <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
+                                </svg>
+                                Simpan Pengkajian Perawat
+                            </x-primary-button>
+                        @endhasanyrole
+
+                        @hasanyrole('Dokter|Admin')
+                            <x-primary-button type="button" x-show="activeTab === 'pengkajian-dokter'" x-cloak
+                                class="min-w-[120px]"
+                                x-on:click="Livewire.dispatch('save-rm-pengkajian-dokter-ri')">
+                                <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
+                                </svg>
+                                Simpan Pengkajian Dokter
+                            </x-primary-button>
+                        @endhasanyrole
+
+                        {{-- Simpan CPPT/SBAR — komponennya tanpa tombol simpan sendiri (pola
+                             erm-ri: footer dispatch save-rm-*); label ikut mode edit --}}
+                        <x-primary-button type="button" x-show="activeTab === 'cppt'" x-cloak
+                            class="min-w-[120px]" x-data="{ editing: false }"
+                            x-on:cppt-edit-mode.window="editing = $event.detail?.editing ?? false"
+                            x-on:open-modal.window="editing = false"
+                            x-on:click="Livewire.dispatch('save-rm-cppt-ri')">
+                            <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
+                            </svg>
+                            <span x-text="editing ? 'Perbarui CPPT' : 'Simpan CPPT'"></span>
+                        </x-primary-button>
+
+                        <x-primary-button type="button" x-show="activeTab === 'sbar'" x-cloak
+                            class="min-w-[120px]" x-data="{ editing: false }"
+                            x-on:sbar-edit-mode.window="editing = $event.detail?.editing ?? false"
+                            x-on:open-modal.window="editing = false"
+                            x-on:click="Livewire.dispatch('save-rm-sbar-ri')">
+                            <svg class="inline w-4 h-4 mr-1 -ml-1" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1-4l-4 4-4-4m4 4V4" />
+                            </svg>
+                            <span x-text="editing ? 'Perbarui SBAR' : 'Simpan SBAR'"></span>
                         </x-primary-button>
                     </div>
 
