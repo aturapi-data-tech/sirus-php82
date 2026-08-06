@@ -768,37 +768,52 @@ new class extends Component {
             return;
         }
 
-        DB::transaction(function () use ($spriData, $sepData) {
-            $this->lockRIRow($this->riHdrNo);
+        try {
+            DB::transaction(function () use ($spriData, $sepData) {
+                $this->lockRIRow($this->riHdrNo);
 
-            $fresh = $this->findDataRI($this->riHdrNo);
+                $fresh = $this->findDataRI($this->riHdrNo);
 
-            if (!empty($spriData)) {
-                $fresh['spri'] = $spriData;
-            }
-            if (!empty($sepData)) {
-                $fresh['sep'] = array_merge($fresh['sep'] ?? [], $sepData);
-            }
-            if (!empty($this->noReferensi)) {
-                $fresh['noReferensi'] = $this->noReferensi;
-            }
+                if (!empty($spriData)) {
+                    $fresh['spri'] = $spriData;
+                }
+                if (!empty($sepData)) {
+                    $fresh['sep'] = array_merge($fresh['sep'] ?? [], $sepData);
+                }
+                if (!empty($this->noReferensi)) {
+                    $fresh['noReferensi'] = $this->noReferensi;
+                }
 
-            $this->updateJsonRI((int) $this->riHdrNo, $fresh);
+                $this->updateJsonRI((int) $this->riHdrNo, $fresh);
 
-            // Sync kolom vno_sep agar konsisten dengan JSON — dipakai report & findDataRI fallback.
-            // RJ melakukan ini via buildPayload saat save; RI perlu update terpisah karena SEP
-            // dibuat dari modal setelah RI tersimpan.
-            if (!empty($sepData['noSep'])) {
-                DB::table('rstxn_rihdrs')
-                    ->where('rihdr_no', $this->riHdrNo)
-                    ->update(['vno_sep' => $sepData['noSep']]);
-            } elseif (array_key_exists('noSep', $sepData) && $sepData['noSep'] === '') {
-                // Delete SEP — reset vno_sep juga
-                DB::table('rstxn_rihdrs')
-                    ->where('rihdr_no', $this->riHdrNo)
-                    ->update(['vno_sep' => null]);
+                // Sync kolom vno_sep agar konsisten dengan JSON — dipakai report & findDataRI fallback.
+                // RJ melakukan ini via buildPayload saat save; RI perlu update terpisah karena SEP
+                // dibuat dari modal setelah RI tersimpan.
+                if (!empty($sepData['noSep'])) {
+                    DB::table('rstxn_rihdrs')
+                        ->where('rihdr_no', $this->riHdrNo)
+                        ->update(['vno_sep' => $sepData['noSep']]);
+                } elseif (array_key_exists('noSep', $sepData) && $sepData['noSep'] === '') {
+                    // Delete SEP — reset vno_sep juga
+                    DB::table('rstxn_rihdrs')
+                        ->where('rihdr_no', $this->riHdrNo)
+                        ->update(['vno_sep' => null]);
+                }
+            });
+        } catch (\Throwable $e) {
+            // BPJS sudah berhasil diproses sebelum sampai sini — kegagalan lokal
+            // TIDAK boleh menelan nomornya (pola persistSepNode RJ/UGD, anti SEP yatim).
+            // Jangan re-throw: dispatch sep-generated-ri di pemanggil tetap harus jalan
+            // agar nomor tersimpan di state induk & bisa dipersist ulang saat Simpan.
+            if (array_key_exists('noSep', $sepData) && ($sepData['noSep'] ?? '') === '') {
+                $pesan = 'SEP sudah TERHAPUS di BPJS tapi catatan lokal gagal diperbarui: ' . $e->getMessage() . ' — buka ulang form RI lalu kosongkan No SEP manual & Simpan.';
+            } elseif (!empty($sepData['noSep'])) {
+                $pesan = 'SEP ' . $sepData['noSep'] . ' sudah tercatat di BPJS tapi GAGAL tersimpan lokal: ' . $e->getMessage() . ' — catat nomornya, lalu Simpan ulang form RI tanpa menutupnya.';
+            } else {
+                $pesan = 'SPRI ' . ($spriData['noSPRIBPJS'] ?? '-') . ' sudah tercatat di BPJS tapi GAGAL tersimpan lokal: ' . $e->getMessage() . ' — catat nomornya, lalu Simpan ulang form RI tanpa menutupnya.';
             }
-        });
+            $this->dispatch('toast', type: 'error', message: $pesan, duration: 10000);
+        }
     }
 
     /* ===============================

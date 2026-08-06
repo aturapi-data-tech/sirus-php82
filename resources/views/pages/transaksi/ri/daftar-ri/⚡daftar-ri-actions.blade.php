@@ -11,13 +11,12 @@ use Carbon\Carbon;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
-use App\Http\Traits\BPJS\VclaimTrait;
 use App\Support\OracleLob;
 use Illuminate\Validation\ValidationException;
 
 new class extends Component {
-    // CATATAN: VclaimTrait tidak di-use di sini — static call VclaimTrait::method()
-    // cukup karena tidak ada conflict method dengan trait lain yang dipakai.
+    // CATATAN: SEP/SPRI RI dibuat dari komponen vclaim-ri-actions (modal terpisah),
+    // bukan dari sini — komponen ini hanya menerima event sep-generated-ri/spri-generated-ri.
     use EmrRITrait, MasterPasienTrait, WithRenderVersioningTrait;
 
     public string $formMode = 'create';
@@ -539,74 +538,6 @@ new class extends Component {
         DB::table('rsmst_pasiens')
             ->where('reg_no', $regNo)
             ->update(['lockstatus' => $status]);
-    }
-
-    /* ---- SEP Handlers (static call — tidak ada AntrianTrait, tidak ada conflict) ---- */
-    private function handleSepCreation(): void
-    {
-        $sudahAdaSEP = !empty($this->dataDaftarRi['sep']['noSep']);
-        $hasReqSep = !empty($this->dataDaftarRi['sep']['reqSep']);
-        if (!$sudahAdaSEP && $hasReqSep) {
-            $this->pushInsertSEP($this->dataDaftarRi['sep']['reqSep']);
-        } elseif ($sudahAdaSEP && $hasReqSep) {
-            $this->pushUpdateSEP($this->dataDaftarRi['sep']['reqSep']);
-        }
-    }
-
-    private function pushInsertSEP(array $reqSep): void
-    {
-        if (empty($reqSep)) {
-            return;
-        }
-        try {
-            $response = VclaimTrait::sep_insert($reqSep)->getOriginalContent();
-            $code = $response['metadata']['code'] ?? 500;
-            if ($code == 200) {
-                $sepData = $response['response']['sep'] ?? null;
-                if ($sepData) {
-                    $this->dataDaftarRi['sep']['noSep'] = $sepData['noSep'] ?? '';
-                    $this->dataDaftarRi['sep']['resSep'] = $sepData;
-                    $this->dispatch('toast', type: 'success', message: "SEP berhasil dibuat: {$sepData['noSep']}");
-                }
-            } else {
-                $this->dispatch('toast', type: 'error', message: "SEP gagal ({$code}): " . ($response['metadata']['message'] ?? '-'));
-            }
-        } catch (\Exception $e) {
-            $this->dispatch('toast', type: 'error', message: 'Error SEP: ' . $e->getMessage());
-        }
-    }
-
-    private function pushUpdateSEP(array $reqSep): void
-    {
-        if (empty($reqSep) || empty($this->dataDaftarRi['sep']['noSep'])) {
-            return;
-        }
-        try {
-            $t = $reqSep['request']['t_sep'] ?? [];
-            $payload = [
-                'request' => [
-                    't_sep' => [
-                        'noSep' => $this->dataDaftarRi['sep']['noSep'],
-                        'klsRawat' => $t['klsRawat'] ?? [],
-                        'noMR' => $t['noMR'] ?? '',
-                        'catatan' => $t['catatan'] ?? '',
-                        'diagAwal' => $t['diagAwal'] ?? '',
-                        'poli' => ['tujuan' => $t['poli']['tujuan'] ?? '', 'eksekutif' => '0'],
-                        'cob' => ['cob' => '0'],
-                        'katarak' => ['katarak' => '0'],
-                        'jaminan' => $t['jaminan'] ?? ['lakaLantas' => '0'],
-                        'dpjpLayan' => $t['dpjpLayan'] ?? '',
-                        'noTelp' => $t['noTelp'] ?? '',
-                        'user' => 'siRUS',
-                    ],
-                ],
-            ];
-            $response = VclaimTrait::sep_update($payload)->getOriginalContent();
-            $code = $response['metadata']['code'] ?? 500;
-            $this->dispatch('toast', type: $code == 200 ? 'success' : 'error', message: "Update SEP ({$code}): " . ($response['metadata']['message'] ?? ''));
-        } catch (\Exception $e) {
-            $this->dispatch('toast', type: 'error', message: 'Error Update SEP: ' . $e->getMessage());
-        }
     }
 
     /* ---- LOV Room Listener ---- */
