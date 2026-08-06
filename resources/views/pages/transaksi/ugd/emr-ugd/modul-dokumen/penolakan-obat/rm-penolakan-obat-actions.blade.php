@@ -6,7 +6,7 @@
 // + Buka Kunci gate terpusat (dokumen.bukaKunci) sesuai standar terbaru.
 
 use Livewire\Component;
-use App\Http\Traits\Txn\Ri\EmrUGDTrait;
+use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
