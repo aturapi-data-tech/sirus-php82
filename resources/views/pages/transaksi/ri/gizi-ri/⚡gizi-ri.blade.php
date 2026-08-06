@@ -66,6 +66,17 @@ new class extends Component {
         $this->dispatch('cetak-etiket-gizi.open', riHdrNo: $riHdrNo);
     }
 
+    // Buka modal yang sama dengan daftar-ri (event & komponen identik)
+    public function openModulDokumen(string $riHdrNo): void
+    {
+        $this->dispatch('emr-ri.modul-dokumen.open', riHdrNo: $riHdrNo);
+    }
+
+    public function openAdministrasiPasien(string $riHdrNo): void
+    {
+        $this->dispatch('emr-ri.administrasi.open', riHdrNo: $riHdrNo);
+    }
+
     // Setelah entri diet tersimpan di modal — listener kosong cukup:
     // request re-render menghitung ulang rows & rekap dari DB.
     #[On('refresh-after-ri.saved')]
@@ -538,32 +549,110 @@ new class extends Component {
                                         @endif
                                     </td>
 
-                                    {{-- AKSI --}}
+                                    {{-- AKSI — tombol utama + dropdown titik-3 (pola daftar-ri) --}}
                                     <td class="px-6 py-5 align-top text-center">
-                                        <div class="flex flex-col items-center gap-2">
-                                            <x-primary-button type="button" wire:click="openEntri('{{ $row->rihdr_no }}')"
-                                                class="whitespace-nowrap">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M12 4v16m8-8H4" />
-                                                </svg>
-                                                Penilaian Gizi
-                                            </x-primary-button>
+                                        <div class="flex items-center justify-center gap-2">
+                                            <x-dropdown position="left" width="w-[440px]">
+                                                <x-slot name="trigger">
+                                                    <x-secondary-button type="button" class="p-2">
+                                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path
+                                                                d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
+                                                        </svg>
+                                                    </x-secondary-button>
+                                                </x-slot>
 
-                                            {{-- Etiket diet — hanya bila sudah ada program diet --}}
-                                            @if (!empty($row->diet_terakhir))
-                                                <x-outline-button type="button"
-                                                    wire:click="cetakEtiketGizi('{{ $row->rihdr_no }}')"
-                                                    wire:loading.attr="disabled" class="whitespace-nowrap">
-                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
-                                                        viewBox="0 0 24 24" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                                    </svg>
-                                                    Etiket Diet
-                                                </x-outline-button>
-                                            @endif
+                                                <x-slot name="content">
+                                                    <div class="p-2 space-y-2">
+                                                        <div class="grid grid-cols-2 gap-1">
+
+                                                            {{-- Penilaian Gizi — entri program diet harian --}}
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openEntri('{{ $row->rihdr_no }}')"
+                                                                class="px-3 py-2 text-sm rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0"
+                                                                        fill="none" stroke="currentColor"
+                                                                        viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round"
+                                                                            stroke-linejoin="round"
+                                                                            d="M12 4v16m8-8H4" />
+                                                                    </svg>
+                                                                    <span>Penilaian Gizi<br>
+                                                                        <span
+                                                                            class="font-semibold">{{ $row->reg_name }}</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+
+                                                            {{-- Etiket diet — hanya bila sudah ada program diet --}}
+                                                            @if (!empty($row->diet_terakhir))
+                                                                <x-dropdown-link href="#"
+                                                                    wire:click.prevent="cetakEtiketGizi('{{ $row->rihdr_no }}')"
+                                                                    class="px-3 py-2 text-sm rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20">
+                                                                    <div class="flex items-start gap-2">
+                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0"
+                                                                            fill="none" stroke="currentColor"
+                                                                            viewBox="0 0 24 24" stroke-width="2">
+                                                                            <path stroke-linecap="round"
+                                                                                stroke-linejoin="round"
+                                                                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                                        </svg>
+                                                                        <span>Etiket Diet<br>
+                                                                            <span class="font-semibold">
+                                                                                {{ $row->diet_terakhir['nilai'] }}
+                                                                            </span>
+                                                                        </span>
+                                                                    </div>
+                                                                </x-dropdown-link>
+                                                            @endif
+
+                                                            {{-- Modul Dokumen — gate role sama dgn daftar-ri --}}
+                                                            @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr|Gizi')
+                                                                <x-dropdown-link href="#"
+                                                                    wire:click.prevent="openModulDokumen('{{ $row->rihdr_no }}')"
+                                                                    class="px-3 py-2 text-sm rounded-lg bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20">
+                                                                    <div class="flex items-start gap-2">
+                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0"
+                                                                            fill="none" stroke="currentColor"
+                                                                            viewBox="0 0 24 24" stroke-width="2">
+                                                                            <path stroke-linecap="round"
+                                                                                stroke-linejoin="round"
+                                                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                        </svg>
+                                                                        <span>Modul Dokumen<br>
+                                                                            <span class="font-semibold">Formulir &amp;
+                                                                                Consent Pasien</span>
+                                                                        </span>
+                                                                    </div>
+                                                                </x-dropdown-link>
+                                                            @endhasanyrole
+
+                                                            {{-- Administrasi — gate role sama dgn daftar-ri --}}
+                                                            @hasanyrole('Admin|Perawat|Casemix|Tu|Gizi')
+                                                                <x-dropdown-link href="#"
+                                                                    wire:click.prevent="openAdministrasiPasien('{{ $row->rihdr_no }}')"
+                                                                    class="px-3 py-2 text-sm rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20">
+                                                                    <div class="flex items-start gap-2">
+                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0"
+                                                                            fill="none" stroke="currentColor"
+                                                                            viewBox="0 0 24 24" stroke-width="2">
+                                                                            <path stroke-linecap="round"
+                                                                                stroke-linejoin="round"
+                                                                                d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
+                                                                        </svg>
+                                                                        <span>Administrasi<br>
+                                                                            <span
+                                                                                class="font-semibold">{{ $row->reg_name }}</span>
+                                                                        </span>
+                                                                    </div>
+                                                                </x-dropdown-link>
+                                                            @endhasanyrole
+
+                                                        </div>
+                                                    </div>
+                                                </x-slot>
+                                            </x-dropdown>
                                         </div>
                                     </td>
 
@@ -602,6 +691,12 @@ new class extends Component {
 
             {{-- Cetak etiket diet (langsung download PDF 6x4 cm) --}}
             <livewire:pages::components.rekam-medis.r-i.cetak-etiket-gizi.cetak-etiket-gizi wire:key="cetak-etiket-gizi" />
+
+            {{-- Modul Dokumen & Administrasi — modal sama dgn daftar-ri (sibling, dengar event emr-ri.*) --}}
+            <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.modul-dokumen-ri wire:key="modul-dokumen-ri" />
+            <livewire:pages::transaksi.ri.administrasi-ri.administrasi-ri wire:key="administrasi-ri-actions" />
+            {{-- Log aktivitas — dibuka dari tombol log di dalam modal Administrasi --}}
+            <livewire:pages::transaksi.ri.emr-ri.log-aktivitas.log-aktivitas-ri wire:key="log-aktivitas-ri" />
 
         </div>
     </div>
