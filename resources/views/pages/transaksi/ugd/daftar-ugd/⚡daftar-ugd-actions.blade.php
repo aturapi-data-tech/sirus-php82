@@ -132,8 +132,9 @@ new class extends Component {
      | Pola:
      |   1. Guard read-only
      |   2. setDataPrimer() + validateDataUGD()
-     |   3. SEP API DI LUAR transaksi
-     |   4. DB::transaction: lock (edit only) + insert/update + updateJsonData()
+     |   3. DB::transaction: lock (edit only) + insert/update + updateJsonData()
+     |   4. SEP API DI LUAR transaksi, SETELAH row tersimpan — sukses insert
+     |      langsung persistSepNode() supaya SEP tak pernah yatim
      |   5. afterSave() DI LUAR transaksi
      =============================== */
     public function save(): void
@@ -170,16 +171,9 @@ new class extends Component {
             }
 
             // ============================================================
-            // 1. SEP API — di luar transaksi
-            // ============================================================
-            $isBpjs = ($this->dataDaftarUGD['klaimStatus'] ?? '') === 'BPJS' || ($this->dataDaftarUGD['klaimId'] ?? '') === 'JM';
-
-            if ($isBpjs) {
-                $this->handleSepCreation();
-            }
-
-            // ============================================================
-            // 2. DB TRANSACTION
+            // 1. DB TRANSACTION — SENGAJA SEBELUM SEP (pola sama daftar-rj).
+            //    Bila simpan gagal (duplikat/ORA-00001/lock timeout), SEP
+            //    belum tercipta di BPJS → tidak ada SEP yatim.
             // ============================================================
             $message = '';
 
@@ -221,6 +215,17 @@ new class extends Component {
                     $this->updateJsonData($rjNo);
                     $message = 'Data UGD berhasil diperbarui.';
                 });
+            }
+
+            // ============================================================
+            // 2. SEP API — di luar transaksi, SETELAH row tersimpan; sukses
+            //    insert langsung di-persist (persistSepNode) sehingga SEP
+            //    tidak pernah yatim walau ada kegagalan lain setelahnya.
+            // ============================================================
+            $isBpjs = ($this->dataDaftarUGD['klaimStatus'] ?? '') === 'BPJS' || ($this->dataDaftarUGD['klaimId'] ?? '') === 'JM';
+
+            if ($isBpjs) {
+                $this->handleSepCreation();
             }
 
             // ============================================================
@@ -524,6 +529,10 @@ new class extends Component {
                 if ($sepData) {
                     $this->dataDaftarUGD['sep']['noSep'] = $sepData['noSep'] ?? '';
                     $this->dataDaftarUGD['sep']['resSep'] = $sepData;
+
+                    // Persist SEGERA — SEP di BPJS sudah tercipta, tidak boleh yatim.
+                    $this->persistSepNode();
+
                     $this->dispatch('toast', type: 'success', message: "SEP berhasil dibuat: {$sepData['noSep']}");
                 }
             } else {
@@ -532,6 +541,37 @@ new class extends Component {
             }
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Error SEP: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Tulis node sep + kolom vno_sep dalam transaksi kecil TERPISAH dari alur
+     * simpan utama (pola sama persistSepNode daftar-rj). Baca fresh dari DB
+     * lalu timpa hanya key sep — jangan replace penuh.
+     */
+    private function persistSepNode(): void
+    {
+        $rjNo = $this->dataDaftarUGD['rjNo'] ?? null;
+        if (empty($rjNo)) {
+            $this->dispatch('toast', type: 'warning', message: 'SEP tercipta tapi No. UGD belum ada — noSep: ' . ($this->dataDaftarUGD['sep']['noSep'] ?? '-') . '. Simpan ulang pendaftaran.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($rjNo) {
+                $this->lockUGDRow($rjNo);
+
+                $fresh = $this->findDataUGD($rjNo) ?: $this->dataDaftarUGD;
+                $fresh['sep'] = $this->dataDaftarUGD['sep'] ?? [];
+                $this->updateJsonUGD((int) $rjNo, $fresh);
+
+                DB::table('rstxn_ugdhdrs')
+                    ->where('rj_no', $rjNo)
+                    ->update(['vno_sep' => $this->dataDaftarUGD['sep']['noSep'] ?? '']);
+            });
+        } catch (\Throwable $e) {
+            // SEP sudah ada di BPJS — beri tahu noSep-nya supaya bisa dicatat manual.
+            $this->dispatch('toast', type: 'error', message: 'SEP ' . ($this->dataDaftarUGD['sep']['noSep'] ?? '-') . ' tercipta di BPJS tapi GAGAL tercatat lokal: ' . $e->getMessage() . ' — ulangi Simpan tanpa menutup form.', duration: 10000);
         }
     }
 
