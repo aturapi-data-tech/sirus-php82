@@ -791,6 +791,10 @@ new class extends Component {
                     {{-- ── Pengkajian Akhir Hayat — viewer (Lihat + Cetak dalam modal) ── --}}
                     <livewire:pages::components.rekam-medis.u-g-d.dokumen-view.akhir-hayat-view-ugd :rjNo="$rjNo"
                         :entries="$dataDaftarTxn['pengkajianAkhirHayatUGD'] ?? []" wire:key="rm-view-akhir-hayat-ugd-{{ $rjNo }}" />
+
+                    {{-- ── Penolakan Pengobatan / Obat Tertentu — viewer (Lihat + Cetak dalam modal) ── --}}
+                    <livewire:pages::components.rekam-medis.u-g-d.dokumen-view.penolakan-obat-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['penolakanObatUGD'] ?? []" wire:key="rm-view-penolakan-obat-ugd-{{ $rjNo }}" />
                 </div>
 
                 {{-- ════ TAB: HASIL PENUNJANG (lab / radiologi / upload — view-only) ════ --}}

@@ -222,6 +222,21 @@ new class extends Component {
                                         @endif
                                     </x-tab>
 
+                                    {{-- Penolakan Pengobatan / Obat Tertentu --}}
+                                    <x-tab variant="underline" active-expr="activeTab === 'penolakan-obat'"
+                                        x-on:click="activeTab = 'penolakan-obat'"
+                                        class="inline-flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                        </svg>
+                                        Penolakan Obat
+                                        @if (!empty($dataDaftarUGD['penolakanObatUGD']) && count($dataDaftarUGD['penolakanObatUGD']) > 0)
+                                            <x-badge variant="success"
+                                                class="text-[10px] px-1.5 py-0">{{ count($dataDaftarUGD['penolakanObatUGD']) }}</x-badge>
+                                        @endif
+                                    </x-tab>
+
                                     <x-tab variant="underline" active-expr="activeTab === 'pelayanan-bedah'"
                                         x-on:click="activeTab = 'pelayanan-bedah'"
                                         class="inline-flex items-center gap-2">
@@ -309,6 +324,13 @@ new class extends Component {
                                 <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.penundaan-pelayanan.rm-penundaan-pelayanan-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="penundaan-pelayanan-ugd-{{ $rjNo ?? 'init' }}" />
+                            </div>
+
+                            {{-- Panel: Penolakan Pengobatan / Obat Tertentu --}}
+                            <div x-show="activeTab === 'penolakan-obat'" x-transition.opacity.duration.300ms>
+                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.penolakan-obat.rm-penolakan-obat-actions
+                                    :rjNo="$rjNo" :disabled="$isFormLocked"
+                                    wire:key="penolakan-obat-ugd-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                             {{-- Panel: Pelayanan Bedah — 8 form operasi (pola sama dengan EMR RI). --}}
