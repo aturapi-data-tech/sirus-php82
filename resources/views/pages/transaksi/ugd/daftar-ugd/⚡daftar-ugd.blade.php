@@ -200,18 +200,19 @@ new class extends Component {
             /* SATUSEHAT — status kirim PER-RESOURCE (blok json 'satusehat').
                UGD 9 resource (tanpa Chief Complaint & Allergy). Nilai bisa scalar
                (encounterId/clinicalImpressionId) atau array (conditionIds/...). */
-            $ss = $json['satusehat'] ?? [];
-            $ssFilled = fn($v) => is_array($v) ? count($v) > 0 : !empty($v);
+            $satusehat = $json['satusehat'] ?? [];
+            $satusehatTerisi = fn($nilai) => is_array($nilai) ? count($nilai) > 0 : !empty($nilai);
+            // Label pendek agar grid 3x3 di kolom Action rapi; nama lengkap di 'full' (tooltip).
             $row->satusehat_items = [
-                ['label' => 'Encounter',           'full' => 'Encounter (kunjungan)',            'sent' => $ssFilled($ss['encounterId'] ?? null)],
-                ['label' => 'Condition',           'full' => 'Condition (diagnosa ICD-10)',      'sent' => $ssFilled($ss['conditionIds'] ?? null)],
-                ['label' => 'Observation',         'full' => 'Observation (vital/lab)',          'sent' => $ssFilled($ss['observationIds'] ?? null)],
-                ['label' => 'Procedure',           'full' => 'Procedure (tindakan ICD-9)',       'sent' => $ssFilled($ss['procedureIds'] ?? null)],
-                ['label' => 'Medication Request',  'full' => 'Medication Request (resep)',       'sent' => $ssFilled($ss['medicationRequestIds'] ?? null)],
-                ['label' => 'Medication Dispense', 'full' => 'Medication Dispense (obat pulang)', 'sent' => $ssFilled($ss['medicationDispenseIds'] ?? null)],
-                ['label' => 'Penunjang Lab',       'full' => 'Penunjang Lab',                    'sent' => $ssFilled($ss['labServiceRequestIds'] ?? null) || $ssFilled($ss['labDiagnosticReportIds'] ?? null)],
-                ['label' => 'Penunjang Radiologi', 'full' => 'Penunjang Radiologi',             'sent' => $ssFilled($ss['radServiceRequestIds'] ?? null) || $ssFilled($ss['radDiagnosticReportIds'] ?? null)],
-                ['label' => 'Clinical Impression', 'full' => 'Clinical Impression',             'sent' => $ssFilled($ss['clinicalImpressionId'] ?? null)],
+                ['label' => 'Encounter',    'full' => 'Encounter (kunjungan)',             'sent' => $satusehatTerisi($satusehat['encounterId'] ?? null)],
+                ['label' => 'Condition',    'full' => 'Condition (diagnosa ICD-10)',       'sent' => $satusehatTerisi($satusehat['conditionIds'] ?? null)],
+                ['label' => 'Observation',  'full' => 'Observation (vital/lab)',           'sent' => $satusehatTerisi($satusehat['observationIds'] ?? null)],
+                ['label' => 'Procedure',    'full' => 'Procedure (tindakan ICD-9)',        'sent' => $satusehatTerisi($satusehat['procedureIds'] ?? null)],
+                ['label' => 'Med Request',  'full' => 'Medication Request (resep)',        'sent' => $satusehatTerisi($satusehat['medicationRequestIds'] ?? null)],
+                ['label' => 'Med Dispense', 'full' => 'Medication Dispense (obat pulang)', 'sent' => $satusehatTerisi($satusehat['medicationDispenseIds'] ?? null)],
+                ['label' => 'Lab',          'full' => 'Penunjang Lab',                     'sent' => $satusehatTerisi($satusehat['labServiceRequestIds'] ?? null) || $satusehatTerisi($satusehat['labDiagnosticReportIds'] ?? null)],
+                ['label' => 'Radiologi',    'full' => 'Penunjang Radiologi',               'sent' => $satusehatTerisi($satusehat['radServiceRequestIds'] ?? null) || $satusehatTerisi($satusehat['radDiagnosticReportIds'] ?? null)],
+                ['label' => 'Impression',   'full' => 'Clinical Impression',               'sent' => $satusehatTerisi($satusehat['clinicalImpressionId'] ?? null)],
             ];
 
             /* Triase / Tingkat Kegawatan */
@@ -459,8 +460,8 @@ new class extends Component {
                                 <th class="px-6 py-3 w-[24%]">Pasien</th>
                                 <th class="px-6 py-3 w-[20%]">Dokter / Klaim</th>
                                 <th class="px-6 py-3 w-[16%]">Status Layanan</th>
-                                <th class="px-6 py-3 w-[18%]">Tindak Lanjut</th>
-                                <th class="px-6 py-3 w-[22%] text-center">Action</th>
+                                <th class="px-6 py-3 w-[15%]">Tindak Lanjut</th>
+                                <th class="px-6 py-3 w-[25%] text-center">Action</th>
                             </tr>
                         </thead>
 
@@ -689,30 +690,15 @@ new class extends Component {
                                                 </span>
                                             </div>
                                         @else
-                                            <div class="flex items-center gap-4">
+                                            <div class="flex items-center gap-3">
 
-                                                {{-- Cetak Etiket --}}
-                                                <x-secondary-button wire:click="cetakEtiket('{{ $row->reg_no }}')"
-                                                    wire:loading.attr="disabled" wire:target="cetakEtiket">
-                                                    <span wire:loading.remove wire:target="cetakEtiket"
-                                                        class="flex items-center gap-1">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24" stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                                        </svg>
-                                                        Etiket
-                                                    </span>
-                                                    <span wire:loading wire:target="cetakEtiket"
-                                                        class="flex items-center gap-1">
-                                                        <x-loading /> Mencetak...
-                                                    </span>
-                                                </x-secondary-button>
+                                                {{-- Titik-3 + Etiket disusun vertikal (Etiket di bawah) — hemat lebar, ruang untuk grid Satu Sehat --}}
+                                                <div class="flex flex-col items-stretch gap-2 shrink-0">
 
                                                 {{-- Dropdown Aksi --}}
                                                 <x-dropdown position="left" width="w-[440px]">
                                                     <x-slot name="trigger">
-                                                        <x-secondary-button type="button" class="p-2">
+                                                        <x-secondary-button type="button" class="p-2 w-full justify-center">
                                                             <svg class="w-5 h-5" fill="currentColor"
                                                                 viewBox="0 0 20 20">
                                                                 <path
@@ -837,21 +823,51 @@ new class extends Component {
                                                     </x-slot>
                                                 </x-dropdown>
 
-                                                {{-- SATU SEHAT — status kirim PER-RESOURCE, di kanan tombol titik-3.
-                                                     Abu-abu = belum dikirim, hijau/brand = sudah. Klik chip = buka modal Kirim Satu Sehat UGD. --}}
+                                                {{-- Cetak Etiket --}}
+                                                <x-secondary-button wire:click="cetakEtiket('{{ $row->reg_no }}')"
+                                                    wire:loading.attr="disabled" wire:target="cetakEtiket"
+                                                    class="justify-center">
+                                                    <span wire:loading.remove wire:target="cetakEtiket"
+                                                        class="flex items-center gap-1">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                        </svg>
+                                                        Etiket
+                                                    </span>
+                                                    <span wire:loading wire:target="cetakEtiket"
+                                                        class="flex items-center gap-1">
+                                                        <x-loading /> Mencetak...
+                                                    </span>
+                                                </x-secondary-button>
+
+                                                </div>
+
+                                                {{-- SATU SEHAT — status kirim PER-RESOURCE, di kanan tombol Etiket/titik-3.
+                                                     Grid 3x3 seragam + hitungan terkirim; abu-abu = belum, hijau/brand = sudah.
+                                                     Klik chip = buka modal Kirim Satu Sehat UGD. --}}
                                                 @hasanyrole('Admin|Mr')
-                                                    <div class="flex-1 min-w-0">
-                                                        <x-input-label value="Satu Sehat" class="mb-1 text-[10px] uppercase tracking-wide text-muted" />
-                                                        <div class="flex flex-wrap items-center gap-1">
-                                                            @foreach ($row->satusehat_items as $ssItem)
+                                                    @php $satusehatTerkirim = collect($row->satusehat_items)->where('sent', true)->count(); @endphp
+                                                    <div class="flex-1 min-w-0 max-w-[280px]">
+                                                        <div class="flex items-center justify-between gap-2 mb-1">
+                                                            <x-input-label value="Satu Sehat" class="text-[10px] uppercase tracking-wide text-muted" />
+                                                            <span
+                                                                class="text-[9px] font-bold tabular-nums leading-none {{ $satusehatTerkirim === count($row->satusehat_items) ? 'text-brand-green dark:text-brand-lime' : ($satusehatTerkirim > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-soft') }}"
+                                                                title="{{ $satusehatTerkirim }} dari {{ count($row->satusehat_items) }} resource terkirim">
+                                                                {{ $satusehatTerkirim }}/{{ count($row->satusehat_items) }}
+                                                            </span>
+                                                        </div>
+                                                        <div class="grid grid-cols-3 gap-1">
+                                                            @foreach ($row->satusehat_items as $satusehatItem)
                                                                 <button type="button"
                                                                     x-on:click.prevent="$dispatch('daftar-ugd.satu-sehat.open', { rjNo: {{ $row->rj_no }} })"
-                                                                    title="{{ $ssItem['full'] }} — {{ $ssItem['sent'] ? 'sudah dikirim' : 'belum dikirim' }} (klik untuk kelola)"
-                                                                    class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border text-[9px] font-semibold leading-none transition {{ $ssItem['sent'] ? 'bg-brand-green/10 text-brand-green border-brand-green/30 dark:bg-brand-lime/15 dark:text-brand-lime dark:border-brand-lime/30' : 'bg-surface-soft text-muted-soft border-hairline hover:bg-surface-strong hover:text-body dark:bg-gray-800 dark:text-gray-500 dark:border-gray-700 dark:hover:bg-gray-700' }}">
-                                                                    @if ($ssItem['sent'])
+                                                                    title="{{ $satusehatItem['full'] }} — {{ $satusehatItem['sent'] ? 'sudah dikirim' : 'belum dikirim' }} (klik untuk kelola)"
+                                                                    class="inline-flex items-center justify-center gap-0.5 w-full px-1 py-1 rounded border text-[9px] font-semibold leading-none transition {{ $satusehatItem['sent'] ? 'bg-brand-green/10 text-brand-green border-brand-green/30 dark:bg-brand-lime/15 dark:text-brand-lime dark:border-brand-lime/30' : 'bg-surface-soft text-muted-soft border-hairline hover:bg-surface-strong hover:text-body dark:bg-gray-800 dark:text-gray-500 dark:border-gray-700 dark:hover:bg-gray-700' }}">
+                                                                    @if ($satusehatItem['sent'])
                                                                         <svg class="w-2 h-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="4"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                                                                     @endif
-                                                                    {{ $ssItem['label'] }}
+                                                                    <span class="truncate">{{ $satusehatItem['label'] }}</span>
                                                                 </button>
                                                             @endforeach
                                                         </div>
