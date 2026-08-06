@@ -6,11 +6,17 @@
     'confirmText' => 'Ya',
     'cancelText' => 'Batal',
     'disabled' => false,
+    'wireTarget' => null, // default: nama method dari $action — override bila perlu target lain
 ])
 
 @php
     // id unik supaya aman dipakai berulang di table
     $confirmId = 'confirm_' . md5($action . '|' . ($attributes->get('wire:key') ?? '') . '|' . uniqid('', true));
+
+    // Target wire:loading — cukup nama method (tanpa argumen) supaya aman dari
+    // tanda kutip di $action. Konsekuensi: semua trigger ber-method sama ikut
+    // disabled selama proses; justru mencegah aksi ganda dari baris lain.
+    $loadingTarget = $wireTarget ?? \Illuminate\Support\Str::before($action, '(');
 
     // class trigger button — disesuaikan dengan komponen button standar
     $base = 'inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150';
@@ -51,10 +57,18 @@
         $wire.{{ $action }};
     }
 }" x-on:keydown.escape.window="if (show) close()" class="inline-block">
-    {{-- Trigger --}}
-    <button type="button" @disabled($disabled) x-on:click="open()"
+    {{-- Trigger — disabled + spinner selama aksi $wire berjalan, supaya proses
+         lama tidak terkesan "tidak jalan" setelah user menekan tombol konfirmasi --}}
+    <button type="button" @disabled($disabled) x-on:click="open()" wire:loading.attr="disabled"
+        wire:target="{{ $loadingTarget }}"
         {{ $attributes->merge(['class' => $triggerButtonClass . ' disabled:opacity-60 disabled:cursor-not-allowed']) }}>
-        {{ $slot }}
+        <span wire:loading.remove wire:target="{{ $loadingTarget }}" class="inline-flex items-center gap-2">
+            {{ $slot }}
+        </span>
+        <span wire:loading wire:target="{{ $loadingTarget }}" class="inline-flex items-center gap-2">
+            <x-loading class="w-4 h-4" />
+            Memproses...
+        </span>
     </button>
 
     {{-- Modal Confirm (transisi DISAMAIN dengan <x-modal>) --}}
