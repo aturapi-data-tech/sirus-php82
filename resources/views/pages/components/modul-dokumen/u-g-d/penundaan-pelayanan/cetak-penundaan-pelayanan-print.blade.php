@@ -46,9 +46,9 @@
         ];
         $hubunganText = $hubunganMap[$form['hubunganPasien'] ?? ''] ?? '-';
 
-        // Helper kotak centang aman-font (DejaVu): centang &#10003; di kotak border.
+        // Helper kotak centang: paksa DejaVu Sans — font default dompdf tak punya glyph U+2713 (tampil "?").
         $kotak = fn(bool $aktif) =>
-            '<span style="display:inline-block;width:9px;height:9px;border:1px solid #000;text-align:center;line-height:9px;font-size:8px;">' .
+            '<span style="display:inline-block;width:9px;height:9px;border:1px solid #000;text-align:center;line-height:9px;font-size:8px;font-family: DejaVu Sans, sans-serif;">' .
             ($aktif ? '&#10003;' : '&nbsp;') .
             '</span>';
     @endphp
