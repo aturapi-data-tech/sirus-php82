@@ -91,7 +91,7 @@ new class extends Component {
     <x-border-form title="Edukasi Terintegrasi">
         @forelse (collect($list)->filter(fn($entri) => filled(data_get($entri, 'id')))->values() as $entri)
             <x-rm.doc-list-row :id="data_get($entri, 'id')" :title="$this->judulTujuan($entri) ?: 'Edukasi Terintegrasi'"
-                :date="data_get($entri, 'tglEdukasi')"
+                :date="data_get($entri, 'form.tglEdukasi')"
                 :sub="filled(data_get($entri, 'form.pemberiInformasi.petugasName')) ? 'Petugas: ' . data_get($entri, 'form.pemberiInformasi.petugasName') : null" />
         @empty
             <x-rm.doc-empty />
@@ -99,7 +99,7 @@ new class extends Component {
     </x-border-form>
 
     <x-rm.dokumen-view-modal name="view-edukasi-terintegrasi-ri-{{ $riHdrNo }}" title="Edukasi Terintegrasi"
-        :subtitle="$selected ? (data_get($selected, 'tglEdukasi') ?: null) : null"
+        :subtitle="$selected ? (data_get($selected, 'form.tglEdukasi') ?: null) : null"
         :cetakId="data_get($selected, 'id')" :previewHtml="$previewHtml"
         :navTotal="$this->navTotal()" :navPos="$this->navPos()" />
 </div>

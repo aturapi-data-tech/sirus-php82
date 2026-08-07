@@ -318,9 +318,10 @@ new class extends Component {
             'form.tindakLanjut.dirujukKe.*'            => 'string|max:50',
             'form.tindakLanjut.tidakPerluTL'           => 'boolean',
 
-            // 7) TTD
+            // 7) TTD — gambar TTD ikut rules supaya error merah muncul di kolomnya
             'form.ttd.pasienKeluargaNama'     => 'required|string|max:150',
             'form.ttd.pasienKeluargaHubungan' => 'required|string|max:50',
+            'form.ttd.pasienKeluargaTTD'      => 'required|string',
         ];
 
         // Conditional: "lainnya" wajib diisi kalau di-check
@@ -351,6 +352,7 @@ new class extends Component {
             'form.sasaran.hubungan'             => 'Hubungan sasaran dengan pasien',
             'form.ttd.pasienKeluargaNama'       => 'Nama penanda tangan',
             'form.ttd.pasienKeluargaHubungan'   => 'Hubungan penanda tangan dengan pasien',
+            'form.ttd.pasienKeluargaTTD'        => 'TTD pasien/keluarga',
         ];
 
         $messages = [
@@ -410,11 +412,8 @@ new class extends Component {
             $this->form['tglEdukasi'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
         }
 
-        // TTD gambar pasien/keluarga wajib sebelum mengunci
-        if (empty($this->sasaranEdukasiSignature) && empty(data_get($this->form, 'ttd.pasienKeluargaTTD'))) {
-            $this->dispatch('toast', type: 'error', message: 'TTD pasien/keluarga wajib sebelum mengunci.');
-            return;
-        }
+        // Sinkron TTD pad → form; kewajibannya dicek di rules (bukan guard manual)
+        // supaya error merah tampil di kolom TTD (feedback_guard_before_validate_hides_red).
         if (!empty($this->sasaranEdukasiSignature)) {
             $this->form['ttd']['pasienKeluargaTTD'] = $this->sasaranEdukasiSignature;
         }
@@ -1158,6 +1157,7 @@ new class extends Component {
                                 @else
                                     <p class="py-8 text-sm italic text-center text-muted-soft">Belum ditandatangani.</p>
                                 @endif
+                                <x-input-error :messages="$errors->get('form.ttd.pasienKeluargaTTD')" class="mt-1" />
                             </div>
                             <div class="mt-3 space-y-2">
                                 <div>

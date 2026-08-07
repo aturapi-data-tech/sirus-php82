@@ -721,6 +721,7 @@
                     <tr>
                         <th>Waktu</th>
                         <th>Tujuan Edukasi</th>
+                        <th>Materi / Topik</th>
                         <th>Metode / Media</th>
                         <th>Pemberi Informasi</th>
                     </tr>
@@ -744,12 +745,13 @@
                         <tr>
                             <td class="ds-td-strong">{{ data_get($edukasi, 'form.tglEdukasi', '-') }}</td>
                             <td>{{ $tujuan ?: '-' }}</td>
+                            <td>{{ data_get($edukasi, 'form.materi.topik') ?: '-' }}</td>
                             <td>{{ $metode ?: '-' }}</td>
                             <td class="ds-td-meta">{{ data_get($edukasi, 'form.pemberiInformasi.petugasName', '-') }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="ds-c italic text-muted-soft">Belum ada edukasi terintegrasi.</td>
+                            <td colspan="5" class="ds-c italic text-muted-soft">Belum ada edukasi terintegrasi.</td>
                         </tr>
                     @endforelse
                 </tbody>
