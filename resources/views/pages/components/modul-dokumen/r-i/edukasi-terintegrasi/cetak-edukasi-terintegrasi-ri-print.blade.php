@@ -47,6 +47,10 @@
         $mapHasil = \App\Support\EdukasiTerintegrasiOptions::hasil();
         $mapRujuk = \App\Support\EdukasiTerintegrasiOptions::rujuk();
 
+        // Centang aman-font: font default dompdf (Helvetica) tak punya glyph U+2713 → tampil "?".
+        // DejaVu Sans (dibundel dompdf) punya glyph-nya.
+        $centang = '<span style="font-family: DejaVu Sans, sans-serif;">&#10003;</span>';
+
         // Helper boolean → label
         $boolLabel = function ($nilai) {
             if (in_array($nilai, [true, 1, '1'], true)) {
@@ -118,7 +122,7 @@
                 <p class="font-bold mb-1">1. Tujuan Edukasi</p>
                 @if (count($tujuanOpsi) > 0)
                     @foreach ($tujuanOpsi as $opsi)
-                        <div>&#10003; {{ $mapTujuan[$opsi] ?? $opsi }}@if ($opsi === 'lainnya' && !empty($tujuanLain)): {{ $tujuanLain }}@endif</div>
+                        <div>{!! $centang !!} {{ $mapTujuan[$opsi] ?? $opsi }}@if ($opsi === 'lainnya' && !empty($tujuanLain)): {{ $tujuanLain }}@endif</div>
                     @endforeach
                 @else
                     <span class="text-gray-500">-</span>
@@ -160,7 +164,7 @@
                 <p class="font-bold mb-1">3. Kebutuhan Edukasi</p>
                 @if (count($kebutuhanOpsi) > 0)
                     @foreach ($kebutuhanOpsi as $opsi)
-                        <div>&#10003; {{ $mapKebutuhan[$opsi] ?? $opsi }}@if ($opsi === 'lainnya' && !empty($kebutuhanLain)): {{ $kebutuhanLain }}@endif</div>
+                        <div>{!! $centang !!} {{ $mapKebutuhan[$opsi] ?? $opsi }}@if ($opsi === 'lainnya' && !empty($kebutuhanLain)): {{ $kebutuhanLain }}@endif</div>
                     @endforeach
                 @else
                     <span class="text-gray-500">-</span>
@@ -184,7 +188,7 @@
                 <p class="font-bold mb-1">4. Metode & Media Edukasi</p>
                 @if (count($metodeOpsi) > 0)
                     @foreach ($metodeOpsi as $opsi)
-                        <div>&#10003; {{ $mapMetode[$opsi] ?? $opsi }}@if ($opsi === 'lainnya' && !empty($metodeLain)): {{ $metodeLain }}@endif</div>
+                        <div>{!! $centang !!} {{ $mapMetode[$opsi] ?? $opsi }}@if ($opsi === 'lainnya' && !empty($metodeLain)): {{ $metodeLain }}@endif</div>
                     @endforeach
                 @else
                     <span class="text-gray-500">-</span>
@@ -223,7 +227,7 @@
             <td colspan="2" class="border border-black px-2 py-1.5 text-[10px] leading-relaxed">
                 <p class="font-bold mb-1">6. Tindak Lanjut</p>
                 @if ($tindakLanjutTidakPerlu)
-                    <div>&#10003; Tidak diperlukan tindak lanjut.</div>
+                    <div>{!! $centang !!} Tidak diperlukan tindak lanjut.</div>
                 @else
                     <div>&bull; <strong>Tanggal edukasi lanjutan:</strong> {{ $tindakLanjutTanggal ?: '-' }}@if (!empty($tindakLanjutKeterangan)) &mdash; {{ $tindakLanjutKeterangan }}@endif</div>
                     @if (count($tindakLanjutRujuk) > 0)

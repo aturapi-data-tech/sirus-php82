@@ -5,13 +5,13 @@
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">
         @php
-            $id = $data['identitas'] ?? [];
+            $identitas = $data['identitas'] ?? [];
             $alamatPasien = trim(
-                ($id['alamat'] ?? '-') .
-                    (!empty($id['rt']) ? ' RT ' . $id['rt'] : '') .
-                    (!empty($id['rw']) ? '/RW ' . $id['rw'] : '') .
-                    (!empty($id['desaName']) ? ', ' . $id['desaName'] : '') .
-                    (!empty($id['kecamatanName']) ? ', ' . $id['kecamatanName'] : ''),
+                ($identitas['alamat'] ?? '-') .
+                    (!empty($identitas['rt']) ? ' RT ' . $identitas['rt'] : '') .
+                    (!empty($identitas['rw']) ? '/RW ' . $identitas['rw'] : '') .
+                    (!empty($identitas['desaName']) ? ', ' . $identitas['desaName'] : '') .
+                    (!empty($identitas['kecamatanName']) ? ', ' . $identitas['kecamatanName'] : ''),
             );
         @endphp
         <x-pdf.identitas-pasien
@@ -33,24 +33,26 @@
     </x-slot>
 
     @php
-        $e = $data['entry'] ?? [];
+        $entri = $data['entry'] ?? [];
         $identitasRs = $data['identitasRs'] ?? null;
         $rsName = $identitasRs->int_name ?? 'RSI MADINAH';
         $rsAddress = $identitasRs->int_address ?? '';
 
-        $tglEdukasi   = $e['tglEdukasi'] ?? '-';
-        $petugas      = $e['petugasEdukasi'] ?? '-';
-        $sasaran      = $e['sasaranEdukasi'] ?? '-';
-        $hubungan     = $e['hubunganSasaranEdukasidgnPasien'] ?? '-';
+        $tglEdukasi   = $entri['tglEdukasi'] ?? '-';
+        $petugas      = $entri['petugasEdukasi'] ?? '-';
+        $sasaran      = $entri['sasaranEdukasi'] ?? '-';
+        $hubungan     = $entri['hubunganSasaranEdukasidgnPasien'] ?? '-';
 
-        $kategori     = data_get($e, 'edukasi.kategoriEdukasi', []);
-        $materiTopik  = data_get($e, 'edukasi.materiTopikEdukasi', '');
-        $keterangan   = data_get($e, 'edukasi.keteranganEdukasi', '');
-        $status       = data_get($e, 'edukasi.statusEdukasi', '');
-        $rePerlu      = (bool) data_get($e, 'edukasi.reEdukasi.perlu', false);
-        $reTgl        = data_get($e, 'edukasi.reEdukasi.tglReEdukasi', '');
-        $rePetugas    = data_get($e, 'edukasi.reEdukasi.petugasReEdukasi', '');
-        $sasaranTTD   = $e['sasaranEdukasiSignature'] ?? '';
+        $kategori     = data_get($entri, 'edukasi.kategoriEdukasi', []);
+        // Centang aman-font: font default dompdf tak punya glyph U+2713 -> tampil "?".
+        $centang      = '<span style="font-family: DejaVu Sans, sans-serif;">&#10003;</span>';
+        $materiTopik  = data_get($entri, 'edukasi.materiTopikEdukasi', '');
+        $keterangan   = data_get($entri, 'edukasi.keteranganEdukasi', '');
+        $status       = data_get($entri, 'edukasi.statusEdukasi', '');
+        $reEdukasiPerlu   = (bool) data_get($entri, 'edukasi.reEdukasi.perlu', false);
+        $reEdukasiTanggal = data_get($entri, 'edukasi.reEdukasi.tglReEdukasi', '');
+        $reEdukasiPetugas = data_get($entri, 'edukasi.reEdukasi.petugasReEdukasi', '');
+        $sasaranTTD   = $entri['sasaranEdukasiSignature'] ?? '';
     @endphp
 
     <table class="w-full text-[10px] border-collapse" cellpadding="0" cellspacing="0">
@@ -81,12 +83,12 @@
                 @if (!empty($kategori))
                     <p class="mb-0.5"><strong>Kategori Edukasi:</strong></p>
                     <table class="w-full text-[10px]" cellpadding="0" cellspacing="0">
-                        @foreach (array_chunk((array) $kategori, 2) as $pair)
+                        @foreach (array_chunk((array) $kategori, 2) as $pasanganKategori)
                             <tr>
-                                @foreach ($pair as $kat)
-                                    <td class="py-0.5 w-1/2">&#10003; {{ $kat }}</td>
+                                @foreach ($pasanganKategori as $kategoriItem)
+                                    <td class="py-0.5 w-1/2">{!! $centang !!} {{ $kategoriItem }}</td>
                                 @endforeach
-                                @if (count($pair) === 1)
+                                @if (count($pasanganKategori) === 1)
                                     <td class="py-0.5 w-1/2"></td>
                                 @endif
                             </tr>
@@ -113,13 +115,13 @@
                 <div><strong>Status Pemahaman:</strong> {{ $status !== '' ? $status : '-' }}</div>
                 <div class="mt-0.5">
                     <strong>Re-Edukasi:</strong>
-                    @if ($rePerlu)
+                    @if ($reEdukasiPerlu)
                         Perlu
-                        @if (!empty($reTgl))
-                            &nbsp;&bull;&nbsp; Tanggal: {{ $reTgl }}
+                        @if (!empty($reEdukasiTanggal))
+                            &nbsp;&bull;&nbsp; Tanggal: {{ $reEdukasiTanggal }}
                         @endif
-                        @if (!empty($rePetugas))
-                            &nbsp;&bull;&nbsp; Petugas: {{ $rePetugas }}
+                        @if (!empty($reEdukasiPetugas))
+                            &nbsp;&bull;&nbsp; Petugas: {{ $reEdukasiPetugas }}
                         @endif
                     @else
                         Tidak perlu
