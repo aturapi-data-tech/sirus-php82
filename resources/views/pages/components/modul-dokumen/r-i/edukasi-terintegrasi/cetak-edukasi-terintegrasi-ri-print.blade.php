@@ -5,13 +5,13 @@
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">
         @php
-            $id = $data['identitas'] ?? [];
+            $identitas = $data['identitas'] ?? [];
             $alamatPasien = trim(
-                ($id['alamat'] ?? '-') .
-                    (!empty($id['rt']) ? ' RT ' . $id['rt'] : '') .
-                    (!empty($id['rw']) ? '/RW ' . $id['rw'] : '') .
-                    (!empty($id['desaName']) ? ', ' . $id['desaName'] : '') .
-                    (!empty($id['kecamatanName']) ? ', ' . $id['kecamatanName'] : ''),
+                ($identitas['alamat'] ?? '-') .
+                    (!empty($identitas['rt']) ? ' RT ' . $identitas['rt'] : '') .
+                    (!empty($identitas['rw']) ? '/RW ' . $identitas['rw'] : '') .
+                    (!empty($identitas['desaName']) ? ', ' . $identitas['desaName'] : '') .
+                    (!empty($identitas['kecamatanName']) ? ', ' . $identitas['kecamatanName'] : ''),
             );
         @endphp
         <x-pdf.identitas-pasien
@@ -39,56 +39,13 @@
         $rsName = $identitasRs->int_name ?? 'RSI MADINAH';
         $rsAddress = $identitasRs->int_address ?? '';
 
-        // ── Maps key → label ──
-        $mapTujuan = [
-            'penyakit' => 'Pemahaman penyakit/diagnosis',
-            'obat' => 'Penggunaan obat yang aman',
-            'nutrisi' => 'Nutrisi & diet',
-            'aktivitas' => 'Aktivitas & latihan',
-            'perawatanRumah' => 'Perawatan di rumah',
-            'pencegahan' => 'Pencegahan komplikasi',
-            'lainnya' => 'Lainnya',
-        ];
-        $mapPref = [
-            'lisan' => 'Lisan',
-            'tulisan' => 'Tulisan',
-            'demonstrasi' => 'Demonstrasi',
-            'video' => 'Video',
-            'poster' => 'Poster',
-            'lainnya' => 'Lainnya',
-        ];
-        $mapKebutuhan = [
-            'penyakitHasil' => 'Penjelasan penyakit & hasil pemeriksaan',
-            'prosedur' => 'Prosedur / tindakan medis',
-            'rencanaAsuhan' => 'Rencana asuhan & tindak lanjut',
-            'obatEfek' => 'Penggunaan obat & efek samping',
-            'cuciTangan' => 'Cuci tangan & pencegahan infeksi',
-            'alatRumah' => 'Penggunaan alat medis di rumah',
-            'warningSign' => 'Tanda bahaya yang perlu diwaspadai',
-            'lainnya' => 'Lainnya',
-        ];
-        $mapMetode = [
-            'lisan' => 'Penjelasan lisan',
-            'demonstrasi' => 'Demonstrasi / praktik langsung',
-            'leaflet' => 'Leaflet / brosur',
-            'video' => 'Video edukasi',
-            'poster' => 'Poster / peraga',
-            'lainnya' => 'Lainnya',
-        ];
-        $mapHasil = [
-            'paham' => 'Pasien/keluarga memahami informasi',
-            'mampuMengulang' => 'Dapat mengulang kembali informasi',
-            'tunjukkanSkill' => 'Menunjukkan keterampilan yang diajarkan',
-            'sesuaiNilai' => 'Edukasi sesuai nilai & keyakinan pasien',
-            'perluEdukasiUlang' => 'Diperlukan edukasi ulang',
-        ];
-        $mapRujuk = [
-            'dietisien' => 'Dietisien',
-            'farmasi' => 'Farmasi',
-            'rehabilitasi' => 'Rehabilitasi',
-            'psikologi' => 'Psikologi',
-            'lainnya' => 'Lainnya',
-        ];
+        // ── Maps key → label (satu sumber: App\Support\EdukasiTerintegrasiOptions) ──
+        $mapTujuan = \App\Support\EdukasiTerintegrasiOptions::tujuan();
+        $mapPref = \App\Support\EdukasiTerintegrasiOptions::preferensi();
+        $mapKebutuhan = \App\Support\EdukasiTerintegrasiOptions::kebutuhan();
+        $mapMetode = \App\Support\EdukasiTerintegrasiOptions::metode();
+        $mapHasil = \App\Support\EdukasiTerintegrasiOptions::hasil();
+        $mapRujuk = \App\Support\EdukasiTerintegrasiOptions::rujuk();
 
         // Helper boolean → label
         $boolLabel = function ($nilai) {
@@ -123,20 +80,35 @@
         $hasil = $form['hasil'] ?? [];
 
         $tindakLanjut = $form['tindakLanjut'] ?? [];
-        $tlTgl = $tindakLanjut['edukasiLanjutanTanggal'] ?? '';
-        $tlRujuk = (array) ($tindakLanjut['dirujukKe'] ?? []);
-        $tlSkip = !empty($tindakLanjut['tidakPerluTL']);
+        $tindakLanjutTanggal = $tindakLanjut['edukasiLanjutanTanggal'] ?? '';
+        $tindakLanjutKeterangan = $tindakLanjut['edukasiLanjutanKeterangan'] ?? '';
+        $tindakLanjutRujuk = (array) ($tindakLanjut['dirujukKe'] ?? []);
+        $tindakLanjutTidakPerlu = !empty($tindakLanjut['tidakPerluTL']);
     @endphp
 
     <table class="w-full text-[10px] border-collapse">
 
-        {{-- ── HEADER: Tanggal & Pemberi ── --}}
+        {{-- ── HEADER: Tanggal, Pemberi & Sasaran ── --}}
         <tr>
             <td class="border border-black px-2 py-1 w-1/2 text-[10px]">
                 <strong>Tanggal Edukasi:</strong> {{ $tglEdukasi }}
             </td>
             <td class="border border-black px-2 py-1 w-1/2 text-[10px]">
                 <strong>Pemberi Informasi:</strong> {{ $petugasName }}
+            </td>
+        </tr>
+        @php
+            $mapHubungan = \App\Support\EdukasiTerintegrasiOptions::hubungan();
+            // Entri lama belum punya node sasaran → fallback ke penanda tangan (ttd.*).
+            $sasaranNama = ($form['sasaran']['nama'] ?? '') ?: ($form['ttd']['pasienKeluargaNama'] ?? '');
+            $sasaranHubungan = ($form['sasaran']['hubungan'] ?? '') ?: ($form['ttd']['pasienKeluargaHubungan'] ?? '');
+        @endphp
+        <tr>
+            <td class="border border-black px-2 py-1 w-1/2 text-[10px]">
+                <strong>Sasaran Edukasi:</strong> {{ $sasaranNama ?: '-' }}
+            </td>
+            <td class="border border-black px-2 py-1 w-1/2 text-[10px]">
+                <strong>Hubungan dengan Pasien:</strong> {{ $mapHubungan[$sasaranHubungan] ?? ($sasaranHubungan ?: '-') }}
             </td>
         </tr>
 
@@ -160,10 +132,10 @@
                 <p class="font-bold mb-1">2. Evaluasi Awal Kemampuan & Nilai</p>
                 <div>&bull; <strong>Kemampuan membaca/menulis:</strong> {{ $literasi ?: '-' }}</div>
                 <div>&bull; <strong>Bahasa / pendidikan:</strong> {{ $bahasa ?: '-' }}</div>
-                @php $hEmo = $evaluasiAwal['hambatanEmosional'] ?? []; @endphp
-                <div>&bull; <strong>Hambatan emosional / motivasi:</strong> {{ $boolLabel($hEmo['ada'] ?? null) }}@if (!empty($hEmo['keterangan'])) &mdash; {{ $hEmo['keterangan'] }}@endif</div>
-                @php $hFk = $evaluasiAwal['keterbatasanFisikKognitif'] ?? []; @endphp
-                <div>&bull; <strong>Keterbatasan fisik / kognitif:</strong> {{ $boolLabel($hFk['ada'] ?? null) }}@if (!empty($hFk['keterangan'])) &mdash; {{ $hFk['keterangan'] }}@endif</div>
+                @php $hambatanEmosional = $evaluasiAwal['hambatanEmosional'] ?? []; @endphp
+                <div>&bull; <strong>Hambatan emosional / motivasi:</strong> {{ $boolLabel($hambatanEmosional['ada'] ?? null) }}@if (!empty($hambatanEmosional['keterangan'])) &mdash; {{ $hambatanEmosional['keterangan'] }}@endif</div>
+                @php $keterbatasanFisikKognitif = $evaluasiAwal['keterbatasanFisikKognitif'] ?? []; @endphp
+                <div>&bull; <strong>Keterbatasan fisik / kognitif:</strong> {{ $boolLabel($keterbatasanFisikKognitif['ada'] ?? null) }}@if (!empty($keterbatasanFisikKognitif['keterangan'])) &mdash; {{ $keterbatasanFisikKognitif['keterangan'] }}@endif</div>
                 @php $nilaiBudaya = $evaluasiAwal['nilaiKeyakinanBudaya'] ?? []; @endphp
                 <div>&bull; <strong>Nilai / keyakinan / budaya:</strong> {{ $boolLabel($nilaiBudaya['ada'] ?? null) }}@if (!empty($nilaiBudaya['deskripsi'])) &mdash; {{ $nilaiBudaya['deskripsi'] }}@endif</div>
                 <div>&bull; <strong>Preferensi menerima informasi:</strong>
@@ -192,6 +164,16 @@
                     @endforeach
                 @else
                     <span class="text-gray-500">-</span>
+                @endif
+                @php
+                    $materiTopik = $form['materi']['topik'] ?? '';
+                    $materiKeterangan = $form['materi']['keterangan'] ?? '';
+                @endphp
+                @if ($materiTopik !== '' || $materiKeterangan !== '')
+                    <div class="mt-1"><strong>Materi / Topik:</strong> {{ $materiTopik ?: '-' }}</div>
+                    @if ($materiKeterangan !== '')
+                        <div><strong>Keterangan:</strong> {{ $materiKeterangan }}</div>
+                    @endif
                 @endif
             </td>
         </tr>
@@ -223,12 +205,12 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach ($mapHasil as $hasilKey => $hlbl)
-                            @php $rowH = $hasil[$hasilKey] ?? []; @endphp
+                        @foreach ($mapHasil as $hasilKey => $hasilLabel)
+                            @php $hasilBaris = $hasil[$hasilKey] ?? []; @endphp
                             <tr>
-                                <td class="border border-black px-1 py-0.5">{{ $hlbl }}</td>
-                                <td class="border border-black px-1 py-0.5 text-center">{{ $boolLabel($rowH['ya'] ?? null) }}</td>
-                                <td class="border border-black px-1 py-0.5">{{ $rowH['keterangan'] ?? '' ?: '-' }}</td>
+                                <td class="border border-black px-1 py-0.5">{{ $hasilLabel }}</td>
+                                <td class="border border-black px-1 py-0.5 text-center">{{ $boolLabel($hasilBaris['ya'] ?? null) }}</td>
+                                <td class="border border-black px-1 py-0.5">{{ $hasilBaris['keterangan'] ?? '' ?: '-' }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -240,18 +222,16 @@
         <tr>
             <td colspan="2" class="border border-black px-2 py-1.5 text-[10px] leading-relaxed">
                 <p class="font-bold mb-1">6. Tindak Lanjut</p>
-                @if ($tlSkip)
+                @if ($tindakLanjutTidakPerlu)
                     <div>&#10003; Tidak diperlukan tindak lanjut.</div>
                 @else
-                    <div>&bull; <strong>Tanggal edukasi lanjutan:</strong> {{ $tlTgl ?: '-' }}</div>
-                    <div>&bull; <strong>Dirujuk ke:</strong>
-                        @if (count($tlRujuk) > 0)
-                            @php $rujukLabels = array_map(fn($rujuk) => $mapRujuk[$rujuk] ?? ucfirst($rujuk), $tlRujuk); @endphp
+                    <div>&bull; <strong>Tanggal edukasi lanjutan:</strong> {{ $tindakLanjutTanggal ?: '-' }}@if (!empty($tindakLanjutKeterangan)) &mdash; {{ $tindakLanjutKeterangan }}@endif</div>
+                    @if (count($tindakLanjutRujuk) > 0)
+                        <div>&bull; <strong>Dirujuk ke:</strong>
+                            @php $rujukLabels = array_map(fn($rujuk) => $mapRujuk[$rujuk] ?? ucfirst($rujuk), $tindakLanjutRujuk); @endphp
                             {{ implode(', ', $rujukLabels) }}
-                        @else
-                            -
-                        @endif
-                    </div>
+                        </div>
+                    @endif
                 @endif
             </td>
         </tr>
@@ -276,7 +256,7 @@
                             <div class="border-t border-black pt-[3px] mt-1 min-w-[140px] inline-block">
                                 <p class="font-bold">{{ strtoupper($form['ttd']['pasienKeluargaNama'] ?? '-') }}</p>
                                 @php
-                                    $hubunganMap = ['pasien' => 'Pasien Sendiri', 'suami' => 'Suami', 'istri' => 'Istri', 'ayah' => 'Ayah', 'ibu' => 'Ibu', 'anak' => 'Anak', 'saudara' => 'Saudara', 'wali_hukum' => 'Wali Hukum', 'lainnya' => 'Lainnya'];
+                                    $hubunganMap = \App\Support\EdukasiTerintegrasiOptions::hubungan();
                                     $hubunganVal = $form['ttd']['pasienKeluargaHubungan'] ?? '';
                                 @endphp
                                 @if ($hubunganVal)

@@ -19,21 +19,15 @@ new class extends Component {
 
     private string $printView = 'pages.components.modul-dokumen.r-i.edukasi-terintegrasi.cetak-edukasi-terintegrasi-ri-print';
 
-    public array $tujuanLabels = [
-        'penyakit' => 'Pemahaman penyakit/diagnosis',
-        'obat' => 'Penggunaan obat yang aman',
-        'nutrisi' => 'Nutrisi & diet',
-        'aktivitas' => 'Aktivitas & latihan',
-        'perawatanRumah' => 'Perawatan di rumah',
-        'pencegahan' => 'Pencegahan komplikasi',
-        'lainnya' => 'Lainnya',
-    ];
+    // Label tujuan — satu sumber di App\Support\EdukasiTerintegrasiOptions (diisi saat mount).
+    public array $tujuanLabels = [];
 
     public function mount(?string $riHdrNo = null, array $entries = []): void
     {
         $this->riHdrNo = $riHdrNo ?: null;
         $this->list = array_values($entries);
         $this->navField = 'id';
+        $this->tujuanLabels = \App\Support\EdukasiTerintegrasiOptions::tujuan();
     }
 
     public function lihat(string $id): void

@@ -6,6 +6,7 @@ use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
+use App\Support\EdukasiTerintegrasiOptions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -31,73 +32,15 @@ new class extends Component {
     // true = entri terkunci ditampilkan di form dalam mode read-only.
     public bool $viewOnly = false;
 
-    // Static option lists (key => label) untuk render checkbox / radio
-    public array $tujuanList = [
-        'penyakit'        => 'Pemahaman penyakit/diagnosis',
-        'obat'            => 'Penggunaan obat yang aman',
-        'nutrisi'         => 'Nutrisi & diet',
-        'aktivitas'       => 'Aktivitas & latihan',
-        'perawatanRumah'  => 'Perawatan di rumah',
-        'pencegahan'      => 'Pencegahan komplikasi',
-        'lainnya'         => 'Lainnya',
-    ];
-
-    public array $kebutuhanList = [
-        'penyakitHasil' => 'Penjelasan penyakit & hasil pemeriksaan',
-        'prosedur'      => 'Prosedur / tindakan medis',
-        'rencanaAsuhan' => 'Rencana asuhan & tindak lanjut',
-        'obatEfek'      => 'Penggunaan obat & efek samping',
-        'cuciTangan'    => 'Cuci tangan & pencegahan infeksi',
-        'alatRumah'     => 'Penggunaan alat medis di rumah',
-        'warningSign'   => 'Tanda bahaya yang perlu diwaspadai',
-        'lainnya'       => 'Lainnya',
-    ];
-
-    public array $metodeList = [
-        'lisan'        => 'Penjelasan lisan',
-        'demonstrasi'  => 'Demonstrasi / praktik langsung',
-        'leaflet'      => 'Leaflet / brosur',
-        'video'        => 'Video edukasi',
-        'poster'       => 'Poster / peraga',
-        'lainnya'      => 'Lainnya',
-    ];
-
-    public array $prefList = [
-        'lisan'        => 'Lisan',
-        'tulisan'      => 'Tulisan',
-        'demonstrasi'  => 'Demonstrasi',
-        'video'        => 'Video',
-        'poster'       => 'Poster',
-        'lainnya'      => 'Lainnya',
-    ];
-
-    public array $hasilList = [
-        'paham'             => 'Pasien/keluarga memahami informasi',
-        'mampuMengulang'    => 'Dapat mengulang kembali informasi',
-        'tunjukkanSkill'    => 'Menunjukkan keterampilan yang diajarkan',
-        'sesuaiNilai'       => 'Edukasi sesuai nilai & keyakinan pasien',
-        'perluEdukasiUlang' => 'Diperlukan edukasi ulang',
-    ];
-
-    public array $rujukList = [
-        'dietisien'    => 'Dietisien',
-        'farmasi'      => 'Farmasi',
-        'rehabilitasi' => 'Rehabilitasi',
-        'psikologi'    => 'Psikologi',
-        'lainnya'      => 'Lainnya',
-    ];
-
-    public array $hubunganOptions = [
-        'pasien'     => 'Pasien Sendiri',
-        'suami'      => 'Suami',
-        'istri'      => 'Istri',
-        'ayah'       => 'Ayah',
-        'ibu'        => 'Ibu',
-        'anak'       => 'Anak',
-        'saudara'    => 'Saudara',
-        'wali_hukum' => 'Wali Hukum',
-        'lainnya'    => 'Lainnya',
-    ];
+    // Daftar opsi (key => label) — satu sumber di App\Support\EdukasiTerintegrasiOptions,
+    // diisi saat mount; dipakai render checkbox / radio + ringkasan riwayat.
+    public array $tujuanList = [];
+    public array $kebutuhanList = [];
+    public array $metodeList = [];
+    public array $prefList = [];
+    public array $hasilList = [];
+    public array $rujukList = [];
+    public array $hubunganOptions = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-edukasi-terintegrasi-ri'];
@@ -108,6 +51,14 @@ new class extends Component {
         $this->disabled = $disabled;
         $this->registerAreas(['modal-edukasi-terintegrasi-ri']);
 
+        $this->tujuanList      = EdukasiTerintegrasiOptions::tujuan();
+        $this->kebutuhanList   = EdukasiTerintegrasiOptions::kebutuhan();
+        $this->metodeList      = EdukasiTerintegrasiOptions::metode();
+        $this->prefList        = EdukasiTerintegrasiOptions::preferensi();
+        $this->hasilList       = EdukasiTerintegrasiOptions::hasil();
+        $this->rujukList       = EdukasiTerintegrasiOptions::rujuk();
+        $this->hubunganOptions = EdukasiTerintegrasiOptions::hubungan();
+
         $this->form = $this->defaultForm();
         $this->prefillHeader();
 
@@ -117,6 +68,7 @@ new class extends Component {
                 $this->dataDaftarRi = $data;
                 $this->regNo = $data['regNo'] ?? null;
                 $this->dataDaftarRi['edukasiPasienTerintegrasi'] ??= [];
+                $this->form['sasaran']['nama'] = $data['regName'] ?? '';
                 $this->form['ttd']['pasienKeluargaNama'] = $data['regName'] ?? '';
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
             }
@@ -155,6 +107,9 @@ new class extends Component {
             'tglEdukasi'       => '',
             'pemberiInformasi' => ['petugasCode' => '', 'petugasName' => ''],
 
+            // Sasaran = PENERIMA edukasi; bisa berbeda dari penanda tangan (form.ttd.*).
+            'sasaran' => ['nama' => '', 'hubungan' => 'pasien'],
+
             'tujuan'      => ['opsi' => [], 'lainnya' => ''],
 
             'evaluasiAwal' => [
@@ -167,6 +122,7 @@ new class extends Component {
             ],
 
             'kebutuhan'   => ['opsi' => [], 'lainnya' => ''],
+            'materi'      => ['topik' => '', 'keterangan' => ''],
             'metodeMedia' => ['opsi' => [], 'lainnya' => ''],
 
             'hasil' => [
@@ -178,9 +134,12 @@ new class extends Component {
             ],
 
             'tindakLanjut' => [
-                'edukasiLanjutanTanggal' => '',
+                'edukasiLanjutanTanggal'    => '',
+                'edukasiLanjutanKeterangan' => '',
                 'dirujukKe'              => [],
-                'tidakPerluTL'           => false,
+                // Default true = belum perlu tindak lanjut; toggle di UI dibalik jadi
+                // "Perlu tindak lanjut" (dicentang → false → field tanggal & rujukan tampil).
+                'tidakPerluTL'           => true,
             ],
 
             'ttd' => [
@@ -193,8 +152,7 @@ new class extends Component {
 
     private function prefillHeader(): void
     {
-        $this->form['pemberiInformasi']['petugasName'] = auth()->user()->myuser_name ?? '';
-        $this->form['pemberiInformasi']['petugasCode'] = auth()->user()->myuser_code ?? '';
+        // Petugas TIDAK di-prefill — nama & kode distempel saat TTD Petugas & Kunci (ttdPetugas()).
         if (empty($this->form['tglEdukasi'])) {
             $this->form['tglEdukasi'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
         }
@@ -241,15 +199,15 @@ new class extends Component {
      =============================== */
     // Entri dianggap FINAL/terkunci bila flag finalized true; entri lama (tanpa flag)
     // yang sudah ada TTD gambar pasien dianggap final (kompatibilitas data lama).
-    public function entryIsFinal(array $e): bool
+    public function entryIsFinal(array $entri): bool
     {
-        return array_key_exists('finalized', $e)
-            ? (bool) $e['finalized']
-            : !empty(data_get($e, 'form.ttd.pasienKeluargaTTD'));
+        return array_key_exists('finalized', $entri)
+            ? (bool) $entri['finalized']
+            : !empty(data_get($entri, 'form.ttd.pasienKeluargaTTD'));
     }
 
     // Susun array entri dari state form. Pertahankan created_at/created_by saat edit.
-    private function buildEntry(string $id, bool $finalized): array
+    private function buildEntry(string $edukasiId, bool $finalized): array
     {
         $this->normalizeBooleansOnForm();
 
@@ -258,7 +216,7 @@ new class extends Component {
             $form['ttd']['pasienKeluargaTTD'] = $this->sasaranEdukasiSignature;
         }
 
-        $existing = collect($this->dataDaftarRi['edukasiPasienTerintegrasi'] ?? [])->firstWhere('id', $id);
+        $existing = collect($this->dataDaftarRi['edukasiPasienTerintegrasi'] ?? [])->firstWhere('id', $edukasiId);
         $createdAt = $existing['created_at'] ?? Carbon::now(config('app.timezone'))->format('Y-m-d H:i:s');
         $createdBy = $existing['created_by'] ?? [
             'code' => auth()->user()->myuser_code ?? '',
@@ -266,7 +224,7 @@ new class extends Component {
         ];
 
         return [
-            'id'         => $id,
+            'id'         => $edukasiId,
             'created_at' => $createdAt,
             'created_by' => $createdBy,
             'form'       => $form,
@@ -274,12 +232,12 @@ new class extends Component {
         ];
     }
 
-    // Simpan entri (add/update by $id) dengan status $finalized. Dipakai draft & kunci.
-    private function persistEntry(string $id, bool $finalized, string $logVerb): void
+    // Simpan entri (add/update by $edukasiId) dengan status $finalized. Dipakai draft & kunci.
+    private function persistEntry(string $edukasiId, bool $finalized, string $logVerb): void
     {
-        $entry = $this->buildEntry($id, $finalized);
+        $entry = $this->buildEntry($edukasiId, $finalized);
 
-        DB::transaction(function () use ($entry, $id, $logVerb) {
+        DB::transaction(function () use ($entry, $edukasiId, $logVerb) {
             $this->lockRIRow($this->riHdrNo);
 
             $fresh = $this->findDataRI($this->riHdrNo) ?? [];
@@ -288,14 +246,14 @@ new class extends Component {
             }
 
             $list = $fresh['edukasiPasienTerintegrasi'];
-            $idx = collect($list)->search(fn($it) => ($it['id'] ?? null) === $id);
-            if ($idx === false) {
+            $index = collect($list)->search(fn($entri) => ($entri['id'] ?? null) === $edukasiId);
+            if ($index === false) {
                 $list[] = $entry;
             } else {
-                if ($this->entryIsFinal($list[$idx])) {
+                if ($this->entryIsFinal($list[$index])) {
                     throw new \RuntimeException('Entri sudah terkunci, tidak dapat diubah.');
                 }
-                $list[$idx] = $entry;
+                $list[$index] = $entry;
             }
             $fresh['edukasiPasienTerintegrasi'] = array_values($list);
 
@@ -307,7 +265,7 @@ new class extends Component {
     }
 
     /* ===============================
-     | VALIDATION RULES (dipakai finalize)
+     | VALIDATION RULES (dipakai ttdPetugas)
      =============================== */
     private function edukasiRules(): array
     {
@@ -316,10 +274,12 @@ new class extends Component {
             'form.tglEdukasi'                   => 'required|date_format:d/m/Y H:i:s',
             'form.pemberiInformasi.petugasCode' => 'required|string|max:50',
             'form.pemberiInformasi.petugasName' => 'required|string|max:250',
+            'form.sasaran.nama'                 => 'required|string|max:150',
+            'form.sasaran.hubungan'             => 'required|string|max:50',
 
             // 1) Tujuan
             'form.tujuan.opsi'    => 'nullable|array',
-            'form.tujuan.opsi.*'  => 'in:penyakit,obat,nutrisi,aktivitas,perawatanRumah,pencegahan,lainnya',
+            'form.tujuan.opsi.*'  => 'in:' . implode(',', array_keys(EdukasiTerintegrasiOptions::tujuan())),
             'form.tujuan.lainnya' => 'nullable|string|max:200',
 
             // 2) Evaluasi Awal
@@ -332,17 +292,19 @@ new class extends Component {
             'form.evaluasiAwal.nilaiKeyakinanBudaya.ada'              => 'nullable|boolean',
             'form.evaluasiAwal.nilaiKeyakinanBudaya.deskripsi'        => 'nullable|string|max:500',
             'form.evaluasiAwal.preferensiInformasi.opsi'              => 'nullable|array',
-            'form.evaluasiAwal.preferensiInformasi.opsi.*'            => 'in:lisan,tulisan,demonstrasi,video,poster,lainnya',
+            'form.evaluasiAwal.preferensiInformasi.opsi.*'            => 'in:' . implode(',', array_keys(EdukasiTerintegrasiOptions::preferensi())),
             'form.evaluasiAwal.preferensiInformasi.lainnya'           => 'nullable|string|max:200',
 
-            // 3) Kebutuhan
+            // 3) Kebutuhan + materi/topik (gabungan dari form Edukasi Pasien lama)
             'form.kebutuhan.opsi'    => 'nullable|array',
-            'form.kebutuhan.opsi.*'  => 'in:penyakitHasil,prosedur,rencanaAsuhan,obatEfek,cuciTangan,alatRumah,warningSign,lainnya',
+            'form.kebutuhan.opsi.*'  => 'in:' . implode(',', array_keys(EdukasiTerintegrasiOptions::kebutuhan())),
             'form.kebutuhan.lainnya' => 'nullable|string|max:200',
+            'form.materi.topik'      => 'required|string|max:150',
+            'form.materi.keterangan' => 'nullable|string|max:500',
 
             // 4) Metode & Media
             'form.metodeMedia.opsi'    => 'nullable|array',
-            'form.metodeMedia.opsi.*'  => 'in:lisan,demonstrasi,leaflet,video,poster,lainnya',
+            'form.metodeMedia.opsi.*'  => 'in:' . implode(',', array_keys(EdukasiTerintegrasiOptions::metode())),
             'form.metodeMedia.lainnya' => 'nullable|string|max:200',
 
             // 5) Hasil
@@ -350,7 +312,8 @@ new class extends Component {
             'form.hasil.*.keterangan' => 'nullable|string|max:300',
 
             // 6) Tindak Lanjut
-            'form.tindakLanjut.edukasiLanjutanTanggal' => 'nullable|date_format:d/m/Y',
+            'form.tindakLanjut.edukasiLanjutanTanggal'    => 'nullable|date_format:d/m/Y',
+            'form.tindakLanjut.edukasiLanjutanKeterangan' => 'nullable|string|max:200',
             'form.tindakLanjut.dirujukKe'              => 'nullable|array',
             'form.tindakLanjut.dirujukKe.*'            => 'string|max:50',
             'form.tindakLanjut.tidakPerluTL'           => 'boolean',
@@ -380,10 +343,14 @@ new class extends Component {
             'form.pemberiInformasi.petugasName' => 'Nama petugas',
             'form.tujuan.lainnya'               => 'Tujuan (lainnya)',
             'form.kebutuhan.lainnya'            => 'Kebutuhan (lainnya)',
+            'form.materi.topik'                 => 'Materi / topik edukasi',
+            'form.materi.keterangan'            => 'Keterangan edukasi',
             'form.metodeMedia.lainnya'          => 'Metode/media (lainnya)',
             'form.evaluasiAwal.preferensiInformasi.lainnya' => 'Preferensi (lainnya)',
-            'form.ttd.pasienKeluargaNama'       => 'Nama pasien/keluarga',
-            'form.ttd.pasienKeluargaHubungan'   => 'Hubungan dengan pasien',
+            'form.sasaran.nama'                 => 'Sasaran edukasi (nama penerima)',
+            'form.sasaran.hubungan'             => 'Hubungan sasaran dengan pasien',
+            'form.ttd.pasienKeluargaNama'       => 'Nama penanda tangan',
+            'form.ttd.pasienKeluargaHubungan'   => 'Hubungan penanda tangan dengan pasien',
         ];
 
         $messages = [
@@ -412,14 +379,12 @@ new class extends Component {
         if (empty($this->form['tglEdukasi'])) {
             $this->form['tglEdukasi'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
         }
-        $this->form['pemberiInformasi']['petugasName'] = $this->form['pemberiInformasi']['petugasName'] ?: (auth()->user()->myuser_name ?? '');
-        $this->form['pemberiInformasi']['petugasCode'] = $this->form['pemberiInformasi']['petugasCode'] ?: (auth()->user()->myuser_code ?? '');
 
-        $id = $this->editingKey ?: (string) Str::uuid();
+        $edukasiId = $this->editingKey ?: (string) Str::uuid();
 
         try {
-            $this->persistEntry($id, false, 'Simpan draft');
-            $this->editingKey = $id; // lanjut edit entri yang sama, tidak buat duplikat
+            $this->persistEntry($edukasiId, false, 'Simpan draft');
+            $this->editingKey = $edukasiId; // lanjut edit entri yang sama, tidak buat duplikat
             $this->incrementVersion('modal-edukasi-terintegrasi-ri');
             $this->dispatch('toast', type: 'success', message: 'Draft tersimpan.');
         } catch (\RuntimeException $e) {
@@ -430,9 +395,11 @@ new class extends Component {
     }
 
     /* ===============================
-     | FINALIZE (Simpan & Kunci) — validasi lengkap + TTD wajib
+     | TTD PETUGAS & KUNCI = FINALIZE
+     | Stempel nama+kode petugas (user login) → validasi lengkap → kunci entri.
+     | Aksi TERAKHIR — tidak ada tombol "Simpan & Kunci" terpisah (aturan modul dokumen).
      =============================== */
-    public function finalize(): void
+    public function ttdPetugas(): void
     {
         if ($this->isFormLocked || $this->viewOnly) {
             $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menyimpan.');
@@ -442,8 +409,6 @@ new class extends Component {
         if (empty($this->form['tglEdukasi'])) {
             $this->form['tglEdukasi'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
         }
-        $this->form['pemberiInformasi']['petugasName'] = $this->form['pemberiInformasi']['petugasName'] ?: (auth()->user()->myuser_name ?? '');
-        $this->form['pemberiInformasi']['petugasCode'] = $this->form['pemberiInformasi']['petugasCode'] ?: (auth()->user()->myuser_code ?? '');
 
         // TTD gambar pasien/keluarga wajib sebelum mengunci
         if (empty($this->sasaranEdukasiSignature) && empty(data_get($this->form, 'ttd.pasienKeluargaTTD'))) {
@@ -454,23 +419,80 @@ new class extends Component {
             $this->form['ttd']['pasienKeluargaTTD'] = $this->sasaranEdukasiSignature;
         }
 
+        // Stempel TTD petugas = user login.
+        $this->form['pemberiInformasi']['petugasName'] = auth()->user()->myuser_name ?? '';
+        $this->form['pemberiInformasi']['petugasCode'] = auth()->user()->myuser_code ?? '';
+
         $this->normalizeBooleansOnForm();
 
         [$rules, $messages, $attributes] = $this->edukasiRules();
         $this->validateWithToast($rules, $messages, $attributes);
 
-        $id = $this->editingKey ?: (string) Str::uuid();
+        $edukasiId = $this->editingKey ?: (string) Str::uuid();
 
         try {
-            $this->persistEntry($id, true, 'Kunci');
+            $this->persistEntry($edukasiId, true, 'Kunci (TTD)');
             $this->resetFormEdukasi();
             $this->editingKey = null;
             $this->viewOnly = false;
-            $this->dispatch('toast', type: 'success', message: 'Edukasi tervalidasi & terkunci.');
+            $this->dispatch('toast', type: 'success', message: 'Edukasi ditandatangani & terkunci.');
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal mengunci: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
+     | BUKA KUNCI (unlock) — Gate dokumen.bukaKunci.
+     | Mencabut kunci + TTD PETUGAS saja; TTD pasien/keluarga DIPERTAHANKAN,
+     | entri kembali jadi draft untuk dikoreksi lalu dikunci ulang oleh petugas.
+     =============================== */
+    public function bukaKunci(string $edukasiId): void
+    {
+        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya Admin / Manager yang dapat membuka kunci.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang — form read-only.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($edukasiId) {
+                $this->lockRIRow($this->riHdrNo);
+
+                $fresh = $this->findDataRI($this->riHdrNo) ?: [];
+                $list = $fresh['edukasiPasienTerintegrasi'] ?? [];
+                $index = collect($list)->search(fn($entri) => ($entri['id'] ?? null) === $edukasiId);
+                if ($index === false) {
+                    throw new \RuntimeException('Entri tidak ditemukan.');
+                }
+
+                // Cabut kunci + TTD petugas; TTD pasien/keluarga tetap.
+                $list[$index]['finalized'] = false;
+                $list[$index]['form']['pemberiInformasi']['petugasName'] = '';
+                $list[$index]['form']['pemberiInformasi']['petugasCode'] = '';
+
+                $fresh['edukasiPasienTerintegrasi'] = array_values($list);
+                $this->updateJsonRI((int) $this->riHdrNo, $fresh);
+                $this->dataDaftarRi = $fresh;
+
+                $this->appendAdminLogRI(
+                    (int) $this->riHdrNo,
+                    'Buka kunci Edukasi Terintegrasi — entri ' . ($list[$index]['form']['tglEdukasi'] ?? $edukasiId)
+                        . ' (oleh ' . (auth()->user()->myuser_name ?? auth()->user()->name ?? '-') . ')',
+                    'MR',
+                );
+            });
+
+            $this->incrementVersion('modal-edukasi-terintegrasi-ri');
+            $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — entri kembali draft & TTD petugas dicabut. Silakan koreksi lalu kunci ulang.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $e->getMessage());
         }
     }
 
@@ -487,13 +509,13 @@ new class extends Component {
         $this->incrementVersion('modal-edukasi-terintegrasi-ri');
     }
 
-    public function editEntry(string $id): void
+    public function editEntry(string $edukasiId): void
     {
         if ($this->isFormLocked) {
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang.');
             return;
         }
-        $entri = collect($this->dataDaftarRi['edukasiPasienTerintegrasi'] ?? [])->firstWhere('id', $id);
+        $entri = collect($this->dataDaftarRi['edukasiPasienTerintegrasi'] ?? [])->firstWhere('id', $edukasiId);
         if (!$entri) {
             $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
             return;
@@ -508,9 +530,9 @@ new class extends Component {
         $this->dispatch('toast', type: 'info', message: 'Draft dimuat untuk dilanjutkan.');
     }
 
-    public function viewEntry(string $id): void
+    public function viewEntry(string $edukasiId): void
     {
-        $entri = collect($this->dataDaftarRi['edukasiPasienTerintegrasi'] ?? [])->firstWhere('id', $id);
+        $entri = collect($this->dataDaftarRi['edukasiPasienTerintegrasi'] ?? [])->firstWhere('id', $edukasiId);
         if (!$entri) {
             $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
             return;
@@ -528,7 +550,7 @@ new class extends Component {
         $this->viewOnly = false;
     }
 
-    public function removeEdukasiTerintegrasiById(string $id): void
+    public function removeEdukasiTerintegrasiById(string $edukasiId): void
     {
         if (!auth()->user()?->can('dokumen.hapus')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang menghapus entri.');
@@ -540,14 +562,14 @@ new class extends Component {
         }
 
         try {
-            DB::transaction(function () use ($id) {
+            DB::transaction(function () use ($edukasiId) {
                 $this->lockRIRow($this->riHdrNo);
 
                 $fresh = $this->findDataRI($this->riHdrNo) ?? [];
                 $list  = $fresh['edukasiPasienTerintegrasi'] ?? [];
 
-                $deletedRow = collect($list)->firstWhere('id', $id);
-                $newList = array_values(array_filter($list, fn($e) => ($e['id'] ?? null) !== $id));
+                $deletedRow = collect($list)->firstWhere('id', $edukasiId);
+                $newList = array_values(array_filter($list, fn($entri) => ($entri['id'] ?? null) !== $edukasiId));
                 if (count($newList) === count($list)) {
                     throw new \RuntimeException('Data tidak ditemukan atau sudah dihapus.');
                 }
@@ -560,7 +582,7 @@ new class extends Component {
             });
 
             // bila entri yang dihapus sedang dibuka di form, kosongkan form
-            if ($this->editingKey === $id) {
+            if ($this->editingKey === $edukasiId) {
                 $this->cancelEdit();
             }
             $this->afterSave('Data edukasi berhasil dihapus.');
@@ -571,10 +593,10 @@ new class extends Component {
         }
     }
 
-    public function cetak(string $id)
+    public function cetak(string $edukasiId)
     {
         $list = $this->dataDaftarRi['edukasiPasienTerintegrasi'] ?? [];
-        $entry = collect($list)->firstWhere('id', $id);
+        $entry = collect($list)->firstWhere('id', $edukasiId);
         if (!$entry) {
             $this->dispatch('toast', type: 'error', message: 'Data edukasi tidak ditemukan.');
             return;
@@ -622,6 +644,26 @@ new class extends Component {
         }
     }
 
+    // Toggle "Perlu tindak lanjut" (kebalikan flag tersimpan tidakPerluTL —
+    // key JSON dipertahankan supaya cetak/riwayat/data lama tidak berubah makna).
+    public function togglePerluTindakLanjut(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+        $this->form['tindakLanjut']['tidakPerluTL'] = !filter_var($this->form['tindakLanjut']['tidakPerluTL'] ?? true, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    // Checklist Kebutuhan Edukasi difilter mengikuti Tujuan Edukasi terpilih
+    // (tanpa tujuan = semua opsi; yang sudah dicentang selalu ikut tampil).
+    public function kebutuhanTampil(): array
+    {
+        return EdukasiTerintegrasiOptions::kebutuhanTampil(
+            (array) ($this->form['tujuan']['opsi'] ?? []),
+            (array) ($this->form['kebutuhan']['opsi'] ?? []),
+        );
+    }
+
     /**
      * Toggle membership di array multi-pilih (untuk x-toggle group).
      * $fullPath: path lengkap mulai dari property root, mis. "form.tujuan.opsi".
@@ -643,6 +685,7 @@ new class extends Component {
     public function resetFormEdukasi(): void
     {
         $this->form = $this->defaultForm();
+        $this->form['sasaran']['nama'] = $this->dataDaftarRi['regName'] ?? '';
         $this->form['ttd']['pasienKeluargaNama'] = $this->dataDaftarRi['regName'] ?? '';
         $this->prefillHeader();
         $this->sasaranEdukasiSignature = '';
@@ -690,21 +733,27 @@ new class extends Component {
 
 <div>
     {{-- RINGKASAN + TOMBOL (pola General Consent) --}}
-    @php $eduTerCount = count($dataDaftarRi['edukasiPasienTerintegrasi'] ?? []); @endphp
+    @php $jumlahEdukasiTerintegrasi = count($dataDaftarRi['edukasiPasienTerintegrasi'] ?? []); @endphp
     <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div class="flex-1 space-y-2">
                 <div class="flex items-center gap-2">
                     <h3 class="text-base font-semibold text-ink dark:text-gray-200">Edukasi Terintegrasi</h3>
-                    @if ($eduTerCount > 0)
-                        <x-badge variant="success">{{ $eduTerCount }} entri</x-badge>
+                    @if ($jumlahEdukasiTerintegrasi > 0)
+                        <x-badge variant="success">{{ $jumlahEdukasiTerintegrasi }} entri</x-badge>
                     @else
                         <x-badge variant="warning">Belum ada</x-badge>
                     @endif
                 </div>
                 <p class="text-base text-muted dark:text-gray-400">
-                    Catatan edukasi terintegrasi antar-PPA (dokter, perawat, gizi, farmasi, dll.).
+                    Pemberian informasi &amp; edukasi pasien/keluarga — satu formulir terintegrasi antar-PPA
+                    (dokter, perawat, gizi, farmasi, dll.), menggantikan form Edukasi Pasien lama.
                 </p>
+                @if (count($dataDaftarRi['edukasiPasien'] ?? []) > 0)
+                    <p class="text-sm text-muted-soft">
+                        + {{ count($dataDaftarRi['edukasiPasien']) }} entri form Edukasi Pasien lama — lihat &amp; cetak lewat display Rekam Medis.
+                    </p>
+                @endif
             </div>
             <div class="flex shrink-0">
                 <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
@@ -731,8 +780,8 @@ new class extends Component {
             <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-hairline bg-surface-soft dark:border-gray-700">
                 <div class="flex items-center gap-3">
                     <h2 class="text-xl font-semibold text-ink dark:text-gray-100">Edukasi Terintegrasi</h2>
-                    @if ($eduTerCount > 0)
-                        <x-badge variant="info">{{ $eduTerCount }} tersimpan</x-badge>
+                    @if ($jumlahEdukasiTerintegrasi > 0)
+                        <x-badge variant="info">{{ $jumlahEdukasiTerintegrasi }} tersimpan</x-badge>
                     @endif
                     @if ($isFormLocked)
                         <x-badge variant="danger">Read Only</x-badge>
@@ -794,8 +843,8 @@ new class extends Component {
             <div class="mt-3 space-y-5">
 
                 {{-- ─── HEADER: Waktu & Petugas ─── --}}
-                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <div>
+                <div class="grid grid-cols-1 gap-3 md:grid-cols-12">
+                    <div class="md:col-span-4">
                         <x-input-label value="Tanggal Edukasi *" />
                         <div class="flex items-end gap-2 mt-1">
                             <x-text-input wire:model="form.tglEdukasi" class="flex-1 font-mono"
@@ -805,11 +854,23 @@ new class extends Component {
                         </div>
                         <x-input-error :messages="$errors->get('form.tglEdukasi')" class="mt-1" />
                     </div>
-                    <div>
-                        <x-input-label value="Nama Petugas (Pemberi Informasi) *" />
-                        <x-text-input wire:model="form.pemberiInformasi.petugasName" class="w-full mt-1"
-                            :error="$errors->has('form.pemberiInformasi.petugasName')" :disabled="$formReadOnly" />
-                        <x-input-error :messages="$errors->get('form.pemberiInformasi.petugasName')" class="mt-1" />
+                    <div class="md:col-span-5">
+                        <x-input-label value="Sasaran Edukasi (Penerima) *" />
+                        <x-text-input wire:model.blur="form.sasaran.nama" class="w-full mt-1"
+                            placeholder="Nama pasien/keluarga penerima edukasi"
+                            :error="$errors->has('form.sasaran.nama')" :disabled="$formReadOnly" />
+                        <x-input-error :messages="$errors->get('form.sasaran.nama')" class="mt-1" />
+                    </div>
+                    <div class="md:col-span-3">
+                        <x-input-label value="Hubungan dengan Pasien *" />
+                        <x-select-input wire:model.blur="form.sasaran.hubungan" class="w-full mt-1"
+                            :error="$errors->has('form.sasaran.hubungan')" :disabled="$formReadOnly">
+                            <option value="">— Pilih hubungan —</option>
+                            @foreach ($hubunganOptions as $nilai => $label)
+                                <option value="{{ $nilai }}">{{ $label }}</option>
+                            @endforeach
+                        </x-select-input>
+                        <x-input-error :messages="$errors->get('form.sasaran.hubungan')" class="mt-1" />
                     </div>
                 </div>
 
@@ -820,7 +881,7 @@ new class extends Component {
                     <h4 class="text-sm font-semibold text-ink dark:text-gray-100 mb-2">
                         1) Tujuan Edukasi <span class="text-xs font-normal text-muted">(boleh lebih dari satu)</span>
                     </h4>
-                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4">
+                    <div class="flex flex-wrap gap-x-4 gap-y-2">
                         @foreach ($tujuanList as $key => $label)
                             <div wire:key="tujuan-{{ $key }}">
                                 <x-toggle
@@ -901,8 +962,8 @@ new class extends Component {
                                     wire:model.live="form.evaluasiAwal.nilaiKeyakinanBudaya.ada"
                                     :disabled="$formReadOnly" />
                             </div>
-                            <x-textarea wire:model.blur="form.evaluasiAwal.nilaiKeyakinanBudaya.deskripsi" :error="$errors->has('form.evaluasiAwal.nilaiKeyakinanBudaya.deskripsi')"
-                                class="w-full mt-2" rows="2"
+                            <x-text-input wire:model.blur="form.evaluasiAwal.nilaiKeyakinanBudaya.deskripsi" :error="$errors->has('form.evaluasiAwal.nilaiKeyakinanBudaya.deskripsi')"
+                                class="w-full mt-2"
                                 placeholder="Jelaskan nilai/kepercayaan/budaya yang relevan"
                                 :disabled="$formReadOnly" />
                         </div>
@@ -937,8 +998,13 @@ new class extends Component {
                     <h4 class="text-sm font-semibold text-ink dark:text-gray-100 mb-2">
                         3) Kebutuhan Edukasi <span class="text-xs font-normal text-muted">(boleh lebih dari satu)</span>
                     </h4>
+                    @if (!empty($form['tujuan']['opsi']))
+                        <p class="mb-2 text-xs italic text-muted-soft">
+                            Pilihan difilter mengikuti <strong>Tujuan Edukasi</strong> yang dipilih — kosongkan tujuan untuk menampilkan semua opsi.
+                        </p>
+                    @endif
                     <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4">
-                        @foreach ($kebutuhanList as $key => $label)
+                        @foreach ($this->kebutuhanTampil() as $key => $label)
                             <div wire:key="need-{{ $key }}">
                                 <x-toggle
                                     :current="in_array($key, $form['kebutuhan']['opsi'] ?? []) ? '1' : '0'"
@@ -954,6 +1020,23 @@ new class extends Component {
                             :error="$errors->has('form.kebutuhan.lainnya')" />
                         <x-input-error :messages="$errors->get('form.kebutuhan.lainnya')" class="mt-1" />
                     @endif
+
+                    <div class="grid grid-cols-1 gap-3 mt-3 md:grid-cols-2">
+                        <div>
+                            <x-input-label value="Materi / Topik Edukasi *" />
+                            <x-text-input wire:model.blur="form.materi.topik" class="w-full mt-1"
+                                placeholder="Mis. Cara minum obat antihipertensi, Diet rendah garam..."
+                                :error="$errors->has('form.materi.topik')" :disabled="$formReadOnly" />
+                            <x-input-error :messages="$errors->get('form.materi.topik')" class="mt-1" />
+                        </div>
+                        <div>
+                            <x-input-label value="Keterangan / Catatan Edukasi" />
+                            <x-text-input wire:model.blur="form.materi.keterangan" class="w-full mt-1"
+                                placeholder="Penjelasan edukasi yang diberikan..."
+                                :error="$errors->has('form.materi.keterangan')" :disabled="$formReadOnly" />
+                            <x-input-error :messages="$errors->get('form.materi.keterangan')" class="mt-1" />
+                        </div>
+                    </div>
                 </div>
 
                 <hr class="border-hairline dark:border-gray-700">
@@ -963,8 +1046,9 @@ new class extends Component {
                     <h4 class="text-sm font-semibold text-ink dark:text-gray-100 mb-2">
                         4) Metode & Media Edukasi
                     </h4>
-                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4">
+                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-5">
                         @foreach ($metodeList as $key => $label)
+                            @continue($key === 'lainnya')
                             <div wire:key="metode-{{ $key }}">
                                 <x-toggle
                                     :current="in_array($key, $form['metodeMedia']['opsi'] ?? []) ? '1' : '0'"
@@ -973,6 +1057,13 @@ new class extends Component {
                                     :label="$label" :disabled="$formReadOnly" />
                             </div>
                         @endforeach
+                    </div>
+                    <div class="mt-2" wire:key="metode-lainnya">
+                        <x-toggle
+                            :current="in_array('lainnya', $form['metodeMedia']['opsi'] ?? []) ? '1' : '0'"
+                            trueValue="1" falseValue="0"
+                            wireClick="toggleArrayOpt('form.metodeMedia.opsi', 'lainnya')"
+                            :label="$metodeList['lainnya'] ?? 'Lainnya'" :disabled="$formReadOnly" />
                     </div>
                     @if (in_array('lainnya', $form['metodeMedia']['opsi'] ?? []))
                         <x-text-input wire:model.blur="form.metodeMedia.lainnya" class="w-full mt-2"
@@ -1002,11 +1093,9 @@ new class extends Component {
                                             :disabled="$formReadOnly" />
                                     </div>
                                 </div>
-                                @if (in_array(data_get($form, "hasil.$key.ya"), ['1', 1, true], true))
-                                    <x-text-input wire:model.blur="form.hasil.{{ $key }}.keterangan"
-                                        class="w-full mt-2" placeholder="Keterangan"
-                                        :disabled="$formReadOnly" />
-                                @endif
+                                <x-text-input wire:model.blur="form.hasil.{{ $key }}.keterangan"
+                                    class="w-full mt-2" placeholder="Keterangan"
+                                    :disabled="$formReadOnly" />
                             </div>
                         @endforeach
                     </div>
@@ -1017,87 +1106,104 @@ new class extends Component {
                 {{-- ─── 6) TINDAK LANJUT ─── --}}
                 <div class="space-y-2">
                     <h4 class="text-sm font-semibold text-ink dark:text-gray-100">6) Tindak Lanjut</h4>
-                    <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-                        <div>
-                            <x-input-label value="Edukasi lanjutan (dd/mm/yyyy)" />
-                            <div class="flex items-end gap-2 mt-1">
-                                <x-text-input wire:model="form.tindakLanjut.edukasiLanjutanTanggal"
-                                    class="flex-1 font-mono" placeholder="dd/mm/yyyy"
-                                    :error="$errors->has('form.tindakLanjut.edukasiLanjutanTanggal')"
+                    <x-toggle
+                        :current="!filter_var($form['tindakLanjut']['tidakPerluTL'] ?? true, FILTER_VALIDATE_BOOLEAN) ? '1' : '0'"
+                        trueValue="1" falseValue="0"
+                        wireClick="togglePerluTindakLanjut"
+                        label="Perlu tindak lanjut"
+                        :disabled="$formReadOnly" />
+                    @if (!filter_var($form['tindakLanjut']['tidakPerluTL'] ?? true, FILTER_VALIDATE_BOOLEAN))
+                        <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+                            <div>
+                                <x-input-label value="Edukasi lanjutan (dd/mm/yyyy)" />
+                                <div class="flex items-end gap-2 mt-1">
+                                    <x-text-input wire:model="form.tindakLanjut.edukasiLanjutanTanggal"
+                                        class="flex-1 font-mono" placeholder="dd/mm/yyyy"
+                                        :error="$errors->has('form.tindakLanjut.edukasiLanjutanTanggal')"
+                                        :disabled="$formReadOnly" />
+                                    <x-secondary-button wire:click="setEdukasiLanjutanToday" type="button"
+                                        :disabled="$formReadOnly">Hari Ini</x-secondary-button>
+                                </div>
+                            </div>
+                            <div class="md:col-span-2">
+                                <x-input-label value="Keterangan edukasi lanjutan" />
+                                <x-text-input wire:model.blur="form.tindakLanjut.edukasiLanjutanKeterangan"
+                                    class="w-full mt-1" placeholder="Tentang apa edukasi lanjutannya..."
+                                    :error="$errors->has('form.tindakLanjut.edukasiLanjutanKeterangan')"
                                     :disabled="$formReadOnly" />
-                                <x-secondary-button wire:click="setEdukasiLanjutanToday" type="button"
-                                    :disabled="$formReadOnly">Hari Ini</x-secondary-button>
+                                <x-input-error :messages="$errors->get('form.tindakLanjut.edukasiLanjutanKeterangan')" class="mt-1" />
                             </div>
                         </div>
-                        <div class="md:col-span-2">
-                            <x-input-label value="Rujuk ke (boleh lebih dari satu)" />
-                            <div class="flex flex-wrap gap-3 mt-1">
-                                @foreach ($rujukList as $key => $label)
-                                    <div wire:key="rujuk-{{ $key }}">
-                                        <x-toggle
-                                            :current="in_array($key, $form['tindakLanjut']['dirujukKe'] ?? []) ? '1' : '0'"
-                                            trueValue="1" falseValue="0"
-                                            wireClick="toggleArrayOpt('form.tindakLanjut.dirujukKe', '{{ $key }}')"
-                                            :label="$label" :disabled="$formReadOnly" />
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                        <div class="md:col-span-3">
-                            <x-toggle wire:model.live="form.tindakLanjut.tidakPerluTL"
-                                :trueValue="true" :falseValue="false"
-                                label="Tidak diperlukan tindak lanjut"
-                                :disabled="$formReadOnly" />
-                        </div>
-                    </div>
+                    @endif
                 </div>
 
                 <hr class="border-hairline dark:border-gray-700">
 
-                {{-- ─── 7) TANDA TANGAN ─── --}}
+                {{-- ─── 7) TANDA TANGAN — dua kolom berbingkai sama tinggi (pola Akhir Hayat) ─── --}}
                 <div class="space-y-3">
-                    <h4 class="text-sm font-semibold text-ink dark:text-gray-100">7) Tanda Tangan Pasien / Keluarga *</h4>
+                    <h4 class="text-sm font-semibold text-ink dark:text-gray-100">7) Tanda Tangan</h4>
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 items-stretch">
 
-                    @if (!empty($sasaranEdukasiSignature))
-                        <div class="flex items-center gap-3">
-                            <img src="{{ $sasaranEdukasiSignature }}" alt="TTD"
-                                class="object-contain w-32 h-16 bg-canvas border border-gray-300 rounded" />
-                            @if (!$formReadOnly)
-                                <x-secondary-button wire:click="clearSasaranSignature" type="button"
-                                    class="text-xs">Hapus TTD</x-secondary-button>
-                            @endif
-                        </div>
-                    @elseif (!$formReadOnly)
-                        <div>
-                            <x-input-label value="Tanda Tangan" />
-                            <div class="mt-1">
-                                <x-signature.signature-pad wireMethod="setSasaranSignature" />
+                        {{-- Pasien / Keluarga --}}
+                        <div class="flex flex-col h-full p-3 border rounded-lg border-hairline bg-surface-soft/60 dark:bg-gray-900/40 dark:border-gray-700">
+                            <p class="mb-2 text-xs font-semibold tracking-wide text-center uppercase text-muted dark:text-gray-400">
+                                Pasien / Keluarga *
+                            </p>
+                            <div class="flex-1">
+                                @if (!empty($sasaranEdukasiSignature))
+                                    <x-signature.signature-result :signature="$sasaranEdukasiSignature" :date="''"
+                                        :disabled="$formReadOnly" wireMethod="clearSasaranSignature" />
+                                @elseif (!$formReadOnly)
+                                    <x-signature.signature-pad wireMethod="setSasaranSignature" />
+                                @else
+                                    <p class="py-8 text-sm italic text-center text-muted-soft">Belum ditandatangani.</p>
+                                @endif
+                            </div>
+                            <div class="mt-3 space-y-2">
+                                <div>
+                                    <x-input-label value="Nama Penanda Tangan *" />
+                                    <x-text-input wire:model.blur="form.ttd.pasienKeluargaNama" class="w-full mt-1"
+                                        placeholder="Nama yang menandatangani"
+                                        :error="$errors->has('form.ttd.pasienKeluargaNama')" :disabled="$formReadOnly" />
+                                    <x-input-error :messages="$errors->get('form.ttd.pasienKeluargaNama')" class="mt-1" />
+                                </div>
+                                <div>
+                                    <x-input-label value="Hubungan dengan Pasien *" />
+                                    <x-select-input wire:model.blur="form.ttd.pasienKeluargaHubungan" class="w-full mt-1"
+                                        :error="$errors->has('form.ttd.pasienKeluargaHubungan')" :disabled="$formReadOnly">
+                                        <option value="">— Pilih hubungan —</option>
+                                        @foreach ($hubunganOptions as $nilai => $label)
+                                            <option value="{{ $nilai }}">{{ $label }}</option>
+                                        @endforeach
+                                    </x-select-input>
+                                    <x-input-error :messages="$errors->get('form.ttd.pasienKeluargaHubungan')" class="mt-1" />
+                                </div>
+                                <p class="text-xs text-muted-soft">
+                                    Penanda tangan boleh berbeda dari <strong>Sasaran Edukasi</strong> di header
+                                    (mis. edukasi ke pasien, yang TTD keluarganya).
+                                </p>
                             </div>
                         </div>
-                    @else
-                        <p class="py-6 text-base italic text-center text-muted-soft">Belum ditandatangani.</p>
-                    @endif
 
-                    <div>
-                        <x-input-label value="Nama Pasien / Keluarga *" />
-                        <x-text-input wire:model.blur="form.ttd.pasienKeluargaNama" class="w-full mt-1"
-                            placeholder="Nama yang menandatangani"
-                            :error="$errors->has('form.ttd.pasienKeluargaNama')"
-                            :disabled="$formReadOnly" />
-                        <x-input-error :messages="$errors->get('form.ttd.pasienKeluargaNama')" class="mt-1" />
-                    </div>
-
-                    <div>
-                        <x-input-label value="Hubungan dengan Pasien *" />
-                        <x-select-input wire:model.blur="form.ttd.pasienKeluargaHubungan"
-                            :error="$errors->has('form.ttd.pasienKeluargaHubungan')" :disabled="$formReadOnly"
-                            class="w-full mt-1">
-                            <option value="">— Pilih hubungan —</option>
-                            @foreach ($hubunganOptions as $val => $label)
-                                <option value="{{ $val }}">{{ $label }}</option>
-                            @endforeach
-                        </x-select-input>
-                        <x-input-error :messages="$errors->get('form.ttd.pasienKeluargaHubungan')" class="mt-1" />
+                        {{-- Petugas — judul kolom sudah ada di atas, komponen cukup label "Nama" --}}
+                        <div class="flex flex-col h-full p-3 border rounded-lg border-hairline bg-surface-soft/60 dark:bg-gray-900/40 dark:border-gray-700">
+                            <p class="mb-2 text-xs font-semibold tracking-wide text-center uppercase text-muted dark:text-gray-400">
+                                Petugas (Pemberi Informasi)
+                            </p>
+                            <div class="flex-1 flex flex-col justify-center">
+                                <x-signature.ttd-petugas :framed="false"
+                                    :ttd="$form['pemberiInformasi']['petugasName'] ?? ''"
+                                    :code="$form['pemberiInformasi']['petugasCode'] ?? ''"
+                                    :date="$form['tglEdukasi'] ?? ''"
+                                    :locked="$formReadOnly" :allowClear="false" sign="ttdPetugas"
+                                    nameLabel="Nama" dateLabel="Tanggal Edukasi" signLabel="TTD Petugas & Kunci"
+                                    emptyText="Menunggu TTD petugas." />
+                            </div>
+                            <p class="mt-3 text-xs text-muted dark:text-gray-400">
+                                Petugas menandatangani <strong>paling akhir</strong> — setelah pasien/keluarga TTD.
+                                Menandatangani = memvalidasi &amp; <strong>mengunci</strong> entri ini.
+                            </p>
+                        </div>
                     </div>
                 </div>
 
@@ -1120,61 +1226,71 @@ new class extends Component {
                         <th class="w-8 px-2 py-3 border-b border-hairline dark:border-gray-700"></th>
                         <th class="px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Tanggal</th>
                         <th class="px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Pasien / Keluarga</th>
-                        <th class="px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Petugas</th>
+                        <th class="px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Petugas (TTD)</th>
                         <th class="px-4 py-3 text-sm font-medium text-center text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Status</th>
-                        <th class="px-4 py-3 text-sm font-medium text-center text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 w-56">Aksi</th>
+                        <th class="px-4 py-3 text-sm font-medium text-center text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 w-64">Aksi</th>
                     </tr>
                 </thead>
                 @forelse (array_reverse($list) as $entri)
                     @php
-                        $form  = $entri['form'] ?? [];
-                        $id    = $entri['id'] ?? null;
-                        $tgl   = $form['tglEdukasi'] ?? '-';
-                        $petugasName = data_get($form, 'pemberiInformasi.petugasName', '-') ?: '-';
-                        $pasienNama  = data_get($form, 'ttd.pasienKeluargaNama', '-') ?: '-';
+                        $entriForm  = $entri['form'] ?? [];
+                        $edukasiId    = $entri['id'] ?? null;
+                        $tglEdukasi   = $entriForm['tglEdukasi'] ?? '-';
+                        $petugasName = data_get($entriForm, 'pemberiInformasi.petugasName', '-') ?: '-';
+                        $pasienNama  = data_get($entriForm, 'ttd.pasienKeluargaNama', '-') ?: '-';
                         $isFinal     = $this->entryIsFinal($entri);
-                        $hasTtd      = !empty(data_get($form, 'ttd.pasienKeluargaTTD'));
+                        $hasTtd      = !empty(data_get($entriForm, 'ttd.pasienKeluargaTTD'));
 
-                        $hambatanEmo = data_get($form, 'evaluasiAwal.hambatanEmosional.ada');
-                        $hambatanFk  = data_get($form, 'evaluasiAwal.keterbatasanFisikKognitif.ada');
-                        $isEmo       = in_array($hambatanEmo, [true, 1, '1'], true);
-                        $isFk        = in_array($hambatanFk, [true, 1, '1'], true);
-                        $isPahamTidak = in_array(data_get($form, 'hasil.paham.ya'), [false, 0, '0'], true);
-                        $alertRow    = $isPahamTidak || $isEmo || $isFk;
+                        $hambatanEmosionalAda = data_get($entriForm, 'evaluasiAwal.hambatanEmosional.ada');
+                        $keterbatasanFisikAda  = data_get($entriForm, 'evaluasiAwal.keterbatasanFisikKognitif.ada');
+                        $adaHambatanEmosional       = in_array($hambatanEmosionalAda, [true, 1, '1'], true);
+                        $adaKeterbatasanFisik        = in_array($keterbatasanFisikAda, [true, 1, '1'], true);
+                        $isPahamTidak = in_array(data_get($entriForm, 'hasil.paham.ya'), [false, 0, '0'], true);
+                        $alertRow    = $isPahamTidak || $adaHambatanEmosional || $adaKeterbatasanFisik;
 
                         // ringkasan join label
-                        $tujuanTxt = collect($form['tujuan']['opsi'] ?? [])->map(fn($k) => $tujuanList[$k] ?? $k)->implode(', ');
-                        if (!empty($form['tujuan']['lainnya'])) {
-                            $tujuanTxt = trim($tujuanTxt . ($tujuanTxt ? ', ' : '') . $form['tujuan']['lainnya']);
+                        $tujuanTeks = collect($entriForm['tujuan']['opsi'] ?? [])->map(fn($k) => $tujuanList[$k] ?? $k)->implode(', ');
+                        if (!empty($entriForm['tujuan']['lainnya'])) {
+                            $tujuanTeks = trim($tujuanTeks . ($tujuanTeks ? ', ' : '') . $entriForm['tujuan']['lainnya']);
                         }
-                        $kebutuhanTxt = collect($form['kebutuhan']['opsi'] ?? [])->map(fn($k) => $kebutuhanList[$k] ?? $k)->implode(', ');
-                        if (!empty($form['kebutuhan']['lainnya'])) {
-                            $kebutuhanTxt = trim($kebutuhanTxt . ($kebutuhanTxt ? ', ' : '') . $form['kebutuhan']['lainnya']);
+                        $kebutuhanTeks = collect($entriForm['kebutuhan']['opsi'] ?? [])->map(fn($k) => $kebutuhanList[$k] ?? $k)->implode(', ');
+                        if (!empty($entriForm['kebutuhan']['lainnya'])) {
+                            $kebutuhanTeks = trim($kebutuhanTeks . ($kebutuhanTeks ? ', ' : '') . $entriForm['kebutuhan']['lainnya']);
                         }
-                        $metodeTxt = collect($form['metodeMedia']['opsi'] ?? [])->map(fn($k) => $metodeList[$k] ?? $k)->implode(', ');
-                        if (!empty($form['metodeMedia']['lainnya'])) {
-                            $metodeTxt = trim($metodeTxt . ($metodeTxt ? ', ' : '') . $form['metodeMedia']['lainnya']);
+                        $metodeTeks = collect($entriForm['metodeMedia']['opsi'] ?? [])->map(fn($k) => $metodeList[$k] ?? $k)->implode(', ');
+                        if (!empty($entriForm['metodeMedia']['lainnya'])) {
+                            $metodeTeks = trim($metodeTeks . ($metodeTeks ? ', ' : '') . $entriForm['metodeMedia']['lainnya']);
                         }
-                        $rujukTxt = collect($form['tindakLanjut']['dirujukKe'] ?? [])->map(fn($k) => $rujukList[$k] ?? $k)->implode(', ');
-                        $literasi = data_get($form, 'evaluasiAwal.literasi') ?: '-';
-                        $hubLabel = $hubunganOptions[data_get($form, 'ttd.pasienKeluargaHubungan')] ?? data_get($form, 'ttd.pasienKeluargaHubungan', '');
-                        $tlTgl    = data_get($form, 'tindakLanjut.edukasiLanjutanTanggal') ?: '-';
-                        $tidakPerluTL = (bool) data_get($form, 'tindakLanjut.tidakPerluTL');
+                        $rujukTeks = collect($entriForm['tindakLanjut']['dirujukKe'] ?? [])->map(fn($k) => $rujukList[$k] ?? $k)->implode(', ');
+                        $literasi = data_get($entriForm, 'evaluasiAwal.literasi') ?: '-';
+                        $hubunganLabel = $hubunganOptions[data_get($entriForm, 'ttd.pasienKeluargaHubungan')] ?? data_get($entriForm, 'ttd.pasienKeluargaHubungan', '');
+                        // Entri lama belum punya node sasaran → fallback ke penanda tangan.
+                        $sasaranNama = data_get($entriForm, 'sasaran.nama') ?: $pasienNama;
+                        $sasaranHubunganLabel = $hubunganOptions[data_get($entriForm, 'sasaran.hubungan')] ?? (data_get($entriForm, 'sasaran.hubungan') ?: $hubunganLabel);
+                        $tindakLanjutTanggal    = data_get($entriForm, 'tindakLanjut.edukasiLanjutanTanggal') ?: '-';
+                        $tindakLanjutKeterangan = data_get($entriForm, 'tindakLanjut.edukasiLanjutanKeterangan') ?: '';
+                        $tidakPerluTL = (bool) data_get($entriForm, 'tindakLanjut.tidakPerluTL');
                     @endphp
 
-                    <tbody wire:key="edu-terint-{{ $id ?: $loop->index }}"
+                    <tbody wire:key="edu-terint-{{ $edukasiId ?: $loop->index }}"
                         x-data="{ open: {{ $loop->first ? 'true' : 'false' }} }"
                         class="border-b border-hairline dark:border-gray-700">
                         <tr @click="open = !open"
-                            class="cursor-pointer align-top hover:bg-surface-soft dark:hover:bg-gray-800/60 {{ $editingKey && $editingKey === $id ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : ($alertRow ? 'bg-red-50/50 dark:bg-red-900/10' : '') }}">
+                            class="cursor-pointer align-top hover:bg-surface-soft dark:hover:bg-gray-800/60 {{ $editingKey && $editingKey === $edukasiId ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : ($alertRow ? 'bg-red-50/50 dark:bg-red-900/10' : '') }}">
                             <td class="px-2 py-3 text-center align-middle">
                                 <svg class="w-4 h-4 mx-auto text-muted transition-transform" :class="{ 'rotate-90': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                                 </svg>
                             </td>
-                            <td class="px-4 py-3 font-mono text-muted whitespace-nowrap align-middle dark:text-gray-300">{{ $tgl }}</td>
+                            <td class="px-4 py-3 font-mono text-muted whitespace-nowrap align-middle dark:text-gray-300">{{ $tglEdukasi }}</td>
                             <td class="px-4 py-3 font-medium text-ink align-middle dark:text-white">{{ $pasienNama }}</td>
-                            <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">{{ $petugasName }}</td>
+                            <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                @if ($petugasName !== '-')
+                                    <span class="font-medium text-ink dark:text-gray-200">{{ $petugasName }}</span>
+                                @else
+                                    <x-badge variant="danger">Belum TTD</x-badge>
+                                @endif
+                            </td>
                             <td class="px-4 py-3 text-center align-middle">
                                 <div class="flex flex-col items-center gap-1">
                                     @if ($isFinal)
@@ -1191,19 +1307,19 @@ new class extends Component {
                                 <div class="flex flex-col items-center gap-2">
                                     {{-- Baris atas: aksi non-destruktif (Lanjut/Lihat/Cetak) --}}
                                     <div class="flex items-center justify-center gap-2">
-                                    @if (!$isFinal && !$isFormLocked && $id)
-                                        <x-primary-button type="button" wire:click="editEntry('{{ $id }}')"
-                                            wire:loading.attr="disabled" wire:target="editEntry('{{ $id }}')"
-                                            class="gap-1.5" title="Lanjutkan mengisi entri ini">
+                                    @if (!$isFinal && !$isFormLocked && $edukasiId)
+                                        <x-primary-button type="button" wire:click="editEntry('{{ $edukasiId }}')"
+                                            wire:loading.attr="disabled" wire:target="editEntry('{{ $edukasiId }}')"
+                                            class="gap-1.5 whitespace-nowrap" title="Lanjutkan mengisi entri ini">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                             </svg>
                                             Lanjut Isi
                                         </x-primary-button>
                                     @endif
-                                    @if ($isFinal && $id)
-                                        <x-secondary-button type="button" wire:click="viewEntry('{{ $id }}')"
-                                            wire:loading.attr="disabled" wire:target="viewEntry('{{ $id }}')"
+                                    @if ($isFinal && $edukasiId)
+                                        <x-secondary-button type="button" wire:click="viewEntry('{{ $edukasiId }}')"
+                                            wire:loading.attr="disabled" wire:target="viewEntry('{{ $edukasiId }}')"
                                             class="gap-1.5" title="Lihat detail (read-only) di form atas">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -1212,28 +1328,42 @@ new class extends Component {
                                             Lihat
                                         </x-secondary-button>
                                     @endif
-                                    @if ($id)
-                                        <x-secondary-button wire:click="cetak('{{ $id }}')"
-                                            wire:loading.attr="disabled" wire:target="cetak('{{ $id }}')"
+                                    @if ($edukasiId)
+                                        <x-secondary-button wire:click="cetak('{{ $edukasiId }}')"
+                                            wire:loading.attr="disabled" wire:target="cetak('{{ $edukasiId }}')"
                                             class="gap-1.5">
-                                            <span wire:loading.remove wire:target="cetak('{{ $id }}')" class="flex items-center gap-1.5">
+                                            <span wire:loading.remove wire:target="cetak('{{ $edukasiId }}')" class="flex items-center gap-1.5">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                                 </svg>
                                                 Cetak
                                             </span>
-                                            <span wire:loading wire:target="cetak('{{ $id }}')" class="flex items-center gap-1.5"><x-loading class="w-5 h-5" /> Mencetak...</span>
+                                            <span wire:loading wire:target="cetak('{{ $edukasiId }}')" class="flex items-center gap-1.5"><x-loading class="w-5 h-5" /> Mencetak...</span>
                                         </x-secondary-button>
                                     @endif
                                     </div>
 
-                                    {{-- Baris bawah: aksi destruktif (Hapus) --}}
-                                    @if (!$isFormLocked && $id)
+                                    {{-- Baris bawah: aksi terkunci/destruktif (Buka Kunci + Hapus) --}}
+                                    @if (!$isFormLocked && $edukasiId)
                                         <div class="flex items-center justify-center gap-2">
+                                        @if ($isFinal)
+                                            @can('dokumen.bukaKunci')
+                                                <x-confirm-button action="bukaKunci('{{ $edukasiId }}')"
+                                                    title="Buka Kunci Edukasi Terintegrasi"
+                                                    message="TTD petugas akan dicabut & entri kembali menjadi draft untuk dikoreksi. TTD pasien/keluarga tetap. Lanjutkan?"
+                                                    confirmText="Ya, Buka Kunci" class="gap-1.5 whitespace-nowrap">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" />
+                                                    </svg>
+                                                    Buka Kunci
+                                                </x-confirm-button>
+                                            @endcan
+                                        @endif
                                         @can('dokumen.hapus')
                                         <x-outline-button type="button"
-                                            wire:click.prevent="removeEdukasiTerintegrasiById('{{ $id }}')"
+                                            wire:click.prevent="removeEdukasiTerintegrasiById('{{ $edukasiId }}')"
                                             wire:confirm="Hapus data edukasi terintegrasi ini?"
                                             wire:loading.attr="disabled"
                                             class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300 !px-2 !py-1"
@@ -1256,31 +1386,46 @@ new class extends Component {
                                 <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
                                     <div class="md:col-span-2">
                                         <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tujuan Edukasi</dt>
-                                        <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $tujuanTxt ?: '-' }}</dd>
+                                        <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $tujuanTeks ?: '-' }}</dd>
                                     </div>
                                     <div>
                                         <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Evaluasi Awal</dt>
                                         <dd class="mt-0.5 text-ink dark:text-gray-200">
                                             Literasi: {{ $literasi }};
-                                            Hambatan emosional: {{ $isEmo ? 'Ada' : 'Tidak' }};
-                                            Keterbatasan fisik/kognitif: {{ $isFk ? 'Ada' : 'Tidak' }}
+                                            Hambatan emosional: {{ $adaHambatanEmosional ? 'Ada' : 'Tidak' }};
+                                            Keterbatasan fisik/kognitif: {{ $adaKeterbatasanFisik ? 'Ada' : 'Tidak' }}
                                         </dd>
                                     </div>
                                     <div>
                                         <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Kebutuhan Edukasi</dt>
-                                        <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $kebutuhanTxt ?: '-' }}</dd>
+                                        <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $kebutuhanTeks ?: '-' }}</dd>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Materi / Topik Edukasi</dt>
+                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                            {{ data_get($entriForm, 'materi.topik') ?: '-' }}
+                                            @if (filled(data_get($entriForm, 'materi.keterangan')))
+                                                <div class="whitespace-pre-line text-muted dark:text-gray-300">{{ data_get($entriForm, 'materi.keterangan') }}</div>
+                                            @endif
+                                        </dd>
                                     </div>
                                     <div>
                                         <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Metode & Media</dt>
-                                        <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $metodeTxt ?: '-' }}</dd>
+                                        <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $metodeTeks ?: '-' }}</dd>
                                     </div>
                                     <div>
                                         <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Hasil Edukasi</dt>
                                         <dd class="mt-0.5 text-ink dark:text-gray-200">
-                                            @foreach ($hasilList as $hk => $hlabel)
-                                                @php $hv = data_get($form, "hasil.$hk.ya"); @endphp
-                                                @if (!is_null($hv) && $hv !== '')
-                                                    <div>{{ $hlabel }}: <strong>{{ in_array($hv, [true, 1, '1'], true) ? 'Ya' : 'Tidak' }}</strong></div>
+                                            @foreach ($hasilList as $hasilKey => $hasilLabel)
+                                                @php
+                                                    $hasilNilai = data_get($entriForm, "hasil.$hasilKey.ya");
+                                                    $hasilKeterangan = data_get($entriForm, "hasil.$hasilKey.keterangan");
+                                                @endphp
+                                                @if (!is_null($hasilNilai) && $hasilNilai !== '')
+                                                    <div>
+                                                        {{ $hasilLabel }}: <strong>{{ in_array($hasilNilai, [true, 1, '1'], true) ? 'Ya' : 'Tidak' }}</strong>
+                                                        @if (filled($hasilKeterangan)) &mdash; {{ $hasilKeterangan }} @endif
+                                                    </div>
                                                 @endif
                                             @endforeach
                                         </dd>
@@ -1291,13 +1436,17 @@ new class extends Component {
                                             @if ($tidakPerluTL)
                                                 Tidak diperlukan tindak lanjut
                                             @else
-                                                Edukasi lanjutan: {{ $tlTgl }}@if ($rujukTxt); Rujuk ke: {{ $rujukTxt }}@endif
+                                                Edukasi lanjutan: {{ $tindakLanjutTanggal }}@if ($tindakLanjutKeterangan) &mdash; {{ $tindakLanjutKeterangan }}@endif @if ($rujukTeks); Rujuk ke: {{ $rujukTeks }}@endif
                                             @endif
                                         </dd>
                                     </div>
                                     <div>
+                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Sasaran Edukasi</dt>
+                                        <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $sasaranNama }}@if ($sasaranHubunganLabel) <span class="text-muted">({{ $sasaranHubunganLabel }})</span>@endif</dd>
+                                    </div>
+                                    <div>
                                         <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Penanda Tangan</dt>
-                                        <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $pasienNama }}@if ($hubLabel) <span class="text-muted">({{ $hubLabel }})</span>@endif</dd>
+                                        <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $pasienNama }}@if ($hubunganLabel) <span class="text-muted">({{ $hubunganLabel }})</span>@endif</dd>
                                     </div>
                                     <div>
                                         <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">TTD Pasien / Keluarga</dt>
@@ -1342,7 +1491,7 @@ new class extends Component {
                             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <span>Simpan draft dulu, lalu <strong>Simpan &amp; Kunci</strong> setelah TTD pasien/keluarga.</span>
+                            <span>Simpan draft dulu; setelah TTD pasien/keluarga, <strong>kunci</strong> lewat tombol <strong>TTD Petugas &amp; Kunci</strong>.</span>
                         </p>
                     @else
                         <span></span>
@@ -1370,25 +1519,15 @@ new class extends Component {
                                     Entri Baru
                                 </x-outline-button>
                             @endif
-                            <x-secondary-button wire:click.prevent="saveDraft" wire:loading.attr="disabled"
-                                wire:target="saveDraft" class="gap-2 min-w-[150px] justify-center">
+                            <x-primary-button wire:click.prevent="saveDraft" wire:loading.attr="disabled"
+                                wire:target="saveDraft" class="gap-2 min-w-[160px] justify-center">
                                 <span wire:loading.remove wire:target="saveDraft" class="flex items-center gap-1.5">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-8H7v8M7 3v5h8M5 3h11l4 4v12a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
                                     </svg>
-                                    Simpan Draft
+                                    {{ $editingKey ? 'Simpan Perubahan' : 'Simpan Draft' }}
                                 </span>
                                 <span wire:loading wire:target="saveDraft"><x-loading class="w-4 h-4" /> Menyimpan...</span>
-                            </x-secondary-button>
-                            <x-primary-button wire:click.prevent="finalize" wire:loading.attr="disabled"
-                                wire:target="finalize" class="gap-2 min-w-[160px] justify-center">
-                                <span wire:loading.remove wire:target="finalize" class="flex items-center gap-1.5">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                    </svg>
-                                    Simpan &amp; Kunci
-                                </span>
-                                <span wire:loading wire:target="finalize"><x-loading class="w-4 h-4" /> Mengunci...</span>
                             </x-primary-button>
                         @endif
                     </div>

@@ -221,19 +221,6 @@ new class extends Component {
                             </x-tab>
                         @endhasanyrole
 
-                        <x-tab variant="underline" active-expr="activeTab === 'edukasi'"
-                            x-on:click="activeTab = 'edukasi'" class="inline-flex items-center gap-2">
-                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                            </svg>
-                            Edukasi Pasien
-                            @if (count($dataDaftarRi['edukasiPasien'] ?? []) > 0)
-                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ count($dataDaftarRi['edukasiPasien']) }}</x-badge>
-                            @endif
-                        </x-tab>
-
                         <x-tab variant="underline" active-expr="activeTab === 'edukasiTerintegrasi'"
                             x-on:click="activeTab = 'edukasiTerintegrasi'" class="inline-flex items-center gap-2">
                             <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor"
@@ -388,14 +375,7 @@ new class extends Component {
                     </div>
                 @endhasanyrole
 
-                {{-- TAB: EDUKASI PASIEN --}}
-                <div x-show="activeTab === 'edukasi'" x-transition.opacity.duration.200ms style="display:none">
-                    <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.edukasi-pasien-ri.rm-edukasi-pasien-ri-actions
-                        :riHdrNo="$riHdrNo" :disabled="$isFormLocked"
-                        wire:key="edukasi-pasien-ri-{{ $riHdrNo ?? 'init' }}" />
-                </div>
-
-                {{-- TAB: EDUKASI TERINTEGRASI --}}
+                {{-- TAB: EDUKASI TERINTEGRASI (gabungan — termasuk entri form Edukasi Pasien lama) --}}
                 <div x-show="activeTab === 'edukasiTerintegrasi'" x-transition.opacity.duration.200ms style="display:none">
                     <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.edukasi-terintegrasi-ri.rm-edukasi-terintegrasi-ri-actions
                         :riHdrNo="$riHdrNo" :disabled="$isFormLocked"

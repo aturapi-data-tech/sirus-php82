@@ -728,11 +728,15 @@
                 <tbody>
                     @forelse ($daftarEdukasi as $edukasi)
                         @php
+                            $labelTujuan = \App\Support\EdukasiTerintegrasiOptions::tujuan();
+                            $labelMetode = \App\Support\EdukasiTerintegrasiOptions::metode();
                             $tujuan = collect((array) data_get($edukasi, 'form.tujuan.opsi', []))
+                                ->map(fn($kunci) => $labelTujuan[$kunci] ?? $kunci)
                                 ->push(data_get($edukasi, 'form.tujuan.lainnya'))
                                 ->filter()
                                 ->implode(', ');
                             $metode = collect((array) data_get($edukasi, 'form.metodeMedia.opsi', []))
+                                ->map(fn($kunci) => $labelMetode[$kunci] ?? $kunci)
                                 ->push(data_get($edukasi, 'form.metodeMedia.lainnya'))
                                 ->filter()
                                 ->implode(', ');
