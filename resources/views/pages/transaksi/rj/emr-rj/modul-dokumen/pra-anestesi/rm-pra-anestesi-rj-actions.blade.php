@@ -93,10 +93,10 @@ new class extends Component {
     // TTD GAMBAR pasien/keluarga (signature-pad) — field entri biasa, BUKAN pemicu kunci.
     public string $signaturePasien = '';
 
-    public array $praList = [];
+    public array $praAnestesiList = [];
 
     // Kunci entri yang sedang diedit (createdAt = kunci stabil). null = membuat entri baru.
-    public ?string $editingKey = null;
+    public ?string $exceptionditingKey = null;
     // true = entri terkunci sedang ditampilkan di form dalam mode read-only.
     public bool $viewOnly = false;
 
@@ -225,9 +225,9 @@ new class extends Component {
      =============================== */
     // Entri dianggap FINAL/terkunci bila flag finalized true; entri lama (tanpa flag) yang sudah
     // ada TTD petugas dianggap final (kompatibilitas data lama).
-    public function entryIsFinal(array $e): bool
+    public function entryIsFinal(array $entry): bool
     {
-        return array_key_exists('finalized', $e) ? (bool) $e['finalized'] : !empty($e['ttd']);
+        return array_key_exists('finalized', $entry) ? (bool) $entry['finalized'] : !empty($entry['ttd']);
     }
 
     // Susun array entri dari state form. $key = createdAt (kunci stabil); $finalized = status kunci.
@@ -247,10 +247,10 @@ new class extends Component {
      =============================== */
     private function imtValue(): string
     {
-        $bb = (float) ($this->newForm['bb'] ?? 0);
-        $tbM = ((float) ($this->newForm['tb'] ?? 0)) / 100;
+        $beratBadan = (float) ($this->newForm['bb'] ?? 0);
+        $tinggiBadanMeter = ((float) ($this->newForm['tb'] ?? 0)) / 100;
 
-        return $bb > 0 && $tbM > 0 ? (string) round($bb / ($tbM * $tbM), 2) : '';
+        return $beratBadan > 0 && $tinggiBadanMeter > 0 ? (string) round($beratBadan / ($tinggiBadanMeter * $tinggiBadanMeter), 2) : '';
     }
 
     public function updated(string $name): void
@@ -284,14 +284,14 @@ new class extends Component {
             }
 
             $list = $fresh['praAnestesiRJ'];
-            $idx = collect($list)->search(fn($it) => ($it['createdAt'] ?? '') === $key);
-            if ($idx === false) {
+            $index = collect($list)->search(fn($item) => ($item['createdAt'] ?? '') === $key);
+            if ($index === false) {
                 $list[] = $entry;
             } else {
-                if ($this->entryIsFinal($list[$idx])) {
+                if ($this->entryIsFinal($list[$index])) {
                     throw new \RuntimeException('Entri sudah terkunci, tidak dapat diubah.');
                 }
-                $list[$idx] = $entry;
+                $list[$index] = $entry;
             }
             $fresh['praAnestesiRJ'] = array_values($list);
 
@@ -324,10 +324,10 @@ new class extends Component {
             $this->editingKey = $key; // lanjut edit entri yang sama, tidak buat duplikat
             $this->incrementVersion('modal-pra-anestesi-rj');
             $this->dispatch('toast', type: 'success', message: 'Draft tersimpan.');
-        } catch (\RuntimeException $e) {
-            $this->dispatch('toast', type: 'error', message: $e->getMessage());
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan draft: ' . $e->getMessage());
+        } catch (\RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan draft: ' . $exception->getMessage());
         }
     }
 
@@ -377,10 +377,10 @@ new class extends Component {
                 $this->dispatch('toast', type: 'success', message: 'TTD Dokter Anestesi tersimpan. Entri terkunci otomatis setelah TTD Pasien/Keluarga terisi.');
             }
             $this->incrementVersion('modal-pra-anestesi-rj');
-        } catch (\RuntimeException $e) {
-            $this->dispatch('toast', type: 'error', message: $e->getMessage());
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan TTD: ' . $e->getMessage());
+        } catch (\RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan TTD: ' . $exception->getMessage());
         }
     }
 
@@ -431,10 +431,10 @@ new class extends Component {
                 $this->dispatch('toast', type: 'success', message: 'TTD Pasien/Keluarga tersimpan. Entri terkunci otomatis setelah TTD Dokter Anestesi terisi.');
             }
             $this->incrementVersion('modal-pra-anestesi-rj');
-        } catch (\RuntimeException $e) {
-            $this->dispatch('toast', type: 'error', message: $e->getMessage());
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan TTD: ' . $e->getMessage());
+        } catch (\RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan TTD: ' . $exception->getMessage());
         }
     }
 
@@ -468,24 +468,24 @@ new class extends Component {
 
                 $fresh = $this->findDataRJ($this->rjNo) ?: [];
                 $list = is_array($fresh['praAnestesiRJ'] ?? null) ? $fresh['praAnestesiRJ'] : [];
-                $idx = collect($list)->search(fn($it) => ($it['createdAt'] ?? '') === $createdAt);
-                if ($idx === false) {
+                $index = collect($list)->search(fn($item) => ($item['createdAt'] ?? '') === $createdAt);
+                if ($index === false) {
                     throw new \RuntimeException('Entri tidak ditemukan.');
                 }
 
-                $list[$idx]['finalized'] = false;
-                $list[$idx]['ttd'] = '';
-                $list[$idx]['ttdCode'] = '';
-                $list[$idx]['ttdDate'] = '';
-                $list[$idx]['signaturePasien'] = '';
+                $list[$index]['finalized'] = false;
+                $list[$index]['ttd'] = '';
+                $list[$index]['ttdCode'] = '';
+                $list[$index]['ttdDate'] = '';
+                $list[$index]['signaturePasien'] = '';
                 $fresh['praAnestesiRJ'] = array_values($list);
 
                 $this->updateJsonRJ((int) $this->rjNo, $fresh);
                 $this->dataDaftarPoliRJ = $fresh;
                 $this->praList = $fresh['praAnestesiRJ'];
 
-                $pelaku = auth()->user()->myuser_name ?? '-';
-                $this->appendAdminLogRJ((int) $this->rjNo, 'Buka kunci Pengkajian Pra Anestesi (' . $createdAt . ') oleh ' . $pelaku . ' — kedua TTD dicabut', 'MR');
+                $pembukaKunci = auth()->user()->myuser_name ?? '-';
+                $this->appendAdminLogRJ((int) $this->rjNo, 'Buka kunci Pengkajian Pra Anestesi (' . $createdAt . ') oleh ' . $pembukaKunci . ' — kedua TTD dicabut', 'MR');
             });
 
             if ($this->editingKey === $createdAt) {
@@ -493,10 +493,10 @@ new class extends Component {
             }
             $this->incrementVersion('modal-pra-anestesi-rj');
             $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — kedua TTD dicabut, entri kembali Draft.');
-        } catch (\RuntimeException $e) {
-            $this->dispatch('toast', type: 'error', message: $e->getMessage());
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $e->getMessage());
+        } catch (\RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $exception->getMessage());
         }
     }
 
@@ -607,8 +607,8 @@ new class extends Component {
 
             $this->dispatch('toast', type: 'success', message: 'Berhasil mencetak pengkajian pra anestesi.');
             return response()->streamDownload(fn() => print $pdf->output(), 'pra-anestesi-rj-' . ($pasien['regNo'] ?? $this->rjNo) . '.pdf');
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal cetak: ' . $e->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal cetak: ' . $exception->getMessage());
         }
     }
 
@@ -636,7 +636,7 @@ new class extends Component {
                 }
 
                 $fresh['praAnestesiRJ'] = collect($fresh['praAnestesiRJ'])
-                    ->reject(fn($item) => ($item['createdAt'] ?? '') === $createdAt)
+                    ->reject(fn($itemem) => ($itemem['createdAt'] ?? '') === $createdAt)
                     ->values()
                     ->toArray();
 
@@ -654,10 +654,10 @@ new class extends Component {
 
             $this->incrementVersion('modal-pra-anestesi-rj');
             $this->dispatch('toast', type: 'success', message: 'Pengkajian pra anestesi berhasil dihapus.');
-        } catch (\RuntimeException $e) {
-            $this->dispatch('toast', type: 'error', message: $e->getMessage());
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal menghapus: ' . $e->getMessage());
+        } catch (\RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menghapus: ' . $exception->getMessage());
         }
     }
 
@@ -699,7 +699,7 @@ new class extends Component {
 
 <div>
     {{-- ══ SUMMARY CARD ══ --}}
-    @php $entriCount = count($praList ?? []); @endphp
+    @php $entriCount = count($praAnestesiList ?? []); @endphp
 
     <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -746,7 +746,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (array_reverse($praList) as $entry)
+                        @foreach (array_reverse($praAnestesiList) as $entry)
                             <tr class="border-b border-hairline dark:border-gray-700">
                                 <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ $entry['tanggal'] ?: ($entry['createdAt'] ?? '-') }}</td>
                                 <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $entry['psAsa'] ?: '-' }}</td>
@@ -790,8 +790,8 @@ new class extends Component {
                         </div>
                         <div class="flex flex-wrap gap-2 mt-3">
                             <x-badge variant="brand">Rawat Jalan</x-badge>
-                            @if (count($praList) > 0)
-                                <x-badge variant="info">{{ count($praList) }} tersimpan</x-badge>
+                            @if (count($praAnestesiList) > 0)
+                                <x-badge variant="info">{{ count($praAnestesiList) }} tersimpan</x-badge>
                             @endif
                             @if ($isFormLocked)
                                 <x-badge variant="danger">Read Only</x-badge>
@@ -832,14 +832,14 @@ new class extends Component {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
-                            Menampilkan entri terkunci <strong>{{ $editingKey }}</strong> (hanya lihat) — klik <strong>Selesai Melihat</strong> untuk kembali ke form entri baru.
+                            Menampilkan entri terkunci <strong>{{ $exceptionditingKey }}</strong> (hanya lihat) — klik <strong>Selesai Melihat</strong> untuk kembali ke form entri baru.
                         </div>
-                    @elseif ($editingKey && !$isFormLocked)
+                    @elseif ($exceptionditingKey && !$isFormLocked)
                         <div class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-brand-green bg-brand-lime/10 border border-brand-lime/40 rounded-lg dark:text-brand-lime dark:bg-brand-lime/5">
                             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
-                            Sedang melanjutkan entri <strong>{{ $editingKey }}</strong> — <strong>Simpan Perubahan</strong> menyimpan ke entri ini; klik <strong>Entri Baru</strong> untuk menambah pengkajian lain.
+                            Sedang melanjutkan entri <strong>{{ $exceptionditingKey }}</strong> — <strong>Simpan Perubahan</strong> menyimpan ke entri ini; klik <strong>Entri Baru</strong> untuk menambah pengkajian lain.
                         </div>
                     @endif
 
@@ -854,12 +854,12 @@ new class extends Component {
                                     <x-input-label value="Tanggal / Jam *" class="mb-1" />
                                     <div class="flex items-center gap-2">
                                         <x-text-input wire:model.live="newForm.tanggal" placeholder="dd/mm/yyyy HH:mm:ss"
-                                            :error="$errors->has('newForm.tanggal')" class="w-full" />
+                                            :error="$exceptionrrors->has('newForm.tanggal')" class="w-full" />
                                         @if (!$formReadOnly)
                                             <x-now-button wire:click="setTanggalSekarang" />
                                         @endif
                                     </div>
-                                    <x-input-error :messages="$errors->get('newForm.tanggal')" class="mt-1" />
+                                    <x-input-error :messages="$exceptionrrors->get('newForm.tanggal')" class="mt-1" />
                                 </div>
                                 <div>
                                     <x-input-label value="Kriteria Pasien *" class="mb-1" />
@@ -872,13 +872,13 @@ new class extends Component {
                                 </div>
                                 <div>
                                     <x-input-label value="Diagnosis Pra Anestesi *" class="mb-1" />
-                                    <x-textarea wire:model.live="newForm.diagnosisPraAnestesi" :error="$errors->has('newForm.diagnosisPraAnestesi')" rows="2" class="w-full" />
-                                    <x-input-error :messages="$errors->get('newForm.diagnosisPraAnestesi')" class="mt-1" />
+                                    <x-textarea wire:model.live="newForm.diagnosisPraAnestesi" :error="$exceptionrrors->has('newForm.diagnosisPraAnestesi')" rows="2" class="w-full" />
+                                    <x-input-error :messages="$exceptionrrors->get('newForm.diagnosisPraAnestesi')" class="mt-1" />
                                 </div>
                                 <div>
                                     <x-input-label value="Rencana Tindakan *" class="mb-1" />
-                                    <x-textarea wire:model.live="newForm.rencanaTindakan" :error="$errors->has('newForm.rencanaTindakan')" rows="2" class="w-full" />
-                                    <x-input-error :messages="$errors->get('newForm.rencanaTindakan')" class="mt-1" />
+                                    <x-textarea wire:model.live="newForm.rencanaTindakan" :error="$exceptionrrors->has('newForm.rencanaTindakan')" rows="2" class="w-full" />
+                                    <x-input-error :messages="$exceptionrrors->get('newForm.rencanaTindakan')" class="mt-1" />
                                 </div>
                             </section>
 
@@ -886,7 +886,7 @@ new class extends Component {
                             <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
                                 <div>
                                     <x-input-label value="Anamnese" class="mb-1" />
-                                    <x-textarea wire:model.live="newForm.anamnese" :error="$errors->has('newForm.anamnese')" rows="2" class="w-full" />
+                                    <x-textarea wire:model.live="newForm.anamnese" :error="$exceptionrrors->has('newForm.anamnese')" rows="2" class="w-full" />
                                 </div>
                                 <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                                     <div class="flex items-center gap-3">
@@ -894,7 +894,7 @@ new class extends Component {
                                             <x-toggle wire:model.live="newForm.riwayatAnestesi" :trueValue="true" :falseValue="false" label="Ada riwayat anestesi" :disabled="$formReadOnly" />
                                         </div>
                                         @if ($newForm['riwayatAnestesi'])
-                                            <x-text-input wire:model.live="newForm.riwayatAnestesiKet" :error="$errors->has('newForm.riwayatAnestesiKet')" placeholder="Keterangan riwayat anestesi" class="w-full" />
+                                            <x-text-input wire:model.live="newForm.riwayatAnestesiKet" :error="$exceptionrrors->has('newForm.riwayatAnestesiKet')" placeholder="Keterangan riwayat anestesi" class="w-full" />
                                         @endif
                                     </div>
                                     <div class="flex items-center gap-3">
@@ -902,13 +902,13 @@ new class extends Component {
                                             <x-toggle wire:model.live="newForm.riwayatAlergi" :trueValue="true" :falseValue="false" label="Ada riwayat alergi" :disabled="$formReadOnly" />
                                         </div>
                                         @if ($newForm['riwayatAlergi'])
-                                            <x-text-input wire:model.live="newForm.riwayatAlergiKet" :error="$errors->has('newForm.riwayatAlergiKet')" placeholder="Keterangan alergi" class="w-full" />
+                                            <x-text-input wire:model.live="newForm.riwayatAlergiKet" :error="$exceptionrrors->has('newForm.riwayatAlergiKet')" placeholder="Keterangan alergi" class="w-full" />
                                         @endif
                                     </div>
                                 </div>
                                 <div>
                                     <x-input-label value="Obat yang Sedang Dikonsumsi" class="mb-1" />
-                                    <x-text-input wire:model.live="newForm.obatDikonsumsi" :error="$errors->has('newForm.obatDikonsumsi')" class="w-full" />
+                                    <x-text-input wire:model.live="newForm.obatDikonsumsi" :error="$exceptionrrors->has('newForm.obatDikonsumsi')" class="w-full" />
                                 </div>
                                 <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                                     <div class="flex items-center gap-3">
@@ -916,7 +916,7 @@ new class extends Component {
                                             <x-toggle wire:model.live="newForm.merokok" :trueValue="true" :falseValue="false" label="Merokok" :disabled="$formReadOnly" />
                                         </div>
                                         @if ($newForm['merokok'])
-                                            <x-text-input wire:model.live="newForm.merokokKet" :error="$errors->has('newForm.merokokKet')" placeholder="Keterangan (jumlah/lama merokok)" class="w-full" />
+                                            <x-text-input wire:model.live="newForm.merokokKet" :error="$exceptionrrors->has('newForm.merokokKet')" placeholder="Keterangan (jumlah/lama merokok)" class="w-full" />
                                         @endif
                                     </div>
                                     <div class="flex items-center gap-3">
@@ -924,7 +924,7 @@ new class extends Component {
                                             <x-toggle wire:model.live="newForm.alkohol" :trueValue="true" :falseValue="false" label="Alkohol" :disabled="$formReadOnly" />
                                         </div>
                                         @if ($newForm['alkohol'])
-                                            <x-text-input wire:model.live="newForm.alkoholKet" :error="$errors->has('newForm.alkoholKet')" placeholder="Keterangan (jumlah/frekuensi)" class="w-full" />
+                                            <x-text-input wire:model.live="newForm.alkoholKet" :error="$exceptionrrors->has('newForm.alkoholKet')" placeholder="Keterangan (jumlah/frekuensi)" class="w-full" />
                                         @endif
                                     </div>
                                 </div>
@@ -939,35 +939,35 @@ new class extends Component {
                                     <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
                                         <div>
                                             <x-input-label value="Sistolik (mmHg)" class="whitespace-nowrap" />
-                                            <x-text-input wire:model.live="newForm.sistolik" :error="$errors->has('newForm.sistolik')" class="w-full mt-1" />
+                                            <x-text-input wire:model.live="newForm.sistolik" :error="$exceptionrrors->has('newForm.sistolik')" class="w-full mt-1" />
                                         </div>
                                         <div>
                                             <x-input-label value="Diastolik (mmHg)" class="whitespace-nowrap" />
-                                            <x-text-input wire:model.live="newForm.diastolik" :error="$errors->has('newForm.diastolik')" class="w-full mt-1" />
+                                            <x-text-input wire:model.live="newForm.diastolik" :error="$exceptionrrors->has('newForm.diastolik')" class="w-full mt-1" />
                                         </div>
                                         <div>
                                             <x-input-label value="Nadi (x/mnt)" class="whitespace-nowrap" />
-                                            <x-text-input wire:model.live="newForm.nadi" :error="$errors->has('newForm.nadi')" class="w-full mt-1" />
+                                            <x-text-input wire:model.live="newForm.nadi" :error="$exceptionrrors->has('newForm.nadi')" class="w-full mt-1" />
                                         </div>
                                         <div>
                                             <x-input-label value="Nafas (x/mnt)" class="whitespace-nowrap" />
-                                            <x-text-input wire:model.live="newForm.rr" :error="$errors->has('newForm.rr')" class="w-full mt-1" />
+                                            <x-text-input wire:model.live="newForm.rr" :error="$exceptionrrors->has('newForm.rr')" class="w-full mt-1" />
                                         </div>
                                         <div>
                                             <x-input-label value="Suhu (°C)" class="whitespace-nowrap" />
-                                            <x-text-input wire:model.live="newForm.suhu" :error="$errors->has('newForm.suhu')" class="w-full mt-1" />
+                                            <x-text-input wire:model.live="newForm.suhu" :error="$exceptionrrors->has('newForm.suhu')" class="w-full mt-1" />
                                         </div>
                                         <div>
                                             <x-input-label value="SPO2 (%)" class="whitespace-nowrap" />
-                                            <x-text-input wire:model.live="newForm.spo2" :error="$errors->has('newForm.spo2')" class="w-full mt-1" />
+                                            <x-text-input wire:model.live="newForm.spo2" :error="$exceptionrrors->has('newForm.spo2')" class="w-full mt-1" />
                                         </div>
                                         <div>
                                             <x-input-label value="GDA (g/dl)" class="whitespace-nowrap" />
-                                            <x-text-input wire:model.live="newForm.gda" :error="$errors->has('newForm.gda')" class="w-full mt-1" />
+                                            <x-text-input wire:model.live="newForm.gda" :error="$exceptionrrors->has('newForm.gda')" class="w-full mt-1" />
                                         </div>
                                         <div>
                                             <x-input-label value="Skor Nyeri" class="whitespace-nowrap" />
-                                            <x-text-input wire:model.live="newForm.skorNyeri" :error="$errors->has('newForm.skorNyeri')" class="w-full mt-1" />
+                                            <x-text-input wire:model.live="newForm.skorNyeri" :error="$exceptionrrors->has('newForm.skorNyeri')" class="w-full mt-1" />
                                         </div>
                                     </div>
                                 </x-border-form>
@@ -976,11 +976,11 @@ new class extends Component {
                                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                         <div>
                                             <x-input-label value="Berat Badan (Kg)" class="whitespace-nowrap" />
-                                            <x-text-input wire:model.live="newForm.bb" :error="$errors->has('newForm.bb')" class="w-full mt-1" />
+                                            <x-text-input wire:model.live="newForm.bb" :error="$exceptionrrors->has('newForm.bb')" class="w-full mt-1" />
                                         </div>
                                         <div>
                                             <x-input-label value="Tinggi Badan (Cm)" class="whitespace-nowrap" />
-                                            <x-text-input wire:model.live="newForm.tb" :error="$errors->has('newForm.tb')" class="w-full mt-1" />
+                                            <x-text-input wire:model.live="newForm.tb" :error="$exceptionrrors->has('newForm.tb')" class="w-full mt-1" />
                                         </div>
                                         <div>
                                             <x-input-label value="Index Masa Tubuh (Kg/M²)" class="whitespace-nowrap" />
@@ -1007,34 +1007,34 @@ new class extends Component {
                                 <div class="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-6">
                                     <div>
                                         <x-input-label value="Mallampati *" class="mb-1" />
-                                        <x-select-input wire:model.live="newForm.mallampati" :error="$errors->has('newForm.mallampati')" class="w-full">
+                                        <x-select-input wire:model.live="newForm.mallampati" :error="$exceptionrrors->has('newForm.mallampati')" class="w-full">
                                             <option value="">— pilih —</option>
                                             @foreach ($mallampatiOptions as $opt)
                                                 <option value="{{ $opt }}">{{ $opt }}</option>
                                             @endforeach
                                         </x-select-input>
-                                        <x-input-error :messages="$errors->get('newForm.mallampati')" class="mt-1" />
+                                        <x-input-error :messages="$exceptionrrors->get('newForm.mallampati')" class="mt-1" />
                                     </div>
                                     <div>
                                         <x-input-label value="Alat Bantu Nafas" class="mb-1" />
-                                        <x-text-input wire:model.live="newForm.alatBantuNafas" :error="$errors->has('newForm.alatBantuNafas')"
+                                        <x-text-input wire:model.live="newForm.alatBantuNafas" :error="$exceptionrrors->has('newForm.alatBantuNafas')"
                                             placeholder="cth: nasal kanul / NRM / OPA" class="w-full" />
                                     </div>
                                     <div>
                                         <x-input-label value="Buka Mulut (cm)" class="mb-1" />
-                                        <x-text-input wire:model.live="newForm.bukaMulut" :error="$errors->has('newForm.bukaMulut')" class="w-full" />
+                                        <x-text-input wire:model.live="newForm.bukaMulut" :error="$exceptionrrors->has('newForm.bukaMulut')" class="w-full" />
                                     </div>
                                     <div>
                                         <x-input-label value="Jarak Mentohyoid (cm)" class="mb-1" />
-                                        <x-text-input wire:model.live="newForm.jarakMentohyoid" :error="$errors->has('newForm.jarakMentohyoid')" class="w-full" />
+                                        <x-text-input wire:model.live="newForm.jarakMentohyoid" :error="$exceptionrrors->has('newForm.jarakMentohyoid')" class="w-full" />
                                     </div>
                                     <div>
                                         <x-input-label value="Jarak Hyothyroid (cm)" class="mb-1" />
-                                        <x-text-input wire:model.live="newForm.jarakHyothyroid" :error="$errors->has('newForm.jarakHyothyroid')" class="w-full" />
+                                        <x-text-input wire:model.live="newForm.jarakHyothyroid" :error="$exceptionrrors->has('newForm.jarakHyothyroid')" class="w-full" />
                                     </div>
                                     <div>
                                         <x-input-label value="Gerak Leher" class="mb-1" />
-                                        <x-select-input wire:model.live="newForm.gerakLeher" :error="$errors->has('newForm.gerakLeher')" class="w-full">
+                                        <x-select-input wire:model.live="newForm.gerakLeher" :error="$exceptionrrors->has('newForm.gerakLeher')" class="w-full">
                                             <option value="">— pilih —</option>
                                             @foreach ($gerakLeherOptions as $opt)
                                                 <option value="{{ $opt }}">{{ $opt }}</option>
@@ -1090,12 +1090,12 @@ new class extends Component {
                                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div>
                                         <x-input-label value="Pemeriksaan Laboratorium" class="mb-1" />
-                                        <x-textarea wire:model.live="newForm.pemeriksaanLab" :error="$errors->has('newForm.pemeriksaanLab')" rows="2"
+                                        <x-textarea wire:model.live="newForm.pemeriksaanLab" :error="$exceptionrrors->has('newForm.pemeriksaanLab')" rows="2"
                                             placeholder="cth: Hb/Hct/CBC, fungsi ginjal, fungsi hati, serum elektrolit, faal hemostasis" class="w-full" />
                                     </div>
                                     <div>
                                         <x-input-label value="Pemeriksaan Penunjang" class="mb-1" />
-                                        <x-textarea wire:model.live="newForm.pemeriksaanPenunjang" :error="$errors->has('newForm.pemeriksaanPenunjang')" rows="2"
+                                        <x-textarea wire:model.live="newForm.pemeriksaanPenunjang" :error="$exceptionrrors->has('newForm.pemeriksaanPenunjang')" rows="2"
                                             placeholder="cth: X-Ray, EKG, dll" class="w-full" />
                                     </div>
                                 </div>
@@ -1107,34 +1107,34 @@ new class extends Component {
                                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div>
                                         <x-input-label value="Jenis Anestesi *" class="mb-1" />
-                                        <x-text-input wire:model.live="newForm.jenisAnestesi" :error="$errors->has('newForm.jenisAnestesi')" placeholder="cth: GA / Spinal / Sedasi" class="w-full" />
-                                        <x-input-error :messages="$errors->get('newForm.jenisAnestesi')" class="mt-1" />
+                                        <x-text-input wire:model.live="newForm.jenisAnestesi" :error="$exceptionrrors->has('newForm.jenisAnestesi')" placeholder="cth: GA / Spinal / Sedasi" class="w-full" />
+                                        <x-input-error :messages="$exceptionrrors->get('newForm.jenisAnestesi')" class="mt-1" />
                                     </div>
                                     <div>
                                         <x-input-label value="PS ASA *" class="mb-1" />
-                                        <x-select-input wire:model.live="newForm.psAsa" :error="$errors->has('newForm.psAsa')" class="w-full">
+                                        <x-select-input wire:model.live="newForm.psAsa" :error="$exceptionrrors->has('newForm.psAsa')" class="w-full">
                                             <option value="">— pilih —</option>
                                             @foreach ($asaOptions as $opt)
                                                 <option value="{{ $opt }}">{{ $opt }}</option>
                                             @endforeach
                                         </x-select-input>
-                                        <x-input-error :messages="$errors->get('newForm.psAsa')" class="mt-1" />
+                                        <x-input-error :messages="$exceptionrrors->get('newForm.psAsa')" class="mt-1" />
                                     </div>
                                     <div>
                                         <x-input-label value="Induksi Pra Anestesi" class="mb-1" />
-                                        <x-text-input wire:model.live="newForm.induksiPraAnestesi" :error="$errors->has('newForm.induksiPraAnestesi')" class="w-full" />
+                                        <x-text-input wire:model.live="newForm.induksiPraAnestesi" :error="$exceptionrrors->has('newForm.induksiPraAnestesi')" class="w-full" />
                                     </div>
                                     <div>
                                         <x-input-label value="Penyulit" class="mb-1" />
-                                        <x-text-input wire:model.live="newForm.penyulit" :error="$errors->has('newForm.penyulit')" class="w-full" />
+                                        <x-text-input wire:model.live="newForm.penyulit" :error="$exceptionrrors->has('newForm.penyulit')" class="w-full" />
                                     </div>
                                     <div>
                                         <x-input-label value="Komplikasi" class="mb-1" />
-                                        <x-text-input wire:model.live="newForm.komplikasi" :error="$errors->has('newForm.komplikasi')" class="w-full" />
+                                        <x-text-input wire:model.live="newForm.komplikasi" :error="$exceptionrrors->has('newForm.komplikasi')" class="w-full" />
                                     </div>
                                     <div>
                                         <x-input-label value="Obat Analgesik Pasca Operasi" class="mb-1" />
-                                        <x-text-input wire:model.live="newForm.obatAnalgesikPascaOp" :error="$errors->has('newForm.obatAnalgesikPascaOp')" class="w-full" />
+                                        <x-text-input wire:model.live="newForm.obatAnalgesikPascaOp" :error="$exceptionrrors->has('newForm.obatAnalgesikPascaOp')" class="w-full" />
                                     </div>
                                 </div>
                             </section>
@@ -1173,7 +1173,7 @@ new class extends Component {
                         {{-- ── DAFTAR PENGKAJIAN TERSIMPAN (expandable) ── --}}
                         <div class="pt-6 border-t border-hairline dark:border-gray-700">
                             <h3 class="text-base font-semibold text-body dark:text-gray-300 pb-2 border-b border-hairline-soft dark:border-gray-800 mb-3">Daftar Pengkajian Tersimpan</h3>
-                            @if (count($praList ?? []))
+                            @if (count($praAnestesiList ?? []))
                                 <p class="mb-3 text-xs italic text-muted-soft">Klik baris untuk lihat detail lengkap</p>
                                 <div class="overflow-x-auto">
                                     <table class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
@@ -1188,14 +1188,14 @@ new class extends Component {
                                                 <th class="px-4 py-3 text-center border-b">Aksi</th>
                                             </tr>
                                         </thead>
-                                        @foreach (array_reverse($praList) as $entry)
+                                        @foreach (array_reverse($praAnestesiList) as $entry)
                                             @php
                                                 $isFinal = $this->entryIsFinal($entry);
                                                 $rowKey = $entry['createdAt'] ?? '';
                                             @endphp
                                             <tbody x-data="{ open: {{ $loop->first ? 'true' : 'false' }} }" class="border-b border-hairline dark:border-gray-700">
                                                 <tr @click="open = !open"
-                                                    class="cursor-pointer hover:bg-surface-soft dark:hover:bg-gray-800 {{ $editingKey && $editingKey === $rowKey ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : '' }}">
+                                                    class="cursor-pointer hover:bg-surface-soft dark:hover:bg-gray-800 {{ $exceptionditingKey && $exceptionditingKey === $rowKey ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : '' }}">
                                                     <td class="px-2 py-3 text-center align-middle">
                                                         <svg class="w-4 h-4 mx-auto transition-transform text-muted" :class="{ 'rotate-90': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -1498,7 +1498,7 @@ new class extends Component {
                                 Selesai Melihat
                             </x-primary-button>
                         @elseif (!$isFormLocked)
-                            @if ($editingKey)
+                            @if ($exceptionditingKey)
                                 <x-outline-button wire:click.prevent="cancelEdit" wire:target="cancelEdit"
                                     wire:loading.attr="disabled" class="gap-1.5"
                                     title="Kosongkan form untuk menambah pengkajian lain — entri yang sudah tersimpan tidak berubah">
@@ -1514,7 +1514,7 @@ new class extends Component {
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-8H7v8M7 3v5h8M5 3h11l4 4v12a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
                                     </svg>
-                                    {{ $editingKey ? 'Simpan Perubahan' : 'Simpan Draft' }}
+                                    {{ $exceptionditingKey ? 'Simpan Perubahan' : 'Simpan Draft' }}
                                 </span>
                                 <span wire:loading wire:target="saveDraft"><x-loading class="w-4 h-4" /> Menyimpan...</span>
                             </x-primary-button>
