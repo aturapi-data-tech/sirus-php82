@@ -58,6 +58,7 @@ new class extends Component {
         'tb' => '',
         'imt' => '',
         // Evaluasi jalan nafas
+        'jalanNafasBebas' => false,
         'mallampati' => '',
         'alatBantuNafas' => '',
         'bukaMulut' => '',
@@ -672,7 +673,7 @@ new class extends Component {
             'alkohol' => false, 'alkoholKet' => '',
             'sistolik' => '', 'diastolik' => '', 'nadi' => '', 'rr' => '', 'suhu' => '', 'spo2' => '', 'gda' => '',
             'skorNyeri' => '', 'bb' => '', 'tb' => '', 'imt' => '',
-            'mallampati' => '', 'alatBantuNafas' => '', 'bukaMulut' => '', 'jarakMentohyoid' => '',
+            'jalanNafasBebas' => false, 'mallampati' => '', 'alatBantuNafas' => '', 'bukaMulut' => '', 'jarakMentohyoid' => '',
             'jarakHyothyroid' => '', 'gerakLeher' => '', 'leherPendek' => false, 'massa' => false,
             'gigiPalsu' => false, 'obesitas' => false,
             'sulitVentilasi' => false, 'fungsiSistemOrgan' => [], 'fungsiSistemOrganLainKet' => [],
@@ -1003,6 +1004,11 @@ new class extends Component {
                             {{-- ══ EVALUASI JALAN NAFAS ══ --}}
                             <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
                                 <h3 class="text-base font-semibold text-ink dark:text-gray-200">Evaluasi Jalan Nafas</h3>
+                                {{-- Status utama: jalan nafas bebas (Ya/Tidak) --}}
+                                <div class="pb-2 border-b border-hairline-soft dark:border-gray-800">
+                                    <x-toggle wire:model.live="newForm.jalanNafasBebas" :trueValue="true" :falseValue="false"
+                                        label="Jalan nafas bebas" :disabled="$formReadOnly" />
+                                </div>
                                 <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                                     <div>
                                         <x-input-label value="Mallampati *" class="mb-1" />
@@ -1334,6 +1340,10 @@ new class extends Component {
                                                             <div>
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Mallampati</dt>
                                                                 <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['mallampati'] ?: '-' }}</dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Jalan Nafas Bebas</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['jalanNafasBebas'] ?? false) ? 'Ya' : 'Tidak' }}</dd>
                                                             </div>
                                                             <div>
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Alat Bantu Nafas</dt>

@@ -64,6 +64,7 @@
         <tr>
             <td colspan="2" class="border border-black px-2 py-1.5">
                 <span class="font-bold">Jalan Nafas:</span>
+                Bebas {{ $yn($form['jalanNafasBebas'] ?? false) }} ·
                 Mallampati {!! $val($form['mallampati'] ?? '') !!} · Alat bantu nafas {!! $val($form['alatBantuNafas'] ?? '') !!} ·
                 Buka mulut {!! $val($form['bukaMulut'] ?? '') !!} cm · Jarak mentohyoid {!! $val($form['jarakMentohyoid'] ?? '') !!} cm ·
                 Jarak hyothyroid {!! $val($form['jarakHyothyroid'] ?? '') !!} cm ·
