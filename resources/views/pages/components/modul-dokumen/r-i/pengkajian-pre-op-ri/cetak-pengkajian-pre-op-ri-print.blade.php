@@ -45,6 +45,7 @@
             </td>
             <td class="border border-black px-2 py-1.5 w-1/2 align-top">
                 <p><span class="font-bold">Tgl/Jam Operasi:</span> {!! $val($form['tanggalOperasi'] ?? '') !!}</p>
+                <p><span class="font-bold">Perjanjian dgn Perawat OK:</span> {!! $val($form['perjanjianPerawatOk'] ?? '') !!}</p>
                 <p><span class="font-bold">Urgensi:</span> {!! $val($form['urgensi'] ?? '') !!}</p>
             </td>
         </tr>
@@ -53,9 +54,13 @@
         <tr>
             <td colspan="2" class="border border-black px-2 py-1.5">
                 <span class="font-bold">Keadaan Pra Bedah:</span>
-                TB {!! $val($form['tb'] ?? '') !!} · BB {!! $val($form['bb'] ?? '') !!} ·
-                N {!! $val($form['nadi'] ?? '') !!} · S {!! $val($form['suhu'] ?? '') !!} ·
-                RR {!! $val($form['rr'] ?? '') !!} · Hb {!! $val($form['hb'] ?? '') !!} ·
+                TD {!! $val($form['sistolik'] ?? '') !!}/{!! $val($form['diastolik'] ?? '') !!} mmHg ·
+                N {!! $val($form['nadi'] ?? '') !!} · RR {!! $val($form['rr'] ?? '') !!} ·
+                S {!! $val($form['suhu'] ?? '') !!} · SPO2 {!! $val($form['spo2'] ?? '') !!} ·
+                GDA {!! $val($form['gda'] ?? '') !!} ·
+                BB {!! $val($form['bb'] ?? '') !!} · TB {!! $val($form['tb'] ?? '') !!} ·
+                IMT {!! $val($form['imt'] ?? '') !!} ·
+                Hb {!! $val($form['hb'] ?? '') !!} ·
                 Gol. Darah {!! $val($form['golDarah'] ?? '') !!}
             </td>
         </tr>
@@ -64,11 +69,16 @@
         <tr>
             <td class="border border-black px-2 py-1.5 w-1/2 align-top">
                 <p class="font-bold mb-0.5">Persiapan Pasien</p>
-                <p>Pre Medikasi: {!! $val($form['preMedikasi'] ?? '') !!}</p>
-                <p>Cairan: {!! $val($form['cairan'] ?? '') !!}</p>
-                <p>Obat: {!! $val($form['obat'] ?? '') !!}</p>
-                <p>Puasa Mulai Jam: {!! $val($form['puasaMulaiJam'] ?? '') !!}</p>
-                <p>Premedikasi Jam: {!! $val($form['premedikasiJam'] ?? '') !!}</p>
+                <p class="font-bold">Pre Medikasi / Cairan / Obat:</p>
+                @forelse ($form['persiapanObatCairan'] ?? [] as $persiapanItem)
+                    <p>
+                        {{ $loop->iteration }}. {{ $persiapanItem['jenis'] ?? '-' }}:
+                        {!! $val($persiapanItem['nama'] ?? '') !!}{{ !empty($persiapanItem['tglJam']) ? ' · ' . $persiapanItem['tglJam'] : '' }}
+                    </p>
+                @empty
+                    <p>-</p>
+                @endforelse
+                <p>Tgl/Jam Mulai Puasa: {!! $val($form['puasaMulaiJam'] ?? '') !!}</p>
             </td>
             <td class="border border-black px-2 py-1.5 w-1/2 align-top">
                 <p>Dicukur/dibersihkan: <span class="font-bold">{{ $yn($form['sudahDicukur'] ?? false) }}</span></p>
@@ -109,35 +119,68 @@
             </td>
         </tr>
 
-        {{-- ── TTD ── --}}
+        {{-- ── PENANDAAN LOKASI OPERASI (SITE MARKING, SKP 4) ── --}}
+        @php
+            $perluPenandaan = ($form['perluPenandaan'] ?? '') === 'Ya';
+            $marks = $form['marks'] ?? [];
+        @endphp
+        <tr>
+            <td colspan="2" class="border border-black px-2 py-1.5">
+                <span class="font-bold">Penandaan Lokasi Operasi:</span> {!! $val($form['perluPenandaan'] ?? '') !!}
+                @if (!$perluPenandaan && filled($form['alasanTidakPerlu'] ?? ''))
+                    &nbsp;— <span class="italic">{!! e($form['alasanTidakPerlu']) !!}</span>
+                @endif
+            </td>
+        </tr>
+
+        @if ($perluPenandaan)
+            <tr>
+                <td class="border border-black px-2 py-1.5 w-1/2 align-top">
+                    <p><span class="font-bold">Region Anatomi:</span> {!! $val($form['regionAnatomi'] ?? '') !!}</p>
+                    <p><span class="font-bold">Sisi / Lateralitas:</span> {!! $val($form['sisi'] ?? '') !!}</p>
+                    <p><span class="font-bold">Detail Lokasi:</span> {!! $val($form['detailLokasi'] ?? '') !!}</p>
+                </td>
+                <td class="border border-black px-2 py-1.5 w-1/2 align-top">
+                    <p><span class="font-bold">Metode Penandaan:</span> {!! $val($form['metodePenandaan'] ?? '') !!}</p>
+                    <p><span class="font-bold">Pasien Dilibatkan:</span> {{ !empty($form['pasienDilibatkan']) ? 'Ya' : 'Tidak' }}</p>
+                </td>
+            </tr>
+
+            {{-- Diagram penandaan (hanya panel yang ada tanda) --}}
+            @if (count($marks) > 0)
+                <tr>
+                    <td colspan="2" class="border border-black px-2 py-2">
+                        <p class="font-bold mb-1">Diagram Penandaan Lokasi</p>
+                        <x-site-marking-diagram :marks="$marks" :editable="false" />
+                    </td>
+                </tr>
+            @endif
+        @endif
+
+        {{-- ── TTD 3 PIHAK ── --}}
         <tr>
             <td colspan="2" class="border border-black px-1.5 py-1">
                 <table class="w-full text-[10px]" cellpadding="0" cellspacing="0">
                     <tr>
-                        <td class="w-1/2 align-top text-center px-3 py-2">
-                            <p class="font-bold mb-1">Perawat OK</p>
-                            <div class="h-16">&nbsp;</div>
-                            <div class="border-t border-black pt-[3px] mt-1 min-w-[140px] inline-block">
-                                <p class="font-bold">{{ strtoupper($form['perawatOk'] ?? '-') }}</p>
-                            </div>
-                        </td>
-                        <td class="w-1/2 align-top text-center px-3 py-2">
-                            <p class="font-bold mb-1">Perawat Ruangan</p>
-                            <p class="text-[9px] text-gray-500 mb-2">{{ $form['ttdDate'] ?? $data['tglCetak'] ?? '-' }}</p>
-                            <div class="text-center my-1">
-                                @if (!empty($data['ttdPath']))
-                                    <img src="{{ $data['ttdPath'] }}" class="h-16" alt="Tanda Tangan" />
-                                @else
-                                    <div class="h-16">&nbsp;</div>
-                                @endif
-                            </div>
-                            <div class="border-t border-black pt-[3px] mt-1 min-w-[140px] inline-block">
-                                <p class="font-bold">{{ strtoupper($form['ttd'] ?? '-') }}</p>
-                                @if (!empty($form['ttdCode']))
-                                    <p class="text-[9px] text-gray-500">Kode: {{ $form['ttdCode'] }}</p>
-                                @endif
-                            </div>
-                        </td>
+                        @foreach ([['ttdPerawatRuangan', 'Perawat Ruangan'], ['ttdPerawatKamarBedah', 'Perawat Kamar Bedah'], ['ttdDokterOperator', 'Dokter Operator']] as [$ttdField, $ttdLabel])
+                            <td class="w-1/3 align-top text-center px-2 py-2">
+                                <p class="font-bold mb-1">{{ $ttdLabel }}</p>
+                                <p class="text-[9px] text-gray-500 mb-2">{{ ($form[$ttdField . 'Date'] ?? '') ?: '-' }}</p>
+                                <div class="text-center my-1">
+                                    @if (!empty($data[$ttdField . 'Path']))
+                                        <img src="{{ $data[$ttdField . 'Path'] }}" class="h-16" alt="TTD {{ $ttdLabel }}" />
+                                    @else
+                                        <div class="h-16">&nbsp;</div>
+                                    @endif
+                                </div>
+                                <div class="border-t border-black pt-[3px] mt-1 min-w-[110px] inline-block">
+                                    <p class="font-bold">{{ strtoupper(($form[$ttdField] ?? '') ?: '-') }}</p>
+                                    @if (!empty($form[$ttdField . 'Code']))
+                                        <p class="text-[9px] text-gray-500">Kode: {{ $form[$ttdField . 'Code'] }}</p>
+                                    @endif
+                                </div>
+                            </td>
+                        @endforeach
                     </tr>
                 </table>
             </td>

@@ -22,9 +22,8 @@ new class extends Component {
 @php
     // Definisi sub-nav (urut kronologis). icon = path SVG. step/pengisi dipakai panduan.
     $subForms = [
-        ['key' => 'pengkajianPreOp', 'label' => 'Pengkajian Pre Operasi', 'fase' => 'Pra-operasi', 'pengisi' => 'Perawat ruangan', 'ket' => 'Persiapan pasien (puasa/cukur/premedikasi) & serah-terima kelengkapan ke OK', 'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4'],
+        ['key' => 'pengkajianPreOp', 'label' => 'Pengkajian Pre Operasi', 'fase' => 'Pra-operasi', 'pengisi' => 'Perawat ruangan + Perawat OK + Operator', 'ket' => 'Persiapan pasien (puasa/cukur/premedikasi), penandaan lokasi (site marking) & serah-terima ke OK — kunci = TTD 3 pihak', 'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4'],
         ['key' => 'praAnestesi', 'label' => 'Pengkajian Pra Anestesi', 'fase' => 'Pra-operasi', 'pengisi' => 'Dokter anestesi', 'ket' => 'Anamnese, jalan nafas (Mallampati), status ASA, rencana teknik anestesi', 'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
-        ['key' => 'siteMarking', 'label' => 'Penandaan Lokasi (Site Marking)', 'fase' => 'Pra-operasi', 'pengisi' => 'Operator + 2 perawat', 'ket' => 'Tandai sisi/lokasi operasi, verifikasi Perawat Ruangan, Perawat Kamar Bedah & Operator', 'icon' => 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z'],
         ['key' => 'praInduksi', 'label' => 'Asesmen Pra Induksi', 'fase' => 'Pra-induksi', 'pengisi' => 'Dokter anestesi', 'ket' => 'Re-cek kondisi terkini sesaat sebelum induksi + obat pre-medikasi', 'icon' => 'M13 10V3L4 14h7v7l9-11h-7z'],
         ['key' => 'laporanOperasi', 'label' => 'Laporan Operasi (BAP)', 'fase' => 'Pasca-operasi', 'pengisi' => 'Operator / DPJP bedah', 'ket' => 'Isi LENGKAP segera setelah operasi, sebelum pasien dipindah ke ruang lain', 'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
         ['key' => 'laporanAnestesi', 'label' => 'Laporan Anestesi', 'fase' => 'Pasca-operasi', 'pengisi' => 'Ahli anestesiologi', 'ket' => 'Teknik anestesi, monitoring sistem organ, masalah & keadaan akhir', 'icon' => 'M3 12h4l2 5 4-10 2 5h6'],
@@ -75,7 +74,7 @@ new class extends Component {
                 <ul class="space-y-1 text-sm text-body dark:text-gray-300 list-disc pl-5">
                     <li>Klik <b>Buka Formulir</b> pada form yang dipilih.</li>
                     <li>Isi kolom bertanda <b>*</b> (wajib). Untuk tanggal/jam, klik tombol <b>jam</b> agar terisi waktu sekarang.</li>
-                    <li>Bubuhkan <b>Tanda Tangan</b> (tombol "TTD sebagai …") — otomatis mengambil nama & TTD user yang login. Site Marking butuh TTD perawat via tanda tangan layar.</li>
+                    <li>Bubuhkan <b>Tanda Tangan</b> (tombol "TTD sebagai …") — otomatis mengambil nama & TTD user yang login. Pengkajian Pre Operasi butuh TTD 3 pihak (Perawat Ruangan, Perawat Kamar Bedah, Dokter Operator) dan terkunci otomatis saat ketiganya lengkap.</li>
                     <li>Klik <b>Simpan</b>. Satu pasien bisa punya lebih dari satu entri (mis. operasi berulang).</li>
                     <li>Entri tersimpan bisa di-<b>Cetak</b> (PDF) atau <b>Hapus</b> dari tabel di bawah form.</li>
                     <li>Jika EMR sudah <b>terkunci</b> (Read Only), form hanya bisa dilihat & dicetak, tidak bisa diubah.</li>
@@ -122,13 +121,6 @@ new class extends Component {
         <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.pra-anestesi-ri.rm-pra-anestesi-ri-actions
             :riHdrNo="$riHdrNo" :disabled="$disabled"
             wire:key="pra-anestesi-ri-{{ $riHdrNo ?? 'init' }}" />
-    </div>
-
-    {{-- Penandaan Lokasi / Site Marking --}}
-    <div x-show="subTab === 'siteMarking'" x-transition.opacity.duration.200ms style="display:none">
-        <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.site-marking-ri.rm-site-marking-ri-actions
-            :riHdrNo="$riHdrNo" :disabled="$disabled"
-            wire:key="site-marking-ri-{{ $riHdrNo ?? 'init' }}" />
     </div>
 
     {{-- Asesmen Pra Induksi --}}

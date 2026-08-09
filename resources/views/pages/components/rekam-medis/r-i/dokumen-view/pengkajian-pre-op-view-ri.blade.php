@@ -16,8 +16,20 @@ new class extends Component {
 
     private string $printView = 'pengkajian-pre-op-ri.cetak-pengkajian-pre-op-ri-print';
     private string $filePrefix = 'pengkajian-pre-op-ri';
+    // Print memakai 3 TTD (perawat ruangan / perawat kamar bedah / dokter operator)
+    // — path dikirim via payload $extra (ttdPathsExtra), bukan ttdKey tunggal.
     private string $ttdKey = 'ttdPath';
-    private ?string $ttdCodeField = 'ttdCode';
+    private ?string $ttdCodeField = null;
+
+    /** Path gambar TTD ketiga pihak untuk payload cetak/preview. */
+    private function ttdPathsExtra(?array $entry): array
+    {
+        $extra = [];
+        foreach (['ttdPerawatRuangan', 'ttdPerawatKamarBedah', 'ttdDokterOperator'] as $field) {
+            $extra[$field . 'Path'] = $this->dvTtdPath($entry[$field . 'Code'] ?? null);
+        }
+        return $extra;
+    }
 
     public function mount(?string $riHdrNo = null, array $entries = []): void
     {
@@ -33,13 +45,14 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data pengkajian pra-operasi tidak ditemukan.');
             return;
         }
-        $this->previewHtml = $this->previewDokumenRi($this->selected, $this->printView, $this->ttdKey, $this->ttdCodeField);
+        $this->previewHtml = $this->previewDokumenRi($this->selected, $this->printView, $this->ttdKey, $this->ttdCodeField, $this->ttdPathsExtra($this->selected));
         $this->dispatch('open-modal', name: "view-pengkajian-pre-op-ri-{$this->riHdrNo}");
     }
 
     public function cetak(string $id): mixed
     {
-        return $this->streamCetakDokumenRi(collect($this->list)->firstWhere('createdAt', $id), $this->printView, $this->filePrefix, $this->ttdKey, $this->ttdCodeField);
+        $entri = collect($this->list)->firstWhere('createdAt', $id);
+        return $this->streamCetakDokumenRi($entri, $this->printView, $this->filePrefix, $this->ttdKey, $this->ttdCodeField, $this->ttdPathsExtra($entri));
     }
 };
 ?>
