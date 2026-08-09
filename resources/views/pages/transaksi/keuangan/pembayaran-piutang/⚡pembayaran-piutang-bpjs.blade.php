@@ -204,7 +204,7 @@ new class extends Component {
 
 <div>
     <x-page-title
-        title="Pelunasan Klaim BPJS &amp; Kronis"
+        title="Pelunasan Klaim BPJS & Kronis"
         subtitle="Lunasi tagihan belum lunas per bulan — tab BPJS RJ / UGD / RI dan Obat Kronis" />
 
     <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-800">

@@ -999,7 +999,7 @@ new class extends Component {
                                 :locked="$formReadOnly" sign="setOperatorTtd" clear="clearOperatorTtd"
                                 title="TTD Operator & Kunci"
                                 nameLabel="Operator (DPJP Bedah)" dateLabel="Waktu TTD"
-                                signLabel="TTD Operator &amp; Kunci" clearLabel="Batal TTD" />
+                                signLabel="TTD Operator & Kunci" clearLabel="Batal TTD" />
                             @if (!$formReadOnly)
                                 <p class="-mt-2 text-xs text-center text-muted">Menandatangani sebagai Operator = memvalidasi &amp; mengunci laporan operasi ini.</p>
                             @endif

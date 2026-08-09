@@ -2,7 +2,7 @@
 // resources/views/pages/transaksi/ugd/emr-ugd/modul-dokumen/pra-anestesi/rm-pra-anestesi-ugd-actions.blade.php
 // Pengkajian Pra Anestesi & Pra Sedasi (PAB 4 / RM 50) — dokter anestesi.
 // Pola: multi-entri (Draft + Lanjut Isi + TTD-Kunci + Lihat read-only + tabel expandable),
-// disimpan ke datadaftarri_json (key: praAnestesiRI). Kunci entri stabil = createdAt.
+// disimpan ke datadaftarri_json (key: praAnestesiUGD). Kunci entri stabil = createdAt.
 // TTD PETUGAS (dokter anestesi) = stempel nama user login (setTtd = FINALIZE/kunci).
 // TTD GAMBAR pasien (signature-pad) = FIELD ENTRI biasa (diisi saat draft/edit), BUKAN pemicu kunci.
 
@@ -323,9 +323,16 @@ new class extends Component {
     }
 
     /* ===============================
-     | TTD PETUGAS = FINALIZE (kunci entri)
-     | Stempel nama user login (dokter anestesi) + tgl/jam → kunci entri.
+     | TTD 2 PIHAK (Dokter Anestesi + Pasien/Keluarga)
+     | Konsep kunci ala Pengkajian Pre Operasi: tiap TTD langsung tersimpan ke DB
+     | (bisa menyusul antar sesi). Entri otomatis TERKUNCI saat KEDUA TTD terisi
+     | (TTD terakhir = finalize).
      =============================== */
+    private function semuaTtdTerisi(): bool
+    {
+        return filled($this->newForm['ttd'] ?? null) && filled($this->signaturePasien);
+    }
+
     public function setTtd(): void
     {
         if ($this->isFormLocked || $this->viewOnly) {
@@ -337,32 +344,38 @@ new class extends Component {
             return;
         }
 
-        // Enforce aturan lengkap sebelum mengunci.
+        // Enforce aturan lengkap sebelum TTD.
         $this->validateWithToast();
 
-        // Stempel TTD petugas = user login (dokter anestesi).
+        // Stempel TTD dokter anestesi = user login.
         $this->newForm['ttd'] = auth()->user()->myuser_name ?? '';
         $this->newForm['ttdCode'] = auth()->user()->myuser_code ?? '';
         $this->newForm['ttdDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
 
+        $finalized = $this->semuaTtdTerisi();
         $key = $this->editingKey ?: Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
 
         try {
-            $this->persistEntry($key, true, 'Kunci (TTD)');
-            $this->resetNewForm();
-            $this->signaturePasien = '';
-            $this->editingKey = null;
-            $this->viewOnly = false;
+            $this->persistEntry($key, $finalized, 'TTD Dokter Anestesi' . ($finalized ? ' + Kunci' : ''));
+            if ($finalized) {
+                $this->resetNewForm();
+                $this->signaturePasien = '';
+                $this->editingKey = null;
+                $this->viewOnly = false;
+                $this->dispatch('toast', type: 'success', message: 'Kedua TTD lengkap — pengkajian terkunci.');
+            } else {
+                $this->editingKey = $key; // lanjut di entri yang sama, TTD pasien menyusul
+                $this->dispatch('toast', type: 'success', message: 'TTD Dokter Anestesi tersimpan. Entri terkunci otomatis setelah TTD Pasien/Keluarga terisi.');
+            }
             $this->incrementVersion('modal-pra-anestesi-ugd');
-            $this->dispatch('toast', type: 'success', message: 'Pengkajian ditandatangani & terkunci.');
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal mengunci: ' . $e->getMessage());
+            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan TTD: ' . $e->getMessage());
         }
     }
 
-    /** Batalkan TTD petugas pada form (saat draft/edit, sebelum finalize tersimpan). */
+    /** Batalkan TTD dokter anestesi pada form (hanya saat entri masih draft). */
     public function clearTtd(): void
     {
         if ($this->isFormLocked || $this->viewOnly) {
@@ -374,7 +387,7 @@ new class extends Component {
     }
 
     /* ===============================
-     | TTD GAMBAR PASIEN (field entri biasa — BUKAN pemicu kunci)
+     | TTD GAMBAR PASIEN/KELUARGA — pemicu kunci bersama TTD dokter
      =============================== */
     public function setSignaturePasien(string $dataUrl): void
     {
@@ -382,7 +395,38 @@ new class extends Component {
             return;
         }
         $this->signaturePasien = $dataUrl;
-        $this->incrementVersion('modal-pra-anestesi-ugd');
+
+        // Belum ada isi inti → cukup tersimpan di form, ikut Simpan Draft nanti.
+        if (!$this->adaIsiInti()) {
+            $this->incrementVersion('modal-pra-anestesi-ugd');
+            return;
+        }
+
+        $finalized = $this->semuaTtdTerisi();
+        if ($finalized) {
+            // TTD terakhir = finalize → enforce aturan lengkap dulu.
+            $this->validateWithToast();
+        }
+        $key = $this->editingKey ?: Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+
+        try {
+            $this->persistEntry($key, $finalized, 'TTD Pasien/Keluarga' . ($finalized ? ' + Kunci' : ''));
+            if ($finalized) {
+                $this->resetNewForm();
+                $this->signaturePasien = '';
+                $this->editingKey = null;
+                $this->viewOnly = false;
+                $this->dispatch('toast', type: 'success', message: 'Kedua TTD lengkap — pengkajian terkunci.');
+            } else {
+                $this->editingKey = $key; // TTD dokter menyusul
+                $this->dispatch('toast', type: 'success', message: 'TTD Pasien/Keluarga tersimpan. Entri terkunci otomatis setelah TTD Dokter Anestesi terisi.');
+            }
+            $this->incrementVersion('modal-pra-anestesi-ugd');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan TTD: ' . $e->getMessage());
+        }
     }
 
     public function clearSignaturePasien(): void
@@ -392,6 +436,59 @@ new class extends Component {
         }
         $this->signaturePasien = '';
         $this->incrementVersion('modal-pra-anestesi-ugd');
+    }
+
+    /* ===============================
+     | BUKA KUNCI — cabut status final + RESET KEDUA TTD.
+     | Kunci form ini = kesepakatan 2 pihak, jadi buka kunci mengulang proses TTD.
+     =============================== */
+    public function bukaKunci(string $createdAt): void
+    {
+        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($createdAt) {
+                $this->lockUGDRow($this->rjNo);
+
+                $fresh = $this->findDataUGD($this->rjNo) ?: [];
+                $list = is_array($fresh['praAnestesiUGD'] ?? null) ? $fresh['praAnestesiUGD'] : [];
+                $idx = collect($list)->search(fn($it) => ($it['createdAt'] ?? '') === $createdAt);
+                if ($idx === false) {
+                    throw new \RuntimeException('Entri tidak ditemukan.');
+                }
+
+                $list[$idx]['finalized'] = false;
+                $list[$idx]['ttd'] = '';
+                $list[$idx]['ttdCode'] = '';
+                $list[$idx]['ttdDate'] = '';
+                $list[$idx]['signaturePasien'] = '';
+                $fresh['praAnestesiUGD'] = array_values($list);
+
+                $this->updateJsonUGD((int) $this->rjNo, $fresh);
+                $this->dataDaftarUGD = $fresh;
+                $this->praList = $fresh['praAnestesiUGD'];
+
+                $pelaku = auth()->user()->myuser_name ?? '-';
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Buka kunci Pengkajian Pra Anestesi (' . $createdAt . ') oleh ' . $pelaku . ' — kedua TTD dicabut', 'MR');
+            });
+
+            if ($this->editingKey === $createdAt) {
+                $this->cancelEdit();
+            }
+            $this->incrementVersion('modal-pra-anestesi-ugd');
+            $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — kedua TTD dicabut, entri kembali Draft.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $e->getMessage());
+        }
     }
 
     /* ===============================
@@ -935,6 +1032,11 @@ new class extends Component {
                                     @foreach (PraAnestesiOptions::fungsiSistemOrgan() as $organSlug => $organGrup)
                                         <x-border-form :title="$organGrup['label']" :align="__('start')" :bgcolor="__('bg-surface-soft')">
                                             <div class="space-y-2">
+                                                {{-- Status grup: DBN = Dalam Batas Normal --}}
+                                                <div class="pb-2 border-b border-hairline-soft dark:border-gray-800">
+                                                    <x-toggle wire:model.live="newForm.fungsiSistemOrgan.{{ $organSlug }}Dbn"
+                                                        :trueValue="true" :falseValue="false" label="DBN (Dalam Batas Normal)" :disabled="$formReadOnly" />
+                                                </div>
                                                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                                     @foreach ($organGrup['items'] as $organKey => $organLabel)
                                                         <x-toggle wire:model.live="newForm.fungsiSistemOrgan.{{ $organKey }}"
@@ -962,8 +1064,9 @@ new class extends Component {
                                             placeholder="cth: Hb/Hct/CBC, fungsi ginjal, fungsi hati, serum elektrolit, faal hemostasis" class="w-full" />
                                     </div>
                                     <div>
-                                        <x-input-label value="Pemeriksaan Penunjang (X-Ray/EKG/dll)" class="mb-1" />
-                                        <x-textarea wire:model.live="newForm.pemeriksaanPenunjang" :error="$errors->has('newForm.pemeriksaanPenunjang')" rows="2" class="w-full" />
+                                        <x-input-label value="Pemeriksaan Penunjang" class="mb-1" />
+                                        <x-textarea wire:model.live="newForm.pemeriksaanPenunjang" :error="$errors->has('newForm.pemeriksaanPenunjang')" rows="2"
+                                            placeholder="cth: X-Ray, EKG, dll" class="w-full" />
                                     </div>
                                 </div>
                             </section>
@@ -1021,16 +1124,18 @@ new class extends Component {
                                             <p class="py-8 text-base italic text-center text-muted-soft">Belum ditandatangani.</p>
                                         @endif
                                     </div>
-                                    {{-- Petugas / Dokter Anestesi (KANAN) — stempel = FINALIZE/kunci --}}
+                                    {{-- Petugas / Dokter Anestesi (KANAN) — stempel user login --}}
                                     <x-signature.ttd-petugas :framed="false" :ttd="$newForm['ttd']"
                                         :date="$newForm['ttdDate'] ?? ''" :code="$newForm['ttdCode'] ?? ''"
                                         :locked="$formReadOnly" sign="setTtd" clear="clearTtd"
-                                        title="TTD Petugas & Kunci" label="Dokter Anestesi"
+                                        title="Dokter Anestesi" label="Dokter Anestesi"
                                         nameLabel="Dokter Anestesi" dateLabel="Waktu TTD"
-                                        signLabel="TTD Petugas &amp; Kunci" clearLabel="Batal TTD" />
+                                        signLabel="TTD Dokter Anestesi" clearLabel="Batal TTD" />
                                 </div>
                                 @if (!$formReadOnly)
-                                    <p class="text-xs text-center text-muted">Menandatangani = mengunci pengkajian ini. TTD gambar pasien tersimpan sebagai isian entri.</p>
+                                    <p class="text-xs text-center text-muted">
+                                        Tiap TTD langsung tersimpan (bisa menyusul). Entri otomatis <strong>terkunci</strong> saat TTD Dokter Anestesi &amp; TTD Pasien/Keluarga lengkap.
+                                    </p>
                                 @endif
                             </section>
                         </fieldset>
@@ -1115,6 +1220,20 @@ new class extends Component {
                                                             </div>
                                                             @if (!$isFormLocked)
                                                                 <div class="flex items-center justify-center gap-2">
+                                                                @if ($isFinal)
+                                                                    @can('dokumen.bukaKunci')
+                                                                        <x-confirm-button action="bukaKunci('{{ $rowKey }}')"
+                                                                            title="Buka Kunci Pengkajian Pra Anestesi"
+                                                                            message="KEDUA TTD (Dokter Anestesi & Pasien/Keluarga) akan dicabut & entri kembali menjadi Draft — proses TTD diulang dari awal. Lanjutkan?"
+                                                                            confirmText="Ya, Buka Kunci" class="gap-1.5">
+                                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                                    d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" />
+                                                                            </svg>
+                                                                            Buka Kunci
+                                                                        </x-confirm-button>
+                                                                    @endcan
+                                                                @endif
                                                                 @can('dokumen.hapus')
                                                                 <x-outline-button type="button" wire:click.prevent="hapus('{{ $rowKey }}')" wire:confirm="Yakin hapus pengkajian ini?"
                                                                     wire:loading.attr="disabled"
@@ -1295,7 +1414,7 @@ new class extends Component {
                             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <span>Simpan draft dulu, lalu <strong>kunci</strong> lewat tombol <strong>TTD Petugas &amp; Kunci</strong>.</span>
+                            <span>Simpan draft dulu; entri otomatis <strong>terkunci</strong> setelah TTD <strong>Dokter Anestesi + Pasien/Keluarga</strong> lengkap.</span>
                         </p>
                     @else
                         <span></span>

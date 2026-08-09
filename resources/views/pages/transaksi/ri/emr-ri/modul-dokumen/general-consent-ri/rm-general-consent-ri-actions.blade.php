@@ -820,7 +820,7 @@ new class extends Component {
                             @can('dokumen.bukaKunci')
                                 <x-confirm-button action="bukaKunci()"
                                     title="Buka Kunci General Consent"
-                                    message="TTD petugas akan dicabut &amp; form dapat diedit kembali. Lanjutkan?"
+                                    message="TTD petugas akan dicabut & form dapat diedit kembali. Lanjutkan?"
                                     confirmText="Ya, Buka Kunci"
                                     class="gap-1.5">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg>

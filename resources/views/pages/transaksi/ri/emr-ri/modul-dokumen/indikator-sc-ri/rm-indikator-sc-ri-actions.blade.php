@@ -719,7 +719,7 @@ new class extends Component {
                             :date="$newForm['ttdDate'] ?? ''" :locked="$formReadOnly" sign="ttdSaya" clear="hapusTtd"
                             title="Tanda Tangan Petugas"
                             nameLabel="Petugas (Dokter)" dateLabel="Waktu TTD"
-                            signLabel="TTD Petugas &amp; Kunci" clearLabel="Batal TTD" />
+                            signLabel="TTD Petugas & Kunci" clearLabel="Batal TTD" />
                         @if (!$formReadOnly)
                             <p class="-mt-2 text-xs text-center text-muted">Menandatangani = mengunci audit indikator SC ini.</p>
                         @endif

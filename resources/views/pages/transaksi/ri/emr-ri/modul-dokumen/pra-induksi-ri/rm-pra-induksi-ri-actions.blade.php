@@ -718,7 +718,7 @@ new class extends Component {
                                 :code="$newForm['ttdCode'] ?? ''" :locked="$formReadOnly" sign="setTtd" clear="clearTtd"
                                 title="Tanda Tangan Dokter Anestesi"
                                 nameLabel="Dokter Anestesi" dateLabel="Waktu TTD"
-                                signLabel="TTD Petugas &amp; Kunci" clearLabel="Batal TTD" />
+                                signLabel="TTD Petugas & Kunci" clearLabel="Batal TTD" />
                             @if (!$formReadOnly)
                                 <p class="-mt-2 text-xs text-center text-muted">Menandatangani = mengunci asesmen ini.</p>
                             @endif

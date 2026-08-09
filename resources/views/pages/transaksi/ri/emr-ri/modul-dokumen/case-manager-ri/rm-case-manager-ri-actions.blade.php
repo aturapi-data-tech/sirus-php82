@@ -886,7 +886,7 @@ new class extends Component {
                 :code="$formA['tandaTanganPetugas']['petugasCode'] ?? ''" :date="$formA['tanggal'] ?? ''"
                 :locked="$formReadOnlyA" :allowClear="false" sign="kunciFormA" clear="hapusTtdA"
                 title="Tanda Tangan Petugas (MPP)" nameLabel="Petugas (MPP)" dateLabel="Waktu / Tanggal"
-                signLabel="TTD Petugas &amp; Kunci" />
+                signLabel="TTD Petugas & Kunci" />
         </fieldset>
 
         @if (!$formReadOnlyA)
@@ -1210,7 +1210,7 @@ new class extends Component {
                 :code="$formB['tandaTanganPetugas']['petugasCode'] ?? ''" :date="$formB['tanggal'] ?? ''"
                 :locked="$formReadOnlyB" :allowClear="false" sign="kunciFormB" clear="hapusTtdB"
                 title="Tanda Tangan Petugas (MPP)" nameLabel="Petugas (MPP)" dateLabel="Waktu / Tanggal"
-                signLabel="TTD Petugas &amp; Kunci" />
+                signLabel="TTD Petugas & Kunci" />
         </fieldset>
 
         @if (!$formReadOnlyB)

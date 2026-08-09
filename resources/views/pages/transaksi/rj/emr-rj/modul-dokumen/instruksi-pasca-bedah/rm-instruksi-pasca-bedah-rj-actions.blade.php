@@ -754,7 +754,7 @@ new class extends Component {
                             :code="$newForm['ttdCode'] ?? ''" :locked="$formReadOnly" sign="setTtd" clear="clearTtd"
                             title="Tanda Tangan Ahli Anestesiologi"
                             nameLabel="Ahli Anestesiologi" dateLabel="Waktu TTD"
-                            signLabel="TTD Petugas &amp; Kunci" clearLabel="Batal TTD" />
+                            signLabel="TTD Petugas & Kunci" clearLabel="Batal TTD" />
                         @if (!$formReadOnly)
                             <p class="-mt-2 text-xs text-center text-muted">Menandatangani = mengunci instruksi ini.</p>
                         @endif

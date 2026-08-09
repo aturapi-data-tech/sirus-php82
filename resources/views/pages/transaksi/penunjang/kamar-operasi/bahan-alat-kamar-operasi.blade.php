@@ -247,7 +247,7 @@ new class extends Component {
                             @unless ($isFormLocked)
                                 <td class="px-4 py-1.5 text-center">
                                     <x-confirm-button variant="danger" action="hapus({{ $row['okobat_id'] }})"
-                                        title="Hapus Bahan/Alat" message="Hapus baris bahan/alat ini? Pos Bahan &amp; Alat akan dihitung ulang."
+                                        title="Hapus Bahan/Alat" message="Hapus baris bahan/alat ini? Pos Bahan & Alat akan dihitung ulang."
                                         confirmText="Ya, hapus" cancelText="Batal" class="!px-2 !py-1 text-xs">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

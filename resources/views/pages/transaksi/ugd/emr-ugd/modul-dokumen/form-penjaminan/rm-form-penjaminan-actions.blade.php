@@ -876,7 +876,7 @@ new class extends Component {
                         <x-signature.ttd-petugas :framed="false" :allowClear="false"
                             :ttd="$newForm['namaPetugas']" :date="$newForm['petugasDate'] ?? ''"
                             :code="$newForm['kodePetugas'] ?? ''" :locked="$formReadOnly"
-                            sign="setPetugas" label="" signLabel="TTD Petugas &amp; Kunci" />
+                            sign="setPetugas" label="" signLabel="TTD Petugas & Kunci" />
                         @if (!$formReadOnly && empty($newForm['namaPetugas']))
                             <p class="mt-2 text-xs text-center text-muted">Menandatangani = validasi lengkap &amp; mengunci form ini.</p>
                         @endif

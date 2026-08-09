@@ -11,7 +11,8 @@ class PraAnestesiOptions
     /**
      * Checklist Fungsi Sistem Organ (RM 50) — slugGrup => ['label' => ..., 'items' => [key => label]].
      * Key item = key JSON di entri newForm['fungsiSistemOrgan'][key] = bool.
-     * Tiap grup juga punya toggle "Lain-lain" (key "<slugGrup>LainLain") + keterangan bebas
+     * Tiap grup juga punya status "DBN / Dalam Batas Normal" (key "<slugGrup>Dbn") dan
+     * toggle "Lain-lain" (key "<slugGrup>LainLain") + keterangan bebas
      * di newForm['fungsiSistemOrganLainKet'][slugGrup].
      */
     public static function fungsiSistemOrgan(): array
@@ -94,9 +95,15 @@ class PraAnestesiOptions
     {
         $hasil = [];
         foreach (self::fungsiSistemOrgan() as $slugGrup => $grup) {
-            $labels = collect($grup['items'])
+            $labels = [];
+
+            if (!empty($checked[$slugGrup . 'Dbn'])) {
+                $labels[] = 'DBN (Dalam Batas Normal)';
+            }
+
+            $labels = array_merge($labels, collect($grup['items'])
                 ->filter(fn($label, $key) => !empty($checked[$key]))
-                ->values()->all();
+                ->values()->all());
 
             if (!empty($checked[$slugGrup . 'LainLain'])) {
                 $keterangan = trim((string) ($lainKet[$slugGrup] ?? ''));
