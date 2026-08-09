@@ -705,6 +705,10 @@ new class extends Component {
                     {{-- ── Inform Consent — viewer (Lihat + Cetak dalam modal) ── --}}
                     <livewire:pages::components.rekam-medis.r-j.dokumen-view.inform-consent-view-rj :rjNo="$rjNo"
                         :entries="$dataDaftarTxn['informConsentPasienRJ'] ?? []" wire:key="rm-view-ic-rj-{{ $rjNo }}" />
+
+                    {{-- ── Pengkajian Pre Operasi (Site Marking) — viewer (Lihat + Cetak dalam modal) ── --}}
+                    <livewire:pages::components.rekam-medis.r-j.dokumen-view.pengkajian-pre-op-view-rj :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['pengkajianPreOpRJ'] ?? []" wire:key="rm-view-pengkajian-pre-op-rj-{{ $rjNo }}" />
                 </div>
 
                 {{-- ════ TAB: HASIL PENUNJANG (lab / radiologi / upload — view-only) ════ --}}
