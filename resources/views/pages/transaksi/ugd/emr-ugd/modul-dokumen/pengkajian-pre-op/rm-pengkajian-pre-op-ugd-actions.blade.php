@@ -859,15 +859,15 @@ new class extends Component {
 
 <div>
     {{-- ══ SUMMARY CARD (inline) ══ --}}
-    @php $poCount = count($preOpList ?? []); @endphp
+    @php $preOpCount = count($preOpList ?? []); @endphp
 
     <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div class="flex-1 space-y-3">
                 <div class="flex items-center gap-2">
                     <h3 class="text-base font-semibold text-ink dark:text-gray-200">Pengkajian Pre Operasi</h3>
-                    @if ($poCount > 0)
-                        <x-badge variant="success">{{ $poCount }} pengkajian</x-badge>
+                    @if ($preOpCount > 0)
+                        <x-badge variant="success">{{ $preOpCount }} pengkajian</x-badge>
                     @else
                         <x-badge variant="warning">Belum ada</x-badge>
                     @endif
@@ -896,7 +896,7 @@ new class extends Component {
             </div>
         </div>
 
-        @if ($poCount > 0)
+        @if ($preOpCount > 0)
             <div class="mt-4 overflow-x-auto">
                 <table class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
                     <thead class="bg-surface-soft dark:bg-gray-800">
@@ -908,16 +908,16 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (array_reverse($preOpList) as $po)
-                            @php $poTtdCount = collect(['ttdPerawatRuangan', 'ttdPerawatKamarBedah', 'ttdDokterOperator'])->filter(fn($k) => !empty($po[$k]))->count(); @endphp
+                        @foreach (array_reverse($preOpList) as $entry)
+                            @php $entryTtdCount = collect(['ttdPerawatRuangan', 'ttdPerawatKamarBedah', 'ttdDokterOperator'])->filter(fn($ttdKey) => !empty($entry[$ttdKey]))->count(); @endphp
                             <tr class="border-b border-hairline dark:border-gray-700">
-                                <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ $po['createdAt'] ?? '-' }}</td>
-                                <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $po['rencanaOperasi'] ? \Illuminate\Support\Str::limit($po['rencanaOperasi'], 45) : '-' }}</td>
+                                <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ $entry['createdAt'] ?? '-' }}</td>
+                                <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $entry['rencanaOperasi'] ? \Illuminate\Support\Str::limit($entry['rencanaOperasi'], 45) : '-' }}</td>
                                 <td class="px-3 py-2 text-muted dark:text-gray-400">
-                                    <x-badge :variant="$poTtdCount === 3 ? 'success' : 'warning'">{{ $poTtdCount }}/3 TTD</x-badge>
+                                    <x-badge :variant="$entryTtdCount === 3 ? 'success' : 'warning'">{{ $entryTtdCount }}/3 TTD</x-badge>
                                 </td>
                                 <td class="px-3 py-2 text-center">
-                                    @if ($this->entryIsFinal($po))
+                                    @if ($this->entryIsFinal($entry))
                                         <x-badge variant="info">Terkunci</x-badge>
                                     @else
                                         <x-badge variant="warning">Draft</x-badge>

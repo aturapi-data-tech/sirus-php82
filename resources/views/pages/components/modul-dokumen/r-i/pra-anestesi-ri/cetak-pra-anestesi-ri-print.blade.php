@@ -42,16 +42,22 @@
                 <p><span class="font-bold">Riwayat Anestesi:</span> {{ $yn($form['riwayatAnestesi'] ?? false) }}{{ filled($form['riwayatAnestesiKet'] ?? '') ? ' — ' . e($form['riwayatAnestesiKet']) : '' }}</p>
                 <p><span class="font-bold">Riwayat Alergi:</span> {{ $yn($form['riwayatAlergi'] ?? false) }}{{ filled($form['riwayatAlergiKet'] ?? '') ? ' — ' . e($form['riwayatAlergiKet']) : '' }}</p>
                 <p><span class="font-bold">Obat dikonsumsi:</span> {!! $val($form['obatDikonsumsi'] ?? '') !!}</p>
-                <p><span class="font-bold">Merokok:</span> {{ $yn($form['merokok'] ?? false) }} · <span class="font-bold">Alkohol:</span> {{ $yn($form['alkohol'] ?? false) }}</p>
+                <p>
+                    <span class="font-bold">Merokok:</span> {{ $yn($form['merokok'] ?? false) }}{{ filled($form['merokokKet'] ?? '') ? ' (' . e($form['merokokKet']) . ')' : '' }} ·
+                    <span class="font-bold">Alkohol:</span> {{ $yn($form['alkohol'] ?? false) }}{{ filled($form['alkoholKet'] ?? '') ? ' (' . e($form['alkoholKet']) . ')' : '' }}
+                </p>
             </td>
         </tr>
 
         <tr>
             <td colspan="2" class="border border-black px-2 py-1.5">
                 <span class="font-bold">Antropometri/TTV:</span>
-                BB {!! $val($form['bb'] ?? '') !!} · TB {!! $val($form['tb'] ?? '') !!} · BMI {!! $val($form['bmi'] ?? '') !!} ·
-                TD {!! $val($form['td'] ?? '') !!} · N {!! $val($form['nadi'] ?? '') !!} · RR {!! $val($form['rr'] ?? '') !!} ·
-                S {!! $val($form['suhu'] ?? '') !!} · Nyeri {!! $val($form['skorNyeri'] ?? '') !!}
+                TD {!! $val($form['sistolik'] ?? '') !!}/{!! $val($form['diastolik'] ?? '') !!} mmHg ·
+                N {!! $val($form['nadi'] ?? '') !!} · RR {!! $val($form['rr'] ?? '') !!} ·
+                S {!! $val($form['suhu'] ?? '') !!} · SPO2 {!! $val($form['spo2'] ?? '') !!} ·
+                GDA {!! $val($form['gda'] ?? '') !!} ·
+                BB {!! $val($form['bb'] ?? '') !!} · TB {!! $val($form['tb'] ?? '') !!} ·
+                IMT {!! $val($form['imt'] ?? '') !!} · Nyeri {!! $val($form['skorNyeri'] ?? '') !!}
             </td>
         </tr>
 
@@ -67,7 +73,12 @@
         <tr>
             <td class="border border-black px-2 py-1.5 align-top">
                 <p class="font-bold mb-0.5">Fungsi Sistem Organ</p>
-                <p>{!! $val($form['fungsiOrgan'] ?? '') !!}</p>
+                @php $organTerpilih = \App\Support\PraAnestesiOptions::fungsiSistemOrganTerpilih($form['fungsiSistemOrgan'] ?? [], $form['fungsiSistemOrganLainKet'] ?? []); @endphp
+                @forelse ($organTerpilih as $organGroupLabel => $organLabels)
+                    <p><span class="font-bold">{{ $organGroupLabel }}:</span> {{ implode(', ', $organLabels) }}</p>
+                @empty
+                    <p>-</p>
+                @endforelse
             </td>
             <td class="border border-black px-2 py-1.5 align-top">
                 <p><span class="font-bold">Lab:</span> {!! $val($form['pemeriksaanLab'] ?? '') !!}</p>

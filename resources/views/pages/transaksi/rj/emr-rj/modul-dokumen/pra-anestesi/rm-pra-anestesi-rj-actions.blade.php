@@ -1,5 +1,5 @@
 <?php
-// resources/views/pages/transaksi/ri/emr-ri/modul-dokumen/pra-anestesi-ri/rm-pra-anestesi-rj-actions.blade.php
+// resources/views/pages/transaksi/rj/emr-rj/modul-dokumen/pra-anestesi/rm-pra-anestesi-rj-actions.blade.php
 // Pengkajian Pra Anestesi & Pra Sedasi (PAB 4 / RM 50) — dokter anestesi.
 // Pola: multi-entri (Draft + Lanjut Isi + TTD-Kunci + Lihat read-only + tabel expandable),
 // disimpan ke datadaftarri_json (key: praAnestesiRI). Kunci entri stabil = createdAt.
@@ -8,6 +8,7 @@
 
 use Livewire\Component;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
+use App\Support\PraAnestesiOptions;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
@@ -41,16 +42,21 @@ new class extends Component {
         'riwayatAlergiKet' => '',
         'obatDikonsumsi' => '',
         'merokok' => false,
+        'merokokKet' => '',
         'alkohol' => false,
-        // Antropometri & TTV
-        'bb' => '',
-        'tb' => '',
-        'bmi' => '',
-        'td' => '',
+        'alkoholKet' => '',
+        // Antropometri & TTV — klasifikasi mengikuti EMR RJ: Tanda Vital / Nutrisi (imt auto dari bb/tb)
+        'sistolik' => '',
+        'diastolik' => '',
         'nadi' => '',
         'rr' => '',
         'suhu' => '',
+        'spo2' => '',
+        'gda' => '',
         'skorNyeri' => '',
+        'bb' => '',
+        'tb' => '',
+        'imt' => '',
         // Evaluasi jalan nafas
         'mallampati' => '',
         'bukaMulut' => '',
@@ -59,7 +65,10 @@ new class extends Component {
         'obesitas' => false,
         'sulitVentilasi' => false,
         // Sistem organ & penunjang
-        'fungsiOrgan' => '',
+        // Fungsi Sistem Organ (RM 50) — checklist [key => bool] + "Lain-lain" per grup
+        // ([slugGrup => keterangan]); daftar item di PraAnestesiOptions
+        'fungsiSistemOrgan' => [],
+        'fungsiSistemOrganLainKet' => [],
         'pemeriksaanLab' => '',
         'pemeriksaanPenunjang' => '',
         // Kesimpulan
@@ -163,6 +172,8 @@ new class extends Component {
             'newForm.jenisAnestesi' => 'required|string|max:200',
             'newForm.riwayatAnestesiKet' => 'nullable|string|max:300',
             'newForm.riwayatAlergiKet' => 'nullable|string|max:300',
+            'newForm.merokokKet' => 'nullable|string|max:300',
+            'newForm.alkoholKet' => 'nullable|string|max:300',
         ];
     }
 
@@ -215,10 +226,29 @@ new class extends Component {
     private function buildEntry(string $key, bool $finalized): array
     {
         $entry = $this->newForm;
+        $entry['imt'] = $this->imtValue();
         $entry['signaturePasien'] = $this->signaturePasien;
         $entry['createdAt'] = $key;
         $entry['finalized'] = $finalized;
         return $entry;
+    }
+
+    /* ===============================
+     | IMT — dihitung otomatis dari BB/TB (meniru hitungIMT() EMR RJ)
+     =============================== */
+    private function imtValue(): string
+    {
+        $bb = (float) ($this->newForm['bb'] ?? 0);
+        $tbM = ((float) ($this->newForm['tb'] ?? 0)) / 100;
+
+        return $bb > 0 && $tbM > 0 ? (string) round($bb / ($tbM * $tbM), 2) : '';
+    }
+
+    public function updated(string $name): void
+    {
+        if (in_array($name, ['newForm.bb', 'newForm.tb'], true)) {
+            $this->newForm['imt'] = $this->imtValue();
+        }
     }
 
     // Cek: minimal salah satu isi inti terisi (untuk draft & sebelum kunci).
@@ -238,7 +268,7 @@ new class extends Component {
 
             $fresh = $this->findDataRJ($this->rjNo) ?: [];
             if (empty($fresh)) {
-                throw new \RuntimeException('Data RI tidak ditemukan, simpan dibatalkan.');
+                throw new \RuntimeException('Data RJ tidak ditemukan, simpan dibatalkan.');
             }
             if (!isset($fresh['praAnestesiRJ']) || !is_array($fresh['praAnestesiRJ'])) {
                 $fresh['praAnestesiRJ'] = [];
@@ -533,10 +563,13 @@ new class extends Component {
         $this->newForm = [
             'tanggal' => '', 'kriteria' => 'Dewasa', 'diagnosisPraAnestesi' => '', 'rencanaTindakan' => '',
             'anamnese' => '', 'riwayatAnestesi' => false, 'riwayatAnestesiKet' => '', 'riwayatAlergi' => false,
-            'riwayatAlergiKet' => '', 'obatDikonsumsi' => '', 'merokok' => false, 'alkohol' => false,
-            'bb' => '', 'tb' => '', 'bmi' => '', 'td' => '', 'nadi' => '', 'rr' => '', 'suhu' => '', 'skorNyeri' => '',
+            'riwayatAlergiKet' => '', 'obatDikonsumsi' => '', 'merokok' => false, 'merokokKet' => '',
+            'alkohol' => false, 'alkoholKet' => '',
+            'sistolik' => '', 'diastolik' => '', 'nadi' => '', 'rr' => '', 'suhu' => '', 'spo2' => '', 'gda' => '',
+            'skorNyeri' => '', 'bb' => '', 'tb' => '', 'imt' => '',
             'mallampati' => '', 'bukaMulut' => '', 'gerakLeher' => '', 'gigiPalsu' => false, 'obesitas' => false,
-            'sulitVentilasi' => false, 'fungsiOrgan' => '', 'pemeriksaanLab' => '', 'pemeriksaanPenunjang' => '',
+            'sulitVentilasi' => false, 'fungsiSistemOrgan' => [], 'fungsiSistemOrganLainKet' => [],
+            'pemeriksaanLab' => '', 'pemeriksaanPenunjang' => '',
             'jenisAnestesi' => '', 'induksiPraAnestesi' => '', 'psAsa' => '', 'penyulit' => '', 'komplikasi' => '',
             'obatAnalgesikPascaOp' => '', 'ttd' => '', 'ttdCode' => '', 'ttdDate' => '',
         ];
@@ -605,15 +638,15 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (array_reverse($praList) as $e)
+                        @foreach (array_reverse($praList) as $entry)
                             <tr class="border-b border-hairline dark:border-gray-700">
-                                <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ $e['tanggal'] ?: ($e['createdAt'] ?? '-') }}</td>
-                                <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $e['psAsa'] ?: '-' }}</td>
+                                <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ $entry['tanggal'] ?: ($entry['createdAt'] ?? '-') }}</td>
+                                <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $entry['psAsa'] ?: '-' }}</td>
                                 <td class="px-3 py-2 text-muted dark:text-gray-400">
-                                    @if (!empty($e['ttd'])){{ $e['ttd'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
+                                    @if (!empty($entry['ttd'])){{ $entry['ttd'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
                                 </td>
                                 <td class="px-3 py-2 text-center">
-                                    @if ($this->entryIsFinal($e))
+                                    @if ($this->entryIsFinal($entry))
                                         <x-badge variant="info">Terkunci</x-badge>
                                     @else
                                         <x-badge variant="warning">Draft</x-badge>
@@ -648,7 +681,7 @@ new class extends Component {
                             </div>
                         </div>
                         <div class="flex flex-wrap gap-2 mt-3">
-                            <x-badge variant="brand">Rawat Inap</x-badge>
+                            <x-badge variant="brand">Rawat Jalan</x-badge>
                             @if (count($praList) > 0)
                                 <x-badge variant="info">{{ count($praList) }} tersimpan</x-badge>
                             @endif
@@ -748,37 +781,115 @@ new class extends Component {
                                     <x-textarea wire:model.live="newForm.anamnese" :error="$errors->has('newForm.anamnese')" rows="2" class="w-full" />
                                 </div>
                                 <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                    <x-toggle wire:model.live="newForm.riwayatAnestesi" :trueValue="true" :falseValue="false" label="Ada riwayat anestesi" :disabled="$formReadOnly" />
-                                    <x-toggle wire:model.live="newForm.riwayatAlergi" :trueValue="true" :falseValue="false" label="Ada riwayat alergi" :disabled="$formReadOnly" />
+                                    <div class="flex items-center gap-3">
+                                        <div class="shrink-0">
+                                            <x-toggle wire:model.live="newForm.riwayatAnestesi" :trueValue="true" :falseValue="false" label="Ada riwayat anestesi" :disabled="$formReadOnly" />
+                                        </div>
+                                        @if ($newForm['riwayatAnestesi'])
+                                            <x-text-input wire:model.live="newForm.riwayatAnestesiKet" :error="$errors->has('newForm.riwayatAnestesiKet')" placeholder="Keterangan riwayat anestesi" class="w-full" />
+                                        @endif
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <div class="shrink-0">
+                                            <x-toggle wire:model.live="newForm.riwayatAlergi" :trueValue="true" :falseValue="false" label="Ada riwayat alergi" :disabled="$formReadOnly" />
+                                        </div>
+                                        @if ($newForm['riwayatAlergi'])
+                                            <x-text-input wire:model.live="newForm.riwayatAlergiKet" :error="$errors->has('newForm.riwayatAlergiKet')" placeholder="Keterangan alergi" class="w-full" />
+                                        @endif
+                                    </div>
                                 </div>
-                                @if ($newForm['riwayatAnestesi'])
-                                    <x-text-input wire:model.live="newForm.riwayatAnestesiKet" :error="$errors->has('newForm.riwayatAnestesiKet')" placeholder="Keterangan riwayat anestesi" class="w-full" />
-                                @endif
-                                @if ($newForm['riwayatAlergi'])
-                                    <x-text-input wire:model.live="newForm.riwayatAlergiKet" :error="$errors->has('newForm.riwayatAlergiKet')" placeholder="Keterangan alergi" class="w-full" />
-                                @endif
                                 <div>
                                     <x-input-label value="Obat yang Sedang Dikonsumsi" class="mb-1" />
                                     <x-text-input wire:model.live="newForm.obatDikonsumsi" :error="$errors->has('newForm.obatDikonsumsi')" class="w-full" />
                                 </div>
-                                <div class="flex flex-wrap gap-4">
-                                    <x-toggle wire:model.live="newForm.merokok" :trueValue="true" :falseValue="false" label="Merokok" :disabled="$formReadOnly" />
-                                    <x-toggle wire:model.live="newForm.alkohol" :trueValue="true" :falseValue="false" label="Alkohol" :disabled="$formReadOnly" />
+                                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                    <div class="flex items-center gap-3">
+                                        <div class="shrink-0">
+                                            <x-toggle wire:model.live="newForm.merokok" :trueValue="true" :falseValue="false" label="Merokok" :disabled="$formReadOnly" />
+                                        </div>
+                                        @if ($newForm['merokok'])
+                                            <x-text-input wire:model.live="newForm.merokokKet" :error="$errors->has('newForm.merokokKet')" placeholder="Keterangan (jumlah/lama merokok)" class="w-full" />
+                                        @endif
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <div class="shrink-0">
+                                            <x-toggle wire:model.live="newForm.alkohol" :trueValue="true" :falseValue="false" label="Alkohol" :disabled="$formReadOnly" />
+                                        </div>
+                                        @if ($newForm['alkohol'])
+                                            <x-text-input wire:model.live="newForm.alkoholKet" :error="$errors->has('newForm.alkoholKet')" placeholder="Keterangan (jumlah/frekuensi)" class="w-full" />
+                                        @endif
+                                    </div>
                                 </div>
                             </section>
 
-                            {{-- ══ ANTROPOMETRI & TTV ══ --}}
-                            <section class="pt-6 border-t border-hairline dark:border-gray-700">
-                                <h3 class="mb-3 text-base font-semibold text-ink dark:text-gray-200">Antropometri & Tanda Vital</h3>
-                                <div class="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-8">
-                                    <div><x-input-label value="BB (kg)" class="mb-1" /><x-text-input wire:model.live="newForm.bb" :error="$errors->has('newForm.bb')" class="w-full" /></div>
-                                    <div><x-input-label value="TB (cm)" class="mb-1" /><x-text-input wire:model.live="newForm.tb" :error="$errors->has('newForm.tb')" class="w-full" /></div>
-                                    <div><x-input-label value="BMI" class="mb-1" /><x-text-input wire:model.live="newForm.bmi" :error="$errors->has('newForm.bmi')" class="w-full" /></div>
-                                    <div><x-input-label value="TD" class="mb-1" /><x-text-input wire:model.live="newForm.td" :error="$errors->has('newForm.td')" placeholder="120/80" class="w-full" /></div>
-                                    <div><x-input-label value="Nadi" class="mb-1" /><x-text-input wire:model.live="newForm.nadi" :error="$errors->has('newForm.nadi')" class="w-full" /></div>
-                                    <div><x-input-label value="RR" class="mb-1" /><x-text-input wire:model.live="newForm.rr" :error="$errors->has('newForm.rr')" class="w-full" /></div>
-                                    <div><x-input-label value="Suhu" class="mb-1" /><x-text-input wire:model.live="newForm.suhu" :error="$errors->has('newForm.suhu')" class="w-full" /></div>
-                                    <div><x-input-label value="Skor Nyeri" class="mb-1" /><x-text-input wire:model.live="newForm.skorNyeri" :error="$errors->has('newForm.skorNyeri')" class="w-full" /></div>
+                            {{-- ══ ANTROPOMETRI & TTV — klasifikasi mengikuti EMR RJ (Tanda Vital / Nutrisi) ══ --}}
+                            <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
+                                <h3 class="text-base font-semibold text-ink dark:text-gray-200">Antropometri & Tanda Vital</h3>
+
+                                <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                                <x-border-form :title="__('Tanda Vital')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
+                                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                                        <div>
+                                            <x-input-label value="Sistolik (mmHg)" class="whitespace-nowrap" />
+                                            <x-text-input wire:model.live="newForm.sistolik" :error="$errors->has('newForm.sistolik')" class="w-full mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Diastolik (mmHg)" class="whitespace-nowrap" />
+                                            <x-text-input wire:model.live="newForm.diastolik" :error="$errors->has('newForm.diastolik')" class="w-full mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Nadi (x/mnt)" class="whitespace-nowrap" />
+                                            <x-text-input wire:model.live="newForm.nadi" :error="$errors->has('newForm.nadi')" class="w-full mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Nafas (x/mnt)" class="whitespace-nowrap" />
+                                            <x-text-input wire:model.live="newForm.rr" :error="$errors->has('newForm.rr')" class="w-full mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Suhu (°C)" class="whitespace-nowrap" />
+                                            <x-text-input wire:model.live="newForm.suhu" :error="$errors->has('newForm.suhu')" class="w-full mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="SPO2 (%)" class="whitespace-nowrap" />
+                                            <x-text-input wire:model.live="newForm.spo2" :error="$errors->has('newForm.spo2')" class="w-full mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="GDA (g/dl)" class="whitespace-nowrap" />
+                                            <x-text-input wire:model.live="newForm.gda" :error="$errors->has('newForm.gda')" class="w-full mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Skor Nyeri" class="whitespace-nowrap" />
+                                            <x-text-input wire:model.live="newForm.skorNyeri" :error="$errors->has('newForm.skorNyeri')" class="w-full mt-1" />
+                                        </div>
+                                    </div>
+                                </x-border-form>
+
+                                <x-border-form :title="__('Nutrisi')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
+                                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                        <div>
+                                            <x-input-label value="Berat Badan (Kg)" class="whitespace-nowrap" />
+                                            <x-text-input wire:model.live="newForm.bb" :error="$errors->has('newForm.bb')" class="w-full mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Tinggi Badan (Cm)" class="whitespace-nowrap" />
+                                            <x-text-input wire:model.live="newForm.tb" :error="$errors->has('newForm.tb')" class="w-full mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Index Masa Tubuh (Kg/M²)" class="whitespace-nowrap" />
+                                            {{-- IMT readonly, dihitung otomatis via updated() saat BB/TB berubah --}}
+                                            <div class="flex mt-1">
+                                                <div
+                                                    class="w-full px-3 py-2 text-base text-ink bg-surface-soft border border-gray-300 rounded-l-lg dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100">
+                                                    {{ ($newForm['imt'] ?? '') !== '' ? $newForm['imt'] : '-' }}
+                                                </div>
+                                                <div
+                                                    class="px-3 py-2 text-sm font-semibold text-center text-muted bg-surface-soft border border-l-0 border-gray-300 rounded-r-lg whitespace-nowrap dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
+                                                    Kg/M²
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </x-border-form>
                                 </div>
                             </section>
 
@@ -819,14 +930,36 @@ new class extends Component {
 
                             {{-- ══ SISTEM ORGAN & PENUNJANG ══ --}}
                             <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
-                                <div>
-                                    <x-input-label value="Catatan Fungsi Sistem Organ (pernafasan/kardiovaskuler/neuro/renal/endokrin/lain)" class="mb-1" />
-                                    <x-textarea wire:model.live="newForm.fungsiOrgan" :error="$errors->has('newForm.fungsiOrgan')" rows="2" class="w-full" />
+                                <h3 class="text-base font-semibold text-ink dark:text-gray-200">Fungsi Sistem Organ</h3>
+                                <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                                    @foreach (PraAnestesiOptions::fungsiSistemOrgan() as $organSlug => $organGrup)
+                                        <x-border-form :title="$organGrup['label']" :align="__('start')" :bgcolor="__('bg-surface-soft')">
+                                            <div class="space-y-2">
+                                                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                                    @foreach ($organGrup['items'] as $organKey => $organLabel)
+                                                        <x-toggle wire:model.live="newForm.fungsiSistemOrgan.{{ $organKey }}"
+                                                            :trueValue="true" :falseValue="false" :label="$organLabel" :disabled="$formReadOnly" />
+                                                    @endforeach
+                                                </div>
+                                                <div class="flex items-center gap-3 pt-2 border-t border-hairline-soft dark:border-gray-800">
+                                                    <div class="shrink-0">
+                                                        <x-toggle wire:model.live="newForm.fungsiSistemOrgan.{{ $organSlug }}LainLain"
+                                                            :trueValue="true" :falseValue="false" label="Lain-lain" :disabled="$formReadOnly" />
+                                                    </div>
+                                                    @if (!empty($newForm['fungsiSistemOrgan'][$organSlug . 'LainLain']))
+                                                        <x-text-input wire:model.live="newForm.fungsiSistemOrganLainKet.{{ $organSlug }}"
+                                                            placeholder="Keterangan lain-lain" class="w-full" />
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </x-border-form>
+                                    @endforeach
                                 </div>
                                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div>
                                         <x-input-label value="Pemeriksaan Laboratorium" class="mb-1" />
-                                        <x-textarea wire:model.live="newForm.pemeriksaanLab" :error="$errors->has('newForm.pemeriksaanLab')" rows="2" class="w-full" />
+                                        <x-textarea wire:model.live="newForm.pemeriksaanLab" :error="$errors->has('newForm.pemeriksaanLab')" rows="2"
+                                            placeholder="cth: Hb/Hct/CBC, fungsi ginjal, fungsi hati, serum elektrolit, faal hemostasis" class="w-full" />
                                     </div>
                                     <div>
                                         <x-input-label value="Pemeriksaan Penunjang (X-Ray/EKG/dll)" class="mb-1" />
@@ -1036,15 +1169,19 @@ new class extends Component {
                                                             </div>
                                                             <div>
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Merokok / Alkohol</dt>
-                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['merokok'] ?? false) ? 'Merokok' : '—' }} / {{ ($entry['alkohol'] ?? false) ? 'Alkohol' : '—' }}</dd>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['merokok'] ?? false) ? 'Merokok' . (!empty($entry['merokokKet']) ? ' (' . $entry['merokokKet'] . ')' : '') : '—' }} / {{ ($entry['alkohol'] ?? false) ? 'Alkohol' . (!empty($entry['alkoholKet']) ? ' (' . $entry['alkoholKet'] . ')' : '') : '—' }}</dd>
                                                             </div>
                                                             <div>
-                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">BB / TB / BMI</dt>
-                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['bb'] ?: '-' }} kg / {{ $entry['tb'] ?: '-' }} cm / {{ $entry['bmi'] ?: '-' }}</dd>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">BB / TB / IMT</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['bb'] ?: '-' }} kg / {{ $entry['tb'] ?: '-' }} cm / {{ ($entry['imt'] ?? '') ?: '-' }} kg/m²</dd>
                                                             </div>
                                                             <div>
-                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">TD / Nadi / RR / Suhu</dt>
-                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['td'] ?: '-' }} · {{ $entry['nadi'] ?: '-' }} · {{ $entry['rr'] ?: '-' }} · {{ $entry['suhu'] ?: '-' }}</dd>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tensi / Nadi / Nafas / Suhu</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['sistolik'] ?? '') ?: '-' }}/{{ ($entry['diastolik'] ?? '') ?: '-' }} mmHg · {{ $entry['nadi'] ?: '-' }} · {{ $entry['rr'] ?: '-' }} · {{ $entry['suhu'] ?: '-' }}</dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">SPO2 / GDA</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['spo2'] ?? '') ?: '-' }} % · {{ ($entry['gda'] ?? '') ?: '-' }} g/dl</dd>
                                                             </div>
                                                             <div>
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Skor Nyeri</dt>
@@ -1064,7 +1201,14 @@ new class extends Component {
                                                             </div>
                                                             <div class="md:col-span-2">
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Fungsi Sistem Organ</dt>
-                                                                <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['fungsiOrgan'] ?: '-' }}</dd>
+                                                                <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">
+                                                                    @php $organTerpilih = PraAnestesiOptions::fungsiSistemOrganTerpilih($entry['fungsiSistemOrgan'] ?? [], $entry['fungsiSistemOrganLainKet'] ?? []); @endphp
+                                                                    @forelse ($organTerpilih as $organGroupLabel => $organLabels)
+                                                                        <div><b>{{ $organGroupLabel }}:</b> {{ implode(', ', $organLabels) }}</div>
+                                                                    @empty
+                                                                        -
+                                                                    @endforelse
+                                                                </dd>
                                                             </div>
                                                             <div>
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Pemeriksaan Laboratorium</dt>
