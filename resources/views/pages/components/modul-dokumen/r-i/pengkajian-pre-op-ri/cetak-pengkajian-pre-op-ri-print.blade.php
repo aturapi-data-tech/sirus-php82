@@ -151,7 +151,7 @@
                 <tr>
                     <td colspan="2" class="border border-black px-2 py-2">
                         <p class="font-bold mb-1">Diagram Penandaan Lokasi</p>
-                        <x-site-marking-diagram :marks="$marks" :editable="false" />
+                        <x-site-marking-diagram :marks="$marks" :editable="false" :pdf="true" />
                     </td>
                 </tr>
             @endif

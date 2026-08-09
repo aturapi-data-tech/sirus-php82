@@ -82,7 +82,7 @@ new class extends Component {
         'regionAnatomi' => '',
         'sisi' => '',
         'detailLokasi' => '',
-        'metodePenandaan' => 'Spidol permanen — inisial/tanda operator',
+        'metodePenandaan' => 'Spidol permanen - inisial/tanda operator',
         'pasienDilibatkan' => false,
         'marks' => [],
         // TTD 3 pihak (stamp user login) — entri TERKUNCI saat ketiganya terisi
@@ -829,7 +829,7 @@ new class extends Component {
             'regionAnatomi' => '',
             'sisi' => '',
             'detailLokasi' => '',
-            'metodePenandaan' => 'Spidol permanen — inisial/tanda operator',
+            'metodePenandaan' => 'Spidol permanen - inisial/tanda operator',
             'pasienDilibatkan' => false,
             'marks' => [],
             'ttdPerawatRuangan' => '',

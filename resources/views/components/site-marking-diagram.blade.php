@@ -10,11 +10,14 @@
     Props:
       :marks       array   — [['view'=>panelId,'x'=>%,'y'=>%], ...] (x/y persen 0..100 relatif panel)
       :editable    bool    — true: panel bisa diklik (butuh konteks Livewire); false: statis (cetak/preview)
+      :pdf         bool    — true: panel dirender sebagai <img> SVG base64 (dompdf tidak menggambar
+                             inline <svg> — hanya teks angkanya yang muncul). Pakai di blade cetak.
       wire-add-mark string — nama method Livewire dipanggil saat klik: method($view,$x,$y). default 'addMark'
 --}}
 @props([
     'marks' => [],
     'editable' => false,
+    'pdf' => false,
     'wireAddMark' => 'addMark',
 ])
 
@@ -74,27 +77,52 @@
                             <div style="display:inline-block; vertical-align:top; margin:4px 8px; text-align:center">
                                 <div class="text-xs font-medium text-muted dark:text-gray-400" style="margin-bottom:2px">
                                     {{ $p['label'] }}</div>
-                                <svg viewBox="{{ $p['vx'] }} {{ $p['vy'] }} {{ $p['vw'] }} {{ $p['vh'] }}"
-                                    width="{{ $w }}" height="{{ $H }}" preserveAspectRatio="xMidYMid meet"
-                                    class="bg-white border border-hairline rounded-lg {{ $editable ? 'cursor-crosshair' : '' }}"
-                                    style="touch-action:none; max-width:100%; height:auto; display:inline-block"
-                                    @if ($editable) x-on:click="const _r = $el.getBoundingClientRect(); $wire.{{ $wireAddMark }}('{{ $p['id'] }}', ($event.clientX - _r.left) / _r.width * 100, ($event.clientY - _r.top) / _r.height * 100)" @endif>
-                                    @include($figBase . $p['id'])
-                                    @php $n = 0; @endphp
-                                    @foreach ($marks ?? [] as $m)
-                                        @if (($m['view'] ?? '') === $p['id'])
-                                            @php
+                                @if ($pdf)
+                                    @php
+                                        // dompdf tidak menggambar inline <svg> — bungkus figur + tanda
+                                        // jadi satu dokumen SVG utuh lalu sisipkan sebagai <img> base64.
+                                        $marksSvg = '';
+                                        $n = 0;
+                                        foreach ($marks ?? [] as $m) {
+                                            if (($m['view'] ?? '') === $p['id']) {
                                                 $n++;
                                                 $cx = round($p['vx'] + ($m['x'] / 100) * $p['vw'], 2);
                                                 $cy = round($p['vy'] + ($m['y'] / 100) * $p['vh'], 2);
-                                            @endphp
-                                            <circle cx="{{ $cx }}" cy="{{ $cy }}" r="{{ $r }}" fill="#dc2626"
-                                                stroke="#ffffff" stroke-width="1.5" />
-                                            <text x="{{ $cx }}" y="{{ $cy + $fs * 0.35 }}" text-anchor="middle"
-                                                font-size="{{ $fs }}" font-weight="bold" fill="#ffffff">{{ $n }}</text>
-                                        @endif
-                                    @endforeach
-                                </svg>
+                                                $marksSvg .= '<circle cx="' . $cx . '" cy="' . $cy . '" r="' . $r . '" fill="#dc2626" stroke="#ffffff" stroke-width="1.5" />'
+                                                    . '<text x="' . $cx . '" y="' . ($cy + $fs * 0.35) . '" text-anchor="middle" font-size="' . $fs . '" font-weight="bold" fill="#ffffff">' . $n . '</text>';
+                                            }
+                                        }
+                                        $svgDoc = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' . $p['vx'] . ' ' . $p['vy'] . ' ' . $p['vw'] . ' ' . $p['vh'] . '" width="' . $w . '" height="' . $H . '">'
+                                            . view($figBase . $p['id'])->render()
+                                            . $marksSvg
+                                            . '</svg>';
+                                        $svgUri = 'data:image/svg+xml;base64,' . base64_encode($svgDoc);
+                                    @endphp
+                                    <img src="{{ $svgUri }}" width="{{ $w }}" height="{{ $H }}"
+                                        style="display:inline-block; background:#ffffff; border:1px solid #d1d5db; border-radius:6px" />
+                                @else
+                                    <svg viewBox="{{ $p['vx'] }} {{ $p['vy'] }} {{ $p['vw'] }} {{ $p['vh'] }}"
+                                        width="{{ $w }}" height="{{ $H }}" preserveAspectRatio="xMidYMid meet"
+                                        class="bg-white border border-hairline rounded-lg {{ $editable ? 'cursor-crosshair' : '' }}"
+                                        style="touch-action:none; max-width:100%; height:auto; display:inline-block"
+                                        @if ($editable) x-on:click="const _r = $el.getBoundingClientRect(); $wire.{{ $wireAddMark }}('{{ $p['id'] }}', ($event.clientX - _r.left) / _r.width * 100, ($event.clientY - _r.top) / _r.height * 100)" @endif>
+                                        @include($figBase . $p['id'])
+                                        @php $n = 0; @endphp
+                                        @foreach ($marks ?? [] as $m)
+                                            @if (($m['view'] ?? '') === $p['id'])
+                                                @php
+                                                    $n++;
+                                                    $cx = round($p['vx'] + ($m['x'] / 100) * $p['vw'], 2);
+                                                    $cy = round($p['vy'] + ($m['y'] / 100) * $p['vh'], 2);
+                                                @endphp
+                                                <circle cx="{{ $cx }}" cy="{{ $cy }}" r="{{ $r }}" fill="#dc2626"
+                                                    stroke="#ffffff" stroke-width="1.5" />
+                                                <text x="{{ $cx }}" y="{{ $cy + $fs * 0.35 }}" text-anchor="middle"
+                                                    font-size="{{ $fs }}" font-weight="bold" fill="#ffffff">{{ $n }}</text>
+                                            @endif
+                                        @endforeach
+                                    </svg>
+                                @endif
                             </div>
                         @endforeach
                     </div>
