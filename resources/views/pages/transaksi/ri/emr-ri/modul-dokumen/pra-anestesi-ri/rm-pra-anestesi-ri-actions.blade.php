@@ -1004,12 +1004,7 @@ new class extends Component {
                             {{-- ══ EVALUASI JALAN NAFAS ══ --}}
                             <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
                                 <h3 class="text-base font-semibold text-ink dark:text-gray-200">Evaluasi Jalan Nafas</h3>
-                                {{-- Status utama: jalan nafas bebas (Ya/Tidak) --}}
-                                <div class="pb-2 border-b border-hairline-soft dark:border-gray-800">
-                                    <x-toggle wire:model.live="newForm.jalanNafasBebas" :trueValue="true" :falseValue="false"
-                                        label="Jalan nafas bebas" :disabled="$formReadOnly" />
-                                </div>
-                                <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                <div class="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-6">
                                     <div>
                                         <x-input-label value="Mallampati *" class="mb-1" />
                                         <x-select-input wire:model.live="newForm.mallampati" :error="$errors->has('newForm.mallampati')" class="w-full">
@@ -1048,6 +1043,8 @@ new class extends Component {
                                     </div>
                                 </div>
                                 <div class="flex flex-wrap gap-4">
+                                    <x-toggle wire:model.live="newForm.jalanNafasBebas" :trueValue="true" :falseValue="false"
+                                        label="Jalan nafas bebas" :disabled="$formReadOnly" />
                                     <x-toggle wire:model.live="newForm.leherPendek" :trueValue="true" :falseValue="false" label="Leher pendek" :disabled="$formReadOnly" />
                                     <x-toggle wire:model.live="newForm.massa" :trueValue="true" :falseValue="false" label="Massa" :disabled="$formReadOnly" />
                                     <x-toggle wire:model.live="newForm.gigiPalsu" :trueValue="true" :falseValue="false" label="Gigi palsu" :disabled="$formReadOnly" />
@@ -1338,28 +1335,52 @@ new class extends Component {
                                                                 <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['skorNyeri'] ?: '-' }}</dd>
                                                             </div>
                                                             <div>
-                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Mallampati</dt>
-                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['mallampati'] ?: '-' }}</dd>
-                                                            </div>
-                                                            <div>
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Jalan Nafas Bebas</dt>
                                                                 <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['jalanNafasBebas'] ?? false) ? 'Ya' : 'Tidak' }}</dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Mallampati</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['mallampati'] ?: '-' }}</dd>
                                                             </div>
                                                             <div>
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Alat Bantu Nafas</dt>
                                                                 <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['alatBantuNafas'] ?? '') ?: '-' }}</dd>
                                                             </div>
                                                             <div>
-                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Buka Mulut / Mentohyoid / Hyothyroid (cm)</dt>
-                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['bukaMulut'] ?: '-' }} / {{ ($entry['jarakMentohyoid'] ?? '') ?: '-' }} / {{ ($entry['jarakHyothyroid'] ?? '') ?: '-' }}</dd>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Buka Mulut (cm)</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['bukaMulut'] ?: '-' }}</dd>
                                                             </div>
                                                             <div>
-                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Gerak Leher / Leher Pendek / Massa</dt>
-                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['gerakLeher'] ?: '-' }} / {{ ($entry['leherPendek'] ?? false) ? 'Pendek' : '—' }} / {{ ($entry['massa'] ?? false) ? 'Ya' : '—' }}</dd>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Jarak Mentohyoid (cm)</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['jarakMentohyoid'] ?? '') ?: '-' }}</dd>
                                                             </div>
                                                             <div>
-                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Gigi Palsu / Obesitas / Sulit Ventilasi</dt>
-                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['gigiPalsu'] ?? false) ? 'Ya' : '—' }} / {{ ($entry['obesitas'] ?? false) ? 'Ya' : '—' }} / {{ ($entry['sulitVentilasi'] ?? false) ? 'Ya' : '—' }}</dd>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Jarak Hyothyroid (cm)</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['jarakHyothyroid'] ?? '') ?: '-' }}</dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Gerak Leher</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['gerakLeher'] ?: '-' }}</dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Leher Pendek</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['leherPendek'] ?? false) ? 'Ya' : 'Tidak' }}</dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Massa</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['massa'] ?? false) ? 'Ya' : 'Tidak' }}</dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Gigi Palsu</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['gigiPalsu'] ?? false) ? 'Ya' : 'Tidak' }}</dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Obesitas</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['obesitas'] ?? false) ? 'Ya' : 'Tidak' }}</dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Prediksi Sulit Ventilasi</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['sulitVentilasi'] ?? false) ? 'Ya' : 'Tidak' }}</dd>
                                                             </div>
                                                             <div class="md:col-span-2">
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Fungsi Sistem Organ</dt>
