@@ -59,8 +59,13 @@ new class extends Component {
         'imt' => '',
         // Evaluasi jalan nafas
         'mallampati' => '',
+        'alatBantuNafas' => '',
         'bukaMulut' => '',
+        'jarakMentohyoid' => '',
+        'jarakHyothyroid' => '',
         'gerakLeher' => '',
+        'leherPendek' => false,
+        'massa' => false,
         'gigiPalsu' => false,
         'obesitas' => false,
         'sulitVentilasi' => false,
@@ -168,6 +173,9 @@ new class extends Component {
             'newForm.diagnosisPraAnestesi' => 'required|string|max:500',
             'newForm.rencanaTindakan' => 'required|string|max:500',
             'newForm.mallampati' => 'required|in:I,II,III,IV',
+            'newForm.alatBantuNafas' => 'nullable|string|max:200',
+            'newForm.jarakMentohyoid' => 'nullable|string|max:30',
+            'newForm.jarakHyothyroid' => 'nullable|string|max:30',
             'newForm.psAsa' => 'required|string',
             'newForm.jenisAnestesi' => 'required|string|max:200',
             'newForm.riwayatAnestesiKet' => 'nullable|string|max:300',
@@ -664,7 +672,9 @@ new class extends Component {
             'alkohol' => false, 'alkoholKet' => '',
             'sistolik' => '', 'diastolik' => '', 'nadi' => '', 'rr' => '', 'suhu' => '', 'spo2' => '', 'gda' => '',
             'skorNyeri' => '', 'bb' => '', 'tb' => '', 'imt' => '',
-            'mallampati' => '', 'bukaMulut' => '', 'gerakLeher' => '', 'gigiPalsu' => false, 'obesitas' => false,
+            'mallampati' => '', 'alatBantuNafas' => '', 'bukaMulut' => '', 'jarakMentohyoid' => '',
+            'jarakHyothyroid' => '', 'gerakLeher' => '', 'leherPendek' => false, 'massa' => false,
+            'gigiPalsu' => false, 'obesitas' => false,
             'sulitVentilasi' => false, 'fungsiSistemOrgan' => [], 'fungsiSistemOrganLainKet' => [],
             'pemeriksaanLab' => '', 'pemeriksaanPenunjang' => '',
             'jenisAnestesi' => '', 'induksiPraAnestesi' => '', 'psAsa' => '', 'penyulit' => '', 'komplikasi' => '',
@@ -1005,8 +1015,21 @@ new class extends Component {
                                         <x-input-error :messages="$errors->get('newForm.mallampati')" class="mt-1" />
                                     </div>
                                     <div>
+                                        <x-input-label value="Alat Bantu Nafas" class="mb-1" />
+                                        <x-text-input wire:model.live="newForm.alatBantuNafas" :error="$errors->has('newForm.alatBantuNafas')"
+                                            placeholder="cth: nasal kanul / NRM / OPA" class="w-full" />
+                                    </div>
+                                    <div>
                                         <x-input-label value="Buka Mulut (cm)" class="mb-1" />
                                         <x-text-input wire:model.live="newForm.bukaMulut" :error="$errors->has('newForm.bukaMulut')" class="w-full" />
+                                    </div>
+                                    <div>
+                                        <x-input-label value="Jarak Mentohyoid (cm)" class="mb-1" />
+                                        <x-text-input wire:model.live="newForm.jarakMentohyoid" :error="$errors->has('newForm.jarakMentohyoid')" class="w-full" />
+                                    </div>
+                                    <div>
+                                        <x-input-label value="Jarak Hyothyroid (cm)" class="mb-1" />
+                                        <x-text-input wire:model.live="newForm.jarakHyothyroid" :error="$errors->has('newForm.jarakHyothyroid')" class="w-full" />
                                     </div>
                                     <div>
                                         <x-input-label value="Gerak Leher" class="mb-1" />
@@ -1019,6 +1042,8 @@ new class extends Component {
                                     </div>
                                 </div>
                                 <div class="flex flex-wrap gap-4">
+                                    <x-toggle wire:model.live="newForm.leherPendek" :trueValue="true" :falseValue="false" label="Leher pendek" :disabled="$formReadOnly" />
+                                    <x-toggle wire:model.live="newForm.massa" :trueValue="true" :falseValue="false" label="Massa" :disabled="$formReadOnly" />
                                     <x-toggle wire:model.live="newForm.gigiPalsu" :trueValue="true" :falseValue="false" label="Gigi palsu" :disabled="$formReadOnly" />
                                     <x-toggle wire:model.live="newForm.obesitas" :trueValue="true" :falseValue="false" label="Obesitas" :disabled="$formReadOnly" />
                                     <x-toggle wire:model.live="newForm.sulitVentilasi" :trueValue="true" :falseValue="false" label="Prediksi sulit ventilasi" :disabled="$formReadOnly" />
@@ -1311,8 +1336,16 @@ new class extends Component {
                                                                 <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['mallampati'] ?: '-' }}</dd>
                                                             </div>
                                                             <div>
-                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Buka Mulut / Gerak Leher</dt>
-                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['bukaMulut'] ?: '-' }} / {{ $entry['gerakLeher'] ?: '-' }}</dd>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Alat Bantu Nafas</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['alatBantuNafas'] ?? '') ?: '-' }}</dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Buka Mulut / Mentohyoid / Hyothyroid (cm)</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['bukaMulut'] ?: '-' }} / {{ ($entry['jarakMentohyoid'] ?? '') ?: '-' }} / {{ ($entry['jarakHyothyroid'] ?? '') ?: '-' }}</dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Gerak Leher / Leher Pendek / Massa</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['gerakLeher'] ?: '-' }} / {{ ($entry['leherPendek'] ?? false) ? 'Pendek' : '—' }} / {{ ($entry['massa'] ?? false) ? 'Ya' : '—' }}</dd>
                                                             </div>
                                                             <div>
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Gigi Palsu / Obesitas / Sulit Ventilasi</dt>

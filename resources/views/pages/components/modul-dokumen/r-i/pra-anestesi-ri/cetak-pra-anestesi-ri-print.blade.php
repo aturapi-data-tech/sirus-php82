@@ -64,8 +64,11 @@
         <tr>
             <td colspan="2" class="border border-black px-2 py-1.5">
                 <span class="font-bold">Jalan Nafas:</span>
-                Mallampati {!! $val($form['mallampati'] ?? '') !!} · Buka mulut {!! $val($form['bukaMulut'] ?? '') !!} ·
-                Gerak leher {!! $val($form['gerakLeher'] ?? '') !!} · Gigi palsu {{ $yn($form['gigiPalsu'] ?? false) }} ·
+                Mallampati {!! $val($form['mallampati'] ?? '') !!} · Alat bantu nafas {!! $val($form['alatBantuNafas'] ?? '') !!} ·
+                Buka mulut {!! $val($form['bukaMulut'] ?? '') !!} cm · Jarak mentohyoid {!! $val($form['jarakMentohyoid'] ?? '') !!} cm ·
+                Jarak hyothyroid {!! $val($form['jarakHyothyroid'] ?? '') !!} cm ·
+                Gerak leher {!! $val($form['gerakLeher'] ?? '') !!} · Leher pendek {{ $yn($form['leherPendek'] ?? false) }} ·
+                Massa {{ $yn($form['massa'] ?? false) }} · Gigi palsu {{ $yn($form['gigiPalsu'] ?? false) }} ·
                 Obesitas {{ $yn($form['obesitas'] ?? false) }} · Prediksi sulit ventilasi {{ $yn($form['sulitVentilasi'] ?? false) }}
             </td>
         </tr>
