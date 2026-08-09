@@ -1058,7 +1058,9 @@ new class extends Component {
                                 <h3 class="text-base font-semibold text-ink dark:text-gray-200">Fungsi Sistem Organ</h3>
                                 <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
                                     @foreach (PraAnestesiOptions::fungsiSistemOrgan() as $organSlug => $organGrup)
-                                        <x-border-form :title="$organGrup['label']" :align="__('start')" :bgcolor="__('bg-surface-soft')">
+                                        <x-border-form :title="$organGrup['label']" :align="__('start')"
+                                            :bgcolor="!empty($newForm['fungsiSistemOrgan'][$organSlug . 'Dbn']) ? 'bg-success-tint' : 'bg-error-tint'"
+                                            :class="!empty($newForm['fungsiSistemOrgan'][$organSlug . 'Dbn']) ? 'border-success' : 'border-error'">
                                             <div class="space-y-2">
                                                 {{-- Status grup: DBN = Dalam Batas Normal --}}
                                                 <div class="pb-2 border-b border-hairline-soft dark:border-gray-800">
