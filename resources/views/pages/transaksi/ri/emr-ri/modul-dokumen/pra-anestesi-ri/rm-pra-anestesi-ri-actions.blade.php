@@ -1155,7 +1155,7 @@ new class extends Component {
                                         @endif
                                     </div>
                                     {{-- Petugas / Dokter Anestesi (KANAN) — stempel user login --}}
-                                    <x-signature.ttd-petugas :framed="false" :ttd="$newForm['ttd']"
+                                    <x-signature.ttd-petugas :framed="true" :ttd="$newForm['ttd']"
                                         :date="$newForm['ttdDate'] ?? ''" :code="$newForm['ttdCode'] ?? ''"
                                         :locked="$formReadOnly" sign="setTtd" clear="clearTtd"
                                         title="Dokter Anestesi" label="Dokter Anestesi"
