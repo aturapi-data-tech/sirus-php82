@@ -183,6 +183,22 @@ new class extends Component {
                         </div>
                     </a>
 
+                    <a href="{{ route('manajemen.rs.penunjang.ok.laporan-kasus-operasi') }}" wire:navigate
+                        class="flex items-start gap-3 p-4 transition-colors bg-canvas border border-hairline group rounded-xl hover:bg-brand-green/10 dark:bg-gray-900 dark:border-gray-700 dark:hover:bg-brand-lime/15">
+                        <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-lime-50 text-lime-700 group-hover:bg-lime-100 dark:bg-lime-900/30 dark:text-lime-300">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" />
+                            </svg>
+                        </span>
+                        <div class="min-w-0">
+                            <div class="font-semibold text-ink dark:text-gray-100">Laporan Kasus Operasi (OK)</div>
+                            <div class="mt-0.5 text-xs text-muted dark:text-gray-400">
+                                Rekap bulanan jumlah kasus per Dokter Operator per jenis operasi (BP/UM)
+                            </div>
+                        </div>
+                    </a>
+
                     <a href="{{ route('manajemen.rs.ri.laporan-surveilans-hais') }}" wire:navigate
                         class="flex items-start gap-3 p-4 transition-colors bg-canvas border border-hairline group rounded-xl hover:bg-brand-green/10 dark:bg-gray-900 dark:border-gray-700 dark:hover:bg-brand-lime/15">
                         <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-red-50 text-red-700 group-hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300">

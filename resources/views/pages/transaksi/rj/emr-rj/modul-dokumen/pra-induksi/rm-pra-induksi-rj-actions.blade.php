@@ -185,10 +185,10 @@ new class extends Component {
      | OBAT PRE MEDIKASI — tabel entri {obat, dosis, jam, pelaksana}.
      | Baris masuk ke newForm['obatPreMedikasi'] dan ikut tersimpan saat Simpan entri.
      =============================== */
-    public string $preMedObat = '';
-    public string $preMedDosis = '';
-    public string $preMedJam = '';
-    public string $preMedPelaksana = '';
+    public string $preMedikasiObat = '';
+    public string $preMedikasiDosis = '';
+    public string $preMedikasiJam = '';
+    public string $preMedikasiPelaksana = '';
 
     // Data legacy menyimpan string bebas — bungkus jadi satu baris supaya tetap tampil.
     private function normalizePreMedikasi($nilai): array
@@ -199,12 +199,12 @@ new class extends Component {
         return filled($nilai) ? [['obat' => (string) $nilai, 'dosis' => '', 'jam' => '', 'pelaksana' => '']] : [];
     }
 
-    public function setPreMedJamNow(): void
+    public function setPreMedikasiJamNow(): void
     {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
         }
-        $this->preMedJam = Carbon::now(config('app.timezone'))->format('H:i:s');
+        $this->preMedikasiJam = Carbon::now(config('app.timezone'))->format('H:i:s');
     }
 
     public function addPreMedikasi(): void
@@ -216,33 +216,33 @@ new class extends Component {
         // validate() didahulukan supaya field yang kosong tetap ditandai merah.
         $this->validateWithToast(
             [
-                'preMedObat' => ['required', 'string', 'max:200'],
-                'preMedDosis' => ['nullable', 'string', 'max:100'],
-                'preMedJam' => ['nullable', 'string', 'max:20'],
-                'preMedPelaksana' => ['nullable', 'string', 'max:200'],
+                'preMedikasiObat' => ['required', 'string', 'max:200'],
+                'preMedikasiDosis' => ['nullable', 'string', 'max:100'],
+                'preMedikasiJam' => ['nullable', 'string', 'max:20'],
+                'preMedikasiPelaksana' => ['nullable', 'string', 'max:200'],
             ],
             [],
             [
-                'preMedObat' => 'Obat Pre Medikasi',
-                'preMedDosis' => 'Dosis',
-                'preMedJam' => 'Jam',
-                'preMedPelaksana' => 'Pelaksana',
+                'preMedikasiObat' => 'Obat Pre Medikasi',
+                'preMedikasiDosis' => 'Dosis',
+                'preMedikasiJam' => 'Jam',
+                'preMedikasiPelaksana' => 'Pelaksana',
             ],
         );
 
         $list = $this->normalizePreMedikasi($this->newForm['obatPreMedikasi'] ?? []);
         $list[] = [
-            'obat' => $this->preMedObat,
-            'dosis' => $this->preMedDosis,
-            'jam' => $this->preMedJam,
-            'pelaksana' => $this->preMedPelaksana,
+            'obat' => $this->preMedikasiObat,
+            'dosis' => $this->preMedikasiDosis,
+            'jam' => $this->preMedikasiJam,
+            'pelaksana' => $this->preMedikasiPelaksana,
         ];
         $this->newForm['obatPreMedikasi'] = $list;
 
-        $this->preMedObat = '';
-        $this->preMedDosis = '';
-        $this->preMedJam = '';
-        $this->preMedPelaksana = '';
+        $this->preMedikasiObat = '';
+        $this->preMedikasiDosis = '';
+        $this->preMedikasiJam = '';
+        $this->preMedikasiPelaksana = '';
     }
 
     public function removePreMedikasi(int $index): void
@@ -993,26 +993,26 @@ new class extends Component {
                                             <div class="grid grid-cols-12 gap-2">
                                                 <div class="col-span-12 sm:col-span-4">
                                                     <x-input-label value="Obat Pre Medikasi" :required="true" class="truncate whitespace-nowrap" />
-                                                    <x-text-input wire:model="preMedObat" wire:keydown.enter.prevent="addPreMedikasi" placeholder="Midazolam" :error="$errors->has('preMedObat')" class="w-full px-2 mt-1" />
-                                                    <x-input-error :messages="$errors->get('preMedObat')" class="mt-1" />
+                                                    <x-text-input wire:model="preMedikasiObat" wire:keydown.enter.prevent="addPreMedikasi" placeholder="Midazolam" :error="$errors->has('preMedikasiObat')" class="w-full px-2 mt-1" />
+                                                    <x-input-error :messages="$errors->get('preMedikasiObat')" class="mt-1" />
                                                 </div>
                                                 <div class="col-span-12 sm:col-span-2">
                                                     <x-input-label value="Dosis" class="truncate whitespace-nowrap" />
-                                                    <x-text-input wire:model="preMedDosis" wire:keydown.enter.prevent="addPreMedikasi" placeholder="2 mg" :error="$errors->has('preMedDosis')" class="w-full px-2 mt-1" />
-                                                    <x-input-error :messages="$errors->get('preMedDosis')" class="mt-1" />
+                                                    <x-text-input wire:model="preMedikasiDosis" wire:keydown.enter.prevent="addPreMedikasi" placeholder="2 mg" :error="$errors->has('preMedikasiDosis')" class="w-full px-2 mt-1" />
+                                                    <x-input-error :messages="$errors->get('preMedikasiDosis')" class="mt-1" />
                                                 </div>
                                                 <div class="col-span-12 sm:col-span-3">
                                                     <x-input-label value="Jam" class="truncate whitespace-nowrap" />
                                                     <div class="flex gap-1 mt-1">
-                                                        <x-text-input wire:model="preMedJam" placeholder="HH:mm:ss" :error="$errors->has('preMedJam')" class="w-full px-2" />
-                                                        <x-now-button wire:click="setPreMedJamNow" />
+                                                        <x-text-input wire:model="preMedikasiJam" placeholder="HH:mm:ss" :error="$errors->has('preMedikasiJam')" class="w-full px-2" />
+                                                        <x-now-button wire:click="setPreMedikasiJamNow" />
                                                     </div>
-                                                    <x-input-error :messages="$errors->get('preMedJam')" class="mt-1" />
+                                                    <x-input-error :messages="$errors->get('preMedikasiJam')" class="mt-1" />
                                                 </div>
                                                 <div class="col-span-12 sm:col-span-3">
                                                     <x-input-label value="Pelaksana" class="truncate whitespace-nowrap" />
-                                                    <x-text-input wire:model="preMedPelaksana" wire:keydown.enter.prevent="addPreMedikasi" placeholder="Nama pelaksana" :error="$errors->has('preMedPelaksana')" class="w-full px-2 mt-1" />
-                                                    <x-input-error :messages="$errors->get('preMedPelaksana')" class="mt-1" />
+                                                    <x-text-input wire:model="preMedikasiPelaksana" wire:keydown.enter.prevent="addPreMedikasi" placeholder="Nama pelaksana" :error="$errors->has('preMedikasiPelaksana')" class="w-full px-2 mt-1" />
+                                                    <x-input-error :messages="$errors->get('preMedikasiPelaksana')" class="mt-1" />
                                                 </div>
                                             </div>
 
@@ -1038,17 +1038,17 @@ new class extends Component {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    @forelse ($newForm['obatPreMedikasi'] ?? [] as $preMedIndex => $preMedItem)
-                                                        <tr wire:key="pre-med-row-{{ $preMedIndex }}">
-                                                            <td class="ds-c ds-td-meta">{{ $preMedIndex + 1 }}</td>
-                                                            <td class="ds-td-strong">{{ ($preMedItem['obat'] ?? '') ?: '-' }}</td>
-                                                            <td>{{ ($preMedItem['dosis'] ?? '') ?: '-' }}</td>
-                                                            <td>{{ ($preMedItem['jam'] ?? '') ?: '-' }}</td>
-                                                            <td>{{ ($preMedItem['pelaksana'] ?? '') ?: '-' }}</td>
+                                                    @forelse ($newForm['obatPreMedikasi'] ?? [] as $preMedikasiIndex => $preMedikasiItem)
+                                                        <tr wire:key="pre-med-row-{{ $preMedikasiIndex }}">
+                                                            <td class="ds-c ds-td-meta">{{ $preMedikasiIndex + 1 }}</td>
+                                                            <td class="ds-td-strong">{{ ($preMedikasiItem['obat'] ?? '') ?: '-' }}</td>
+                                                            <td>{{ ($preMedikasiItem['dosis'] ?? '') ?: '-' }}</td>
+                                                            <td>{{ ($preMedikasiItem['jam'] ?? '') ?: '-' }}</td>
+                                                            <td>{{ ($preMedikasiItem['pelaksana'] ?? '') ?: '-' }}</td>
                                                             <td class="ds-c">
                                                                 @if (!$formReadOnly)
-                                                                    <x-confirm-button variant="danger-soft" :action="'removePreMedikasi(' . $preMedIndex . ')'"
-                                                                        title="Hapus Baris" :message="'Yakin hapus ' . ($preMedItem['obat'] ?? 'baris ini') . ' dari daftar?'"
+                                                                    <x-confirm-button variant="danger-soft" :action="'removePreMedikasi(' . $preMedikasiIndex . ')'"
+                                                                        title="Hapus Baris" :message="'Yakin hapus ' . ($preMedikasiItem['obat'] ?? 'baris ini') . ' dari daftar?'"
                                                                         confirmText="Ya, hapus" cancelText="Batal" class="px-2 py-1">
                                                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                                     </x-confirm-button>
@@ -1297,15 +1297,15 @@ new class extends Component {
                                                             <div class="md:col-span-2">
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Obat Pre Medikasi</dt>
                                                                 <dd class="mt-0.5 text-ink dark:text-gray-200">
-                                                                    @php $preMedRows = $this->normalizePreMedikasi($entry['obatPreMedikasi'] ?? []); @endphp
-                                                                    @if (count($preMedRows) > 0)
+                                                                    @php $preMedikasiRows = $this->normalizePreMedikasi($entry['obatPreMedikasi'] ?? []); @endphp
+                                                                    @if (count($preMedikasiRows) > 0)
                                                                         <ul class="pl-5 list-disc space-y-0.5">
-                                                                            @foreach ($preMedRows as $preMedRow)
+                                                                            @foreach ($preMedikasiRows as $preMedikasiRow)
                                                                                 <li>
-                                                                                    <span class="font-medium">{{ ($preMedRow['obat'] ?? '') ?: '-' }}</span>
-                                                                                    @if (filled($preMedRow['dosis'] ?? '')) — {{ $preMedRow['dosis'] }} @endif
-                                                                                    @if (filled($preMedRow['jam'] ?? '')) &bull; Jam {{ $preMedRow['jam'] }} @endif
-                                                                                    @if (filled($preMedRow['pelaksana'] ?? '')) &bull; {{ $preMedRow['pelaksana'] }} @endif
+                                                                                    <span class="font-medium">{{ ($preMedikasiRow['obat'] ?? '') ?: '-' }}</span>
+                                                                                    @if (filled($preMedikasiRow['dosis'] ?? '')) — {{ $preMedikasiRow['dosis'] }} @endif
+                                                                                    @if (filled($preMedikasiRow['jam'] ?? '')) &bull; Jam {{ $preMedikasiRow['jam'] }} @endif
+                                                                                    @if (filled($preMedikasiRow['pelaksana'] ?? '')) &bull; {{ $preMedikasiRow['pelaksana'] }} @endif
                                                                                 </li>
                                                                             @endforeach
                                                                         </ul>

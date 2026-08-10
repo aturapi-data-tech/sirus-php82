@@ -83,7 +83,7 @@
                     <span class="font-bold">Manajemen Nyeri:</span> {!! $val($form['manajemenNyeri'] ?? '') !!}
                 </p>
                 @php
-                    $preMedRows = is_array($form['obatPreMedikasi'] ?? null)
+                    $preMedikasiRows = is_array($form['obatPreMedikasi'] ?? null)
                         ? array_values($form['obatPreMedikasi'])
                         : (filled($form['obatPreMedikasi'] ?? '') ? [['obat' => $form['obatPreMedikasi'], 'dosis' => '', 'jam' => '', 'pelaksana' => '']] : []);
                 @endphp
@@ -95,12 +95,12 @@
                         <td class="border border-black font-bold px-1" style="width: 15%;">Jam</td>
                         <td class="border border-black font-bold px-1" style="width: 30%;">Pelaksana</td>
                     </tr>
-                    @forelse ($preMedRows as $preMedRow)
+                    @forelse ($preMedikasiRows as $preMedikasiRow)
                         <tr>
-                            <td class="border border-black px-1">{!! $val($preMedRow['obat'] ?? '') !!}</td>
-                            <td class="border border-black px-1">{!! $val($preMedRow['dosis'] ?? '') !!}</td>
-                            <td class="border border-black px-1">{!! $val($preMedRow['jam'] ?? '') !!}</td>
-                            <td class="border border-black px-1">{!! $val($preMedRow['pelaksana'] ?? '') !!}</td>
+                            <td class="border border-black px-1">{!! $val($preMedikasiRow['obat'] ?? '') !!}</td>
+                            <td class="border border-black px-1">{!! $val($preMedikasiRow['dosis'] ?? '') !!}</td>
+                            <td class="border border-black px-1">{!! $val($preMedikasiRow['jam'] ?? '') !!}</td>
+                            <td class="border border-black px-1">{!! $val($preMedikasiRow['pelaksana'] ?? '') !!}</td>
                         </tr>
                     @empty
                         <tr>

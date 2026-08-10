@@ -619,6 +619,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/manajemen/rs/penunjang/rad/laporan-permintaan-rad', 'pages::manajemen.rs.penunjang.rad.laporan-permintaan-rad.laporan-permintaan-rad')
         ->name('manajemen.rs.penunjang.rad.laporan-permintaan-rad');
 
+    Route::livewire('/manajemen/rs/penunjang/ok/laporan-kasus-operasi', 'pages::manajemen.rs.penunjang.ok.laporan-kasus-operasi.laporan-kasus-operasi')
+        ->name('manajemen.rs.penunjang.ok.laporan-kasus-operasi');
+
     Route::livewire('/manajemen/rs/penunjang/lab/laporan-pemeriksaan-lab', 'pages::manajemen.rs.penunjang.lab.laporan-pemeriksaan-lab.laporan-pemeriksaan-lab')
         ->name('manajemen.rs.penunjang.lab.laporan-pemeriksaan-lab');
 
