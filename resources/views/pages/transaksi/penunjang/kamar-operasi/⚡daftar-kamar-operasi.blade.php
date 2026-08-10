@@ -605,12 +605,32 @@ new class extends Component {
                                         {{-- Semua aksi baris masuk SATU menu titik-3 (pola Pelayanan RJ):
                                              kolom Aksi tetap ramping walau menunya nanti bertambah. --}}
                                         <div class="flex items-center justify-center">
-                                        {{-- Menunya SELALU tampil,
-                                             termasuk di baris RJ/UGD — menyembunyikannya bikin petugas
-                                             mengira fiturnya rusak. Untuk RJ/UGD isinya dinonaktifkan
-                                             berikut alasannya. --}}
-                                        @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr|Gizi')
-                                            <x-dropdown align="right" width="w-72">
+                                        @if ($statusCode === 'F')
+                                            {{-- Batal: actions tidak diakses, konfirmasi ke Pendaftaran.
+                                                 Pola sama dgn Pelayanan RJ / Pelayanan UGD / Daftar RI. --}}
+                                            <div class="flex flex-col items-center gap-2 text-center">
+                                                <div class="text-red-500 dark:text-red-400">
+                                                    <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="1.5"
+                                                            d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                </div>
+                                                <span class="text-xs font-semibold text-red-600 dark:text-red-400">
+                                                    Dibatalkan
+                                                </span>
+                                                <span class="text-xs text-muted dark:text-gray-400">
+                                                    Konfirmasi ke<br>Pendaftaran
+                                                </span>
+                                            </div>
+                                        @else
+                                            {{-- Menunya SELALU tampil,
+                                                 termasuk di baris RJ/UGD — menyembunyikannya bikin petugas
+                                                 mengira fiturnya rusak. Untuk RJ/UGD isinya dinonaktifkan
+                                                 berikut alasannya. --}}
+                                            @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr|Gizi')
+                                                <x-dropdown align="right" width="w-72">
                                                 <x-slot name="trigger">
                                                     <x-secondary-button type="button" class="p-2">
                                                         <span class="sr-only">Menu lainnya</span>
@@ -673,6 +693,7 @@ new class extends Component {
                                                 </x-slot>
                                             </x-dropdown>
                                         @endhasanyrole
+                                        @endif
                                         </div>
                                     </td>
 
