@@ -799,6 +799,28 @@ new class extends Component {
                     {{-- ── Pengkajian Pre Operasi (Site Marking) — viewer (Lihat + Cetak dalam modal) ── --}}
                     <livewire:pages::components.rekam-medis.u-g-d.dokumen-view.pengkajian-pre-op-view-ugd :rjNo="$rjNo"
                         :entries="$dataDaftarTxn['pengkajianPreOpUGD'] ?? []" wire:key="rm-view-pengkajian-pre-op-ugd-{{ $rjNo }}" />
+
+                    {{-- ── Dokumen bedah lain (urutan alur pelayanan bedah) ── --}}
+                    <livewire:pages::components.rekam-medis.u-g-d.dokumen-view.pra-anestesi-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['praAnestesiUGD'] ?? []" wire:key="rm-view-pra-anestesi-ugd-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.u-g-d.dokumen-view.pra-induksi-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['praInduksiUGD'] ?? []" wire:key="rm-view-pra-induksi-ugd-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.u-g-d.dokumen-view.surgical-safety-checklist-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['surgicalSafetyChecklistUGD'] ?? []" wire:key="rm-view-surgical-safety-checklist-ugd-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.u-g-d.dokumen-view.laporan-operasi-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['laporanOperasiUGD'] ?? []" wire:key="rm-view-laporan-operasi-ugd-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.u-g-d.dokumen-view.laporan-anestesi-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['laporanAnestesiUGD'] ?? []" wire:key="rm-view-laporan-anestesi-ugd-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.u-g-d.dokumen-view.pasca-anestesi-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['pascaAnestesiUGD'] ?? []" wire:key="rm-view-pasca-anestesi-ugd-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.u-g-d.dokumen-view.instruksi-pasca-bedah-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['instruksiPascaBedahUGD'] ?? []" wire:key="rm-view-instruksi-pasca-bedah-ugd-{{ $rjNo }}" />
                 </div>
 
                 {{-- ════ TAB: HASIL PENUNJANG (lab / radiologi / upload — view-only) ════ --}}

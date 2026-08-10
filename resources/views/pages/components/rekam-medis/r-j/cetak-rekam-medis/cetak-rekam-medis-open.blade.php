@@ -709,6 +709,28 @@ new class extends Component {
                     {{-- ── Pengkajian Pre Operasi (Site Marking) — viewer (Lihat + Cetak dalam modal) ── --}}
                     <livewire:pages::components.rekam-medis.r-j.dokumen-view.pengkajian-pre-op-view-rj :rjNo="$rjNo"
                         :entries="$dataDaftarTxn['pengkajianPreOpRJ'] ?? []" wire:key="rm-view-pengkajian-pre-op-rj-{{ $rjNo }}" />
+
+                    {{-- ── Dokumen bedah lain (urutan alur pelayanan bedah) ── --}}
+                    <livewire:pages::components.rekam-medis.r-j.dokumen-view.pra-anestesi-view-rj :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['praAnestesiRJ'] ?? []" wire:key="rm-view-pra-anestesi-rj-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-j.dokumen-view.pra-induksi-view-rj :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['praInduksiRJ'] ?? []" wire:key="rm-view-pra-induksi-rj-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-j.dokumen-view.surgical-safety-checklist-view-rj :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['surgicalSafetyChecklistRJ'] ?? []" wire:key="rm-view-surgical-safety-checklist-rj-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-j.dokumen-view.laporan-operasi-view-rj :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['laporanOperasiRJ'] ?? []" wire:key="rm-view-laporan-operasi-rj-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-j.dokumen-view.laporan-anestesi-view-rj :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['laporanAnestesiRJ'] ?? []" wire:key="rm-view-laporan-anestesi-rj-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-j.dokumen-view.pasca-anestesi-view-rj :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['pascaAnestesiRJ'] ?? []" wire:key="rm-view-pasca-anestesi-rj-{{ $rjNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-j.dokumen-view.instruksi-pasca-bedah-view-rj :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['instruksiPascaBedahRJ'] ?? []" wire:key="rm-view-instruksi-pasca-bedah-rj-{{ $rjNo }}" />
                 </div>
 
                 {{-- ════ TAB: HASIL PENUNJANG (lab / radiologi / upload — view-only) ════ --}}

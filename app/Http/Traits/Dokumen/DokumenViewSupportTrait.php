@@ -171,4 +171,48 @@ trait DokumenViewSupportTrait
             'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
         ], $extra);
     }
+
+    /*
+     | Varian jalur RJ/UGD — payload seragam yang sama, tapi data kunjungan
+     | dioper pemanggil ($dataTxn = hasil findDataRJ/findDataUGD) dan $view
+     | adalah path blade LENGKAP (print bedah umumnya shared r-i; SSC punya
+     | print per jalur). Blade cetak shared tetap membaca key 'dataRi'.
+     */
+
+    /** Stream cetak satu entri dokumen jalur RJ/UGD (payload seragam). */
+    protected function streamCetakDokumenTxn(?array $entry, string $view, string $filePrefix, string $ttdKey, ?string $ttdCodeField, array $dataTxn, array $extra = []): mixed
+    {
+        if (empty($entry)) {
+            $this->dispatch('toast', type: 'error', message: 'Data dokumen tidak ditemukan.');
+            return null;
+        }
+
+        $data = $this->dataDokumenTxn($entry, $ttdKey, $ttdCodeField, $dataTxn, $extra);
+        set_time_limit(300);
+        $pdf = Pdf::loadView($view, ['data' => $data])->setPaper('A4');
+        return response()->streamDownload(fn() => print $pdf->output(), $filePrefix . '-' . ($data['regNo'] ?? '') . '.pdf');
+    }
+
+    /** HTML preview dokumen jalur RJ/UGD (payload seragam) — untuk iframe modal Lihat. */
+    protected function previewDokumenTxn(?array $entry, string $view, string $ttdKey, ?string $ttdCodeField, array $dataTxn, array $extra = []): string
+    {
+        if (empty($entry)) {
+            return '';
+        }
+        return $this->renderDokumenPreview($view, $this->dataDokumenTxn($entry, $ttdKey, $ttdCodeField, $dataTxn, $extra));
+    }
+
+    /** Bangun payload cetak dokumen jalur RJ/UGD (payload seragam). */
+    protected function dataDokumenTxn(array $entry, string $ttdKey, ?string $ttdCodeField, array $dataTxn, array $extra = []): array
+    {
+        $pasien = $this->dvPasien($dataTxn['regNo'] ?? '');
+
+        return array_merge($pasien, [
+            'dataRi' => $dataTxn,
+            'form' => $entry,
+            'identitasRs' => $this->dvIdentitasRs(),
+            $ttdKey => $ttdCodeField ? $this->dvTtdPath($entry[$ttdCodeField] ?? null) : null,
+            'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
+        ], $extra);
+    }
 }
