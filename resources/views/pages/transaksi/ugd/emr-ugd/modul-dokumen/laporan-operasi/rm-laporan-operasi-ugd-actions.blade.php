@@ -1,6 +1,6 @@
 <?php
 // resources/views/pages/transaksi/ri/emr-ri/modul-dokumen/laporan-operasi-ri/rm-laporan-operasi-ugd-actions.blade.php
-// Laporan Operasi (BAP) — PAB 7.2 & 7.4.
+// Laporan Operasi (DPJP) — PAB 7.2 & 7.4.
 // Pola: multi-entri (Draft + Lanjut Isi + TTD-Kunci + Lihat read-only + tabel expandable),
 // disimpan ke datadaftarri_json['laporanOperasiUGD']. Kunci entri stabil = createdAt.
 // TTD Operator = stempel nama user login (setOperatorTtd = FINALIZE/kunci entri).
@@ -49,6 +49,7 @@ new class extends Component {
         'jamMulai' => '',
         'jamSelesai' => '',
         'lamaOperasi' => '',
+        'persiapanOperasi' => '',
         'posisiPasien' => '',
         'komplikasi' => '',
         'jumlahPerdarahanCc' => '',
@@ -543,6 +544,7 @@ new class extends Component {
             'jamMulai' => '',
             'jamSelesai' => '',
             'lamaOperasi' => '',
+            'persiapanOperasi' => '',
             'posisiPasien' => '',
             'komplikasi' => '',
             'jumlahPerdarahanCc' => '',
@@ -598,7 +600,7 @@ new class extends Component {
                 </div>
 
                 <p class="text-base text-muted dark:text-gray-400">
-                    Laporan operasi (BAP) memuat diagnosis pra/pasca-op, tim bedah, uraian temuan, komplikasi, spesimen
+                    Laporan operasi (DPJP) memuat diagnosis pra/pasca-op, tim bedah, uraian temuan, komplikasi, spesimen
                     PA, perdarahan &amp; registry implan. Diisi operator <span class="font-medium">segera setelah
                         operasi</span> (PAB 7.2 &amp; 7.4). Bisa dicicil (Draft), lalu dikunci lewat TTD Operator.
                 </p>
@@ -661,7 +663,7 @@ new class extends Component {
                                 </svg>
                             </div>
                             <div>
-                                <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">Laporan Operasi (BAP)</h2>
+                                <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">Laporan Operasi (DPJP)</h2>
                                 <p class="mt-0.5 text-base text-muted dark:text-gray-400">
                                     PAB 7.2 &amp; 7.4 — tiap entri = 1 laporan operasi; cicil Draft lalu kunci lewat TTD Operator
                                 </p>
@@ -871,6 +873,10 @@ new class extends Component {
                             {{-- ══ TEMUAN & PASCA ══ --}}
                             <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
                                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    <div class="md:col-span-2">
+                                        <x-input-label value="Persiapan Operasi" class="mb-1" />
+                                        <x-textarea wire:model.live="newForm.persiapanOperasi" :error="$errors->has('newForm.persiapanOperasi')" rows="2" class="w-full" />
+                                    </div>
                                     <div>
                                         <x-input-label value="Posisi Pasien" class="mb-1" />
                                         <x-text-input wire:model.live="newForm.posisiPasien" :error="$errors->has('newForm.posisiPasien')" placeholder="cth: Supine"
@@ -1168,6 +1174,10 @@ new class extends Component {
                                                             <div>
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Lama Operasi</dt>
                                                                 <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['lamaOperasi'] ?: '-' }}</dd>
+                                                            </div>
+                                                            <div class="md:col-span-2">
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Persiapan Operasi</dt>
+                                                                <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['persiapanOperasi'] ?? '') ?: '-' }}</dd>
                                                             </div>
                                                             <div>
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Posisi Pasien</dt>

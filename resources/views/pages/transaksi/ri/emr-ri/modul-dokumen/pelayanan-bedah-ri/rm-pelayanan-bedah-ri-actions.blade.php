@@ -26,7 +26,7 @@ new class extends Component {
         ['key' => 'praAnestesi', 'label' => 'Pengkajian Pra Anestesi', 'fase' => 'Pra-operasi', 'pengisi' => 'Dokter anestesi', 'ket' => 'Anamnese, jalan nafas (Mallampati), status ASA, rencana teknik anestesi', 'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
         ['key' => 'praInduksi', 'label' => 'Asesmen Pra Induksi', 'fase' => 'Pra-induksi', 'pengisi' => 'Dokter anestesi', 'ket' => 'Re-cek kondisi terkini sesaat sebelum induksi + obat pre-medikasi', 'icon' => 'M13 10V3L4 14h7v7l9-11h-7z'],
         ['key' => 'surgicalSafetyChecklist', 'label' => 'Surgical Safety Checklist', 'fase' => 'Pra-insisi', 'pengisi' => 'Dokter Anestesi + Perawat Instrumen + Operator', 'ket' => 'WHO SSC: Sign In, Time Out, Sign Out — terkunci otomatis setelah 3 TTD lengkap', 'icon' => 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'],
-        ['key' => 'laporanOperasi', 'label' => 'Laporan Operasi (BAP)', 'fase' => 'Pasca-operasi', 'pengisi' => 'Operator / DPJP bedah', 'ket' => 'Isi LENGKAP segera setelah operasi, sebelum pasien dipindah ke ruang lain', 'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
+        ['key' => 'laporanOperasi', 'label' => 'Laporan Operasi (DPJP)', 'fase' => 'Pasca-operasi', 'pengisi' => 'dr. Operator', 'ket' => 'Isi LENGKAP segera setelah operasi, sebelum pasien dipindah ke ruang lain', 'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
         ['key' => 'laporanAnestesi', 'label' => 'Laporan Anestesi', 'fase' => 'Pasca-operasi', 'pengisi' => 'Ahli anestesiologi', 'ket' => 'Teknik anestesi, monitoring sistem organ, masalah & keadaan akhir', 'icon' => 'M3 12h4l2 5 4-10 2 5h6'],
         ['key' => 'pascaAnestesi', 'label' => 'Monitoring Pasca Anestesi', 'fase' => 'Pasca-operasi', 'pengisi' => 'Petugas Recovery Room', 'ket' => 'Skor Aldrete (umum) / Bromage (regional-spinal), nyeri, rekomendasi pindah', 'icon' => 'M3 12h4l2 5 4-10 2 5h6'],
         ['key' => 'instruksiPascaBedah', 'label' => 'Instruksi Pasca Bedah', 'fase' => 'Pasca-operasi', 'pengisi' => 'Ahli anestesiologi', 'ket' => 'Penanganan nyeri/mual, antibiotik, obat, minum, infus, monitor tanda vital', 'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01'],
@@ -140,7 +140,7 @@ new class extends Component {
 
     {{-- ② / ③ OPERASI & PASCA-OPERASI ────────────────────────── --}}
 
-    {{-- Laporan Operasi (BAP) --}}
+    {{-- Laporan Operasi (DPJP) --}}
     <div x-show="subTab === 'laporanOperasi'" x-transition.opacity.duration.200ms style="display:none">
         <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.laporan-operasi-ri.rm-laporan-operasi-ri-actions
             :riHdrNo="$riHdrNo" :disabled="$disabled"

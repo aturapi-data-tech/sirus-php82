@@ -1,5 +1,5 @@
 <?php
-// Viewer read-only "Laporan Operasi (BAP)" — display Rekam Medis RI.
+// Viewer read-only "Laporan Operasi (DPJP)" — display Rekam Medis RI.
 // Lihat = preview HTML dokumen cetak (iframe); Cetak = PDF. Keduanya payload sama.
 
 use Livewire\Component;
@@ -46,7 +46,7 @@ new class extends Component {
 ?>
 
 <div>
-    <x-border-form title="Laporan Operasi (BAP)">
+    <x-border-form title="Laporan Operasi (DPJP)">
         @forelse (collect($list)->filter(fn($entri) => filled(data_get($entri, 'createdAt')))->values() as $entri)
             <x-rm.doc-list-row :id="data_get($entri, 'createdAt')" :title="data_get($entri, 'jenisTindakan') ?: 'Laporan Operasi'"
                 :date="data_get($entri, 'tanggalOperasi')" :sub="'Operator: ' . (data_get($entri, 'namaOperator') ?: '-')" />
@@ -55,7 +55,7 @@ new class extends Component {
         @endforelse
     </x-border-form>
 
-    <x-rm.dokumen-view-modal name="view-laporan-operasi-ri-{{ $riHdrNo }}" title="Laporan Operasi (BAP)"
+    <x-rm.dokumen-view-modal name="view-laporan-operasi-ri-{{ $riHdrNo }}" title="Laporan Operasi (DPJP)"
         :subtitle="$selected ? ((data_get($selected, 'tanggalOperasi') ?: '-') . ' · ' . (data_get($selected, 'namaOperator') ?: '-')) : null"
         :cetakId="data_get($selected, 'createdAt')" :previewHtml="$previewHtml"
         :navTotal="$this->navTotal()" :navPos="$this->navPos()" />

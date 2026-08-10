@@ -94,6 +94,7 @@
                 <p><span class="font-bold">Jam Mulai:</span> {!! $val($form['jamMulai'] ?? '') !!}
                     &nbsp;&bull;&nbsp; <span class="font-bold">Selesai:</span> {!! $val($form['jamSelesai'] ?? '') !!}</p>
                 <p><span class="font-bold">Lama Operasi:</span> {!! $val($form['lamaOperasi'] ?? '') !!}</p>
+                <p><span class="font-bold">Persiapan Operasi:</span> {!! $val($form['persiapanOperasi'] ?? '') !!}</p>
                 <p><span class="font-bold">Posisi Pasien:</span> {!! $val($form['posisiPasien'] ?? '') !!}</p>
             </td>
         </tr>
