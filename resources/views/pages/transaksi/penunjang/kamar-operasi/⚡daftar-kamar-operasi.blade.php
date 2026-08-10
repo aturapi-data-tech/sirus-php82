@@ -7,9 +7,10 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Http\Traits\Txn\Penunjang\KamarOperasiTrait;
 
 new class extends Component {
-    use WithPagination, WithRenderVersioningTrait;
+    use WithPagination, WithRenderVersioningTrait, KamarOperasiTrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['daftar-kamar-operasi-toolbar'];
@@ -125,6 +126,28 @@ new class extends Component {
         $sumber === 'RI'
             ? $this->dispatch($event, riHdrNo: (string) $indukNo, tab: $tab)
             : $this->dispatch($event, rjNo: (int) $indukNo, tab: $tab);
+    }
+
+    /* -------------------------
+     | Batalkan pendaftaran OK dari worklist (A -> F)
+     * ------------------------- */
+    public function batalkanPendaftaran(string $okReg): void
+    {
+        if (!$this->isAllowedBatalOk()) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membatalkan transaksi ini.');
+            return;
+        }
+
+        $berhasil = $this->prosesBatalPendaftaranOk($okReg);
+
+        if (!$berhasil) {
+            return;
+        }
+
+        $this->incrementVersion('daftar-kamar-operasi-toolbar');
+        $this->resetPage();
+        $this->dispatch('refresh-after-kamar-operasi.saved');
+        $this->dispatch('toast', type: 'success', message: 'Pendaftaran kamar operasi dibatalkan.');
     }
 
     /* -------------------------
@@ -628,6 +651,24 @@ new class extends Component {
                                                                     </span>
                                                                 </div>
                                                             </x-dropdown-link>
+
+                                                        @if ($statusCode === 'A')
+                                                            @hasanyrole(['Admin', 'Supervisor Penunjang'])
+                                                                <x-confirm-button variant="danger-soft"
+                                                                    action="batalkanPendaftaran('{{ $row->ok_reg }}')"
+                                                                    title="Batalkan Pendaftaran"
+                                                                    message="Batalkan pendaftaran kamar operasi ini? Status akan menjadi Dibatalkan dan tidak bisa diubah lagi."
+                                                                    confirmText="Ya, batalkan" cancelText="Tutup"
+                                                                    :disabled="!$indukAktif"
+                                                                    class="w-full justify-start px-3 py-2 text-sm rounded-lg">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                                            d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                                                    </svg>
+                                                                    <span>Batalkan Pendaftaran</span>
+                                                                </x-confirm-button>
+                                                            @endhasanyrole
+                                                        @endif
                                                     </div>
                                                 </x-slot>
                                             </x-dropdown>

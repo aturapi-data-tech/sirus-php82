@@ -184,6 +184,7 @@ new class extends Component {
         return $this->indukTerkunciSebab . ' — ' . match ($aksi) {
             'transfer' => 'biaya tidak bisa ditransfer ke tagihan ' . $this->labelSumber() . '.',
             'batal' => 'transfer tidak bisa dibatalkan lagi.',
+            'batal-pendaftaran' => 'transaksi tidak bisa dibatalkan.',
             default => 'transaksi terkunci.',
         };
     }
@@ -405,6 +406,37 @@ new class extends Component {
         $this->dispatchAdministrasi();
         $this->dispatch('toast', type: 'success', message: 'Pembatalan berhasil — status kembali ke Proses Transaksi.');
     }
+
+    /* =======================
+     | BATAL PENDAFTARAN (A -> F)
+     |
+     | Status A belum punya biaya yang diposting ke kunjungan induk, jadi
+     | cukup tandai F. Detail tindakan/bahan/crew tetap ada sebagai riwayat.
+     | Mengikuti pola batalkanPendaftaran() di daftar-laborat-actions.
+     * ======================= */
+    public function batalkanPendaftaran(): void
+    {
+        if (!$this->isAllowedBatalOk()) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membatalkan transaksi ini.');
+            return;
+        }
+
+        if (($this->headerData['ok_status'] ?? 'A') !== 'A') {
+            $this->dispatch('toast', type: 'error', message: 'Hanya transaksi Proses Transaksi yang bisa dibatalkan di sini.');
+            return;
+        }
+
+        $berhasil = $this->prosesBatalPendaftaranOk($this->okReg);
+
+        if (!$berhasil) {
+            return;
+        }
+
+        $this->findData();
+        $this->dispatch('kamar-operasi.updated');
+        $this->dispatch('refresh-after-kamar-operasi.saved');
+        $this->dispatch('toast', type: 'success', message: 'Pendaftaran kamar operasi dibatalkan.');
+    }
 };
 ?>
 
@@ -588,16 +620,32 @@ new class extends Component {
                 @php
                     // Kalimat disusun per aksi: tombol Batal tidak boleh memakai
                     // alasan yang ditulis untuk transfer, dan sebaliknya.
-                    $pesanTerkunci = $this->pesanTerkunci($statusOk === 'L' ? 'batal' : 'transfer');
+                    $pesanTerkunciTransfer = $this->pesanTerkunci('transfer');
+                    $pesanTerkunciBatal = $this->pesanTerkunci($statusOk === 'L' ? 'batal' : 'batal-pendaftaran');
                 @endphp
 
                 <div class="flex flex-wrap items-center justify-between gap-3">
 
-                    {{-- KIRI: Batal Transaksi (Admin / Supervisor Penunjang) --}}
+                    {{-- KIRI: Batal (Admin / Supervisor Penunjang) --}}
                     <div class="flex items-center gap-2">
-                        @if ($statusOk === 'L')
+                        @if ($statusOk === 'A')
                             @hasanyrole(['Admin', 'Supervisor Penunjang'])
-                                <span title="{{ $pesanTerkunci }}">
+                                <span title="{{ $pesanTerkunciBatal }}">
+                                    <x-confirm-button variant="danger" action="batalkanPendaftaran()"
+                                        :disabled="$indukTerkunci" title="Batalkan Pendaftaran"
+                                        message="Batalkan pendaftaran kamar operasi ini? Status akan menjadi Dibatalkan dan tidak bisa diubah lagi."
+                                        confirmText="Ya, batalkan" cancelText="Tutup" class="text-xs">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                        </svg>
+                                        Batalkan Pendaftaran
+                                    </x-confirm-button>
+                                </span>
+                            @endhasanyrole
+                        @elseif ($statusOk === 'L')
+                            @hasanyrole(['Admin', 'Supervisor Penunjang'])
+                                <span title="{{ $pesanTerkunciBatal }}">
                                     <x-confirm-button variant="danger" action="batalkanTransaksi()"
                                         :disabled="$indukTerkunci" title="Batalkan Transaksi"
                                         :message="'Batalkan transfer biaya operasi ini? Seluruh baris biaya di tagihan ' . $this->labelSumber() . ' akan dihapus dan status kembali ke Proses Transaksi.'"
@@ -618,7 +666,7 @@ new class extends Component {
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
-                                {{ $pesanTerkunci }}
+                                {{ $pesanTerkunciBatal }}
                             </span>
                         @endif
                     </div>
@@ -646,7 +694,7 @@ new class extends Component {
                                 $labelTujuanTransfer = $this->labelSumber();
                             @endphp
 
-                            <span title="{{ $pesanTerkunci }}">
+                            <span title="{{ $pesanTerkunciTransfer }}">
                                 <x-confirm-button id="ok-tombol-transfer" variant="primary" action="transferBiayaInap()"
                                     :disabled="$indukTerkunci" :title="'Transfer Biaya ke ' . $labelTujuanTransfer"
                                     :message="'Transfer seluruh pos tarif operasi ini ke tagihan ' . $labelTujuanTransfer . '? Setelah ditransfer, tarif tidak bisa diubah lagi.'"

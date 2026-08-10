@@ -22,14 +22,14 @@ RAWAT INAP                 KAMAR OPERASI                    TAGIHAN RI
    [A] Proses Transaksi ──Trf Biaya-INAP──▶ [L] Selesai ──▶ rstxn_rioks (11 baris)
          │  (bebas edit)                        │
          │                                      └─ Batal Transaksi (L→A, hapus rioks)
-         └─ [F] Dibatalkan (warisan, tak diproduksi aplikasi)
+         └─ Batalkan Pendaftaran (A→F, detail tetap ada)
 ```
 
 | Status | Arti | Padanan lab |
 |---|---|---|
 | `A` | Proses Transaksi — tarif & detail bebas diubah | `C` |
 | `L` | Transaksi Selesai — biaya sudah masuk tagihan, terkunci | `H` |
-| `F` | Dibatalkan — 180 baris warisan; aplikasi tidak membuat maupun membalikkannya | `F` |
+| `F` | Dibatalkan — transaksi tidak jadi diproses; detail tetap sebagai riwayat | `F` |
 
 `NVL(ok_status,'A')` — baris ber-status NULL diperlakukan sebagai `A`, mengikuti form legacy.
 
@@ -465,7 +465,14 @@ Beda RJ/UGD dari RI:
 ### Yang BELUM ada
 - Dari modul RI sendiri: `diag_id_ok`, `case_id`, `crew_id_crew*` (LOV `rsmst_okcrews`),
   parameter `omlop_jm`/`omlop_person`/`countomlop_crew`, cetak, viewer Rekam Medis,
-  tautan ke dokumen klinis Laporan Operasi RI, dan penanganan `ok_status='F'`.
+  tautan ke dokumen klinis Laporan Operasi RI.
+
+### Pembatalan (`ok_status='F'`)
+- `A → F`: **Batalkan Pendaftaran** — tersedia di worklist dan footer modal untuk
+  transaksi berstatus Proses Transaksi. Hanya `Admin` / `Supervisor Penunjang`.
+  Kunjungan induk harus masih aktif; detail tindakan/bahan/crew tidak dihapus.
+- `L → A`: **Batal Transaksi** — tetap di footer modal, menghapus baris biaya di
+  kunjungan induk dan mengembalikan status ke Proses Transaksi.
 
 ---
 

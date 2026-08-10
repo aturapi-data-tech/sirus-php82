@@ -239,6 +239,46 @@ trait KamarOperasiTrait
         return $sumber === 'RI' ? $status === 'I' : $status === 'A';
     }
 
+    /**
+     * Batalkan pendaftaran OK: status A -> F.
+     *
+     * Beda dari batalkanTransaksi() yang mengembalikan L -> A dan menghapus
+     * baris biaya: di status A belum ada biaya yang diposting ke kunjungan
+     * induk, jadi cukup ubah status menjadi F. Detail tindakan/bahan/crew
+     * tetap ada sebagai riwayat.
+     *
+     * @return bool true bila berhasil; toast error sudah dikirim bila gagal
+     */
+    protected function prosesBatalPendaftaranOk(string $okReg): bool
+    {
+        return $this->jalankanDenganRetryOk(function () use ($okReg) {
+            $row = DB::table('rstxn_oks')->where('ok_reg', $okReg)->lockForUpdate()->first();
+
+            if (!$row) {
+                throw new \RuntimeException('Transaksi tidak ditemukan.');
+            }
+
+            if (($row->ok_status ?? 'A') !== 'A') {
+                throw new \RuntimeException('Hanya transaksi Proses Transaksi yang bisa dibatalkan.');
+            }
+
+            ['sumber' => $sumber, 'refNo' => $refNo] = $this->sumberRefOk($okReg);
+
+            if ($refNo > 0) {
+                // Sama seperti batal transfer: selama kunjungan induk tidak aktif,
+                // pembatalan ikut tertutup untuk menghindari kekacauan audit.
+                $statusInduk = $this->kunciIndukOk($sumber, $refNo);
+                if (!$this->indukAktifOk($sumber, $statusInduk)) {
+                    throw new \RuntimeException($this->sebabIndukTerkunciOk($sumber, $statusInduk) . ' — transaksi tidak bisa dibatalkan.');
+                }
+            }
+
+            DB::table('rstxn_oks')->where('ok_reg', $okReg)->update(['ok_status' => 'F']);
+
+            $this->catatLogOk($sumber, $refNo, "Batal pendaftaran OK No.{$okReg} — status menjadi Dibatalkan");
+        }, 'Gagal membatalkan pendaftaran');
+    }
+
     /** Sebab terkuncinya kunjungan induk — kalimat lengkapnya disusun pemanggil. */
     protected function sebabIndukTerkunciOk(string $sumber, string $status): string
     {
