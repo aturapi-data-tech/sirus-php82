@@ -247,6 +247,10 @@ trait KamarOperasiTrait
      * induk, jadi cukup ubah status menjadi F. Detail tindakan/bahan/crew
      * tetap ada sebagai riwayat.
      *
+     * Mengikuti pola Administrasi RI: sebelum batal, cek dulu apakah sudah
+     * ada child (tindakan/bahan/crew). Kalau ada, tolak pembatalan supaya
+     * petugas tidak meninggalkan data tanpa jejak.
+     *
      * @return bool true bila berhasil; toast error sudah dikirim bila gagal
      */
     protected function prosesBatalPendaftaranOk(string $okReg): bool
@@ -260,6 +264,21 @@ trait KamarOperasiTrait
 
             if (($row->ok_status ?? 'A') !== 'A') {
                 throw new \RuntimeException('Hanya transaksi Proses Transaksi yang bisa dibatalkan.');
+            }
+
+            // Cek child — sama dengan Administrasi RI: sudah ada transaksi detail
+            // maka tidak boleh dibatalkan dari pendaftaran.
+            $adaTindakan = DB::table('rstxn_okacts')->where('ok_reg', $okReg)->exists();
+            $adaBahan = DB::table('rstxn_okobats')->where('ok_reg', $okReg)->exists();
+            $adaCrew = DB::table('rstxn_okomlops')->where('ok_reg', $okReg)->exists();
+
+            if ($adaTindakan || $adaBahan || $adaCrew) {
+                $jenis = array_filter([
+                    $adaTindakan ? 'tindakan' : null,
+                    $adaBahan ? 'bahan/alat' : null,
+                    $adaCrew ? 'crew OM LOP' : null,
+                ]);
+                throw new \RuntimeException('Tidak bisa membatalkan pendaftaran: sudah ada data ' . implode(', ', $jenis) . '. Hapus semua detail terlebih dahulu.');
             }
 
             ['sumber' => $sumber, 'refNo' => $refNo] = $this->sumberRefOk($okReg);
