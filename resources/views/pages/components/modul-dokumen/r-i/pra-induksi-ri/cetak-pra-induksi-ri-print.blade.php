@@ -36,6 +36,9 @@
                 <p><span class="font-bold">Tempat:</span> {!! $val($form['tempat'] ?? '') !!}</p>
                 <p><span class="font-bold">Diagnosis Pra Anestesi:</span> {!! $val($form['diagnosisPraAnestesi'] ?? '') !!}</p>
                 <p><span class="font-bold">Rencana Tindakan:</span> {!! $val($form['rencanaTindakan'] ?? '') !!}</p>
+                <p><span class="font-bold">Dokter Operator:</span> {!! $val($form['dokterOperator'] ?? '') !!} &nbsp;&bull;&nbsp; <span class="font-bold">Dokter Anestesi:</span> {!! $val($form['dokterAnestesi'] ?? '') !!}</p>
+                <p><span class="font-bold">Asisten Operator:</span> {!! $val($form['asistenOperator'] ?? '') !!} &nbsp;&bull;&nbsp; <span class="font-bold">Asisten Anestesi:</span> {!! $val($form['asistenAnestesi'] ?? '') !!}</p>
+                <p><span class="font-bold">Instrumen:</span> {!! $val($form['instrumen'] ?? '') !!} &nbsp;&bull;&nbsp; <span class="font-bold">On Loop:</span> {!! $val($form['onLoop'] ?? '') !!}</p>
             </td>
             <td class="border border-black px-2 py-1.5 w-1/2 align-top">
                 <p><span class="font-bold">Amnanese:</span> {!! $val($form['amnanese'] ?? '') !!}</p>
@@ -79,7 +82,32 @@
                     <span class="font-bold">Pemulihan:</span> {!! $val($form['pemulihanPasca'] ?? '') !!} &nbsp;&bull;&nbsp;
                     <span class="font-bold">Manajemen Nyeri:</span> {!! $val($form['manajemenNyeri'] ?? '') !!}
                 </p>
-                <p><span class="font-bold">Obat Pre-Medikasi:</span> {!! $val($form['obatPreMedikasi'] ?? '') !!}</p>
+                @php
+                    $preMedRows = is_array($form['obatPreMedikasi'] ?? null)
+                        ? array_values($form['obatPreMedikasi'])
+                        : (filled($form['obatPreMedikasi'] ?? '') ? [['obat' => $form['obatPreMedikasi'], 'dosis' => '', 'jam' => '', 'pelaksana' => '']] : []);
+                @endphp
+                <p class="font-bold mt-1 mb-0.5">Obat Pre Medikasi</p>
+                <table class="w-full text-[10px] border-collapse" cellpadding="2" cellspacing="0">
+                    <tr>
+                        <td class="border border-black font-bold px-1" style="width: 40%;">Obat Pre Medikasi</td>
+                        <td class="border border-black font-bold px-1" style="width: 15%;">Dosis</td>
+                        <td class="border border-black font-bold px-1" style="width: 15%;">Jam</td>
+                        <td class="border border-black font-bold px-1" style="width: 30%;">Pelaksana</td>
+                    </tr>
+                    @forelse ($preMedRows as $preMedRow)
+                        <tr>
+                            <td class="border border-black px-1">{!! $val($preMedRow['obat'] ?? '') !!}</td>
+                            <td class="border border-black px-1">{!! $val($preMedRow['dosis'] ?? '') !!}</td>
+                            <td class="border border-black px-1">{!! $val($preMedRow['jam'] ?? '') !!}</td>
+                            <td class="border border-black px-1">{!! $val($preMedRow['pelaksana'] ?? '') !!}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td class="border border-black px-1 text-center" colspan="4">-</td>
+                        </tr>
+                    @endforelse
+                </table>
             </td>
         </tr>
 

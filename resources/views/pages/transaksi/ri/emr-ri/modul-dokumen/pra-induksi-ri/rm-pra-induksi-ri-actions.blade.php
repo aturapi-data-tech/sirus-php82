@@ -36,6 +36,12 @@ new class extends Component {
         'tempat' => 'Kamar Operasi (OK)',
         'diagnosisPraAnestesi' => '',
         'rencanaTindakan' => '',
+        'dokterOperator' => '',
+        'dokterAnestesi' => '',
+        'asistenOperator' => '',
+        'asistenAnestesi' => '',
+        'instrumen' => '',
+        'onLoop' => '',
         'amnanese' => '',
         'riwayatAnestesi' => false,
         'riwayatAnestesiJenis' => '',
@@ -66,7 +72,7 @@ new class extends Component {
         'rencanaAnestesi' => '',
         'pemulihanPasca' => '',
         'manajemenNyeri' => '',
-        'obatPreMedikasi' => '',
+        'obatPreMedikasi' => [],
         'ttd' => '',
         'ttdCode' => '',
         'ttdDate' => '',
@@ -124,6 +130,7 @@ new class extends Component {
         }
         $this->praInduksiList = $this->dataDaftarRi[$this->jsonKey];
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
+        $this->prefillTimDariOk();
         $this->incrementVersion('modal-pra-induksi-ri');
         $this->dispatch('open-modal', name: "rm-pra-induksi-ri-{$this->riHdrNo}");
     }
@@ -175,6 +182,80 @@ new class extends Component {
     }
 
     /* ===============================
+     | OBAT PRE MEDIKASI — tabel entri {obat, dosis, jam, pelaksana}.
+     | Baris masuk ke newForm['obatPreMedikasi'] dan ikut tersimpan saat Simpan entri.
+     =============================== */
+    public string $preMedObat = '';
+    public string $preMedDosis = '';
+    public string $preMedJam = '';
+    public string $preMedPelaksana = '';
+
+    // Data legacy menyimpan string bebas — bungkus jadi satu baris supaya tetap tampil.
+    private function normalizePreMedikasi($nilai): array
+    {
+        if (is_array($nilai)) {
+            return array_values($nilai);
+        }
+        return filled($nilai) ? [['obat' => (string) $nilai, 'dosis' => '', 'jam' => '', 'pelaksana' => '']] : [];
+    }
+
+    public function setPreMedJamNow(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+        $this->preMedJam = Carbon::now(config('app.timezone'))->format('H:i:s');
+    }
+
+    public function addPreMedikasi(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+
+        // validate() didahulukan supaya field yang kosong tetap ditandai merah.
+        $this->validateWithToast(
+            [
+                'preMedObat' => ['required', 'string', 'max:200'],
+                'preMedDosis' => ['nullable', 'string', 'max:100'],
+                'preMedJam' => ['nullable', 'string', 'max:20'],
+                'preMedPelaksana' => ['nullable', 'string', 'max:200'],
+            ],
+            [],
+            [
+                'preMedObat' => 'Obat Pre Medikasi',
+                'preMedDosis' => 'Dosis',
+                'preMedJam' => 'Jam',
+                'preMedPelaksana' => 'Pelaksana',
+            ],
+        );
+
+        $list = $this->normalizePreMedikasi($this->newForm['obatPreMedikasi'] ?? []);
+        $list[] = [
+            'obat' => $this->preMedObat,
+            'dosis' => $this->preMedDosis,
+            'jam' => $this->preMedJam,
+            'pelaksana' => $this->preMedPelaksana,
+        ];
+        $this->newForm['obatPreMedikasi'] = $list;
+
+        $this->preMedObat = '';
+        $this->preMedDosis = '';
+        $this->preMedJam = '';
+        $this->preMedPelaksana = '';
+    }
+
+    public function removePreMedikasi(int $index): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+        $list = $this->normalizePreMedikasi($this->newForm['obatPreMedikasi'] ?? []);
+        unset($list[$index]);
+        $this->newForm['obatPreMedikasi'] = array_values($list);
+    }
+
+    /* ===============================
      | HELPER — status & bentuk entri
      =============================== */
     // Entri dianggap FINAL/terkunci bila flag finalized true; entri lama (tanpa flag) yang sudah
@@ -192,6 +273,12 @@ new class extends Component {
             'tempat' => $this->newForm['tempat'] ?? '',
             'diagnosisPraAnestesi' => $this->newForm['diagnosisPraAnestesi'] ?? '',
             'rencanaTindakan' => $this->newForm['rencanaTindakan'] ?? '',
+            'dokterOperator' => $this->newForm['dokterOperator'] ?? '',
+            'dokterAnestesi' => $this->newForm['dokterAnestesi'] ?? '',
+            'asistenOperator' => $this->newForm['asistenOperator'] ?? '',
+            'asistenAnestesi' => $this->newForm['asistenAnestesi'] ?? '',
+            'instrumen' => $this->newForm['instrumen'] ?? '',
+            'onLoop' => $this->newForm['onLoop'] ?? '',
             'amnanese' => $this->newForm['amnanese'] ?? '',
             'riwayatAnestesi' => (bool) ($this->newForm['riwayatAnestesi'] ?? false),
             'riwayatAnestesiJenis' => $this->newForm['riwayatAnestesiJenis'] ?? '',
@@ -221,7 +308,7 @@ new class extends Component {
             'rencanaAnestesi' => $this->newForm['rencanaAnestesi'] ?? '',
             'pemulihanPasca' => $this->newForm['pemulihanPasca'] ?? '',
             'manajemenNyeri' => $this->newForm['manajemenNyeri'] ?? '',
-            'obatPreMedikasi' => $this->newForm['obatPreMedikasi'] ?? '',
+            'obatPreMedikasi' => $this->normalizePreMedikasi($this->newForm['obatPreMedikasi'] ?? []),
             'ttd' => $this->newForm['ttd'] ?? '',
             'ttdCode' => $this->newForm['ttdCode'] ?? '',
             'ttdDate' => $this->newForm['ttdDate'] ?? '',
@@ -358,6 +445,7 @@ new class extends Component {
         foreach ($this->newForm as $k => $v) {
             $this->newForm[$k] = $entry[$k] ?? (is_bool($v) ? false : (is_array($v) ? [] : ''));
         }
+        $this->newForm['obatPreMedikasi'] = $this->normalizePreMedikasi($this->newForm['obatPreMedikasi'] ?? []);
         $this->editingKey = $key;
         $this->resetValidation();
         $this->incrementVersion('modal-pra-induksi-ri');
@@ -404,7 +492,51 @@ new class extends Component {
         $this->editingKey = null;
         $this->viewOnly = false;
         $this->resetValidation();
+        $this->prefillTimDariOk();
         $this->incrementVersion('modal-pra-induksi-ri');
+    }
+
+    /* ===============================
+     | PREFILL TIM dari crew Administrasi OK (rstxn_oks) — best effort.
+     | Hanya entri BARU dengan kolom tim masih kosong; nama tetap bisa dikoreksi manual.
+     | On Loop tidak diprefill: OK tidak menyimpan orangnya (hanya pos tarif).
+     =============================== */
+    private function prefillTimDariOk(): void
+    {
+        if (!$this->riHdrNo || $this->isFormLocked || $this->viewOnly || $this->editingKey) {
+            return;
+        }
+        $adaIsi = collect(['dokterOperator', 'dokterAnestesi', 'asistenOperator', 'asistenAnestesi', 'instrumen'])
+            ->contains(fn($k) => filled($this->newForm[$k] ?? null));
+        if ($adaIsi) {
+            return;
+        }
+
+        try {
+            $crewOk = DB::table('rstxn_oks as o')
+                ->leftJoin('rsmst_doctors as dokterOpr', 'dokterOpr.dr_id', '=', 'o.dr_id')
+                ->leftJoin('rsmst_doctors as dokterAnes', 'dokterAnes.dr_id', '=', 'o.dr_id_ok')
+                ->leftJoin('hrmst_employees as asistenOpr', 'asistenOpr.emp_id', '=', 'o.emp_id_asistopr')
+                ->leftJoin('hrmst_employees as asistenAnes', 'asistenAnes.emp_id', '=', 'o.emp_id_asistanes')
+                ->leftJoin('hrmst_employees as instrumenCrew', 'instrumenCrew.emp_id', '=', 'o.emp_id_instrument')
+                ->where('o.status_rjri', 'RI')
+                ->where(fn($q) => $q->where('o.ref_no', (int) $this->riHdrNo)->orWhere('o.rihdr_no', (int) $this->riHdrNo))
+                ->whereRaw("COALESCE(o.ok_status, 'A') = 'A'")
+                ->orderByDesc('o.ok_reg')
+                ->select('dokterOpr.dr_name as operator_name', 'dokterAnes.dr_name as anestesi_name', 'asistenOpr.name as asistopr_name', 'asistenAnes.name as asistanes_name', 'instrumenCrew.name as instrument_name')
+                ->first();
+        } catch (\Throwable) {
+            return; // prefill jangan menggagalkan buka form
+        }
+
+        if (!$crewOk) {
+            return;
+        }
+        $this->newForm['dokterOperator'] = (string) ($crewOk->operator_name ?? '');
+        $this->newForm['dokterAnestesi'] = (string) ($crewOk->anestesi_name ?? '');
+        $this->newForm['asistenOperator'] = (string) ($crewOk->asistopr_name ?? '');
+        $this->newForm['asistenAnestesi'] = (string) ($crewOk->asistanes_name ?? '');
+        $this->newForm['instrumen'] = (string) ($crewOk->instrument_name ?? '');
     }
 
     public function cetak(string $createdAt)
@@ -414,6 +546,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data tidak ditemukan.');
             return;
         }
+        $entry['obatPreMedikasi'] = $this->normalizePreMedikasi($entry['obatPreMedikasi'] ?? []);
         try {
             $identitasRs = DB::table('rsmst_identitases')->select('int_name', 'int_phone1', 'int_phone2', 'int_fax', 'int_address', 'int_city')->first();
             $pasienData = $this->findDataMasterPasien($this->regNo ?? '');
@@ -488,13 +621,14 @@ new class extends Component {
     {
         $this->newForm = [
             'tanggal' => '', 'tempat' => 'Kamar Operasi (OK)', 'diagnosisPraAnestesi' => '', 'rencanaTindakan' => '',
+            'dokterOperator' => '', 'dokterAnestesi' => '', 'asistenOperator' => '', 'asistenAnestesi' => '', 'instrumen' => '', 'onLoop' => '',
             'amnanese' => '', 'riwayatAnestesi' => false, 'riwayatAnestesiJenis' => '',
             'merokok' => false, 'merokokKet' => '', 'alkohol' => false, 'alkoholKet' => '',
             'riwayatAlergi' => false, 'riwayatAlergiJenis' => '', 'persiapanTransfusi' => false, 'transfusiJumlah' => '',
             'sistolik' => '', 'diastolik' => '', 'nadi' => '', 'rr' => '', 'suhu' => '', 'spo2' => '', 'gda' => '',
             'pemFisikPernafasan' => '', 'pemFisikTulangBelakang' => '', 'pemFisikJantungParu' => '', 'pemFisikAbdomen' => '',
             'penunjangLab' => '', 'penunjangEkg' => '', 'penunjangThorak' => '', 'klasifikasiAsa' => '',
-            'rencanaAnestesi' => '', 'pemulihanPasca' => '', 'manajemenNyeri' => '', 'obatPreMedikasi' => '',
+            'rencanaAnestesi' => '', 'pemulihanPasca' => '', 'manajemenNyeri' => '', 'obatPreMedikasi' => [],
             'ttd' => '', 'ttdCode' => '', 'ttdDate' => '',
         ];
     }
@@ -635,6 +769,37 @@ new class extends Component {
                                     <x-textarea wire:model.live="newForm.rencanaTindakan" :error="$errors->has('newForm.rencanaTindakan')" rows="2" class="w-full" />
                                     <x-input-error :messages="$errors->get('newForm.rencanaTindakan')" class="mt-1" />
                                 </div>
+                                {{-- Tim operasi — peran mengikuti crew Administrasi OK; terisi otomatis dari
+                                     transaksi OK kunjungan ini (bila ada) dan tetap bisa dikoreksi manual. --}}
+                                <div class="md:col-span-2">
+                                    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                        <div>
+                                            <x-input-label value="Dokter Operator" class="mb-1" />
+                                            <x-text-input wire:model.live="newForm.dokterOperator" :error="$errors->has('newForm.dokterOperator')" class="w-full" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Dokter Anestesi" class="mb-1" />
+                                            <x-text-input wire:model.live="newForm.dokterAnestesi" :error="$errors->has('newForm.dokterAnestesi')" class="w-full" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Asisten Operator" class="mb-1" />
+                                            <x-text-input wire:model.live="newForm.asistenOperator" :error="$errors->has('newForm.asistenOperator')" class="w-full" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Asisten Anestesi" class="mb-1" />
+                                            <x-text-input wire:model.live="newForm.asistenAnestesi" :error="$errors->has('newForm.asistenAnestesi')" class="w-full" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Instrumen" class="mb-1" />
+                                            <x-text-input wire:model.live="newForm.instrumen" :error="$errors->has('newForm.instrumen')" class="w-full" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="On Loop" class="mb-1" />
+                                            <x-text-input wire:model.live="newForm.onLoop" :error="$errors->has('newForm.onLoop')" class="w-full" />
+                                        </div>
+                                    </div>
+                                    <p class="mt-1 text-xs italic text-muted-soft">Terisi otomatis dari crew Administrasi OK bila transaksinya sudah ada — boleh dikoreksi.</p>
+                                </div>
                             </section>
 
                             <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
@@ -770,10 +935,87 @@ new class extends Component {
                                         </x-select-input>
                                     </div>
                                 </div>
-                                <div>
-                                    <x-input-label value="Obat Pre-Medikasi (obat / dosis / jam / pelaksana)" class="mb-1" />
-                                    <x-textarea wire:model.live="newForm.obatPreMedikasi" :error="$errors->has('newForm.obatPreMedikasi')" rows="3" class="w-full" />
-                                </div>
+                                {{-- Obat Pre Medikasi — tabel entri (obat/dosis/jam/pelaksana) ala persiapan pre-op --}}
+                                <x-border-form :title="__('Obat Pre Medikasi')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
+                                    <div class="space-y-3">
+                                        @if (!$formReadOnly)
+                                            <div class="grid grid-cols-12 gap-2">
+                                                <div class="col-span-12 sm:col-span-4">
+                                                    <x-input-label value="Obat Pre Medikasi" :required="true" class="truncate whitespace-nowrap" />
+                                                    <x-text-input wire:model="preMedObat" wire:keydown.enter.prevent="addPreMedikasi" placeholder="Midazolam" :error="$errors->has('preMedObat')" class="w-full px-2 mt-1" />
+                                                    <x-input-error :messages="$errors->get('preMedObat')" class="mt-1" />
+                                                </div>
+                                                <div class="col-span-12 sm:col-span-2">
+                                                    <x-input-label value="Dosis" class="truncate whitespace-nowrap" />
+                                                    <x-text-input wire:model="preMedDosis" wire:keydown.enter.prevent="addPreMedikasi" placeholder="2 mg" :error="$errors->has('preMedDosis')" class="w-full px-2 mt-1" />
+                                                    <x-input-error :messages="$errors->get('preMedDosis')" class="mt-1" />
+                                                </div>
+                                                <div class="col-span-12 sm:col-span-3">
+                                                    <x-input-label value="Jam" class="truncate whitespace-nowrap" />
+                                                    <div class="flex gap-1 mt-1">
+                                                        <x-text-input wire:model="preMedJam" placeholder="HH:mm:ss" :error="$errors->has('preMedJam')" class="w-full px-2" />
+                                                        <x-now-button wire:click="setPreMedJamNow" />
+                                                    </div>
+                                                    <x-input-error :messages="$errors->get('preMedJam')" class="mt-1" />
+                                                </div>
+                                                <div class="col-span-12 sm:col-span-3">
+                                                    <x-input-label value="Pelaksana" class="truncate whitespace-nowrap" />
+                                                    <x-text-input wire:model="preMedPelaksana" wire:keydown.enter.prevent="addPreMedikasi" placeholder="Nama pelaksana" :error="$errors->has('preMedPelaksana')" class="w-full px-2 mt-1" />
+                                                    <x-input-error :messages="$errors->get('preMedPelaksana')" class="mt-1" />
+                                                </div>
+                                            </div>
+
+                                            <x-primary-button type="button" wire:click="addPreMedikasi" wire:loading.attr="disabled" wire:target="addPreMedikasi" class="justify-center gap-1.5 w-full">
+                                                <span wire:loading.remove wire:target="addPreMedikasi" class="flex items-center gap-1.5">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                                                    Tambah
+                                                </span>
+                                                <span wire:loading wire:target="addPreMedikasi" class="flex items-center gap-1.5"><x-loading class="w-4 h-4" /> Menambahkan...</span>
+                                            </x-primary-button>
+                                        @endif
+
+                                        <div class="overflow-x-auto bg-canvas border rounded-2xl border-hairline dark:border-gray-700">
+                                            <table class="ds-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="ds-c w-10">No</th>
+                                                        <th>Obat Pre Medikasi</th>
+                                                        <th>Dosis</th>
+                                                        <th>Jam</th>
+                                                        <th>Pelaksana</th>
+                                                        <th class="ds-c w-14">Aksi</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @forelse ($newForm['obatPreMedikasi'] ?? [] as $preMedIndex => $preMedItem)
+                                                        <tr wire:key="pre-med-row-{{ $preMedIndex }}">
+                                                            <td class="ds-c ds-td-meta">{{ $preMedIndex + 1 }}</td>
+                                                            <td class="ds-td-strong">{{ ($preMedItem['obat'] ?? '') ?: '-' }}</td>
+                                                            <td>{{ ($preMedItem['dosis'] ?? '') ?: '-' }}</td>
+                                                            <td>{{ ($preMedItem['jam'] ?? '') ?: '-' }}</td>
+                                                            <td>{{ ($preMedItem['pelaksana'] ?? '') ?: '-' }}</td>
+                                                            <td class="ds-c">
+                                                                @if (!$formReadOnly)
+                                                                    <x-confirm-button variant="danger-soft" :action="'removePreMedikasi(' . $preMedIndex . ')'"
+                                                                        title="Hapus Baris" :message="'Yakin hapus ' . ($preMedItem['obat'] ?? 'baris ini') . ' dari daftar?'"
+                                                                        confirmText="Ya, hapus" cancelText="Batal" class="px-2 py-1">
+                                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                                    </x-confirm-button>
+                                                                @else
+                                                                    <span class="text-muted-soft">—</span>
+                                                                @endif
+                                                            </td>
+                                                        </tr>
+                                                    @empty
+                                                        <tr>
+                                                            <td colspan="6" class="ds-c italic text-muted-soft">Belum ada obat pre medikasi.</td>
+                                                        </tr>
+                                                    @endforelse
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </x-border-form>
                             </section>
 
                             {{-- ══ TTD PETUGAS & KUNCI ══ --}}
@@ -898,6 +1140,17 @@ new class extends Component {
                                                                 <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['rencanaTindakan'] ?: '-' }}</dd>
                                                             </div>
                                                             <div class="md:col-span-2">
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tim</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                                    Dokter Operator: {{ ($entry['dokterOperator'] ?? '') ?: '-' }}
+                                                                    &nbsp;&bull;&nbsp; Dokter Anestesi: {{ ($entry['dokterAnestesi'] ?? '') ?: '-' }}
+                                                                    &nbsp;&bull;&nbsp; Asisten Operator: {{ ($entry['asistenOperator'] ?? '') ?: '-' }}
+                                                                    &nbsp;&bull;&nbsp; Asisten Anestesi: {{ ($entry['asistenAnestesi'] ?? '') ?: '-' }}
+                                                                    &nbsp;&bull;&nbsp; Instrumen: {{ ($entry['instrumen'] ?? '') ?: '-' }}
+                                                                    &nbsp;&bull;&nbsp; On Loop: {{ ($entry['onLoop'] ?? '') ?: '-' }}
+                                                                </dd>
+                                                            </div>
+                                                            <div class="md:col-span-2">
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Amnanese</dt>
                                                                 <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['amnanese'] ?: '-' }}</dd>
                                                             </div>
@@ -977,8 +1230,24 @@ new class extends Component {
                                                                 <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['manajemenNyeri'] ?: '-' }}</dd>
                                                             </div>
                                                             <div class="md:col-span-2">
-                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Obat Pre-Medikasi</dt>
-                                                                <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['obatPreMedikasi'] ?: '-' }}</dd>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Obat Pre Medikasi</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                                    @php $preMedRows = $this->normalizePreMedikasi($entry['obatPreMedikasi'] ?? []); @endphp
+                                                                    @if (count($preMedRows) > 0)
+                                                                        <ul class="pl-5 list-disc space-y-0.5">
+                                                                            @foreach ($preMedRows as $preMedRow)
+                                                                                <li>
+                                                                                    <span class="font-medium">{{ ($preMedRow['obat'] ?? '') ?: '-' }}</span>
+                                                                                    @if (filled($preMedRow['dosis'] ?? '')) — {{ $preMedRow['dosis'] }} @endif
+                                                                                    @if (filled($preMedRow['jam'] ?? '')) &bull; Jam {{ $preMedRow['jam'] }} @endif
+                                                                                    @if (filled($preMedRow['pelaksana'] ?? '')) &bull; {{ $preMedRow['pelaksana'] }} @endif
+                                                                                </li>
+                                                                            @endforeach
+                                                                        </ul>
+                                                                    @else
+                                                                        -
+                                                                    @endif
+                                                                </dd>
                                                             </div>
                                                             <div>
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Petugas (TTD)</dt>
