@@ -30,7 +30,7 @@ final class KamarOperasiTarif
         'instrument_fee'    => 'BIAYA INSTRUMENT',
         'asistopr_fee'      => 'BIAYA ASISTEN OPERATOR',
         'asistanes_fee'     => 'BIAYA ASISTEN ANESTESI',
-        'omlop_fee'         => 'BIAYA OM LOP',
+        'omlop_fee'         => 'BIAYA ON LOOP',
         'ok_fee'            => 'SEWA OK',
         'rr_fee'            => 'JASA PERAWAT',
         'equipment_fee'     => 'BAHAN DAN ALAT PASIEN',
@@ -53,7 +53,7 @@ final class KamarOperasiTarif
         'instrument_fee'    => 'Biaya Instrument',
         'asistopr_fee'      => 'Jasa Asisten Operator',
         'asistanes_fee'     => 'Jasa Asisten Anestesi',
-        'omlop_fee'         => 'Biaya OM LOP',
+        'omlop_fee'         => 'Biaya ON LOOP',
         'ok_fee'            => 'Sewa OK',
         'rr_fee'            => 'Jasa Perawat / RR',
         'equipment_fee'     => 'Bahan & Alat',
@@ -102,6 +102,7 @@ final class KamarOperasiTarif
         'emp_id_asistopr' => ['label' => 'Asisten Operator', 'fee' => 'asistopr_fee', 'oncall' => 'oncallasistopr_fee', 'jenis' => 'karyawan'],
         'emp_id_asistanes' => ['label' => 'Asisten Anestesi', 'fee' => 'asistanes_fee', 'oncall' => 'oncallasistanes_fee', 'jenis' => 'karyawan'],
         'emp_id_instrument' => ['label' => 'Instrument', 'fee' => 'instrument_fee', 'oncall' => 'oncallinstrument_fee', 'jenis' => 'karyawan'],
+        'omlop' => ['label' => 'ON LOOP', 'fee' => 'omlop_fee', 'oncall' => null, 'jenis' => 'pos'],
     ];
 
     /**

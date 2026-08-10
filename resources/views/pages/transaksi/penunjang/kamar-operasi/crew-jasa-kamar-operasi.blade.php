@@ -28,12 +28,10 @@ new class extends Component {
 
     /** Nilai pos; key = kolom rstxn_oks. Null = belum pernah diisi. */
     public array $tarif = [];
-    public array $oncall = [];
 
     /** Baris siap-tampil — supaya template bebas logika & FQCN. */
     public array $crewRows = [];
     public array $posLainnyaRows = [];
-    public array $oncallRows = [];
 
     /** Nilai crew terpilih; dipakai sebagai initial value LOV. */
     public ?string $drId = null;
@@ -70,13 +68,12 @@ new class extends Component {
         }
 
         $kolomFee = array_keys(KamarOperasiTarif::POS);
-        $kolomOncall = array_keys(KamarOperasiTarif::POS_ONCALL);
 
         $row = DB::table('rstxn_oks as o')
             ->leftJoin('rsmst_doctors as dopr', 'dopr.dr_id', '=', 'o.dr_id')
             ->leftJoin('rsmst_doctors as danes', 'danes.dr_id', '=', 'o.dr_id_ok')
             ->leftJoin('rsmst_mstdiags as dg', 'dg.diag_id', '=', 'o.diag_id')
-            ->select('o.ok_reg', 'o.rihdr_no', 'o.ok_status', 'o.dr_id', 'o.dr_id_ok', 'o.emp_id_asistopr', 'o.emp_id_asistanes', 'o.emp_id_instrument', 'o.emp_id_changeanesdoc', 'dg.diag_desc', 'dopr.dr_name as operator_name', 'danes.dr_name as anestesi_name', ...$kolomFee, ...$kolomOncall)
+            ->select('o.ok_reg', 'o.rihdr_no', 'o.ok_status', 'o.dr_id', 'o.dr_id_ok', 'o.emp_id_asistopr', 'o.emp_id_asistanes', 'o.emp_id_instrument', 'o.emp_id_changeanesdoc', 'dg.diag_desc', 'dopr.dr_name as operator_name', 'danes.dr_name as anestesi_name', ...$kolomFee)
             ->where('o.ok_reg', $this->okReg)
             ->first();
 
@@ -94,11 +91,6 @@ new class extends Component {
         $this->tarif = [];
         foreach ($kolomFee as $kolom) {
             $this->tarif[$kolom] = $data[$kolom] === null ? null : (int) $data[$kolom];
-        }
-
-        $this->oncall = [];
-        foreach ($kolomOncall as $kolom) {
-            $this->oncall[$kolom] = $data[$kolom] === null ? null : (int) $data[$kolom];
         }
 
         $this->drId = $data['dr_id'] ?? null;
@@ -162,11 +154,6 @@ new class extends Component {
             ];
         }
 
-        $this->oncallRows = [];
-        foreach (KamarOperasiTarif::POS_ONCALL as $kolom => $label) {
-            $this->oncallRows[] = ['kolom' => $kolom, 'label' => $label];
-        }
-
         $this->diagDesc = $data['diag_desc'] ?? null;
     }
 
@@ -197,11 +184,6 @@ new class extends Component {
         $kolomBoleh = array_values(array_diff(array_keys(KamarOperasiTarif::POS), KamarOperasiTarif::POS_TURUNAN_DETAIL));
 
         $this->simpanKolomFee((string) $key, $value === null ? null : (string) $value, $kolomBoleh, KamarOperasiTarif::LABEL);
-    }
-
-    public function updatedOncall($value, $key): void
-    {
-        $this->simpanKolomFee((string) $key, $value === null ? null : (string) $value, array_keys(KamarOperasiTarif::POS_ONCALL), KamarOperasiTarif::POS_ONCALL);
     }
 
     /**
@@ -313,6 +295,11 @@ new class extends Component {
     private function simpanCrew(string $kolom, ?string $nilai, string $label): void
     {
         if (!array_key_exists($kolom, KamarOperasiTarif::CREW)) {
+            return;
+        }
+
+        // Pos tarif tanpa LOV crew (mis. ON LOOP) tidak punya kolom di rstxn_oks.
+        if (KamarOperasiTarif::CREW[$kolom]['jenis'] === 'pos') {
             return;
         }
 
@@ -510,6 +497,9 @@ new class extends Component {
                     {{-- Nama petugas --}}
                     @if ($isFormLocked)
                         <p class="mb-1 text-sm font-medium text-ink dark:text-gray-200">{{ $crew['namaCrew'] ?: '-' }}</p>
+                    @elseif ($crew['jenis'] === 'pos')
+                        {{-- Pos tarif tanpa LOV crew (mis. ON LOOP). Hanya input tarif di bawah. --}}
+                        <p class="mb-1 text-sm italic text-muted-soft dark:text-gray-500">Pos tarif</p>
                     @elseif ($crew['jenis'] === 'dokter')
                         <div class="mb-1">
                             <livewire:lov.dokter.lov-dokter :target="$crew['target']" label=""
@@ -571,35 +561,4 @@ new class extends Component {
         </div>
     </div>
 
-    {{-- KELOMPOK 2 — jasa petugas yang TIDAK masuk tagihan pasien. --}}
-    <div class="p-2 mt-3 border border-dashed rounded-lg border-hairline bg-surface-soft dark:border-gray-600 dark:bg-gray-800/40">
-        <div class="flex flex-wrap items-baseline px-1 mb-2 gap-x-2">
-            <p class="text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-400">
-                Tidak ditagihkan ke pasien
-            </p>
-            <span class="text-sm text-muted dark:text-gray-400">
-                jasa on call petugas &mdash; tidak ikut ditransfer ke biaya rawat inap
-            </span>
-            <span class="ml-auto text-sm font-semibold text-ink dark:text-gray-200 tabular-nums">
-                Rp {{ number_format(array_sum(array_map(fn($nilai) => (int) $nilai, $oncall))) }}
-            </span>
-        </div>
-
-        <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
-            @foreach ($oncallRows as $baris)
-                @php $kolom = $baris['kolom']; @endphp
-                <div wire:key="pos-oncall-{{ $kolom }}" class="px-2 py-1">
-                    <p class="text-sm truncate text-muted dark:text-gray-400 mb-0.5">{{ $baris['label'] }}</p>
-                    @if ($isFormLocked)
-                        <p class="text-sm font-semibold text-ink dark:text-gray-200 tabular-nums">
-                            {{ ($oncall[$kolom] ?? null) === null ? '—' : 'Rp ' . number_format($oncall[$kolom]) }}
-                        </p>
-                    @else
-                        <x-text-input-number wire:model="oncall.{{ $kolom }}" placeholder="belum diisi"
-                            x-on:keydown.enter.prevent="enterBerikutnya($el)" />
-                    @endif
-                </div>
-            @endforeach
-        </div>
-    </div>
 </div>
