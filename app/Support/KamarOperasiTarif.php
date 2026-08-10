@@ -98,7 +98,7 @@ final class KamarOperasiTarif
     public const CREW = [
         'dr_id' => ['label' => 'Operator', 'fee' => 'oprdoc_fee', 'oncall' => null, 'jenis' => 'dokter'],
         'dr_id_ok' => ['label' => 'Anestesi', 'fee' => 'anesdoc_fee', 'oncall' => null, 'jenis' => 'dokter'],
-        'emp_id_changeanesdoc' => ['label' => 'Pengganti Anestesi', 'fee' => 'changeanesdoc_fee', 'oncall' => null, 'jenis' => 'karyawan'],
+        // 'emp_id_changeanesdoc' => ['label' => 'Pengganti Anestesi', 'fee' => 'changeanesdoc_fee', 'oncall' => null, 'jenis' => 'karyawan'],
         'emp_id_asistopr' => ['label' => 'Asisten Operator', 'fee' => 'asistopr_fee', 'oncall' => 'oncallasistopr_fee', 'jenis' => 'karyawan'],
         'emp_id_asistanes' => ['label' => 'Asisten Anestesi', 'fee' => 'asistanes_fee', 'oncall' => 'oncallasistanes_fee', 'jenis' => 'karyawan'],
         'emp_id_instrument' => ['label' => 'Instrument', 'fee' => 'instrument_fee', 'oncall' => 'oncallinstrument_fee', 'jenis' => 'karyawan'],

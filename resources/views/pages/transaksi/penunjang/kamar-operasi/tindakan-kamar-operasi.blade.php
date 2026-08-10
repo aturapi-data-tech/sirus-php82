@@ -5,6 +5,7 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\Txn\Penunjang\KamarOperasiTrait;
 use App\Support\KamarOperasiTarif;
 
@@ -17,16 +18,19 @@ use App\Support\KamarOperasiTarif;
  * menyesuaikan, dan seluruhnya diaudit ke kunjungan induk.
  */
 new class extends Component {
-    use KamarOperasiTrait;
+    use KamarOperasiTrait, WithRenderVersioningTrait;
 
     public string $okReg = '';
     public bool $isFormLocked = true;
     /** Dipakai LOV tarif per kelas kamar; disimpan sebagai properti supaya
-        view tidak perlu memanggil method trait yang protected. */
+     view tidak perlu memanggil method trait yang protected. */
     public string $sumber = 'RI';
     public int $refNo = 0;
 
     public array $rows = [];
+
+    public array $renderVersions = [];
+    protected array $renderAreas = ['form-tindakan'];
 
     /* ── Form tambah ── */
     public ?string $formAccdocId = null;
@@ -35,6 +39,7 @@ new class extends Component {
 
     public function mount(string $okReg = ''): void
     {
+        $this->registerAreas($this->renderAreas);
         $this->okReg = $okReg;
         $this->findData();
     }
@@ -50,19 +55,14 @@ new class extends Component {
         $this->isFormLocked = $this->statusOk($this->okReg) !== 'A';
         ['sumber' => $this->sumber, 'refNo' => $this->refNo] = $this->sumberRefOk($this->okReg);
 
-        $this->rows = DB::table('rstxn_okacts as t')
-            ->leftJoin('rsmst_accdocs as a', 'a.accdoc_id', '=', 't.accdoc_id')
-            ->select('t.okact_id', 't.accdoc_id', 'a.accdoc_desc', 't.okact_price')
-            ->where('t.ok_reg', $this->okReg)
-            ->orderBy('t.okact_id')
-            ->get()
-            ->map(fn($tindakan) => (array) $tindakan)
-            ->toArray();
+        $this->rows = DB::table('rstxn_okacts as t')->leftJoin('rsmst_accdocs as a', 'a.accdoc_id', '=', 't.accdoc_id')->select('t.okact_id', 't.accdoc_id', 'a.accdoc_desc', 't.okact_price')->where('t.ok_reg', $this->okReg)->orderBy('t.okact_id')->get()->map(fn($tindakan) => (array) $tindakan)->toArray();
     }
 
-    private function resetForm(): void
+    public function resetForm(): void
     {
         $this->reset(['formAccdocId', 'formAccdocDesc', 'formHarga']);
+        $this->incrementVersion('form-tindakan');
+        $this->dispatch('kamar-operasi-fokus', ke: 'ok-lov-tindakan');
     }
 
     private function bolehUbah(): bool
@@ -186,7 +186,8 @@ new class extends Component {
     </p>
 
     @unless ($isFormLocked)
-        <div class="grid grid-cols-1 gap-3 p-3 mb-4 border rounded-xl border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40 lg:grid-cols-12">
+        <div
+            class="grid grid-cols-1 gap-3 items-end p-3 mb-4 border rounded-xl border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40 lg:grid-cols-12">
             {{-- Enter saat kolom cari masih kosong = selesai di tab ini. --}}
             <div class="lg:col-span-7" id="ok-lov-tindakan"
                 x-on:keydown.enter="if (!$event.target.value?.trim()) $dispatch('kamar-operasi-lanjut-tab', { ke: 'BahanAlat' })">
@@ -208,6 +209,7 @@ new class extends Component {
                 <x-input-label value="Tarif" />
                 {{-- Enter: ada isi -> simpan; kosong -> pindah tab berikutnya. --}}
                 <x-text-input-number id="ok-tarif-tindakan" wire:model="formHarga" placeholder="0"
+                    wire:key="{{ $this->renderKey('form-tindakan', 'tarif') }}"
                     x-on:keydown.enter.prevent="
                         const kosong = $el.value.replace(/\D/g, '') === '';
                         $el.blur();
@@ -215,21 +217,32 @@ new class extends Component {
                     " />
             </div>
             <div class="flex items-end lg:col-span-2">
-                <x-primary-button type="button" wire:click="tambah" wire:loading.attr="disabled"
-                    wire:target="tambah" class="justify-center w-full text-xs">
-                    <span wire:loading.remove wire:target="tambah">Tambah</span>
-                    <span wire:loading wire:target="tambah" class="flex items-center gap-1">
-                        <x-loading /> ...
-                    </span>
-                </x-primary-button>
+                <x-icon-button color="gray" type="button" wire:click.prevent="resetForm"
+                    title="Batal — kosongkan form entri">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </x-icon-button>
             </div>
+
+            <div class=" lg:col-span-5">
+                {{-- Petunjuk cara simpan — tombol Tambah ditiadakan --}}
+                <p class="mt-3 text-xs text-muted dark:text-gray-400">
+                    Tekan <span
+                        class="px-1.5 py-0.5 font-semibold rounded border border-hairline bg-canvas text-body dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">Enter</span>
+                    di kolom terakhir untuk menyimpan.
+                </p>
+            </div>
+
         </div>
+
     @endunless
 
     <div class="overflow-hidden bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
-                <thead class="text-sm font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300 bg-surface-soft dark:bg-gray-800/50">
+                <thead
+                    class="text-sm font-semibold tracking-wide text-left text-gray-600 uppercase dark:text-gray-300 bg-surface-soft dark:bg-gray-800/50">
                     <tr>
                         <th class="px-4 py-3">Kode</th>
                         <th class="px-4 py-3">Jenis Tindakan</th>
@@ -241,7 +254,8 @@ new class extends Component {
                 </thead>
                 <tbody class="divide-y divide-hairline-soft dark:divide-gray-800">
                     @forelse ($rows as $row)
-                        <tr wire:key="tindakan-{{ $row['okact_id'] }}" class="transition hover:bg-surface-soft dark:hover:bg-gray-800/40">
+                        <tr wire:key="tindakan-{{ $row['okact_id'] }}"
+                            class="transition hover:bg-surface-soft dark:hover:bg-gray-800/40">
                             <td class="px-4 py-1.5 font-mono text-muted">{{ $row['accdoc_id'] ?? '-' }}</td>
                             <td class="px-4 py-1.5 text-ink dark:text-gray-200">{{ $row['accdoc_desc'] ?? '-' }}</td>
                             <td class="px-4 py-1.5 font-semibold text-right text-ink dark:text-gray-200 tabular-nums">
@@ -249,27 +263,31 @@ new class extends Component {
                             </td>
                             @unless ($isFormLocked)
                                 <td class="px-4 py-1.5 text-center">
-                                    <x-confirm-button variant="danger" action="hapus({{ $row['okact_id'] }})"
-                                        title="Hapus Tindakan" message="Hapus tindakan ini? Jasa dokter operator akan dihitung ulang."
-                                        confirmText="Ya, hapus" cancelText="Batal" class="!px-2 !py-1 text-xs">
+                                    <x-outline-button type="button" wire:click.prevent="hapus({{ $row['okact_id'] }})"
+                                        wire:confirm="Hapus tindakan ini? Jasa dokter operator akan dihitung ulang."
+                                        wire:loading.attr="disabled"
+                                        class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300 !px-2 !py-1"
+                                        title="Hapus tindakan">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
-                                    </x-confirm-button>
+                                    </x-outline-button>
                                 </td>
                             @endunless
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="px-4 py-8 text-center text-muted-soft">Belum ada tindakan operasi</td>
+                            <td colspan="4" class="px-4 py-8 text-center text-muted-soft">Belum ada tindakan operasi
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
                 @if (!empty($rows))
                     <tfoot class="border-t border-hairline bg-surface-soft dark:bg-gray-800/50 dark:border-gray-700">
                         <tr>
-                            <td colspan="2" class="px-4 py-3 text-sm font-semibold text-muted dark:text-gray-400">Total</td>
+                            <td colspan="2" class="px-4 py-3 text-sm font-semibold text-muted dark:text-gray-400">
+                                Total</td>
                             <td class="px-4 py-3 text-sm font-bold text-right text-ink dark:text-white">
                                 Rp {{ number_format(collect($rows)->sum('okact_price')) }}
                             </td>

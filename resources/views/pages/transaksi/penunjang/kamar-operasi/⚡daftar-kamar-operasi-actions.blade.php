@@ -17,7 +17,6 @@ use App\Support\KamarOperasiTarif;
  *   crew-jasa-kamar-operasi   — crew + pos tarif + jasa on call
  *   tindakan-kamar-operasi    — tab Tindakan Operasi
  *   bahan-alat-kamar-operasi  — tab Bahan dan Alat
- *   omlop-kamar-operasi       — tab Crew OM LOP
  *
  * Kontraknya sama dengan Administrasi RJ: anak memuat datanya sendiri dari
  * `okReg`, lalu `dispatch('kamar-operasi.updated')` setelah menulis; shell dan
@@ -30,7 +29,7 @@ new class extends Component {
     protected array $renderAreas = ['kamar-operasi-actions-modal'];
 
     public string $okReg = '';
-    public string $activeTab = 'Tindakan'; // Tindakan | BahanAlat | Omlop
+    public string $activeTab = 'Tindakan'; // Tindakan | BahanAlat
     public array $headerData = [];
 
     /** Sumber layanan kunjungan induk (RJ | UGD | RI) + nomornya. */
@@ -47,7 +46,7 @@ new class extends Component {
     public bool $indukTerkunci = false;
     public string $indukTerkunciSebab = '';
 
-    public array $EmrMenuKamarOperasi = [['ermMenuId' => 'Tindakan', 'ermMenuName' => 'Tindakan Operasi'], ['ermMenuId' => 'BahanAlat', 'ermMenuName' => 'Bahan dan Alat'], ['ermMenuId' => 'Omlop', 'ermMenuName' => 'Crew OM LOP']];
+    public array $EmrMenuKamarOperasi = [['ermMenuId' => 'Tindakan', 'ermMenuName' => 'Tindakan Operasi'], ['ermMenuId' => 'BahanAlat', 'ermMenuName' => 'Bahan dan Alat']];
 
     public function mount(): void
     {
@@ -210,7 +209,7 @@ new class extends Component {
 
         // Sekalian pindahkan kursor ke kotak cari tab tujuan — kalau tidak, tab
         // berganti tapi kursornya tertinggal di tab asal.
-        $fokusPerTab = ['Tindakan' => 'ok-lov-tindakan', 'BahanAlat' => 'ok-lov-bahan', 'Omlop' => 'ok-lov-omlop'];
+        $fokusPerTab = ['Tindakan' => 'ok-lov-tindakan', 'BahanAlat' => 'ok-lov-bahan'];
         $this->dispatch('kamar-operasi-fokus', ke: $fokusPerTab[$tab]);
     }
 
@@ -601,11 +600,6 @@ new class extends Component {
                                 <div x-show="tab === 'BahanAlat'" x-cloak>
                                     <livewire:pages::transaksi.penunjang.kamar-operasi.bahan-alat-kamar-operasi
                                         :okReg="$okReg" wire:key="tab-bahan-alat-{{ $okReg }}" />
-                                </div>
-
-                                <div x-show="tab === 'Omlop'" x-cloak>
-                                    <livewire:pages::transaksi.penunjang.kamar-operasi.omlop-kamar-operasi
-                                        :okReg="$okReg" wire:key="tab-omlop-{{ $okReg }}" />
                                 </div>
                             </div>
                         </div>

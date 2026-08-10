@@ -105,7 +105,6 @@ penunjang/kamar-operasi/
   crew-jasa-kamar-operasi.blade.php         crew + pos tarif + jasa on call
   tindakan-kamar-operasi.blade.php          tab Tindakan Operasi
   bahan-alat-kamar-operasi.blade.php        tab Bahan dan Alat
-  omlop-kamar-operasi.blade.php             tab Crew OM LOP
 
 app/Http/Traits/Txn/Penunjang/KamarOperasiTrait.php   guard bersama
 app/Support/KamarOperasiTarif.php                     registry pos + mesin tarif
@@ -224,11 +223,10 @@ dan setiap perubahan tarif/crew diaudit ke `userLog` kunjungan induk.
 - **Tabel di tab** ikut standar Administrasi RJ: pembungkus `rounded-2xl` + `overflow-x-auto`,
   `thead` `text-sm text-gray-600`, `th` `px-4 py-3`, baris hover, `tfoot` Total.
 - **Semua input angka** `x-text-input-number` tanpa override kelas. Simpan dipicu hook
-  `updatedTarif/updatedOncall/updatedRowsOmlop` karena komponen sinkron lewat `$wire.set`
-  saat blur.
+  `updatedTarif/updatedOncall` karena komponen sinkron lewat `$wire.set` saat blur.
   > Jebakan: kalau nilai lama dibandingkan dari array yang ter-bind `wire:model`, isinya
   > sudah nilai BARU saat hook jalan → "tidak berubah" terus dan simpan tak pernah jalan.
-  > Baca nilai lama dari DB (kasus `updateOmlopFee`).
+  > Baca nilai lama dari DB.
 - **Fokus otomatis saat modal dibuka** — `openActions()` mengirim `kamar-operasi-fokus`
   ke kotak pencarian tab pertama, **hanya bila `!$isFormLocked`** (mode entry). Pola sama
   dengan `administrasi-rj::openModal()` yang mengirim `focus-lov-jasa-karyawan`.
@@ -249,8 +247,8 @@ dan setiap perubahan tarif/crew diaudit ke `userLog` kunjungan induk.
   - pilih crew dari LOV → fokus turun ke kolom Jasa miliknya (`ok-jasa-<kolom>`).
   - form tambah: LOV → Enter → kolom angka → Enter → simpan → fokus balik ke LOV.
   - **kolom kosong + Enter = "selesai di sini"** → lompat ke tab berikutnya, dan di tab
-    terakhir (OM LOP) → fokus tombol **Trf Biaya-INAP**. Jadi seluruh entri bisa
-    diselesaikan Enter-Enter dari modal terbuka sampai tombol simpan, tanpa mouse.
+    terakhir (Bahan dan Alat) → fokus kembali ke kotak pencarian LOV. Jadi seluruh entri
+    bisa diselesaikan Enter-Enter tanpa mouse.
     Pola sama dengan Administrasi RJ (`if (!$event.target.value?.trim()) $dispatch(...)`).
   > Jebakan: pergantian tab **harus lewat server**. Enter di kolom angka memicu blur →
   > `$wire.set`, dan respons Livewire me-morph DOM sambil membawa `activeTab` lama sehingga
