@@ -40,15 +40,21 @@ new class extends Component {
         'riwayatAnestesi' => false,
         'riwayatAnestesiJenis' => '',
         'merokok' => false,
+        'merokokKet' => '',
         'alkohol' => false,
+        'alkoholKet' => '',
         'riwayatAlergi' => false,
         'riwayatAlergiJenis' => '',
         'persiapanTransfusi' => false,
         'transfusiJumlah' => '',
-        'td' => '',
+        // Tanda vital — mengikuti pola Pra Anestesi RI (sistolik/diastolik terpisah + satuan)
+        'sistolik' => '',
+        'diastolik' => '',
         'nadi' => '',
         'rr' => '',
         'suhu' => '',
+        'spo2' => '',
+        'gda' => '',
         'pemFisikPernafasan' => '',
         'pemFisikTulangBelakang' => '',
         'pemFisikJantungParu' => '',
@@ -190,15 +196,20 @@ new class extends Component {
             'riwayatAnestesi' => (bool) ($this->newForm['riwayatAnestesi'] ?? false),
             'riwayatAnestesiJenis' => $this->newForm['riwayatAnestesiJenis'] ?? '',
             'merokok' => (bool) ($this->newForm['merokok'] ?? false),
+            'merokokKet' => $this->newForm['merokokKet'] ?? '',
             'alkohol' => (bool) ($this->newForm['alkohol'] ?? false),
+            'alkoholKet' => $this->newForm['alkoholKet'] ?? '',
             'riwayatAlergi' => (bool) ($this->newForm['riwayatAlergi'] ?? false),
             'riwayatAlergiJenis' => $this->newForm['riwayatAlergiJenis'] ?? '',
             'persiapanTransfusi' => (bool) ($this->newForm['persiapanTransfusi'] ?? false),
             'transfusiJumlah' => $this->newForm['transfusiJumlah'] ?? '',
-            'td' => $this->newForm['td'] ?? '',
+            'sistolik' => $this->newForm['sistolik'] ?? '',
+            'diastolik' => $this->newForm['diastolik'] ?? '',
             'nadi' => $this->newForm['nadi'] ?? '',
             'rr' => $this->newForm['rr'] ?? '',
             'suhu' => $this->newForm['suhu'] ?? '',
+            'spo2' => $this->newForm['spo2'] ?? '',
+            'gda' => $this->newForm['gda'] ?? '',
             'pemFisikPernafasan' => $this->newForm['pemFisikPernafasan'] ?? '',
             'pemFisikTulangBelakang' => $this->newForm['pemFisikTulangBelakang'] ?? '',
             'pemFisikJantungParu' => $this->newForm['pemFisikJantungParu'] ?? '',
@@ -477,9 +488,10 @@ new class extends Component {
     {
         $this->newForm = [
             'tanggal' => '', 'tempat' => 'Kamar Operasi (OK)', 'diagnosisPraAnestesi' => '', 'rencanaTindakan' => '',
-            'amnanese' => '', 'riwayatAnestesi' => false, 'riwayatAnestesiJenis' => '', 'merokok' => false, 'alkohol' => false,
+            'amnanese' => '', 'riwayatAnestesi' => false, 'riwayatAnestesiJenis' => '',
+            'merokok' => false, 'merokokKet' => '', 'alkohol' => false, 'alkoholKet' => '',
             'riwayatAlergi' => false, 'riwayatAlergiJenis' => '', 'persiapanTransfusi' => false, 'transfusiJumlah' => '',
-            'td' => '', 'nadi' => '', 'rr' => '', 'suhu' => '',
+            'sistolik' => '', 'diastolik' => '', 'nadi' => '', 'rr' => '', 'suhu' => '', 'spo2' => '', 'gda' => '',
             'pemFisikPernafasan' => '', 'pemFisikTulangBelakang' => '', 'pemFisikJantungParu' => '', 'pemFisikAbdomen' => '',
             'penunjangLab' => '', 'penunjangEkg' => '', 'penunjangThorak' => '', 'klasifikasiAsa' => '',
             'rencanaAnestesi' => '', 'pemulihanPasca' => '', 'manajemenNyeri' => '', 'obatPreMedikasi' => '',
@@ -630,34 +642,85 @@ new class extends Component {
                                     <x-input-label value="Amnanese" class="mb-1" />
                                     <x-textarea wire:model.live="newForm.amnanese" :error="$errors->has('newForm.amnanese')" rows="2" class="w-full" />
                                 </div>
-                                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                    <x-toggle wire:model.live="newForm.riwayatAnestesi" :trueValue="true" :falseValue="false" label="Ada riwayat anestesi" :disabled="$formReadOnly" />
-                                    <x-toggle wire:model.live="newForm.riwayatAlergi" :trueValue="true" :falseValue="false" label="Ada riwayat alergi" :disabled="$formReadOnly" />
+                                <div class="space-y-3">
+                                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                        <div class="shrink-0 sm:w-52">
+                                            <x-toggle wire:model.live="newForm.riwayatAnestesi" :trueValue="true" :falseValue="false" label="Ada riwayat anestesi" :disabled="$formReadOnly" />
+                                        </div>
+                                        @if ($newForm['riwayatAnestesi'])
+                                            <x-text-input wire:model.live="newForm.riwayatAnestesiJenis" :error="$errors->has('newForm.riwayatAnestesiJenis')" placeholder="Jenis / keterangan" class="w-full" />
+                                        @endif
+                                    </div>
+                                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                        <div class="shrink-0 sm:w-52">
+                                            <x-toggle wire:model.live="newForm.riwayatAlergi" :trueValue="true" :falseValue="false" label="Ada riwayat alergi" :disabled="$formReadOnly" />
+                                        </div>
+                                        @if ($newForm['riwayatAlergi'])
+                                            <x-text-input wire:model.live="newForm.riwayatAlergiJenis" :error="$errors->has('newForm.riwayatAlergiJenis')" placeholder="Jenis / keterangan" class="w-full" />
+                                        @endif
+                                    </div>
+                                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                        <div class="shrink-0 sm:w-52">
+                                            <x-toggle wire:model.live="newForm.merokok" :trueValue="true" :falseValue="false" label="Merokok" :disabled="$formReadOnly" />
+                                        </div>
+                                        @if ($newForm['merokok'])
+                                            <x-text-input wire:model.live="newForm.merokokKet" :error="$errors->has('newForm.merokokKet')" placeholder="Jumlah / lama merokok" class="w-full" />
+                                        @endif
+                                    </div>
+                                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                        <div class="shrink-0 sm:w-52">
+                                            <x-toggle wire:model.live="newForm.alkohol" :trueValue="true" :falseValue="false" label="Alkohol" :disabled="$formReadOnly" />
+                                        </div>
+                                        @if ($newForm['alkohol'])
+                                            <x-text-input wire:model.live="newForm.alkoholKet" :error="$errors->has('newForm.alkoholKet')" placeholder="Jumlah / frekuensi" class="w-full" />
+                                        @endif
+                                    </div>
+                                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                        <div class="shrink-0 sm:w-52">
+                                            <x-toggle wire:model.live="newForm.persiapanTransfusi" :trueValue="true" :falseValue="false" label="Persiapan transfusi" :disabled="$formReadOnly" />
+                                        </div>
+                                        @if ($newForm['persiapanTransfusi'])
+                                            <x-text-input wire:model.live="newForm.transfusiJumlah" :error="$errors->has('newForm.transfusiJumlah')" placeholder="Jumlah / kolf / unit" class="w-full" />
+                                        @endif
+                                    </div>
                                 </div>
-                                @if ($newForm['riwayatAnestesi'])
-                                    <x-text-input wire:model.live="newForm.riwayatAnestesiJenis" :error="$errors->has('newForm.riwayatAnestesiJenis')" placeholder="Jenis anestesi sebelumnya" class="w-full" />
-                                @endif
-                                @if ($newForm['riwayatAlergi'])
-                                    <x-text-input wire:model.live="newForm.riwayatAlergiJenis" :error="$errors->has('newForm.riwayatAlergiJenis')" placeholder="Jenis alergi" class="w-full" />
-                                @endif
-                                <div class="flex flex-wrap gap-4">
-                                    <x-toggle wire:model.live="newForm.merokok" :trueValue="true" :falseValue="false" label="Merokok" :disabled="$formReadOnly" />
-                                    <x-toggle wire:model.live="newForm.alkohol" :trueValue="true" :falseValue="false" label="Alkohol" :disabled="$formReadOnly" />
-                                    <x-toggle wire:model.live="newForm.persiapanTransfusi" :trueValue="true" :falseValue="false" label="Persiapan transfusi" :disabled="$formReadOnly" />
-                                </div>
-                                @if ($newForm['persiapanTransfusi'])
-                                    <x-text-input wire:model.live="newForm.transfusiJumlah" :error="$errors->has('newForm.transfusiJumlah')" placeholder="Jumlah / kolf / unit" class="w-full max-w-xs" />
-                                @endif
                             </section>
 
+                            {{-- ══ TANDA VITAL — mengikuti pola Pra Anestesi RI ══ --}}
                             <section class="pt-6 border-t border-hairline dark:border-gray-700">
                                 <h3 class="mb-3 text-base font-semibold text-ink dark:text-gray-200">Tanda Vital</h3>
-                                <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
-                                    <div><x-input-label value="TD" class="mb-1" /><x-text-input wire:model.live="newForm.td" :error="$errors->has('newForm.td')" placeholder="120/80" class="w-full" /></div>
-                                    <div><x-input-label value="Nadi" class="mb-1" /><x-text-input wire:model.live="newForm.nadi" :error="$errors->has('newForm.nadi')" class="w-full" /></div>
-                                    <div><x-input-label value="RR" class="mb-1" /><x-text-input wire:model.live="newForm.rr" :error="$errors->has('newForm.rr')" class="w-full" /></div>
-                                    <div><x-input-label value="Suhu" class="mb-1" /><x-text-input wire:model.live="newForm.suhu" :error="$errors->has('newForm.suhu')" class="w-full" /></div>
-                                </div>
+                                <x-border-form :title="__('Tanda Vital')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
+                                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7">
+                                        <div>
+                                            <x-input-label value="Sistolik (mmHg)" class="whitespace-nowrap" />
+                                            <x-text-input wire:model.live="newForm.sistolik" :error="$errors->has('newForm.sistolik')" class="w-full mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Diastolik (mmHg)" class="whitespace-nowrap" />
+                                            <x-text-input wire:model.live="newForm.diastolik" :error="$errors->has('newForm.diastolik')" class="w-full mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Nadi (x/mnt)" class="whitespace-nowrap" />
+                                            <x-text-input wire:model.live="newForm.nadi" :error="$errors->has('newForm.nadi')" class="w-full mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="RR (x/mnt)" class="whitespace-nowrap" />
+                                            <x-text-input wire:model.live="newForm.rr" :error="$errors->has('newForm.rr')" class="w-full mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Suhu (°C)" class="whitespace-nowrap" />
+                                            <x-text-input wire:model.live="newForm.suhu" :error="$errors->has('newForm.suhu')" class="w-full mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="SPO2 (%)" class="whitespace-nowrap" />
+                                            <x-text-input wire:model.live="newForm.spo2" :error="$errors->has('newForm.spo2')" class="w-full mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="GDA (g/dl)" class="whitespace-nowrap" />
+                                            <x-text-input wire:model.live="newForm.gda" :error="$errors->has('newForm.gda')" class="w-full mt-1" />
+                                        </div>
+                                    </div>
+                                </x-border-form>
                             </section>
 
                             <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
@@ -848,15 +911,26 @@ new class extends Component {
                                                             </div>
                                                             <div>
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Merokok / Alkohol</dt>
-                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ !empty($entry['merokok']) ? 'Merokok' : '-' }}{{ !empty($entry['alkohol']) ? ' · Alkohol' : '' }}</dd>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                                    {{ !empty($entry['merokok']) ? 'Merokok' . (!empty($entry['merokokKet']) ? ' (' . $entry['merokokKet'] . ')' : '') : '—' }}
+                                                                    &nbsp;&bull;&nbsp;
+                                                                    {{ !empty($entry['alkohol']) ? 'Alkohol' . (!empty($entry['alkoholKet']) ? ' (' . $entry['alkoholKet'] . ')' : '') : '—' }}
+                                                                </dd>
                                                             </div>
                                                             <div>
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Persiapan Transfusi</dt>
                                                                 <dd class="mt-0.5 text-ink dark:text-gray-200">{{ !empty($entry['persiapanTransfusi']) ? 'Ya' . (!empty($entry['transfusiJumlah']) ? ' — ' . $entry['transfusiJumlah'] : '') : 'Tidak' }}</dd>
                                                             </div>
                                                             <div>
-                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tanda Vital (TD / Nadi / RR / Suhu)</dt>
-                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['td'] ?: '-' }} / {{ $entry['nadi'] ?: '-' }} / {{ $entry['rr'] ?: '-' }} / {{ $entry['suhu'] ?: '-' }}</dd>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tanda Vital</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                                    TD {{ $entry['sistolik'] ?: '-' }}/{{ $entry['diastolik'] ?: '-' }} mmHg
+                                                                    &nbsp;&bull;&nbsp; N {{ $entry['nadi'] ?: '-' }} x/mnt
+                                                                    &nbsp;&bull;&nbsp; RR {{ $entry['rr'] ?: '-' }} x/mnt
+                                                                    &nbsp;&bull;&nbsp; S {{ $entry['suhu'] ?: '-' }} °C
+                                                                    &nbsp;&bull;&nbsp; SpO2 {{ $entry['spo2'] ?: '-' }}%
+                                                                    &nbsp;&bull;&nbsp; GDA {{ $entry['gda'] ?: '-' }} g/dl
+                                                                </dd>
                                                             </div>
                                                             <div>
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Pernafasan / Jalan Nafas</dt>

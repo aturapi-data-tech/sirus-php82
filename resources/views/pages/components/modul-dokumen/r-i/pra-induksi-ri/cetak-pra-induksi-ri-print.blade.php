@@ -41,14 +41,24 @@
                 <p><span class="font-bold">Amnanese:</span> {!! $val($form['amnanese'] ?? '') !!}</p>
                 <p><span class="font-bold">Riwayat Anestesi:</span> {{ $yn($form['riwayatAnestesi'] ?? false) }}{{ filled($form['riwayatAnestesiJenis'] ?? '') ? ' — ' . e($form['riwayatAnestesiJenis']) : '' }}</p>
                 <p><span class="font-bold">Riwayat Alergi:</span> {{ $yn($form['riwayatAlergi'] ?? false) }}{{ filled($form['riwayatAlergiJenis'] ?? '') ? ' — ' . e($form['riwayatAlergiJenis']) : '' }}</p>
-                <p><span class="font-bold">Merokok:</span> {{ $yn($form['merokok'] ?? false) }} · <span class="font-bold">Alkohol:</span> {{ $yn($form['alkohol'] ?? false) }}</p>
+                <p>
+                    <span class="font-bold">Merokok:</span> {{ $yn($form['merokok'] ?? false) }}{{ filled($form['merokokKet'] ?? '') ? ' — ' . e($form['merokokKet']) : '' }}
+                    &nbsp;&bull;&nbsp;
+                    <span class="font-bold">Alkohol:</span> {{ $yn($form['alkohol'] ?? false) }}{{ filled($form['alkoholKet'] ?? '') ? ' — ' . e($form['alkoholKet']) : '' }}
+                </p>
                 <p><span class="font-bold">Persiapan Transfusi:</span> {{ $yn($form['persiapanTransfusi'] ?? false) }}{{ filled($form['transfusiJumlah'] ?? '') ? ' (' . e($form['transfusiJumlah']) . ')' : '' }}</p>
             </td>
         </tr>
 
         <tr>
             <td colspan="2" class="border border-black px-2 py-1.5">
-                <span class="font-bold">TTV:</span> TD {!! $val($form['td'] ?? '') !!} · N {!! $val($form['nadi'] ?? '') !!} · RR {!! $val($form['rr'] ?? '') !!} · S {!! $val($form['suhu'] ?? '') !!}
+                <span class="font-bold">TTV:</span>
+                TD {!! $val(($form['sistolik'] ?? '') . '/' . ($form['diastolik'] ?? '')) !!} mmHg
+                · N {!! $val($form['nadi'] ?? '') !!} x/mnt
+                · RR {!! $val($form['rr'] ?? '') !!} x/mnt
+                · S {!! $val($form['suhu'] ?? '') !!} °C
+                · SpO2 {!! $val($form['spo2'] ?? '') !!}%
+                · GDA {!! $val($form['gda'] ?? '') !!} g/dl
             </td>
         </tr>
 
