@@ -48,6 +48,11 @@ Aturan yang mengikat:
 - **TTD petugas adalah aksi terakhir dan sekaligus pengunci** (`setDokterPenjelas` di Inform
   Consent, `ttdPetugas()` di Akhir Hayat). JANGAN sediakan tombol "Simpan & Kunci" terpisah —
   dua jalan mengunci = perilaku bercabang.
+- Varian **multi-TTD petugas** (Surgical Safety Checklist: Perawat Sirkuler + Dokter Anestesi +
+  Operator, TANPA TTD pasien): satu aksi `setTtdRole($role)` dipakai semua peran (peta peran di
+  konstanta `TTD_ROLES`), entri terkunci **otomatis saat TTD terakhir terisi** (`semuaTtdTerisi()`) —
+  bukan lewat satu method pengunci khusus. Buka kunci pada varian ini mencabut **semua** TTD
+  petugas (aturan "TTD pasien dipertahankan" tak berlaku karena memang tak ada TTD pasien).
 - Tombol footer cukup **Simpan Draft** (jadi "Simpan Perubahan" saat melanjutkan draft).
 - `entryIsFinal()` baca flag `finalized`; fallback record lama = ada TTD pasien/keluarga.
 - Entri final tak boleh ditimpa: `persistEntry()` melempar RuntimeException bila targetnya final.
@@ -139,14 +144,19 @@ salin file actions + cetak dari jalur acuan, lalu ganti token berikut (per-strin
 |----|-----|----|
 | `Txn\Ri\EmrRITrait` | `Txn\Ugd\EmrUGDTrait` | `Txn\Rj\EmrRJTrait` |
 | `?string $riHdrNo` | `?int $rjNo` | `?int $rjNo` |
-| `$dataDaftarRi` | `$dataDaftarUGD` | `$dataDaftarRj` |
+| `$dataDaftarRi` | `$dataDaftarUGD` | `$dataDaftarPoliRJ` |
 | `findDataRI` / `checkEmrRIStatus` | `findDataUGD` / `checkEmrUGDStatus` | `findDataRJ` / … |
 | `updateJsonRI` / `appendAdminLogRI` / `lockRIRow` | `…UGD` | `…RJ` |
 | key JSON `pengkajian<Dok>RI` | `pengkajian<Dok>UGD` | `…RJ` |
 | modal `rm-<dok>-ri-` · area `modal-<dok>-ri` | `…-ugd` | `…-rj` |
-| `display-pasien-ri :riHdrNo` | `display-pasien-ugd :rjNo` | `display-pasien-rj :rjNo` |
+| `pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo` | `pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo` | `pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo` |
 | prefill `pengkajianAwalPasienRawatInap…` | path EMR UGD (mis. `diagnosisFreeText`) | path EMR RJ |
 | loadView `…r-i.<dok>.cetak-<dok>-ri-print` | `…u-g-d.<dok>.cetak-<dok>-print` | `…r-j.…` |
+
+> ⚠ Ganti tag `display-pasien` **utuh termasuk prefix namespace** `pages::transaksi.<jalur>.` —
+> jebakan nyata: replace per-token hanya mengganti sufiks komponen sehingga tersisa
+> `pages::transaksi.ri.display-pasien-rj.…` (komponen salah jalur, tapi Blade tetap kompilasi).
+> Sapu jaring pengaman: `grep -rn "pages::transaksi\.ri\." resources/views/pages/transaksi/{rj,ugd}/`.
 
 Konvensi nama: folder/file **UGD/RJ membuang sufiks** `-ri` (`…/akhir-hayat/rm-akhir-hayat-actions`),
 tapi **modal-name / renderArea / nama file PDF tetap** memakai `-ugd`/`-rj`. `regNo`/`regName`

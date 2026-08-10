@@ -23,7 +23,7 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
 
 ## Aturan keras (paling sering keliru)
 
-1. **TTD petugas = aksi TERAKHIR yang sekaligus MENGUNCI** (`ttdPetugas()`/`setDokterPenjelas`). JANGAN sediakan tombol "Simpan & Kunci" terpisah — footer cukup **Simpan Draft**. TTD masuk `rules()` supaya error merah di kolomnya.
+1. **TTD petugas = aksi TERAKHIR yang sekaligus MENGUNCI** (`ttdPetugas()`/`setDokterPenjelas`). JANGAN sediakan tombol "Simpan & Kunci" terpisah — footer cukup **Simpan Draft**. TTD masuk `rules()` supaya error merah di kolomnya. Varian **multi-TTD petugas** (Surgical Safety Checklist: Perawat Sirkuler+Dokter Anestesi+Operator, tanpa TTD pasien): `setTtdRole($role)` per peran + kunci OTOMATIS saat semua TTD terisi (`semuaTtdTerisi()`); buka kunci mencabut SEMUA TTD petugas.
 2. **Role Buka Kunci & Hapus = SATU SUMBER** `App\Support\ModulDokumenAksiRole` (konstanta `BUKA_KUNCI` & `HAPUS`; saat ini triad `Admin | Manager Umum | Manager Medis`). Dipakai via **Gate** `dokumen.bukaKunci` & `dokumen.hapus` (didaftarkan di `AppServiceProvider::boot()`). **JANGAN** tulis `@hasanyrole('Admin|Manager Umum|Manager Medis')`/`hasAnyRole([...])` literal — pakai `@can('dokumen.bukaKunci')`/`@can('dokumen.hapus')` (blade) & `auth()->user()?->can('dokumen.hapus')` (server, guard DUA lapis). Menambah/mengurangi role = ubah 1 file itu, otomatis berlaku di semua modul RI/UGD/RJ. Buka kunci mencabut `finalized` + **TTD petugas saja** (TTD pasien/keluarga & saksi DIPERTAHANKAN); wajib `appendAdminLog<Jalur>(…, 'MR')` menyebut pelakunya.
 3. **Tulis data** SELALU via `DB::transaction` + `lock<Jalur>Row` + `updateJson<Jalur>` + audit MR. Muat entri lama dgn `array_replace_recursive(defaultForm(), $entri['form'])` (record legacy aman).
 4. **Teks klausul = versioning** (`App\Support\*Clause`, snapshot versi saat TTD). **Pre-fill wajib di-sync di save()** — prop yang tak diedit user tak otomatis masuk array form (hilang di cetak).
@@ -35,8 +35,9 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
 
 Salin actions + cetak, ganti token **per-string** (bukan `RI→UGD` global). Tabel lengkap di
 `docs/modul-dokumen-ri-pattern.md §9`. Ringkas: trait `EmrRITrait→EmrUGDTrait`; prop
-`?string $riHdrNo → ?int $rjNo`; `dataDaftarRi→dataDaftarUGD`; `findDataRI/checkEmrRIStatus/updateJsonRI/appendAdminLogRI/lockRIRow → …UGD`;
-key JSON `pengkajian<Dok>RI→…UGD`; modal/area `-ri→-ugd`; `display-pasien-ri→display-pasien-ugd`.
+`?string $riHdrNo → ?int $rjNo`; `dataDaftarRi → dataDaftarUGD` (RJ: `dataDaftarPoliRJ`, BUKAN `dataDaftarRj`); `findDataRI/checkEmrRIStatus/updateJsonRI/appendAdminLogRI/lockRIRow → …UGD`;
+key JSON `pengkajian<Dok>RI→…UGD`; modal/area `-ri→-ugd`; tag display-pasien ganti **UTUH termasuk prefix namespace**:
+`pages::transaksi.ri.display-pasien-ri.display-pasien-ri → pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd` (jebakan nyata: cuma sufiks yang terganti, sisa `transaksi.ri.` tetap kompilasi tapi salah jalur — sapu `grep -rn "pages::transaksi\.ri\." resources/views/pages/transaksi/{rj,ugd}/`).
 Folder/file UGD/RJ **buang sufiks** `-ri`, tapi modal-name/renderArea/nama PDF **tetap** `-ugd`/`-rj`.
 
 ## Viewer rekam-medis: payload seragam vs bespoke
