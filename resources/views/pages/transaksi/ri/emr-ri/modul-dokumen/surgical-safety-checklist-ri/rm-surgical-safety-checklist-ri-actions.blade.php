@@ -99,7 +99,6 @@ new class extends Component {
     // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja).
     public bool $viewOnly = false;
 
-    public array $sudahBelumOptions = ['Sudah', 'Belum'];
     public array $sudahBelumTidakPerluOptions = ['Sudah', 'Belum', 'Tidak Perlu'];
 
     private const TTD_ROLES = [
@@ -826,11 +825,7 @@ new class extends Component {
                                         </div>
 
                                         <div>
-                                            <x-input-label value="Identitas, area, tindakan, & persetujuan" class="mb-1" />
-                                            <x-select-input wire:model.live="newForm.identitasAreaTindakanPersetujuan" class="w-full">
-                                                <option value="">— pilih —</option>
-                                                @foreach ($sudahBelumOptions as $opt) <option value="{{ $opt }}">{{ $opt }}</option> @endforeach
-                                            </x-select-input>
+                                            <x-toggle wire:model.live="newForm.identitasAreaTindakanPersetujuan" trueValue="Sudah" falseValue="Belum" label="Identitas, area, tindakan, & persetujuan" :disabled="$formReadOnly" />
                                         </div>
 
                                         <div>
@@ -842,11 +837,7 @@ new class extends Component {
                                         </div>
 
                                         <div>
-                                            <x-input-label value="Mesin anestesi & obat diperiksa" class="mb-1" />
-                                            <x-select-input wire:model.live="newForm.mesinAnestesiObatDiperiksa" class="w-full">
-                                                <option value="">— pilih —</option>
-                                                @foreach ($sudahBelumOptions as $opt) <option value="{{ $opt }}">{{ $opt }}</option> @endforeach
-                                            </x-select-input>
+                                            <x-toggle wire:model.live="newForm.mesinAnestesiObatDiperiksa" trueValue="Sudah" falseValue="Belum" label="Mesin anestesi & obat diperiksa" :disabled="$formReadOnly" />
                                         </div>
 
                                         <div>
@@ -885,27 +876,15 @@ new class extends Component {
                                         </div>
 
                                         <div>
-                                            <x-input-label value="Tim memperkenalkan nama & tugas" class="mb-1" />
-                                            <x-select-input wire:model.live="newForm.timMemperkenalkanNamaTugas" class="w-full">
-                                                <option value="">— pilih —</option>
-                                                @foreach ($sudahBelumOptions as $opt) <option value="{{ $opt }}">{{ $opt }}</option> @endforeach
-                                            </x-select-input>
+                                            <x-toggle wire:model.live="newForm.timMemperkenalkanNamaTugas" trueValue="Sudah" falseValue="Belum" label="Tim memperkenalkan nama & tugas" :disabled="$formReadOnly" />
                                         </div>
 
                                         <div>
-                                            <x-input-label value="Konfirmasi nama pasien, tindakan, & area" class="mb-1" />
-                                            <x-select-input wire:model.live="newForm.konfirmasiNamaTindakanArea" class="w-full">
-                                                <option value="">— pilih —</option>
-                                                @foreach ($sudahBelumOptions as $opt) <option value="{{ $opt }}">{{ $opt }}</option> @endforeach
-                                            </x-select-input>
+                                            <x-toggle wire:model.live="newForm.konfirmasiNamaTindakanArea" trueValue="Sudah" falseValue="Belum" label="Konfirmasi nama pasien, tindakan, & area" :disabled="$formReadOnly" />
                                         </div>
 
                                         <div>
-                                            <x-input-label value="Antibiotik profilaksis diberikan <60 menit" class="mb-1" />
-                                            <x-select-input wire:model.live="newForm.antibiotikProfilaksis" class="w-full">
-                                                <option value="">— pilih —</option>
-                                                @foreach ($sudahBelumOptions as $opt) <option value="{{ $opt }}">{{ $opt }}</option> @endforeach
-                                            </x-select-input>
+                                            <x-toggle wire:model.live="newForm.antibiotikProfilaksis" trueValue="Sudah" falseValue="Belum" label="Antibiotik profilaksis diberikan <60 menit" :disabled="$formReadOnly" />
                                         </div>
 
                                         <div class="pt-3 border-t border-hairline-soft dark:border-gray-700">
