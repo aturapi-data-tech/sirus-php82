@@ -25,6 +25,7 @@ new class extends Component {
         ['key' => 'pengkajianPreOp', 'label' => 'Pengkajian Pre Operasi', 'fase' => 'Pra-operasi', 'pengisi' => 'Perawat ruangan + Perawat OK + Operator', 'ket' => 'Persiapan pasien (puasa/cukur/premedikasi), penandaan lokasi (site marking) & serah-terima ke OK — kunci = TTD 3 pihak', 'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4'],
         ['key' => 'praAnestesi', 'label' => 'Pengkajian Pra Anestesi', 'fase' => 'Pra-operasi', 'pengisi' => 'Dokter anestesi', 'ket' => 'Anamnese, jalan nafas (Mallampati), status ASA, rencana teknik anestesi', 'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
         ['key' => 'praInduksi', 'label' => 'Asesmen Pra Induksi', 'fase' => 'Pra-induksi', 'pengisi' => 'Dokter anestesi', 'ket' => 'Re-cek kondisi terkini sesaat sebelum induksi + obat pre-medikasi', 'icon' => 'M13 10V3L4 14h7v7l9-11h-7z'],
+        ['key' => 'surgicalSafetyChecklist', 'label' => 'Surgical Safety Checklist', 'fase' => 'Pra-insisi', 'pengisi' => 'Dokter Anestesi + Perawat Instrumen + Operator', 'ket' => 'WHO SSC: Sign In, Time Out, Sign Out — terkunci otomatis setelah 3 TTD lengkap', 'icon' => 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'],
         ['key' => 'laporanOperasi', 'label' => 'Laporan Operasi (BAP)', 'fase' => 'Pasca-operasi', 'pengisi' => 'Operator / DPJP bedah', 'ket' => 'Isi LENGKAP segera setelah operasi, sebelum pasien dipindah ke ruang lain', 'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
         ['key' => 'laporanAnestesi', 'label' => 'Laporan Anestesi', 'fase' => 'Pasca-operasi', 'pengisi' => 'Ahli anestesiologi', 'ket' => 'Teknik anestesi, monitoring sistem organ, masalah & keadaan akhir', 'icon' => 'M3 12h4l2 5 4-10 2 5h6'],
         ['key' => 'pascaAnestesi', 'label' => 'Monitoring Pasca Anestesi', 'fase' => 'Pasca-operasi', 'pengisi' => 'Petugas Recovery Room', 'ket' => 'Skor Aldrete (umum) / Bromage (regional-spinal), nyeri, rekomendasi pindah', 'icon' => 'M3 12h4l2 5 4-10 2 5h6'],
@@ -128,6 +129,13 @@ new class extends Component {
         <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.pra-induksi-ri.rm-pra-induksi-ri-actions
             :riHdrNo="$riHdrNo" :disabled="$disabled"
             wire:key="pra-induksi-ri-{{ $riHdrNo ?? 'init' }}" />
+    </div>
+
+    {{-- Surgical Safety Checklist --}}
+    <div x-show="subTab === 'surgicalSafetyChecklist'" x-transition.opacity.duration.200ms style="display:none">
+        <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.surgical-safety-checklist-ri.rm-surgical-safety-checklist-ri-actions
+            :riHdrNo="$riHdrNo" :disabled="$disabled"
+            wire:key="surgical-safety-checklist-ri-{{ $riHdrNo ?? 'init' }}" />
     </div>
 
     {{-- ② / ③ OPERASI & PASCA-OPERASI ────────────────────────── --}}
