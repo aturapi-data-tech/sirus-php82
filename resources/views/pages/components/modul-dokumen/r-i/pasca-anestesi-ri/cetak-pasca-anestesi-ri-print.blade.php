@@ -48,9 +48,9 @@
             <td class="border border-black px-2 py-1.5 w-1/2 align-top">
                 <p><span class="font-bold">Keadaan Umum:</span> {!! $val($form['keadaanUmum'] ?? '') !!}</p>
                 <p><span class="font-bold">TTV:</span>
-                    TD {!! $val($form['td'] ?? '') !!} · N {!! $val($form['nadi'] ?? '') !!} ·
+                    TD {!! $val(filled($form['sistolik'] ?? '') || filled($form['diastolik'] ?? '') ? ($form['sistolik'] ?? '') . '/' . ($form['diastolik'] ?? '') : ($form['td'] ?? '')) !!} mmHg · N {!! $val($form['nadi'] ?? '') !!} ·
                     RR {!! $val($form['rr'] ?? '') !!} · S {!! $val($form['suhu'] ?? '') !!} ·
-                    SpO2 {!! $val($form['spo2'] ?? '') !!}</p>
+                    SpO2 {!! $val($form['spo2'] ?? '') !!} · GDA {!! $val($form['gda'] ?? '') !!}</p>
             </td>
         </tr>
 

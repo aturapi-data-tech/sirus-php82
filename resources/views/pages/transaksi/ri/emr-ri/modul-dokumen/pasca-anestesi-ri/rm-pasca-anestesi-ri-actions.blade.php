@@ -35,11 +35,13 @@ new class extends Component {
         'jamMasuk' => '',
         'jamKeluar' => '',
         'keadaanUmum' => '',
-        'td' => '',
+        'sistolik' => '',
+        'diastolik' => '',
         'nadi' => '',
         'rr' => '',
         'suhu' => '',
         'spo2' => '',
+        'gda' => '',
         'jenisAnestesi' => 'Umum',
         'aldrete' => [
             'kesadaran' => '',
@@ -237,11 +239,13 @@ new class extends Component {
             'jamMasuk' => $this->newForm['jamMasuk'] ?? '',
             'jamKeluar' => $this->newForm['jamKeluar'] ?? '',
             'keadaanUmum' => $this->newForm['keadaanUmum'] ?? '',
-            'td' => $this->newForm['td'] ?? '',
+            'sistolik' => $this->newForm['sistolik'] ?? '',
+            'diastolik' => $this->newForm['diastolik'] ?? '',
             'nadi' => $this->newForm['nadi'] ?? '',
             'rr' => $this->newForm['rr'] ?? '',
             'suhu' => $this->newForm['suhu'] ?? '',
             'spo2' => $this->newForm['spo2'] ?? '',
+            'gda' => $this->newForm['gda'] ?? '',
             'jenisAnestesi' => $this->newForm['jenisAnestesi'] ?? 'Umum',
             'aldrete' => [
                 'kesadaran' => $this->newForm['aldrete']['kesadaran'] ?? '',
@@ -388,6 +392,57 @@ new class extends Component {
     }
 
     /* ===============================
+     | BUKA KUNCI (Gate dokumen.bukaKunci) — cabut TTD petugas RR, entri kembali Draft.
+     =============================== */
+    public function bukaKunci(string $createdAt): void
+    {
+        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($createdAt) {
+                $this->lockRIRow($this->riHdrNo);
+
+                $fresh = $this->findDataRI($this->riHdrNo) ?: [];
+                $list = is_array($fresh[$this->jsonKey] ?? null) ? $fresh[$this->jsonKey] : [];
+                $index = collect($list)->search(fn($item) => ($item['createdAt'] ?? '') === $createdAt);
+                if ($index === false) {
+                    throw new \RuntimeException('Entri tidak ditemukan.');
+                }
+
+                $list[$index]['finalized'] = false;
+                $list[$index]['ttd'] = '';
+                $list[$index]['ttdCode'] = '';
+                $list[$index]['ttdDate'] = '';
+                $fresh[$this->jsonKey] = array_values($list);
+
+                $this->updateJsonRI((int) $this->riHdrNo, $fresh);
+                $this->dataDaftarRi = $fresh;
+                $this->pascaList = $fresh[$this->jsonKey];
+
+                $pembukaKunci = auth()->user()->myuser_name ?? '-';
+                $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Monitoring Pasca Anestesi (' . $createdAt . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut', 'MR');
+            });
+
+            if ($this->editingKey === $createdAt) {
+                $this->cancelEdit();
+            }
+            $this->incrementVersion('modal-pasca-anestesi-ri');
+            $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — TTD petugas dicabut, entri kembali Draft.');
+        } catch (\RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $exception->getMessage());
+        }
+    }
+
+    /* ===============================
      | EDIT / LIHAT / BATAL entri
      =============================== */
     // Muat 1 entri ke form atas (dipakai edit draft & lihat entri terkunci).
@@ -401,6 +456,12 @@ new class extends Component {
             } else {
                 $this->newForm[$k] = $entry[$k] ?? '';
             }
+        }
+        // Entri lama menyimpan TD gabungan "120/80" — pecah ke sistolik/diastolik.
+        if (blank($this->newForm['sistolik']) && blank($this->newForm['diastolik']) && filled($entry['td'] ?? null)) {
+            [$tdSistolik, $tdDiastolik] = array_pad(explode('/', (string) $entry['td'], 2), 2, '');
+            $this->newForm['sistolik'] = trim($tdSistolik);
+            $this->newForm['diastolik'] = trim($tdDiastolik);
         }
         $this->editingKey = $key;
         $this->resetValidation();
@@ -559,11 +620,13 @@ new class extends Component {
             'jamMasuk' => '',
             'jamKeluar' => '',
             'keadaanUmum' => '',
-            'td' => '',
+            'sistolik' => '',
+            'diastolik' => '',
             'nadi' => '',
             'rr' => '',
             'suhu' => '',
             'spo2' => '',
+            'gda' => '',
             'jenisAnestesi' => 'Umum',
             'aldrete' => [
                 'kesadaran' => '',
@@ -786,33 +849,41 @@ new class extends Component {
                                 placeholder="cth: Sadar penuh, nafas spontan adekuat" class="w-full" />
                         </section>
 
-                        {{-- ══ TTV SAAT MASUK RR ══ --}}
+                        {{-- ══ TTV SAAT MASUK RR — pola frame Tanda Vital ala Pra Anestesi ══ --}}
                         <section class="pt-6 border-t border-hairline dark:border-gray-700">
-                            <h3 class="mb-3 text-base font-semibold text-ink dark:text-gray-200">Tanda Vital (saat masuk
-                                RR)</h3>
-                            <div class="grid grid-cols-2 gap-4 md:grid-cols-5">
-                                <div>
-                                    <x-input-label value="TD (mmHg)" class="mb-1" />
-                                    <x-text-input wire:model.live="newForm.td" :error="$errors->has('newForm.td')" placeholder="120/80"
-                                        class="w-full" />
+                            <h3 class="mb-3 text-base font-semibold text-ink dark:text-gray-200">Tanda Vital (saat masuk RR)</h3>
+                            <x-border-form :title="__('Tanda Vital')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
+                                <div class="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7">
+                                    <div>
+                                        <x-input-label value="Sistolik (mmHg)" class="whitespace-nowrap" />
+                                        <x-text-input wire:model.live="newForm.sistolik" :error="$errors->has('newForm.sistolik')" class="w-full mt-1" />
+                                    </div>
+                                    <div>
+                                        <x-input-label value="Diastolik (mmHg)" class="whitespace-nowrap" />
+                                        <x-text-input wire:model.live="newForm.diastolik" :error="$errors->has('newForm.diastolik')" class="w-full mt-1" />
+                                    </div>
+                                    <div>
+                                        <x-input-label value="Nadi (x/mnt)" class="whitespace-nowrap" />
+                                        <x-text-input wire:model.live="newForm.nadi" :error="$errors->has('newForm.nadi')" class="w-full mt-1" />
+                                    </div>
+                                    <div>
+                                        <x-input-label value="RR (x/mnt)" class="whitespace-nowrap" />
+                                        <x-text-input wire:model.live="newForm.rr" :error="$errors->has('newForm.rr')" class="w-full mt-1" />
+                                    </div>
+                                    <div>
+                                        <x-input-label value="Suhu (°C)" class="whitespace-nowrap" />
+                                        <x-text-input wire:model.live="newForm.suhu" :error="$errors->has('newForm.suhu')" class="w-full mt-1" />
+                                    </div>
+                                    <div>
+                                        <x-input-label value="SPO2 (%)" class="whitespace-nowrap" />
+                                        <x-text-input wire:model.live="newForm.spo2" :error="$errors->has('newForm.spo2')" class="w-full mt-1" />
+                                    </div>
+                                    <div>
+                                        <x-input-label value="GDA (g/dl)" class="whitespace-nowrap" />
+                                        <x-text-input wire:model.live="newForm.gda" :error="$errors->has('newForm.gda')" class="w-full mt-1" />
+                                    </div>
                                 </div>
-                                <div>
-                                    <x-input-label value="Nadi" class="mb-1" />
-                                    <x-text-input wire:model.live="newForm.nadi" :error="$errors->has('newForm.nadi')" class="w-full" />
-                                </div>
-                                <div>
-                                    <x-input-label value="RR" class="mb-1" />
-                                    <x-text-input wire:model.live="newForm.rr" :error="$errors->has('newForm.rr')" class="w-full" />
-                                </div>
-                                <div>
-                                    <x-input-label value="Suhu (°C)" class="mb-1" />
-                                    <x-text-input wire:model.live="newForm.suhu" :error="$errors->has('newForm.suhu')" class="w-full" />
-                                </div>
-                                <div>
-                                    <x-input-label value="SpO2 (%)" class="mb-1" />
-                                    <x-text-input wire:model.live="newForm.spo2" :error="$errors->has('newForm.spo2')" class="w-full" />
-                                </div>
-                            </div>
+                            </x-border-form>
                         </section>
 
                         {{-- ══ JENIS ANESTESI ══ --}}
@@ -997,6 +1068,20 @@ new class extends Component {
                                                         </div>
                                                         @if (!$isFormLocked)
                                                             <div class="flex items-center justify-center gap-2">
+                                                            @if ($isFinal)
+                                                                @can('dokumen.bukaKunci')
+                                                                    <x-confirm-button action="bukaKunci('{{ $rowKey }}')"
+                                                                        title="Buka Kunci Monitoring Pasca Anestesi"
+                                                                        message="TTD petugas RR akan dicabut & entri kembali menjadi Draft — proses TTD diulang dari awal. Lanjutkan?"
+                                                                        confirmText="Ya, Buka Kunci" class="gap-1.5">
+                                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                                d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" />
+                                                                        </svg>
+                                                                        Buka Kunci
+                                                                    </x-confirm-button>
+                                                                @endcan
+                                                            @endif
                                                             @can('dokumen.hapus')
                                                             <x-outline-button type="button" wire:click.prevent="hapus('{{ $rowKey }}')" wire:confirm="Yakin hapus monitoring ini?"
                                                                 wire:loading.attr="disabled"
@@ -1031,7 +1116,7 @@ new class extends Component {
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tekanan Darah</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['td'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ filled($entry['sistolik'] ?? '') || filled($entry['diastolik'] ?? '') ? ($entry['sistolik'] ?? '-') . '/' . ($entry['diastolik'] ?? '-') . ' mmHg' : (($entry['td'] ?? '') ?: '-') }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Nadi</dt>
@@ -1048,6 +1133,10 @@ new class extends Component {
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">SpO2 (%)</dt>
                                                             <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['spo2'] ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">GDA (g/dl)</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['gda'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Jenis Anestesi</dt>
