@@ -710,7 +710,7 @@ new class extends Component {
 
             <div class="flex-1 px-4 py-4 bg-surface-soft/70 dark:bg-gray-950/20">
                 <div class="max-w-full mx-auto space-y-4">
-                    <livewire:pages::transaksi.ri.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo" wire:key="ssc-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
+                    <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo" wire:key="ssc-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
 
                     <div class="p-6 space-y-6 bg-canvas border border-hairline shadow-sm sm:p-8 rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
