@@ -436,6 +436,14 @@ new class extends Component {
                 @endif
             </div>
 
+            {{-- Rujukan Berbasis Kompetensi Ranap (SATUSEHAT FHIR langsung) — Pulang Pindah / Rujuk --}}
+            @if (($dataDaftarRi['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '') === '306206005')
+                <div class="pt-2 border-t border-hairline-soft dark:border-gray-700">
+                    <livewire:pages::transaksi.ri.emr-ri.rujukan-kompetensi.rm-rujukan-kompetensi-ri-actions
+                        :riHdrNo="$riHdrNo" wire:key="rm-rujukan-kompetensi-ri-{{ $riHdrNo }}" />
+                </div>
+            @endif
+
             <div class="grid grid-cols-2 gap-3">
                 {{-- Tanggal Pulang --}}
                 <div>

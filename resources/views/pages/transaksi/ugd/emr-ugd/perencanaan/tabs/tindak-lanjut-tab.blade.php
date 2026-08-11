@@ -40,5 +40,13 @@
             </div>
         @endif
 
+        {{-- Rujukan Berbasis Kompetensi IGD (SATUSEHAT FHIR langsung) — Tindak Lanjut = Rujuk --}}
+        @if (($dataDaftarUGD['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '') === 'Rujuk')
+            <div class="pt-2 border-t border-hairline-soft dark:border-gray-700">
+                <livewire:pages::transaksi.ugd.emr-ugd.rujukan-kompetensi.rm-rujukan-kompetensi-ugd-actions
+                    :rjNo="$rjNo" wire:key="rm-rujukan-kompetensi-ugd-{{ $rjNo }}" />
+            </div>
+        @endif
+
     </div>
 </x-border-form>
