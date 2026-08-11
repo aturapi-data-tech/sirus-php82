@@ -32,7 +32,10 @@ new class extends Component {
 
     public array $newForm = [
         // 1. Data pengkajian
-        'jamPengkajian'      => '',
+        // Semua kolom waktu = TEKS 'd/m/Y H:i:s'; kolom tanggal murni (HPHT/HPL) = 'd/m/Y'.
+        // Sengaja bukan input type=date/time — itu menyimpan 'Y-m-d'/'H:i' yang bentrok
+        // dengan format sisa JSON EMR dan bikin cetak tampil beda gaya.
+        'tglJamPengkajian'   => '',
         'caraMasuk'          => '',   // Datang sendiri | Rujukan
         'caraMasukRujukan'   => '',
         // 2. Sosial pasien
@@ -67,17 +70,13 @@ new class extends Component {
         'hpl'                => '',
         'tinggiBadan'        => '',
         'beratBadan'         => '',
-        // 6. Riwayat Persalinan Sekarang
+        // 6. Riwayat Persalinan Sekarang — tgl & jam DIGABUNG jadi satu kolom datetime
         'ancDilakukanDi'     => '',
-        'hisMulaiTgl'        => '',
-        'hisMulaiJam'        => '',
+        'hisMulai'           => '',
         'ketubanStatus'      => '',   // Belum pecah | Sudah pecah
-        'ketubanTgl'         => '',
-        'ketubanJam'         => '',
-        'keluarDarahTgl'     => '',
-        'keluarDarahJam'     => '',
-        'rasaMengejanTgl'    => '',
-        'rasaMengejanJam'    => '',
+        'ketubanPecah'       => '',
+        'keluarDarah'        => '',
+        'rasaMengejan'       => '',
         'perawatanSebelumnya' => '',
         // 7. Status Umum / TTV
         'keadaanUmum'        => '',
@@ -214,20 +213,22 @@ new class extends Component {
     /* ===============================
      | SET TANGGAL / JAM SEKARANG
      =============================== */
-    public function setJamSekarang(string $field): void
+    // Kolom tanggal+jam (tombol x-now-button) — format seragam repo 'dd/mm/yyyy HH:mm:ss'.
+    public function setNow(string $field): void
     {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
         }
-        $this->newForm[$field] = Carbon::now(config('app.timezone'))->format('H:i');
+        $this->newForm[$field] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
     }
 
-    public function setTglSekarang(string $field): void
+    // Kolom tanggal murni (HPHT/HPL) — tanpa jam, format 'dd/mm/yyyy'.
+    public function setToday(string $field): void
     {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
         }
-        $this->newForm[$field] = Carbon::now(config('app.timezone'))->format('Y-m-d');
+        $this->newForm[$field] = Carbon::now(config('app.timezone'))->format('d/m/Y');
     }
 
     public function togglePenyakit(string $opt): void
@@ -718,7 +719,7 @@ new class extends Component {
 
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">
-                <div class="max-w-5xl mx-auto space-y-4">
+                <div class="max-w-full mx-auto space-y-4">
 
                     <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
                         wire:key="pengkajian-obstetri-display-pasien-{{ $riHdrNo }}" />
@@ -759,12 +760,10 @@ new class extends Component {
                         <x-border-form title="1. Data Pengkajian">
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                 <div>
-                                    <x-input-label value="Jam Pengkajian" />
+                                    <x-input-label value="Tgl / Jam Pengkajian" />
                                     <div class="flex gap-1 mt-1">
-                                        <x-text-input type="time" wire:model="newForm.jamPengkajian" class="w-full" />
-                                        @if (!$formReadOnly)
-                                            <x-now-button wire:click="setJamSekarang('jamPengkajian')" />
-                                        @endif
+                                        <x-text-input wire:model="newForm.tglJamPengkajian" placeholder="dd/mm/yyyy HH:mm:ss" class="w-full" />
+                                        <x-now-button wire:click="setNow('tglJamPengkajian')" :disabled="$formReadOnly" />
                                     </div>
                                 </div>
                                 <div>
@@ -875,8 +874,8 @@ new class extends Component {
                                 <div><x-input-label value="TT (kali)" /><x-text-input wire:model="newForm.tt" class="w-full mt-1" /></div>
                                 <div><x-input-label value="Menikah (kali)" /><x-text-input type="number" wire:model="newForm.menikahKali" class="w-full mt-1" /></div>
                                 <div><x-input-label value="Lama Menikah (th)" /><x-text-input type="number" wire:model="newForm.menikahLama" class="w-full mt-1" /></div>
-                                <div><x-input-label value="HPHT" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.hpht" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setTglSekarang('hpht')" />@endif</div></div>
-                                <div><x-input-label value="HPL / TP" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.hpl" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setTglSekarang('hpl')" />@endif</div></div>
+                                <div><x-input-label value="HPHT" /><div class="flex gap-1 mt-1"><x-text-input wire:model="newForm.hpht" placeholder="dd/mm/yyyy" class="w-full" /><x-now-button wire:click="setToday('hpht')" :disabled="$formReadOnly" title="Set ke tanggal hari ini" /></div></div>
+                                <div><x-input-label value="HPL / TP" /><div class="flex gap-1 mt-1"><x-text-input wire:model="newForm.hpl" placeholder="dd/mm/yyyy" class="w-full" /><x-now-button wire:click="setToday('hpl')" :disabled="$formReadOnly" title="Set ke tanggal hari ini" /></div></div>
                                 <div><x-input-label value="Tinggi Badan (cm)" /><x-text-input type="number" wire:model="newForm.tinggiBadan" class="w-full mt-1" /></div>
                                 <div><x-input-label value="Berat Badan (kg)" /><x-text-input type="number" wire:model="newForm.beratBadan" class="w-full mt-1" /></div>
                             </div>
@@ -897,14 +896,10 @@ new class extends Component {
                                     </div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                                    <div><x-input-label value="His mulai — Tgl" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.hisMulaiTgl" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setTglSekarang('hisMulaiTgl')" />@endif</div></div>
-                                    <div><x-input-label value="Jam" /><div class="flex gap-1 mt-1"><x-text-input type="time" wire:model="newForm.hisMulaiJam" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setJamSekarang('hisMulaiJam')" />@endif</div></div>
-                                    <div><x-input-label value="Ketuban pecah — Tgl" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.ketubanTgl" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setTglSekarang('ketubanTgl')" />@endif</div></div>
-                                    <div><x-input-label value="Jam" /><div class="flex gap-1 mt-1"><x-text-input type="time" wire:model="newForm.ketubanJam" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setJamSekarang('ketubanJam')" />@endif</div></div>
-                                    <div><x-input-label value="Darah/lendir — Tgl" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.keluarDarahTgl" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setTglSekarang('keluarDarahTgl')" />@endif</div></div>
-                                    <div><x-input-label value="Jam" /><div class="flex gap-1 mt-1"><x-text-input type="time" wire:model="newForm.keluarDarahJam" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setJamSekarang('keluarDarahJam')" />@endif</div></div>
-                                    <div><x-input-label value="Rasa mengejan — Tgl" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.rasaMengejanTgl" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setTglSekarang('rasaMengejanTgl')" />@endif</div></div>
-                                    <div><x-input-label value="Jam" /><div class="flex gap-1 mt-1"><x-text-input type="time" wire:model="newForm.rasaMengejanJam" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setJamSekarang('rasaMengejanJam')" />@endif</div></div>
+                                    <div><x-input-label value="His mulai" /><div class="flex gap-1 mt-1"><x-text-input wire:model="newForm.hisMulai" placeholder="dd/mm/yyyy HH:mm:ss" class="w-full" /><x-now-button wire:click="setNow('hisMulai')" :disabled="$formReadOnly" /></div></div>
+                                    <div><x-input-label value="Ketuban pecah" /><div class="flex gap-1 mt-1"><x-text-input wire:model="newForm.ketubanPecah" placeholder="dd/mm/yyyy HH:mm:ss" class="w-full" /><x-now-button wire:click="setNow('ketubanPecah')" :disabled="$formReadOnly" /></div></div>
+                                    <div><x-input-label value="Keluar darah / lendir" /><div class="flex gap-1 mt-1"><x-text-input wire:model="newForm.keluarDarah" placeholder="dd/mm/yyyy HH:mm:ss" class="w-full" /><x-now-button wire:click="setNow('keluarDarah')" :disabled="$formReadOnly" /></div></div>
+                                    <div><x-input-label value="Rasa mengejan" /><div class="flex gap-1 mt-1"><x-text-input wire:model="newForm.rasaMengejan" placeholder="dd/mm/yyyy HH:mm:ss" class="w-full" /><x-now-button wire:click="setNow('rasaMengejan')" :disabled="$formReadOnly" /></div></div>
                                 </div>
                                 <div>
                                     <x-input-label value="Perawatan/pertolongan sebelumnya" />
@@ -1116,7 +1111,7 @@ new class extends Component {
                                                     <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Jam Pengkajian</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['jamPengkajian'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['tglJamPengkajian'] ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Cara Masuk</dt>
@@ -1189,19 +1184,19 @@ new class extends Component {
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">His mulai</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['hisMulaiTgl'] ?: '-' }} {{ $entry['hisMulaiJam'] ?? '' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['hisMulai'] ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Ketuban</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['ketubanStatus'] ?: '-' }} {{ $entry['ketubanTgl'] ?? '' }} {{ $entry['ketubanJam'] ?? '' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['ketubanStatus'] ?: '-' }} {{ $entry['ketubanPecah'] ?? '' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Keluar Darah/Lendir</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['keluarDarahTgl'] ?: '-' }} {{ $entry['keluarDarahJam'] ?? '' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['keluarDarah'] ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Rasa Mengejan</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['rasaMengejanTgl'] ?: '-' }} {{ $entry['rasaMengejanJam'] ?? '' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['rasaMengejan'] ?: '-' }}</dd>
                                                         </div>
                                                         <div class="md:col-span-2">
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Perawatan Sebelumnya</dt>

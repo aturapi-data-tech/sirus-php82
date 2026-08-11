@@ -84,7 +84,7 @@ new class extends Component {
         'perdarahanKalaIv'   => '',   // cc
         // TAMBAHAN AKREDITASI (PONEK / Prognas 1)
         'imdDilakukan'       => '',   // [akr] Ya | Tidak
-        'imdJam'             => '',   // [akr]
+        'imdTglJam'          => '',   // [akr] tgl+jam IMD — 'd/m/Y H:i:s'
         'imdDurasiMenit'     => '',   // [akr]
         'imdAlasanTidak'     => '',   // [akr]
         'rawatGabung'        => '',   // [akr] Ya | Tidak
@@ -175,7 +175,8 @@ new class extends Component {
     /* ===============================
      | SET TANGGAL/JAM SEKARANG
      =============================== */
-    public function setTglJamSekarang(string $field): void
+    // Kolom tanggal+jam (tombol x-now-button) — format seragam repo 'dd/mm/yyyy HH:mm:ss'.
+    public function setNow(string $field): void
     {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
@@ -242,7 +243,7 @@ new class extends Component {
             'perdarahanKalaIii' => $this->newForm['perdarahanKalaIii'] ?? '',
             'perdarahanKalaIv' => $this->newForm['perdarahanKalaIv'] ?? '',
             'imdDilakukan'     => $this->newForm['imdDilakukan'] ?? '',
-            'imdJam'           => $this->newForm['imdJam'] ?? '',
+            'imdTglJam'        => $this->newForm['imdTglJam'] ?? '',
             'imdDurasiMenit'   => $this->newForm['imdDurasiMenit'] ?? '',
             'imdAlasanTidak'   => $this->newForm['imdAlasanTidak'] ?? '',
             'rawatGabung'      => $this->newForm['rawatGabung'] ?? '',
@@ -706,7 +707,7 @@ new class extends Component {
 
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">
-                <div class="max-w-5xl mx-auto space-y-4">
+                <div class="max-w-full mx-auto space-y-4">
 
                     <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
                         wire:key="laporan-persalinan-display-pasien-{{ $riHdrNo }}" />
@@ -769,9 +770,7 @@ new class extends Component {
                                         <x-input-label value="Lahir — Tgl / Jam" />
                                         <div class="flex gap-1 mt-1">
                                             <x-text-input wire:model="newForm.bayiLahirTgl" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
-                                            @if (!$formReadOnly)
-                                                <x-now-button wire:click="setTglJamSekarang('bayiLahirTgl')" />
-                                            @endif
+                                            <x-now-button wire:click="setNow('bayiLahirTgl')" :disabled="$formReadOnly" />
                                         </div>
                                     </div>
                                     <div><x-input-label value="Berat (gr)" /><x-text-input type="number" wire:model="newForm.bayiBb" class="w-full mt-1" /></div>
@@ -828,9 +827,7 @@ new class extends Component {
                                     <x-input-label value="Lahir — Tgl / Jam" />
                                     <div class="flex gap-1 mt-1">
                                         <x-text-input wire:model="newForm.plasentaLahirTgl" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
-                                        @if (!$formReadOnly)
-                                            <x-now-button wire:click="setTglJamSekarang('plasentaLahirTgl')" />
-                                        @endif
+                                        <x-now-button wire:click="setNow('plasentaLahirTgl')" :disabled="$formReadOnly" />
                                     </div>
                                 </div>
                                 <div>
@@ -934,7 +931,13 @@ new class extends Component {
                                     </x-select-input>
                                 </div>
                                 {{-- [akr] --}}
-                                <div><x-input-label value="IMD — Jam" /><x-text-input type="time" wire:model="newForm.imdJam" class="w-full mt-1" /></div>
+                                <div>
+                                    <x-input-label value="IMD — Tgl / Jam" />
+                                    <div class="flex gap-1 mt-1">
+                                        <x-text-input wire:model="newForm.imdTglJam" placeholder="dd/mm/yyyy HH:mm:ss" class="w-full" />
+                                        <x-now-button wire:click="setNow('imdTglJam')" :disabled="$formReadOnly" />
+                                    </div>
+                                </div>
                                 {{-- [akr] --}}
                                 <div><x-input-label value="IMD — Durasi (menit)" /><x-text-input type="number" wire:model="newForm.imdDurasiMenit" class="w-full mt-1" /></div>
                                 {{-- [akr] --}}
@@ -1215,8 +1218,8 @@ new class extends Component {
                                                             <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['imdDilakukan'] ?: '-' }}</dd>
                                                         </div>
                                                         <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">IMD — Jam / Durasi [akr]</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['imdJam'] ?: '-' }} / {{ $entry['imdDurasiMenit'] ?: '-' }} mnt</dd>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">IMD — Tgl / Jam / Durasi [akr]</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['imdTglJam'] ?: '-' }} / {{ $entry['imdDurasiMenit'] ?: '-' }} mnt</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Alasan bila IMD tidak [akr]</dt>

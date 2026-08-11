@@ -31,7 +31,10 @@ new class extends Component {
 
     public array $newForm = [
         // 1. Data pengkajian
-        'jamPengkajian'      => '',
+        // Semua kolom waktu = TEKS 'd/m/Y H:i:s'; kolom tanggal murni (HPHT) = 'd/m/Y'.
+        // Sengaja bukan input type=date/time — itu menyimpan 'Y-m-d'/'H:i' yang bentrok
+        // dengan format sisa JSON EMR dan bikin cetak tampil beda gaya.
+        'tglJamPengkajian'   => '',
         'caraMasuk'          => '',   // Datang sendiri | Rujukan
         'caraMasukRujukan'   => '',
         // 2. Sosial pasien
@@ -195,22 +198,24 @@ new class extends Component {
     }
 
     /* ===============================
-     | SET JAM / TGL SEKARANG
+     | SET TANGGAL / JAM SEKARANG
      =============================== */
-    public function setJamSekarang(string $field): void
+    // Kolom tanggal+jam (tombol x-now-button) — format seragam repo 'dd/mm/yyyy HH:mm:ss'.
+    public function setNow(string $field): void
     {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
         }
-        $this->newForm[$field] = Carbon::now(config('app.timezone'))->format('H:i');
+        $this->newForm[$field] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
     }
 
-    public function setTglSekarang(string $field): void
+    // Kolom tanggal murni (HPHT) — tanpa jam, format 'dd/mm/yyyy'.
+    public function setToday(string $field): void
     {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
         }
-        $this->newForm[$field] = Carbon::now(config('app.timezone'))->format('Y-m-d');
+        $this->newForm[$field] = Carbon::now(config('app.timezone'))->format('d/m/Y');
     }
 
     public function togglePenyakit(string $opt): void
@@ -249,7 +254,7 @@ new class extends Component {
     // Cek: minimal salah satu isian inti terisi (untuk simpan draft).
     private function adaIsiInti(): bool
     {
-        return collect(['jamPengkajian', 'keluhanUtama', 'diagnosa', 'sistolik', 'diastolik', 'keadaanUmum'])
+        return collect(['tglJamPengkajian', 'keluhanUtama', 'diagnosa', 'sistolik', 'diastolik', 'keadaanUmum'])
             ->contains(fn($k) => filled($this->newForm[$k] ?? null));
     }
 
@@ -285,7 +290,7 @@ new class extends Component {
             $this->dataDaftarRi = $fresh;
             $this->entriList = $fresh[$this->jsonKey];
 
-            $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Pengkajian Awal Ginekologi — ' . ($entry['jamPengkajian'] ?: '-') . ' (' . $key . ')', 'MR');
+            $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Pengkajian Awal Ginekologi — ' . ($entry['tglJamPengkajian'] ?: '-') . ' (' . $key . ')', 'MR');
         });
     }
 
@@ -299,7 +304,7 @@ new class extends Component {
             return;
         }
         if (!$this->adaIsiInti()) {
-            $this->dispatch('toast', type: 'error', message: 'Isi minimal salah satu: Jam Pengkajian, Keluhan Utama, Diagnosa, TD, atau Keadaan Umum.');
+            $this->dispatch('toast', type: 'error', message: 'Isi minimal salah satu: Tgl / Jam Pengkajian, Keluhan Utama, Diagnosa, TD, atau Keadaan Umum.');
             return;
         }
 
@@ -643,7 +648,7 @@ new class extends Component {
                     <tbody>
                         @foreach (array_reverse($entriList) as $e)
                             <tr class="border-b border-hairline dark:border-gray-700">
-                                <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ $e['jamPengkajian'] ?: ($e['createdAt'] ?? '-') }}</td>
+                                <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ $e['tglJamPengkajian'] ?: ($e['createdAt'] ?? '-') }}</td>
                                 <td class="px-3 py-2 text-muted dark:text-gray-400">{{ \Illuminate\Support\Str::limit($e['diagnosa'] ?? '', 60) ?: '-' }}</td>
                                 <td class="px-3 py-2 text-muted dark:text-gray-400">
                                     @if (!empty($e['ttd'])){{ $e['ttd'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
@@ -701,7 +706,7 @@ new class extends Component {
 
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">
-                <div class="max-w-5xl mx-auto space-y-4">
+                <div class="max-w-full mx-auto space-y-4">
 
                     <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
                         wire:key="pengkajian-ginekologi-display-pasien-{{ $riHdrNo }}" />
@@ -742,12 +747,10 @@ new class extends Component {
                         <x-border-form title="1. Data Pengkajian">
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                 <div>
-                                    <x-input-label value="Jam Pengkajian" />
+                                    <x-input-label value="Tgl / Jam Pengkajian" />
                                     <div class="flex gap-1 mt-1">
-                                        <x-text-input type="time" wire:model="newForm.jamPengkajian" class="w-full" />
-                                        @if (!$formReadOnly)
-                                            <x-now-button wire:click="setJamSekarang('jamPengkajian')" />
-                                        @endif
+                                        <x-text-input wire:model="newForm.tglJamPengkajian" placeholder="dd/mm/yyyy HH:mm:ss" class="w-full" />
+                                        <x-now-button wire:click="setNow('tglJamPengkajian')" :disabled="$formReadOnly" />
                                     </div>
                                 </div>
                                 <div>
@@ -851,7 +854,7 @@ new class extends Component {
                         <x-border-form title="5. Riwayat Ginekologi">
                             <div class="space-y-4">
                                 <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                                    <div><x-input-label value="HPHT" /><div class="flex gap-1 mt-1"><x-text-input type="date" wire:model="newForm.hpht" class="w-full" />@if (!$formReadOnly)<x-now-button wire:click="setTglSekarang('hpht')" />@endif</div></div>
+                                    <div><x-input-label value="HPHT" /><div class="flex gap-1 mt-1"><x-text-input wire:model="newForm.hpht" placeholder="dd/mm/yyyy" class="w-full" /><x-now-button wire:click="setToday('hpht')" :disabled="$formReadOnly" title="Set ke tanggal hari ini" /></div></div>
                                     <div><x-input-label value="Menarche (umur th)" /><x-text-input type="number" wire:model="newForm.menarcheUmur" class="w-full mt-1" /></div>
                                     <div><x-input-label value="Menopause" /><x-text-input wire:model="newForm.menopause" class="w-full mt-1" placeholder="Ya/Tidak; umur" /></div>
                                     <div><x-input-label value="Kontrasepsi" /><x-text-input wire:model="newForm.kontrasepsi" class="w-full mt-1" placeholder="Suntik/Pil/IUD/…" /></div>
@@ -999,7 +1002,7 @@ new class extends Component {
                                                     </svg>
                                                 </td>
                                                 <td class="px-4 py-3 font-semibold align-middle text-ink dark:text-gray-100">
-                                                    {{ $entry['jamPengkajian'] ?: ($rowKey ?: '-') }}
+                                                    {{ $entry['tglJamPengkajian'] ?: ($rowKey ?: '-') }}
                                                     <div class="text-xs font-normal text-muted-soft">{{ $rowKey }}</div>
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
@@ -1086,8 +1089,8 @@ new class extends Component {
                                                 <td colspan="6" class="px-4 py-4 bg-surface-soft/60 dark:bg-gray-950/30">
                                                     <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
                                                         <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Jam Pengkajian</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['jamPengkajian'] ?: '-' }}</dd>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tgl / Jam Pengkajian</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['tglJamPengkajian'] ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Cara Masuk</dt>

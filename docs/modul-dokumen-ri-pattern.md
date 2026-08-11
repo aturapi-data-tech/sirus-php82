@@ -92,6 +92,45 @@ Aturan bersyarat dipakai hanya bila tanpa isian itu datanya tak bermakna
 
 Tanggal SELALU `date_format:d/m/Y H:i:s` (standar repo, ±95 tempat).
 
+### 5a. Kolom tanggal/jam — teks + `x-now-button`, JANGAN `type="date"`/`type="time"`
+
+Input HTML native menyimpan `Y-m-d` / `H:i`, bentrok dengan format sisa JSON EMR
+(`d/m/Y H:i:s`) sehingga cetak & display tampil beda gaya, dan validasi
+`date_format:d/m/Y H:i:s` otomatis gagal. Pakai `<x-text-input>` teks biasa:
+
+```blade
+{{-- tanggal + jam --}}
+<div class="flex gap-1 mt-1">
+    <x-text-input wire:model="newForm.FIELD" placeholder="dd/mm/yyyy HH:mm:ss" class="w-full" />
+    <x-now-button wire:click="setNow('FIELD')" :disabled="$formReadOnly" />
+</div>
+
+{{-- tanggal murni (HPHT, tgl lahir, dll) --}}
+<div class="flex gap-1 mt-1">
+    <x-text-input wire:model="newForm.FIELD" placeholder="dd/mm/yyyy" class="w-full" />
+    <x-now-button wire:click="setToday('FIELD')" :disabled="$formReadOnly" title="Set ke tanggal hari ini" />
+</div>
+```
+
+Method baku di komponen — nama `setNow`/`setToday` (samakan lintas modul, jangan
+`setJamSekarang`/`setTglSekarang`/`setTglJamSekarang`):
+
+```php
+public function setNow(string $field): void   { /* guard */ $this->newForm[$field] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'); }
+public function setToday(string $field): void { /* guard */ $this->newForm[$field] = Carbon::now(config('app.timezone'))->format('d/m/Y'); }
+```
+
+Tombolnya di-gate lewat `:disabled="$formReadOnly"`, bukan dibungkus `@if (!$formReadOnly)`.
+**Satu peristiwa = satu kolom**: jangan pasangan `xxxTgl` + `xxxJam` terpisah — gabung jadi
+satu kolom datetime (`ketubanPecah`, `hisMulai`, …). Pasangan terpisah memaksa helper
+`$tgljam($t,$j)` di tiap blade cetak dan gampang tidak sinkron.
+
+### 5b. Lebar isi modal = `max-w-full`
+
+Body `<x-modal size="full">` diisi `<div class="max-w-full mx-auto space-y-4">`. Memakai
+`max-w-5xl` menyisakan ruang kosong kiri-kanan yang mencolok pada formulir bergrid banyak
+kolom (dikeluhkan user 2026-08-11 di Pengkajian Awal Obstetri).
+
 ## 6. Teks legal → clause-versioning
 
 Kalimat pernyataan/persetujuan TIDAK ditulis inline di blade. Taruh di

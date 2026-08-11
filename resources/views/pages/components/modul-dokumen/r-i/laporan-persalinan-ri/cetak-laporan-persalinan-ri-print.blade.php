@@ -98,7 +98,7 @@
     {{-- 8. IMD, Rawat Gabung & ASI (PONEK / Prognas 1) --}}
     <div class="pa-sec">8. IMD, RAWAT GABUNG &amp; ASI (PONEK / PROGNAS 1)</div>
     <table class="pa">
-        <tr><td class="lbl">IMD Dilakukan</td><td>{{ $v('imdDilakukan') }}{{ filled($form['imdJam'] ?? null) ? ' — jam ' . e($form['imdJam']) : '' }}{{ filled($form['imdDurasiMenit'] ?? null) ? ' (' . e($form['imdDurasiMenit']) . ' menit)' : '' }}</td><td class="lbl">Alasan bila tidak</td><td>{{ $v('imdAlasanTidak') }}</td></tr>
+        <tr><td class="lbl">IMD Dilakukan</td><td>{{ $v('imdDilakukan') }}{{ filled($form['imdTglJam'] ?? null) ? ' — ' . e($form['imdTglJam']) : '' }}{{ filled($form['imdDurasiMenit'] ?? null) ? ' (' . e($form['imdDurasiMenit']) . ' menit)' : '' }}</td><td class="lbl">Alasan bila tidak</td><td>{{ $v('imdAlasanTidak') }}</td></tr>
         <tr><td class="lbl">Rawat Gabung</td><td>{{ $v('rawatGabung') }}</td><td class="lbl">Konseling ASI</td><td>{{ $v('asiKonseling') }}</td></tr>
         <tr><td class="lbl">PMK (Metode Kanguru)</td><td colspan="3">{{ $v('pmkDilakukan') }}</td></tr>
     </table>

@@ -152,7 +152,7 @@ new class extends Component {
     /* ===============================
      | SET TANGGAL/JAM SEKARANG
      =============================== */
-    public function setTglJamSekarang(string $field): void
+    public function setNow(string $field): void
     {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
@@ -628,7 +628,7 @@ new class extends Component {
 
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">
-                <div class="max-w-5xl mx-auto space-y-4">
+                <div class="max-w-full mx-auto space-y-4">
 
                     <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
                         wire:key="pengkajian-bayi-display-pasien-{{ $riHdrNo }}" />
@@ -673,7 +673,7 @@ new class extends Component {
                                     <div class="flex gap-1 mt-1">
                                         <x-text-input wire:model="newForm.tglLahir" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
                                         @if (!$formReadOnly)
-                                            <x-now-button wire:click="setTglJamSekarang('tglLahir')" />
+                                            <x-now-button wire:click="setNow('tglLahir')" />
                                         @endif
                                     </div>
                                 </div>

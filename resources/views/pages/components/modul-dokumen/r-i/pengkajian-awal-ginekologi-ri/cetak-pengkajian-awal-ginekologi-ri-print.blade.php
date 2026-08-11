@@ -43,7 +43,7 @@
     {{-- 1. Data Pengkajian --}}
     <div class="pa-sec">1. DATA PENGKAJIAN</div>
     <table class="pa">
-        <tr><td class="lbl">Jam Pengkajian</td><td>{{ $v('jamPengkajian') }}</td><td class="lbl">Cara Masuk</td><td>{{ $v('caraMasuk') }}{{ filled($form['caraMasukRujukan'] ?? null) ? ' — ' . e($form['caraMasukRujukan']) : '' }}</td></tr>
+        <tr><td class="lbl">Tgl / Jam Pengkajian</td><td>{{ $v('tglJamPengkajian') }}</td><td class="lbl">Cara Masuk</td><td>{{ $v('caraMasuk') }}{{ filled($form['caraMasukRujukan'] ?? null) ? ' — ' . e($form['caraMasukRujukan']) : '' }}</td></tr>
     </table>
 
     {{-- 2 & 3. Sosial --}}

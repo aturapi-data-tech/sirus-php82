@@ -27,7 +27,6 @@
     @php
         $form = $data['form'] ?? [];
         $v = fn($k) => filled($form[$k] ?? null) ? e($form[$k]) : '-';
-        $tgljam = fn($t, $j) => trim((filled($form[$t] ?? null) ? e($form[$t]) : '') . ' ' . (filled($form[$j] ?? null) ? e($form[$j]) : '')) ?: '-';
         $penyakit = collect($form['penyakitPenting'] ?? [])->filter()->implode(', ');
         if (filled($form['penyakitLain'] ?? null)) {
             $penyakit = trim($penyakit . ($penyakit ? ', ' : '') . e($form['penyakitLain']));
@@ -44,7 +43,7 @@
     {{-- 1. Data Pengkajian --}}
     <div class="pa-sec">1. DATA PENGKAJIAN</div>
     <table class="pa">
-        <tr><td class="lbl">Jam Pengkajian</td><td>{{ $v('jamPengkajian') }}</td><td class="lbl">Cara Masuk</td><td>{{ $v('caraMasuk') }}{{ filled($form['caraMasukRujukan'] ?? null) ? ' — ' . e($form['caraMasukRujukan']) : '' }}</td></tr>
+        <tr><td class="lbl">Tgl / Jam Pengkajian</td><td>{{ $v('tglJamPengkajian') }}</td><td class="lbl">Cara Masuk</td><td>{{ $v('caraMasuk') }}{{ filled($form['caraMasukRujukan'] ?? null) ? ' — ' . e($form['caraMasukRujukan']) : '' }}</td></tr>
     </table>
 
     {{-- 2 & 3. Sosial --}}
@@ -77,8 +76,8 @@
     <div class="pa-sec">6. RIWAYAT PERSALINAN SEKARANG</div>
     <table class="pa">
         <tr><td class="lbl">ANC dilakukan di</td><td>{{ $v('ancDilakukanDi') }}</td><td class="lbl">Ketuban</td><td>{{ $v('ketubanStatus') }}</td></tr>
-        <tr><td class="lbl">His mulai</td><td>{{ $tgljam('hisMulaiTgl','hisMulaiJam') }}</td><td class="lbl">Ketuban pecah</td><td>{{ $tgljam('ketubanTgl','ketubanJam') }}</td></tr>
-        <tr><td class="lbl">Darah/lendir</td><td>{{ $tgljam('keluarDarahTgl','keluarDarahJam') }}</td><td class="lbl">Rasa mengejan</td><td>{{ $tgljam('rasaMengejanTgl','rasaMengejanJam') }}</td></tr>
+        <tr><td class="lbl">His mulai</td><td>{{ $v('hisMulai') }}</td><td class="lbl">Ketuban pecah</td><td>{{ $v('ketubanPecah') }}</td></tr>
+        <tr><td class="lbl">Darah/lendir</td><td>{{ $v('keluarDarah') }}</td><td class="lbl">Rasa mengejan</td><td>{{ $v('rasaMengejan') }}</td></tr>
         <tr><td class="lbl">Perawatan sebelumnya</td><td colspan="3">{{ $v('perawatanSebelumnya') }}</td></tr>
     </table>
 

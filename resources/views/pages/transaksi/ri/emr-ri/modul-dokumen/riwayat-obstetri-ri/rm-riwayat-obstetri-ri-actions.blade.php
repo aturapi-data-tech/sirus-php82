@@ -640,7 +640,7 @@ new class extends Component {
 
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">
-                <div class="max-w-6xl mx-auto space-y-4">
+                <div class="max-w-full mx-auto space-y-4">
 
                     <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
                         wire:key="riwayat-obstetri-display-pasien-{{ $riHdrNo }}" />
