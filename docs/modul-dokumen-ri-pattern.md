@@ -125,6 +125,32 @@ Tombolnya di-gate lewat `:disabled="$formReadOnly"`, bukan dibungkus `@if (!$for
 satu kolom datetime (`ketubanPecah`, `hisMulai`, …). Pasangan terpisah memaksa helper
 `$tgljam($t,$j)` di tiap blade cetak dan gampang tidak sinkron.
 
+### 5d. Data berulang di dalam satu entri = tabel entri, BUKAN entri dokumen terpisah
+
+Kalau satu dokumen wajar berisi banyak baris sejenis (titik-waktu observasi, obat
+pre-medikasi, riwayat kehamilan), simpan sebagai **`rows` di dalam SATU entri**, jangan
+dijadikan banyak entri dokumen. Entri dokumen membawa siklus Draft→TTD→Kunci sendiri;
+memakainya untuk tiap baris memaksa petugas menandatangani berulang padahal cetaknya
+memang satu lembar.
+
+Acuan: **Obat Pre Medikasi** di `pra-induksi-ri`. Bentuk bakunya:
+
+- Property input baris di atas tabel: `public string $barisXxx = ''` per kolom.
+- `barisKosong()` — bentuk satu baris; `normalizeRows(array $entry)` — `array_replace`
+  tiap baris dengan `barisKosong()` supaya baris lama yang kolomnya belum lengkap aman,
+  sekaligus membaca entri LEGACY yang masih datar (tanpa `rows`) sebagai satu baris.
+- `tambahBaris()` — guard read-only → `validateWithToast()` (kolom kunci `required`,
+  sisanya `nullable`) → push → `resetBarisInput()`. `hapusBaris(int $index)` → `unset` +
+  `array_values`.
+- Kolom waktu di-sort lewat `Carbon::createFromFormat('d/m/Y H:i:s', …)`, JANGAN
+  leksikografis — `01/08` akan mendahului `02/07`.
+- Markup: blok field (`@if (!$formReadOnly)`) → tombol **Tambah** full-width → tabel
+  **baca-saja** `ds-table` `No | …kolom… | Aksi` dengan `x-confirm-button
+  variant="danger-soft"` dan baris kosong `Belum ada …`. Tabel selalu tampil; saat
+  read-only kolom Aksi jadi `—`.
+- Cetak & viewer ikut per-entri: `cetak($createdAt)` mengambil `rows` dari entri itu,
+  sedangkan `diagnosa`/`ttd` diambil dari ENTRI (bukan di-pluck dari baris).
+
 ### 5c. Penamaan variabel di blade cetak — nama LENGKAP
 
 Blade cetak dulu memakai singkatan satu huruf (`$v`, `$c`, `$r`, `$k`, `$i`) sehingga sulit

@@ -1,8 +1,9 @@
 <?php
 // Viewer read-only "Observasi Nifas" — display Rekam Medis RI.
-// Dokumen ini dicetak per-LEMBAR (semua titik-waktu jadi satu tabel), bukan per-entri,
-// jadi payload cetak bespoke (rows tanpa diagnosa/ttd) meniru cetakLembar() di komponen EMR.
-// Kertas A4 LANDSCAPE → helper generik streamCetakDokumenRi (selalu portrait) tak dipakai.
+// Satu entri = satu LEMBAR berisi banyak baris titik-waktu (key 'rows'), jadi viewer
+// ini per-entri. Payload cetak bespoke (rows + ttd lembar) meniru cetakLembar()
+// di komponen EMR. Kertas A4 LANDSCAPE → helper generik streamCetakDokumenRi
+// (selalu portrait) tak dipakai.
 
 use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
@@ -25,15 +26,24 @@ new class extends Component {
     {
         $this->riHdrNo = $riHdrNo ?: null;
         $this->list = array_values($entries);
+        $this->navField = 'createdAt';
     }
 
-    /** Baris observasi urut kronologis (string dd/mm/yyyy tak bisa di-sort leksikografis). */
-    private function rows(): array
+    /**
+     * Baris titik-waktu satu lembar, urut kronologis.
+     * Entri lama (sebelum rombakan) datar tanpa 'rows' — dibaca sebagai satu baris.
+     */
+    public function barisLembar(?array $entry): array
     {
-        return collect($this->list)
-            ->sortBy(function ($entri) {
+        $rows = is_array($entry['rows'] ?? null)
+            ? $entry['rows']
+            : (collect(['tglJam', 'sistolik', 'diastolik', 'nadi', 'rr', 'suhu', 'ewsScore', 'tfu', 'kontraksiUterus', 'lochiaJenis', 'lochiaJumlah', 'perdarahanCc', 'lukaJalanLahir', 'bak', 'bab', 'laktasi', 'asiEksklusif', 'rawatGabung', 'mobilisasi', 'keluhan', 'asuhanTindakan'])
+                ->contains(fn($field) => filled($entry[$field] ?? null)) ? [$entry] : []);
+
+        return collect($rows)
+            ->sortBy(function ($baris) {
                 try {
-                    return Carbon::createFromFormat('d/m/Y H:i:s', $entri['tglJam'] ?? '')->timestamp;
+                    return Carbon::createFromFormat('d/m/Y H:i:s', $baris['tglJam'] ?? '')->timestamp;
                 } catch (\Throwable) {
                     return 0;
                 }
@@ -43,40 +53,55 @@ new class extends Component {
     }
 
     /** Payload cetak identik dgn aksi cetakLembar() di komponen EMR Observasi Nifas. */
-    private function buildData(array $rows): array
+    private function buildData(array $entry): array
     {
         $dataRi = $this->riHdrNo ? ($this->findDataRI($this->riHdrNo) ?: []) : [];
         $pasien = $this->dvPasien($dataRi['regNo'] ?? '');
 
         return array_merge($pasien, [
-            'ttdPath' => $this->dvTtdPath(collect($rows)->pluck('ttdCode')->filter()->last()),
+            'ttdPath' => $this->dvTtdPath($entry['ttdCode'] ?? null),
             'dataRi' => $dataRi,
-            'rows' => $rows,
+            'rows' => $this->barisLembar($entry),
+            'ttd' => $entry['ttd'] ?? '',
+            'ttdDate' => $entry['ttdDate'] ?? '',
             'identitasRs' => $this->dvIdentitasRs(),
             'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
         ]);
     }
 
+    /** Ringkasan baris daftar: cacah titik-waktu + rentang waktunya. */
+    public function ringkasEntri(?array $entry): string
+    {
+        $rows = $this->barisLembar($entry);
+        if (empty($rows)) {
+            return 'Belum ada titik-waktu';
+        }
+
+        $tglJam = collect($rows)->pluck('tglJam')->filter()->values();
+        $periode = $tglJam->isEmpty() ? '' : ($tglJam->count() === 1 ? $tglJam->first() : $tglJam->first() . ' – ' . $tglJam->last());
+
+        return trim(count($rows) . ' titik-waktu' . ($periode ? ' · ' . $periode : ''));
+    }
+
     public function lihat(string $id): void
     {
-        $rows = $this->rows();
-        if (empty($rows)) {
-            $this->dispatch('toast', type: 'error', message: 'Belum ada baris observasi nifas.');
+        $this->selected = collect($this->list)->firstWhere('createdAt', $id) ?: null;
+        if (!$this->selected) {
+            $this->dispatch('toast', type: 'error', message: 'Lembar observasi nifas tidak ditemukan.');
             return;
         }
-        $this->selected = ['id' => 'lembar'];
-        $this->previewHtml = $this->renderDokumenPreview($this->printView, $this->buildData($rows));
+        $this->previewHtml = $this->renderDokumenPreview($this->printView, $this->buildData($this->selected));
         $this->dispatch('open-modal', name: "view-observasi-nifas-ri-{$this->riHdrNo}");
     }
 
     public function cetak(string $id): mixed
     {
-        $rows = $this->rows();
-        if (empty($rows)) {
-            $this->dispatch('toast', type: 'error', message: 'Belum ada baris observasi nifas.');
+        $entry = collect($this->list)->firstWhere('createdAt', $id);
+        if (empty($entry)) {
+            $this->dispatch('toast', type: 'error', message: 'Lembar observasi nifas tidak ditemukan.');
             return null;
         }
-        $data = $this->buildData($rows);
+        $data = $this->buildData($entry);
         set_time_limit(300);
         $pdf = Pdf::loadView($this->printView, ['data' => $data])->setPaper('A4', 'landscape');
         return response()->streamDownload(fn() => print $pdf->output(), 'observasi-nifas-' . ($data['regNo'] ?? $this->riHdrNo) . '.pdf');
@@ -86,16 +111,17 @@ new class extends Component {
 
 <div>
     <x-border-form title="Observasi Nifas">
-        @if (count($list) > 0)
-            <x-rm.doc-list-row id="lembar" title="Lembar Observasi Nifas"
-                :date="\Illuminate\Support\Str::before((string) data_get(collect($list)->last(), 'tglJam', ''), ' ')"
-                :sub="count($list) . ' titik pemantauan'" />
-        @else
+        @forelse (collect($list)->filter(fn($entri) => filled(data_get($entri, 'createdAt')))->values() as $entri)
+            <x-rm.doc-list-row :id="data_get($entri, 'createdAt')" title="Lembar Observasi Nifas"
+                :date="\Illuminate\Support\Str::before((string) data_get($entri, 'createdAt', ''), ' ')"
+                :sub="$this->ringkasEntri($entri) . (data_get($entri, 'finalized') ? ' · Terkunci' : ' · Draft')" />
+        @empty
             <x-rm.doc-empty />
-        @endif
+        @endforelse
     </x-border-form>
 
     <x-rm.dokumen-view-modal name="view-observasi-nifas-ri-{{ $riHdrNo }}" title="Observasi Nifas"
-        :subtitle="count($list) . ' titik pemantauan'"
-        cetakId="lembar" :previewHtml="$previewHtml" />
+        :subtitle="$selected ? $this->ringkasEntri($selected) : null"
+        :cetakId="data_get($selected, 'createdAt')" :previewHtml="$previewHtml"
+        :navTotal="$this->navTotal()" :navPos="$this->navPos()" />
 </div>

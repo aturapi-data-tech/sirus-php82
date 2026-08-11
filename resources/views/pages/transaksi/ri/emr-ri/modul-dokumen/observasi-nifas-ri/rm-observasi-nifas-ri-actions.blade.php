@@ -2,7 +2,7 @@
 // resources/views/pages/transaksi/ri/emr-ri/modul-dokumen/observasi-nifas-ri/rm-observasi-nifas-ri-actions.blade.php
 // Dokumen VK/Kebidanan — Observasi Nifas (lembar pemantauan masa nifas / post-partum per titik-waktu).
 // Pola: multi-entri append-only (Draft + Lanjut Isi + TTD-Kunci + Lihat read-only + tabel expandable),
-// disimpan ke datadaftarri_json. Tiap entri = 1 titik-waktu pemantauan; cetak = SATU lembar tabel monitoring.
+// disimpan ke datadaftarri_json. Tiap entri = 1 LEMBAR berisi banyak baris titik-waktu; cetak per-lembar.
 // Kunci entri stabil = createdAt. TTD = stempel nama user login (ttdSaya = FINALIZE/kunci), tanpa TTD gambar.
 // [akr] = tambahan akreditasi (PP/PAP — Maternal Early Warning Score, ASI Eksklusif, Rawat Gabung).
 
@@ -30,32 +30,39 @@ new class extends Component {
     /** Key penyimpanan di datadaftarri_json */
     private string $jsonKey = 'observasiNifasRI';
 
+    // SATU entri = SATU lembar observasi berisi BANYAK baris titik-waktu (rows),
+    // pola tabel entri ala "Obat Pre Medikasi" di Pra Induksi. Dulu 1 titik-waktu =
+    // 1 entri dokumen tersendiri; itu memaksa TTD & kunci berulang padahal cetaknya
+    // memang satu lembar berisi semua titik-waktu.
     public array $newForm = [
-        'tglJam'          => '',   // titik-waktu pemantauan (d/m/Y H:i)
-        'sistolik'        => '',   // tekanan darah sistolik (mmHg)
-        'diastolik'       => '',   // tekanan darah diastolik (mmHg)
-        'nadi'            => '',   // x/mnt
-        'rr'              => '',   // x/mnt
-        'suhu'            => '',   // °C
-        'ewsScore'        => '',   // [akr] Maternal Early Warning Score
-        'tfu'             => '',   // tinggi fundus uteri (mis. 2 jari bawah pusat)
-        'kontraksiUterus' => '',   // Baik/Keras | Lembek
-        'lochiaJenis'     => '',   // Rubra | Sanguinolenta | Serosa | Alba
-        'lochiaJumlah'    => '',   // sedikit/sedang/banyak
-        'perdarahanCc'    => '',   // cc
-        'lukaJalanLahir'  => '',   // Tidak ada | Kering/Baik | Basah | Tanda Infeksi
-        'bak'             => '',   // buang air kecil
-        'bab'             => '',   // buang air besar
-        'laktasi'         => '',   // Lancar | Tidak Lancar | Belum
-        'asiEksklusif'    => '',   // [akr] Ya | Tidak
-        'rawatGabung'     => '',   // [akr] Ya | Tidak
-        'mobilisasi'      => '',   // teks
-        'keluhan'         => '',   // teks
-        'asuhanTindakan'  => '',   // asuhan/tindakan kebidanan
-        'ttd'             => '',   // nama penanda-tangan (myuser_name)
-        'ttdDate'         => '',   // tgl/jam TTD (d/m/Y H:i:s)
-        'ttdCode'         => '',   // myuser_code penanda-tangan
+        'rows'     => [],   // baris titik-waktu (lihat barisKosong())
+        'ttd'      => '',   // nama penanda-tangan (myuser_name)
+        'ttdDate'  => '',   // tgl/jam TTD (d/m/Y H:i:s)
+        'ttdCode'  => '',   // myuser_code penanda-tangan
     ];
+
+    // Field penyusun baris baru (di atas tabel) — dikosongkan lagi tiap kali Tambah.
+    public string $barisTglJam = '';
+    public string $barisSistolik = '';
+    public string $barisDiastolik = '';
+    public string $barisNadi = '';
+    public string $barisRr = '';
+    public string $barisSuhu = '';
+    public string $barisEwsScore = '';
+    public string $barisTfu = '';
+    public string $barisKontraksiUterus = '';
+    public string $barisLochiaJenis = '';
+    public string $barisLochiaJumlah = '';
+    public string $barisPerdarahanCc = '';
+    public string $barisLukaJalanLahir = '';
+    public string $barisBak = '';
+    public string $barisBab = '';
+    public string $barisLaktasi = '';
+    public string $barisAsiEksklusif = '';
+    public string $barisRawatGabung = '';
+    public string $barisMobilisasi = '';
+    public string $barisKeluhan = '';
+    public string $barisAsuhanTindakan = '';
 
     public array $entriList = [];
 
@@ -136,7 +143,218 @@ new class extends Component {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
         }
-        $this->newForm['tglJam'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+        $this->barisTglJam = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+    }
+
+    /* ===============================
+     | BARIS TITIK-WAKTU (tabel entri ala Obat Pre Medikasi)
+     =============================== */
+    private function barisKosong(): array
+    {
+        return [
+            'tglJam'          => '',   // titik-waktu pemantauan (d/m/Y H:i:s)
+            'sistolik'        => '',   // tekanan darah sistolik (mmHg)
+            'diastolik'       => '',   // tekanan darah diastolik (mmHg)
+            'nadi'            => '',   // x/mnt
+            'rr'              => '',   // x/mnt
+            'suhu'            => '',   // °C
+            'ewsScore'        => '',   // [akr] Maternal Early Warning Score
+            'tfu'             => '',   // tinggi fundus uteri (mis. 2 jari bawah pusat)
+            'kontraksiUterus' => '',   // Baik/Keras | Lembek
+            'lochiaJenis'     => '',   // Rubra | Sanguinolenta | Serosa | Alba
+            'lochiaJumlah'    => '',   // sedikit/sedang/banyak
+            'perdarahanCc'    => '',   // cc
+            'lukaJalanLahir'  => '',   // Tidak ada | Kering/Baik | Basah | Tanda Infeksi
+            'bak'             => '',   // buang air kecil
+            'bab'             => '',   // buang air besar
+            'laktasi'         => '',   // Lancar | Tidak Lancar | Belum
+            'asiEksklusif'    => '',   // [akr] Ya | Tidak
+            'rawatGabung'     => '',   // [akr] Ya | Tidak
+            'mobilisasi'      => '',   // teks
+            'keluhan'         => '',   // teks
+            'asuhanTindakan'  => '',   // asuhan/tindakan kebidanan
+        ];
+    }
+
+    /**
+     * Baris entri tahan data lama: sebelum rombakan, satu entri = satu titik-waktu
+     * (kolomnya datar tanpa 'rows'). Entri seperti itu dibaca sebagai satu baris.
+     */
+    private function normalizeRows(array $entry): array
+    {
+        if (is_array($entry['rows'] ?? null)) {
+            return array_values(array_map(
+                fn($baris) => $this->pecahTdLegacy(array_replace($this->barisKosong(), is_array($baris) ? $baris : []), is_array($baris) ? $baris : []),
+                $entry['rows'],
+            ));
+        }
+
+        $legacy = $this->pecahTdLegacy(array_replace($this->barisKosong(), array_intersect_key($entry, $this->barisKosong())), $entry);
+
+        return collect($legacy)->contains(fn($nilai) => filled($nilai)) ? [$legacy] : [];
+    }
+
+    /** Data lama menyimpan TD gabungan "120/80" — pecah ke sistolik/diastolik. */
+    private function pecahTdLegacy(array $baris, array $sumber): array
+    {
+        if (blank($baris['sistolik']) && blank($baris['diastolik']) && filled($sumber['td'] ?? null)) {
+            [$tdSistolik, $tdDiastolik] = array_pad(explode('/', (string) $sumber['td'], 2), 2, '');
+            $baris['sistolik'] = trim($tdSistolik);
+            $baris['diastolik'] = trim($tdDiastolik);
+        }
+        return $baris;
+    }
+
+    public function tambahBaris(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+
+        // validate() didahulukan supaya kolom kosong tetap ditandai merah.
+        $this->validateWithToast(
+            [
+                'barisTglJam' => ['required', 'string', 'date_format:d/m/Y H:i:s'],
+                'barisSistolik' => ['nullable', 'numeric'],
+                'barisDiastolik' => ['nullable', 'numeric'],
+                'barisNadi' => ['nullable', 'numeric'],
+                'barisRr' => ['nullable', 'numeric'],
+                'barisSuhu' => ['nullable', 'numeric'],
+                'barisEwsScore' => ['nullable', 'numeric'],
+                'barisTfu' => ['nullable', 'string', 'max:100'],
+                'barisKontraksiUterus' => ['nullable', 'string', 'max:50'],
+                'barisLochiaJenis' => ['nullable', 'string', 'max:50'],
+                'barisLochiaJumlah' => ['nullable', 'string', 'max:50'],
+                'barisPerdarahanCc' => ['nullable', 'numeric'],
+                'barisLukaJalanLahir' => ['nullable', 'string', 'max:50'],
+                'barisBak' => ['nullable', 'string', 'max:100'],
+                'barisBab' => ['nullable', 'string', 'max:100'],
+                'barisLaktasi' => ['nullable', 'string', 'max:50'],
+                'barisAsiEksklusif' => ['nullable', 'string', 'max:20'],
+                'barisRawatGabung' => ['nullable', 'string', 'max:20'],
+                'barisMobilisasi' => ['nullable', 'string', 'max:255'],
+                'barisKeluhan' => ['nullable', 'string', 'max:255'],
+                'barisAsuhanTindakan' => ['nullable', 'string', 'max:1000'],
+            ],
+            ['barisTglJam.date_format' => 'Tgl / Jam harus berformat dd/mm/yyyy HH:mm:ss.'],
+            [
+                'barisTglJam' => 'Tgl / Jam',
+                'barisSistolik' => 'Sistolik',
+                'barisDiastolik' => 'Diastolik',
+                'barisNadi' => 'Nadi',
+                'barisRr' => 'RR',
+                'barisSuhu' => 'Suhu',
+                'barisEwsScore' => 'EWS Score',
+                'barisTfu' => 'TFU',
+                'barisKontraksiUterus' => 'Kontraksi Uterus',
+                'barisLochiaJenis' => 'Lochia (Jenis)',
+                'barisLochiaJumlah' => 'Lochia (Jumlah)',
+                'barisPerdarahanCc' => 'Perdarahan (cc)',
+                'barisLukaJalanLahir' => 'Luka Jalan Lahir',
+                'barisBak' => 'BAK',
+                'barisBab' => 'BAB',
+                'barisLaktasi' => 'Laktasi',
+                'barisAsiEksklusif' => 'ASI Eksklusif',
+                'barisRawatGabung' => 'Rawat Gabung',
+                'barisMobilisasi' => 'Mobilisasi',
+                'barisKeluhan' => 'Keluhan',
+                'barisAsuhanTindakan' => 'Asuhan / Tindakan Kebidanan',
+            ],
+        );
+
+        $rows = $this->normalizeRows($this->newForm);
+        $rows[] = [
+            'tglJam'          => $this->barisTglJam,
+            'sistolik'        => $this->barisSistolik,
+            'diastolik'       => $this->barisDiastolik,
+            'nadi'            => $this->barisNadi,
+            'rr'              => $this->barisRr,
+            'suhu'            => $this->barisSuhu,
+            'ewsScore'        => $this->barisEwsScore,
+            'tfu'             => $this->barisTfu,
+            'kontraksiUterus' => $this->barisKontraksiUterus,
+            'lochiaJenis'     => $this->barisLochiaJenis,
+            'lochiaJumlah'    => $this->barisLochiaJumlah,
+            'perdarahanCc'    => $this->barisPerdarahanCc,
+            'lukaJalanLahir'  => $this->barisLukaJalanLahir,
+            'bak'             => $this->barisBak,
+            'bab'             => $this->barisBab,
+            'laktasi'         => $this->barisLaktasi,
+            'asiEksklusif'    => $this->barisAsiEksklusif,
+            'rawatGabung'     => $this->barisRawatGabung,
+            'mobilisasi'      => $this->barisMobilisasi,
+            'keluhan'         => $this->barisKeluhan,
+            'asuhanTindakan'  => $this->barisAsuhanTindakan,
+        ];
+        $this->newForm['rows'] = $this->urutKronologis($rows);
+
+        $this->resetBarisInput();
+    }
+
+    public function hapusBaris(int $index): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+        $rows = $this->normalizeRows($this->newForm);
+        unset($rows[$index]);
+        $this->newForm['rows'] = array_values($rows);
+    }
+
+    private function resetBarisInput(): void
+    {
+        $this->barisTglJam = '';
+        $this->barisSistolik = '';
+        $this->barisDiastolik = '';
+        $this->barisNadi = '';
+        $this->barisRr = '';
+        $this->barisSuhu = '';
+        $this->barisEwsScore = '';
+        $this->barisTfu = '';
+        $this->barisKontraksiUterus = '';
+        $this->barisLochiaJenis = '';
+        $this->barisLochiaJumlah = '';
+        $this->barisPerdarahanCc = '';
+        $this->barisLukaJalanLahir = '';
+        $this->barisBak = '';
+        $this->barisBab = '';
+        $this->barisLaktasi = '';
+        $this->barisAsiEksklusif = '';
+        $this->barisRawatGabung = '';
+        $this->barisMobilisasi = '';
+        $this->barisKeluhan = '';
+        $this->barisAsuhanTindakan = '';
+    }
+
+    /** Baris satu lembar tersimpan, urut kronologis — dipakai tabel entri & detail. */
+    public function barisLembar(array $entry): array
+    {
+        return $this->urutKronologis($this->normalizeRows($entry));
+    }
+
+    /** Rentang waktu lembar: "titik pertama – titik terakhir". */
+    public function periodeLembar(array $rows): string
+    {
+        $tglJam = collect($rows)->pluck('tglJam')->filter()->values();
+        if ($tglJam->isEmpty()) {
+            return '-';
+        }
+        return $tglJam->count() === 1 ? $tglJam->first() : $tglJam->first() . ' – ' . $tglJam->last();
+    }
+
+    /** Urut kronologis — string dd/mm/yyyy TIDAK boleh di-sort leksikografis. */
+    private function urutKronologis(array $rows): array
+    {
+        return collect($rows)
+            ->sortBy(function ($baris) {
+                try {
+                    return Carbon::createFromFormat('d/m/Y H:i:s', $baris['tglJam'] ?? '')->timestamp;
+                } catch (\Throwable) {
+                    return 0;
+                }
+            })
+            ->values()
+            ->all();
     }
 
     /* ===============================
@@ -153,40 +371,19 @@ new class extends Component {
     private function buildEntry(string $key, bool $finalized): array
     {
         return [
-            'tglJam'          => $this->newForm['tglJam'] ?? '',
-            'sistolik'        => $this->newForm['sistolik'] ?? '',
-            'diastolik'       => $this->newForm['diastolik'] ?? '',
-            'nadi'            => $this->newForm['nadi'] ?? '',
-            'rr'              => $this->newForm['rr'] ?? '',
-            'suhu'            => $this->newForm['suhu'] ?? '',
-            'ewsScore'        => $this->newForm['ewsScore'] ?? '',
-            'tfu'             => $this->newForm['tfu'] ?? '',
-            'kontraksiUterus' => $this->newForm['kontraksiUterus'] ?? '',
-            'lochiaJenis'     => $this->newForm['lochiaJenis'] ?? '',
-            'lochiaJumlah'    => $this->newForm['lochiaJumlah'] ?? '',
-            'perdarahanCc'    => $this->newForm['perdarahanCc'] ?? '',
-            'lukaJalanLahir'  => $this->newForm['lukaJalanLahir'] ?? '',
-            'bak'             => $this->newForm['bak'] ?? '',
-            'bab'             => $this->newForm['bab'] ?? '',
-            'laktasi'         => $this->newForm['laktasi'] ?? '',
-            'asiEksklusif'    => $this->newForm['asiEksklusif'] ?? '',
-            'rawatGabung'     => $this->newForm['rawatGabung'] ?? '',
-            'mobilisasi'      => $this->newForm['mobilisasi'] ?? '',
-            'keluhan'         => $this->newForm['keluhan'] ?? '',
-            'asuhanTindakan'  => $this->newForm['asuhanTindakan'] ?? '',
-            'ttd'             => $this->newForm['ttd'] ?? '',
-            'ttdCode'         => $this->newForm['ttdCode'] ?? '',
-            'ttdDate'         => $this->newForm['ttdDate'] ?? '',
-            'createdAt'       => $key,
-            'finalized'       => $finalized,
+            'rows'      => $this->urutKronologis($this->normalizeRows($this->newForm)),
+            'ttd'       => $this->newForm['ttd'] ?? '',
+            'ttdCode'   => $this->newForm['ttdCode'] ?? '',
+            'ttdDate'   => $this->newForm['ttdDate'] ?? '',
+            'createdAt' => $key,
+            'finalized' => $finalized,
         ];
     }
 
-    // Cek: minimal salah satu observasi inti terisi.
+    // Cek: lembar punya minimal satu baris titik-waktu.
     private function adaObservasiInti(): bool
     {
-        return collect(['sistolik', 'diastolik', 'nadi', 'suhu', 'tfu', 'lochiaJenis'])
-            ->contains(fn($k) => filled($this->newForm[$k] ?? null));
+        return count($this->normalizeRows($this->newForm)) > 0;
     }
 
     // Simpan entri (add/update by createdAt) dengan status $finalized. Dipakai draft & kunci.
@@ -221,7 +418,7 @@ new class extends Component {
             $this->dataDaftarRi = $fresh;
             $this->entriList = $fresh[$this->jsonKey];
 
-            $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Observasi Nifas — ' . ($entry['tglJam'] ?: '-') . ' (' . $key . ')', 'MR');
+            $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Observasi Nifas — ' . count($entry['rows'] ?? []) . ' titik-waktu (' . $key . ')', 'MR');
         });
     }
 
@@ -235,7 +432,7 @@ new class extends Component {
             return;
         }
         if (!$this->adaObservasiInti()) {
-            $this->dispatch('toast', type: 'error', message: 'Isi minimal salah satu: TD, Nadi, Suhu, TFU, atau Lochia.');
+            $this->dispatch('toast', type: 'error', message: 'Tambahkan minimal satu baris titik-waktu observasi.');
             return;
         }
 
@@ -264,7 +461,7 @@ new class extends Component {
             return;
         }
         if (!$this->adaObservasiInti()) {
-            $this->dispatch('toast', type: 'error', message: 'Isi minimal salah satu: TD, Nadi, Suhu, TFU, atau Lochia sebelum TTD.');
+            $this->dispatch('toast', type: 'error', message: 'Tambahkan minimal satu baris titik-waktu observasi sebelum TTD.');
             return;
         }
 
@@ -357,15 +554,12 @@ new class extends Component {
     // Muat 1 entri ke form atas (dipakai edit draft & lihat entri terkunci). TANPA TTD gambar.
     private function hydrateFormFromEntry(array $entry, string $key): void
     {
-        foreach ($this->newForm as $k => $v) {
-            $this->newForm[$k] = $entry[$k] ?? (is_array($v) ? [] : '');
+        foreach ($this->newForm as $field => $bawaan) {
+            $this->newForm[$field] = $entry[$field] ?? (is_array($bawaan) ? [] : '');
         }
-        // Entri lama menyimpan TD gabungan "120/80" — pecah ke sistolik/diastolik.
-        if (blank($this->newForm['sistolik']) && blank($this->newForm['diastolik']) && filled($entry['td'] ?? null)) {
-            [$tdSistolik, $tdDiastolik] = array_pad(explode('/', (string) $entry['td'], 2), 2, '');
-            $this->newForm['sistolik'] = trim($tdSistolik);
-            $this->newForm['diastolik'] = trim($tdDiastolik);
-        }
+        // Entri lama = satu titik-waktu datar (tanpa 'rows') → dibaca jadi satu baris.
+        $this->newForm['rows'] = $this->urutKronologis($this->normalizeRows($entry));
+        $this->resetBarisInput();
         $this->editingKey = $key;
         $this->resetValidation();
         $this->incrementVersion('modal-observasi-nifas-ri');
@@ -417,9 +611,10 @@ new class extends Component {
 
     private function resetNewForm(): void
     {
-        foreach ($this->newForm as $k => $v) {
-            $this->newForm[$k] = is_array($v) ? [] : '';
+        foreach ($this->newForm as $field => $bawaan) {
+            $this->newForm[$field] = is_array($bawaan) ? [] : '';
         }
+        $this->resetBarisInput();
     }
 
     protected function resetForm(): void
@@ -479,18 +674,15 @@ new class extends Component {
     /* ===============================
      | CETAK (per-LEMBAR: semua baris = 1 tabel monitoring)
      =============================== */
-    public function cetakLembar()
+    public function cetakLembar(string $createdAt)
     {
-        $rows = collect($this->entriList ?? [])
-            ->sortBy(function ($e) {
-                try {
-                    return Carbon::createFromFormat('d/m/Y H:i:s', $e['tglJam'] ?? '')->timestamp;
-                } catch (\Throwable) {
-                    return 0;
-                }
-            })
-            ->values()
-            ->all();
+        $entry = collect($this->entriList)->firstWhere('createdAt', $createdAt);
+        if (!$entry) {
+            $this->dispatch('toast', type: 'error', message: 'Lembar observasi tidak ditemukan.');
+            return;
+        }
+
+        $rows = $this->urutKronologis($this->normalizeRows($entry));
 
         if (empty($rows)) {
             $this->dispatch('toast', type: 'error', message: 'Belum ada baris observasi untuk dicetak.');
@@ -512,9 +704,13 @@ new class extends Component {
                 }
             }
 
+            // TTD kini milik LEMBAR (entri), bukan per baris titik-waktu.
+            $ttd = $entry['ttd'] ?? '';
+            $ttdDate = $entry['ttdDate'] ?? '';
+
             // TTD (myuser_code -> myuser_ttd_image) untuk stempel di cetakan
             $ttdPath = null;
-            $ttdCode = collect($rows)->pluck('ttdCode')->filter()->last() ?? null;
+            $ttdCode = $entry['ttdCode'] ?? null;
             if ($ttdCode) {
                 $ttdImg = DB::table('users')->where('myuser_code', $ttdCode)->value('myuser_ttd_image');
                 if (!empty($ttdImg) && file_exists(public_path('storage/' . $ttdImg))) {
@@ -526,6 +722,8 @@ new class extends Component {
                 'ttdPath'      => $ttdPath,
                 'dataRi'      => $this->dataDaftarRi,
                 'rows'        => $rows,
+                'ttd'         => $ttd,
+                'ttdDate'     => $ttdDate,
                 'identitasRs' => $identitasRs,
                 'tglCetak'    => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
             ]);
@@ -550,7 +748,7 @@ new class extends Component {
                 <div class="flex items-center gap-2">
                     <h3 class="text-base font-semibold text-ink dark:text-gray-200">Observasi Nifas</h3>
                     @if ($onCount > 0)
-                        <x-badge variant="success">{{ $onCount }} titik-waktu</x-badge>
+                        <x-badge variant="success">{{ $onCount }} lembar</x-badge>
                     @else
                         <x-badge variant="warning">Belum ada</x-badge>
                     @endif
@@ -558,24 +756,10 @@ new class extends Component {
                 <p class="text-sm text-muted dark:text-gray-400">
                     Lembar pemantauan masa nifas (post-partum) per titik-waktu — TD, nadi, RR, suhu,
                     Maternal Early Warning Score, TFU, kontraksi uterus, lochia, perdarahan, luka jalan lahir,
-                    laktasi, ASI eksklusif &amp; rawat gabung. Tiap entri = 1 baris waktu.
+                    laktasi, ASI eksklusif &amp; rawat gabung. Satu entri = satu lembar berisi banyak titik-waktu.
                 </p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-                @if ($onCount > 0)
-                    <x-secondary-button type="button" wire:click="cetakLembar" wire:loading.attr="disabled"
-                        wire:target="cetakLembar" class="gap-1.5">
-                        <span wire:loading.remove wire:target="cetakLembar" class="flex items-center gap-1.5">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                            </svg>
-                            Cetak Lembar Nifas
-                        </span>
-                        <span wire:loading wire:target="cetakLembar" class="flex items-center gap-1.5">
-                            <x-loading class="w-4 h-4" /> Menyiapkan…
-                        </span>
-                    </x-secondary-button>
-                @endif
                 <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
                     wire:target="openModal" :disabled="$disabled || !$riHdrNo" class="gap-2">
                     <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
@@ -596,7 +780,8 @@ new class extends Component {
                 <table class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
                     <thead class="bg-surface-soft dark:bg-gray-800">
                         <tr class="text-left text-muted dark:text-gray-300">
-                            <th class="px-3 py-2 border-b">Tgl / Jam</th>
+                            <th class="px-3 py-2 border-b">Lembar Dibuat</th>
+                            <th class="px-3 py-2 border-b">Baris</th>
                             <th class="px-3 py-2 border-b">Petugas (TTD)</th>
                             <th class="px-3 py-2 text-center border-b">Status</th>
                         </tr>
@@ -604,7 +789,8 @@ new class extends Component {
                     <tbody>
                         @foreach (array_reverse($entriList) as $e)
                             <tr class="border-b border-hairline dark:border-gray-700">
-                                <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ $e['tglJam'] ?: ($e['createdAt'] ?? '-') }}</td>
+                                <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ ($e['createdAt'] ?? '') ?: '-' }}</td>
+                                <td class="px-3 py-2 text-muted dark:text-gray-400">{{ count($this->barisLembar($e)) }} titik-waktu</td>
                                 <td class="px-3 py-2 text-muted dark:text-gray-400">
                                     @if (!empty($e['ttd'])){{ $e['ttd'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
                                 </td>
@@ -639,7 +825,7 @@ new class extends Component {
                         </div>
                         <div>
                             <h2 class="text-lg font-semibold text-ink dark:text-gray-100">Observasi Nifas</h2>
-                            <p class="mt-0.5 text-sm text-muted dark:text-gray-400">Lembar pemantauan masa nifas (VK) — tiap entri = 1 titik-waktu. Diisi Bidan / Perawat.</p>
+                            <p class="mt-0.5 text-sm text-muted dark:text-gray-400">Lembar pemantauan masa nifas (VK) — satu lembar berisi banyak titik-waktu. Diisi Bidan / Perawat.</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
@@ -695,113 +881,164 @@ new class extends Component {
                         </div>
                     @endif
 
-                    {{-- ── FORM ENTRI (1 titik-waktu) ── --}}
+                    {{-- ── FORM ENTRI (1 lembar = banyak titik-waktu) ── --}}
                     <fieldset @disabled($formReadOnly) class="space-y-4">
 
-                        {{-- Tanda vital & EWS --}}
-                        <x-border-form title="Tanda Vital & Skor">
-                            <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                                <div>
-                                    <x-input-label value="Tgl / Jam" />
-                                    <div class="flex gap-1 mt-1">
-                                        <x-text-input wire:model="newForm.tglJam" class="w-full" placeholder="dd/mm/yyyy HH:mm:ss" />
-                                        @if (!$formReadOnly)
-                                            <x-now-button wire:click="setNow" />
-                                        @endif
+                        {{-- Titik-waktu observasi — tabel entri (banyak baris per lembar) ala Obat Pre Medikasi --}}
+                        <x-border-form title="Observasi Nifas (Titik-Waktu)">
+                            <div class="space-y-3">
+                                @if (!$formReadOnly)
+                                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                                        <div>
+                                            <x-input-label value="Tgl / Jam" :required="true" />
+                                            <div class="flex gap-1 mt-1">
+                                                <x-text-input wire:model="barisTglJam" placeholder="dd/mm/yyyy HH:mm:ss" :error="$errors->has('barisTglJam')" class="w-full" />
+                                                <x-now-button wire:click="setNow" />
+                                            </div>
+                                            <x-input-error :messages="$errors->get('barisTglJam')" class="mt-1" />
+                                        </div>
+                                        <div><x-input-label value="Sistolik (mmHg)" /><x-text-input type="number" wire:model="barisSistolik" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisSistolik')" class="w-full mt-1" placeholder="120" /><x-input-error :messages="$errors->get('barisSistolik')" class="mt-1" /></div>
+                                        <div><x-input-label value="Diastolik (mmHg)" /><x-text-input type="number" wire:model="barisDiastolik" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisDiastolik')" class="w-full mt-1" placeholder="80" /><x-input-error :messages="$errors->get('barisDiastolik')" class="mt-1" /></div>
+                                        <div><x-input-label value="Nadi (x/mnt)" /><x-text-input type="number" wire:model="barisNadi" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisNadi')" class="w-full mt-1" /><x-input-error :messages="$errors->get('barisNadi')" class="mt-1" /></div>
+                                        <div><x-input-label value="RR (x/mnt)" /><x-text-input type="number" wire:model="barisRr" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisRr')" class="w-full mt-1" /><x-input-error :messages="$errors->get('barisRr')" class="mt-1" /></div>
+                                        <div><x-input-label value="Suhu (°C)" /><x-text-input type="number" step="0.1" wire:model="barisSuhu" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisSuhu')" class="w-full mt-1" /><x-input-error :messages="$errors->get('barisSuhu')" class="mt-1" /></div>
+                                        <div><x-input-label value="EWS Score [akr]" /><x-text-input type="number" wire:model="barisEwsScore" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisEwsScore')" class="w-full mt-1" placeholder="MEWS" /><x-input-error :messages="$errors->get('barisEwsScore')" class="mt-1" /></div>
+                                        <div><x-input-label value="TFU" /><x-text-input wire:model="barisTfu" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisTfu')" class="w-full mt-1" placeholder="2 jari bawah pusat" /><x-input-error :messages="$errors->get('barisTfu')" class="mt-1" /></div>
+                                        <div>
+                                            <x-input-label value="Kontraksi Uterus" />
+                                            <x-select-input wire:model="barisKontraksiUterus" class="w-full mt-1">
+                                                <option value="">—</option>
+                                                <option value="Baik/Keras">Baik/Keras</option>
+                                                <option value="Lembek">Lembek</option>
+                                            </x-select-input>
+                                            <x-input-error :messages="$errors->get('barisKontraksiUterus')" class="mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Lochia (Jenis)" />
+                                            <x-select-input wire:model="barisLochiaJenis" class="w-full mt-1">
+                                                <option value="">—</option>
+                                                <option value="Rubra">Rubra</option>
+                                                <option value="Sanguinolenta">Sanguinolenta</option>
+                                                <option value="Serosa">Serosa</option>
+                                                <option value="Alba">Alba</option>
+                                            </x-select-input>
+                                            <x-input-error :messages="$errors->get('barisLochiaJenis')" class="mt-1" />
+                                        </div>
+                                        <div><x-input-label value="Lochia (Jumlah)" /><x-text-input wire:model="barisLochiaJumlah" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisLochiaJumlah')" class="w-full mt-1" placeholder="sedikit / sedang / banyak" /><x-input-error :messages="$errors->get('barisLochiaJumlah')" class="mt-1" /></div>
+                                        <div><x-input-label value="Perdarahan (cc)" /><x-text-input type="number" wire:model="barisPerdarahanCc" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisPerdarahanCc')" class="w-full mt-1" /><x-input-error :messages="$errors->get('barisPerdarahanCc')" class="mt-1" /></div>
+                                        <div>
+                                            <x-input-label value="Luka Jalan Lahir" />
+                                            <x-select-input wire:model="barisLukaJalanLahir" class="w-full mt-1">
+                                                <option value="">—</option>
+                                                <option value="Tidak ada">Tidak ada</option>
+                                                <option value="Kering/Baik">Kering/Baik</option>
+                                                <option value="Basah">Basah</option>
+                                                <option value="Tanda Infeksi">Tanda Infeksi</option>
+                                            </x-select-input>
+                                            <x-input-error :messages="$errors->get('barisLukaJalanLahir')" class="mt-1" />
+                                        </div>
+                                        <div><x-input-label value="BAK" /><x-text-input wire:model="barisBak" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisBak')" class="w-full mt-1" placeholder="spontan / kateter" /><x-input-error :messages="$errors->get('barisBak')" class="mt-1" /></div>
+                                        <div><x-input-label value="BAB" /><x-text-input wire:model="barisBab" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisBab')" class="w-full mt-1" placeholder="sudah / belum" /><x-input-error :messages="$errors->get('barisBab')" class="mt-1" /></div>
+                                        <div>
+                                            <x-input-label value="Laktasi" />
+                                            <x-select-input wire:model="barisLaktasi" class="w-full mt-1">
+                                                <option value="">—</option>
+                                                <option value="Lancar">Lancar</option>
+                                                <option value="Tidak Lancar">Tidak Lancar</option>
+                                                <option value="Belum">Belum</option>
+                                            </x-select-input>
+                                            <x-input-error :messages="$errors->get('barisLaktasi')" class="mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="ASI Eksklusif [akr]" />
+                                            <x-select-input wire:model="barisAsiEksklusif" class="w-full mt-1">
+                                                <option value="">—</option>
+                                                <option value="Ya">Ya</option>
+                                                <option value="Tidak">Tidak</option>
+                                            </x-select-input>
+                                            <x-input-error :messages="$errors->get('barisAsiEksklusif')" class="mt-1" />
+                                        </div>
+                                        <div>
+                                            <x-input-label value="Rawat Gabung [akr]" />
+                                            <x-select-input wire:model="barisRawatGabung" class="w-full mt-1">
+                                                <option value="">—</option>
+                                                <option value="Ya">Ya</option>
+                                                <option value="Tidak">Tidak</option>
+                                            </x-select-input>
+                                            <x-input-error :messages="$errors->get('barisRawatGabung')" class="mt-1" />
+                                        </div>
+                                        <div><x-input-label value="Mobilisasi" /><x-text-input wire:model="barisMobilisasi" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisMobilisasi')" class="w-full mt-1" placeholder="miring kiri/kanan, duduk, jalan" /><x-input-error :messages="$errors->get('barisMobilisasi')" class="mt-1" /></div>
+                                        <div class="col-span-2 sm:col-span-3 lg:col-span-2">
+                                            <x-input-label value="Keluhan" />
+                                            <x-text-input wire:model="barisKeluhan" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisKeluhan')" class="w-full mt-1" placeholder="mis. nyeri luka, mules" />
+                                            <x-input-error :messages="$errors->get('barisKeluhan')" class="mt-1" />
+                                        </div>
+                                        <div class="col-span-2 sm:col-span-3 lg:col-span-4">
+                                            <x-input-label value="Asuhan / Tindakan Kebidanan" />
+                                            <x-textarea wire:model="barisAsuhanTindakan" rows="2" class="w-full mt-1"
+                                                placeholder="mis. observasi TTV, perawatan luka, edukasi menyusui, mobilisasi dini" />
+                                            <x-input-error :messages="$errors->get('barisAsuhanTindakan')" class="mt-1" />
+                                        </div>
                                     </div>
-                                </div>
-                                <div><x-input-label value="Sistolik (mmHg)" /><x-text-input type="number" wire:model="newForm.sistolik" class="w-full mt-1" placeholder="120" /></div>
-                                <div><x-input-label value="Diastolik (mmHg)" /><x-text-input type="number" wire:model="newForm.diastolik" class="w-full mt-1" placeholder="80" /></div>
-                                <div><x-input-label value="Nadi (x/mnt)" /><x-text-input type="number" wire:model="newForm.nadi" class="w-full mt-1" /></div>
-                                <div><x-input-label value="RR (x/mnt)" /><x-text-input type="number" wire:model="newForm.rr" class="w-full mt-1" /></div>
-                                <div><x-input-label value="Suhu (°C)" /><x-text-input type="number" step="0.1" wire:model="newForm.suhu" class="w-full mt-1" /></div>
-                                <div><x-input-label value="EWS Score [akr]" /><x-text-input type="number" wire:model="newForm.ewsScore" class="w-full mt-1" placeholder="MEWS" /></div>
-                            </div>
-                        </x-border-form>
 
-                        {{-- Involusi & Lochia --}}
-                        <x-border-form title="Involusi Uteri & Lochia">
-                            <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                                <div><x-input-label value="TFU" /><x-text-input wire:model="newForm.tfu" class="w-full mt-1" placeholder="2 jari bawah pusat" /></div>
-                                <div>
-                                    <x-input-label value="Kontraksi Uterus" />
-                                    <x-select-input wire:model="newForm.kontraksiUterus" class="w-full mt-1">
-                                        <option value="">—</option>
-                                        <option value="Baik/Keras">Baik/Keras</option>
-                                        <option value="Lembek">Lembek</option>
-                                    </x-select-input>
-                                </div>
-                                <div>
-                                    <x-input-label value="Lochia (Jenis)" />
-                                    <x-select-input wire:model="newForm.lochiaJenis" class="w-full mt-1">
-                                        <option value="">—</option>
-                                        <option value="Rubra">Rubra</option>
-                                        <option value="Sanguinolenta">Sanguinolenta</option>
-                                        <option value="Serosa">Serosa</option>
-                                        <option value="Alba">Alba</option>
-                                    </x-select-input>
-                                </div>
-                                <div><x-input-label value="Lochia (Jumlah)" /><x-text-input wire:model="newForm.lochiaJumlah" class="w-full mt-1" placeholder="sedikit / sedang / banyak" /></div>
-                                <div><x-input-label value="Perdarahan (cc)" /><x-text-input type="number" wire:model="newForm.perdarahanCc" class="w-full mt-1" /></div>
-                                <div>
-                                    <x-input-label value="Luka Jalan Lahir" />
-                                    <x-select-input wire:model="newForm.lukaJalanLahir" class="w-full mt-1">
-                                        <option value="">—</option>
-                                        <option value="Tidak ada">Tidak ada</option>
-                                        <option value="Kering/Baik">Kering/Baik</option>
-                                        <option value="Basah">Basah</option>
-                                        <option value="Tanda Infeksi">Tanda Infeksi</option>
-                                    </x-select-input>
-                                </div>
-                            </div>
-                        </x-border-form>
+                                    <x-primary-button type="button" wire:click="tambahBaris" wire:loading.attr="disabled" wire:target="tambahBaris" class="justify-center gap-1.5 w-full">
+                                        <span wire:loading.remove wire:target="tambahBaris" class="flex items-center gap-1.5">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                                            Tambah
+                                        </span>
+                                        <span wire:loading wire:target="tambahBaris" class="flex items-center gap-1.5"><x-loading class="w-4 h-4" /> Menambahkan...</span>
+                                    </x-primary-button>
+                                @endif
 
-                        {{-- Eliminasi, Laktasi & Mobilisasi --}}
-                        <x-border-form title="Eliminasi, Laktasi & Mobilisasi">
-                            <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                                <div><x-input-label value="BAK" /><x-text-input wire:model="newForm.bak" class="w-full mt-1" placeholder="spontan / kateter" /></div>
-                                <div><x-input-label value="BAB" /><x-text-input wire:model="newForm.bab" class="w-full mt-1" placeholder="sudah / belum" /></div>
-                                <div>
-                                    <x-input-label value="Laktasi" />
-                                    <x-select-input wire:model="newForm.laktasi" class="w-full mt-1">
-                                        <option value="">—</option>
-                                        <option value="Lancar">Lancar</option>
-                                        <option value="Tidak Lancar">Tidak Lancar</option>
-                                        <option value="Belum">Belum</option>
-                                    </x-select-input>
+                                <div class="overflow-x-auto bg-canvas border rounded-2xl border-hairline dark:border-gray-700">
+                                    <table class="ds-table">
+                                        <thead>
+                                            <tr>
+                                                <th class="ds-c w-10">No</th>
+                                                <th>Tgl / Jam</th>
+                                                <th>TD (mmHg)</th>
+                                                <th>Nadi</th>
+                                                <th>Suhu</th>
+                                                <th>TFU</th>
+                                                <th>Lochia</th>
+                                                <th>Laktasi</th>
+                                                <th>Keluhan</th>
+                                                <th class="ds-c w-14">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @forelse ($newForm['rows'] ?? [] as $nomor => $baris)
+                                                <tr wire:key="observasi-nifas-baris-{{ $nomor }}">
+                                                    <td class="ds-c ds-td-meta">{{ $nomor + 1 }}</td>
+                                                    <td class="ds-td-strong">{{ ($baris['tglJam'] ?? '') ?: '-' }}</td>
+                                                    <td>{{ filled($baris['sistolik'] ?? '') || filled($baris['diastolik'] ?? '') ? ($baris['sistolik'] ?? '-') . '/' . ($baris['diastolik'] ?? '-') : '-' }}</td>
+                                                    <td>{{ ($baris['nadi'] ?? '') ?: '-' }}</td>
+                                                    <td>{{ ($baris['suhu'] ?? '') ?: '-' }}</td>
+                                                    <td>{{ ($baris['tfu'] ?? '') ?: '-' }}</td>
+                                                    <td>{{ trim(($baris['lochiaJenis'] ?? '') . ' ' . ($baris['lochiaJumlah'] ?? '')) ?: '-' }}</td>
+                                                    <td>{{ ($baris['laktasi'] ?? '') ?: '-' }}</td>
+                                                    <td>{{ ($baris['keluhan'] ?? '') ?: '-' }}</td>
+                                                    <td class="ds-c">
+                                                        @if (!$formReadOnly)
+                                                            <x-confirm-button variant="danger-soft" :action="'hapusBaris(' . $nomor . ')'"
+                                                                title="Hapus Baris" :message="'Yakin hapus baris titik-waktu ' . (($baris['tglJam'] ?? '') ?: 'ini') . ' dari lembar?'"
+                                                                confirmText="Ya, hapus" cancelText="Batal" class="px-2 py-1">
+                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                            </x-confirm-button>
+                                                        @else
+                                                            <span class="text-muted-soft">—</span>
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            @empty
+                                                <tr>
+                                                    <td colspan="10" class="ds-c italic text-muted-soft">Belum ada baris titik-waktu observasi.</td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
                                 </div>
-                                <div>
-                                    <x-input-label value="ASI Eksklusif [akr]" />
-                                    <x-select-input wire:model="newForm.asiEksklusif" class="w-full mt-1">
-                                        <option value="">—</option>
-                                        <option value="Ya">Ya</option>
-                                        <option value="Tidak">Tidak</option>
-                                    </x-select-input>
-                                </div>
-                                <div>
-                                    <x-input-label value="Rawat Gabung [akr]" />
-                                    <x-select-input wire:model="newForm.rawatGabung" class="w-full mt-1">
-                                        <option value="">—</option>
-                                        <option value="Ya">Ya</option>
-                                        <option value="Tidak">Tidak</option>
-                                    </x-select-input>
-                                </div>
-                                <div><x-input-label value="Mobilisasi" /><x-text-input wire:model="newForm.mobilisasi" class="w-full mt-1" placeholder="miring kiri/kanan, duduk, jalan" /></div>
-                            </div>
-                        </x-border-form>
-
-                        {{-- Keluhan & Asuhan --}}
-                        <x-border-form title="Keluhan & Asuhan">
-                            <div class="space-y-4">
-                                <div>
-                                    <x-input-label value="Keluhan" />
-                                    <x-text-input wire:model="newForm.keluhan" class="w-full mt-1" placeholder="mis. nyeri luka, mules" />
-                                </div>
-                                <div>
-                                    <x-input-label value="Asuhan / Tindakan Kebidanan" />
-                                    <x-textarea wire:model="newForm.asuhanTindakan" rows="3" class="w-full mt-1"
-                                        placeholder="mis. observasi TTV, perawatan luka, edukasi menyusui, mobilisasi dini" />
-                                </div>
+                                <p class="text-xs italic text-muted-soft">Kolom lengkap (RR, EWS, kontraksi uterus, perdarahan, luka jalan lahir, BAK/BAB, ASI eksklusif, rawat gabung, mobilisasi, asuhan) tampil di detail lembar tersimpan &amp; cetakan.</p>
                             </div>
                         </x-border-form>
 
@@ -817,28 +1054,19 @@ new class extends Component {
                     </fieldset>
 
                     {{-- ── DAFTAR BARIS OBSERVASI TERSIMPAN (expandable) ── --}}
-                    <x-border-form title="Baris Observasi Nifas Tersimpan">
+                    <x-border-form title="Lembar Observasi Nifas Tersimpan">
                         @if (count($entriList ?? []))
-                            <div class="flex items-center justify-between gap-2 mb-3">
-                                <span class="text-xs italic text-muted-soft">Klik baris untuk lihat detail lengkap</span>
-                                <x-secondary-button type="button" wire:click="cetakLembar" wire:loading.attr="disabled"
-                                    wire:target="cetakLembar" class="px-3 py-1.5 text-sm gap-1.5">
-                                    <span wire:loading.remove wire:target="cetakLembar" class="flex items-center gap-1.5">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                        </svg>
-                                        Cetak Lembar Nifas
-                                    </span>
-                                    <span wire:loading wire:target="cetakLembar">Menyiapkan…</span>
-                                </x-secondary-button>
+                            <div class="mb-3">
+                                <span class="text-xs italic text-muted-soft">Klik baris untuk lihat detail lengkap. Tiap lembar dicetak lewat tombol <strong>Cetak</strong> di barisnya.</span>
                             </div>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
                                     <thead class="bg-surface-soft dark:bg-gray-800">
                                         <tr class="text-left text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-300">
                                             <th class="w-8 px-2 py-3 border-b"></th>
-                                            <th class="px-4 py-3 border-b">Tgl / Jam</th>
-                                            <th class="px-4 py-3 border-b">TD</th>
+                                            <th class="px-4 py-3 border-b">Lembar Dibuat</th>
+                                            <th class="px-4 py-3 border-b">Baris</th>
+                                            <th class="px-4 py-3 border-b">Periode Pemantauan</th>
                                             <th class="px-4 py-3 border-b">Petugas (TTD)</th>
                                             <th class="px-4 py-3 text-center border-b">Status</th>
                                             <th class="px-4 py-3 text-center border-b">Aksi</th>
@@ -848,6 +1076,8 @@ new class extends Component {
                                         @php
                                             $isFinal = $this->entryIsFinal($entry);
                                             $rowKey = $entry['createdAt'] ?? '';
+                                            $barisLembar = $this->barisLembar($entry);
+                                            $periodeLembar = $this->periodeLembar($barisLembar);
                                         @endphp
                                         <tbody x-data="{ open: {{ $loop->first ? 'true' : 'false' }} }" class="border-b border-hairline dark:border-gray-700">
                                             <tr @click="open = !open"
@@ -858,10 +1088,13 @@ new class extends Component {
                                                     </svg>
                                                 </td>
                                                 <td class="px-4 py-3 font-semibold align-middle text-ink dark:text-gray-100">
-                                                    {{ $entry['tglJam'] ?: ($rowKey ?: '-') }}
+                                                    {{ $rowKey ?: '-' }}
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
-                                                    {{ filled($entry['sistolik'] ?? '') || filled($entry['diastolik'] ?? '') ? ($entry['sistolik'] ?? '-') . '/' . ($entry['diastolik'] ?? '-') : (($entry['td'] ?? '') ?: '-') }}
+                                                    {{ count($barisLembar) }} titik-waktu
+                                                </td>
+                                                <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                    {{ $periodeLembar }}
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
                                                     @if (!empty($entry['ttd']))
@@ -897,6 +1130,15 @@ new class extends Component {
                                                                 Lihat
                                                             </x-secondary-button>
                                                         @endif
+                                                        <x-secondary-button type="button" wire:click="cetakLembar('{{ $rowKey }}')" wire:loading.attr="disabled" wire:target="cetakLembar('{{ $rowKey }}')" class="gap-1.5" title="Cetak lembar observasi ini">
+                                                            <span wire:loading.remove wire:target="cetakLembar('{{ $rowKey }}')" class="flex items-center gap-1.5">
+                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                                </svg>
+                                                                Cetak
+                                                            </span>
+                                                            <span wire:loading wire:target="cetakLembar('{{ $rowKey }}')" class="flex items-center gap-1.5"><x-loading class="w-5 h-5" /> Mencetak...</span>
+                                                        </x-secondary-button>
                                                         </div>
                                                         @if (!$isFormLocked)
                                                             <div class="flex items-center justify-center gap-2">
@@ -932,87 +1174,11 @@ new class extends Component {
 
                                             {{-- DETAIL (expand) --}}
                                             <tr x-show="open" x-cloak>
-                                                <td colspan="6" class="px-4 py-4 bg-surface-soft/60 dark:bg-gray-950/30">
-                                                    <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
+                                                <td colspan="7" class="px-4 py-4 bg-surface-soft/60 dark:bg-gray-950/30">
+                                                    <dl class="grid grid-cols-1 gap-x-8 gap-y-3 mb-3 md:grid-cols-2">
                                                         <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tgl / Jam</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['tglJam'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tekanan Darah</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ filled($entry['sistolik'] ?? '') || filled($entry['diastolik'] ?? '') ? ($entry['sistolik'] ?? '-') . '/' . ($entry['diastolik'] ?? '-') : (($entry['td'] ?? '') ?: '-') }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Nadi (x/mnt)</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['nadi'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">RR (x/mnt)</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['rr'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Suhu (°C)</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['suhu'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">EWS Score [akr]</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['ewsScore'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">TFU</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['tfu'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Kontraksi Uterus</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['kontraksiUterus'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Lochia (Jenis)</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['lochiaJenis'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Lochia (Jumlah)</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['lochiaJumlah'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Perdarahan (cc)</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['perdarahanCc'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Luka Jalan Lahir</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['lukaJalanLahir'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">BAK</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['bak'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">BAB</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['bab'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Laktasi</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['laktasi'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">ASI Eksklusif [akr]</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['asiEksklusif'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Rawat Gabung [akr]</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['rawatGabung'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Mobilisasi</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['mobilisasi'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div class="md:col-span-2">
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Keluhan</dt>
-                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['keluhan'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div class="md:col-span-2">
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Asuhan / Tindakan Kebidanan</dt>
-                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['asuhanTindakan'] ?: '-' }}</dd>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Periode Pemantauan</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $periodeLembar }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Petugas (TTD)</dt>
@@ -1026,6 +1192,65 @@ new class extends Component {
                                                             </dd>
                                                         </div>
                                                     </dl>
+
+                                                    <div class="overflow-x-auto bg-canvas border rounded-2xl border-hairline dark:border-gray-700">
+                                                        <table class="ds-table">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th class="ds-c w-10">No</th>
+                                                                    <th>Tgl / Jam</th>
+                                                                    <th>TD (mmHg)</th>
+                                                                    <th>Nadi</th>
+                                                                    <th>RR</th>
+                                                                    <th>Suhu</th>
+                                                                    <th>EWS</th>
+                                                                    <th>TFU</th>
+                                                                    <th>Kontraksi</th>
+                                                                    <th>Lochia</th>
+                                                                    <th>Drh (cc)</th>
+                                                                    <th>Luka</th>
+                                                                    <th>BAK</th>
+                                                                    <th>BAB</th>
+                                                                    <th>Laktasi</th>
+                                                                    <th>ASI</th>
+                                                                    <th>Rawat Gabung</th>
+                                                                    <th>Mobilisasi</th>
+                                                                    <th>Keluhan</th>
+                                                                    <th>Asuhan / Tindakan</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                @forelse ($barisLembar as $nomorBaris => $barisDetail)
+                                                                    <tr>
+                                                                        <td class="ds-c ds-td-meta">{{ $nomorBaris + 1 }}</td>
+                                                                        <td class="ds-td-strong">{{ ($barisDetail['tglJam'] ?? '') ?: '-' }}</td>
+                                                                        <td>{{ filled($barisDetail['sistolik'] ?? '') || filled($barisDetail['diastolik'] ?? '') ? ($barisDetail['sistolik'] ?? '-') . '/' . ($barisDetail['diastolik'] ?? '-') : '-' }}</td>
+                                                                        <td>{{ ($barisDetail['nadi'] ?? '') ?: '-' }}</td>
+                                                                        <td>{{ ($barisDetail['rr'] ?? '') ?: '-' }}</td>
+                                                                        <td>{{ ($barisDetail['suhu'] ?? '') ?: '-' }}</td>
+                                                                        <td>{{ ($barisDetail['ewsScore'] ?? '') ?: '-' }}</td>
+                                                                        <td>{{ ($barisDetail['tfu'] ?? '') ?: '-' }}</td>
+                                                                        <td>{{ ($barisDetail['kontraksiUterus'] ?? '') ?: '-' }}</td>
+                                                                        <td>{{ trim(($barisDetail['lochiaJenis'] ?? '') . ' ' . ($barisDetail['lochiaJumlah'] ?? '')) ?: '-' }}</td>
+                                                                        <td>{{ ($barisDetail['perdarahanCc'] ?? '') ?: '-' }}</td>
+                                                                        <td>{{ ($barisDetail['lukaJalanLahir'] ?? '') ?: '-' }}</td>
+                                                                        <td>{{ ($barisDetail['bak'] ?? '') ?: '-' }}</td>
+                                                                        <td>{{ ($barisDetail['bab'] ?? '') ?: '-' }}</td>
+                                                                        <td>{{ ($barisDetail['laktasi'] ?? '') ?: '-' }}</td>
+                                                                        <td>{{ ($barisDetail['asiEksklusif'] ?? '') ?: '-' }}</td>
+                                                                        <td>{{ ($barisDetail['rawatGabung'] ?? '') ?: '-' }}</td>
+                                                                        <td>{{ ($barisDetail['mobilisasi'] ?? '') ?: '-' }}</td>
+                                                                        <td>{{ ($barisDetail['keluhan'] ?? '') ?: '-' }}</td>
+                                                                        <td>{{ ($barisDetail['asuhanTindakan'] ?? '') ?: '-' }}</td>
+                                                                    </tr>
+                                                                @empty
+                                                                    <tr>
+                                                                        <td colspan="20" class="ds-c italic text-muted-soft">Lembar ini belum berisi baris titik-waktu.</td>
+                                                                    </tr>
+                                                                @endforelse
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         </tbody>
@@ -1033,7 +1258,7 @@ new class extends Component {
                                 </table>
                             </div>
                         @else
-                            <p class="text-sm text-muted dark:text-gray-400">Belum ada baris observasi tersimpan.</p>
+                            <p class="text-sm text-muted dark:text-gray-400">Belum ada lembar observasi tersimpan.</p>
                         @endif
                     </x-border-form>
 
@@ -1063,20 +1288,6 @@ new class extends Component {
                     @endif
 
                     <div class="flex flex-wrap items-center justify-end gap-3">
-                        {{-- Cetak per-LEMBAR --}}
-                        @if (count($entriList ?? []))
-                            <x-secondary-button type="button" wire:click="cetakLembar" wire:loading.attr="disabled"
-                                wire:target="cetakLembar" class="gap-1.5">
-                                <span wire:loading.remove wire:target="cetakLembar" class="flex items-center gap-1.5">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                    </svg>
-                                    Cetak Lembar
-                                </span>
-                                <span wire:loading wire:target="cetakLembar" class="flex items-center gap-1.5"><x-loading class="w-4 h-4" /> Menyiapkan…</span>
-                            </x-secondary-button>
-                        @endif
-
                         <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
 
                         @if ($viewOnly)

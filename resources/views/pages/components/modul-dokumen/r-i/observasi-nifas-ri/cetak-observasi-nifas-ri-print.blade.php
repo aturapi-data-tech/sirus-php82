@@ -64,8 +64,7 @@
                 @php
                     $keterangan = trim(
                         (filled($baris['keluhan'] ?? null) ? 'Keluhan: ' . $baris['keluhan'] . '. ' : '') .
-                        (filled($baris['asuhanTindakan'] ?? null) ? $baris['asuhanTindakan'] . ' ' : '') .
-                        (filled($baris['ttd'] ?? null) ? '(' . $baris['ttd'] . ')' : '')
+                        (filled($baris['asuhanTindakan'] ?? null) ? $baris['asuhanTindakan'] : '')
                     );
                 @endphp
                 <tr>
@@ -100,8 +99,8 @@
         <tr>
             <td style="width:60%;">&nbsp;</td>
             <td style="width:40%; text-align:center;">
-                {{ $data['identitasRs']->int_city ?? 'Tulungagung' }}, {{ $data['tglCetak'] ?? '' }}<br>
-                Bidan / Perawat<br>
+                {{ $data['identitasRs']->int_city ?? 'Tulungagung' }}, {{ $data['ttdDate'] ?? ($data['tglCetak'] ?? '') }}<br>
+                {{ $data['ttd'] ?? 'Bidan / Perawat' }}<br>
                 @if (!empty($data['ttdPath']))
                     <img src="{{ $data['ttdPath'] }}" style="height:44px; margin:4px 0;" alt="Tanda Tangan"><br>
                 @else
