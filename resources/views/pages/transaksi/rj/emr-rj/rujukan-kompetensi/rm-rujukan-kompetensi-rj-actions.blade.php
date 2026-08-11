@@ -701,7 +701,7 @@ new class extends Component {
                 </div>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex flex-col items-start gap-2">
                 <x-secondary-button type="button" wire:click="ambilKriteria" wire:loading.attr="disabled"
                     wire:target="ambilKriteria" :disabled="$isFormLocked">
                     <span wire:loading.remove wire:target="ambilKriteria">
@@ -773,7 +773,7 @@ new class extends Component {
 
         {{-- LANGKAH 2 — KANDIDAT FASKES --}}
         <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col items-start gap-2">
                 <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">2. Kandidat Faskes Tujuan</p>
                 <x-secondary-button type="button" wire:click="cariFaskes" wire:loading.attr="disabled"
                     wire:target="cariFaskes" :disabled="$isFormLocked">
@@ -829,7 +829,7 @@ new class extends Component {
         {{-- LANGKAH 3 — KIRIM --}}
         <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">3. Kirim Rujukan</p>
-            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div class="grid grid-cols-1 gap-3">
                 <div>
                     <x-input-label value="Poli Rujukan (kode BPJS 3 huruf)" class="mb-1" />
                     <x-text-input wire:model.blur="formRujukan.poliRujukan" placeholder="kosong = ikut kode spesialis"
