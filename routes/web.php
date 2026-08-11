@@ -67,6 +67,10 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/panduan-dev/koding-formulir-rm', 'pages::panduan-dev.koding-formulir-rm.koding-formulir-rm')
         ->name('panduan-dev.koding-formulir-rm');
 
+    // Tutorial Rujukan Berbasis Kompetensi (SRBK) — alur dua jalur + FAQ permasalahan
+    Route::livewire('/panduan-dev/rujukan-kompetensi', 'pages::panduan-dev.rujukan-kompetensi.rujukan-kompetensi')
+        ->name('panduan-dev.rujukan-kompetensi');
+
     // ===========================================
     // DOWN TIME — FORMULIR MANUAL WAKTU HENTI SIMRS
     // ===========================================
