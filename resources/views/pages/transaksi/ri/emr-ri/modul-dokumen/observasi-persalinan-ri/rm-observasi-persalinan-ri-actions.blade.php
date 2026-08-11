@@ -32,7 +32,8 @@ new class extends Component {
 
     public array $newForm = [
         'jam'            => '',   // titik-waktu observasi (d/m/Y H:i:s)
-        'td'             => '',   // tekanan darah, teks mmHg (mis. 120/80)
+        'sistolik'       => '',   // tekanan darah sistolik (mmHg)
+        'diastolik'      => '',   // tekanan darah diastolik (mmHg)
         'nadi'           => '',   // x/mnt
         'rr'             => '',   // x/mnt
         'suhu'           => '',   // °C
@@ -143,7 +144,8 @@ new class extends Component {
     {
         return [
             'jam'            => $this->newForm['jam'] ?? '',
-            'td'             => $this->newForm['td'] ?? '',
+            'sistolik'       => $this->newForm['sistolik'] ?? '',
+            'diastolik'      => $this->newForm['diastolik'] ?? '',
             'nadi'           => $this->newForm['nadi'] ?? '',
             'rr'             => $this->newForm['rr'] ?? '',
             'suhu'           => $this->newForm['suhu'] ?? '',
@@ -163,7 +165,7 @@ new class extends Component {
     // Cek: minimal salah satu observasi inti terisi.
     private function adaObservasiInti(): bool
     {
-        return collect(['td', 'nadi', 'rr', 'suhu', 'djj', 'his', 'ewsScore', 'obatKeterangan'])
+        return collect(['sistolik', 'diastolik', 'nadi', 'rr', 'suhu', 'djj', 'his', 'ewsScore', 'obatKeterangan'])
             ->contains(fn($k) => filled($this->newForm[$k] ?? null));
     }
 
@@ -279,6 +281,57 @@ new class extends Component {
     }
 
     /* ===============================
+     | BUKA KUNCI (Gate dokumen.bukaKunci) — cabut TTD petugas, entri kembali Draft.
+     =============================== */
+    public function bukaKunci(string $createdAt): void
+    {
+        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($createdAt) {
+                $this->lockRIRow($this->riHdrNo);
+
+                $fresh = $this->findDataRI($this->riHdrNo) ?: [];
+                $list = is_array($fresh[$this->jsonKey] ?? null) ? $fresh[$this->jsonKey] : [];
+                $index = collect($list)->search(fn($item) => ($item['createdAt'] ?? '') === $createdAt);
+                if ($index === false) {
+                    throw new \RuntimeException('Entri tidak ditemukan.');
+                }
+
+                $list[$index]['finalized'] = false;
+                $list[$index]['ttd'] = '';
+                $list[$index]['ttdCode'] = '';
+                $list[$index]['ttdDate'] = '';
+                $fresh[$this->jsonKey] = array_values($list);
+
+                $this->updateJsonRI((int) $this->riHdrNo, $fresh);
+                $this->dataDaftarRi = $fresh;
+                $this->entriList = $fresh[$this->jsonKey];
+
+                $pembukaKunci = auth()->user()->myuser_name ?? '-';
+                $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Observasi Persalinan (' . $createdAt . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut', 'MR');
+            });
+
+            if ($this->editingKey === $createdAt) {
+                $this->cancelEdit();
+            }
+            $this->incrementVersion('modal-observasi-persalinan-ri');
+            $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — TTD petugas dicabut, entri kembali Draft.');
+        } catch (\RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $exception->getMessage());
+        }
+    }
+
+    /* ===============================
      | EDIT / LIHAT / BATAL entri
      =============================== */
     // Muat 1 entri ke form atas (dipakai edit draft & lihat entri terkunci). TANPA TTD gambar.
@@ -286,6 +339,12 @@ new class extends Component {
     {
         foreach ($this->newForm as $k => $v) {
             $this->newForm[$k] = $entry[$k] ?? (is_array($v) ? [] : '');
+        }
+        // Entri lama menyimpan TD gabungan "120/80" — pecah ke sistolik/diastolik.
+        if (blank($this->newForm['sistolik']) && blank($this->newForm['diastolik']) && filled($entry['td'] ?? null)) {
+            [$tdSistolik, $tdDiastolik] = array_pad(explode('/', (string) $entry['td'], 2), 2, '');
+            $this->newForm['sistolik'] = trim($tdSistolik);
+            $this->newForm['diastolik'] = trim($tdDiastolik);
         }
         $this->editingKey = $key;
         $this->resetValidation();
@@ -652,7 +711,8 @@ new class extends Component {
                                         @endif
                                     </div>
                                 </div>
-                                <div><x-input-label value="TD (mmHg)" /><x-text-input wire:model="newForm.td" class="w-full mt-1" placeholder="120/80" /></div>
+                                <div><x-input-label value="Sistolik (mmHg)" /><x-text-input type="number" wire:model="newForm.sistolik" class="w-full mt-1" placeholder="120" /></div>
+                                <div><x-input-label value="Diastolik (mmHg)" /><x-text-input type="number" wire:model="newForm.diastolik" class="w-full mt-1" placeholder="80" /></div>
                                 <div><x-input-label value="Nadi (x/mnt)" /><x-text-input type="number" wire:model="newForm.nadi" class="w-full mt-1" /></div>
                                 <div><x-input-label value="RR (x/mnt)" /><x-text-input type="number" wire:model="newForm.rr" class="w-full mt-1" /></div>
                                 <div><x-input-label value="Suhu (°C)" /><x-text-input type="number" step="0.1" wire:model="newForm.suhu" class="w-full mt-1" /></div>
@@ -723,7 +783,7 @@ new class extends Component {
                                                     {{ $entry['jam'] ?: ($rowKey ?: '-') }}
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
-                                                    {{ $entry['td'] ?: '-' }}
+                                                    {{ filled($entry['sistolik'] ?? '') || filled($entry['diastolik'] ?? '') ? ($entry['sistolik'] ?? '-') . '/' . ($entry['diastolik'] ?? '-') : (($entry['td'] ?? '') ?: '-') }}
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
                                                     {{ $entry['djj'] ?: '-' }}
@@ -765,6 +825,20 @@ new class extends Component {
                                                         </div>
                                                         @if (!$isFormLocked)
                                                             <div class="flex items-center justify-center gap-2">
+                                                            @if ($isFinal)
+                                                                @can('dokumen.bukaKunci')
+                                                                    <x-confirm-button action="bukaKunci('{{ $rowKey }}')"
+                                                                        title="Buka Kunci Observasi Persalinan"
+                                                                        message="TTD petugas akan dicabut & entri kembali menjadi Draft — proses TTD diulang dari awal. Lanjutkan?"
+                                                                        confirmText="Ya, Buka Kunci" class="gap-1.5">
+                                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                                d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" />
+                                                                        </svg>
+                                                                        Buka Kunci
+                                                                    </x-confirm-button>
+                                                                @endcan
+                                                            @endif
                                                             @can('dokumen.hapus')
                                                             <x-outline-button type="button" wire:click.prevent="hapus('{{ $rowKey }}')" wire:confirm="Yakin hapus baris observasi ini?"
                                                                 wire:loading.attr="disabled"
@@ -791,7 +865,7 @@ new class extends Component {
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tekanan Darah</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['td'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ filled($entry['sistolik'] ?? '') || filled($entry['diastolik'] ?? '') ? ($entry['sistolik'] ?? '-') . '/' . ($entry['diastolik'] ?? '-') : (($entry['td'] ?? '') ?: '-') }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Nadi (x/mnt)</dt>

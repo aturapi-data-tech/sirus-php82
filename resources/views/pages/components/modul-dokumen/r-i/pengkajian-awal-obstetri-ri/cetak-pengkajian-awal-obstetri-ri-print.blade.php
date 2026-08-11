@@ -85,7 +85,7 @@
     {{-- 7. Status Umum / TTV --}}
     <div class="pa-sec">7. STATUS UMUM & TANDA VITAL</div>
     <table class="pa">
-        <tr><td class="lbl">Keadaan Umum</td><td>{{ $v('keadaanUmum') }}</td><td class="lbl">TD</td><td>{{ $v('td') }} mmHg</td></tr>
+        <tr><td class="lbl">Keadaan Umum</td><td>{{ $v('keadaanUmum') }}</td><td class="lbl">TD</td><td>{{ filled($form['sistolik'] ?? null) || filled($form['diastolik'] ?? null) ? e(($form['sistolik'] ?? '-') . '/' . ($form['diastolik'] ?? '-')) : $v('td') }} mmHg</td></tr>
         <tr><td class="lbl">Nadi / RR</td><td>{{ $v('nadi') }} / {{ $v('respirasi') }} x/mnt</td><td class="lbl">Suhu (R/Ax)</td><td>{{ $v('suhuRectal') }} / {{ $v('suhuAxiler') }} °C</td></tr>
         <tr><td class="lbl">Conjungtiva / Edema</td><td>{{ $v('conjungtiva') }} / {{ $v('edema') }}</td><td class="lbl">Cor / Pulmo</td><td>{{ $v('cor') }} / {{ $v('pulmo') }}</td></tr>
     </table>

@@ -70,7 +70,7 @@
                 @endphp
                 <tr>
                     <td>{{ $cell($r['tglJam'] ?? null) }}</td>
-                    <td>{{ $cell($r['td'] ?? null) }}</td>
+                    <td>{{ $cell(filled($r['sistolik'] ?? null) || filled($r['diastolik'] ?? null) ? ($r['sistolik'] ?? '-') . '/' . ($r['diastolik'] ?? '-') : ($r['td'] ?? null)) }}</td>
                     <td>{{ $cell($r['nadi'] ?? null) }}</td>
                     <td>{{ $cell($r['rr'] ?? null) }}</td>
                     <td>{{ $cell($r['suhu'] ?? null) }}</td>

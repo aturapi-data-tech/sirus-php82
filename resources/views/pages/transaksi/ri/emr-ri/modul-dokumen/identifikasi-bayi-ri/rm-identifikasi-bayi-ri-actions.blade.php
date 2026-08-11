@@ -150,6 +150,102 @@ new class extends Component {
         $this->newForm['ttdDate'] = '';
     }
 
+    /**
+     * TTD menyusul pada entri TERSIMPAN yang belum/batal ditandatangani.
+     * Form ini tak punya siklus draft-edit, jadi tanpa method ini entri hasil
+     * Buka Kunci tak akan pernah bisa ditandatangani lagi.
+     */
+    public function ttdEntry(string $createdAt): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($createdAt) {
+                $this->lockRIRow($this->riHdrNo);
+
+                $fresh = $this->findDataRI($this->riHdrNo) ?: [];
+                $list = is_array($fresh[$this->jsonKey] ?? null) ? $fresh[$this->jsonKey] : [];
+                $index = collect($list)->search(fn($item) => ($item['createdAt'] ?? '') === $createdAt);
+                if ($index === false) {
+                    throw new \RuntimeException('Entri tidak ditemukan.');
+                }
+                if (!empty($list[$index]['ttd'])) {
+                    throw new \RuntimeException('Entri sudah ditandatangani.');
+                }
+
+                $penandaTangan = auth()->user()->myuser_name ?? '';
+                $list[$index]['ttd'] = $penandaTangan;
+                $list[$index]['ttdCode'] = auth()->user()->myuser_code ?? '';
+                $list[$index]['ttdDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+                $fresh[$this->jsonKey] = array_values($list);
+
+                $this->updateJsonRI((int) $this->riHdrNo, $fresh);
+                $this->dataDaftarRi = $fresh;
+                $this->entriList = $fresh[$this->jsonKey];
+
+                $this->appendAdminLogRI((int) $this->riHdrNo, 'TTD Identifikasi Bayi (' . $createdAt . ') oleh ' . $penandaTangan, 'MR');
+            });
+
+            $this->incrementVersion('modal-identifikasi-bayi-ri');
+            $this->dispatch('toast', type: 'success', message: 'Entri ditandatangani.');
+        } catch (\RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menandatangani: ' . $exception->getMessage());
+        }
+    }
+
+    /* ===============================
+     | BUKA KUNCI (Gate dokumen.bukaKunci) — cabut TTD petugas pada entri tersimpan.
+     =============================== */
+    public function bukaKunci(string $createdAt): void
+    {
+        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($createdAt) {
+                $this->lockRIRow($this->riHdrNo);
+
+                $fresh = $this->findDataRI($this->riHdrNo) ?: [];
+                $list = is_array($fresh[$this->jsonKey] ?? null) ? $fresh[$this->jsonKey] : [];
+                $index = collect($list)->search(fn($item) => ($item['createdAt'] ?? '') === $createdAt);
+                if ($index === false) {
+                    throw new \RuntimeException('Entri tidak ditemukan.');
+                }
+
+                $list[$index]['finalized'] = false;
+                $list[$index]['ttd'] = '';
+                $list[$index]['ttdCode'] = '';
+                $list[$index]['ttdDate'] = '';
+                $fresh[$this->jsonKey] = array_values($list);
+
+                $this->updateJsonRI((int) $this->riHdrNo, $fresh);
+                $this->dataDaftarRi = $fresh;
+                $this->entriList = $fresh[$this->jsonKey];
+
+                $pembukaKunci = auth()->user()->myuser_name ?? '-';
+                $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Identifikasi Bayi (' . $createdAt . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut', 'MR');
+            });
+
+            $this->incrementVersion('modal-identifikasi-bayi-ri');
+            $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — TTD petugas dicabut.');
+        } catch (\RuntimeException $exception) {
+            $this->dispatch('toast', type: 'error', message: $exception->getMessage());
+        } catch (\Throwable $exception) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $exception->getMessage());
+        }
+    }
+
     public function setTglJamSekarang(string $field): void
     {
         $this->newForm[$field] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
@@ -218,7 +314,7 @@ new class extends Component {
 
                 $fresh = $this->findDataRI($this->riHdrNo) ?: [];
                 $fresh[$this->jsonKey] = collect($fresh[$this->jsonKey] ?? [])
-                    ->reject(fn($e) => ($e['createdAt'] ?? null) === $createdAt)
+                    ->reject(fn($entri) => ($entri['createdAt'] ?? null) === $createdAt)
                     ->values()
                     ->all();
 
@@ -465,25 +561,51 @@ new class extends Component {
 
                     {{-- ── DAFTAR ENTRI TERSIMPAN ── --}}
                     <x-border-form title="Riwayat Identifikasi Bayi Tersimpan">
-                        @forelse ($entriList as $e)
-                            <div wire:key="entri-{{ $e['createdAt'] }}" class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border rounded-lg border-hairline dark:border-gray-700">
+                        @forelse ($entriList as $entri)
+                            <div wire:key="entri-{{ $entri['createdAt'] }}" class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border rounded-lg border-hairline dark:border-gray-700">
                                 <div class="text-sm">
-                                    <span class="font-semibold text-ink dark:text-gray-100">{{ $e['createdAt'] }}</span>
-                                    <span class="ml-2 text-muted">· {{ $e['namaBayi'] ?? '-' }}</span>
-                                    <span class="ml-2 text-muted">· {{ $e['jenisKelamin'] ?? '-' }}</span>
-                                    <div class="text-xs text-muted dark:text-gray-400">Gelang: {{ $e['warnaGelang'] ?? '-' }} · BB {{ $e['bb'] ?? '-' }} gr · PB {{ $e['pb'] ?? '-' }} cm</div>
+                                    <span class="font-semibold text-ink dark:text-gray-100">{{ $entri['createdAt'] }}</span>
+                                    <span class="ml-2 text-muted">· {{ $entri['namaBayi'] ?? '-' }}</span>
+                                    <span class="ml-2 text-muted">· {{ $entri['jenisKelamin'] ?? '-' }}</span>
+                                    <div class="text-xs text-muted dark:text-gray-400">Gelang: {{ $entri['warnaGelang'] ?? '-' }} · BB {{ $entri['bb'] ?? '-' }} gr · PB {{ $entri['pb'] ?? '-' }} cm</div>
+                                    <div class="mt-0.5 text-xs">
+                                        @if (!empty($entri['ttd']))
+                                            <span class="text-muted dark:text-gray-400">TTD: {{ $entri['ttd'] }}{{ !empty($entri['ttdDate']) ? ' · ' . $entri['ttdDate'] : '' }}</span>
+                                        @else
+                                            <x-badge variant="danger">Belum TTD</x-badge>
+                                        @endif
+                                    </div>
                                 </div>
                                 <div class="flex flex-col items-center gap-2">
                                     <div class="flex items-center gap-2">
-                                    <x-secondary-button type="button" wire:click="cetak('{{ $e['createdAt'] }}')" wire:loading.attr="disabled" wire:target="cetak('{{ $e['createdAt'] }}')" class="px-3 py-1.5 text-sm">
-                                        <span wire:loading.remove wire:target="cetak('{{ $e['createdAt'] }}')" class="flex items-center gap-1.5">Cetak</span>
-                                        <span wire:loading wire:target="cetak('{{ $e['createdAt'] }}')" class="flex items-center gap-1.5"><x-loading class="w-5 h-5" /> Mencetak...</span>
+                                    @if (empty($entri['ttd']) && !$isFormLocked)
+                                        <x-primary-button type="button" wire:click="ttdEntry('{{ $entri['createdAt'] }}')" wire:loading.attr="disabled" wire:target="ttdEntry('{{ $entri['createdAt'] }}')" class="px-3 py-1.5 text-sm">
+                                            TTD Saya
+                                        </x-primary-button>
+                                    @endif
+                                    <x-secondary-button type="button" wire:click="cetak('{{ $entri['createdAt'] }}')" wire:loading.attr="disabled" wire:target="cetak('{{ $entri['createdAt'] }}')" class="px-3 py-1.5 text-sm">
+                                        <span wire:loading.remove wire:target="cetak('{{ $entri['createdAt'] }}')" class="flex items-center gap-1.5">Cetak</span>
+                                        <span wire:loading wire:target="cetak('{{ $entri['createdAt'] }}')" class="flex items-center gap-1.5"><x-loading class="w-5 h-5" /> Mencetak...</span>
                                     </x-secondary-button>
                                     </div>
                                     @unless ($isFormLocked)
                                         <div class="flex items-center gap-2">
+                                        @if (!empty($entri['ttd']))
+                                            @can('dokumen.bukaKunci')
+                                                <x-confirm-button action="bukaKunci('{{ $entri['createdAt'] }}')"
+                                                    title="Buka Kunci Identifikasi Bayi"
+                                                    message="TTD petugas akan dicabut dari entri ini — proses TTD diulang dari awal. Lanjutkan?"
+                                                    confirmText="Ya, Buka Kunci" class="gap-1.5 px-3 py-1.5 text-sm">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" />
+                                                    </svg>
+                                                    Buka Kunci
+                                                </x-confirm-button>
+                                            @endcan
+                                        @endif
                                         @can('dokumen.hapus')
-                                        <x-danger-button type="button" wire:click="hapus('{{ $e['createdAt'] }}')"
+                                        <x-danger-button type="button" wire:click="hapus('{{ $entri['createdAt'] }}')"
                                             wire:confirm="Hapus entri identifikasi bayi ini?" class="px-3 py-1.5 text-sm">Hapus</x-danger-button>
                                         @endcan
                                         </div>

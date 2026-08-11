@@ -60,7 +60,7 @@
             @forelse ($rows as $r)
                 <tr>
                     <td>{{ $cell($r['jam'] ?? null) }}</td>
-                    <td>{{ $cell($r['td'] ?? null) }}</td>
+                    <td>{{ $cell(filled($r['sistolik'] ?? null) || filled($r['diastolik'] ?? null) ? ($r['sistolik'] ?? '-') . '/' . ($r['diastolik'] ?? '-') : ($r['td'] ?? null)) }}</td>
                     <td>{{ $cell($r['nadi'] ?? null) }}</td>
                     <td>{{ $cell($r['rr'] ?? null) }}</td>
                     <td>{{ $cell($r['suhu'] ?? null) }}</td>

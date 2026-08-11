@@ -80,10 +80,11 @@ new class extends Component {
                 <p class="mb-1.5 text-sm font-semibold text-ink dark:text-gray-200">Cara isi tiap form:</p>
                 <ul class="space-y-1 text-sm text-body dark:text-gray-300 list-disc pl-5">
                     <li>Klik <b>Buka Formulir</b> pada form yang dipilih.</li>
-                    <li>Isi kolom wajib; untuk tanggal/jam gunakan tombol <b>Now</b> agar terisi waktu sekarang.</li>
-                    <li>Pilih <b>Pengisi</b> (Bidan/Dokter/Perawat) sesuai peran.</li>
-                    <li>Klik <b>Simpan</b>. Satu pasien bisa punya beberapa entri (mis. observasi berulang).</li>
-                    <li>Entri tersimpan bisa di-<b>Cetak</b> (PDF) atau <b>Hapus</b> dari tabel di bawah form.</li>
+                    <li>Isi kolom wajib; untuk tanggal/jam gunakan tombol <b>jam</b> agar terisi waktu sekarang.</li>
+                    <li>Klik <b>Simpan Draft</b> untuk menyicil. Satu pasien bisa punya beberapa entri (mis. observasi berulang).</li>
+                    <li>Setelah lengkap, klik <b>TTD Saya</b> — entri ditandatangani atas nama Anda sekaligus <b>terkunci</b>.</li>
+                    <li>Entri terkunci bisa di-<b>Lihat</b> (read-only) & di-<b>Cetak</b> (PDF) dari tabel di bawah form.</li>
+                    <li>Salah TTD? <b>Buka Kunci</b> (Admin / Manager) mencabut TTD & mengembalikan entri ke Draft — tercatat di log rekam medis.</li>
                     <li>Jika EMR sudah <b>terkunci</b> (Read Only), form hanya bisa dilihat & dicetak.</li>
                 </ul>
             </div>
