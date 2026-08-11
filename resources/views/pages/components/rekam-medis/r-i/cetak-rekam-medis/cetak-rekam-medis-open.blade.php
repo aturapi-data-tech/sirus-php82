@@ -688,6 +688,44 @@ new class extends Component {
                     <livewire:pages::components.rekam-medis.r-i.dokumen-view.permintaan-darah-view-ri :riHdrNo="(string) $riHdrNo"
                         :entries="$ri['permintaanDarahRI'] ?? []" wire:key="rm-view-permintaan-darah-{{ $riHdrNo }}" />
 
+                    {{-- ════ VK / Kebidanan — viewer per dokumen (Lihat + Cetak dalam modal) ════ --}}
+                    <div class="pt-2 mt-2 text-xs font-semibold tracking-wide uppercase text-muted-soft border-t border-hairline dark:border-gray-700">
+                        VK / Kebidanan (Obstetri, Ginekologi &amp; Neonatal)
+                    </div>
+
+                    <livewire:pages::components.rekam-medis.r-i.dokumen-view.pengkajian-awal-obstetri-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['pengkajianAwalObstetriRI'] ?? []" wire:key="rm-view-pengkajian-awal-obstetri-{{ $riHdrNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-i.dokumen-view.riwayat-obstetri-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['riwayatObstetriRI'] ?? []" wire:key="rm-view-riwayat-obstetri-{{ $riHdrNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-i.dokumen-view.observasi-persalinan-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['observasiPersalinanRI'] ?? []" wire:key="rm-view-observasi-persalinan-{{ $riHdrNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-i.dokumen-view.laporan-persalinan-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['laporanPersalinanRI'] ?? []" wire:key="rm-view-laporan-persalinan-{{ $riHdrNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-i.dokumen-view.indikator-sc-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['indikatorScRI'] ?? []" wire:key="rm-view-indikator-sc-{{ $riHdrNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-i.dokumen-view.observasi-nifas-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['observasiNifasRI'] ?? []" wire:key="rm-view-observasi-nifas-{{ $riHdrNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-i.dokumen-view.pengkajian-awal-ginekologi-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['pengkajianAwalGinekologiRI'] ?? []" wire:key="rm-view-pengkajian-awal-ginekologi-{{ $riHdrNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-i.dokumen-view.pengkajian-awal-bayi-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['pengkajianAwalBayiRI'] ?? []" wire:key="rm-view-pengkajian-awal-bayi-{{ $riHdrNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-i.dokumen-view.pengkajian-neonatal-perawat-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['pengkajianNeonatalPerawatRI'] ?? []" wire:key="rm-view-pengkajian-neonatal-perawat-{{ $riHdrNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-i.dokumen-view.identifikasi-bayi-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['identifikasiBayiRI'] ?? []" wire:key="rm-view-identifikasi-bayi-{{ $riHdrNo }}" />
+
+                    <livewire:pages::components.rekam-medis.r-i.dokumen-view.catatan-terapi-neonatal-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['catatanTerapiNeonatalRI'] ?? []" wire:key="rm-view-catatan-terapi-neonatal-{{ $riHdrNo }}" />
+
                     {{-- ════ Surveilans HAIs — viewer per jenis infeksi (Lihat + Cetak dalam modal) ════ --}}
                     <div class="pt-2 mt-2 text-xs font-semibold tracking-wide uppercase text-muted-soft border-t border-hairline dark:border-gray-700">
                         Surveilans HAIs (Infeksi Terkait Pelayanan Kesehatan)
