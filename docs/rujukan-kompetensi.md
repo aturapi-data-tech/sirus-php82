@@ -1,0 +1,98 @@
+# Rujukan Berbasis Kompetensi (SRBK) — Catatan Lapangan & Aturan Implementasi
+
+Rangkuman grup WA "SATUSEHAT Rujukan X PCare X VClaim" (10 Apr – 11 Agu 2026, ±13.600 baris)
++ sample payload/response di folder export chat (`~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim/`).
+
+Narasumber kunci: Septian & Hantoro (BPJS), Bofandra & Tricha (SATUSEHAT Rujukan), Panggih DK & Haidar (Kemkes).
+
+---
+
+## 1. Arsitektur final (keputusan resmi)
+
+| Jalur | Mekanisme | Catatan |
+|---|---|---|
+| **Rawat Jalan (RJ)** | `vclaim-sisrute-rest` (BPJS) | **BPJS yang meneruskan** ServiceRequest+CarePlan ke SATUSEHAT (19/06). RS TIDAK kirim bundle FHIR sendiri. |
+| **Rawat Inap & IGD** | **Langsung SATUSEHAT FHIR** (Task/CarePlan/ServiceRequest) | TIDAK perlu bikin rujukan VClaim lagi (24/06 Bofandra, 27/07 Tricha). Postman **"30. Use Case - Rujukan Pasien V30062026"**. |
+| Rujukan khusus (HD, thalasemia, hemofilia, HIV) | Alur lama | Bukan SRBK. |
+| Alih rawat RJ→IGD/ranap (BPJS) | `kdStatusPulang: "4"` + `rujukLanjut.khusus` | BUKAN `kodeSubSpesialis: "IGD"` (ditolak "tidak valid"). |
+| Appointment | **JANGAN dikirim dulu** | Masuk use case antrian online, dibahas terpisah (23/06). |
+
+- Piloting 4 wilayah: Kota Bandung, Kota Makassar, **Kab. Tulungagung (kita)**, Kab. Muara Enim.
+- Base URL dev FKRTL: `https://apijkn-dev.bpjs-kesehatan.go.id/vclaim-sisrute-rest`. Staging FHIR: `https://api-satusehat-stg.dto.kemkes.go.id/fhir-r4/v1/`.
+- Auth/signature/decrypt **sama persis VClaim eksisting** (X-cons-id, X-signature HMAC, X-timestamp, user_key). Tapi **cons-id harus didaftarkan TERPISAH untuk service SISRUTE** — cons-id yang jalan di vclaim biasa tetap ditolak (`Unauthorized! You are not registered for this service!`).
+- Kredensial SATUSEHAT staging untuk rujukan = **client_id/secret KHUSUS dari tim SATUSEHAT Rujukan** (japri: email login platform + org-id production) — BUKAN yang tampil di dashboard platform.
+- Jebakan env dev: server **dvlp** BPJS gagal jika header `Content-Type` dikirim; production justru wajib pakai.
+
+## 2. Alur RJ via vclaim-sisrute-rest
+
+`GetKriteriaRujukan` → `GetFaskesRujukan` → `Rujukan/Insert` (+ `Rujukan/Delete` method **DELETE**, `Rujukan/GetSpesialistik` untuk master spesialis).
+
+### 2.1 GetKriteriaRujukan (POST — GET ditolak "405 Method Not Allowed", terkonfirmasi live 11/08/26)
+Body JSON: `kodeDiagnosa` + `kodeFaskesSatuSehat` (+ `encounter.reference` bila sudah ada). Response berisi:
+- `kriteriaRujukan[]`: `{linkId, text, type: boolean|text}` — **linkId DINAMIS per ICD-10** (contoh I10: Terapi=49873, Tindakan Medis=24964, Upaya Diagnosis=55; bisa juga gabungan koma "51947,69587"). **JANGAN hardcode** — selalu ambil fresh untuk diagnosa yang sama.
+- `JejaringWilayah`: group Provinsi/Kabupaten dengan `answerOption[].valueCoding` (system `sys-ids.kemkes.go.id/administrative-area`) — sumber LOV wilayah.
+
+### 2.2 GetFaskesRujukan (POST)
+- Body: `kodeFaskesSatuSehat`, `kodeSubSpesialis`/`kodeSpesialis`, `kodeSarana`, `kodeDiagnosa`, `estimasiRujuk` (**dd-mm-yyyy**!), `kriteriaRujukan.item[]`, `codeJejaringWilayah`, `encounter.reference` (`Encounter/<uuid>`).
+- **Validasi ketat sejak 02–03/07: isi TEPAT SATU kriteria** (dulu boleh >1). Teks wajib persis `Terapi` / `Tindakan Medis` / `Upaya Diagnosis`. Tindakan Medis = `valueString` kode **ICD-9-CM valid & sesuai diagnosa** — pilihan ICD-9 menentukan kandidat (match kompetensi RS); tampilkan kompetensi di UI.
+- Response kandidat: extension `providerAtribute` per faskes → `distance` (km), `estimated-time` (menit), `strata`, **`bpjs-code` (bisa string `"null"` = non-BPJS, jangan dipakai untuk rujukan BPJS)**, `kemkes-code`; ranap juga ada **info ketersediaan tempat tidur**. Response **tanpa `output`/kandidat = memang tidak ada kandidat** (bukan selalu error).
+
+### 2.3 Rujukan/Insert (POST)
+- Wrapper `request.t_rujukan{...}` + node `satuSehatRujukan{...}` (lihat sample `insert_rujukan.json` di folder chat).
+- **`ppkDirujuk` (BPJS) dan `kdppkSatuSehatTujuanRujukan` (SATUSEHAT) WAJIB RS yang sama** — ambil pasangan `bpjs-code`+`kemkes-code` dari kandidat. Mismatch → 400 `Satu Sehat Tujuan Rujukan tidak sesuai dengan PPK Dirujuk`.
+- **Insert TIDAK memvalidasi tujuan ∈ hasil kandidat** — SIMRS wajib membatasi sendiri pilihan tujuan ke list kandidat.
+- Tanggal `tglRujukan`/`tglRencanaKunjungan`: **yyyy-mm-dd** (beda dengan estimasiRujuk!). Estimasi boleh hari ini.
+- **Sukses = ada identifier `http://sys-ids.kemkes.go.id/referral-number-satusehat`** di ServiceRequest response (plus `referral-number-pcare`/BPJS = no rujukan BPJS). Tidak ada identifier itu = GAGAL walau resource terbentuk. **Nomor wajib tersimpan di DB** (tampil di UI opsional — syarat UAT).
+- 1 CarePlan = 1 ServiceRequest = 1 nomor rujukan. Jangan tembak beberapa RS; penerima punya 15 menit sebelum sistem menyarankan pindah kandidat.
+
+### 2.4 Format field krusial
+- **ICD-10 wajib kode rinci 4-karakter** (`A02.0`); kode induk 3-karakter (`A02`) DITOLAK → LOV diagnosa harus memaksa pilih kode anak; fallback `.9` boleh tapi jangan kebanyakan. (Awas: master kita punya 288 icdx kembar — lihat skill diagnosa-flow.)
+- `kodeFaskesSatuSehat` = **kode numerik 9-digit production** (kita: `100027469`), bukan UUID, bukan org-id staging, dan harus konsisten dengan cons-id (faskes yang sama).
+- Kode wilayah tanpa titik: `3504` bukan `35.04`.
+- `authoredOn` dkk = string ISO, bukan objek.
+
+## 3. Alur Ranap/IGD (langsung SATUSEHAT FHIR) — modul berikutnya
+
+1. Task `referral-pre-request` → Task `request-referral-candidate` — contained QuestionnaireResponse **Q100** (kriteria; IGD = 5 pertanyaan GAWAT DARURAT linkId 000001–000005, tanpa validasi ICD) + **Q101** (jejaring wilayah, `valueCoding` WAJIB — `valueString` menghasilkan 0 kandidat); input: primary-diagnosis ICD-10, management procedure SNOMED (IGD `385868005`, ranap `305351004`, RJ `737492002`), Kelompok Layanan (Playbook Lampiran 4).
+2. GET Task → baca `output[]` kandidat (poll; status bisa lama `requested`).
+3. Bundle **Task+CarePlan** `referral-approval` per kandidat terpilih — `Task.owner` = **Organization TUJUAN** (kunci agar RS tujuan melihat rujukan masuk), `basedOn` → CarePlan, `CarePlan.author` = Practitioner perujuk (mandatory). **JANGAN meng-echo extension `providerAtribute` kandidat ke Task yang dikirim** (validator menolak `km`/strata/bpjs-code).
+4. RS tujuan: GET **Task by owner** (filter `code=referral-approval-request`; hanya accepted/rejected/completed yang tampil) → PATCH accept/reject; perujuk: Get Task by requester.
+5. POST ServiceRequest → nomor rujukan di `identifier`.
+- **`Task.identifier.value` WAJIB UNIK SETIAP POST (termasuk retry!)** — reuse = response tanpa `contained`/`output` yang menyesatkan, atau `Found duplicate: Task`. Ini akar kasus paling sering di grup.
+- Org-id di token = org-id di resource; jangan campur token prod/staging.
+
+## 4. Katalog error → penanganan di SIMRS
+
+| Pesan | Arti sebenarnya | Aksi |
+|---|---|---|
+| `Unauthorized! You are not registered for this service!` | Cons-id belum didaftarkan untuk service SISRUTE (atau expired) | Ajukan aktivasi via BPJS (spreadsheet/KC) |
+| `Index was out of range...` (500) | Mapping faskes BPJS↔SATUSEHAT belum ada, atau `kodeFaskesSatuSehat` salah (UUID/kosong) | Verifikasi kode 9-digit; lapor untuk dimapping |
+| `Response API Satu Sehat tidak mengandung Kriteria/Faskes Rujukan` (500) | Multi-penyebab: gangguan upstream / ICD-10 induk / wilayah belum termapping / org belum terdaftar / linkId salah | Cek ICD-10 4-char dulu, lalu retry; kalau massal = upstream |
+| Kandidat kosong tanpa error | Memang tidak ada kandidat (diagnosa dinilai bisa ditangani sendiri, mis. Z37.0) | Tampilkan "tidak ada kandidat", bukan error |
+| `linkId ... tidak valid, linkId valid: ...` | Kriteria basi/hardcode | Re-fetch GetKriteriaRujukan |
+| `hanya boleh mengisi salah satu dari Terapi...` | >1 kriteria terisi | UI paksa tepat 1 |
+| `PPK ... tidak ditemukan di pemetaan` / `Tujuan Rujukan tidak sesuai dengan PPK` (400) | Pasangan kode BPJS↔SATUSEHAT tidak konsisten / RS belum termapping | Pakai pasangan dari kandidat; lapor mapping |
+| `Gagal mendapatkan nomor Rujukan Satu Sehat` (400) | Upstream SATUSEHAT gagal menerbitkan nomor (kambuhan: Jul–Agu 2026) | Simpan payload+response mentah, retry nanti; TIDAK ada workaround klien |
+| `Value was either too large or too small for a Decimal` (500) | Bug sisi BPJS/SATUSEHAT (gel. 11/08/26) | Tunggu perbaikan |
+| `noSep tidak ditemukan` (400) | Sinkronisasi SEP dev | Cek SEP, coba ulang |
+| `Found duplicate: Task (20002)` | identifier di-reuse | Generate UUID baru tiap POST |
+| 429 `Rate limit quota violation` | Kuota staging habis | Hemat panggilan; lapor minta perpanjang |
+| `upstream connect error` / timeout / HTML | Infra BPJS down | Retry-later; jangan blokir EMR |
+| **Error identik di ≥2 endpoint berbeda** | Hampir pasti gangguan jaringan SATUSEHAT | Tampilkan hint "gangguan pusat", jangan debug payload |
+
+## 5. Prinsip desain untuk rebuild kita
+
+1. **Outage = kondisi normal.** `timeout(8)->connectTimeout(3)` + try/catch semua call; pesan ramah + tombol retry; state form persist (pola JSON node) supaya retry tanpa isi ulang; JANGAN blokir simpan EMR.
+2. **Simpan payload & response mentah** tiap call (node JSON) — admin selalu minta bukti untuk Issue Tracker, dan jadi audit.
+3. **Kriteria selalu fresh** dari GetKriteriaRujukan (linkId dinamis); UI radio "tepat satu kriteria"; Tindakan Medis = LOV ICD-9-CM.
+4. **Pilihan tujuan dikunci ke list kandidat** (Insert tidak memvalidasi); simpan pasangan bpjs-code+kemkes-code, distance, strata; filter bpjs-code `"null"`.
+5. **LOV diagnosa memaksa ICD-10 4-karakter.**
+6. **Nomor rujukan SATUSEHAT + BPJS wajib tersimpan di DB** (syarat UAT); verifikasi keberadaan identifier sebelum menyatakan sukses.
+7. Dua format tanggal berbeda dalam satu alur (dd-mm-yyyy vs yyyy-mm-dd) — helper terpusat.
+8. UAT: ajukan ke Kantor Cabang BPJS; hasil upload ke s.kemkes.go.id/UATRME-SSR; syarat = terimplementasi di sistem (backend+frontend), bukan cuma Postman.
+
+## 6. Referensi
+
+- Folder export chat + lampiran: `~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim/` — berisi **Postman collection V30062026**, **Playbook Rujukan Pasien (RJ/RI/IGD)**, **Skenario UAT SRBK FKTL ver 1.0**, sample payload/response JSON, Surat Himbauan.
+- Postman publik: folder "04 Pengiriman Rujukan" (satusehat-public); playbook online: satusehat.kemkes.go.id/platform/docs/id/interoperability/rujukan/
+- Terminologi: clinical-speciality & practitioner-speciality (gsheet Kemkes); Kelompok Layanan per ICD-10 (Playbook Lampiran 4).
