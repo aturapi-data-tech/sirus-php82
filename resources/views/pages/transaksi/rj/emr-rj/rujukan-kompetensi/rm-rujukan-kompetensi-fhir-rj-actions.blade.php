@@ -4,17 +4,17 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
-use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\SATUSEHAT\SatuSehatRujukanTrait;
 
 new class extends Component {
-    use EmrUGDTrait, SatuSehatRujukanTrait;
+    use EmrRJTrait, SatuSehatRujukanTrait;
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
 
     // Referensi kunjungan — TIDAK di-bind ke form
-    public array $dataDaftarUGD = [];
+    public array $dataDaftarPoliRJ = [];
 
     // State rujukan — dipersist ke node rujukanKompetensi di JSON UGD
     public array $formRujukan = [];
@@ -31,13 +31,13 @@ new class extends Component {
             return;
         }
 
-        $data = $this->findDataUGD($this->rjNo);
+        $data = $this->findDataRJ($this->rjNo);
         if (empty($data)) {
             return;
         }
-        $this->dataDaftarUGD = $data;
+        $this->dataDaftarPoliRJ = $data;
 
-        $tersimpan = $data['rujukanKompetensi'] ?? [];
+        $tersimpan = $data['rujukanKompetensiFhir'] ?? [];
         if (!empty($tersimpan) && is_array($tersimpan)) {
             $this->formRujukan = array_replace($this->defaultFormRujukan(), $tersimpan);
         } else {
@@ -46,7 +46,7 @@ new class extends Component {
             $this->formRujukan['diagnosaDesc'] = $diagnosisPertama['diagDesc'] ?? '';
         }
 
-        if ($this->checkEmrUGDStatus($this->rjNo)) {
+        if ($this->checkEmrRJStatus($this->rjNo)) {
             $this->isFormLocked = true;
         }
     }
@@ -113,7 +113,7 @@ new class extends Component {
             $kurang[] = 'SATUSEHAT_ORGANIZATION_ID belum diset';
         }
         if (empty($this->encounterUuid())) {
-            $kurang[] = 'Encounter SATUSEHAT UGD belum terkirim (menu Satu Sehat → Encounter)';
+            $kurang[] = 'Encounter SATUSEHAT RJ belum terkirim (menu Satu Sehat → Encounter)';
         }
         if (empty($this->patientUuid())) {
             $kurang[] = 'IHS Pasien (patient_uuid) kosong di Master Pasien';
@@ -126,24 +126,24 @@ new class extends Component {
 
     private function encounterUuid(): string
     {
-        return (string) ($this->dataDaftarUGD['satusehat']['encounterId'] ?? '');
+        return (string) ($this->dataDaftarPoliRJ['satusehat']['encounterId'] ?? '');
     }
 
     private function patientUuid(): string
     {
-        $regNo = $this->dataDaftarUGD['regNo'] ?? '';
+        $regNo = $this->dataDaftarPoliRJ['regNo'] ?? '';
         return $regNo === '' ? '' : (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
     private function dokterUuid(): string
     {
-        $drId = $this->dataDaftarUGD['drId'] ?? '';
+        $drId = $this->dataDaftarPoliRJ['drId'] ?? '';
         return $drId === '' ? '' : (string) (DB::table('rsmst_doctors')->where('dr_id', $drId)->value('dr_uuid') ?? '');
     }
 
     private function dokterNama(): string
     {
-        $drId = $this->dataDaftarUGD['drId'] ?? '';
+        $drId = $this->dataDaftarPoliRJ['drId'] ?? '';
         return $drId === '' ? '' : (string) (DB::table('rsmst_doctors')->where('dr_id', $drId)->value('dr_name') ?? '');
     }
 
@@ -152,14 +152,14 @@ new class extends Component {
     ═══════════════════════════════════════ */
     public function pilihDiagnosa(int $index): void
     {
-        $diagnosa = $this->dataDaftarUGD['diagnosis'][$index] ?? null;
+        $diagnosa = $this->dataDaftarPoliRJ['diagnosis'][$index] ?? null;
         if (!$diagnosa) {
             return;
         }
         $this->setDiagnosaRujukan($diagnosa['icdX'] ?? ($diagnosa['diagId'] ?? ''), $diagnosa['diagDesc'] ?? '');
     }
 
-    #[On('lov.selected.rujukanKompetensiDiagnosaUGD')]
+    #[On('lov.selected.rujukanKompetensiDiagnosaRJFhir')]
     public function onLovDiagnosaSelected(string $target, array $payload): void
     {
         if ($this->isFormLocked) {
@@ -336,7 +336,7 @@ new class extends Component {
             'identifierCarePlan' => (string) Str::uuid(),
             'encounterId' => $this->encounterUuid(),
             'patientUuid' => $this->patientUuid(),
-            'patientName' => (string) ($this->dataDaftarUGD['regName'] ?? ''),
+            'patientName' => (string) ($this->dataDaftarPoliRJ['regName'] ?? ''),
             'practitionerUuid' => $this->dokterUuid(),
             'practitionerName' => $this->dokterNama(),
             'orgTujuanId' => $kandidat['orgId'],
@@ -437,16 +437,16 @@ new class extends Component {
         }
         try {
             DB::transaction(function () use ($catatanAudit) {
-                $this->lockUGDRow($this->rjNo);
-                $data = $this->findDataUGD($this->rjNo) ?? [];
+                $this->lockRJRow($this->rjNo);
+                $data = $this->findDataRJ($this->rjNo) ?? [];
                 if (empty($data)) {
                     return;
                 }
-                $data['rujukanKompetensi'] = $this->formRujukan;
-                $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $data['rujukanKompetensiFhir'] = $this->formRujukan;
+                $this->updateJsonRJ($this->rjNo, $data);
+                $this->dataDaftarPoliRJ = $data;
                 if ($catatanAudit) {
-                    $this->appendAdminLogUGD((int) $this->rjNo, $catatanAudit, 'MR');
+                    $this->appendAdminLogRJ((int) $this->rjNo, $catatanAudit, 'MR');
                 }
             });
         } catch (\Throwable $e) {
@@ -513,13 +513,13 @@ new class extends Component {
                 <p class="text-xs text-muted-soft">Kebutuhan pasien di RS tujuan:</p>
                 <div class="flex flex-wrap gap-4">
                     <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                        <input type="radio" name="jalurRujukan-{{ $rjNo }}" value="igd"
+                        <input type="radio" name="jalurRujukanRjFhir-{{ $rjNo }}" value="igd"
                             wire:model.live="formRujukan.jalur" @disabled($isFormLocked)
                             class="text-rose-600 border-hairline focus:ring-rose-500">
                         <span>IGD (gawat darurat)</span>
                     </label>
                     <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                        <input type="radio" name="jalurRujukan-{{ $rjNo }}" value="ranap"
+                        <input type="radio" name="jalurRujukanRjFhir-{{ $rjNo }}" value="ranap"
                             wire:model.live="formRujukan.jalur" @disabled($isFormLocked)
                             class="text-rose-600 border-hairline focus:ring-rose-500">
                         <span>Rawat Inap</span>
@@ -528,7 +528,7 @@ new class extends Component {
             </div>
 
             <div class="flex flex-wrap gap-2">
-                @forelse ($dataDaftarUGD['diagnosis'] ?? [] as $indexDiagnosa => $diagnosa)
+                @forelse ($dataDaftarPoliRJ['diagnosis'] ?? [] as $indexDiagnosa => $diagnosa)
                     @php $kodeIni = $diagnosa['icdX'] ?? ($diagnosa['diagId'] ?? ''); @endphp
                     <button type="button" wire:click="pilihDiagnosa({{ $indexDiagnosa }})" @disabled($isFormLocked)
                         class="px-2 py-1 text-xs rounded-lg border {{ $formRujukan['kodeDiagnosa'] === $kodeIni ? 'bg-rose-600 text-white border-transparent' : 'bg-canvas text-gray-700 border-hairline dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600' }}">
@@ -541,8 +541,8 @@ new class extends Component {
 
             <div class="max-w-md">
                 <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosa Rujukan (ICD-10)"
-                    target="rujukanKompetensiDiagnosaUGD" :disabled="$isFormLocked"
-                    wire:key="lov-diagnosa-rujukan-kompetensi-ugd-{{ $rjNo }}" />
+                    target="rujukanKompetensiDiagnosaRJFhir" :disabled="$isFormLocked"
+                    wire:key="lov-diagnosa-rujukan-kompetensi-rj-fhir-{{ $rjNo }}" />
             </div>
 
             <div>
@@ -566,19 +566,19 @@ new class extends Component {
                 <div class="space-y-2">
                     <p class="text-xs text-muted-soft">Kriteria rujukan ranap — pilih <b>tepat satu</b>:</p>
                     <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                        <input type="radio" name="kriteriaRanapUgd-{{ $rjNo }}" value="terapi"
+                        <input type="radio" name="kriteriaRanapRjFhir-{{ $rjNo }}" value="terapi"
                             wire:model.live="formRujukan.kriteriaPilih" @disabled($isFormLocked)
                             class="text-rose-600 border-hairline focus:ring-rose-500">
                         <span>Terapi/Pengobatan</span>
                     </label>
                     <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                        <input type="radio" name="kriteriaRanapUgd-{{ $rjNo }}" value="tindakan"
+                        <input type="radio" name="kriteriaRanapRjFhir-{{ $rjNo }}" value="tindakan"
                             wire:model.live="formRujukan.kriteriaPilih" @disabled($isFormLocked)
                             class="text-rose-600 border-hairline focus:ring-rose-500">
                         <span>Tindakan Medis (ICD-9-CM)</span>
                     </label>
                     <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                        <input type="radio" name="kriteriaRanapUgd-{{ $rjNo }}" value="upaya"
+                        <input type="radio" name="kriteriaRanapRjFhir-{{ $rjNo }}" value="upaya"
                             wire:model.live="formRujukan.kriteriaPilih" @disabled($isFormLocked)
                             class="text-rose-600 border-hairline focus:ring-rose-500">
                         <span>Upaya Diagnosis</span>
