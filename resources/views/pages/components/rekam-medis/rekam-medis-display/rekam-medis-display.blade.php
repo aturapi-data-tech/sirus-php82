@@ -519,10 +519,10 @@ new class extends Component {
                                 <table class="w-full text-sm text-left text-muted table-auto border-separate border-spacing-y-2 -mt-2 dark:text-gray-400">
                                     <tbody class="bg-canvas dark:bg-gray-800">
                                         @forelse ($this->rows as $myQData)
-                                            {{-- wire:key WAJIB: tanpa ini, morph Livewire (mis. setelah save EMR)
-                                                 memindah/klon node & memisahkan child x-show dari x-data induknya →
-                                                 "expandedRm/showSep is not defined" → morph putus → EMR berhenti
-                                                 berfungsi. (Island expandedDx sudah DIHAPUS — diagnosa tampil terus.) --}}
+                                            {{-- wire:key WAJIB agar morph Livewire (mis. setelah save EMR) tidak
+                                                 memindah/klon node antar baris. Seluruh island Alpine buka-tutup
+                                                 (expandedDx/expandedRm/showSep) sudah DIHAPUS — konten tampil terus;
+                                                 jangan tambah x-data/x-show baru di dalam baris ini tanpa alasan kuat. --}}
                                             <tr wire:key="rmd-{{ $myQData->layanan_status ?? 'x' }}-{{ $myQData->txn_no }}" class="group">
                                                 @php
                                                     $datadaftar_json =
@@ -725,24 +725,18 @@ new class extends Component {
                                                                 $rmRIHasContent = trim(strip_tags($rmRI)) !== '';
                                                             @endphp
                                                             @if ($rmRIHasContent)
-                                                                <div class="p-2 rounded bg-surface-soft" x-data="{ expandedRm: false }"
-                                                                    wire:key="rmd-rm-{{ $myQData->layanan_status ?? 'x' }}-{{ $myQData->txn_no }}">
-                                                                    <button type="button" x-on:click="expandedRm = !expandedRm"
-                                                                        class="flex items-center justify-between w-full text-left">
-                                                                        <span class="flex items-center gap-1.5">
-                                                                            <svg class="w-3 h-3 text-rose-600 shrink-0"
-                                                                                fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                                            </svg>
-                                                                            <span class="text-sm font-semibold">Resume Medis (RM 41)</span>
-                                                                        </span>
-                                                                        <svg class="w-4 h-4 transition-transform" :class="expandedRm ? 'rotate-180' : ''"
-                                                                            fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                                                                {{-- Tanpa island Alpine (dulu expandedRm buka-tutup) — konten
+                                                                     selalu tampil, tinggi dibatasi max-h-96 + scroll. --}}
+                                                                <div class="p-2 rounded bg-surface-soft">
+                                                                    <span class="flex items-center gap-1.5">
+                                                                        <svg class="w-3 h-3 text-rose-600 shrink-0"
+                                                                            fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                                         </svg>
-                                                                    </button>
-                                                                    <div x-show="expandedRm" x-collapse
+                                                                        <span class="text-sm font-semibold">Resume Medis</span>
+                                                                    </span>
+                                                                    <div
                                                                         class="mt-2 text-sm text-ink dark:text-gray-200 overflow-auto max-h-96 rounded border border-hairline bg-canvas p-3">
                                                                         {!! $rmRI !!}
                                                                     </div>
@@ -1093,18 +1087,9 @@ new class extends Component {
                                                             </div>
 
                                                             @if (!empty($datadaftar_json['sep']['noSep']))
-                                                                <div x-data="{ showSep: false }"
-                                                                    wire:key="rmd-sep-{{ $myQData->layanan_status ?? 'x' }}-{{ $myQData->txn_no }}"
-                                                                    class="pt-2 mt-1 border-t border-hairline dark:border-gray-700">
-                                                                    <button type="button" x-on:click="showSep = !showSep"
-                                                                        class="inline-flex items-center gap-1 text-xs font-medium text-muted hover:text-body dark:text-gray-400 dark:hover:text-gray-200">
-                                                                        <span x-text="showSep ? 'Sembunyikan SEP' : 'Lihat SEP'"></span>
-                                                                        <svg class="w-3 h-3 transition-transform" :class="showSep ? 'rotate-180' : ''"
-                                                                            fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                                                                        </svg>
-                                                                    </button>
-                                                                    <span x-show="showSep" x-collapse
+                                                                {{-- Tanpa island Alpine (dulu showSep buka-tutup) — nomor SEP tampil langsung. --}}
+                                                                <div class="pt-2 mt-1 border-t border-hairline dark:border-gray-700">
+                                                                    <span
                                                                         class="block mt-1 font-mono text-sm text-left text-body break-all dark:text-gray-300">
                                                                         SEP: {{ $datadaftar_json['sep']['noSep'] }}
                                                                     </span>
