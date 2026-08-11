@@ -32,6 +32,14 @@
             </div>
         @endif
 
+        {{-- Rujukan Berbasis Kompetensi — tampil hanya jika Tindak Lanjut = Rujuk --}}
+        @if (($dataDaftarPoliRJ['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '') === 'Rujuk')
+            <div class="pt-2 border-t border-hairline-soft dark:border-gray-700">
+                <livewire:pages::transaksi.rj.emr-rj.rujukan-kompetensi.rm-rujukan-kompetensi-rj-actions
+                    :rjNo="$rjNo" wire:key="rm-rujukan-kompetensi-rj-{{ $rjNo }}" />
+            </div>
+        @endif
+
         {{-- PRB — tampil hanya jika Tindak Lanjut = PRB --}}
         {{-- @if (($dataDaftarPoliRJ['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '') === 'PRB')
             <div class="pt-2 border-t border-hairline-soft dark:border-gray-700">
