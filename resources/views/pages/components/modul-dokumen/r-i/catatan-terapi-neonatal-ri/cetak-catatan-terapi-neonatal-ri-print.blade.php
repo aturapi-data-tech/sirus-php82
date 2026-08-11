@@ -5,13 +5,13 @@
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">
         @php
-            $id = $data['identitas'] ?? [];
+            $identitas = $data['identitas'] ?? [];
             $alamatPasien = trim(
-                ($id['alamat'] ?? '-') .
-                    (!empty($id['rt']) ? ' RT ' . $id['rt'] : '') .
-                    (!empty($id['rw']) ? '/RW ' . $id['rw'] : '') .
-                    (!empty($id['desaName']) ? ', ' . $id['desaName'] : '') .
-                    (!empty($id['kecamatanName']) ? ', ' . $id['kecamatanName'] : ''),
+                ($identitas['alamat'] ?? '-') .
+                    (!empty($identitas['rt']) ? ' RT ' . $identitas['rt'] : '') .
+                    (!empty($identitas['rw']) ? '/RW ' . $identitas['rw'] : '') .
+                    (!empty($identitas['desaName']) ? ', ' . $identitas['desaName'] : '') .
+                    (!empty($identitas['kecamatanName']) ? ', ' . $identitas['kecamatanName'] : ''),
             );
         @endphp
         <x-pdf.identitas-pasien
@@ -27,7 +27,7 @@
     @php
         $terapiDokter = $data['terapiDokter'] ?? [];
         $perencanaan = $data['perencanaan'] ?? [];
-        $show = fn($v) => filled($v) ? e($v) : '-';
+        $nilaiSel = fn($nilai) => filled($nilai) ? e($nilai) : '-';
     @endphp
 
     <style>
@@ -51,12 +51,12 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach ($terapiDokter as $i => $e)
+                @foreach ($terapiDokter as $nomor => $entri)
                     <tr>
-                        <td style="text-align:center;">{{ $i + 1 }}</td>
-                        <td>{{ $show($e['tglJam'] ?? ($e['createdAt'] ?? '')) }}</td>
-                        <td>{{ $show($e['keterangan'] ?? '') }}</td>
-                        <td>{{ $show($e['icd9'] ?? '') }}</td>
+                        <td style="text-align:center;">{{ $nomor + 1 }}</td>
+                        <td>{{ $nilaiSel($entri['tglJam'] ?? ($entri['createdAt'] ?? '')) }}</td>
+                        <td>{{ $nilaiSel($entri['keterangan'] ?? '') }}</td>
+                        <td>{{ $nilaiSel($entri['icd9'] ?? '') }}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -78,12 +78,12 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach ($perencanaan as $i => $e)
+                @foreach ($perencanaan as $nomor => $entri)
                     <tr>
-                        <td style="text-align:center;">{{ $i + 1 }}</td>
-                        <td>{{ $show($e['tglJam'] ?? ($e['createdAt'] ?? '')) }}</td>
-                        <td>{{ $show($e['keterangan'] ?? '') }}</td>
-                        <td>{{ $show($e['ttd'] ?? '') }}</td>
+                        <td style="text-align:center;">{{ $nomor + 1 }}</td>
+                        <td>{{ $nilaiSel($entri['tglJam'] ?? ($entri['createdAt'] ?? '')) }}</td>
+                        <td>{{ $nilaiSel($entri['keterangan'] ?? '') }}</td>
+                        <td>{{ $nilaiSel($entri['ttd'] ?? '') }}</td>
                     </tr>
                 @endforeach
             </tbody>

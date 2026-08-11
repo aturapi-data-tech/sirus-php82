@@ -5,13 +5,13 @@
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">
         @php
-            $id = $data['identitas'] ?? [];
+            $identitas = $data['identitas'] ?? [];
             $alamatPasien = trim(
-                ($id['alamat'] ?? '-') .
-                    (!empty($id['rt']) ? ' RT ' . $id['rt'] : '') .
-                    (!empty($id['rw']) ? '/RW ' . $id['rw'] : '') .
-                    (!empty($id['desaName']) ? ', ' . $id['desaName'] : '') .
-                    (!empty($id['kecamatanName']) ? ', ' . $id['kecamatanName'] : ''),
+                ($identitas['alamat'] ?? '-') .
+                    (!empty($identitas['rt']) ? ' RT ' . $identitas['rt'] : '') .
+                    (!empty($identitas['rw']) ? '/RW ' . $identitas['rw'] : '') .
+                    (!empty($identitas['desaName']) ? ', ' . $identitas['desaName'] : '') .
+                    (!empty($identitas['kecamatanName']) ? ', ' . $identitas['kecamatanName'] : ''),
             );
         @endphp
         <x-pdf.identitas-pasien
@@ -30,8 +30,8 @@
         $klasifikasiOptions = $data['klasifikasiOptions'] ?? [];
         $indikator = $form['indikator'] ?? [];
 
-        $klasKode = $form['diagnosisKlasifikasi'] ?? '';
-        $klasLabel = $klasKode !== '' ? ($klasifikasiOptions[$klasKode] ?? '') : '';
+        $klasifikasiKode = $form['diagnosisKlasifikasi'] ?? '';
+        $klasifikasiLabel = $klasifikasiKode !== '' ? ($klasifikasiOptions[$klasifikasiKode] ?? '') : '';
 
         $indikasi = collect($form['indikasiSc'] ?? [])->filter()->implode(', ');
         if (filled($form['indikasiScLain'] ?? null)) {
@@ -61,13 +61,13 @@
             </tr>
         </thead>
         <tbody>
-            @foreach ($indikatorPertanyaan as $i => $pertanyaan)
-                @php $val = $indikator[$i] ?? ''; @endphp
+            @foreach ($indikatorPertanyaan as $nomor => $pertanyaan)
+                @php $nilai = $indikator[$nomor] ?? ''; @endphp
                 <tr>
-                    <td class="no">{{ $i + 1 }}</td>
+                    <td class="no">{{ $nomor + 1 }}</td>
                     <td>{{ $pertanyaan }}</td>
-                    <td class="yn">{{ $val === 'Ya' ? 'X' : '' }}</td>
-                    <td class="yn">{{ $val === 'Tidak' ? 'X' : '' }}</td>
+                    <td class="yn">{{ $nilai === 'Ya' ? 'X' : '' }}</td>
+                    <td class="yn">{{ $nilai === 'Tidak' ? 'X' : '' }}</td>
                 </tr>
             @endforeach
         </tbody>
@@ -76,7 +76,7 @@
     {{-- 2. Klasifikasi Diagnosis --}}
     <div class="sc-sec">2. KLASIFIKASI DIAGNOSIS (ROBSON)</div>
     <table class="sc">
-        <tr><td class="lbl">Klasifikasi Terpilih</td><td>{{ $klasKode !== '' ? strtoupper($klasKode) . '. ' . e($klasLabel) : '-' }}</td></tr>
+        <tr><td class="lbl">Klasifikasi Terpilih</td><td>{{ $klasifikasiKode !== '' ? strtoupper($klasifikasiKode) . '. ' . e($klasifikasiLabel) : '-' }}</td></tr>
     </table>
 
     {{-- 3. Indikasi SC --}}

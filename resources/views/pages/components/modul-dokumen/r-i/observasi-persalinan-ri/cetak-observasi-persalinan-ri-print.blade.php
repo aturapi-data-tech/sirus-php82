@@ -5,13 +5,13 @@
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">
         @php
-            $id = $data['identitas'] ?? [];
+            $identitas = $data['identitas'] ?? [];
             $alamatPasien = trim(
-                ($id['alamat'] ?? '-') .
-                    (!empty($id['rt']) ? ' RT ' . $id['rt'] : '') .
-                    (!empty($id['rw']) ? '/RW ' . $id['rw'] : '') .
-                    (!empty($id['desaName']) ? ', ' . $id['desaName'] : '') .
-                    (!empty($id['kecamatanName']) ? ', ' . $id['kecamatanName'] : ''),
+                ($identitas['alamat'] ?? '-') .
+                    (!empty($identitas['rt']) ? ' RT ' . $identitas['rt'] : '') .
+                    (!empty($identitas['rw']) ? '/RW ' . $identitas['rw'] : '') .
+                    (!empty($identitas['desaName']) ? ', ' . $identitas['desaName'] : '') .
+                    (!empty($identitas['kecamatanName']) ? ', ' . $identitas['kecamatanName'] : ''),
             );
         @endphp
         <x-pdf.identitas-pasien
@@ -27,7 +27,7 @@
     @php
         $rows = $data['rows'] ?? [];
         $diagnosa = $data['diagnosa'] ?? '';
-        $cell = fn($v) => filled($v) ? e($v) : '-';
+        $nilaiSel = fn($nilai) => filled($nilai) ? e($nilai) : '-';
     @endphp
 
     <style>
@@ -57,17 +57,17 @@
             </tr>
         </thead>
         <tbody>
-            @forelse ($rows as $r)
+            @forelse ($rows as $baris)
                 <tr>
-                    <td>{{ $cell($r['jam'] ?? null) }}</td>
-                    <td>{{ $cell(filled($r['sistolik'] ?? null) || filled($r['diastolik'] ?? null) ? ($r['sistolik'] ?? '-') . '/' . ($r['diastolik'] ?? '-') : ($r['td'] ?? null)) }}</td>
-                    <td>{{ $cell($r['nadi'] ?? null) }}</td>
-                    <td>{{ $cell($r['rr'] ?? null) }}</td>
-                    <td>{{ $cell($r['suhu'] ?? null) }}</td>
-                    <td>{{ $cell($r['djj'] ?? null) }}</td>
-                    <td>{{ $cell($r['his'] ?? null) }}</td>
-                    <td>{{ $cell($r['ewsScore'] ?? null) }}</td>
-                    <td class="ket">{{ $cell($r['obatKeterangan'] ?? null) }}</td>
+                    <td>{{ $nilaiSel($baris['jam'] ?? null) }}</td>
+                    <td>{{ $nilaiSel(filled($baris['sistolik'] ?? null) || filled($baris['diastolik'] ?? null) ? ($baris['sistolik'] ?? '-') . '/' . ($baris['diastolik'] ?? '-') : ($baris['td'] ?? null)) }}</td>
+                    <td>{{ $nilaiSel($baris['nadi'] ?? null) }}</td>
+                    <td>{{ $nilaiSel($baris['rr'] ?? null) }}</td>
+                    <td>{{ $nilaiSel($baris['suhu'] ?? null) }}</td>
+                    <td>{{ $nilaiSel($baris['djj'] ?? null) }}</td>
+                    <td>{{ $nilaiSel($baris['his'] ?? null) }}</td>
+                    <td>{{ $nilaiSel($baris['ewsScore'] ?? null) }}</td>
+                    <td class="ket">{{ $nilaiSel($baris['obatKeterangan'] ?? null) }}</td>
                 </tr>
             @empty
                 <tr><td colspan="9">Belum ada baris observasi.</td></tr>

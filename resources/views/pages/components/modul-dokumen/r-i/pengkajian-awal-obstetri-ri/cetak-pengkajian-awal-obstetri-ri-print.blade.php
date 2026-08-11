@@ -5,13 +5,13 @@
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">
         @php
-            $id = $data['identitas'] ?? [];
+            $identitas = $data['identitas'] ?? [];
             $alamatPasien = trim(
-                ($id['alamat'] ?? '-') .
-                    (!empty($id['rt']) ? ' RT ' . $id['rt'] : '') .
-                    (!empty($id['rw']) ? '/RW ' . $id['rw'] : '') .
-                    (!empty($id['desaName']) ? ', ' . $id['desaName'] : '') .
-                    (!empty($id['kecamatanName']) ? ', ' . $id['kecamatanName'] : ''),
+                ($identitas['alamat'] ?? '-') .
+                    (!empty($identitas['rt']) ? ' RT ' . $identitas['rt'] : '') .
+                    (!empty($identitas['rw']) ? '/RW ' . $identitas['rw'] : '') .
+                    (!empty($identitas['desaName']) ? ', ' . $identitas['desaName'] : '') .
+                    (!empty($identitas['kecamatanName']) ? ', ' . $identitas['kecamatanName'] : ''),
             );
         @endphp
         <x-pdf.identitas-pasien
@@ -26,7 +26,7 @@
 
     @php
         $form = $data['form'] ?? [];
-        $v = fn($k) => filled($form[$k] ?? null) ? e($form[$k]) : '-';
+        $nilaiForm = fn(string $field) => filled($form[$field] ?? null) ? e($form[$field]) : '-';
         $penyakit = collect($form['penyakitPenting'] ?? [])->filter()->implode(', ');
         if (filled($form['penyakitLain'] ?? null)) {
             $penyakit = trim($penyakit . ($penyakit ? ', ' : '') . e($form['penyakitLain']));
@@ -43,77 +43,77 @@
     {{-- 1. Data Pengkajian --}}
     <div class="pa-sec">1. DATA PENGKAJIAN</div>
     <table class="pa">
-        <tr><td class="lbl">Tgl / Jam Pengkajian</td><td>{{ $v('tglJamPengkajian') }}</td><td class="lbl">Cara Masuk</td><td>{{ $v('caraMasuk') }}{{ filled($form['caraMasukRujukan'] ?? null) ? ' — ' . e($form['caraMasukRujukan']) : '' }}</td></tr>
+        <tr><td class="lbl">Tgl / Jam Pengkajian</td><td>{{ $nilaiForm('tglJamPengkajian') }}</td><td class="lbl">Cara Masuk</td><td>{{ $nilaiForm('caraMasuk') }}{{ filled($form['caraMasukRujukan'] ?? null) ? ' — ' . e($form['caraMasukRujukan']) : '' }}</td></tr>
     </table>
 
     {{-- 2 & 3. Sosial --}}
     <div class="pa-sec">2. DATA SOSIAL PASIEN & SUAMI/PENANGGUNG JAWAB</div>
     <table class="pa">
-        <tr><td class="lbl">Pekerjaan</td><td>{{ $v('pekerjaan') }}</td><td class="lbl">Pendidikan</td><td>{{ $v('pendidikan') }}</td></tr>
-        <tr><td class="lbl">Agama</td><td>{{ $v('agama') }}</td><td class="lbl">Suku Bangsa</td><td>{{ $v('suku') }}</td></tr>
-        <tr><td class="lbl">Psiko-sosio-spiritual</td><td>{{ $v('psikososial') }}</td><td class="lbl">Ekonomi</td><td>{{ $v('ekonomi') }}</td></tr>
-        <tr><td class="lbl">Nama Suami/PJ</td><td>{{ $v('namaSuami') }}</td><td class="lbl">Umur</td><td>{{ $v('umurSuami') }}</td></tr>
-        <tr><td class="lbl">Pekerjaan Suami</td><td>{{ $v('pekerjaanSuami') }}</td><td class="lbl">Pendidikan Suami</td><td>{{ $v('pendidikanSuami') }}</td></tr>
+        <tr><td class="lbl">Pekerjaan</td><td>{{ $nilaiForm('pekerjaan') }}</td><td class="lbl">Pendidikan</td><td>{{ $nilaiForm('pendidikan') }}</td></tr>
+        <tr><td class="lbl">Agama</td><td>{{ $nilaiForm('agama') }}</td><td class="lbl">Suku Bangsa</td><td>{{ $nilaiForm('suku') }}</td></tr>
+        <tr><td class="lbl">Psiko-sosio-spiritual</td><td>{{ $nilaiForm('psikososial') }}</td><td class="lbl">Ekonomi</td><td>{{ $nilaiForm('ekonomi') }}</td></tr>
+        <tr><td class="lbl">Nama Suami/PJ</td><td>{{ $nilaiForm('namaSuami') }}</td><td class="lbl">Umur</td><td>{{ $nilaiForm('umurSuami') }}</td></tr>
+        <tr><td class="lbl">Pekerjaan Suami</td><td>{{ $nilaiForm('pekerjaanSuami') }}</td><td class="lbl">Pendidikan Suami</td><td>{{ $nilaiForm('pendidikanSuami') }}</td></tr>
     </table>
 
     {{-- 4. Riwayat --}}
     <div class="pa-sec">4. RIWAYAT</div>
     <table class="pa">
-        <tr><td class="lbl">Alergi Obat</td><td>{{ $v('alergiObat') }}</td><td class="lbl">Riwayat Obat</td><td>{{ $v('riwayatObat') }}</td></tr>
+        <tr><td class="lbl">Alergi Obat</td><td>{{ $nilaiForm('alergiObat') }}</td><td class="lbl">Riwayat Obat</td><td>{{ $nilaiForm('riwayatObat') }}</td></tr>
         <tr><td class="lbl">Penyakit Penting</td><td colspan="3">{{ $penyakit ?: '-' }}</td></tr>
     </table>
 
     {{-- 5. Status Obstetri & KB --}}
     <div class="pa-sec">5. STATUS OBSTETRI & KB</div>
     <table class="pa">
-        <tr><td class="lbl">G - P - A</td><td>{{ $v('gravida') }} - {{ $v('para') }} - {{ $v('abortus') }}</td><td class="lbl">KB Terakhir</td><td>{{ $v('kbTerakhir') }}</td></tr>
-        <tr><td class="lbl">ANC</td><td>{{ $v('anc') }}</td><td class="lbl">TT</td><td>{{ $v('tt') }}</td></tr>
-        <tr><td class="lbl">Menikah</td><td>{{ $v('menikahKali') }} kali, lama {{ $v('menikahLama') }} th</td><td class="lbl">TB / BB</td><td>{{ $v('tinggiBadan') }} cm / {{ $v('beratBadan') }} kg</td></tr>
-        <tr><td class="lbl">HPHT</td><td>{{ $v('hpht') }}</td><td class="lbl">HPL / TP</td><td>{{ $v('hpl') }}</td></tr>
+        <tr><td class="lbl">G - P - A</td><td>{{ $nilaiForm('gravida') }} - {{ $nilaiForm('para') }} - {{ $nilaiForm('abortus') }}</td><td class="lbl">KB Terakhir</td><td>{{ $nilaiForm('kbTerakhir') }}</td></tr>
+        <tr><td class="lbl">ANC</td><td>{{ $nilaiForm('anc') }}</td><td class="lbl">TT</td><td>{{ $nilaiForm('tt') }}</td></tr>
+        <tr><td class="lbl">Menikah</td><td>{{ $nilaiForm('menikahKali') }} kali, lama {{ $nilaiForm('menikahLama') }} th</td><td class="lbl">TB / BB</td><td>{{ $nilaiForm('tinggiBadan') }} cm / {{ $nilaiForm('beratBadan') }} kg</td></tr>
+        <tr><td class="lbl">HPHT</td><td>{{ $nilaiForm('hpht') }}</td><td class="lbl">HPL / TP</td><td>{{ $nilaiForm('hpl') }}</td></tr>
     </table>
 
     {{-- 6. Riwayat Persalinan Sekarang --}}
     <div class="pa-sec">6. RIWAYAT PERSALINAN SEKARANG</div>
     <table class="pa">
-        <tr><td class="lbl">ANC dilakukan di</td><td>{{ $v('ancDilakukanDi') }}</td><td class="lbl">Ketuban</td><td>{{ $v('ketubanStatus') }}</td></tr>
-        <tr><td class="lbl">His mulai</td><td>{{ $v('hisMulai') }}</td><td class="lbl">Ketuban pecah</td><td>{{ $v('ketubanPecah') }}</td></tr>
-        <tr><td class="lbl">Darah/lendir</td><td>{{ $v('keluarDarah') }}</td><td class="lbl">Rasa mengejan</td><td>{{ $v('rasaMengejan') }}</td></tr>
-        <tr><td class="lbl">Perawatan sebelumnya</td><td colspan="3">{{ $v('perawatanSebelumnya') }}</td></tr>
+        <tr><td class="lbl">ANC dilakukan di</td><td>{{ $nilaiForm('ancDilakukanDi') }}</td><td class="lbl">Ketuban</td><td>{{ $nilaiForm('ketubanStatus') }}</td></tr>
+        <tr><td class="lbl">His mulai</td><td>{{ $nilaiForm('hisMulai') }}</td><td class="lbl">Ketuban pecah</td><td>{{ $nilaiForm('ketubanPecah') }}</td></tr>
+        <tr><td class="lbl">Darah/lendir</td><td>{{ $nilaiForm('keluarDarah') }}</td><td class="lbl">Rasa mengejan</td><td>{{ $nilaiForm('rasaMengejan') }}</td></tr>
+        <tr><td class="lbl">Perawatan sebelumnya</td><td colspan="3">{{ $nilaiForm('perawatanSebelumnya') }}</td></tr>
     </table>
 
     {{-- 7. Status Umum / TTV --}}
     <div class="pa-sec">7. STATUS UMUM & TANDA VITAL</div>
     <table class="pa">
-        <tr><td class="lbl">Keadaan Umum</td><td>{{ $v('keadaanUmum') }}</td><td class="lbl">TD</td><td>{{ filled($form['sistolik'] ?? null) || filled($form['diastolik'] ?? null) ? e(($form['sistolik'] ?? '-') . '/' . ($form['diastolik'] ?? '-')) : $v('td') }} mmHg</td></tr>
-        <tr><td class="lbl">Nadi / RR</td><td>{{ $v('nadi') }} / {{ $v('respirasi') }} x/mnt</td><td class="lbl">Suhu (R/Ax)</td><td>{{ $v('suhuRectal') }} / {{ $v('suhuAxiler') }} °C</td></tr>
-        <tr><td class="lbl">Conjungtiva / Edema</td><td>{{ $v('conjungtiva') }} / {{ $v('edema') }}</td><td class="lbl">Cor / Pulmo</td><td>{{ $v('cor') }} / {{ $v('pulmo') }}</td></tr>
+        <tr><td class="lbl">Keadaan Umum</td><td>{{ $nilaiForm('keadaanUmum') }}</td><td class="lbl">TD</td><td>{{ filled($form['sistolik'] ?? null) || filled($form['diastolik'] ?? null) ? e(($form['sistolik'] ?? '-') . '/' . ($form['diastolik'] ?? '-')) : $nilaiForm('td') }} mmHg</td></tr>
+        <tr><td class="lbl">Nadi / RR</td><td>{{ $nilaiForm('nadi') }} / {{ $nilaiForm('respirasi') }} x/mnt</td><td class="lbl">Suhu (R/Ax)</td><td>{{ $nilaiForm('suhuRectal') }} / {{ $nilaiForm('suhuAxiler') }} °C</td></tr>
+        <tr><td class="lbl">Conjungtiva / Edema</td><td>{{ $nilaiForm('conjungtiva') }} / {{ $nilaiForm('edema') }}</td><td class="lbl">Cor / Pulmo</td><td>{{ $nilaiForm('cor') }} / {{ $nilaiForm('pulmo') }}</td></tr>
     </table>
 
     {{-- 8 & 9. Status Obstetri + VT --}}
     <div class="pa-sec">8. STATUS OBSTETRI (LUAR) & 9. PEMERIKSAAN DALAM (VT)</div>
     <table class="pa">
-        <tr><td class="lbl">TFU</td><td>{{ $v('tfu') }} cm</td><td class="lbl">Letak Janin</td><td>{{ $v('letakJanin') }}</td></tr>
-        <tr><td class="lbl">His / DJJ</td><td>{{ $v('his') }} / {{ $v('djj') }} x/mnt</td><td class="lbl">TBJ</td><td>{{ $v('tbj') }} gr</td></tr>
-        <tr><td class="lbl">VT — Pembukaan</td><td>{{ $v('vtPembukaan') }}</td><td class="lbl">Effacement</td><td>{{ $v('vtEffacement') }}</td></tr>
-        <tr><td class="lbl">Presentasi / Denominator</td><td>{{ $v('vtPresentasi') }} / {{ $v('vtDenominator') }}</td><td class="lbl">Ketuban / Hodge</td><td>{{ $v('vtKetuban') }} / {{ $v('vtHodge') }}</td></tr>
-        <tr><td class="lbl">Ukuran Panggul Dalam</td><td colspan="3">{{ $v('vtPanggul') }}</td></tr>
+        <tr><td class="lbl">TFU</td><td>{{ $nilaiForm('tfu') }} cm</td><td class="lbl">Letak Janin</td><td>{{ $nilaiForm('letakJanin') }}</td></tr>
+        <tr><td class="lbl">His / DJJ</td><td>{{ $nilaiForm('his') }} / {{ $nilaiForm('djj') }} x/mnt</td><td class="lbl">TBJ</td><td>{{ $nilaiForm('tbj') }} gr</td></tr>
+        <tr><td class="lbl">VT — Pembukaan</td><td>{{ $nilaiForm('vtPembukaan') }}</td><td class="lbl">Effacement</td><td>{{ $nilaiForm('vtEffacement') }}</td></tr>
+        <tr><td class="lbl">Presentasi / Denominator</td><td>{{ $nilaiForm('vtPresentasi') }} / {{ $nilaiForm('vtDenominator') }}</td><td class="lbl">Ketuban / Hodge</td><td>{{ $nilaiForm('vtKetuban') }} / {{ $nilaiForm('vtHodge') }}</td></tr>
+        <tr><td class="lbl">Ukuran Panggul Dalam</td><td colspan="3">{{ $nilaiForm('vtPanggul') }}</td></tr>
     </table>
 
     {{-- 10. Skrining --}}
     <div class="pa-sec">10. SKRINING (PP 1.2)</div>
     <table class="pa">
-        <tr><td class="lbl">Skala Nyeri</td><td>{{ $v('skalaNyeri') }}</td><td class="lbl">Risiko Jatuh</td><td>{{ $v('risikoJatuh') }}</td></tr>
-        <tr><td class="lbl">Skrining Gizi</td><td>{{ $v('skriningGizi') }}</td><td class="lbl">Pengkajian Fungsional</td><td>{{ $v('pengkajianFungsional') }}</td></tr>
-        <tr><td class="lbl">Kebutuhan Edukasi</td><td colspan="3">{{ $v('kebutuhanEdukasi') }}</td></tr>
+        <tr><td class="lbl">Skala Nyeri</td><td>{{ $nilaiForm('skalaNyeri') }}</td><td class="lbl">Risiko Jatuh</td><td>{{ $nilaiForm('risikoJatuh') }}</td></tr>
+        <tr><td class="lbl">Skrining Gizi</td><td>{{ $nilaiForm('skriningGizi') }}</td><td class="lbl">Pengkajian Fungsional</td><td>{{ $nilaiForm('pengkajianFungsional') }}</td></tr>
+        <tr><td class="lbl">Kebutuhan Edukasi</td><td colspan="3">{{ $nilaiForm('kebutuhanEdukasi') }}</td></tr>
     </table>
 
     {{-- 11 & 12. Lab, Diagnosa & Rencana --}}
     <div class="pa-sec">11. LABORATORIUM &nbsp; · &nbsp; 12. DIAGNOSA & RENCANA</div>
     <table class="pa">
-        <tr><td class="lbl">Lab Darah / Urine</td><td colspan="3">{{ $v('labDarah') }} / {{ $v('labUrine') }}</td></tr>
-        <tr><td class="lbl">Diagnosa</td><td colspan="3">{{ $v('diagnosa') }}</td></tr>
-        <tr><td class="lbl">Rencana Tindakan/Terapi</td><td colspan="3">{{ $v('rencanaTindakan') }}</td></tr>
-        <tr><td class="lbl">Discharge Planning</td><td colspan="3">{{ $v('dischargePlanning') }}</td></tr>
+        <tr><td class="lbl">Lab Darah / Urine</td><td colspan="3">{{ $nilaiForm('labDarah') }} / {{ $nilaiForm('labUrine') }}</td></tr>
+        <tr><td class="lbl">Diagnosa</td><td colspan="3">{{ $nilaiForm('diagnosa') }}</td></tr>
+        <tr><td class="lbl">Rencana Tindakan/Terapi</td><td colspan="3">{{ $nilaiForm('rencanaTindakan') }}</td></tr>
+        <tr><td class="lbl">Discharge Planning</td><td colspan="3">{{ $nilaiForm('dischargePlanning') }}</td></tr>
     </table>
 
     {{-- Penutup / TTD --}}

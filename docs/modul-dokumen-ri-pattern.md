@@ -125,6 +125,31 @@ Tombolnya di-gate lewat `:disabled="$formReadOnly"`, bukan dibungkus `@if (!$for
 satu kolom datetime (`ketubanPecah`, `hisMulai`, …). Pasangan terpisah memaksa helper
 `$tgljam($t,$j)` di tiap blade cetak dan gampang tidak sinkron.
 
+### 5c. Penamaan variabel di blade cetak — nama LENGKAP
+
+Blade cetak dulu memakai singkatan satu huruf (`$v`, `$c`, `$r`, `$k`, `$i`) sehingga sulit
+diaudit programmer lain. Paling parah: `$id` di sana berarti **identitas pasien**, bukan
+identifier, dan helper yang isinya identik dipakai dengan tiga nama berbeda
+(`$v` / `$cell` / `$show`). Peta baku sekarang:
+
+| Peran | Nama |
+|---|---|
+| `$data['identitas']` | `$identitas` (JANGAN `$id`) |
+| helper ambil nilai dari `$form` by key | `$nilaiForm = fn(string $field) => …` |
+| helper format satu nilai/sel tabel | `$nilaiSel = fn($nilai) => …` |
+| helper ambil nilai dari satu baris | `$nilaiBaris = fn(array $baris, string $field) => …` |
+| helper implode array jadi teks | `$nilaiFormList` |
+| item loop baris | `$baris` |
+| indeks loop | `$nomor` |
+| parameter closure berisi nama field | `$field` (`$fieldTgl`/`$fieldJam` bila spesifik) |
+
+Boleh tetap: `$data`, `$form`, `$row`/`$rows` (idiom repo), `$loop`. Beri type hint pada
+parameter closure supaya niatnya terbaca tanpa menelusuri pemanggil.
+
+**Verifikasi rename blade WAJIB render nyata** — `php -l` dan `view:cache` TIDAK menangkap
+variabel yang putus. Render versi lama (`git show HEAD:<path>`) dan versi baru dengan payload
+dummy yang sama, lalu bandingkan md5-nya; harus identik.
+
 ### 5b. Lebar isi modal = `max-w-full`
 
 Body `<x-modal size="full">` diisi `<div class="max-w-full mx-auto space-y-4">`. Memakai

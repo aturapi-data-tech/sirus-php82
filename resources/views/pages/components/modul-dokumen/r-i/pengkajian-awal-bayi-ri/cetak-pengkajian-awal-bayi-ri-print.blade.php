@@ -5,13 +5,13 @@
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">
         @php
-            $id = $data['identitas'] ?? [];
+            $identitas = $data['identitas'] ?? [];
             $alamatPasien = trim(
-                ($id['alamat'] ?? '-') .
-                    (!empty($id['rt']) ? ' RT ' . $id['rt'] : '') .
-                    (!empty($id['rw']) ? '/RW ' . $id['rw'] : '') .
-                    (!empty($id['desaName']) ? ', ' . $id['desaName'] : '') .
-                    (!empty($id['kecamatanName']) ? ', ' . $id['kecamatanName'] : ''),
+                ($identitas['alamat'] ?? '-') .
+                    (!empty($identitas['rt']) ? ' RT ' . $identitas['rt'] : '') .
+                    (!empty($identitas['rw']) ? '/RW ' . $identitas['rw'] : '') .
+                    (!empty($identitas['desaName']) ? ', ' . $identitas['desaName'] : '') .
+                    (!empty($identitas['kecamatanName']) ? ', ' . $identitas['kecamatanName'] : ''),
             );
         @endphp
         <x-pdf.identitas-pasien
@@ -26,7 +26,7 @@
 
     @php
         $form = $data['form'] ?? [];
-        $v = fn($k) => filled($form[$k] ?? null) ? e($form[$k]) : '-';
+        $nilaiForm = fn(string $field) => filled($form[$field] ?? null) ? e($form[$field]) : '-';
 
         $apgarRows = [
             ['Warna Kulit', 'warnaKulit'],
@@ -36,10 +36,9 @@
             ['Usaha Bernafas', 'usahaNafas'],
         ];
         $apgarMenit = ['1' => "1'", '5' => "5'", '10' => "10'"];
-        $cell = fn($k) => filled($form[$k] ?? null) ? e($form[$k]) : '-';
-        $sumMenit = fn($m) => collect($apgarRows)->sum(fn($r) => (int) ($form[$r[1] . $m] ?? 0));
-        $lahirKeadaan = fn($sel, $ket) =>
-            trim((filled($form[$sel] ?? null) ? e($form[$sel]) : '-') . (filled($form[$ket] ?? null) ? ' — ' . e($form[$ket]) : ''));
+        $jumlahApgarMenit = fn(string $menit) => collect($apgarRows)->sum(fn(array $baris) => (int) ($form[$baris[1] . $menit] ?? 0));
+        $lahirKeadaan = fn(string $fieldPilihan, string $fieldKeterangan) =>
+            trim((filled($form[$fieldPilihan] ?? null) ? e($form[$fieldPilihan]) : '-') . (filled($form[$fieldKeterangan] ?? null) ? ' — ' . e($form[$fieldKeterangan]) : ''));
     @endphp
 
     <style>
@@ -57,9 +56,9 @@
     {{-- 1. Identitas Bayi --}}
     <div class="pa-sec">1. IDENTITAS BAYI</div>
     <table class="pa">
-        <tr><td class="lbl">Tanggal / Jam Lahir</td><td>{{ $v('tglLahir') }} {{ filled($form['jamLahir'] ?? null) ? e($form['jamLahir']) : '' }}</td><td class="lbl">Cara Persalinan</td><td>{{ $v('caraPersalinan') }}</td></tr>
-        <tr><td class="lbl">Nama Ayah</td><td>{{ $v('namaAyah') }}</td><td class="lbl">Nama Ibu</td><td>{{ $v('namaIbu') }}</td></tr>
-        <tr><td class="lbl">Ruangan Ibu</td><td>{{ $v('ruanganIbu') }}</td><td class="lbl">No. RM Ibu</td><td>{{ $v('noRmIbu') }}</td></tr>
+        <tr><td class="lbl">Tanggal / Jam Lahir</td><td>{{ $nilaiForm('tglLahir') }} {{ filled($form['jamLahir'] ?? null) ? e($form['jamLahir']) : '' }}</td><td class="lbl">Cara Persalinan</td><td>{{ $nilaiForm('caraPersalinan') }}</td></tr>
+        <tr><td class="lbl">Nama Ayah</td><td>{{ $nilaiForm('namaAyah') }}</td><td class="lbl">Nama Ibu</td><td>{{ $nilaiForm('namaIbu') }}</td></tr>
+        <tr><td class="lbl">Ruangan Ibu</td><td>{{ $nilaiForm('ruanganIbu') }}</td><td class="lbl">No. RM Ibu</td><td>{{ $nilaiForm('noRmIbu') }}</td></tr>
     </table>
 
     {{-- 2. Nilai APGAR --}}
@@ -68,19 +67,19 @@
         <thead>
             <tr>
                 <th class="lbl">Komponen</th>
-                @foreach ($apgarMenit as $mk => $ml)<th>Menit {{ $ml }}</th>@endforeach
+                @foreach ($apgarMenit as $menitKode => $menitLabel)<th>Menit {{ $menitLabel }}</th>@endforeach
             </tr>
         </thead>
         <tbody>
-            @foreach ($apgarRows as $row)
+            @foreach ($apgarRows as $baris)
                 <tr>
-                    <td class="lbl">{{ $row[0] }}</td>
-                    @foreach ($apgarMenit as $mk => $ml)<td>{{ $cell($row[1] . $mk) }}</td>@endforeach
+                    <td class="lbl">{{ $baris[0] }}</td>
+                    @foreach ($apgarMenit as $menitKode => $menitLabel)<td>{{ $nilaiForm($baris[1] . $menitKode) }}</td>@endforeach
                 </tr>
             @endforeach
             <tr class="sum">
                 <td class="lbl">Jumlah</td>
-                @foreach ($apgarMenit as $mk => $ml)<td>{{ $sumMenit($mk) }}</td>@endforeach
+                @foreach ($apgarMenit as $menitKode => $menitLabel)<td>{{ $jumlahApgarMenit($menitKode) }}</td>@endforeach
             </tr>
         </tbody>
     </table>
@@ -88,18 +87,18 @@
     {{-- 3. Pemeriksaan Fisik --}}
     <div class="pa-sec">3. PEMERIKSAAN FISIK</div>
     <table class="pa">
-        <tr><td class="lbl">Keadaan Tali Pusat</td><td>{{ $v('keadaanTaliPusat') }}</td><td class="lbl">Jantung</td><td>{{ $v('jantung') }}</td></tr>
-        <tr><td class="lbl">Paru</td><td>{{ $v('paru') }}</td><td class="lbl">Abdomen / Hati</td><td>{{ $v('abdomenHati') }}</td></tr>
-        <tr><td class="lbl">Limpa</td><td>{{ $v('limpa') }}</td><td class="lbl">Anus</td><td>{{ $v('anus') }}</td></tr>
-        <tr><td class="lbl">Ekstremitas</td><td>{{ $v('ekstremitas') }}</td><td class="lbl">Imunisasi</td><td>{{ $v('imunisasi') }}</td></tr>
+        <tr><td class="lbl">Keadaan Tali Pusat</td><td>{{ $nilaiForm('keadaanTaliPusat') }}</td><td class="lbl">Jantung</td><td>{{ $nilaiForm('jantung') }}</td></tr>
+        <tr><td class="lbl">Paru</td><td>{{ $nilaiForm('paru') }}</td><td class="lbl">Abdomen / Hati</td><td>{{ $nilaiForm('abdomenHati') }}</td></tr>
+        <tr><td class="lbl">Limpa</td><td>{{ $nilaiForm('limpa') }}</td><td class="lbl">Anus</td><td>{{ $nilaiForm('anus') }}</td></tr>
+        <tr><td class="lbl">Ekstremitas</td><td>{{ $nilaiForm('ekstremitas') }}</td><td class="lbl">Imunisasi</td><td>{{ $nilaiForm('imunisasi') }}</td></tr>
     </table>
 
     {{-- 4. Antropometri --}}
     <div class="pa-sec">4. ANTROPOMETRI</div>
     <table class="pa">
-        <tr><td class="lbl">Lingkar Kepala</td><td>{{ $v('lingkarKepala') }} cm</td><td class="lbl">Berat Badan</td><td>{{ $v('beratBadan') }} gr</td></tr>
-        <tr><td class="lbl">Tinggi Badan</td><td>{{ $v('tinggiBadan') }} cm</td><td class="lbl">Lingkar Dada</td><td>{{ $v('lingkarDada') }} cm</td></tr>
-        <tr><td class="lbl">Jenis Kelamin</td><td colspan="3">{{ $v('jenisKelamin') }}</td></tr>
+        <tr><td class="lbl">Lingkar Kepala</td><td>{{ $nilaiForm('lingkarKepala') }} cm</td><td class="lbl">Berat Badan</td><td>{{ $nilaiForm('beratBadan') }} gr</td></tr>
+        <tr><td class="lbl">Tinggi Badan</td><td>{{ $nilaiForm('tinggiBadan') }} cm</td><td class="lbl">Lingkar Dada</td><td>{{ $nilaiForm('lingkarDada') }} cm</td></tr>
+        <tr><td class="lbl">Jenis Kelamin</td><td colspan="3">{{ $nilaiForm('jenisKelamin') }}</td></tr>
     </table>
 
     {{-- 5. Keadaan Bayi Waktu Lahir --}}
@@ -113,18 +112,18 @@
     {{-- 6. Diagnosa --}}
     <div class="pa-sec">6. DIAGNOSA</div>
     <table class="pa">
-        <tr><td class="lbl">Diagnosa Utama</td><td colspan="3">{{ $v('diagnosaUtama') }}</td></tr>
+        <tr><td class="lbl">Diagnosa Utama</td><td colspan="3">{{ $nilaiForm('diagnosaUtama') }}</td></tr>
     </table>
 
     {{-- 7. Rencana --}}
     <div class="pa-sec">7. RENCANA</div>
     <table class="pa">
-        <tr><td class="lbl">Rencana Diagnosa</td><td colspan="3">{{ $v('rencanaDiagnosa') }}</td></tr>
-        <tr><td class="lbl">Terapi</td><td colspan="3">{{ $v('terapi') }}</td></tr>
-        <tr><td class="lbl">Diet</td><td colspan="3">{{ $v('diet') }}</td></tr>
-        <tr><td class="lbl">Edukasi</td><td colspan="3">{{ $v('edukasi') }}</td></tr>
-        <tr><td class="lbl">Monitoring</td><td colspan="3">{{ $v('monitoring') }}</td></tr>
-        <tr><td class="lbl">Discharge Planning</td><td colspan="3">{{ $v('dischargePlanning') }}</td></tr>
+        <tr><td class="lbl">Rencana Diagnosa</td><td colspan="3">{{ $nilaiForm('rencanaDiagnosa') }}</td></tr>
+        <tr><td class="lbl">Terapi</td><td colspan="3">{{ $nilaiForm('terapi') }}</td></tr>
+        <tr><td class="lbl">Diet</td><td colspan="3">{{ $nilaiForm('diet') }}</td></tr>
+        <tr><td class="lbl">Edukasi</td><td colspan="3">{{ $nilaiForm('edukasi') }}</td></tr>
+        <tr><td class="lbl">Monitoring</td><td colspan="3">{{ $nilaiForm('monitoring') }}</td></tr>
+        <tr><td class="lbl">Discharge Planning</td><td colspan="3">{{ $nilaiForm('dischargePlanning') }}</td></tr>
     </table>
 
     {{-- Penutup / TTD --}}

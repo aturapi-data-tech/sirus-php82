@@ -5,13 +5,13 @@
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">
         @php
-            $id = $data['identitas'] ?? [];
+            $identitas = $data['identitas'] ?? [];
             $alamatPasien = trim(
-                ($id['alamat'] ?? '-') .
-                    (!empty($id['rt']) ? ' RT ' . $id['rt'] : '') .
-                    (!empty($id['rw']) ? '/RW ' . $id['rw'] : '') .
-                    (!empty($id['desaName']) ? ', ' . $id['desaName'] : '') .
-                    (!empty($id['kecamatanName']) ? ', ' . $id['kecamatanName'] : ''),
+                ($identitas['alamat'] ?? '-') .
+                    (!empty($identitas['rt']) ? ' RT ' . $identitas['rt'] : '') .
+                    (!empty($identitas['rw']) ? '/RW ' . $identitas['rw'] : '') .
+                    (!empty($identitas['desaName']) ? ', ' . $identitas['desaName'] : '') .
+                    (!empty($identitas['kecamatanName']) ? ', ' . $identitas['kecamatanName'] : ''),
             );
         @endphp
         <x-pdf.identitas-pasien
@@ -27,8 +27,8 @@
     @php
         $form = $data['form'] ?? [];
         $rows = $form['rows'] ?? [];
-        $v = fn($k) => filled($form[$k] ?? null) ? e($form[$k]) : '-';
-        $c = fn($row, $k) => filled($row[$k] ?? null) ? e($row[$k]) : '-';
+        $nilaiForm = fn(string $field) => filled($form[$field] ?? null) ? e($form[$field]) : '-';
+        $nilaiBaris = fn(array $baris, string $field) => filled($baris[$field] ?? null) ? e($baris[$field]) : '-';
     @endphp
 
     <style>
@@ -43,9 +43,9 @@
     <div class="ro-sec">STATUS OBSTETRI</div>
     <table class="ro">
         <tr>
-            <td style="width:16%; background:#f7f7f7;"><b>Gravida (G)</b></td><td style="width:17%;">{{ $v('gravida') }}</td>
-            <td style="width:16%; background:#f7f7f7;"><b>Para (P)</b></td><td style="width:17%;">{{ $v('para') }}</td>
-            <td style="width:16%; background:#f7f7f7;"><b>Abortus (A)</b></td><td style="width:18%;">{{ $v('abortus') }}</td>
+            <td style="width:16%; background:#f7f7f7;"><b>Gravida (G)</b></td><td style="width:17%;">{{ $nilaiForm('gravida') }}</td>
+            <td style="width:16%; background:#f7f7f7;"><b>Para (P)</b></td><td style="width:17%;">{{ $nilaiForm('para') }}</td>
+            <td style="width:16%; background:#f7f7f7;"><b>Abortus (A)</b></td><td style="width:18%;">{{ $nilaiForm('abortus') }}</td>
         </tr>
     </table>
 
@@ -68,19 +68,19 @@
             </tr>
         </thead>
         <tbody>
-            @forelse ($rows as $i => $row)
+            @forelse ($rows as $nomor => $row)
                 <tr>
-                    <td class="c">{{ $i + 1 }}</td>
-                    <td>{{ $c($row, 'kehamilan') }}</td>
-                    <td>{{ $c($row, 'caraPersalinan') }}</td>
-                    <td>{{ $c($row, 'tempat') }}</td>
-                    <td>{{ $c($row, 'penolong') }}</td>
-                    <td>{{ $c($row, 'komplikasi') }}</td>
-                    <td class="c">{{ $c($row, 'jenisKelaminAnak') }}</td>
-                    <td class="c">{{ $c($row, 'keadaanAnak') }}</td>
-                    <td>{{ $c($row, 'umurAnak') }}</td>
-                    <td class="c">{{ $c($row, 'bbl') }}</td>
-                    <td>{{ $c($row, 'keterangan') }}</td>
+                    <td class="c">{{ $nomor + 1 }}</td>
+                    <td>{{ $nilaiBaris($row, 'kehamilan') }}</td>
+                    <td>{{ $nilaiBaris($row, 'caraPersalinan') }}</td>
+                    <td>{{ $nilaiBaris($row, 'tempat') }}</td>
+                    <td>{{ $nilaiBaris($row, 'penolong') }}</td>
+                    <td>{{ $nilaiBaris($row, 'komplikasi') }}</td>
+                    <td class="c">{{ $nilaiBaris($row, 'jenisKelaminAnak') }}</td>
+                    <td class="c">{{ $nilaiBaris($row, 'keadaanAnak') }}</td>
+                    <td>{{ $nilaiBaris($row, 'umurAnak') }}</td>
+                    <td class="c">{{ $nilaiBaris($row, 'bbl') }}</td>
+                    <td>{{ $nilaiBaris($row, 'keterangan') }}</td>
                 </tr>
             @empty
                 <tr><td colspan="11" class="c">Tidak ada riwayat kehamilan sebelumnya.</td></tr>

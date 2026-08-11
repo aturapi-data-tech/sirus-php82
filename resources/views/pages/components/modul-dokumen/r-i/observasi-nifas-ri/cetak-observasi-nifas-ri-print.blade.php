@@ -5,13 +5,13 @@
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">
         @php
-            $id = $data['identitas'] ?? [];
+            $identitas = $data['identitas'] ?? [];
             $alamatPasien = trim(
-                ($id['alamat'] ?? '-') .
-                    (!empty($id['rt']) ? ' RT ' . $id['rt'] : '') .
-                    (!empty($id['rw']) ? '/RW ' . $id['rw'] : '') .
-                    (!empty($id['desaName']) ? ', ' . $id['desaName'] : '') .
-                    (!empty($id['kecamatanName']) ? ', ' . $id['kecamatanName'] : ''),
+                ($identitas['alamat'] ?? '-') .
+                    (!empty($identitas['rt']) ? ' RT ' . $identitas['rt'] : '') .
+                    (!empty($identitas['rw']) ? '/RW ' . $identitas['rw'] : '') .
+                    (!empty($identitas['desaName']) ? ', ' . $identitas['desaName'] : '') .
+                    (!empty($identitas['kecamatanName']) ? ', ' . $identitas['kecamatanName'] : ''),
             );
         @endphp
         <x-pdf.identitas-pasien
@@ -26,10 +26,10 @@
 
     @php
         $rows = $data['rows'] ?? [];
-        $cell = fn($v) => filled($v) ? e($v) : '-';
-        $lochia = function ($r) {
-            $s = trim(($r['lochiaJenis'] ?? '') . ' ' . ($r['lochiaJumlah'] ?? ''));
-            return $s !== '' ? e($s) : '-';
+        $nilaiSel = fn($nilai) => filled($nilai) ? e($nilai) : '-';
+        $nilaiLochia = function (array $baris) {
+            $lochia = trim(($baris['lochiaJenis'] ?? '') . ' ' . ($baris['lochiaJumlah'] ?? ''));
+            return $lochia !== '' ? e($lochia) : '-';
         };
     @endphp
 
@@ -60,29 +60,29 @@
             </tr>
         </thead>
         <tbody>
-            @forelse ($rows as $r)
+            @forelse ($rows as $baris)
                 @php
-                    $ket = trim(
-                        (filled($r['keluhan'] ?? null) ? 'Keluhan: ' . $r['keluhan'] . '. ' : '') .
-                        (filled($r['asuhanTindakan'] ?? null) ? $r['asuhanTindakan'] . ' ' : '') .
-                        (filled($r['ttd'] ?? null) ? '(' . $r['ttd'] . ')' : '')
+                    $keterangan = trim(
+                        (filled($baris['keluhan'] ?? null) ? 'Keluhan: ' . $baris['keluhan'] . '. ' : '') .
+                        (filled($baris['asuhanTindakan'] ?? null) ? $baris['asuhanTindakan'] . ' ' : '') .
+                        (filled($baris['ttd'] ?? null) ? '(' . $baris['ttd'] . ')' : '')
                     );
                 @endphp
                 <tr>
-                    <td>{{ $cell($r['tglJam'] ?? null) }}</td>
-                    <td>{{ $cell(filled($r['sistolik'] ?? null) || filled($r['diastolik'] ?? null) ? ($r['sistolik'] ?? '-') . '/' . ($r['diastolik'] ?? '-') : ($r['td'] ?? null)) }}</td>
-                    <td>{{ $cell($r['nadi'] ?? null) }}</td>
-                    <td>{{ $cell($r['rr'] ?? null) }}</td>
-                    <td>{{ $cell($r['suhu'] ?? null) }}</td>
-                    <td>{{ $cell($r['ewsScore'] ?? null) }}</td>
-                    <td>{{ $cell($r['tfu'] ?? null) }}</td>
-                    <td>{{ $cell($r['kontraksiUterus'] ?? null) }}</td>
-                    <td>{{ $lochia($r) }}</td>
-                    <td>{{ $cell($r['perdarahanCc'] ?? null) }}</td>
-                    <td>{{ $cell($r['lukaJalanLahir'] ?? null) }}</td>
-                    <td>{{ $cell($r['laktasi'] ?? null) }}</td>
-                    <td>{{ $cell($r['asiEksklusif'] ?? null) }}</td>
-                    <td class="ket">{{ $ket !== '' ? e($ket) : '-' }}</td>
+                    <td>{{ $nilaiSel($baris['tglJam'] ?? null) }}</td>
+                    <td>{{ $nilaiSel(filled($baris['sistolik'] ?? null) || filled($baris['diastolik'] ?? null) ? ($baris['sistolik'] ?? '-') . '/' . ($baris['diastolik'] ?? '-') : ($baris['td'] ?? null)) }}</td>
+                    <td>{{ $nilaiSel($baris['nadi'] ?? null) }}</td>
+                    <td>{{ $nilaiSel($baris['rr'] ?? null) }}</td>
+                    <td>{{ $nilaiSel($baris['suhu'] ?? null) }}</td>
+                    <td>{{ $nilaiSel($baris['ewsScore'] ?? null) }}</td>
+                    <td>{{ $nilaiSel($baris['tfu'] ?? null) }}</td>
+                    <td>{{ $nilaiSel($baris['kontraksiUterus'] ?? null) }}</td>
+                    <td>{{ $nilaiLochia($baris) }}</td>
+                    <td>{{ $nilaiSel($baris['perdarahanCc'] ?? null) }}</td>
+                    <td>{{ $nilaiSel($baris['lukaJalanLahir'] ?? null) }}</td>
+                    <td>{{ $nilaiSel($baris['laktasi'] ?? null) }}</td>
+                    <td>{{ $nilaiSel($baris['asiEksklusif'] ?? null) }}</td>
+                    <td class="ket">{{ $keterangan !== '' ? e($keterangan) : '-' }}</td>
                 </tr>
             @empty
                 <tr><td colspan="14">Belum ada baris observasi nifas.</td></tr>
