@@ -521,7 +521,8 @@ new class extends Component {
                                         @forelse ($this->rows as $myQData)
                                             {{-- wire:key WAJIB: tanpa ini, morph Livewire (mis. setelah save EMR)
                                                  memindah/klon node & memisahkan child x-show dari x-data induknya →
-                                                 "expandedDx is not defined" → morph putus → EMR berhenti berfungsi. --}}
+                                                 "expandedRm/showSep is not defined" → morph putus → EMR berhenti
+                                                 berfungsi. (Island expandedDx sudah DIHAPUS — diagnosa tampil terus.) --}}
                                             <tr wire:key="rmd-{{ $myQData->layanan_status ?? 'x' }}-{{ $myQData->txn_no }}" class="group">
                                                 @php
                                                     $datadaftar_json =
@@ -612,18 +613,17 @@ new class extends Component {
                                                     </div>
 
                                                     {{-- Diagnosis & Terapi --}}
-                                                    {{-- wire:key pada elemen x-data ini WAJIB: mengunci island Alpine
-                                                         sebagai satu unit saat morph, agar child x-show="expandedDx" tak
-                                                         terpisah dari scope-nya ("expandedDx is not defined"). --}}
-                                                    <div class="grid grid-cols-1 gap-3 mt-3" x-data="{ expandedDx: false }"
-                                                        wire:key="rmd-dx-{{ $myQData->layanan_status ?? 'x' }}-{{ $myQData->txn_no }}">
-                                                        {{-- Toggle Diagnosis & ICD10 --}}
+                                                    {{-- Tanpa island Alpine (dulu expandedDx buka-tutup): saat morph
+                                                         Livewire child x-show bisa terpisah dari scope-nya walau ber-wire:key
+                                                         ("expandedDx is not defined" ×ratusan → EMR hang). Record kini
+                                                         SELALU tampil — tak ada state yang bisa putus. --}}
+                                                    <div class="grid grid-cols-1 gap-3 mt-3">
                                                         @php
                                                             $dxCount = !empty($datadaftar_json['diagnosis']) ? count($datadaftar_json['diagnosis']) : 0;
                                                             $hasFreeText = !empty($datadaftar_json['diagnosisFreeText']);
                                                         @endphp
-                                                        <button type="button" x-on:click="expandedDx = !expandedDx"
-                                                            class="flex items-center justify-between w-full px-2 py-1.5 text-sm font-semibold text-body transition rounded bg-surface-soft hover:bg-surface-soft dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                                                        <div
+                                                            class="flex items-center justify-between w-full px-2 py-1.5 text-sm font-semibold text-body rounded bg-surface-soft dark:bg-gray-800 dark:text-gray-300">
                                                             <span class="flex items-center gap-2">
                                                                 <svg class="w-3 h-3 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -636,14 +636,10 @@ new class extends Component {
                                                                     </span>
                                                                 @endif
                                                             </span>
-                                                            <svg class="w-4 h-4 transition-transform" :class="expandedDx ? 'rotate-180' : ''"
-                                                                fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                                                            </svg>
-                                                        </button>
+                                                        </div>
 
                                                         {{-- ICD10 --}}
-                                                        <div x-show="expandedDx" x-collapse class="p-2 rounded bg-surface-soft">
+                                                        <div class="p-2 rounded bg-surface-soft">
                                                             <div class="flex items-center mb-1 space-x-1">
                                                                 <svg class="w-3 h-3 text-blue-600 shrink-0"
                                                                     fill="none" stroke="currentColor"
@@ -673,7 +669,7 @@ new class extends Component {
                                                         </div>
 
                                                         {{-- Diagnosis Dokter --}}
-                                                        <div x-show="expandedDx" x-collapse class="p-2 rounded bg-surface-soft">
+                                                        <div class="p-2 rounded bg-surface-soft">
                                                             <div class="flex items-center mb-1 space-x-1">
                                                                 <svg class="w-3 h-3 text-green-600 shrink-0"
                                                                     fill="none" stroke="currentColor"
