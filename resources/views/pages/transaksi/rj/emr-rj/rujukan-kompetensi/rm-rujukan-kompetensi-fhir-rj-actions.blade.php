@@ -51,6 +51,41 @@ new class extends Component {
         }
     }
 
+    /* ═══════════════════════════════════════
+     | OPEN / CLOSE MODAL (pola modul-dokumen: kartu ringkas → tombol → x-modal)
+     | Nama modal SENGAJA berakhiran -fhir-rj-: panel vclaim RJ berada di tab yang
+     | sama dan memakai 'rujukan-kompetensi-rj-', jadi tak boleh bertabrakan.
+    ═══════════════════════════════════════ */
+    public function openModal(): void
+    {
+        if (empty($this->rjNo)) {
+            return;
+        }
+
+        // Baca ulang saat dibuka: Encounter & IHS pasien/dokter bisa terisi setelah
+        // panel pertama kali dirender, jadi prasyarat dinilai dari data terkini.
+        $data = $this->findDataRJ($this->rjNo);
+        if (empty($data)) {
+            $this->dispatch('toast', type: 'error', message: 'Data kunjungan RJ tidak ditemukan.');
+            return;
+        }
+        $this->dataDaftarPoliRJ = $data;
+
+        $tersimpan = $data['rujukanKompetensiFhir'] ?? [];
+        if (!empty($tersimpan) && is_array($tersimpan)) {
+            $this->formRujukan = array_replace($this->defaultFormRujukan(), $tersimpan);
+        }
+
+        $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo);
+
+        $this->dispatch('open-modal', name: 'rujukan-kompetensi-fhir-rj-' . $this->rjNo);
+    }
+
+    public function closeModal(): void
+    {
+        $this->dispatch('close-modal', name: 'rujukan-kompetensi-fhir-rj-' . $this->rjNo);
+    }
+
     private function defaultFormRujukan(): array
     {
         return [
@@ -471,19 +506,90 @@ new class extends Component {
 };
 ?>
 
-<div class="w-full p-4 space-y-4 border border-rose-200 rounded-2xl bg-rose-50/50 dark:bg-gray-900 dark:border-rose-700">
+<div>
+    {{-- ══ KARTU RINGKAS (inline di tab Tindak Lanjut) ══ --}}
+    @php $sudahTerkirim = !empty($formRujukan['hasil']['noRujukanSatuSehat']); @endphp
 
-    <div class="flex items-center justify-between">
-        <h3 class="font-semibold text-gray-800 dark:text-gray-100">Rujukan Berbasis Kompetensi — IGD/Ranap RS Lain (SATUSEHAT FHIR)</h3>
-        @if (!empty($formRujukan['hasil']['noRujukanSatuSehat']))
-            <span class="px-2 py-0.5 text-xs font-semibold text-green-800 bg-green-100 rounded-full dark:bg-green-900 dark:text-green-200">✓ Terkirim</span>
-        @endif
+    <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+        <div class="flex flex-col gap-3">
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+                    </svg>
+                    <h3 class="text-base font-semibold text-ink dark:text-gray-200">
+                        Rujukan Berbasis Kompetensi — IGD/Ranap RS Lain (SATUSEHAT FHIR)
+                    </h3>
+                    @if ($sudahTerkirim)
+                        <x-badge variant="success">Terkirim</x-badge>
+                    @else
+                        <x-badge variant="warning">Belum dikirim</x-badge>
+                    @endif
+                </div>
+
+                <div class="flex shrink-0">
+                    <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
+                        wire:target="openModal" :disabled="!$rjNo" class="gap-2">
+                        <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                            {{ $sudahTerkirim ? 'Lihat Rujukan' : 'Buat Rujukan' }}
+                        </span>
+                        <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
+                            <x-loading class="w-4 h-4" /> Memuat...
+                        </span>
+                    </x-primary-button>
+                </div>
+            </div>
+
+            <p class="text-base text-muted dark:text-gray-400">
+                Rujukan pasien poli ke IGD atau Ranap RS lain — dikirim LANGSUNG ke SATUSEHAT (Task → CarePlan →
+                ServiceRequest), tanpa lewat rujukan BPJS. Untuk rujukan ke poli RS lain, pakai panel SISRUTE di atas.
+            </p>
+
+            @if ($sudahTerkirim)
+                <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted dark:text-gray-400">
+                    <span>No. Rujukan SATUSEHAT: <strong class="text-ink dark:text-gray-200">{{ $formRujukan['hasil']['noRujukanSatuSehat'] }}</strong></span>
+                    <span>ServiceRequest: <strong class="text-ink dark:text-gray-200">{{ $formRujukan['hasil']['serviceRequestId'] ?? '-' }}</strong></span>
+                </div>
+            @endif
+        </div>
     </div>
 
+    {{-- ══ MODAL FORMULIR ══ --}}
+    <x-modal name="rujukan-kompetensi-fhir-rj-{{ $rjNo }}" size="full" height="full" focusable>
+        <div class="flex flex-col min-h-[calc(100vh-8rem)]">
+
+            {{-- HEADER --}}
+            <div class="px-6 py-5 border-b border-hairline dark:border-gray-700">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-rose-500/10">
+                            <svg class="w-6 h-6 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-semibold text-ink dark:text-gray-100">Rujukan Berbasis Kompetensi</h2>
+                            <p class="mt-0.5 text-base text-muted dark:text-gray-400">
+                                Rawat Jalan → IGD/Ranap RS lain · langsung ke SATUSEHAT (FHIR), tanpa rujukan BPJS
+                            </p>
+                        </div>
+                    </div>
+                    @if ($sudahTerkirim)
+                        <x-badge variant="success">Terkirim</x-badge>
+                    @endif
+                </div>
+            </div>
+
+            {{-- BODY --}}
+            <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">
+                <div class="max-w-full mx-auto space-y-4">
     @php $prasyaratKurang = $this->prasyaratKurang(); @endphp
     @if (!empty($prasyaratKurang) && empty($formRujukan['hasil']['noRujukanSatuSehat']))
         <div class="p-3 text-sm text-red-800 border border-red-200 rounded-lg bg-red-50 dark:bg-red-950 dark:text-red-200 dark:border-red-900">
-            <p class="font-semibold">Data belum siap — lengkapi dulu:</p>
+            <p class="font-semibold">Belum bisa <em>mengirim</em> rujukan — lengkapi dulu:</p>
             <ul class="mt-1 ml-4 list-disc">
                 @foreach ($prasyaratKurang as $itemKurang)
                     <li>{{ $itemKurang }}</li>
@@ -511,19 +617,11 @@ new class extends Component {
             {{-- Tujuan layanan di RS lain — menentukan use case FHIR --}}
             <div class="space-y-1">
                 <p class="text-xs text-muted-soft">Kebutuhan pasien di RS tujuan:</p>
-                <div class="flex flex-wrap gap-4">
-                    <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                        <input type="radio" name="jalurRujukanRjFhir-{{ $rjNo }}" value="igd"
-                            wire:model.live="formRujukan.jalur" @disabled($isFormLocked)
-                            class="text-rose-600 border-hairline focus:ring-rose-500">
-                        <span>IGD (gawat darurat)</span>
-                    </label>
-                    <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                        <input type="radio" name="jalurRujukanRjFhir-{{ $rjNo }}" value="ranap"
-                            wire:model.live="formRujukan.jalur" @disabled($isFormLocked)
-                            class="text-rose-600 border-hairline focus:ring-rose-500">
-                        <span>Rawat Inap</span>
-                    </label>
+                <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <x-radio-button label="IGD (gawat darurat)" value="igd" name="jalurRujukanRjFhir-{{ $rjNo }}"
+                        wire:model.live="formRujukan.jalur" :disabled="$isFormLocked" />
+                    <x-radio-button label="Rawat Inap" value="ranap" name="jalurRujukanRjFhir-{{ $rjNo }}"
+                        wire:model.live="formRujukan.jalur" :disabled="$isFormLocked" />
                 </div>
             </div>
 
@@ -565,24 +663,14 @@ new class extends Component {
             @else
                 <div class="space-y-2">
                     <p class="text-xs text-muted-soft">Kriteria rujukan ranap — pilih <b>tepat satu</b>:</p>
-                    <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                        <input type="radio" name="kriteriaRanapRjFhir-{{ $rjNo }}" value="terapi"
-                            wire:model.live="formRujukan.kriteriaPilih" @disabled($isFormLocked)
-                            class="text-rose-600 border-hairline focus:ring-rose-500">
-                        <span>Terapi/Pengobatan</span>
-                    </label>
-                    <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                        <input type="radio" name="kriteriaRanapRjFhir-{{ $rjNo }}" value="tindakan"
-                            wire:model.live="formRujukan.kriteriaPilih" @disabled($isFormLocked)
-                            class="text-rose-600 border-hairline focus:ring-rose-500">
-                        <span>Tindakan Medis (ICD-9-CM)</span>
-                    </label>
-                    <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                        <input type="radio" name="kriteriaRanapRjFhir-{{ $rjNo }}" value="upaya"
-                            wire:model.live="formRujukan.kriteriaPilih" @disabled($isFormLocked)
-                            class="text-rose-600 border-hairline focus:ring-rose-500">
-                        <span>Upaya Diagnosis</span>
-                    </label>
+                    <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
+                        <x-radio-button label="Terapi/Pengobatan" value="terapi" name="kriteriaRanapRjFhir-{{ $rjNo }}"
+                            wire:model.live="formRujukan.kriteriaPilih" :disabled="$isFormLocked" />
+                        <x-radio-button label="Tindakan Medis (ICD-9-CM)" value="tindakan" name="kriteriaRanapRjFhir-{{ $rjNo }}"
+                            wire:model.live="formRujukan.kriteriaPilih" :disabled="$isFormLocked" />
+                        <x-radio-button label="Upaya Diagnosis" value="upaya" name="kriteriaRanapRjFhir-{{ $rjNo }}"
+                            wire:model.live="formRujukan.kriteriaPilih" :disabled="$isFormLocked" />
+                    </div>
                     @if (($formRujukan['kriteriaPilih'] ?? '') === 'tindakan')
                         <div class="max-w-xs">
                             <x-input-label value="Kode Tindakan ICD-9-CM" class="mb-1" />
@@ -632,31 +720,35 @@ new class extends Component {
 
             @if (!empty($formRujukan['kandidatList']))
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead>
-                            <tr class="text-left border-b border-hairline text-muted-soft dark:border-gray-600">
-                                <th class="py-1 pr-2">Faskes</th>
-                                <th class="py-1 pr-2">Strata</th>
-                                <th class="py-1 pr-2">Jarak</th>
-                                <th class="py-1 pr-2">Waktu</th>
-                                <th class="py-1"></th>
+                    <table class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
+                        <thead class="bg-surface-soft dark:bg-gray-800">
+                            <tr class="text-left text-muted dark:text-gray-300">
+                                <th class="px-3 py-2 border-b">Faskes</th>
+                                <th class="px-3 py-2 border-b">Strata</th>
+                                <th class="px-3 py-2 text-right border-b">Jarak</th>
+                                <th class="px-3 py-2 text-right border-b">Waktu</th>
+                                <th class="px-3 py-2 text-center border-b">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($formRujukan['kandidatList'] as $indexKandidat => $kandidat)
-                                <tr class="border-b border-hairline-soft dark:border-gray-700 {{ $formRujukan['kandidatIdx'] === $indexKandidat ? 'bg-rose-50 dark:bg-rose-950' : '' }}">
-                                    <td class="py-1 pr-2">{{ $kandidat['nama'] }} <span class="text-xs text-muted-soft">({{ $kandidat['orgId'] }})</span></td>
-                                    <td class="py-1 pr-2">{{ $kandidat['strata'] }}</td>
-                                    <td class="py-1 pr-2">{{ $kandidat['distance'] }}</td>
-                                    <td class="py-1 pr-2">{{ $kandidat['estimatedTime'] }}</td>
-                                    <td class="py-1 text-right">
-                                        @if ($formRujukan['kandidatIdx'] === $indexKandidat)
-                                            <span class="text-xs font-semibold text-rose-700 dark:text-rose-300">✓ Dipilih</span>
+                                @php $terpilih = $formRujukan['kandidatIdx'] === $indexKandidat; @endphp
+                                <tr class="border-b border-hairline dark:border-gray-700 {{ $terpilih ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : '' }}">
+                                    <td class="px-3 py-2">
+                                        <span class="font-medium text-ink dark:text-gray-200">{{ ($kandidat['nama'] ?? '') ?: '-' }}</span>
+                                        <span class="block text-xs text-muted dark:text-gray-400">Organization/{{ $kandidat['orgId'] }}</span>
+                                    </td>
+                                    <td class="px-3 py-2">{{ ($kandidat['strata'] ?? '') ?: '-' }}</td>
+                                    <td class="px-3 py-2 text-right tabular-nums">{{ ($kandidat['distance'] ?? '') ?: '-' }}</td>
+                                    <td class="px-3 py-2 text-right tabular-nums">{{ ($kandidat['estimatedTime'] ?? '') ?: '-' }}</td>
+                                    <td class="px-3 py-2 text-center">
+                                        @if ($terpilih)
+                                            <x-badge variant="success">&#10003; Dipilih</x-badge>
                                         @else
-                                            <button type="button" wire:click="pilihKandidat({{ $indexKandidat }})" @disabled($isFormLocked)
-                                                class="px-2 py-0.5 text-xs rounded border text-rose-700 border-rose-300 hover:bg-rose-50 dark:text-rose-300 dark:border-rose-700">
+                                            <x-secondary-button type="button" wire:click="pilihKandidat({{ $indexKandidat }})"
+                                                :disabled="$isFormLocked" title="Jadikan faskes tujuan rujukan">
                                                 Pilih
-                                            </button>
+                                            </x-secondary-button>
                                         @endif
                                     </td>
                                 </tr>
@@ -716,4 +808,19 @@ new class extends Component {
             @endif
         </div>
     @endif
+                </div>
+            </div>
+
+            {{-- FOOTER --}}
+            <div class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <p class="text-sm text-muted dark:text-gray-400">
+                        Perubahan tersimpan otomatis ke kunjungan ini — aman ditutup lalu dilanjutkan nanti.
+                    </p>
+                    <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                </div>
+            </div>
+
+        </div>
+    </x-modal>
 </div>

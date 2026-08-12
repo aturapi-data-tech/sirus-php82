@@ -542,16 +542,24 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
 }</pre>@endverbatim
                                 </div>
                                 <div class="ds-card-dark" style="padding:0; overflow:hidden">
-                                    <div class="px-4 py-2" style="background:var(--surface-dark-soft)"><span class="ds-caption-up" style="color:var(--on-dark-soft)">Response — bpjs-code "null" = non-BPJS, tak boleh jadi tujuan</span></div>
+                                    <div class="px-4 py-2" style="background:var(--surface-dark-soft)"><span class="ds-caption-up" style="color:var(--on-dark-soft)">Response asli (log 11/08/26) — nmppk = NAMA, nmkc = KOTA</span></div>
 @verbatim<pre class="ds-code" style="margin:0; padding:20px; color:var(--on-dark-soft); overflow-x:auto">{
-    "metaData": { "code": 200, "message": "Sukses" },
-    "response": { "faskes": [
-        { "kdppk": "0342R074", "kodeFaskesSatuSehat": "100027550", "nmkc": "RS CONTOH A",
-          "kelas": "B", "distance": "4.2", "persentase": "35", "jadwal": "Senin-Kamis 08.00-14.00" },
-        { "kdppk": "null",     "kodeFaskesSatuSehat": "100027551", "nmkc": "RS NON-BPJS B",
-          "kelas": "C", "distance": "7.9", "persentase": "10", "jadwal": "-" }
+    "metaData": { "code": "200", "message": "Sukses" },
+    "response": { "count": 6, "list": [
+        { "kodeFaskesSatuSehat": "Organization/100027694",
+          "kdppk": "0184R003", "nmppk": "ERA MEDIKA", "nmkc": "TULUNGAGUNG",
+          "strataSatuSehat": "Dasar", "alamatPpk": "JL. RAYA PULOSARI NGUNUT",
+          "telpPpk": "0355)-398706", "kelas": "C",
+          "kapasitas": 15, "jmlRujuk": 0, "persentase": 0, "distance": 2.67 }
     ]}
 }</pre>@endverbatim
+                                    <div class="px-4 py-3 text-xs" style="color:var(--on-dark-soft)">
+                                        <strong>Tiga jebakan pemetaan</strong> (ketiganya pernah terjadi):
+                                        <span class="block mt-1">1. Nama faskes ada di <code>nmppk</code>. <code>nmkc</code> itu nama kota — dipakai sebagai nama membuat semua baris tampil sama ("TULUNGAGUNG").</span>
+                                        <span class="block">2. <code>kodeFaskesSatuSehat</code> datang berawalan <code>Organization/</code>, sedangkan kode milik kita dikirim polos. Buang awalannya sebelum dipakai sebagai <code>kdppkSatuSehatTujuanRujukan</code>, kalau tidak BPJS menolak "PPK tidak ditemukan di pemetaan".</span>
+                                        <span class="block">3. Tidak ada field <code>jadwal</code> di response ini. Yang tersedia untuk membantu pemilihan: <code>kelas</code>, <code>distance</code> (km), dan beban <code>jmlRujuk</code>/<code>kapasitas</code>.</span>
+                                        <span class="block mt-1"><code>kdppk</code> bisa berisi string <code>"null"</code> = RS non-BPJS, tak boleh jadi tujuan rujukan BPJS.</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

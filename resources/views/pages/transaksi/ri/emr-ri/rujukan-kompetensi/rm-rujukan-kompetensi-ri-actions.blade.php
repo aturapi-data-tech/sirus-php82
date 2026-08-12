@@ -587,24 +587,14 @@ new class extends Component {
 
             <div class="space-y-2">
                 <p class="text-xs text-muted-soft">Pilih <b>tepat satu</b> kriteria:</p>
-                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                    <input type="radio" name="kriteriaRanap-{{ $riHdrNo }}" value="terapi"
-                        wire:model.live="formRujukan.kriteriaPilih" @disabled($isFormLocked)
-                        class="text-indigo-600 border-hairline focus:ring-indigo-500">
-                    <span>Terapi/Pengobatan</span>
-                </label>
-                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                    <input type="radio" name="kriteriaRanap-{{ $riHdrNo }}" value="tindakan"
-                        wire:model.live="formRujukan.kriteriaPilih" @disabled($isFormLocked)
-                        class="text-indigo-600 border-hairline focus:ring-indigo-500">
-                    <span>Tindakan Medis (ICD-9-CM)</span>
-                </label>
-                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                    <input type="radio" name="kriteriaRanap-{{ $riHdrNo }}" value="upaya"
-                        wire:model.live="formRujukan.kriteriaPilih" @disabled($isFormLocked)
-                        class="text-indigo-600 border-hairline focus:ring-indigo-500">
-                    <span>Upaya Diagnosis</span>
-                </label>
+                <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
+                    <x-radio-button label="Terapi/Pengobatan" value="terapi" name="kriteriaRanap-{{ $riHdrNo }}"
+                        wire:model.live="formRujukan.kriteriaPilih" :disabled="$isFormLocked" />
+                    <x-radio-button label="Tindakan Medis (ICD-9-CM)" value="tindakan" name="kriteriaRanap-{{ $riHdrNo }}"
+                        wire:model.live="formRujukan.kriteriaPilih" :disabled="$isFormLocked" />
+                    <x-radio-button label="Upaya Diagnosis" value="upaya" name="kriteriaRanap-{{ $riHdrNo }}"
+                        wire:model.live="formRujukan.kriteriaPilih" :disabled="$isFormLocked" />
+                </div>
                 @if ($formRujukan['kriteriaPilih'] === 'tindakan')
                     <div class="max-w-xs">
                         <x-input-label value="Kode Tindakan ICD-9-CM" class="mb-1" />
@@ -654,33 +644,37 @@ new class extends Component {
 
             @if (!empty($formRujukan['kandidatList']))
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead>
-                            <tr class="text-left border-b border-hairline text-muted-soft dark:border-gray-600">
-                                <th class="py-1 pr-2">Faskes</th>
-                                <th class="py-1 pr-2">Strata</th>
-                                <th class="py-1 pr-2">Jarak</th>
-                                <th class="py-1 pr-2">Waktu</th>
-                                <th class="py-1 pr-2">Bed</th>
-                                <th class="py-1"></th>
+                    <table class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
+                        <thead class="bg-surface-soft dark:bg-gray-800">
+                            <tr class="text-left text-muted dark:text-gray-300">
+                                <th class="px-3 py-2 border-b">Faskes</th>
+                                <th class="px-3 py-2 border-b">Strata</th>
+                                <th class="px-3 py-2 text-right border-b">Jarak</th>
+                                <th class="px-3 py-2 text-right border-b">Waktu</th>
+                                <th class="px-3 py-2 text-center border-b">Bed</th>
+                                <th class="px-3 py-2 text-center border-b">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($formRujukan['kandidatList'] as $indexKandidat => $kandidat)
-                                <tr class="border-b border-hairline-soft dark:border-gray-700 {{ $formRujukan['kandidatIdx'] === $indexKandidat ? 'bg-indigo-50 dark:bg-indigo-950' : '' }}">
-                                    <td class="py-1 pr-2">{{ $kandidat['nama'] }} <span class="text-xs text-muted-soft">({{ $kandidat['orgId'] }})</span></td>
-                                    <td class="py-1 pr-2">{{ $kandidat['strata'] }}</td>
-                                    <td class="py-1 pr-2">{{ $kandidat['distance'] }}</td>
-                                    <td class="py-1 pr-2">{{ $kandidat['estimatedTime'] }}</td>
-                                    <td class="py-1 pr-2">{{ $kandidat['bed'] }}</td>
-                                    <td class="py-1 text-right">
-                                        @if ($formRujukan['kandidatIdx'] === $indexKandidat)
-                                            <span class="text-xs font-semibold text-indigo-700 dark:text-indigo-300">✓ Dipilih</span>
+                                @php $terpilih = $formRujukan['kandidatIdx'] === $indexKandidat; @endphp
+                                <tr class="border-b border-hairline dark:border-gray-700 {{ $terpilih ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : '' }}">
+                                    <td class="px-3 py-2">
+                                        <span class="font-medium text-ink dark:text-gray-200">{{ ($kandidat['nama'] ?? '') ?: '-' }}</span>
+                                        <span class="block text-xs text-muted dark:text-gray-400">Organization/{{ $kandidat['orgId'] }}</span>
+                                    </td>
+                                    <td class="px-3 py-2">{{ ($kandidat['strata'] ?? '') ?: '-' }}</td>
+                                    <td class="px-3 py-2 text-right tabular-nums">{{ ($kandidat['distance'] ?? '') ?: '-' }}</td>
+                                    <td class="px-3 py-2 text-right tabular-nums">{{ ($kandidat['estimatedTime'] ?? '') ?: '-' }}</td>
+                                    <td class="px-3 py-2 text-center tabular-nums">{{ ($kandidat['bed'] ?? '') !== '' ? $kandidat['bed'] : '-' }}</td>
+                                    <td class="px-3 py-2 text-center">
+                                        @if ($terpilih)
+                                            <x-badge variant="success">&#10003; Dipilih</x-badge>
                                         @else
-                                            <button type="button" wire:click="pilihKandidat({{ $indexKandidat }})" @disabled($isFormLocked)
-                                                class="px-2 py-0.5 text-xs rounded border text-indigo-700 border-indigo-300 hover:bg-indigo-50 dark:text-indigo-300 dark:border-indigo-700">
+                                            <x-secondary-button type="button" wire:click="pilihKandidat({{ $indexKandidat }})"
+                                                :disabled="$isFormLocked" title="Jadikan faskes tujuan rujukan">
                                                 Pilih
-                                            </button>
+                                            </x-secondary-button>
                                         @endif
                                     </td>
                                 </tr>
