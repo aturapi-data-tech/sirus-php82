@@ -54,6 +54,39 @@ new class extends Component {
         }
     }
 
+    /* ═══════════════════════════════════════
+     | OPEN / CLOSE MODAL (pola modul-dokumen: kartu ringkas → tombol → x-modal)
+    ═══════════════════════════════════════ */
+    public function openModal(): void
+    {
+        if (empty($this->rjNo)) {
+            return;
+        }
+
+        // Baca ulang saat dibuka: SEP/Encounter/diagnosa bisa terbit setelah panel
+        // pertama kali dirender, jadi prasyarat harus dinilai dari data terkini.
+        $dataDaftarPoliRJ = $this->findDataRJ($this->rjNo);
+        if (empty($dataDaftarPoliRJ)) {
+            $this->dispatch('toast', type: 'error', message: 'Data kunjungan RJ tidak ditemukan.');
+            return;
+        }
+        $this->dataDaftarPoliRJ = $dataDaftarPoliRJ;
+
+        $tersimpan = $dataDaftarPoliRJ['rujukanKompetensi'] ?? [];
+        if (!empty($tersimpan) && is_array($tersimpan)) {
+            $this->formRujukan = array_replace($this->defaultFormRujukan(), $tersimpan);
+        }
+
+        $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo);
+
+        $this->dispatch('open-modal', name: 'rujukan-kompetensi-rj-' . $this->rjNo);
+    }
+
+    public function closeModal(): void
+    {
+        $this->dispatch('close-modal', name: 'rujukan-kompetensi-rj-' . $this->rjNo);
+    }
+
     private function defaultFormRujukan(): array
     {
         return [
@@ -253,7 +286,7 @@ new class extends Component {
     private function parseJejaringWilayah(array $data): void
     {
         $grup = $data['JejaringWilayah'] ?? ($data['jejaringWilayah'] ?? []);
-        $items = collect(is_array($grup) ? $grup : [])->flatMap(fn($g) => $g['item'] ?? [])->values();
+        $items = collect(is_array($grup) ? $grup : [])->flatMap(fn($grupWilayah) => $grupWilayah['item'] ?? [])->values();
 
         $keOpsi = fn($item) => collect($item['answerOption'] ?? [])
             ->map(
@@ -462,7 +495,7 @@ new class extends Component {
 
         $poliRujukan = trim($this->formRujukan['poliRujukan']) !== '' ? trim($this->formRujukan['poliRujukan']) : (string) ($this->formRujukan['kodeSpesialis'] ?? '');
 
-        $tRujukan = [
+        $payloadRujukan = [
             'noSep' => $this->nomorSep(),
             'tglRujukan' => Carbon::now(config('app.timezone'))->format('Y-m-d'),
             'tglRencanaKunjungan' => $tglRencana->format('Y-m-d'),
@@ -493,7 +526,7 @@ new class extends Component {
             ],
         ];
 
-        $respon = SisruteTrait::sisrute_insert_rujukan($tRujukan)->getOriginalContent();
+        $respon = SisruteTrait::sisrute_insert_rujukan($payloadRujukan)->getOriginalContent();
         $code = $respon['metadata']['code'] ?? 0;
         $message = $respon['metadata']['message'] ?? '';
         $data = $respon['response'] ?? [];
@@ -508,11 +541,11 @@ new class extends Component {
             'noRujukan' => (string) ($rujukan['noRujukan'] ?? ''),
             'noRujukanSatuSehat' => (string) ($rujukan['noRujukanSatuSehat'] ?? ''),
             'serviceRequestId' => (string) ($rujukan['serviceRequestId'] ?? ''),
-            'tglRujukan' => $tRujukan['tglRujukan'],
+            'tglRujukan' => $payloadRujukan['tglRujukan'],
             'tujuanNama' => $kandidat['nama'],
             'tujuanPpk' => $kandidat['kdppk'],
             'tujuanSatuSehat' => $kandidat['kodeFaskesSatuSehat'],
-            'dikirimOleh' => $tRujukan['user'],
+            'dikirimOleh' => $payloadRujukan['user'],
             'dikirimPada' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
         ];
 
@@ -605,25 +638,86 @@ new class extends Component {
 };
 ?>
 
-<div class="w-full p-4 space-y-4 border border-indigo-200 rounded-2xl bg-indigo-50/50 dark:bg-gray-900 dark:border-indigo-900">
+<div>
+    {{-- ══ KARTU RINGKAS (inline di tab Tindak Lanjut) ══ --}}
+    @php $sudahTerkirim = !empty($formRujukan['hasil']['noRujukanSatuSehat']); @endphp
 
-    {{-- HEADER --}}
-    <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-            <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
-            </svg>
-            <h3 class="font-semibold text-gray-800 dark:text-gray-100">Rujukan Berbasis Kompetensi (SISRUTE)</h3>
+    <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+        <div class="flex flex-col gap-3">
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-indigo-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+                    </svg>
+                    <h3 class="text-base font-semibold text-ink dark:text-gray-200">
+                        Rujukan Berbasis Kompetensi (SISRUTE)
+                    </h3>
+                    @if ($sudahTerkirim)
+                        <x-badge variant="success">Terkirim</x-badge>
+                    @else
+                        <x-badge variant="warning">Belum dikirim</x-badge>
+                    @endif
+                </div>
+
+                <div class="flex shrink-0">
+                    <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
+                        wire:target="openModal" :disabled="!$rjNo" class="gap-2">
+                        <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                            {{ $sudahTerkirim ? 'Lihat Rujukan' : 'Buat Rujukan' }}
+                        </span>
+                        <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
+                            <x-loading class="w-4 h-4" /> Memuat...
+                        </span>
+                    </x-primary-button>
+                </div>
+            </div>
+
+            <p class="text-base text-muted dark:text-gray-400">
+                Rujukan pasien rawat jalan ke poli RS lain lewat BPJS (vclaim-sisrute-rest), yang meneruskannya
+                ke SATUSEHAT. Alurnya tiga langkah: ambil kriteria sesuai diagnosa, cari kandidat faskes, lalu kirim.
+            </p>
+
+            @if ($sudahTerkirim)
+                <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted dark:text-gray-400">
+                    <span>No. Rujukan BPJS: <strong class="text-ink dark:text-gray-200">{{ $formRujukan['hasil']['noRujukan'] ?? '-' }}</strong></span>
+                    <span>No. SATUSEHAT: <strong class="text-ink dark:text-gray-200">{{ $formRujukan['hasil']['noRujukanSatuSehat'] }}</strong></span>
+                </div>
+            @endif
         </div>
-        @if (!empty($formRujukan['hasil']['noRujukanSatuSehat']))
-            <span
-                class="px-2 py-0.5 text-xs font-semibold text-green-800 bg-green-100 rounded-full dark:bg-green-900 dark:text-green-200">
-                ✓ Terkirim
-            </span>
-        @endif
     </div>
 
+    {{-- ══ MODAL FORMULIR ══ --}}
+    <x-modal name="rujukan-kompetensi-rj-{{ $rjNo }}" size="full" height="full" focusable>
+        <div class="flex flex-col min-h-[calc(100vh-8rem)]">
+
+            {{-- HEADER --}}
+            <div class="px-6 py-5 border-b border-hairline dark:border-gray-700">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-500/10">
+                            <svg class="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-semibold text-ink dark:text-gray-100">Rujukan Berbasis Kompetensi</h2>
+                            <p class="mt-0.5 text-base text-muted dark:text-gray-400">
+                                Rawat Jalan → poli RS lain · lewat BPJS (SISRUTE) yang meneruskan ke SATUSEHAT
+                            </p>
+                        </div>
+                    </div>
+                    @if ($sudahTerkirim)
+                        <x-badge variant="success">Terkirim</x-badge>
+                    @endif
+                </div>
+            </div>
+
+            {{-- BODY --}}
+            <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">
+                <div class="max-w-full mx-auto space-y-4">
     {{-- PRASYARAT --}}
     @php $prasyaratKurang = $this->prasyaratKurang(); @endphp
     @if (!empty($prasyaratKurang) && empty($formRujukan['hasil']['noRujukanSatuSehat']))
@@ -867,4 +961,19 @@ new class extends Component {
             @endif
         </div>
     @endif
+                </div>
+            </div>
+
+            {{-- FOOTER --}}
+            <div class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <p class="text-sm text-muted dark:text-gray-400">
+                        Perubahan tersimpan otomatis ke kunjungan ini — aman ditutup lalu dilanjutkan nanti.
+                    </p>
+                    <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                </div>
+            </div>
+
+        </div>
+    </x-modal>
 </div>
