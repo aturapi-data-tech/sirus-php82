@@ -108,7 +108,7 @@ trait SatuSehatRujukanTrait
 
     protected function rujukanOrgId(): string
     {
-        return (string) env('SATUSEHAT_ORGANIZATION_ID');
+        return (string) env('SATUSEHAT_RUJUKAN_ORGANIZATION_ID');
     }
 
     private function rujukanNowIso(): string
@@ -600,7 +600,7 @@ trait SatuSehatRujukanTrait
             'occurrenceDateTime' => $this->rujukanNowIso(),
             'requester' => [
                 'reference' => 'Organization/' . $this->rujukanOrgId(),
-                'display' => (string) env('SATUSEHAT_ORGANIZATION_NAME'),
+                'display' => (string) env('SATUSEHAT_RUJUKAN_ORGANIZATION_NAME'),
             ],
             'performer' => [[
                 'reference' => 'Organization/' . $c['orgTujuanId'],

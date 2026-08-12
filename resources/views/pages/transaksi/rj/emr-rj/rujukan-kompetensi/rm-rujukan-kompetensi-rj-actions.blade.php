@@ -101,7 +101,7 @@ new class extends Component {
             return [];
         }
         $kurang = [];
-        if (empty(env('SATUSEHAT_ORGANIZATION_ID'))) {
+        if (empty(env('SATUSEHAT_RUJUKAN_ORGANIZATION_ID'))) {
             $kurang[] = 'SATUSEHAT_ORGANIZATION_ID belum diset di server';
         }
         if (empty($this->nomorSep())) {
@@ -362,7 +362,7 @@ new class extends Component {
         }
 
         $payload = [
-            'kodeFaskesSatuSehat' => (string) env('SATUSEHAT_ORGANIZATION_ID'),
+            'kodeFaskesSatuSehat' => (string) env('SATUSEHAT_RUJUKAN_ORGANIZATION_ID'),
             'kodeSpesialis' => (string) ($this->formRujukan['kodeSpesialis'] ?? ''),
             'kodeSarana' => (string) ($this->formRujukan['kodeSarana'] ?? ''),
             'kodeDiagnosa' => (string) $this->formRujukan['kodeDiagnosa'],
@@ -472,7 +472,7 @@ new class extends Component {
             'poliRujukan' => $poliRujukan,
             'user' => auth()->user()->name ?? 'Sirus',
             'satuSehatRujukan' => [
-                'kodeFaskesSatuSehat' => (string) env('SATUSEHAT_ORGANIZATION_ID'),
+                'kodeFaskesSatuSehat' => (string) env('SATUSEHAT_RUJUKAN_ORGANIZATION_ID'),
                 'idPasienSatuSehat' => $this->patientUuid(),
                 'kdppkSatuSehatTujuanRujukan' => $kandidat['kodeFaskesSatuSehat'],
                 'kdDokterSatuSehat' => $this->dokterUuid(),
