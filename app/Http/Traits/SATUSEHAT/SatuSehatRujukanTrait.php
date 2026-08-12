@@ -97,7 +97,7 @@ trait SatuSehatRujukanTrait
         return ['code' => $response->status(), 'body' => $response->json() ?? $response->body()];
     }
 
-    private function logRujukan(string $url, ?int $code, ?float $rtt, ?string $responseBody, ?string $payload): void
+    private function logRujukan(string $url, ?int $code, ?float $requestTransferTime, ?string $responseBody, ?string $payload): void
     {
         DB::table('web_log_status')->insert([
             'code' => $code,
@@ -105,7 +105,7 @@ trait SatuSehatRujukanTrait
             'response' => $responseBody,
             'http_req' => $url,
             'http_payload' => $payload,
-            'requestTransferTime' => $rtt,
+            'requestTransferTime' => $requestTransferTime,
         ]);
     }
 
@@ -121,16 +121,16 @@ trait SatuSehatRujukanTrait
 
     /* ═══════════════════════════════════════
      | 1. TASK PRA PERMINTAAN RUJUKAN
-     | $c: identifier, encounterId, diagnosaKode, diagnosaDesc
+     | $konteks: identifier, encounterId, diagnosaKode, diagnosaDesc
     ═══════════════════════════════════════ */
-    protected function rujukanTaskPraPermintaan(array $c): array
+    protected function rujukanTaskPraPermintaan(array $konteks): array
     {
         $now = $this->rujukanNowIso();
         $task = [
             'resourceType' => 'Task',
             'identifier' => [[
                 'system' => 'http://sys-ids.kemkes.go.id/task/' . $this->rujukanOrgId(),
-                'value' => $c['identifier'],
+                'value' => $konteks['identifier'],
             ]],
             'status' => 'requested',
             'intent' => 'instance-order',
@@ -144,7 +144,7 @@ trait SatuSehatRujukanTrait
             'lastModified' => $now,
             'requester' => ['reference' => 'Organization/' . $this->rujukanOrgId()],
             'owner' => ['reference' => 'Organization/' . $this->rujukanOrgId()],
-            'encounter' => ['reference' => 'Encounter/' . $c['encounterId']],
+            'encounter' => ['reference' => 'Encounter/' . $konteks['encounterId']],
             'input' => [[
                 'type' => ['coding' => [[
                     'system' => 'http://terminology.kemkes.go.id',
@@ -153,8 +153,8 @@ trait SatuSehatRujukanTrait
                 ]]],
                 'valueCoding' => [
                     'system' => 'http://hl7.org/fhir/sid/icd-10',
-                    'code' => $c['diagnosaKode'],
-                    'display' => $c['diagnosaDesc'],
+                    'code' => $konteks['diagnosaKode'],
+                    'display' => $konteks['diagnosaDesc'],
                 ],
             ]],
         ];
@@ -164,20 +164,20 @@ trait SatuSehatRujukanTrait
 
     /* ═══════════════════════════════════════
      | 2. TASK PENCARIAN KANDIDAT
-     | $c: jalur ('ranap'|'igd'), identifier, encounterId, patientUuid,
+     | $konteks: jalur ('ranap'|'igd'), identifier, encounterId, patientUuid,
      |     diagnosaKode, diagnosaDesc, wilayah{kodePropinsi,namaPropinsi,kodeKabupaten,namaKabupaten},
      |     kriteria — ranap: {terapi:bool, tindakanIcd9:string, upayaDiagnosis:bool}
      |               — igd:   {q1..q5: bool} (5 pertanyaan GAWAT DARURAT)
      |     diagnosaSekunderKode/Desc (opsional)
     ═══════════════════════════════════════ */
-    protected function rujukanTaskPencarianKandidat(array $c): array
+    protected function rujukanTaskPencarianKandidat(array $konteks): array
     {
         $now = $this->rujukanNowIso();
-        $idKriteria = 'qr-kriteria-' . $c['identifier'];
-        $idArea = 'qr-area-' . $c['identifier'];
+        $idKriteria = 'qr-kriteria-' . $konteks['identifier'];
+        $idArea = 'qr-area-' . $konteks['identifier'];
 
         // ── Q100 kriteria — struktur beda per jalur (Postman V30062026)
-        if ($c['jalur'] === 'igd') {
+        if ($konteks['jalur'] === 'igd') {
             $pertanyaanIgd = [
                 '000001' => 'Mengancam nyawa, membahayakan diri dan orang lain/lingkungan',
                 '000002' => 'Adanya gangguan pada jalan nafas, pernafasan, dan sirkulasi',
@@ -191,7 +191,7 @@ trait SatuSehatRujukanTrait
                 'item' => collect($pertanyaanIgd)->map(fn($teks, $linkId) => [
                     'linkId' => $linkId,
                     'text' => $teks,
-                    'answer' => [['valueBoolean' => (bool) ($c['kriteria'][$linkId] ?? false)]],
+                    'answer' => [['valueBoolean' => (bool) ($konteks['kriteria'][$linkId] ?? false)]],
                 ])->values()->all(),
             ]];
         } else {
@@ -200,17 +200,17 @@ trait SatuSehatRujukanTrait
                 [
                     'linkId' => '3216',
                     'text' => 'Terapi/Pengobatan',
-                    'answer' => [['valueBoolean' => (bool) ($c['kriteria']['terapi'] ?? false)]],
+                    'answer' => [['valueBoolean' => (bool) ($konteks['kriteria']['terapi'] ?? false)]],
                 ],
                 [
                     'linkId' => '3215',
                     'text' => 'Tindakan Medis',
-                    'answer' => [['valueString' => (string) ($c['kriteria']['tindakanIcd9'] ?? '')]],
+                    'answer' => [['valueString' => (string) ($konteks['kriteria']['tindakanIcd9'] ?? '')]],
                 ],
                 [
                     'linkId' => '3214',
                     'text' => 'Upaya Diagnosis',
-                    'answer' => [['valueBoolean' => (bool) ($c['kriteria']['upayaDiagnosis'] ?? false)]],
+                    'answer' => [['valueBoolean' => (bool) ($konteks['kriteria']['upayaDiagnosis'] ?? false)]],
                 ],
             ];
         }
@@ -225,8 +225,8 @@ trait SatuSehatRujukanTrait
                     'text' => 'Provinsi',
                     'answer' => [['valueCoding' => [
                         'system' => 'http://sys-ids.kemkes.go.id/administrative-area',
-                        'code' => $c['wilayah']['kodePropinsi'],
-                        'display' => $c['wilayah']['namaPropinsi'],
+                        'code' => $konteks['wilayah']['kodePropinsi'],
+                        'display' => $konteks['wilayah']['namaPropinsi'],
                     ]]],
                 ],
                 [
@@ -234,14 +234,14 @@ trait SatuSehatRujukanTrait
                     'text' => 'Kabupaten/Kota',
                     'answer' => [['valueCoding' => [
                         'system' => 'http://sys-ids.kemkes.go.id/administrative-area',
-                        'code' => $c['wilayah']['kodeKabupaten'],
-                        'display' => $c['wilayah']['namaKabupaten'],
+                        'code' => $konteks['wilayah']['kodeKabupaten'],
+                        'display' => $konteks['wilayah']['namaKabupaten'],
                     ]]],
                 ],
             ],
         ]];
 
-        $managementProcedure = $c['jalur'] === 'igd'
+        $managementProcedure = $konteks['jalur'] === 'igd'
             ? ['code' => '385868005', 'display' => 'Emergency treatment management']
             : ['code' => '737481003', 'display' => 'Inpatient care management'];
 
@@ -278,12 +278,12 @@ trait SatuSehatRujukanTrait
                 ]]],
                 'valueCoding' => [
                     'system' => 'http://hl7.org/fhir/sid/icd-10',
-                    'code' => $c['diagnosaKode'],
-                    'display' => $c['diagnosaDesc'],
+                    'code' => $konteks['diagnosaKode'],
+                    'display' => $konteks['diagnosaDesc'],
                 ],
             ],
         ];
-        if (!empty($c['diagnosaSekunderKode'])) {
+        if (!empty($konteks['diagnosaSekunderKode'])) {
             $input[] = [
                 'type' => ['coding' => [[
                     'system' => 'http://terminology.kemkes.go.id',
@@ -292,8 +292,8 @@ trait SatuSehatRujukanTrait
                 ]]],
                 'valueCoding' => [
                     'system' => 'http://hl7.org/fhir/sid/icd-10',
-                    'code' => $c['diagnosaSekunderKode'],
-                    'display' => $c['diagnosaSekunderDesc'] ?? '',
+                    'code' => $konteks['diagnosaSekunderKode'],
+                    'display' => $konteks['diagnosaSekunderDesc'] ?? '',
                 ],
             ];
         }
@@ -306,8 +306,8 @@ trait SatuSehatRujukanTrait
                     'id' => $idKriteria,
                     'questionnaire' => 'https://fhir.kemkes.go.id/Questionnaire/Q100',
                     'status' => 'completed',
-                    'subject' => ['reference' => 'Patient/' . $c['patientUuid']],
-                    'encounter' => ['reference' => 'Encounter/' . $c['encounterId']],
+                    'subject' => ['reference' => 'Patient/' . $konteks['patientUuid']],
+                    'encounter' => ['reference' => 'Encounter/' . $konteks['encounterId']],
                     'item' => $itemQ100,
                 ],
                 [
@@ -315,14 +315,14 @@ trait SatuSehatRujukanTrait
                     'id' => $idArea,
                     'questionnaire' => 'https://fhir.kemkes.go.id/Questionnaire/Q101',
                     'status' => 'completed',
-                    'subject' => ['reference' => 'Patient/' . $c['patientUuid']],
-                    'encounter' => ['reference' => 'Encounter/' . $c['encounterId']],
+                    'subject' => ['reference' => 'Patient/' . $konteks['patientUuid']],
+                    'encounter' => ['reference' => 'Encounter/' . $konteks['encounterId']],
                     'item' => $itemQ101,
                 ],
             ],
             'identifier' => [[
                 'system' => 'http://sys-ids.kemkes.go.id/task/' . $this->rujukanOrgId(),
-                'value' => $c['identifier'],
+                'value' => $konteks['identifier'],
             ]],
             'status' => 'requested',
             'intent' => 'instance-order',
@@ -332,12 +332,12 @@ trait SatuSehatRujukanTrait
                 'code' => 'request-referral-candidate',
                 'display' => 'Request for referral candidate',
             ]]],
-            'for' => ['reference' => 'Patient/' . $c['patientUuid']],
+            'for' => ['reference' => 'Patient/' . $konteks['patientUuid']],
             'authoredOn' => $now,
             'lastModified' => $now,
             'requester' => ['reference' => 'Organization/' . $this->rujukanOrgId()],
             'owner' => ['reference' => 'Organization/' . $this->rujukanOrgId()],
-            'encounter' => ['reference' => 'Encounter/' . $c['encounterId']],
+            'encounter' => ['reference' => 'Encounter/' . $konteks['encounterId']],
             'input' => $input,
         ];
 
@@ -380,26 +380,26 @@ trait SatuSehatRujukanTrait
     {
         $kandidatList = [];
         foreach ($task['output'] ?? [] as $output) {
-            $ref = $output['valueReference'] ?? null;
-            if (!$ref) {
+            $referensi = $output['valueReference'] ?? null;
+            if (!$referensi) {
                 continue;
             }
             $kandidat = [
-                'orgId' => str_replace('Organization/', '', (string) ($ref['reference'] ?? '')),
-                'nama' => (string) ($ref['display'] ?? ''),
+                'orgId' => str_replace('Organization/', '', (string) ($referensi['reference'] ?? '')),
+                'nama' => (string) ($referensi['display'] ?? ''),
                 'distance' => '',
                 'estimatedTime' => '',
                 'strata' => '',
                 'bpjsCode' => '',
                 'bed' => '',
             ];
-            $extensions = array_merge($output['extension'] ?? [], $ref['extension'] ?? []);
-            foreach ($extensions as $ext) {
-                $daftar = isset($ext['extension']) && is_array($ext['extension']) ? $ext['extension'] : [$ext];
-                foreach ($daftar as $sub) {
-                    $urlKey = strtolower((string) ($sub['url'] ?? ''));
-                    $nilai = $sub['valueString']
-                        ?? ($sub['valueCode'] ?? ($sub['valueDecimal'] ?? ($sub['valueInteger'] ?? ($sub['valueQuantity']['value'] ?? null))));
+            $extensions = array_merge($output['extension'] ?? [], $referensi['extension'] ?? []);
+            foreach ($extensions as $extension) {
+                $daftar = isset($extension['extension']) && is_array($extension['extension']) ? $extension['extension'] : [$extension];
+                foreach ($daftar as $subExtension) {
+                    $urlKey = strtolower((string) ($subExtension['url'] ?? ''));
+                    $nilai = $subExtension['valueString']
+                        ?? ($subExtension['valueCode'] ?? ($subExtension['valueDecimal'] ?? ($subExtension['valueInteger'] ?? ($subExtension['valueQuantity']['value'] ?? null))));
                     if ($nilai === null) {
                         continue;
                     }
@@ -425,12 +425,12 @@ trait SatuSehatRujukanTrait
 
     /* ═══════════════════════════════════════
      | 4. BUNDLE TASK + CAREPLAN (referral-approval)
-     | $c: identifierTask, identifierCarePlan, encounterId, patientUuid, patientName,
+     | $konteks: identifierTask, identifierCarePlan, encounterId, patientUuid, patientName,
      |     practitionerUuid, practitionerName, orgTujuanId, orgTujuanNama,
      |     deskripsi, specialityCode, specialityDisplay
      | Task.owner = Organization TUJUAN (kunci alur approval).
     ═══════════════════════════════════════ */
-    protected function rujukanBundleApproval(array $c): array
+    protected function rujukanBundleApproval(array $konteks): array
     {
         $now = $this->rujukanNowIso();
         $uuidTask = (string) \Illuminate\Support\Str::uuid();
@@ -451,7 +451,7 @@ trait SatuSehatRujukanTrait
                         'resourceType' => 'Task',
                         'identifier' => [[
                             'system' => 'http://sys-ids.kemkes.go.id/task/' . $this->rujukanOrgId(),
-                            'value' => $c['identifierTask'],
+                            'value' => $konteks['identifierTask'],
                         ]],
                         'basedOn' => [['reference' => 'urn:uuid:' . $uuidCarePlan]],
                         'status' => 'requested',
@@ -462,13 +462,13 @@ trait SatuSehatRujukanTrait
                             'code' => 'referral-approval-request',
                             'display' => 'Referral approval request',
                         ]]],
-                        'for' => ['reference' => 'Patient/' . $c['patientUuid']],
+                        'for' => ['reference' => 'Patient/' . $konteks['patientUuid']],
                         'executionPeriod' => ['start' => $now],
                         'authoredOn' => $now,
                         'lastModified' => $now,
                         'requester' => ['reference' => 'Organization/' . $this->rujukanOrgId()],
-                        'owner' => ['reference' => 'Organization/' . $c['orgTujuanId']],
-                        'encounter' => ['reference' => 'Encounter/' . $c['encounterId']],
+                        'owner' => ['reference' => 'Organization/' . $konteks['orgTujuanId']],
+                        'encounter' => ['reference' => 'Encounter/' . $konteks['encounterId']],
                         'input' => [[
                             'type' => [
                                 'coding' => [[
@@ -479,8 +479,8 @@ trait SatuSehatRujukanTrait
                                 'text' => 'Penugasan Task Rujukan',
                             ],
                             'valueReference' => [
-                                'reference' => 'Organization/' . $c['orgTujuanId'],
-                                'display' => $c['orgTujuanNama'],
+                                'reference' => 'Organization/' . $konteks['orgTujuanId'],
+                                'display' => $konteks['orgTujuanNama'],
                             ],
                         ]],
                     ],
@@ -493,7 +493,7 @@ trait SatuSehatRujukanTrait
                         'identifier' => [
                             [
                                 'system' => 'http://sys-ids.kemkes.go.id/careplan/' . $this->rujukanOrgId(),
-                                'value' => $c['identifierCarePlan'],
+                                'value' => $konteks['identifierCarePlan'],
                             ],
                             [
                                 'system' => 'http://sys-ids.kemkes.go.id/careplan/authoring-organization',
@@ -515,16 +515,16 @@ trait SatuSehatRujukanTrait
                             ]]],
                         ],
                         'title' => 'Rencana Rujukan Pasien',
-                        'description' => $c['deskripsi'],
+                        'description' => $konteks['deskripsi'],
                         'subject' => [
-                            'reference' => 'Patient/' . $c['patientUuid'],
-                            'display' => $c['patientName'],
+                            'reference' => 'Patient/' . $konteks['patientUuid'],
+                            'display' => $konteks['patientName'],
                         ],
-                        'encounter' => ['reference' => 'Encounter/' . $c['encounterId']],
+                        'encounter' => ['reference' => 'Encounter/' . $konteks['encounterId']],
                         'created' => $now,
                         'author' => [
-                            'reference' => 'Practitioner/' . $c['practitionerUuid'],
-                            'display' => $c['practitionerName'],
+                            'reference' => 'Practitioner/' . $konteks['practitionerUuid'],
+                            'display' => $konteks['practitionerName'],
                         ],
                         'contributor' => [['reference' => 'Organization/' . $this->rujukanOrgId()]],
                         'activity' => [[
@@ -533,10 +533,10 @@ trait SatuSehatRujukanTrait
                                 'code' => [
                                     'coding' => [[
                                         'system' => 'http://terminology.kemkes.go.id/CodeSystem/clinical-speciality',
-                                        'code' => $c['specialityCode'],
-                                        'display' => $c['specialityDisplay'],
+                                        'code' => $konteks['specialityCode'],
+                                        'display' => $konteks['specialityDisplay'],
                                     ]],
-                                    'text' => 'Permintaan Layanan ' . $c['specialityDisplay'],
+                                    'text' => 'Permintaan Layanan ' . $konteks['specialityDisplay'],
                                 ],
                                 'status' => 'not-started',
                             ],
@@ -570,12 +570,12 @@ trait SatuSehatRujukanTrait
 
     /* ═══════════════════════════════════════
      | 5. SERVICEREQUEST (pengiriman rujukan)
-     | $c: identifier, carePlanId, jalur, deskripsi, patientUuid, encounterId,
+     | $konteks: identifier, carePlanId, jalur, deskripsi, patientUuid, encounterId,
      |     orgTujuanId, orgTujuanNama, taskApprovalId (opsional, masuk supportingInfo)
     ═══════════════════════════════════════ */
-    protected function rujukanServiceRequest(array $c): array
+    protected function rujukanServiceRequest(array $konteks): array
     {
-        $kode = $c['jalur'] === 'igd'
+        $kode = $konteks['jalur'] === 'igd'
             ? ['code' => '385868005', 'display' => 'Emergency treatment management']
             : ['code' => '737481003', 'display' => 'Inpatient care management'];
 
@@ -583,9 +583,9 @@ trait SatuSehatRujukanTrait
             'resourceType' => 'ServiceRequest',
             'identifier' => [[
                 'system' => 'http://sys-ids.kemkes.go.id/servicerequest/' . $this->rujukanOrgId(),
-                'value' => $c['identifier'],
+                'value' => $konteks['identifier'],
             ]],
-            'basedOn' => [['reference' => 'CarePlan/' . $c['carePlanId']]],
+            'basedOn' => [['reference' => 'CarePlan/' . $konteks['carePlanId']]],
             'status' => 'active',
             'intent' => 'original-order',
             'priority' => 'stat',
@@ -596,30 +596,30 @@ trait SatuSehatRujukanTrait
             ]]]],
             'code' => [
                 'coding' => [array_merge(['system' => 'http://snomed.info/sct'], $kode)],
-                'text' => $c['deskripsi'],
+                'text' => $konteks['deskripsi'],
             ],
-            'subject' => ['reference' => 'Patient/' . $c['patientUuid']],
-            'encounter' => ['reference' => 'Encounter/' . $c['encounterId']],
+            'subject' => ['reference' => 'Patient/' . $konteks['patientUuid']],
+            'encounter' => ['reference' => 'Encounter/' . $konteks['encounterId']],
             'occurrenceDateTime' => $this->rujukanNowIso(),
             'requester' => [
                 'reference' => 'Organization/' . $this->rujukanOrgId(),
                 'display' => (string) env('SATUSEHAT_ORGANIZATION_NAME'),
             ],
             'performer' => [[
-                'reference' => 'Organization/' . $c['orgTujuanId'],
-                'display' => $c['orgTujuanNama'],
+                'reference' => 'Organization/' . $konteks['orgTujuanId'],
+                'display' => $konteks['orgTujuanNama'],
             ]],
             'locationCode' => [['coding' => [[
                 'system' => 'http://terminology.hl7.org/CodeSystem/v3-RoleCode',
                 'code' => 'HOSP',
                 'display' => 'Hospital',
             ]]]],
-            'patientInstruction' => 'Rujukan ke ' . $c['orgTujuanNama'],
+            'patientInstruction' => 'Rujukan ke ' . $konteks['orgTujuanNama'],
         ];
-        if (!empty($c['taskApprovalId'])) {
+        if (!empty($konteks['taskApprovalId'])) {
             $serviceRequest['supportingInfo'] = [[
                 'display' => 'Task Respon Kandidat Faskes Rujukan',
-                'reference' => 'Task/' . $c['taskApprovalId'],
+                'reference' => 'Task/' . $konteks['taskApprovalId'],
             ]];
         }
 
