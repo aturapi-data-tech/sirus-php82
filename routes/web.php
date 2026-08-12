@@ -526,6 +526,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/manajemen/rs/satu-sehat/monitoring-satu-sehat', 'pages::manajemen.rs.satu-sehat.monitoring-satu-sehat.monitoring-satu-sehat')
         ->name('manajemen.rs.satu-sehat.monitoring-satu-sehat');
 
+    Route::livewire('/manajemen/rs/vclaim/laporan-rujukan-keluar', 'pages::manajemen.rs.vclaim.laporan-rujukan-keluar.laporan-rujukan-keluar')
+        ->name('manajemen.rs.vclaim.laporan-rujukan-keluar');
+
     Route::livewire('/manajemen/laporan-diagnosa', 'pages::manajemen.laporan-diagnosa.laporan-diagnosa')
         ->name('manajemen.laporan-diagnosa');
 
