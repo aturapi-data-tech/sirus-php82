@@ -30,49 +30,41 @@
         $nilaiSel = fn($nilai) => filled($nilai) ? e($nilai) : '-';
     @endphp
 
-    <style>
-        .op-diag { font-size:10px; margin-top:6px; margin-bottom:4px; }
-        table.op { width:100%; border-collapse:collapse; font-size:9px; }
-        table.op th, table.op td { border:1px solid #999; padding:3px 4px; vertical-align:top; text-align:center; }
-        table.op th { background:#eef2ee; font-weight:bold; }
-        table.op td.ket { text-align:left; }
-    </style>
-
     @if (filled($diagnosa))
-        <div class="op-diag"><strong>Diagnosa:</strong> {{ e($diagnosa) }}</div>
+        <div class="text-[10px] mt-1.5 mb-1"><strong>Diagnosa:</strong> {{ e($diagnosa) }}</div>
     @endif
 
-    <table class="op">
+    <table class="w-full border-collapse text-[9px]">
         <thead>
             <tr>
-                <th style="width:8%;">Jam</th>
-                <th style="width:10%;">TD (mmHg)</th>
-                <th style="width:7%;">N (x/mnt)</th>
-                <th style="width:7%;">RR (x/mnt)</th>
-                <th style="width:7%;">S (&deg;C)</th>
-                <th style="width:8%;">DJJ (x/mnt)</th>
-                <th style="width:11%;">His</th>
-                <th style="width:6%;">EWS</th>
-                <th style="width:19%;">Obat / Keterangan</th>
-                <th style="width:12%;">Petugas</th>
+                <th class="w-[8%] bg-[#eef2ee] font-bold border border-[#999] px-1 py-[3px] align-top text-center">Jam</th>
+                <th class="w-[10%] bg-[#eef2ee] font-bold border border-[#999] px-1 py-[3px] align-top text-center">TD (mmHg)</th>
+                <th class="w-[7%] bg-[#eef2ee] font-bold border border-[#999] px-1 py-[3px] align-top text-center">N (x/mnt)</th>
+                <th class="w-[7%] bg-[#eef2ee] font-bold border border-[#999] px-1 py-[3px] align-top text-center">RR (x/mnt)</th>
+                <th class="w-[7%] bg-[#eef2ee] font-bold border border-[#999] px-1 py-[3px] align-top text-center">S (&deg;C)</th>
+                <th class="w-[8%] bg-[#eef2ee] font-bold border border-[#999] px-1 py-[3px] align-top text-center">DJJ (x/mnt)</th>
+                <th class="w-[11%] bg-[#eef2ee] font-bold border border-[#999] px-1 py-[3px] align-top text-center">His</th>
+                <th class="w-[6%] bg-[#eef2ee] font-bold border border-[#999] px-1 py-[3px] align-top text-center">EWS</th>
+                <th class="w-[19%] bg-[#eef2ee] font-bold border border-[#999] px-1 py-[3px] align-top text-center">Obat / Keterangan</th>
+                <th class="w-[12%] bg-[#eef2ee] font-bold border border-[#999] px-1 py-[3px] align-top text-center">Petugas</th>
             </tr>
         </thead>
         <tbody>
             @forelse ($rows as $baris)
                 <tr>
-                    <td>{{ $nilaiSel($baris['jam'] ?? null) }}</td>
-                    <td>{{ $nilaiSel(filled($baris['sistolik'] ?? null) || filled($baris['diastolik'] ?? null) ? ($baris['sistolik'] ?? '-') . '/' . ($baris['diastolik'] ?? '-') : ($baris['td'] ?? null)) }}</td>
-                    <td>{{ $nilaiSel($baris['nadi'] ?? null) }}</td>
-                    <td>{{ $nilaiSel($baris['rr'] ?? null) }}</td>
-                    <td>{{ $nilaiSel($baris['suhu'] ?? null) }}</td>
-                    <td>{{ $nilaiSel($baris['djj'] ?? null) }}</td>
-                    <td>{{ $nilaiSel($baris['his'] ?? null) }}</td>
-                    <td>{{ $nilaiSel($baris['ewsScore'] ?? null) }}</td>
-                    <td class="ket">{{ $nilaiSel($baris['obatKeterangan'] ?? null) }}</td>
-                    <td>{{ $nilaiSel($baris['petugas'] ?? null) }}</td>
+                    <td class="border border-[#999] px-1 py-[3px] align-top text-center">{{ $nilaiSel($baris['jam'] ?? null) }}</td>
+                    <td class="border border-[#999] px-1 py-[3px] align-top text-center">{{ $nilaiSel(filled($baris['sistolik'] ?? null) || filled($baris['diastolik'] ?? null) ? ($baris['sistolik'] ?? '-') . '/' . ($baris['diastolik'] ?? '-') : ($baris['td'] ?? null)) }}</td>
+                    <td class="border border-[#999] px-1 py-[3px] align-top text-center">{{ $nilaiSel($baris['nadi'] ?? null) }}</td>
+                    <td class="border border-[#999] px-1 py-[3px] align-top text-center">{{ $nilaiSel($baris['rr'] ?? null) }}</td>
+                    <td class="border border-[#999] px-1 py-[3px] align-top text-center">{{ $nilaiSel($baris['suhu'] ?? null) }}</td>
+                    <td class="border border-[#999] px-1 py-[3px] align-top text-center">{{ $nilaiSel($baris['djj'] ?? null) }}</td>
+                    <td class="border border-[#999] px-1 py-[3px] align-top text-center">{{ $nilaiSel($baris['his'] ?? null) }}</td>
+                    <td class="border border-[#999] px-1 py-[3px] align-top text-center">{{ $nilaiSel($baris['ewsScore'] ?? null) }}</td>
+                    <td class="border border-[#999] px-1 py-[3px] align-top text-left">{{ $nilaiSel($baris['obatKeterangan'] ?? null) }}</td>
+                    <td class="border border-[#999] px-1 py-[3px] align-top text-center">{{ $nilaiSel($baris['petugas'] ?? null) }}</td>
                 </tr>
             @empty
-                <tr><td colspan="10">Belum ada baris observasi.</td></tr>
+                <tr><td colspan="10" class="border border-[#999] px-1 py-[3px] align-top text-center">Belum ada baris observasi.</td></tr>
             @endforelse
         </tbody>
     </table>

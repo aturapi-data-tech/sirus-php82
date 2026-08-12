@@ -33,91 +33,84 @@
         }
     @endphp
 
-    <style>
-        .pa-sec { font-size:11px; font-weight:bold; background:#eef2ee; padding:3px 6px; border:1px solid #999; margin-top:6px; }
-        table.pa { width:100%; border-collapse:collapse; font-size:10px; }
-        table.pa td { border:1px solid #999; padding:2px 5px; vertical-align:top; }
-        table.pa td.lbl { width:22%; color:#333; background:#f7f7f7; }
-    </style>
-
     {{-- 1. Data Pengkajian --}}
-    <div class="pa-sec">1. DATA PENGKAJIAN</div>
-    <table class="pa">
-        <tr><td class="lbl">Tgl / Jam Pengkajian</td><td>{{ $nilaiForm('tglJamPengkajian') }}</td><td class="lbl">Cara Masuk</td><td>{{ $nilaiForm('caraMasuk') }}{{ filled($form['caraMasukRujukan'] ?? null) ? ' — ' . e($form['caraMasukRujukan']) : '' }}</td></tr>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">1. DATA PENGKAJIAN</div>
+    <table class="w-full border-collapse text-[10px]">
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Tgl / Jam Pengkajian</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('tglJamPengkajian') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Cara Masuk</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('caraMasuk') }}{{ filled($form['caraMasukRujukan'] ?? null) ? ' — ' . e($form['caraMasukRujukan']) : '' }}</td></tr>
     </table>
 
     {{-- 2 & 3. Sosial --}}
-    <div class="pa-sec">2. DATA SOSIAL PASIEN & SUAMI/PENANGGUNG JAWAB</div>
-    <table class="pa">
-        <tr><td class="lbl">Pekerjaan</td><td>{{ $nilaiForm('pekerjaan') }}</td><td class="lbl">Pendidikan</td><td>{{ $nilaiForm('pendidikan') }}</td></tr>
-        <tr><td class="lbl">Agama</td><td>{{ $nilaiForm('agama') }}</td><td class="lbl">Suku Bangsa</td><td>{{ $nilaiForm('suku') }}</td></tr>
-        <tr><td class="lbl">Psiko-sosio-spiritual</td><td>{{ $nilaiForm('psikososial') }}</td><td class="lbl">Ekonomi</td><td>{{ $nilaiForm('ekonomi') }}</td></tr>
-        <tr><td class="lbl">Nama Suami/PJ</td><td>{{ $nilaiForm('namaSuami') }}</td><td class="lbl">Umur</td><td>{{ $nilaiForm('umurSuami') }}</td></tr>
-        <tr><td class="lbl">Pekerjaan Suami</td><td>{{ $nilaiForm('pekerjaanSuami') }}</td><td class="lbl">Pendidikan Suami</td><td>{{ $nilaiForm('pendidikanSuami') }}</td></tr>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">2. DATA SOSIAL PASIEN & SUAMI/PENANGGUNG JAWAB</div>
+    <table class="w-full border-collapse text-[10px]">
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Pekerjaan</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('pekerjaan') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Pendidikan</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('pendidikan') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Agama</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('agama') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Suku Bangsa</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('suku') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Psiko-sosio-spiritual</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('psikososial') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Ekonomi</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('ekonomi') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Nama Suami/PJ</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('namaSuami') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Umur</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('umurSuami') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Pekerjaan Suami</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('pekerjaanSuami') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Pendidikan Suami</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('pendidikanSuami') }}</td></tr>
     </table>
 
     {{-- 4. Riwayat --}}
-    <div class="pa-sec">4. RIWAYAT</div>
-    <table class="pa">
-        <tr><td class="lbl">Alergi Obat</td><td>{{ $nilaiForm('alergiObat') }}</td><td class="lbl">Riwayat Obat</td><td>{{ $nilaiForm('riwayatObat') }}</td></tr>
-        <tr><td class="lbl">Penyakit Penting</td><td colspan="3">{{ $penyakit ?: '-' }}</td></tr>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">4. RIWAYAT</div>
+    <table class="w-full border-collapse text-[10px]">
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Alergi Obat</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('alergiObat') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Riwayat Obat</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('riwayatObat') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Penyakit Penting</td><td colspan="3" class="border border-[#999] px-[5px] py-[2px] align-top">{{ $penyakit ?: '-' }}</td></tr>
     </table>
 
     {{-- 5. Riwayat Ginekologi --}}
-    <div class="pa-sec">5. RIWAYAT GINEKOLOGI</div>
-    <table class="pa">
-        <tr><td class="lbl">HPHT</td><td>{{ $nilaiForm('hpht') }}</td><td class="lbl">Menarche</td><td>{{ $nilaiForm('menarcheUmur') }} th</td></tr>
-        <tr><td class="lbl">Menopause</td><td>{{ $nilaiForm('menopause') }}</td><td class="lbl">Kontrasepsi</td><td>{{ $nilaiForm('kontrasepsi') }}</td></tr>
-        <tr><td class="lbl">Menikah</td><td>{{ $nilaiForm('menikahKali') }} kali, lama {{ $nilaiForm('menikahLama') }} th</td><td class="lbl">Anak Hidup / Mati</td><td>{{ $nilaiForm('anakHidup') }} / {{ $nilaiForm('anakMati') }}</td></tr>
-        <tr><td class="lbl">Umur Anak Terkecil</td><td>{{ $nilaiForm('anakTerkecilUmur') }}</td><td class="lbl">Riwayat Haid</td><td>{{ $nilaiForm('riwayatHaid') }}</td></tr>
-        <tr><td class="lbl">Riwayat Keputihan</td><td colspan="3">{{ $nilaiForm('riwayatKeputihan') }}</td></tr>
-        <tr><td class="lbl">Riwayat Persalinan Lalu</td><td colspan="3">{{ $nilaiForm('riwayatPersalinanLalu') }}</td></tr>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">5. RIWAYAT GINEKOLOGI</div>
+    <table class="w-full border-collapse text-[10px]">
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">HPHT</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('hpht') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Menarche</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('menarcheUmur') }} th</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Menopause</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('menopause') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Kontrasepsi</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('kontrasepsi') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Menikah</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('menikahKali') }} kali, lama {{ $nilaiForm('menikahLama') }} th</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Anak Hidup / Mati</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('anakHidup') }} / {{ $nilaiForm('anakMati') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Umur Anak Terkecil</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('anakTerkecilUmur') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Riwayat Haid</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('riwayatHaid') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Riwayat Keputihan</td><td colspan="3" class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('riwayatKeputihan') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Riwayat Persalinan Lalu</td><td colspan="3" class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('riwayatPersalinanLalu') }}</td></tr>
     </table>
 
     {{-- 6. Keluhan --}}
-    <div class="pa-sec">6. KELUHAN</div>
-    <table class="pa">
-        <tr><td class="lbl">Keluhan Utama</td><td colspan="3">{{ $nilaiForm('keluhanUtama') }}</td></tr>
-        <tr><td class="lbl">Riwayat Penyakit Sekarang</td><td colspan="3">{{ $nilaiForm('riwayatPenyakitSekarang') }}</td></tr>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">6. KELUHAN</div>
+    <table class="w-full border-collapse text-[10px]">
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Keluhan Utama</td><td colspan="3" class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('keluhanUtama') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Riwayat Penyakit Sekarang</td><td colspan="3" class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('riwayatPenyakitSekarang') }}</td></tr>
     </table>
 
     {{-- 7. Status Umum / TTV --}}
-    <div class="pa-sec">7. STATUS UMUM & TANDA VITAL</div>
-    <table class="pa">
-        <tr><td class="lbl">Keadaan Umum</td><td>{{ $nilaiForm('keadaanUmum') }}</td><td class="lbl">TD</td><td>{{ filled($form['sistolik'] ?? null) || filled($form['diastolik'] ?? null) ? e(($form['sistolik'] ?? '-') . '/' . ($form['diastolik'] ?? '-')) : $nilaiForm('td') }} mmHg</td></tr>
-        <tr><td class="lbl">Nadi / RR</td><td>{{ $nilaiForm('nadi') }} / {{ $nilaiForm('respirasi') }} x/mnt</td><td class="lbl">Suhu (R/Ax)</td><td>{{ $nilaiForm('suhuRectal') }} / {{ $nilaiForm('suhuAxiler') }} °C</td></tr>
-        <tr><td class="lbl">Conjungtiva / Edema</td><td>{{ $nilaiForm('conjungtiva') }} / {{ $nilaiForm('edema') }}</td><td class="lbl">Cor / Pulmo</td><td>{{ $nilaiForm('cor') }} / {{ $nilaiForm('pulmo') }}</td></tr>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">7. STATUS UMUM & TANDA VITAL</div>
+    <table class="w-full border-collapse text-[10px]">
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Keadaan Umum</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('keadaanUmum') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">TD</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ filled($form['sistolik'] ?? null) || filled($form['diastolik'] ?? null) ? e(($form['sistolik'] ?? '-') . '/' . ($form['diastolik'] ?? '-')) : $nilaiForm('td') }} mmHg</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Nadi / RR</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('nadi') }} / {{ $nilaiForm('respirasi') }} x/mnt</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Suhu (R/Ax)</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('suhuRectal') }} / {{ $nilaiForm('suhuAxiler') }} °C</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Conjungtiva / Edema</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('conjungtiva') }} / {{ $nilaiForm('edema') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Cor / Pulmo</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('cor') }} / {{ $nilaiForm('pulmo') }}</td></tr>
     </table>
 
     {{-- 8. Pemeriksaan Dalam --}}
-    <div class="pa-sec">8. PEMERIKSAAN DALAM</div>
-    <table class="pa">
-        <tr><td class="lbl">Jenis Pemeriksaan</td><td>{{ $nilaiForm('jenisPemeriksaan') }}</td><td class="lbl">Vulva / Vagina</td><td>{{ $nilaiForm('vulvaVagina') }}</td></tr>
-        <tr><td class="lbl">Corpus Uteri</td><td>{{ $nilaiForm('corpusUteri') }}</td><td class="lbl">Portio</td><td>{{ $nilaiForm('portio') }}</td></tr>
-        <tr><td class="lbl">Adnexa Kanan / Kiri</td><td>{{ $nilaiForm('adnexaKanan') }} / {{ $nilaiForm('adnexaKiri') }}</td><td class="lbl">Cavum Douglasi</td><td>{{ $nilaiForm('cavumDouglasi') }}</td></tr>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">8. PEMERIKSAAN DALAM</div>
+    <table class="w-full border-collapse text-[10px]">
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Jenis Pemeriksaan</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('jenisPemeriksaan') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Vulva / Vagina</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('vulvaVagina') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Corpus Uteri</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('corpusUteri') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Portio</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('portio') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Adnexa Kanan / Kiri</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('adnexaKanan') }} / {{ $nilaiForm('adnexaKiri') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Cavum Douglasi</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('cavumDouglasi') }}</td></tr>
     </table>
 
     {{-- 9. Skrining --}}
-    <div class="pa-sec">9. SKRINING (PP 1.2)</div>
-    <table class="pa">
-        <tr><td class="lbl">Skala Nyeri</td><td>{{ $nilaiForm('skalaNyeri') }}</td><td class="lbl">Risiko Jatuh</td><td>{{ $nilaiForm('risikoJatuh') }}</td></tr>
-        <tr><td class="lbl">Skrining Gizi</td><td>{{ $nilaiForm('skriningGizi') }}</td><td class="lbl">Pengkajian Fungsional</td><td>{{ $nilaiForm('pengkajianFungsional') }}</td></tr>
-        <tr><td class="lbl">Kebutuhan Edukasi</td><td colspan="3">{{ $nilaiForm('kebutuhanEdukasi') }}</td></tr>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">9. SKRINING (PP 1.2)</div>
+    <table class="w-full border-collapse text-[10px]">
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Skala Nyeri</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('skalaNyeri') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Risiko Jatuh</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('risikoJatuh') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Skrining Gizi</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('skriningGizi') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Pengkajian Fungsional</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('pengkajianFungsional') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Kebutuhan Edukasi</td><td colspan="3" class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('kebutuhanEdukasi') }}</td></tr>
     </table>
 
     {{-- 10. Status Lokalis (Dokter) --}}
-    <div class="pa-sec">10. STATUS LOKALIS (DOKTER)</div>
-    <table class="pa">
-        <tr><td class="lbl">Abdomen</td><td colspan="3">{{ $nilaiForm('abdomen') }}</td></tr>
-        <tr><td class="lbl">Genitalia</td><td colspan="3">{{ $nilaiForm('genitalia') }}</td></tr>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">10. STATUS LOKALIS (DOKTER)</div>
+    <table class="w-full border-collapse text-[10px]">
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Abdomen</td><td colspan="3" class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('abdomen') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Genitalia</td><td colspan="3" class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('genitalia') }}</td></tr>
     </table>
 
     {{-- 11. Diagnosa & Rencana --}}
-    <div class="pa-sec">11. DIAGNOSA & RENCANA</div>
-    <table class="pa">
-        <tr><td class="lbl">Diagnosa</td><td colspan="3">{{ $nilaiForm('diagnosa') }}</td></tr>
-        <tr><td class="lbl">Rencana Tindakan/Terapi</td><td colspan="3">{{ $nilaiForm('rencanaTindakan') }}</td></tr>
-        <tr><td class="lbl">Discharge Planning</td><td colspan="3">{{ $nilaiForm('dischargePlanning') }}</td></tr>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">11. DIAGNOSA & RENCANA</div>
+    <table class="w-full border-collapse text-[10px]">
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Diagnosa</td><td colspan="3" class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('diagnosa') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Rencana Tindakan/Terapi</td><td colspan="3" class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('rencanaTindakan') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Discharge Planning</td><td colspan="3" class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('dischargePlanning') }}</td></tr>
     </table>
 
     {{-- Penutup / TTD --}}

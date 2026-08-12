@@ -29,44 +29,37 @@
         $nilaiForm = fn(string $field) => filled($form[$field] ?? null) ? e($form[$field]) : '-';
     @endphp
 
-    <style>
-        .ib-sec { font-size:11px; font-weight:bold; background:#eef2ee; padding:3px 6px; border:1px solid #999; margin-top:6px; }
-        table.ib { width:100%; border-collapse:collapse; font-size:10px; }
-        table.ib td { border:1px solid #999; padding:2px 5px; vertical-align:top; }
-        table.ib td.lbl { width:22%; color:#333; background:#f7f7f7; }
-    </style>
-
     {{-- 1. Identitas --}}
-    <div class="ib-sec">1. IDENTITAS BAYI & ORANG TUA</div>
-    <table class="ib">
-        <tr><td class="lbl">Nama Ibu</td><td>{{ $nilaiForm('namaIbu') }}</td><td class="lbl">Nama Ayah</td><td>{{ $nilaiForm('namaAyah') }}</td></tr>
-        <tr><td class="lbl">No. Register Ibu</td><td>{{ $nilaiForm('noRegisterIbu') }}</td><td class="lbl">No. Register Bayi</td><td>{{ $nilaiForm('noRegisterBayi') }}</td></tr>
-        <tr><td class="lbl">Nama Bayi</td><td>{{ $nilaiForm('namaBayi') }}</td><td class="lbl">Jenis Kelamin</td><td>{{ $nilaiForm('jenisKelamin') }}</td></tr>
-        <tr><td class="lbl">Warna Gelang</td><td>{{ $nilaiForm('warnaGelang') }}</td><td class="lbl">Tgl / Jam Lahir</td><td>{{ $nilaiForm('tglLahir') }}</td></tr>
-        <tr><td class="lbl">Berat / Panjang</td><td>{{ $nilaiForm('bb') }} gr / {{ $nilaiForm('pb') }} cm</td><td class="lbl">APGAR Score</td><td>{{ $nilaiForm('apgar') }}</td></tr>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">1. IDENTITAS BAYI & ORANG TUA</div>
+    <table class="w-full border-collapse text-[10px]">
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Nama Ibu</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('namaIbu') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Nama Ayah</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('namaAyah') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">No. Register Ibu</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('noRegisterIbu') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">No. Register Bayi</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('noRegisterBayi') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Nama Bayi</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('namaBayi') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Jenis Kelamin</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('jenisKelamin') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Warna Gelang</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('warnaGelang') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Tgl / Jam Lahir</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('tglLahir') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Berat / Panjang</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('bb') }} gr / {{ $nilaiForm('pb') }} cm</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">APGAR Score</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('apgar') }}</td></tr>
     </table>
 
     {{-- 2. Serah Terima --}}
-    <div class="ib-sec">2. SERAH TERIMA KE RUANG NEONATUS</div>
-    <table class="ib">
-        <tr><td class="lbl">Penolong Persalinan</td><td>{{ $nilaiForm('penolongPersalinan') }}</td><td class="lbl">Pemasang Gelang</td><td>{{ $nilaiForm('pemasangGelang') }}</td></tr>
-        <tr><td class="lbl">Yang Menyerahkan</td><td>{{ $nilaiForm('yangMenyerahkan') }}</td><td class="lbl">Yang Menerima</td><td>{{ $nilaiForm('yangMenerima') }}</td></tr>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">2. SERAH TERIMA KE RUANG NEONATUS</div>
+    <table class="w-full border-collapse text-[10px]">
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Penolong Persalinan</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('penolongPersalinan') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Pemasang Gelang</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('pemasangGelang') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Yang Menyerahkan</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('yangMenyerahkan') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Yang Menerima</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('yangMenerima') }}</td></tr>
     </table>
 
     {{-- 3. Cap Identifikasi --}}
-    <div class="ib-sec">3. CAP IDENTIFIKASI</div>
-    <table class="ib">
-        <tr><td class="lbl">Cap sidik jari ibu &amp; telapak kaki bayi</td><td>{{ $nilaiForm('capDilakukan') == 'Sudah' ? 'Sudah dilakukan' : ($nilaiForm('capDilakukan') == 'Belum' ? 'Belum dilakukan' : '-') }}</td></tr>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">3. CAP IDENTIFIKASI</div>
+    <table class="w-full border-collapse text-[10px]">
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Cap sidik jari ibu &amp; telapak kaki bayi</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('capDilakukan') == 'Sudah' ? 'Sudah dilakukan' : ($nilaiForm('capDilakukan') == 'Belum' ? 'Belum dilakukan' : '-') }}</td></tr>
     </table>
     <p style="font-size:9px; color:#555; margin-top:3px;">
         Catatan: Cap sidik jari ibu dan cap telapak kaki bayi dilakukan secara manual pada berkas rekam medis fisik.
     </p>
 
     {{-- 4. Pernyataan Pulang --}}
-    <div class="ib-sec">4. PERNYATAAN SERAH TERIMA BAYI SAAT PULANG</div>
-    <table class="ib">
-        <tr><td class="lbl">Pernyataan</td><td colspan="3">{{ $nilaiForm('serahTerimaPulang') }}</td></tr>
-        <tr><td class="lbl">Saksi (Perawat/Bidan)</td><td>{{ $nilaiForm('saksiPerawat') }}</td><td class="lbl">Orang Tua Bayi</td><td>{{ $nilaiForm('orangTuaBayi') }}</td></tr>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">4. PERNYATAAN SERAH TERIMA BAYI SAAT PULANG</div>
+    <table class="w-full border-collapse text-[10px]">
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Pernyataan</td><td colspan="3" class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('serahTerimaPulang') }}</td></tr>
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Saksi (Perawat/Bidan)</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('saksiPerawat') }}</td><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Orang Tua Bayi</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('orangTuaBayi') }}</td></tr>
     </table>
 
     {{-- Penutup / TTD --}}

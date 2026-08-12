@@ -39,50 +39,40 @@
         }
     @endphp
 
-    <style>
-        .sc-sec { font-size:11px; font-weight:bold; background:#eef2ee; padding:3px 6px; border:1px solid #999; margin-top:6px; }
-        table.sc { width:100%; border-collapse:collapse; font-size:10px; }
-        table.sc th, table.sc td { border:1px solid #999; padding:2px 5px; vertical-align:top; }
-        table.sc th { background:#f0f0f0; }
-        table.sc td.no { width:5%; text-align:center; }
-        table.sc td.yn { width:9%; text-align:center; }
-        table.sc td.lbl { width:22%; color:#333; background:#f7f7f7; }
-    </style>
-
     {{-- 1. Indikator Proses SC --}}
-    <div class="sc-sec">1. INDIKATOR PROSES SC</div>
-    <table class="sc">
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">1. INDIKATOR PROSES SC</div>
+    <table class="w-full border-collapse text-[10px]">
         <thead>
             <tr>
-                <th style="width:5%; text-align:center;">No</th>
-                <th>Pertanyaan</th>
-                <th style="width:9%; text-align:center;">Ya</th>
-                <th style="width:9%; text-align:center;">Tidak</th>
+                <th class="w-[5%] text-center bg-[#f0f0f0] border border-[#999] px-[5px] py-[2px] align-top">No</th>
+                <th class="bg-[#f0f0f0] border border-[#999] px-[5px] py-[2px] align-top">Pertanyaan</th>
+                <th class="w-[9%] text-center bg-[#f0f0f0] border border-[#999] px-[5px] py-[2px] align-top">Ya</th>
+                <th class="w-[9%] text-center bg-[#f0f0f0] border border-[#999] px-[5px] py-[2px] align-top">Tidak</th>
             </tr>
         </thead>
         <tbody>
             @foreach ($indikatorPertanyaan as $nomor => $pertanyaan)
                 @php $nilai = $indikator[$nomor] ?? ''; @endphp
                 <tr>
-                    <td class="no">{{ $nomor + 1 }}</td>
-                    <td>{{ $pertanyaan }}</td>
-                    <td class="yn">{{ $nilai === 'Ya' ? 'X' : '' }}</td>
-                    <td class="yn">{{ $nilai === 'Tidak' ? 'X' : '' }}</td>
+                    <td class="w-[5%] text-center border border-[#999] px-[5px] py-[2px] align-top">{{ $nomor + 1 }}</td>
+                    <td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $pertanyaan }}</td>
+                    <td class="w-[9%] text-center border border-[#999] px-[5px] py-[2px] align-top">{{ $nilai === 'Ya' ? 'X' : '' }}</td>
+                    <td class="w-[9%] text-center border border-[#999] px-[5px] py-[2px] align-top">{{ $nilai === 'Tidak' ? 'X' : '' }}</td>
                 </tr>
             @endforeach
         </tbody>
     </table>
 
     {{-- 2. Klasifikasi Diagnosis --}}
-    <div class="sc-sec">2. KLASIFIKASI DIAGNOSIS (ROBSON)</div>
-    <table class="sc">
-        <tr><td class="lbl">Klasifikasi Terpilih</td><td>{{ $klasifikasiKode !== '' ? strtoupper($klasifikasiKode) . '. ' . e($klasifikasiLabel) : '-' }}</td></tr>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">2. KLASIFIKASI DIAGNOSIS (ROBSON)</div>
+    <table class="w-full border-collapse text-[10px]">
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Klasifikasi Terpilih</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $klasifikasiKode !== '' ? strtoupper($klasifikasiKode) . '. ' . e($klasifikasiLabel) : '-' }}</td></tr>
     </table>
 
     {{-- 3. Indikasi SC --}}
-    <div class="sc-sec">3. INDIKASI SC</div>
-    <table class="sc">
-        <tr><td class="lbl">Indikasi</td><td>{{ $indikasi ?: '-' }}</td></tr>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">3. INDIKASI SC</div>
+    <table class="w-full border-collapse text-[10px]">
+        <tr><td class="w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top">Indikasi</td><td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $indikasi ?: '-' }}</td></tr>
     </table>
 
     {{-- Penutup / TTD --}}

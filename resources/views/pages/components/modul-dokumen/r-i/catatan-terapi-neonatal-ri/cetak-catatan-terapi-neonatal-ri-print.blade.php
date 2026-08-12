@@ -30,66 +30,58 @@
         $nilaiSel = fn($nilai) => filled($nilai) ? e($nilai) : '-';
     @endphp
 
-    <style>
-        .cn-sec { font-size:11px; font-weight:bold; background:#eef2ee; padding:3px 6px; border:1px solid #999; margin-top:10px; }
-        table.cn { width:100%; border-collapse:collapse; font-size:10px; margin-top:2px; }
-        table.cn th, table.cn td { border:1px solid #999; padding:3px 5px; vertical-align:top; }
-        table.cn th { background:#f7f7f7; text-align:left; }
-        .cn-empty { font-size:10px; color:#666; padding:4px 2px; }
-    </style>
-
     {{-- A. Terapi Dokter --}}
-    <div class="cn-sec">A. CATATAN TERAPI DOKTER</div>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-2.5">A. CATATAN TERAPI DOKTER</div>
     @if (count($terapiDokter) > 0)
-        <table class="cn">
+        <table class="w-full border-collapse text-[10px] mt-0.5">
             <thead>
                 <tr>
-                    <th style="width:5%;">No</th>
-                    <th style="width:20%;">Tgl &amp; Jam</th>
-                    <th style="width:52%;">Penatalaksanaan / Terapi</th>
-                    <th style="width:23%;">ICD 9 CM</th>
+                    <th class="w-[5%] bg-[#f7f7f7] text-left border border-[#999] px-[5px] py-[3px] align-top">No</th>
+                    <th class="w-[20%] bg-[#f7f7f7] text-left border border-[#999] px-[5px] py-[3px] align-top">Tgl &amp; Jam</th>
+                    <th class="w-[52%] bg-[#f7f7f7] text-left border border-[#999] px-[5px] py-[3px] align-top">Penatalaksanaan / Terapi</th>
+                    <th class="w-[23%] bg-[#f7f7f7] text-left border border-[#999] px-[5px] py-[3px] align-top">ICD 9 CM</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($terapiDokter as $nomor => $entri)
                     <tr>
-                        <td style="text-align:center;">{{ $nomor + 1 }}</td>
-                        <td>{{ $nilaiSel($entri['tglJam'] ?? ($entri['createdAt'] ?? '')) }}</td>
-                        <td>{{ $nilaiSel($entri['keterangan'] ?? '') }}</td>
-                        <td>{{ $nilaiSel($entri['icd9'] ?? '') }}</td>
+                        <td class="text-center border border-[#999] px-[5px] py-[3px] align-top">{{ $nomor + 1 }}</td>
+                        <td class="border border-[#999] px-[5px] py-[3px] align-top">{{ $nilaiSel($entri['tglJam'] ?? ($entri['createdAt'] ?? '')) }}</td>
+                        <td class="border border-[#999] px-[5px] py-[3px] align-top">{{ $nilaiSel($entri['keterangan'] ?? '') }}</td>
+                        <td class="border border-[#999] px-[5px] py-[3px] align-top">{{ $nilaiSel($entri['icd9'] ?? '') }}</td>
                     </tr>
                 @endforeach
             </tbody>
         </table>
     @else
-        <div class="cn-empty">Tidak ada catatan terapi dokter.</div>
+        <div class="text-[10px] text-[#666] px-0.5 py-1">Tidak ada catatan terapi dokter.</div>
     @endif
 
     {{-- B. Perencanaan Keperawatan --}}
-    <div class="cn-sec">B. PERENCANAAN KEPERAWATAN</div>
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-2.5">B. PERENCANAAN KEPERAWATAN</div>
     @if (count($perencanaan) > 0)
-        <table class="cn">
+        <table class="w-full border-collapse text-[10px] mt-0.5">
             <thead>
                 <tr>
-                    <th style="width:5%;">No</th>
-                    <th style="width:20%;">Jam &amp; Tgl</th>
-                    <th style="width:52%;">Perencanaan &amp; Tindakan</th>
-                    <th style="width:23%;">Nama</th>
+                    <th class="w-[5%] bg-[#f7f7f7] text-left border border-[#999] px-[5px] py-[3px] align-top">No</th>
+                    <th class="w-[20%] bg-[#f7f7f7] text-left border border-[#999] px-[5px] py-[3px] align-top">Jam &amp; Tgl</th>
+                    <th class="w-[52%] bg-[#f7f7f7] text-left border border-[#999] px-[5px] py-[3px] align-top">Perencanaan &amp; Tindakan</th>
+                    <th class="w-[23%] bg-[#f7f7f7] text-left border border-[#999] px-[5px] py-[3px] align-top">Nama</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($perencanaan as $nomor => $entri)
                     <tr>
-                        <td style="text-align:center;">{{ $nomor + 1 }}</td>
-                        <td>{{ $nilaiSel($entri['tglJam'] ?? ($entri['createdAt'] ?? '')) }}</td>
-                        <td>{{ $nilaiSel($entri['keterangan'] ?? '') }}</td>
-                        <td>{{ $nilaiSel($entri['ttd'] ?? '') }}</td>
+                        <td class="text-center border border-[#999] px-[5px] py-[3px] align-top">{{ $nomor + 1 }}</td>
+                        <td class="border border-[#999] px-[5px] py-[3px] align-top">{{ $nilaiSel($entri['tglJam'] ?? ($entri['createdAt'] ?? '')) }}</td>
+                        <td class="border border-[#999] px-[5px] py-[3px] align-top">{{ $nilaiSel($entri['keterangan'] ?? '') }}</td>
+                        <td class="border border-[#999] px-[5px] py-[3px] align-top">{{ $nilaiSel($entri['ttd'] ?? '') }}</td>
                     </tr>
                 @endforeach
             </tbody>
         </table>
     @else
-        <div class="cn-empty">Tidak ada perencanaan keperawatan.</div>
+        <div class="text-[10px] text-[#666] px-0.5 py-1">Tidak ada perencanaan keperawatan.</div>
     @endif
 
     {{-- Penutup / TTD --}}

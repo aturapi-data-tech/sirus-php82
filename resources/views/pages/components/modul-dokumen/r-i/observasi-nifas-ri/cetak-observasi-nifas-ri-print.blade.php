@@ -33,31 +33,24 @@
         };
     @endphp
 
-    <style>
-        table.on { width:100%; border-collapse:collapse; font-size:8px; }
-        table.on th, table.on td { border:1px solid #999; padding:2px 3px; vertical-align:top; text-align:center; }
-        table.on th { background:#eef2ee; font-weight:bold; }
-        table.on td.ket { text-align:left; }
-    </style>
-
-    <table class="on">
+    <table class="w-full border-collapse text-[8px]">
         <thead>
             <tr>
-                <th style="width:9%;">Tgl / Jam</th>
-                <th style="width:6%;">TD</th>
-                <th style="width:4%;">N</th>
-                <th style="width:4%;">RR</th>
-                <th style="width:4%;">S</th>
-                <th style="width:4%;">EWS</th>
-                <th style="width:8%;">TFU</th>
-                <th style="width:6%;">Kontraksi</th>
-                <th style="width:8%;">Lochia</th>
-                <th style="width:4%;">Drh (cc)</th>
-                <th style="width:6%;">Luka</th>
-                <th style="width:5%;">Laktasi</th>
-                <th style="width:4%;">ASI</th>
-                <th style="width:18%;">Keterangan</th>
-                <th style="width:10%;">Petugas</th>
+                <th class="w-[9%] bg-[#eef2ee] font-bold border border-[#999] px-[3px] py-[2px] align-top text-center">Tgl / Jam</th>
+                <th class="w-[6%] bg-[#eef2ee] font-bold border border-[#999] px-[3px] py-[2px] align-top text-center">TD</th>
+                <th class="w-[4%] bg-[#eef2ee] font-bold border border-[#999] px-[3px] py-[2px] align-top text-center">N</th>
+                <th class="w-[4%] bg-[#eef2ee] font-bold border border-[#999] px-[3px] py-[2px] align-top text-center">RR</th>
+                <th class="w-[4%] bg-[#eef2ee] font-bold border border-[#999] px-[3px] py-[2px] align-top text-center">S</th>
+                <th class="w-[4%] bg-[#eef2ee] font-bold border border-[#999] px-[3px] py-[2px] align-top text-center">EWS</th>
+                <th class="w-[8%] bg-[#eef2ee] font-bold border border-[#999] px-[3px] py-[2px] align-top text-center">TFU</th>
+                <th class="w-[6%] bg-[#eef2ee] font-bold border border-[#999] px-[3px] py-[2px] align-top text-center">Kontraksi</th>
+                <th class="w-[8%] bg-[#eef2ee] font-bold border border-[#999] px-[3px] py-[2px] align-top text-center">Lochia</th>
+                <th class="w-[4%] bg-[#eef2ee] font-bold border border-[#999] px-[3px] py-[2px] align-top text-center">Drh (cc)</th>
+                <th class="w-[6%] bg-[#eef2ee] font-bold border border-[#999] px-[3px] py-[2px] align-top text-center">Luka</th>
+                <th class="w-[5%] bg-[#eef2ee] font-bold border border-[#999] px-[3px] py-[2px] align-top text-center">Laktasi</th>
+                <th class="w-[4%] bg-[#eef2ee] font-bold border border-[#999] px-[3px] py-[2px] align-top text-center">ASI</th>
+                <th class="w-[18%] bg-[#eef2ee] font-bold border border-[#999] px-[3px] py-[2px] align-top text-center">Keterangan</th>
+                <th class="w-[10%] bg-[#eef2ee] font-bold border border-[#999] px-[3px] py-[2px] align-top text-center">Petugas</th>
             </tr>
         </thead>
         <tbody>
@@ -69,24 +62,24 @@
                     );
                 @endphp
                 <tr>
-                    <td>{{ $nilaiSel($baris['tglJam'] ?? null) }}</td>
-                    <td>{{ $nilaiSel(filled($baris['sistolik'] ?? null) || filled($baris['diastolik'] ?? null) ? ($baris['sistolik'] ?? '-') . '/' . ($baris['diastolik'] ?? '-') : ($baris['td'] ?? null)) }}</td>
-                    <td>{{ $nilaiSel($baris['nadi'] ?? null) }}</td>
-                    <td>{{ $nilaiSel($baris['rr'] ?? null) }}</td>
-                    <td>{{ $nilaiSel($baris['suhu'] ?? null) }}</td>
-                    <td>{{ $nilaiSel($baris['ewsScore'] ?? null) }}</td>
-                    <td>{{ $nilaiSel($baris['tfu'] ?? null) }}</td>
-                    <td>{{ $nilaiSel($baris['kontraksiUterus'] ?? null) }}</td>
-                    <td>{{ $nilaiLochia($baris) }}</td>
-                    <td>{{ $nilaiSel($baris['perdarahanCc'] ?? null) }}</td>
-                    <td>{{ $nilaiSel($baris['lukaJalanLahir'] ?? null) }}</td>
-                    <td>{{ $nilaiSel($baris['laktasi'] ?? null) }}</td>
-                    <td>{{ $nilaiSel($baris['asiEksklusif'] ?? null) }}</td>
-                    <td class="ket">{{ $keterangan !== '' ? e($keterangan) : '-' }}</td>
-                    <td>{{ $nilaiSel($baris['petugas'] ?? null) }}</td>
+                    <td class="border border-[#999] px-[3px] py-[2px] align-top text-center">{{ $nilaiSel($baris['tglJam'] ?? null) }}</td>
+                    <td class="border border-[#999] px-[3px] py-[2px] align-top text-center">{{ $nilaiSel(filled($baris['sistolik'] ?? null) || filled($baris['diastolik'] ?? null) ? ($baris['sistolik'] ?? '-') . '/' . ($baris['diastolik'] ?? '-') : ($baris['td'] ?? null)) }}</td>
+                    <td class="border border-[#999] px-[3px] py-[2px] align-top text-center">{{ $nilaiSel($baris['nadi'] ?? null) }}</td>
+                    <td class="border border-[#999] px-[3px] py-[2px] align-top text-center">{{ $nilaiSel($baris['rr'] ?? null) }}</td>
+                    <td class="border border-[#999] px-[3px] py-[2px] align-top text-center">{{ $nilaiSel($baris['suhu'] ?? null) }}</td>
+                    <td class="border border-[#999] px-[3px] py-[2px] align-top text-center">{{ $nilaiSel($baris['ewsScore'] ?? null) }}</td>
+                    <td class="border border-[#999] px-[3px] py-[2px] align-top text-center">{{ $nilaiSel($baris['tfu'] ?? null) }}</td>
+                    <td class="border border-[#999] px-[3px] py-[2px] align-top text-center">{{ $nilaiSel($baris['kontraksiUterus'] ?? null) }}</td>
+                    <td class="border border-[#999] px-[3px] py-[2px] align-top text-center">{{ $nilaiLochia($baris) }}</td>
+                    <td class="border border-[#999] px-[3px] py-[2px] align-top text-center">{{ $nilaiSel($baris['perdarahanCc'] ?? null) }}</td>
+                    <td class="border border-[#999] px-[3px] py-[2px] align-top text-center">{{ $nilaiSel($baris['lukaJalanLahir'] ?? null) }}</td>
+                    <td class="border border-[#999] px-[3px] py-[2px] align-top text-center">{{ $nilaiSel($baris['laktasi'] ?? null) }}</td>
+                    <td class="border border-[#999] px-[3px] py-[2px] align-top text-center">{{ $nilaiSel($baris['asiEksklusif'] ?? null) }}</td>
+                    <td class="border border-[#999] px-[3px] py-[2px] align-top text-left">{{ $keterangan !== '' ? e($keterangan) : '-' }}</td>
+                    <td class="border border-[#999] px-[3px] py-[2px] align-top text-center">{{ $nilaiSel($baris['petugas'] ?? null) }}</td>
                 </tr>
             @empty
-                <tr><td colspan="15">Belum ada baris observasi nifas.</td></tr>
+                <tr><td colspan="15" class="border border-[#999] px-[3px] py-[2px] align-top text-center">Belum ada baris observasi nifas.</td></tr>
             @endforelse
         </tbody>
     </table>

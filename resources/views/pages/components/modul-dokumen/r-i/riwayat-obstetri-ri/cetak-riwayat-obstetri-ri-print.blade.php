@@ -31,61 +31,53 @@
         $nilaiBaris = fn(array $baris, string $field) => filled($baris[$field] ?? null) ? e($baris[$field]) : '-';
     @endphp
 
-    <style>
-        .ro-sec { font-size:11px; font-weight:bold; background:#eef2ee; padding:3px 6px; border:1px solid #999; margin-top:6px; }
-        table.ro { width:100%; border-collapse:collapse; font-size:10px; margin-top:4px; }
-        table.ro th, table.ro td { border:1px solid #999; padding:2px 5px; vertical-align:top; }
-        table.ro th { background:#f0f4f0; text-align:center; }
-        table.ro td.c { text-align:center; }
-    </style>
-
     {{-- Header G-P-A --}}
-    <div class="ro-sec">STATUS OBSTETRI</div>
-    <table class="ro">
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">STATUS OBSTETRI</div>
+    <table class="w-full border-collapse text-[10px] mt-1">
         <tr>
-            <td style="width:16%; background:#f7f7f7;"><b>Gravida (G)</b></td><td style="width:17%;">{{ $nilaiForm('gravida') }}</td>
-            <td style="width:16%; background:#f7f7f7;"><b>Para (P)</b></td><td style="width:17%;">{{ $nilaiForm('para') }}</td>
-            <td style="width:16%; background:#f7f7f7;"><b>Abortus (A)</b></td><td style="width:18%;">{{ $nilaiForm('abortus') }}</td>
+            <td class="w-[16%] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top"><b>Gravida (G)</b></td><td class="w-[17%] border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('gravida') }}</td>
+            <td class="w-[16%] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top"><b>Para (P)</b></td><td class="w-[17%] border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('para') }}</td>
+            <td class="w-[16%] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top"><b>Abortus (A)</b></td><td class="w-[18%] border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiForm('abortus') }}</td>
         </tr>
     </table>
 
     {{-- Tabel Riwayat Kehamilan Lalu --}}
-    <div class="ro-sec">RIWAYAT KEHAMILAN / PERSALINAN YANG LALU</div>
-    <table class="ro">
+    <div class="text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5">RIWAYAT KEHAMILAN / PERSALINAN YANG LALU</div>
+    <table class="w-full border-collapse text-[10px] mt-1">
         <thead>
             <tr>
-                <th style="width:3%;">No</th>
-                <th style="width:8%;">Kehamilan</th>
-                <th style="width:8%;">Cara</th>
-                <th style="width:7%;">Tempat</th>
-                <th style="width:8%;">Penolong</th>
-                <th style="width:13%;">Komplikasi</th>
-                <th style="width:5%;">JK</th>
-                <th style="width:7%;">Keadaan</th>
-                <th style="width:7%;">Umur</th>
-                <th style="width:7%;">BBL (gr)</th>
-                <th style="width:14%;">Keterangan</th>
-                <th style="width:13%;">Petugas</th>
+                <th class="w-[3%] bg-[#f0f4f0] text-center border border-[#999] px-[5px] py-[2px] align-top">No</th>
+                <th class="w-[8%] bg-[#f0f4f0] text-center border border-[#999] px-[5px] py-[2px] align-top">Kehamilan</th>
+                <th class="w-[8%] bg-[#f0f4f0] text-center border border-[#999] px-[5px] py-[2px] align-top">Cara</th>
+                <th class="w-[7%] bg-[#f0f4f0] text-center border border-[#999] px-[5px] py-[2px] align-top">Tempat</th>
+                <th class="w-[8%] bg-[#f0f4f0] text-center border border-[#999] px-[5px] py-[2px] align-top">Penolong</th>
+                <th class="w-[13%] bg-[#f0f4f0] text-center border border-[#999] px-[5px] py-[2px] align-top">Komplikasi</th>
+                <th class="w-[5%] bg-[#f0f4f0] text-center border border-[#999] px-[5px] py-[2px] align-top">JK</th>
+                <th class="w-[7%] bg-[#f0f4f0] text-center border border-[#999] px-[5px] py-[2px] align-top">Keadaan</th>
+                <th class="w-[7%] bg-[#f0f4f0] text-center border border-[#999] px-[5px] py-[2px] align-top">Umur</th>
+                <th class="w-[7%] bg-[#f0f4f0] text-center border border-[#999] px-[5px] py-[2px] align-top">BBL (gr)</th>
+                <th class="w-[14%] bg-[#f0f4f0] text-center border border-[#999] px-[5px] py-[2px] align-top">Keterangan</th>
+                <th class="w-[13%] bg-[#f0f4f0] text-center border border-[#999] px-[5px] py-[2px] align-top">Petugas</th>
             </tr>
         </thead>
         <tbody>
             @forelse ($rows as $nomor => $baris)
                 <tr>
-                    <td class="c">{{ $nomor + 1 }}</td>
-                    <td>{{ $nilaiBaris($baris, 'kehamilan') }}</td>
-                    <td>{{ $nilaiBaris($baris, 'caraPersalinan') }}</td>
-                    <td>{{ $nilaiBaris($baris, 'tempat') }}</td>
-                    <td>{{ $nilaiBaris($baris, 'penolong') }}</td>
-                    <td>{{ $nilaiBaris($baris, 'komplikasi') }}</td>
-                    <td class="c">{{ $nilaiBaris($baris, 'jenisKelaminAnak') }}</td>
-                    <td class="c">{{ $nilaiBaris($baris, 'keadaanAnak') }}</td>
-                    <td>{{ $nilaiBaris($baris, 'umurAnak') }}</td>
-                    <td class="c">{{ $nilaiBaris($baris, 'bbl') }}</td>
-                    <td>{{ $nilaiBaris($baris, 'keterangan') }}</td>
-                    <td>{{ $nilaiBaris($baris, 'petugas') }}</td>
+                    <td class="text-center border border-[#999] px-[5px] py-[2px] align-top">{{ $nomor + 1 }}</td>
+                    <td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiBaris($baris, 'kehamilan') }}</td>
+                    <td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiBaris($baris, 'caraPersalinan') }}</td>
+                    <td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiBaris($baris, 'tempat') }}</td>
+                    <td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiBaris($baris, 'penolong') }}</td>
+                    <td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiBaris($baris, 'komplikasi') }}</td>
+                    <td class="text-center border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiBaris($baris, 'jenisKelaminAnak') }}</td>
+                    <td class="text-center border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiBaris($baris, 'keadaanAnak') }}</td>
+                    <td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiBaris($baris, 'umurAnak') }}</td>
+                    <td class="text-center border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiBaris($baris, 'bbl') }}</td>
+                    <td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiBaris($baris, 'keterangan') }}</td>
+                    <td class="border border-[#999] px-[5px] py-[2px] align-top">{{ $nilaiBaris($baris, 'petugas') }}</td>
                 </tr>
             @empty
-                <tr><td colspan="12" class="c">Tidak ada riwayat kehamilan sebelumnya.</td></tr>
+                <tr><td colspan="12" class="text-center border border-[#999] px-[5px] py-[2px] align-top">Tidak ada riwayat kehamilan sebelumnya.</td></tr>
             @endforelse
         </tbody>
     </table>
