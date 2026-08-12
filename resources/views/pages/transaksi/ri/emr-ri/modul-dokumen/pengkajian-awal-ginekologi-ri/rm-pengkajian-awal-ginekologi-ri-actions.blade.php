@@ -237,9 +237,9 @@ new class extends Component {
      =============================== */
     // Entri dianggap FINAL/terkunci bila flag finalized true; entri lama (tanpa flag) yang sudah
     // ada TTD (nama penanda) dianggap final (kompatibilitas data lama).
-    public function entryIsFinal(array $e): bool
+    public function entryIsFinal(array $entri): bool
     {
-        return array_key_exists('finalized', $e) ? (bool) $e['finalized'] : !empty($e['ttd']);
+        return array_key_exists('finalized', $entri) ? (bool) $entri['finalized'] : !empty($entri['ttd']);
     }
 
     // Susun array entri dari state form. $key = createdAt (kunci stabil); $finalized = status kunci.
@@ -290,7 +290,7 @@ new class extends Component {
             $this->dataDaftarRi = $fresh;
             $this->entriList = $fresh[$this->jsonKey];
 
-            $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Pengkajian Awal Ginekologi — ' . ($entry['tglJamPengkajian'] ?: '-') . ' (' . $key . ')', 'MR');
+            $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Pengkajian Awal Ginekologi — ' . (($entry['tglJamPengkajian'] ?? '') ?: '-') . ' (' . $key . ')', 'MR');
         });
     }
 
@@ -521,7 +521,7 @@ new class extends Component {
 
                 $fresh = $this->findDataRI($this->riHdrNo) ?: [];
                 $fresh[$this->jsonKey] = collect($fresh[$this->jsonKey] ?? [])
-                    ->reject(fn($e) => ($e['createdAt'] ?? null) === $createdAt)
+                    ->reject(fn($entri) => ($entri['createdAt'] ?? null) === $createdAt)
                     ->values()
                     ->all();
 
@@ -646,15 +646,15 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (array_reverse($entriList) as $e)
+                        @foreach (array_reverse($entriList) as $entri)
                             <tr class="border-b border-hairline dark:border-gray-700">
-                                <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ $e['tglJamPengkajian'] ?: ($e['createdAt'] ?? '-') }}</td>
-                                <td class="px-3 py-2 text-muted dark:text-gray-400">{{ \Illuminate\Support\Str::limit($e['diagnosa'] ?? '', 60) ?: '-' }}</td>
+                                <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ ($entri['tglJamPengkajian'] ?? '') ?: ($entri['createdAt'] ?? '-') }}</td>
+                                <td class="px-3 py-2 text-muted dark:text-gray-400">{{ \Illuminate\Support\Str::limit($entri['diagnosa'] ?? '', 60) ?: '-' }}</td>
                                 <td class="px-3 py-2 text-muted dark:text-gray-400">
-                                    @if (!empty($e['ttd'])){{ $e['ttd'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
+                                    @if (!empty($entri['ttd'])){{ $entri['ttd'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
                                 </td>
                                 <td class="px-3 py-2 text-center">
-                                    @if ($this->entryIsFinal($e))
+                                    @if ($this->entryIsFinal($entri))
                                         <x-badge variant="info">Terkunci</x-badge>
                                     @else
                                         <x-badge variant="warning">Draft</x-badge>
@@ -1002,7 +1002,7 @@ new class extends Component {
                                                     </svg>
                                                 </td>
                                                 <td class="px-4 py-3 font-semibold align-middle text-ink dark:text-gray-100">
-                                                    {{ $entry['tglJamPengkajian'] ?: ($rowKey ?: '-') }}
+                                                    {{ ($entry['tglJamPengkajian'] ?? '') ?: ($rowKey ?: '-') }}
                                                     <div class="text-xs font-normal text-muted-soft">{{ $rowKey }}</div>
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
@@ -1090,39 +1090,39 @@ new class extends Component {
                                                     <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tgl / Jam Pengkajian</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['tglJamPengkajian'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['tglJamPengkajian'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Cara Masuk</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['caraMasuk'] ?: '-' }}{{ !empty($entry['caraMasukRujukan']) ? ' — ' . $entry['caraMasukRujukan'] : '' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['caraMasuk'] ?? '') ?: '-' }}{{ !empty($entry['caraMasukRujukan']) ? ' — ' . $entry['caraMasukRujukan'] : '' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Pekerjaan / Pendidikan</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['pekerjaan'] ?: '-' }} / {{ $entry['pendidikan'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['pekerjaan'] ?? '') ?: '-' }} / {{ ($entry['pendidikan'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Agama / Suku</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['agama'] ?: '-' }} / {{ $entry['suku'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['agama'] ?? '') ?: '-' }} / {{ ($entry['suku'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Psiko-sosio-spiritual</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['psikososial'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['psikososial'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Ekonomi</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['ekonomi'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['ekonomi'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Suami / PJ</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['namaSuami'] ?: '-' }}{{ !empty($entry['umurSuami']) ? ' (' . $entry['umurSuami'] . ' th)' : '' }} — {{ $entry['pekerjaanSuami'] ?: '-' }}, {{ $entry['pendidikanSuami'] ?: '-' }}, {{ $entry['agamaSuami'] ?: '-' }}, {{ $entry['sukuSuami'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['namaSuami'] ?? '') ?: '-' }}{{ !empty($entry['umurSuami']) ? ' (' . $entry['umurSuami'] . ' th)' : '' }} — {{ ($entry['pekerjaanSuami'] ?? '') ?: '-' }}, {{ ($entry['pendidikanSuami'] ?? '') ?: '-' }}, {{ ($entry['agamaSuami'] ?? '') ?: '-' }}, {{ ($entry['sukuSuami'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Alergi Obat</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['alergiObat'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['alergiObat'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Riwayat Penggunaan Obat</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['riwayatObat'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['riwayatObat'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div class="md:col-span-2">
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Penyakit Penting</dt>
@@ -1130,111 +1130,111 @@ new class extends Component {
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">HPHT</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['hpht'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['hpht'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Menarche / Menopause</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['menarcheUmur'] ?: '-' }} / {{ $entry['menopause'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['menarcheUmur'] ?? '') ?: '-' }} / {{ ($entry['menopause'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Menikah (kali / lama)</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['menikahKali'] ?: '-' }} / {{ $entry['menikahLama'] ?: '-' }} th</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['menikahKali'] ?? '') ?: '-' }} / {{ ($entry['menikahLama'] ?? '') ?: '-' }} th</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Anak Hidup / Mati / Terkecil</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['anakHidup'] ?: '-' }} / {{ $entry['anakMati'] ?: '-' }} / {{ $entry['anakTerkecilUmur'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['anakHidup'] ?? '') ?: '-' }} / {{ ($entry['anakMati'] ?? '') ?: '-' }} / {{ ($entry['anakTerkecilUmur'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Kontrasepsi</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['kontrasepsi'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['kontrasepsi'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Riwayat Haid</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['riwayatHaid'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['riwayatHaid'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Riwayat Keputihan</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['riwayatKeputihan'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['riwayatKeputihan'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div class="md:col-span-2">
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Riwayat Persalinan Lalu</dt>
-                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['riwayatPersalinanLalu'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['riwayatPersalinanLalu'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div class="md:col-span-2">
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Keluhan Utama</dt>
-                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['keluhanUtama'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['keluhanUtama'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div class="md:col-span-2">
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Riwayat Penyakit Sekarang</dt>
-                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['riwayatPenyakitSekarang'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['riwayatPenyakitSekarang'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Keadaan Umum</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['keadaanUmum'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['keadaanUmum'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tanda Vital</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">TD {{ filled($entry['sistolik'] ?? '') || filled($entry['diastolik'] ?? '') ? ($entry['sistolik'] ?? '-') . '/' . ($entry['diastolik'] ?? '-') : (($entry['td'] ?? '') ?: '-') }} · N {{ $entry['nadi'] ?: '-' }} · RR {{ $entry['respirasi'] ?: '-' }} · S(R) {{ $entry['suhuRectal'] ?: '-' }} · S(Ax) {{ $entry['suhuAxiler'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">TD {{ filled($entry['sistolik'] ?? '') || filled($entry['diastolik'] ?? '') ? ($entry['sistolik'] ?? '-') . '/' . ($entry['diastolik'] ?? '-') : (($entry['td'] ?? '') ?: '-') }} · N {{ ($entry['nadi'] ?? '') ?: '-' }} · RR {{ ($entry['respirasi'] ?? '') ?: '-' }} · S(R) {{ ($entry['suhuRectal'] ?? '') ?: '-' }} · S(Ax) {{ ($entry['suhuAxiler'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Conjungtiva / Edema</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['conjungtiva'] ?: '-' }} / {{ $entry['edema'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['conjungtiva'] ?? '') ?: '-' }} / {{ ($entry['edema'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Cor / Pulmo</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['cor'] ?: '-' }} / {{ $entry['pulmo'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['cor'] ?? '') ?: '-' }} / {{ ($entry['pulmo'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Jenis Pemeriksaan Dalam</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['jenisPemeriksaan'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['jenisPemeriksaan'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Vulva / Vagina</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['vulvaVagina'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['vulvaVagina'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Corpus Uteri / Portio</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['corpusUteri'] ?: '-' }} / {{ $entry['portio'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['corpusUteri'] ?? '') ?: '-' }} / {{ ($entry['portio'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Adnexa Ka / Ki</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['adnexaKanan'] ?: '-' }} / {{ $entry['adnexaKiri'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['adnexaKanan'] ?? '') ?: '-' }} / {{ ($entry['adnexaKiri'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Cavum Douglasi</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['cavumDouglasi'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['cavumDouglasi'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Skala Nyeri / Risiko Jatuh</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['skalaNyeri'] ?: '-' }} / {{ $entry['risikoJatuh'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['skalaNyeri'] ?? '') ?: '-' }} / {{ ($entry['risikoJatuh'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Skrining Gizi / Fungsional</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['skriningGizi'] ?: '-' }} / {{ $entry['pengkajianFungsional'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['skriningGizi'] ?? '') ?: '-' }} / {{ ($entry['pengkajianFungsional'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div class="md:col-span-2">
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Kebutuhan Edukasi</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['kebutuhanEdukasi'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['kebutuhanEdukasi'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div class="md:col-span-2">
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Abdomen (Dokter)</dt>
-                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['abdomen'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['abdomen'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div class="md:col-span-2">
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Genitalia (Dokter)</dt>
-                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['genitalia'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['genitalia'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div class="md:col-span-2">
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Diagnosa</dt>
-                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['diagnosa'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['diagnosa'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div class="md:col-span-2">
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Rencana Tindakan / Terapi</dt>
-                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['rencanaTindakan'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['rencanaTindakan'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div class="md:col-span-2">
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Discharge Planning</dt>
-                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['dischargePlanning'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ ($entry['dischargePlanning'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Petugas (TTD)</dt>

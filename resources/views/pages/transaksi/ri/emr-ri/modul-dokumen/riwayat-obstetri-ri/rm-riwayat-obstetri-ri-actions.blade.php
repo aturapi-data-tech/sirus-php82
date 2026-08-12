@@ -245,9 +245,9 @@ new class extends Component {
      =============================== */
     // Entri dianggap FINAL/terkunci bila flag finalized true; entri lama (tanpa flag) yang sudah
     // ada TTD (nama penanda) dianggap final (kompatibilitas data lama).
-    public function entryIsFinal(array $e): bool
+    public function entryIsFinal(array $entri): bool
     {
-        return array_key_exists('finalized', $e) ? (bool) $e['finalized'] : !empty($e['ttd']);
+        return array_key_exists('finalized', $entri) ? (bool) $entri['finalized'] : !empty($entri['ttd']);
     }
 
     // Susun array entri dari state form. $key = createdAt (kunci stabil); $finalized = status kunci.
@@ -307,7 +307,7 @@ new class extends Component {
             $this->dataDaftarRi = $fresh;
             $this->entriList = $fresh[$this->jsonKey];
 
-            $gpa = 'G' . ($entry['gravida'] ?: '-') . 'P' . ($entry['para'] ?: '-') . 'A' . ($entry['abortus'] ?: '-');
+            $gpa = 'G' . (($entry['gravida'] ?? '') ?: '-') . 'P' . (($entry['para'] ?? '') ?: '-') . 'A' . (($entry['abortus'] ?? '') ?: '-');
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Riwayat Obstetri — ' . $gpa . ' (' . $key . ')', 'MR');
         });
     }
@@ -543,7 +543,7 @@ new class extends Component {
 
                 $fresh = $this->findDataRI($this->riHdrNo) ?: [];
                 $fresh[$this->jsonKey] = collect($fresh[$this->jsonKey] ?? [])
-                    ->reject(fn($e) => ($e['createdAt'] ?? null) === $createdAt)
+                    ->reject(fn($entri) => ($entri['createdAt'] ?? null) === $createdAt)
                     ->values()
                     ->all();
 
@@ -668,15 +668,15 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (array_reverse($entriList) as $e)
+                        @foreach (array_reverse($entriList) as $entri)
                             <tr class="border-b border-hairline dark:border-gray-700">
-                                <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ $e['createdAt'] ?? '-' }}</td>
-                                <td class="px-3 py-2 text-muted dark:text-gray-400">G{{ $e['gravida'] ?: '-' }}P{{ $e['para'] ?: '-' }}A{{ $e['abortus'] ?: '-' }}</td>
+                                <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ $entri['createdAt'] ?? '-' }}</td>
+                                <td class="px-3 py-2 text-muted dark:text-gray-400">G{{ ($entri['gravida'] ?? '') ?: '-' }}P{{ ($entri['para'] ?? '') ?: '-' }}A{{ ($entri['abortus'] ?? '') ?: '-' }}</td>
                                 <td class="px-3 py-2 text-muted dark:text-gray-400">
-                                    @if (!empty($e['ttd'])){{ $e['ttd'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
+                                    @if (!empty($entri['ttd'])){{ $entri['ttd'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
                                 </td>
                                 <td class="px-3 py-2 text-center">
-                                    @if ($this->entryIsFinal($e))
+                                    @if ($this->entryIsFinal($entri))
                                         <x-badge variant="info">Terkunci</x-badge>
                                     @else
                                         <x-badge variant="warning">Draft</x-badge>
@@ -973,7 +973,7 @@ new class extends Component {
                                                     {{ $rowKey ?: '-' }}
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
-                                                    G{{ $entry['gravida'] ?: '-' }}P{{ $entry['para'] ?: '-' }}A{{ $entry['abortus'] ?: '-' }}
+                                                    G{{ ($entry['gravida'] ?? '') ?: '-' }}P{{ ($entry['para'] ?? '') ?: '-' }}A{{ ($entry['abortus'] ?? '') ?: '-' }}
                                                     <span class="ml-1 text-muted-soft">· {{ count($entry['rows'] ?? []) }} kehamilan</span>
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
@@ -1058,15 +1058,15 @@ new class extends Component {
                                                     <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Gravida (G)</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['gravida'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['gravida'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Para (P)</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['para'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['para'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Abortus (A)</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['abortus'] ?: '-' }}</dd>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['abortus'] ?? '') ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Petugas (TTD)</dt>
