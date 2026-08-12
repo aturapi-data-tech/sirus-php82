@@ -124,7 +124,8 @@
                     Caput Suksedanium: {{ $nilaiBaris($baris, 'caputSuksedanium') }} &middot;
                     Cephal Hematoma: {{ $nilaiBaris($baris, 'cephalHematoma') }} &middot;
                     Atresia Ani: {{ $nilaiBaris($baris, 'atresiaAni') }} &middot;
-                    Lain-lain: {{ $nilaiBaris($baris, 'lain') }}
+                    Lain-lain: {{ $nilaiBaris($baris, 'lain') }} &middot;
+                    Petugas: {{ $nilaiBaris($baris, 'petugas') }}
                 </td>
             </tr>
         @empty

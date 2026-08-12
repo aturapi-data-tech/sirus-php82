@@ -55,35 +55,37 @@
         <thead>
             <tr>
                 <th style="width:3%;">No</th>
-                <th style="width:9%;">Kehamilan</th>
-                <th style="width:9%;">Cara</th>
-                <th style="width:8%;">Tempat</th>
-                <th style="width:9%;">Penolong</th>
-                <th style="width:15%;">Komplikasi</th>
-                <th style="width:6%;">JK</th>
-                <th style="width:8%;">Keadaan</th>
-                <th style="width:8%;">Umur</th>
-                <th style="width:8%;">BBL (gr)</th>
-                <th style="width:15%;">Keterangan</th>
+                <th style="width:8%;">Kehamilan</th>
+                <th style="width:8%;">Cara</th>
+                <th style="width:7%;">Tempat</th>
+                <th style="width:8%;">Penolong</th>
+                <th style="width:13%;">Komplikasi</th>
+                <th style="width:5%;">JK</th>
+                <th style="width:7%;">Keadaan</th>
+                <th style="width:7%;">Umur</th>
+                <th style="width:7%;">BBL (gr)</th>
+                <th style="width:14%;">Keterangan</th>
+                <th style="width:13%;">Petugas</th>
             </tr>
         </thead>
         <tbody>
-            @forelse ($rows as $nomor => $row)
+            @forelse ($rows as $nomor => $baris)
                 <tr>
                     <td class="c">{{ $nomor + 1 }}</td>
-                    <td>{{ $nilaiBaris($row, 'kehamilan') }}</td>
-                    <td>{{ $nilaiBaris($row, 'caraPersalinan') }}</td>
-                    <td>{{ $nilaiBaris($row, 'tempat') }}</td>
-                    <td>{{ $nilaiBaris($row, 'penolong') }}</td>
-                    <td>{{ $nilaiBaris($row, 'komplikasi') }}</td>
-                    <td class="c">{{ $nilaiBaris($row, 'jenisKelaminAnak') }}</td>
-                    <td class="c">{{ $nilaiBaris($row, 'keadaanAnak') }}</td>
-                    <td>{{ $nilaiBaris($row, 'umurAnak') }}</td>
-                    <td class="c">{{ $nilaiBaris($row, 'bbl') }}</td>
-                    <td>{{ $nilaiBaris($row, 'keterangan') }}</td>
+                    <td>{{ $nilaiBaris($baris, 'kehamilan') }}</td>
+                    <td>{{ $nilaiBaris($baris, 'caraPersalinan') }}</td>
+                    <td>{{ $nilaiBaris($baris, 'tempat') }}</td>
+                    <td>{{ $nilaiBaris($baris, 'penolong') }}</td>
+                    <td>{{ $nilaiBaris($baris, 'komplikasi') }}</td>
+                    <td class="c">{{ $nilaiBaris($baris, 'jenisKelaminAnak') }}</td>
+                    <td class="c">{{ $nilaiBaris($baris, 'keadaanAnak') }}</td>
+                    <td>{{ $nilaiBaris($baris, 'umurAnak') }}</td>
+                    <td class="c">{{ $nilaiBaris($baris, 'bbl') }}</td>
+                    <td>{{ $nilaiBaris($baris, 'keterangan') }}</td>
+                    <td>{{ $nilaiBaris($baris, 'petugas') }}</td>
                 </tr>
             @empty
-                <tr><td colspan="11" class="c">Tidak ada riwayat kehamilan sebelumnya.</td></tr>
+                <tr><td colspan="12" class="c">Tidak ada riwayat kehamilan sebelumnya.</td></tr>
             @endforelse
         </tbody>
     </table>

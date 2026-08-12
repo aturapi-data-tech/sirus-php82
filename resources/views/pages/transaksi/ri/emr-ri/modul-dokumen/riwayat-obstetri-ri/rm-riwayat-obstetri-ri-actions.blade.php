@@ -132,6 +132,9 @@ new class extends Component {
             'umurAnak'         => '',
             'bbl'              => '',    // gram
             'keterangan'       => '',
+            // Petugas penambah baris — di-stempel otomatis saat Tambah (pola Obat & Cairan RI).
+            'petugas'          => '',   // myuser_name saat baris ditambahkan
+            'petugasCode'      => '',   // myuser_code saat baris ditambahkan
         ];
     }
 
@@ -224,6 +227,8 @@ new class extends Component {
             'umurAnak' => $this->barisUmurAnak,
             'bbl' => $this->barisBbl,
             'keterangan' => $this->barisKeterangan,
+            'petugas' => auth()->user()->myuser_name ?? '',
+            'petugasCode' => auth()->user()->myuser_code ?? '',
         ]);
         $this->newForm['rows'] = $daftarBaris;
 
@@ -776,124 +781,102 @@ new class extends Component {
 
                         {{-- 2. Tabel Riwayat Kehamilan Lalu — isi field di atas, klik Tambah, hasil masuk tabel --}}
                         <x-border-form title="2. Riwayat Kehamilan / Persalinan Yang Lalu">
-                            <div class="space-y-3">
-                                @if (!$formReadOnly)
-                                    <div class="grid grid-cols-12 gap-2">
-                                        <div class="col-span-12 sm:col-span-3">
-                                            <x-input-label value="Kehamilan" :required="true" class="truncate whitespace-nowrap" />
-                                            <x-select-input wire:model="barisKehamilan" :error="$errors->has('barisKehamilan')" class="w-full mt-1">
-                                                <option value="">— pilih —</option>
-                                                <option value="Aterm">Aterm</option>
-                                                <option value="Prematur">Prematur</option>
-                                                <option value="Imatur">Imatur</option>
-                                                <option value="Abortus">Abortus</option>
-                                            </x-select-input>
-                                            <x-input-error :messages="$errors->get('barisKehamilan')" class="mt-1" />
-                                        </div>
-                                        <div class="col-span-12 sm:col-span-3">
-                                            <x-input-label value="Cara Persalinan" class="truncate whitespace-nowrap" />
-                                            <x-select-input wire:model="barisCaraPersalinan" :error="$errors->has('barisCaraPersalinan')" class="w-full mt-1">
-                                                <option value="">— pilih —</option>
-                                                <option value="Spontan">Spontan</option>
-                                                <option value="Tindakan">Tindakan</option>
-                                                <option value="Operasi">Operasi</option>
-                                            </x-select-input>
-                                            <x-input-error :messages="$errors->get('barisCaraPersalinan')" class="mt-1" />
-                                        </div>
-                                        <div class="col-span-12 sm:col-span-3">
-                                            <x-input-label value="Tempat" class="truncate whitespace-nowrap" />
-                                            <x-select-input wire:model="barisTempat" :error="$errors->has('barisTempat')" class="w-full mt-1">
-                                                <option value="">— pilih —</option>
-                                                <option value="Rumah">Rumah</option>
-                                                <option value="PKM">PKM</option>
-                                                <option value="Klinik">Klinik</option>
-                                                <option value="RS">RS</option>
-                                            </x-select-input>
-                                            <x-input-error :messages="$errors->get('barisTempat')" class="mt-1" />
-                                        </div>
-                                        <div class="col-span-12 sm:col-span-3">
-                                            <x-input-label value="Penolong" class="truncate whitespace-nowrap" />
-                                            <x-select-input wire:model="barisPenolong" :error="$errors->has('barisPenolong')" class="w-full mt-1">
-                                                <option value="">— pilih —</option>
-                                                <option value="Dukun">Dukun</option>
-                                                <option value="Bidan">Bidan</option>
-                                                <option value="Perawat">Perawat</option>
-                                                <option value="Dokter">Dokter</option>
-                                                <option value="Lain">Lain</option>
-                                            </x-select-input>
-                                            <x-input-error :messages="$errors->get('barisPenolong')" class="mt-1" />
-                                        </div>
-                                        <div class="col-span-12 sm:col-span-4">
-                                            <x-input-label value="Komplikasi" class="truncate whitespace-nowrap" />
-                                            <x-text-input wire:model="barisKomplikasi" wire:keydown.enter.prevent="tambahBaris" placeholder="Perdarahan, dll." :error="$errors->has('barisKomplikasi')" class="w-full px-2 mt-1" />
-                                            <x-input-error :messages="$errors->get('barisKomplikasi')" class="mt-1" />
-                                        </div>
-                                        <div class="col-span-6 sm:col-span-2">
-                                            <x-input-label value="JK Anak" class="truncate whitespace-nowrap" />
-                                            <x-select-input wire:model="barisJenisKelaminAnak" :error="$errors->has('barisJenisKelaminAnak')" class="w-full mt-1">
-                                                <option value="">— pilih —</option>
-                                                <option value="L">L</option>
-                                                <option value="P">P</option>
-                                            </x-select-input>
-                                            <x-input-error :messages="$errors->get('barisJenisKelaminAnak')" class="mt-1" />
-                                        </div>
-                                        <div class="col-span-6 sm:col-span-2">
-                                            <x-input-label value="Keadaan" class="truncate whitespace-nowrap" />
-                                            <x-select-input wire:model="barisKeadaanAnak" :error="$errors->has('barisKeadaanAnak')" class="w-full mt-1">
-                                                <option value="">— pilih —</option>
-                                                <option value="Hidup">Hidup</option>
-                                                <option value="Mati">Mati</option>
-                                            </x-select-input>
-                                            <x-input-error :messages="$errors->get('barisKeadaanAnak')" class="mt-1" />
-                                        </div>
-                                        <div class="col-span-6 sm:col-span-2">
-                                            <x-input-label value="Umur Anak" class="truncate whitespace-nowrap" />
-                                            <x-text-input wire:model="barisUmurAnak" wire:keydown.enter.prevent="tambahBaris" placeholder="th/bl" :error="$errors->has('barisUmurAnak')" class="w-full px-2 mt-1" />
-                                            <x-input-error :messages="$errors->get('barisUmurAnak')" class="mt-1" />
-                                        </div>
-                                        <div class="col-span-6 sm:col-span-2">
-                                            <x-input-label value="BBL (gr)" class="truncate whitespace-nowrap" />
-                                            <x-text-input type="number" wire:model="barisBbl" wire:keydown.enter.prevent="tambahBaris" placeholder="3000" :error="$errors->has('barisBbl')" class="w-full px-2 mt-1" />
-                                            <x-input-error :messages="$errors->get('barisBbl')" class="mt-1" />
-                                        </div>
-                                        <div class="col-span-12">
-                                            <x-input-label value="Keterangan" class="truncate whitespace-nowrap" />
-                                            <x-text-input wire:model="barisKeterangan" wire:keydown.enter.prevent="tambahBaris" placeholder="Keterangan tambahan" :error="$errors->has('barisKeterangan')" class="w-full px-2 mt-1" />
-                                            <x-input-error :messages="$errors->get('barisKeterangan')" class="mt-1" />
-                                        </div>
-                                    </div>
-
-                                    <x-primary-button type="button" wire:click="tambahBaris" wire:loading.attr="disabled" wire:target="tambahBaris" class="justify-center gap-1.5 w-full">
-                                        <span wire:loading.remove wire:target="tambahBaris" class="flex items-center gap-1.5">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-                                            Tambah
-                                        </span>
-                                        <span wire:loading wire:target="tambahBaris" class="flex items-center gap-1.5"><x-loading class="w-4 h-4" /> Menambahkan...</span>
-                                    </x-primary-button>
-                                @endif
-
+                            <div class="space-y-2">
                                 <div class="overflow-x-auto bg-canvas border rounded-2xl border-hairline dark:border-gray-700">
-                                    <table class="ds-table">
+                                    <table class="ds-table min-w-[1280px]">
                                         <thead>
                                             <tr>
                                                 <th class="ds-c w-10">No</th>
-                                                <th>Kehamilan</th>
-                                                <th>Cara Persalinan</th>
-                                                <th>Tempat</th>
-                                                <th>Penolong</th>
-                                                <th>Komplikasi</th>
-                                                <th>JK Anak</th>
-                                                <th>Keadaan</th>
-                                                <th>Umur</th>
-                                                <th>BBL (gr)</th>
-                                                <th>Keterangan</th>
-                                                <th class="ds-c w-14">Aksi</th>
+                                                <th class="w-32">Kehamilan</th>
+                                                <th class="w-36">Cara Persalinan</th>
+                                                <th class="w-28">Tempat</th>
+                                                <th class="w-32">Penolong</th>
+                                                <th class="w-48">Komplikasi</th>
+                                                <th class="w-20">JK Anak</th>
+                                                <th class="w-28">Keadaan</th>
+                                                <th class="w-24">Umur</th>
+                                                <th class="w-24">BBL (gr)</th>
+                                                <th class="w-56">Keterangan</th>
+                                                <th class="w-36">Petugas</th>
+                                                <th class="ds-c w-24">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @forelse ($newForm['rows'] ?? [] as $nomorBaris => $baris)
-                                                <tr wire:key="ro-row-{{ $nomorBaris }}">
-                                                    <td class="ds-c ds-td-meta">{{ $nomorBaris + 1 }}</td>
+                                            @if (!$formReadOnly)
+                                                {{-- Baris ENTRI: sejajar kolom tabel, sekali Tambah langsung masuk daftar --}}
+                                                <tr class="align-top bg-surface-soft/70 dark:bg-gray-800/40">
+                                                    <td class="ds-c ds-td-meta">+</td>
+                                                    <td>
+                                                        <x-select-input wire:model="barisKehamilan" :error="$errors->has('barisKehamilan')" class="w-full px-1">
+                                                            <option value="">— pilih —</option>
+                                                            <option value="Aterm">Aterm</option>
+                                                            <option value="Prematur">Prematur</option>
+                                                            <option value="Imatur">Imatur</option>
+                                                            <option value="Abortus">Abortus</option>
+                                                        </x-select-input>
+                                                        <x-input-error :messages="$errors->get('barisKehamilan')" class="mt-1" />
+                                                    </td>
+                                                    <td>
+                                                        <x-select-input wire:model="barisCaraPersalinan" :error="$errors->has('barisCaraPersalinan')" class="w-full px-1">
+                                                            <option value="">— pilih —</option>
+                                                            <option value="Spontan">Spontan</option>
+                                                            <option value="Tindakan">Tindakan</option>
+                                                            <option value="Operasi">Operasi</option>
+                                                        </x-select-input>
+                                                    </td>
+                                                    <td>
+                                                        <x-select-input wire:model="barisTempat" :error="$errors->has('barisTempat')" class="w-full px-1">
+                                                            <option value="">— pilih —</option>
+                                                            <option value="Rumah">Rumah</option>
+                                                            <option value="PKM">PKM</option>
+                                                            <option value="Klinik">Klinik</option>
+                                                            <option value="RS">RS</option>
+                                                        </x-select-input>
+                                                    </td>
+                                                    <td>
+                                                        <x-select-input wire:model="barisPenolong" :error="$errors->has('barisPenolong')" class="w-full px-1">
+                                                            <option value="">— pilih —</option>
+                                                            <option value="Dukun">Dukun</option>
+                                                            <option value="Bidan">Bidan</option>
+                                                            <option value="Perawat">Perawat</option>
+                                                            <option value="Dokter">Dokter</option>
+                                                            <option value="Lain">Lain</option>
+                                                        </x-select-input>
+                                                    </td>
+                                                    <td><x-text-input wire:model="barisKomplikasi" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisKomplikasi')" class="w-full px-2" placeholder="Perdarahan, dll." /></td>
+                                                    <td>
+                                                        <x-select-input wire:model="barisJenisKelaminAnak" :error="$errors->has('barisJenisKelaminAnak')" class="w-full px-1">
+                                                            <option value="">—</option>
+                                                            <option value="L">L</option>
+                                                            <option value="P">P</option>
+                                                        </x-select-input>
+                                                    </td>
+                                                    <td>
+                                                        <x-select-input wire:model="barisKeadaanAnak" :error="$errors->has('barisKeadaanAnak')" class="w-full px-1">
+                                                            <option value="">— pilih —</option>
+                                                            <option value="Hidup">Hidup</option>
+                                                            <option value="Mati">Mati</option>
+                                                        </x-select-input>
+                                                    </td>
+                                                    <td><x-text-input wire:model="barisUmurAnak" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisUmurAnak')" class="w-full px-1" placeholder="th/bl" /></td>
+                                                    <td><x-text-input type="number" wire:model="barisBbl" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisBbl')" class="w-full px-1" placeholder="3000" /></td>
+                                                    <td><x-text-input wire:model="barisKeterangan" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisKeterangan')" class="w-full px-2" placeholder="Keterangan tambahan" /></td>
+                                                    <td class="ds-td-meta">{{ auth()->user()->myuser_name ?? '-' }}</td>
+                                                    <td class="ds-c">
+                                                        <x-primary-button type="button" wire:click="tambahBaris" wire:loading.attr="disabled" wire:target="tambahBaris" class="justify-center gap-1 w-full px-2 py-1.5 text-sm">
+                                                            <span wire:loading.remove wire:target="tambahBaris" class="flex items-center gap-1">
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                                                                Tambah
+                                                            </span>
+                                                            <span wire:loading wire:target="tambahBaris"><x-loading class="w-4 h-4" /></span>
+                                                        </x-primary-button>
+                                                    </td>
+                                                </tr>
+                                            @endif
+
+                                            @forelse ($newForm['rows'] ?? [] as $nomor => $baris)
+                                                <tr wire:key="ro-row-{{ $nomor }}">
+                                                    <td class="ds-c ds-td-meta">{{ $nomor + 1 }}</td>
                                                     <td class="ds-td-strong">{{ ($baris['kehamilan'] ?? '') ?: '-' }}</td>
                                                     <td>{{ ($baris['caraPersalinan'] ?? '') ?: '-' }}</td>
                                                     <td>{{ ($baris['tempat'] ?? '') ?: '-' }}</td>
@@ -904,10 +887,11 @@ new class extends Component {
                                                     <td>{{ ($baris['umurAnak'] ?? '') ?: '-' }}</td>
                                                     <td class="ds-c">{{ ($baris['bbl'] ?? '') ?: '-' }}</td>
                                                     <td>{{ ($baris['keterangan'] ?? '') ?: '-' }}</td>
+                                                    <td class="ds-td-meta">{{ ($baris['petugas'] ?? '') ?: '-' }}</td>
                                                     <td class="ds-c">
                                                         @if (!$formReadOnly)
-                                                            <x-confirm-button variant="danger-soft" :action="'hapusBaris(' . $nomorBaris . ')'"
-                                                                title="Hapus Baris" :message="'Yakin hapus riwayat kehamilan ke-' . ($nomorBaris + 1) . ' dari daftar?'"
+                                                            <x-confirm-button variant="danger-soft" :action="'hapusBaris(' . $nomor . ')'"
+                                                                title="Hapus Baris" :message="'Yakin hapus riwayat kehamilan ke-' . ($nomor + 1) . ' dari daftar?'"
                                                                 confirmText="Ya, hapus" cancelText="Batal" class="px-2 py-1">
                                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                             </x-confirm-button>
@@ -918,12 +902,15 @@ new class extends Component {
                                                 </tr>
                                             @empty
                                                 <tr>
-                                                    <td colspan="12" class="ds-c italic text-muted-soft">Belum ada riwayat kehamilan.</td>
+                                                    <td colspan="13" class="ds-c italic text-muted-soft">Belum ada riwayat kehamilan.</td>
                                                 </tr>
                                             @endforelse
                                         </tbody>
                                     </table>
                                 </div>
+                                @if (!$formReadOnly)
+                                    <p class="text-xs text-muted-soft">Isi baris paling atas lalu klik <strong>Tambah</strong> (atau tekan Enter). Petugas penambah baris ikut tercatat.</p>
+                                @endif
                             </div>
                         </x-border-form>
 
@@ -1098,6 +1085,7 @@ new class extends Component {
                                                                                     <th class="px-2 py-1.5 font-semibold">Umur</th>
                                                                                     <th class="px-2 py-1.5 font-semibold">BBL</th>
                                                                                     <th class="px-2 py-1.5 font-semibold">Keterangan</th>
+                                                                                    <th class="px-2 py-1.5 font-semibold">Petugas</th>
                                                                                 </tr>
                                                                             </thead>
                                                                             <tbody>
@@ -1114,6 +1102,7 @@ new class extends Component {
                                                                                         <td class="px-2 py-1">{{ ($barisRiwayat['umurAnak'] ?? '') ?: '-' }}</td>
                                                                                         <td class="px-2 py-1">{{ ($barisRiwayat['bbl'] ?? '') ?: '-' }}</td>
                                                                                         <td class="px-2 py-1">{{ ($barisRiwayat['keterangan'] ?? '') ?: '-' }}</td>
+                                                                                        <td class="px-2 py-1">{{ ($barisRiwayat['petugas'] ?? '') ?: '-' }}</td>
                                                                                     </tr>
                                                                                 @endforeach
                                                                             </tbody>
