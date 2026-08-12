@@ -914,7 +914,10 @@ new class extends Component {
                 {{-- ─── HEADER: Waktu, Sasaran & Kesediaan (satu baris) ─── --}}
                 @php $bersediaEdukasi = $this->bersediaEdukasi(); @endphp
                 <div class="grid grid-cols-1 gap-3 md:grid-cols-12">
-                    <div class="md:col-span-3">
+                    {{-- Lebar mengikuti isi: tanggal (19 karakter + tombol jam) dan nama
+                         pasien butuh ruang paling besar; dropdown hubungan & toggle
+                         kesediaan isinya pendek, cukup 2 kolom. --}}
+                    <div class="md:col-span-4">
                         <x-input-label value="Tanggal Edukasi *" />
                         <div class="flex items-end gap-2 mt-1">
                             <x-text-input wire:model="form.tglEdukasi" class="flex-1 font-mono"
@@ -924,7 +927,7 @@ new class extends Component {
                         </div>
                         <x-input-error :messages="$errors->get('form.tglEdukasi')" class="mt-1" />
                     </div>
-                    <div class="md:col-span-3">
+                    <div class="md:col-span-4">
                         <x-input-label value="Sasaran Edukasi (Penerima) *" />
                         <x-text-input wire:model.blur="form.sasaran.nama" class="w-full mt-1"
                             placeholder="Nama pasien/keluarga penerima edukasi"
@@ -932,20 +935,18 @@ new class extends Component {
                         <x-input-error :messages="$errors->get('form.sasaran.nama')" class="mt-1" />
                     </div>
                     <div class="md:col-span-2">
-                        <x-input-label value="Hubungan dengan Pasien *" />
+                        <x-input-label value="Hubungan *" />
                         <x-select-input wire:model.blur="form.sasaran.hubungan" class="w-full mt-1"
                             :error="$errors->has('form.sasaran.hubungan')" :disabled="$formReadOnly">
-                            <option value="">— Pilih hubungan —</option>
+                            <option value="">— Pilih —</option>
                             @foreach ($hubunganOptions as $nilai => $label)
                                 <option value="{{ $nilai }}">{{ $label }}</option>
                             @endforeach
                         </x-select-input>
                         <x-input-error :messages="$errors->get('form.sasaran.hubungan')" class="mt-1" />
                     </div>
-                    {{-- Kesediaan menerima informasi — label toggle dipendekkan agar
-                         muat sebaris; keterangan lengkap muncul di bawah saat menolak. --}}
-                    <div class="md:col-span-4">
-                        <x-input-label value="Bersedia Menerima Informasi" />
+                    <div class="md:col-span-2">
+                        <x-input-label value="Kesediaan" />
                         <div class="mt-1 px-3 py-2 border rounded-lg {{ $bersediaEdukasi ? 'border-hairline bg-canvas dark:bg-gray-800 dark:border-gray-700' : 'border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700' }}">
                             <x-toggle :current="$bersediaEdukasi ? '1' : '0'" trueValue="1" falseValue="0"
                                 wireClick="toggleBersediaEdukasi"
