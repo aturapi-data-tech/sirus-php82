@@ -173,6 +173,11 @@ new class extends Component {
             'mobilisasi'      => '',   // teks
             'keluhan'         => '',   // teks
             'asuhanTindakan'  => '',   // asuhan/tindakan kebidanan
+            // Petugas penambah baris — di-stempel otomatis saat Tambah (pola Obat & Cairan RI).
+            // Sifat lembar ini evaluatif: tiap titik-waktu bisa diisi petugas/shift berbeda,
+            // jadi TTD lembar saja tak cukup untuk menelusuri siapa mencatat apa.
+            'petugas'         => '',   // myuser_name saat baris ditambahkan
+            'petugasCode'     => '',   // myuser_code saat baris ditambahkan
         ];
     }
 
@@ -285,6 +290,8 @@ new class extends Component {
             'mobilisasi'      => $this->barisMobilisasi,
             'keluhan'         => $this->barisKeluhan,
             'asuhanTindakan'  => $this->barisAsuhanTindakan,
+            'petugas'         => auth()->user()->myuser_name ?? '',
+            'petugasCode'     => auth()->user()->myuser_code ?? '',
         ];
         $this->newForm['rows'] = $this->urutKronologis($rows);
 
@@ -886,138 +893,110 @@ new class extends Component {
 
                         {{-- Titik-waktu observasi — tabel entri (banyak baris per lembar) ala Obat Pre Medikasi --}}
                         <x-border-form title="Observasi Nifas (Titik-Waktu)">
-                            <div class="space-y-3">
-                                @if (!$formReadOnly)
-                                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                                        <div>
-                                            <x-input-label value="Tgl / Jam" :required="true" />
-                                            <div class="flex gap-1 mt-1">
-                                                <x-text-input wire:model="barisTglJam" placeholder="dd/mm/yyyy HH:mm:ss" :error="$errors->has('barisTglJam')" class="w-full" />
-                                                <x-now-button wire:click="setNow" />
-                                            </div>
-                                            <x-input-error :messages="$errors->get('barisTglJam')" class="mt-1" />
-                                        </div>
-                                        <div><x-input-label value="Sistolik (mmHg)" /><x-text-input type="number" wire:model="barisSistolik" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisSistolik')" class="w-full mt-1" placeholder="120" /><x-input-error :messages="$errors->get('barisSistolik')" class="mt-1" /></div>
-                                        <div><x-input-label value="Diastolik (mmHg)" /><x-text-input type="number" wire:model="barisDiastolik" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisDiastolik')" class="w-full mt-1" placeholder="80" /><x-input-error :messages="$errors->get('barisDiastolik')" class="mt-1" /></div>
-                                        <div><x-input-label value="Nadi (x/mnt)" /><x-text-input type="number" wire:model="barisNadi" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisNadi')" class="w-full mt-1" /><x-input-error :messages="$errors->get('barisNadi')" class="mt-1" /></div>
-                                        <div><x-input-label value="RR (x/mnt)" /><x-text-input type="number" wire:model="barisRr" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisRr')" class="w-full mt-1" /><x-input-error :messages="$errors->get('barisRr')" class="mt-1" /></div>
-                                        <div><x-input-label value="Suhu (°C)" /><x-text-input type="number" step="0.1" wire:model="barisSuhu" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisSuhu')" class="w-full mt-1" /><x-input-error :messages="$errors->get('barisSuhu')" class="mt-1" /></div>
-                                        <div><x-input-label value="EWS Score [akr]" /><x-text-input type="number" wire:model="barisEwsScore" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisEwsScore')" class="w-full mt-1" placeholder="MEWS" /><x-input-error :messages="$errors->get('barisEwsScore')" class="mt-1" /></div>
-                                        <div><x-input-label value="TFU" /><x-text-input wire:model="barisTfu" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisTfu')" class="w-full mt-1" placeholder="2 jari bawah pusat" /><x-input-error :messages="$errors->get('barisTfu')" class="mt-1" /></div>
-                                        <div>
-                                            <x-input-label value="Kontraksi Uterus" />
-                                            <x-select-input wire:model="barisKontraksiUterus" class="w-full mt-1">
-                                                <option value="">—</option>
-                                                <option value="Baik/Keras">Baik/Keras</option>
-                                                <option value="Lembek">Lembek</option>
-                                            </x-select-input>
-                                            <x-input-error :messages="$errors->get('barisKontraksiUterus')" class="mt-1" />
-                                        </div>
-                                        <div>
-                                            <x-input-label value="Lochia (Jenis)" />
-                                            <x-select-input wire:model="barisLochiaJenis" class="w-full mt-1">
-                                                <option value="">—</option>
-                                                <option value="Rubra">Rubra</option>
-                                                <option value="Sanguinolenta">Sanguinolenta</option>
-                                                <option value="Serosa">Serosa</option>
-                                                <option value="Alba">Alba</option>
-                                            </x-select-input>
-                                            <x-input-error :messages="$errors->get('barisLochiaJenis')" class="mt-1" />
-                                        </div>
-                                        <div><x-input-label value="Lochia (Jumlah)" /><x-text-input wire:model="barisLochiaJumlah" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisLochiaJumlah')" class="w-full mt-1" placeholder="sedikit / sedang / banyak" /><x-input-error :messages="$errors->get('barisLochiaJumlah')" class="mt-1" /></div>
-                                        <div><x-input-label value="Perdarahan (cc)" /><x-text-input type="number" wire:model="barisPerdarahanCc" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisPerdarahanCc')" class="w-full mt-1" /><x-input-error :messages="$errors->get('barisPerdarahanCc')" class="mt-1" /></div>
-                                        <div>
-                                            <x-input-label value="Luka Jalan Lahir" />
-                                            <x-select-input wire:model="barisLukaJalanLahir" class="w-full mt-1">
-                                                <option value="">—</option>
-                                                <option value="Tidak ada">Tidak ada</option>
-                                                <option value="Kering/Baik">Kering/Baik</option>
-                                                <option value="Basah">Basah</option>
-                                                <option value="Tanda Infeksi">Tanda Infeksi</option>
-                                            </x-select-input>
-                                            <x-input-error :messages="$errors->get('barisLukaJalanLahir')" class="mt-1" />
-                                        </div>
-                                        <div><x-input-label value="BAK" /><x-text-input wire:model="barisBak" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisBak')" class="w-full mt-1" placeholder="spontan / kateter" /><x-input-error :messages="$errors->get('barisBak')" class="mt-1" /></div>
-                                        <div><x-input-label value="BAB" /><x-text-input wire:model="barisBab" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisBab')" class="w-full mt-1" placeholder="sudah / belum" /><x-input-error :messages="$errors->get('barisBab')" class="mt-1" /></div>
-                                        <div>
-                                            <x-input-label value="Laktasi" />
-                                            <x-select-input wire:model="barisLaktasi" class="w-full mt-1">
-                                                <option value="">—</option>
-                                                <option value="Lancar">Lancar</option>
-                                                <option value="Tidak Lancar">Tidak Lancar</option>
-                                                <option value="Belum">Belum</option>
-                                            </x-select-input>
-                                            <x-input-error :messages="$errors->get('barisLaktasi')" class="mt-1" />
-                                        </div>
-                                        <div>
-                                            <x-input-label value="ASI Eksklusif [akr]" />
-                                            <x-select-input wire:model="barisAsiEksklusif" class="w-full mt-1">
-                                                <option value="">—</option>
-                                                <option value="Ya">Ya</option>
-                                                <option value="Tidak">Tidak</option>
-                                            </x-select-input>
-                                            <x-input-error :messages="$errors->get('barisAsiEksklusif')" class="mt-1" />
-                                        </div>
-                                        <div>
-                                            <x-input-label value="Rawat Gabung [akr]" />
-                                            <x-select-input wire:model="barisRawatGabung" class="w-full mt-1">
-                                                <option value="">—</option>
-                                                <option value="Ya">Ya</option>
-                                                <option value="Tidak">Tidak</option>
-                                            </x-select-input>
-                                            <x-input-error :messages="$errors->get('barisRawatGabung')" class="mt-1" />
-                                        </div>
-                                        <div><x-input-label value="Mobilisasi" /><x-text-input wire:model="barisMobilisasi" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisMobilisasi')" class="w-full mt-1" placeholder="miring kiri/kanan, duduk, jalan" /><x-input-error :messages="$errors->get('barisMobilisasi')" class="mt-1" /></div>
-                                        <div class="col-span-2 sm:col-span-3 lg:col-span-2">
-                                            <x-input-label value="Keluhan" />
-                                            <x-text-input wire:model="barisKeluhan" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisKeluhan')" class="w-full mt-1" placeholder="mis. nyeri luka, mules" />
-                                            <x-input-error :messages="$errors->get('barisKeluhan')" class="mt-1" />
-                                        </div>
-                                        <div class="col-span-2 sm:col-span-3 lg:col-span-4">
-                                            <x-input-label value="Asuhan / Tindakan Kebidanan" />
-                                            <x-textarea wire:model="barisAsuhanTindakan" rows="2" class="w-full mt-1"
-                                                placeholder="mis. observasi TTV, perawatan luka, edukasi menyusui, mobilisasi dini" />
-                                            <x-input-error :messages="$errors->get('barisAsuhanTindakan')" class="mt-1" />
-                                        </div>
-                                    </div>
-
-                                    <x-primary-button type="button" wire:click="tambahBaris" wire:loading.attr="disabled" wire:target="tambahBaris" class="justify-center gap-1.5 w-full">
-                                        <span wire:loading.remove wire:target="tambahBaris" class="flex items-center gap-1.5">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-                                            Tambah
-                                        </span>
-                                        <span wire:loading wire:target="tambahBaris" class="flex items-center gap-1.5"><x-loading class="w-4 h-4" /> Menambahkan...</span>
-                                    </x-primary-button>
-                                @endif
-
+                            <div class="space-y-2">
                                 <div class="overflow-x-auto bg-canvas border rounded-2xl border-hairline dark:border-gray-700">
-                                    <table class="ds-table">
+                                    <table class="ds-table min-w-[1840px]">
                                         <thead>
                                             <tr>
                                                 <th class="ds-c w-10">No</th>
-                                                <th>Tgl / Jam</th>
-                                                <th>TD (mmHg)</th>
-                                                <th>Nadi</th>
-                                                <th>Suhu</th>
-                                                <th>TFU</th>
-                                                <th>Lochia</th>
-                                                <th>Laktasi</th>
+                                                <th class="w-44">Tgl / Jam</th>
+                                                <th class="w-28">TD (mmHg)</th>
+                                                <th class="w-16">Nadi</th>
+                                                <th class="w-16">RR</th>
+                                                <th class="w-16">Suhu</th>
+                                                <th class="w-16">EWS</th>
+                                                <th class="w-32">TFU</th>
+                                                <th class="w-28">Kontraksi</th>
+                                                <th class="w-52">Lochia (Jenis / Jumlah)</th>
+                                                <th class="w-16">Drh (cc)</th>
+                                                <th class="w-28">Laktasi</th>
                                                 <th>Keluhan</th>
-                                                <th class="ds-c w-14">Aksi</th>
+                                                <th class="w-32">Petugas</th>
+                                                <th class="ds-c w-24">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            @if (!$formReadOnly)
+                                                {{-- Baris ENTRI: sejajar kolom tabel, sekali Tambah langsung masuk daftar --}}
+                                                <tr class="align-top bg-surface-soft/70 dark:bg-gray-800/40">
+                                                    <td class="ds-c ds-td-meta">+</td>
+                                                    <td>
+                                                        <div class="flex gap-1">
+                                                            <x-text-input wire:model="barisTglJam" placeholder="dd/mm/yyyy HH:mm:ss" :error="$errors->has('barisTglJam')" class="w-full px-2" />
+                                                            <x-now-button wire:click="setNow" class="!p-2 shrink-0" />
+                                                        </div>
+                                                        <x-input-error :messages="$errors->get('barisTglJam')" class="mt-1" />
+                                                    </td>
+                                                    <td>
+                                                        <div class="flex items-center gap-1">
+                                                            <x-text-input type="number" wire:model="barisSistolik" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisSistolik')" class="w-full px-1" placeholder="120" />
+                                                            <span class="text-muted-soft">/</span>
+                                                            <x-text-input type="number" wire:model="barisDiastolik" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisDiastolik')" class="w-full px-1" placeholder="80" />
+                                                        </div>
+                                                    </td>
+                                                    <td><x-text-input type="number" wire:model="barisNadi" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisNadi')" class="w-full px-1" /></td>
+                                                    <td><x-text-input type="number" wire:model="barisRr" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisRr')" class="w-full px-1" /></td>
+                                                    <td><x-text-input type="number" step="0.1" wire:model="barisSuhu" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisSuhu')" class="w-full px-1" /></td>
+                                                    <td><x-text-input type="number" wire:model="barisEwsScore" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisEwsScore')" class="w-full px-1" placeholder="MEWS" /></td>
+                                                    <td><x-text-input wire:model="barisTfu" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisTfu')" class="w-full px-1" placeholder="2 jari bwh pusat" /></td>
+                                                    <td>
+                                                        <x-select-input wire:model="barisKontraksiUterus" :error="$errors->has('barisKontraksiUterus')" class="w-full px-1 text-sm">
+                                                            <option value="">—</option>
+                                                            <option value="Baik/Keras">Baik/Keras</option>
+                                                            <option value="Lembek">Lembek</option>
+                                                        </x-select-input>
+                                                    </td>
+                                                    <td>
+                                                        <div class="flex items-center gap-1">
+                                                            <x-select-input wire:model="barisLochiaJenis" :error="$errors->has('barisLochiaJenis')" class="w-full px-1 text-sm">
+                                                                <option value="">—</option>
+                                                                <option value="Rubra">Rubra</option>
+                                                                <option value="Sanguinolenta">Sanguinolenta</option>
+                                                                <option value="Serosa">Serosa</option>
+                                                                <option value="Alba">Alba</option>
+                                                            </x-select-input>
+                                                            <x-text-input wire:model="barisLochiaJumlah" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisLochiaJumlah')" class="w-full px-1" placeholder="sedang" />
+                                                        </div>
+                                                    </td>
+                                                    <td><x-text-input type="number" wire:model="barisPerdarahanCc" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisPerdarahanCc')" class="w-full px-1" /></td>
+                                                    <td>
+                                                        <x-select-input wire:model="barisLaktasi" :error="$errors->has('barisLaktasi')" class="w-full px-1 text-sm">
+                                                            <option value="">—</option>
+                                                            <option value="Lancar">Lancar</option>
+                                                            <option value="Tidak Lancar">Tidak Lancar</option>
+                                                            <option value="Belum">Belum</option>
+                                                        </x-select-input>
+                                                    </td>
+                                                    <td><x-text-input wire:model="barisKeluhan" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisKeluhan')" class="w-full px-2" placeholder="mis. nyeri luka, mules" /></td>
+                                                    <td class="ds-td-meta">{{ auth()->user()->myuser_name ?? '-' }}</td>
+                                                    <td class="ds-c">
+                                                        <x-primary-button type="button" wire:click="tambahBaris" wire:loading.attr="disabled" wire:target="tambahBaris" class="justify-center gap-1 w-full px-2 py-1.5 text-sm">
+                                                            <span wire:loading.remove wire:target="tambahBaris" class="flex items-center gap-1">
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                                                                Tambah
+                                                            </span>
+                                                            <span wire:loading wire:target="tambahBaris"><x-loading class="w-4 h-4" /></span>
+                                                        </x-primary-button>
+                                                    </td>
+                                                </tr>
+                                            @endif
+
                                             @forelse ($newForm['rows'] ?? [] as $nomor => $baris)
                                                 <tr wire:key="observasi-nifas-baris-{{ $nomor }}">
                                                     <td class="ds-c ds-td-meta">{{ $nomor + 1 }}</td>
                                                     <td class="ds-td-strong">{{ ($baris['tglJam'] ?? '') ?: '-' }}</td>
                                                     <td>{{ filled($baris['sistolik'] ?? '') || filled($baris['diastolik'] ?? '') ? ($baris['sistolik'] ?? '-') . '/' . ($baris['diastolik'] ?? '-') : '-' }}</td>
                                                     <td>{{ ($baris['nadi'] ?? '') ?: '-' }}</td>
+                                                    <td>{{ ($baris['rr'] ?? '') ?: '-' }}</td>
                                                     <td>{{ ($baris['suhu'] ?? '') ?: '-' }}</td>
+                                                    <td>{{ ($baris['ewsScore'] ?? '') ?: '-' }}</td>
                                                     <td>{{ ($baris['tfu'] ?? '') ?: '-' }}</td>
+                                                    <td>{{ ($baris['kontraksiUterus'] ?? '') ?: '-' }}</td>
                                                     <td>{{ trim(($baris['lochiaJenis'] ?? '') . ' ' . ($baris['lochiaJumlah'] ?? '')) ?: '-' }}</td>
+                                                    <td>{{ ($baris['perdarahanCc'] ?? '') ?: '-' }}</td>
                                                     <td>{{ ($baris['laktasi'] ?? '') ?: '-' }}</td>
                                                     <td>{{ ($baris['keluhan'] ?? '') ?: '-' }}</td>
+                                                    <td class="ds-td-meta">{{ ($baris['petugas'] ?? '') ?: '-' }}</td>
                                                     <td class="ds-c">
                                                         @if (!$formReadOnly)
                                                             <x-confirm-button variant="danger-soft" :action="'hapusBaris(' . $nomor . ')'"
@@ -1032,13 +1011,63 @@ new class extends Component {
                                                 </tr>
                                             @empty
                                                 <tr>
-                                                    <td colspan="10" class="ds-c italic text-muted-soft">Belum ada baris titik-waktu observasi.</td>
+                                                    <td colspan="15" class="ds-c italic text-muted-soft">Belum ada baris titik-waktu observasi.</td>
                                                 </tr>
                                             @endforelse
                                         </tbody>
                                     </table>
                                 </div>
-                                <p class="text-xs italic text-muted-soft">Kolom lengkap (RR, EWS, kontraksi uterus, perdarahan, luka jalan lahir, BAK/BAB, ASI eksklusif, rawat gabung, mobilisasi, asuhan) tampil di detail lembar tersimpan &amp; cetakan.</p>
+
+                                @if (!$formReadOnly)
+                                    {{-- Kolom lanjutan baris entri — 21 kolom nifas tak muat semua di satu baris tabel,
+                                         jadi kolom yang lebih jarang berubah ditaruh di sini. Nilainya IKUT tersimpan
+                                         ke baris yang sama saat tombol Tambah ditekan, lalu ikut dikosongkan. --}}
+                                    <div class="p-3 border border-dashed rounded-xl border-hairline dark:border-gray-700">
+                                        <p class="mb-2 text-xs font-semibold tracking-wide uppercase text-muted-soft">Kolom Lanjutan Baris Entri (ikut tersimpan saat Tambah)</p>
+                                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                                            <div>
+                                                <x-input-label value="Luka Jalan Lahir" />
+                                                <x-select-input wire:model="barisLukaJalanLahir" :error="$errors->has('barisLukaJalanLahir')" class="w-full mt-1">
+                                                    <option value="">—</option>
+                                                    <option value="Tidak ada">Tidak ada</option>
+                                                    <option value="Kering/Baik">Kering/Baik</option>
+                                                    <option value="Basah">Basah</option>
+                                                    <option value="Tanda Infeksi">Tanda Infeksi</option>
+                                                </x-select-input>
+                                                <x-input-error :messages="$errors->get('barisLukaJalanLahir')" class="mt-1" />
+                                            </div>
+                                            <div><x-input-label value="BAK" /><x-text-input wire:model="barisBak" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisBak')" class="w-full mt-1" placeholder="spontan / kateter" /><x-input-error :messages="$errors->get('barisBak')" class="mt-1" /></div>
+                                            <div><x-input-label value="BAB" /><x-text-input wire:model="barisBab" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisBab')" class="w-full mt-1" placeholder="sudah / belum" /><x-input-error :messages="$errors->get('barisBab')" class="mt-1" /></div>
+                                            <div><x-input-label value="Mobilisasi" /><x-text-input wire:model="barisMobilisasi" wire:keydown.enter.prevent="tambahBaris" :error="$errors->has('barisMobilisasi')" class="w-full mt-1" placeholder="miring kiri/kanan, duduk, jalan" /><x-input-error :messages="$errors->get('barisMobilisasi')" class="mt-1" /></div>
+                                            <div>
+                                                <x-input-label value="ASI Eksklusif [akr]" />
+                                                <x-select-input wire:model="barisAsiEksklusif" :error="$errors->has('barisAsiEksklusif')" class="w-full mt-1">
+                                                    <option value="">—</option>
+                                                    <option value="Ya">Ya</option>
+                                                    <option value="Tidak">Tidak</option>
+                                                </x-select-input>
+                                                <x-input-error :messages="$errors->get('barisAsiEksklusif')" class="mt-1" />
+                                            </div>
+                                            <div>
+                                                <x-input-label value="Rawat Gabung [akr]" />
+                                                <x-select-input wire:model="barisRawatGabung" :error="$errors->has('barisRawatGabung')" class="w-full mt-1">
+                                                    <option value="">—</option>
+                                                    <option value="Ya">Ya</option>
+                                                    <option value="Tidak">Tidak</option>
+                                                </x-select-input>
+                                                <x-input-error :messages="$errors->get('barisRawatGabung')" class="mt-1" />
+                                            </div>
+                                            <div class="col-span-2 sm:col-span-3 lg:col-span-2">
+                                                <x-input-label value="Asuhan / Tindakan Kebidanan" />
+                                                <x-textarea wire:model="barisAsuhanTindakan" rows="2" class="w-full mt-1"
+                                                    placeholder="mis. observasi TTV, perawatan luka, edukasi menyusui, mobilisasi dini" />
+                                                <x-input-error :messages="$errors->get('barisAsuhanTindakan')" class="mt-1" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-muted-soft">Isi baris paling atas lalu klik <strong>Tambah</strong> (atau tekan Enter). Petugas penambah baris ikut tercatat.</p>
+                                @endif
+                                <p class="text-xs italic text-muted-soft">Kolom lanjutan (luka jalan lahir, BAK/BAB, mobilisasi, ASI eksklusif, rawat gabung, asuhan) tampil di detail lembar tersimpan &amp; cetakan.</p>
                             </div>
                         </x-border-form>
 
@@ -1217,6 +1246,7 @@ new class extends Component {
                                                                     <th>Mobilisasi</th>
                                                                     <th>Keluhan</th>
                                                                     <th>Asuhan / Tindakan</th>
+                                                                    <th>Petugas</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
@@ -1242,10 +1272,11 @@ new class extends Component {
                                                                         <td>{{ ($barisDetail['mobilisasi'] ?? '') ?: '-' }}</td>
                                                                         <td>{{ ($barisDetail['keluhan'] ?? '') ?: '-' }}</td>
                                                                         <td>{{ ($barisDetail['asuhanTindakan'] ?? '') ?: '-' }}</td>
+                                                                        <td class="ds-td-meta">{{ ($barisDetail['petugas'] ?? '') ?: '-' }}</td>
                                                                     </tr>
                                                                 @empty
                                                                     <tr>
-                                                                        <td colspan="20" class="ds-c italic text-muted-soft">Lembar ini belum berisi baris titik-waktu.</td>
+                                                                        <td colspan="21" class="ds-c italic text-muted-soft">Lembar ini belum berisi baris titik-waktu.</td>
                                                                     </tr>
                                                                 @endforelse
                                                             </tbody>

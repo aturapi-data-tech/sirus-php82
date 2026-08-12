@@ -49,14 +49,15 @@
                 <th style="width:4%;">RR</th>
                 <th style="width:4%;">S</th>
                 <th style="width:4%;">EWS</th>
-                <th style="width:9%;">TFU</th>
-                <th style="width:7%;">Kontraksi</th>
-                <th style="width:9%;">Lochia</th>
-                <th style="width:5%;">Drh (cc)</th>
-                <th style="width:7%;">Luka</th>
-                <th style="width:6%;">Laktasi</th>
+                <th style="width:8%;">TFU</th>
+                <th style="width:6%;">Kontraksi</th>
+                <th style="width:8%;">Lochia</th>
+                <th style="width:4%;">Drh (cc)</th>
+                <th style="width:6%;">Luka</th>
+                <th style="width:5%;">Laktasi</th>
                 <th style="width:4%;">ASI</th>
-                <th style="width:22%;">Keterangan</th>
+                <th style="width:18%;">Keterangan</th>
+                <th style="width:10%;">Petugas</th>
             </tr>
         </thead>
         <tbody>
@@ -82,9 +83,10 @@
                     <td>{{ $nilaiSel($baris['laktasi'] ?? null) }}</td>
                     <td>{{ $nilaiSel($baris['asiEksklusif'] ?? null) }}</td>
                     <td class="ket">{{ $keterangan !== '' ? e($keterangan) : '-' }}</td>
+                    <td>{{ $nilaiSel($baris['petugas'] ?? null) }}</td>
                 </tr>
             @empty
-                <tr><td colspan="14">Belum ada baris observasi nifas.</td></tr>
+                <tr><td colspan="15">Belum ada baris observasi nifas.</td></tr>
             @endforelse
         </tbody>
     </table>

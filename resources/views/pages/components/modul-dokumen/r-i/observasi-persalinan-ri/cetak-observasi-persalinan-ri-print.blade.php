@@ -51,9 +51,10 @@
                 <th style="width:7%;">RR (x/mnt)</th>
                 <th style="width:7%;">S (&deg;C)</th>
                 <th style="width:8%;">DJJ (x/mnt)</th>
-                <th style="width:13%;">His</th>
-                <th style="width:7%;">EWS</th>
-                <th style="width:23%;">Obat / Keterangan</th>
+                <th style="width:11%;">His</th>
+                <th style="width:6%;">EWS</th>
+                <th style="width:19%;">Obat / Keterangan</th>
+                <th style="width:12%;">Petugas</th>
             </tr>
         </thead>
         <tbody>
@@ -68,9 +69,10 @@
                     <td>{{ $nilaiSel($baris['his'] ?? null) }}</td>
                     <td>{{ $nilaiSel($baris['ewsScore'] ?? null) }}</td>
                     <td class="ket">{{ $nilaiSel($baris['obatKeterangan'] ?? null) }}</td>
+                    <td>{{ $nilaiSel($baris['petugas'] ?? null) }}</td>
                 </tr>
             @empty
-                <tr><td colspan="9">Belum ada baris observasi.</td></tr>
+                <tr><td colspan="10">Belum ada baris observasi.</td></tr>
             @endforelse
         </tbody>
     </table>
