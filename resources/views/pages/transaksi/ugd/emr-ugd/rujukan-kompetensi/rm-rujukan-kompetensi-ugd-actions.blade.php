@@ -234,14 +234,14 @@ new class extends Component {
         }
 
         // Identifier WAJIB unik SETIAP POST — termasuk retry
-        $pra = $this->rujukanTaskPraPermintaan([
+        $praPermintaan = $this->rujukanTaskPraPermintaan([
             'identifier' => (string) Str::uuid(),
             'encounterId' => $this->encounterUuid(),
             'diagnosaKode' => $this->formRujukan['kodeDiagnosa'],
             'diagnosaDesc' => $this->formRujukan['diagnosaDesc'],
         ]);
-        if ($pra['code'] < 200 || $pra['code'] >= 300) {
-            $this->dispatch('toast', type: 'error', message: 'Pra permintaan gagal [' . $pra['code'] . '] ' . $this->ringkasError($pra['body']));
+        if ($praPermintaan['code'] < 200 || $praPermintaan['code'] >= 300) {
+            $this->dispatch('toast', type: 'error', message: 'Pra permintaan gagal [' . $praPermintaan['code'] . '] ' . $this->ringkasError($praPermintaan['body']));
             return;
         }
 
