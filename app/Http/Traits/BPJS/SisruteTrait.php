@@ -153,7 +153,7 @@ trait SisruteTrait
         ];
 
         // 3. Data yang akan divalidasi
-        $r = [
+        $dataValidasi = [
             'kodeDiagnosa' => $kodeDiagnosa,
             'kodeFaskesSatuSehat' => $kodeFaskesSatuSehat ?: env('SATUSEHAT_ORGANIZATION_ID'),
         ];
@@ -165,7 +165,7 @@ trait SisruteTrait
         ];
 
         // 5. Validator
-        $validator = Validator::make($r, $rules, $messages, $attributes);
+        $validator = Validator::make($dataValidasi, $rules, $messages, $attributes);
 
 
         if ($validator->fails()) {
@@ -179,7 +179,7 @@ trait SisruteTrait
 
             // Verb POST + body JSON — GET ditolak gateway "405 Method Not Allowed".
             // encounter hanya disertakan bila terisi (SATUSEHAT menolak field kosong).
-            $body = $r;
+            $body = $dataValidasi;
             if (!empty($encounterUuid)) {
                 $body['encounter'] = ['reference' => 'Encounter/' . $encounterUuid];
             }
@@ -219,7 +219,7 @@ trait SisruteTrait
         ];
 
         // 3. Data yang akan divalidasi
-        $r = $payload;
+        $dataValidasi = $payload;
 
         // 4. Rules validasi
         $rules = [
@@ -229,7 +229,7 @@ trait SisruteTrait
         ];
 
         // 5. Validator
-        $validator = Validator::make($r, $rules, $messages, $attributes);
+        $validator = Validator::make($dataValidasi, $rules, $messages, $attributes);
 
 
         if ($validator->fails()) {
@@ -256,10 +256,10 @@ trait SisruteTrait
     }
 
     // INSERT RUJUKAN
-    // $tRujukan = isi node t_rujukan (wrapper request.t_rujukan ditambahkan di sini).
+    // $payloadRujukan = isi node t_rujukan (wrapper request.t_rujukan ditambahkan di sini).
     // Sukses SEJATI = response memuat noRujukanSatuSehat — verifikasi di pemanggil,
     // nomor WAJIB tersimpan DB (syarat UAT).
-    public static function sisrute_insert_rujukan($tRujukan)
+    public static function sisrute_insert_rujukan($payloadRujukan)
     {
         // 1. Custom error messages
         $messages = [
@@ -279,7 +279,7 @@ trait SisruteTrait
         ];
 
         // 3. Data yang akan divalidasi
-        $r = $tRujukan;
+        $dataValidasi = $payloadRujukan;
 
         // 4. Rules validasi
         //    ppkDirujuk (BPJS) ↔ kdppkSatuSehatTujuanRujukan wajib RS yang sama — ambil dari kandidat
@@ -294,7 +294,7 @@ trait SisruteTrait
         ];
 
         // 5. Validator
-        $validator = Validator::make($r, $rules, $messages, $attributes);
+        $validator = Validator::make($dataValidasi, $rules, $messages, $attributes);
 
 
         if ($validator->fails()) {
@@ -311,7 +311,7 @@ trait SisruteTrait
                 ->withHeaders($signature)
                 ->post($url, [
                     'request' => [
-                        't_rujukan' => $tRujukan,
+                        't_rujukan' => $payloadRujukan,
                     ],
                 ]);
 
@@ -338,7 +338,7 @@ trait SisruteTrait
         ];
 
         // 3. Data yang akan divalidasi
-        $r = [
+        $dataValidasi = [
             'noRujukan' => $noRujukan,
         ];
 
@@ -348,7 +348,7 @@ trait SisruteTrait
         ];
 
         // 5. Validator
-        $validator = Validator::make($r, $rules, $messages, $attributes);
+        $validator = Validator::make($dataValidasi, $rules, $messages, $attributes);
 
 
         if ($validator->fails()) {
