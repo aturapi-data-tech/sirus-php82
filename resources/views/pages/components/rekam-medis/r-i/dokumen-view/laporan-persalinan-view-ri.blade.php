@@ -49,8 +49,8 @@ new class extends Component {
     <x-border-form title="Laporan Tindakan Persalinan">
         @forelse (collect($list)->filter(fn($entri) => filled(data_get($entri, 'createdAt')))->values() as $entri)
             <x-rm.doc-list-row :id="data_get($entri, 'createdAt')" title="Laporan Tindakan Persalinan"
-                :date="\Illuminate\Support\Str::before((string) (data_get($entri, 'bayiLahirTgl') ?: data_get($entri, 'createdAt', '')), ' ')"
-                :sub="'Jenis partus: ' . (data_get($entri, 'jenisPartus') ?: '-')" />
+                :date="\Illuminate\Support\Str::before((string) (data_get($entri, 'bayi.0.lahir') ?: (data_get($entri, 'bayiLahirTgl') ?: data_get($entri, 'createdAt', ''))), ' ')"
+                :sub="'Jenis partus: ' . (data_get($entri, 'jenisPartus') ?: '-') . (count((array) data_get($entri, 'bayi', [])) > 1 ? ' · ' . count((array) data_get($entri, 'bayi', [])) . ' bayi (kembar)' : '')" />
         @empty
             <x-rm.doc-empty />
         @endforelse

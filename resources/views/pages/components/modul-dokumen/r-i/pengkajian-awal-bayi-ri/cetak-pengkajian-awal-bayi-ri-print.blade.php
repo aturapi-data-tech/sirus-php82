@@ -56,7 +56,7 @@
     {{-- 1. Identitas Bayi --}}
     <div class="pa-sec">1. IDENTITAS BAYI</div>
     <table class="pa">
-        <tr><td class="lbl">Tanggal / Jam Lahir</td><td>{{ $nilaiForm('tglLahir') }} {{ filled($form['jamLahir'] ?? null) ? e($form['jamLahir']) : '' }}</td><td class="lbl">Cara Persalinan</td><td>{{ $nilaiForm('caraPersalinan') }}</td></tr>
+        <tr><td class="lbl">Tanggal / Jam Lahir</td><td>{{ $nilaiForm('tglLahir') }}</td><td class="lbl">Cara Persalinan</td><td>{{ $nilaiForm('caraPersalinan') }}</td></tr>
         <tr><td class="lbl">Nama Ayah</td><td>{{ $nilaiForm('namaAyah') }}</td><td class="lbl">Nama Ibu</td><td>{{ $nilaiForm('namaIbu') }}</td></tr>
         <tr><td class="lbl">Ruangan Ibu</td><td>{{ $nilaiForm('ruanganIbu') }}</td><td class="lbl">No. RM Ibu</td><td>{{ $nilaiForm('noRmIbu') }}</td></tr>
     </table>

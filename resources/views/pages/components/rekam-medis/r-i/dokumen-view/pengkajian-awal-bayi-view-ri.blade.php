@@ -43,14 +43,15 @@ new class extends Component {
         return $terisi ? $total : null;
     }
 
-    /** Ringkasan baris list: jam lahir · BB lahir · APGAR 1'/5'/10'. */
+    /** Ringkasan baris list: tgl/jam lahir · BB lahir · APGAR 1'/5'/10'. */
     public function ringkasEntri(?array $entri): string
     {
         $bagian = [];
 
-        $jamLahir = trim((string) data_get($entri, 'jamLahir', ''));
-        if ($jamLahir !== '') {
-            $bagian[] = 'Lahir ' . $jamLahir;
+        // Tgl & jam lahir sudah digabung di satu kolom 'tglLahir' (d/m/Y H:i:s).
+        $tglLahir = trim((string) data_get($entri, 'tglLahir', ''));
+        if ($tglLahir !== '') {
+            $bagian[] = 'Lahir ' . $tglLahir;
         }
 
         $beratBadan = trim((string) data_get($entri, 'beratBadan', ''));

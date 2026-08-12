@@ -42,7 +42,7 @@
         <tr><td class="lbl">Nama Ibu</td><td>{{ $nilaiForm('namaIbu') }}</td><td class="lbl">Nama Ayah</td><td>{{ $nilaiForm('namaAyah') }}</td></tr>
         <tr><td class="lbl">No. Register Ibu</td><td>{{ $nilaiForm('noRegisterIbu') }}</td><td class="lbl">No. Register Bayi</td><td>{{ $nilaiForm('noRegisterBayi') }}</td></tr>
         <tr><td class="lbl">Nama Bayi</td><td>{{ $nilaiForm('namaBayi') }}</td><td class="lbl">Jenis Kelamin</td><td>{{ $nilaiForm('jenisKelamin') }}</td></tr>
-        <tr><td class="lbl">Warna Gelang</td><td>{{ $nilaiForm('warnaGelang') }}</td><td class="lbl">Tgl / Jam Lahir</td><td>{{ trim($nilaiForm('tglLahir') . ' ' . $nilaiForm('jamLahir')) }}</td></tr>
+        <tr><td class="lbl">Warna Gelang</td><td>{{ $nilaiForm('warnaGelang') }}</td><td class="lbl">Tgl / Jam Lahir</td><td>{{ $nilaiForm('tglLahir') }}</td></tr>
         <tr><td class="lbl">Berat / Panjang</td><td>{{ $nilaiForm('bb') }} gr / {{ $nilaiForm('pb') }} cm</td><td class="lbl">APGAR Score</td><td>{{ $nilaiForm('apgar') }}</td></tr>
     </table>
 

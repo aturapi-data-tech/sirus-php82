@@ -31,8 +31,7 @@ new class extends Component {
 
     public array $newForm = [
         // 1. Identitas Bayi
-        'tglLahir'          => '',
-        'jamLahir'          => '',
+        'tglLahir'          => '',   // tgl+jam lahir, 'd/m/Y H:i:s' (jam ikut di sini)
         'caraPersalinan'    => '',
         'namaAyah'          => '',
         'namaIbu'           => '',

@@ -2,7 +2,7 @@
 // resources/views/pages/transaksi/ri/emr-ri/modul-dokumen/observasi-persalinan-ri/rm-observasi-persalinan-ri-actions.blade.php
 // Dokumen VK/Kebidanan — Observasi Persalinan (lembar pemantauan per titik-waktu).
 // Pola: multi-entri append-only (Draft + Lanjut Isi + TTD-Kunci + Lihat read-only + tabel expandable),
-// disimpan ke datadaftarri_json. Tiap entri = 1 titik-waktu pemantauan; cetak = SATU lembar tabel monitoring.
+// disimpan ke datadaftarri_json. Tiap entri = 1 LEMBAR berisi banyak baris titik-waktu; cetak per-lembar.
 // Kunci entri stabil = createdAt. TTD = stempel nama user login (ttdSaya = FINALIZE/kunci), tanpa TTD gambar.
 // [akr] = tambahan akreditasi (PP/PAP — Maternal Early Warning Score).
 
@@ -764,7 +764,7 @@ new class extends Component {
                         </div>
                         <div>
                             <h2 class="text-lg font-semibold text-ink dark:text-gray-100">Observasi Persalinan</h2>
-                            <p class="mt-0.5 text-sm text-muted dark:text-gray-400">Lembar pemantauan persalinan (VK) — tiap entri = 1 titik-waktu. Diisi Bidan / Perawat.</p>
+                            <p class="mt-0.5 text-sm text-muted dark:text-gray-400">Lembar pemantauan persalinan (VK) — tiap entri = 1 lembar berisi banyak titik-waktu. Diisi Bidan / Perawat.</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">

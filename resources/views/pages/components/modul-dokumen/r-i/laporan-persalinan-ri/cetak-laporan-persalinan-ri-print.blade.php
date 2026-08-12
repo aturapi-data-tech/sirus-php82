@@ -27,11 +27,55 @@
     @php
         $form = $data['form'] ?? [];
         $nilaiForm = fn(string $field) => filled($form[$field] ?? null) ? e($form[$field]) : '-';
-        $tglJam = fn(string $fieldTgl, string $fieldJam) => trim((filled($form[$fieldTgl] ?? null) ? e($form[$fieldTgl]) : '') . ' ' . (filled($form[$fieldJam] ?? null) ? e($form[$fieldJam]) : '')) ?: '-';
-        $ukuranKepala = collect(['ukKepalaBt' => 'BT', 'ukKepalaBp' => 'BP', 'ukKepalaFo' => 'FO', 'ukKepalaMo' => 'MO', 'ukKepalaOb' => 'OB'])
-            ->filter(fn(string $label, string $field) => filled($form[$field] ?? null))
-            ->map(fn(string $label, string $field) => $label . ' ' . e($form[$field]) . ' cm')
+
+        // Nilai kolom satu baris bayi. Escaping diserahkan ke {{ }} (tanpa e() ganda).
+        $nilaiBaris = fn(array $baris, string $field) => filled($baris[$field] ?? null) ? $baris[$field] : '-';
+        $ukuranKepala = fn(array $baris) => collect(['ukKepalaBt' => 'BT', 'ukKepalaBp' => 'BP', 'ukKepalaFo' => 'FO', 'ukKepalaMo' => 'MO', 'ukKepalaOb' => 'OB'])
+            ->filter(fn(string $label, string $field) => filled($baris[$field] ?? null))
+            ->map(fn(string $label, string $field) => $label . ' ' . $baris[$field] . ' cm')
             ->implode(', ');
+
+        // Data bayi kini baris berulang (kelahiran kembar). Entri LAMA masih datar di akar
+        // form (bayiBb, bayiLahirTgl, ...) → dibaca sebagai satu baris bayi.
+        $petaBayiLegacy = [
+            'bayiLahirTgl' => 'lahir',
+            'bayiJenisKelamin' => 'jenisKelamin',
+            'bayiKeadaan' => 'keadaan',
+            'bayiBb' => 'bb',
+            'bayiPb' => 'pb',
+            'bayiApgar' => 'apgar',
+            'bayiResusitasi' => 'resusitasi',
+            'ukKepalaBt' => 'ukKepalaBt',
+            'ukKepalaBp' => 'ukKepalaBp',
+            'ukKepalaFo' => 'ukKepalaFo',
+            'ukKepalaMo' => 'ukKepalaMo',
+            'ukKepalaOb' => 'ukKepalaOb',
+            'caputSuksedanium' => 'caputSuksedanium',
+            'cephalHematoma' => 'cephalHematoma',
+            'atresiaAni' => 'atresiaAni',
+            'bayiLain' => 'lain',
+        ];
+        if (is_array($form['bayi'] ?? null)) {
+            $daftarBayi = array_values(array_filter($form['bayi'], fn($baris) => is_array($baris)));
+        } else {
+            $bayiLegacy = [];
+            foreach ($petaBayiLegacy as $fieldLama => $kunciBaris) {
+                $bayiLegacy[$kunciBaris] = (string) ($form[$fieldLama] ?? '');
+            }
+            $daftarBayi = collect($bayiLegacy)->contains(fn($nilai) => filled($nilai)) ? [$bayiLegacy] : [];
+        }
+
+        // TD Kala IV: sistolik/diastolik; entri lama masih menyimpan kalaIvTd gabungan "120/80".
+        $kalaIvSistolik = trim((string) ($form['kalaIvSistolik'] ?? ''));
+        $kalaIvDiastolik = trim((string) ($form['kalaIvDiastolik'] ?? ''));
+        if (blank($kalaIvSistolik) && blank($kalaIvDiastolik) && filled($form['kalaIvTd'] ?? null)) {
+            [$kalaIvSistolik, $kalaIvDiastolik] = array_pad(explode('/', (string) $form['kalaIvTd'], 2), 2, '');
+            $kalaIvSistolik = trim($kalaIvSistolik);
+            $kalaIvDiastolik = trim($kalaIvDiastolik);
+        }
+        $tdKalaIv = filled($kalaIvSistolik) || filled($kalaIvDiastolik)
+            ? ($kalaIvSistolik ?: '-') . '/' . ($kalaIvDiastolik ?: '-')
+            : '-';
     @endphp
 
     <style>
@@ -39,6 +83,8 @@
         table.pa { width:100%; border-collapse:collapse; font-size:10px; }
         table.pa td { border:1px solid #999; padding:2px 5px; vertical-align:top; }
         table.pa td.lbl { width:22%; color:#333; background:#f7f7f7; }
+        table.pa td.hdr { color:#333; background:#f7f7f7; font-weight:bold; text-align:center; }
+        table.pa td.num { text-align:center; }
     </style>
 
     {{-- 1. Jenis Partus --}}
@@ -47,21 +93,49 @@
         <tr><td class="lbl">Jenis Partus</td><td>{{ $nilaiForm('jenisPartus') }}</td><td class="lbl">Indikasi</td><td>{{ $nilaiForm('indikasi') }}</td></tr>
     </table>
 
-    {{-- 2. Bayi --}}
+    {{-- 2. Bayi — satu baris per bayi (kelahiran kembar / gemelli) --}}
     <div class="pa-sec">2. BAYI</div>
     <table class="pa">
-        <tr><td class="lbl">Lahir</td><td>{{ $tglJam('bayiLahirTgl','bayiLahirJam') }}</td><td class="lbl">Jenis Kelamin</td><td>{{ $nilaiForm('bayiJenisKelamin') }}</td></tr>
-        <tr><td class="lbl">Berat / Panjang</td><td>{{ $nilaiForm('bayiBb') }} gr / {{ $nilaiForm('bayiPb') }} cm</td><td class="lbl">APGAR Score</td><td>{{ $nilaiForm('bayiApgar') }}</td></tr>
-        <tr><td class="lbl">Resusitasi</td><td>{{ $nilaiForm('bayiResusitasi') }}</td><td class="lbl">Keadaan</td><td>{{ $nilaiForm('bayiKeadaan') }}</td></tr>
-        <tr><td class="lbl">Ukuran Kepala</td><td colspan="3">{{ $ukuranKepala ?: '-' }}</td></tr>
-        <tr><td class="lbl">Caput Suksedanium</td><td>{{ $nilaiForm('caputSuksedanium') }}</td><td class="lbl">Cephal Hematoma</td><td>{{ $nilaiForm('cephalHematoma') }}</td></tr>
-        <tr><td class="lbl">Atresia Ani</td><td>{{ $nilaiForm('atresiaAni') }}</td><td class="lbl">Lain-lain</td><td>{{ $nilaiForm('bayiLain') }}</td></tr>
+        <tr>
+            <td class="hdr" style="width:5%;">No</td>
+            <td class="hdr">Lahir</td>
+            <td class="hdr">JK</td>
+            <td class="hdr">Keadaan</td>
+            <td class="hdr">BB (gr)</td>
+            <td class="hdr">PB (cm)</td>
+            <td class="hdr">APGAR</td>
+            <td class="hdr">Resusitasi</td>
+        </tr>
+        @forelse ($daftarBayi as $nomor => $baris)
+            <tr>
+                <td class="num">{{ $nomor + 1 }}</td>
+                <td>{{ $nilaiBaris($baris, 'lahir') }}</td>
+                <td>{{ $nilaiBaris($baris, 'jenisKelamin') }}</td>
+                <td>{{ $nilaiBaris($baris, 'keadaan') }}</td>
+                <td>{{ $nilaiBaris($baris, 'bb') }}</td>
+                <td>{{ $nilaiBaris($baris, 'pb') }}</td>
+                <td>{{ $nilaiBaris($baris, 'apgar') }}</td>
+                <td>{{ $nilaiBaris($baris, 'resusitasi') }}</td>
+            </tr>
+            <tr>
+                <td class="num">&nbsp;</td>
+                <td colspan="7">
+                    Ukuran kepala: {{ $ukuranKepala($baris) ?: '-' }} &middot;
+                    Caput Suksedanium: {{ $nilaiBaris($baris, 'caputSuksedanium') }} &middot;
+                    Cephal Hematoma: {{ $nilaiBaris($baris, 'cephalHematoma') }} &middot;
+                    Atresia Ani: {{ $nilaiBaris($baris, 'atresiaAni') }} &middot;
+                    Lain-lain: {{ $nilaiBaris($baris, 'lain') }}
+                </td>
+            </tr>
+        @empty
+            <tr><td class="num" colspan="8">Belum ada data bayi.</td></tr>
+        @endforelse
     </table>
 
     {{-- 3. Plasenta --}}
     <div class="pa-sec">3. PLASENTA</div>
     <table class="pa">
-        <tr><td class="lbl">Lahir</td><td>{{ $tglJam('plasentaLahirTgl','plasentaLahirJam') }}</td><td class="lbl">Cara Lahir</td><td>{{ $nilaiForm('plasentaCara') }}</td></tr>
+        <tr><td class="lbl">Lahir</td><td>{{ $nilaiForm('plasentaLahirTgl') }}</td><td class="lbl">Cara Lahir</td><td>{{ $nilaiForm('plasentaCara') }}</td></tr>
         <tr><td class="lbl">Jenis</td><td>{{ $nilaiForm('plasentaJenis') }}</td><td class="lbl">Berat / Diameter</td><td>{{ $nilaiForm('plasentaBerat') }} gr / {{ $nilaiForm('plasentaDiameter') }} cm</td></tr>
     </table>
 
@@ -90,7 +164,7 @@
     <div class="pa-sec">7. KALA IV</div>
     <table class="pa">
         <tr><td class="lbl">Hb</td><td>{{ $nilaiForm('kalaIvHb') }}</td><td class="lbl">Suhu</td><td>{{ $nilaiForm('kalaIvSuhu') }} °C</td></tr>
-        <tr><td class="lbl">TD</td><td>{{ $nilaiForm('kalaIvTd') }} mmHg</td><td class="lbl">Nadi / RR</td><td>{{ $nilaiForm('kalaIvNadi') }} / {{ $nilaiForm('kalaIvRr') }} x/mnt</td></tr>
+        <tr><td class="lbl">TD</td><td>{{ $tdKalaIv }} mmHg</td><td class="lbl">Nadi / RR</td><td>{{ $nilaiForm('kalaIvNadi') }} / {{ $nilaiForm('kalaIvRr') }} x/mnt</td></tr>
         <tr><td class="lbl">TFU</td><td>{{ $nilaiForm('kalaIvTfu') }}</td><td class="lbl">Kontraksi Uterus</td><td>{{ $nilaiForm('kalaIvKontraksi') }}</td></tr>
         <tr><td class="lbl">Perdarahan Kala III</td><td>{{ $nilaiForm('perdarahanKalaIii') }} cc</td><td class="lbl">Perdarahan Kala IV</td><td>{{ $nilaiForm('perdarahanKalaIv') }} cc</td></tr>
     </table>

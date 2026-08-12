@@ -37,8 +37,7 @@ new class extends Component {
         'jenisKelamin'       => '',   // Laki-laki | Perempuan
         'warnaGelang'        => '',   // Biru | Merah Muda
         'noRegisterBayi'     => '',
-        'tglLahir'           => '',
-        'jamLahir'           => '',
+        'tglLahir'           => '',   // tgl+jam lahir, 'd/m/Y H:i:s' (jam ikut di sini)
         'bb'                 => '',    // gram
         'pb'                 => '',    // cm
         'apgar'              => '',    // mis 7-8-9
