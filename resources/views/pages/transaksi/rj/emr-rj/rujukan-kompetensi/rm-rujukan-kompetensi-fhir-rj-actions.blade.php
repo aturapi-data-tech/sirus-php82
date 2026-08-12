@@ -109,7 +109,7 @@ new class extends Component {
         if (empty(env('SATUSEHAT_RUJUKAN_CLIENT_ID'))) {
             $kurang[] = 'Credential SATUSEHAT Rujukan (SATUSEHAT_RUJUKAN_CLIENT_ID) belum diset';
         }
-        if (empty(env('SATUSEHAT_ORGANIZATION_ID'))) {
+        if (empty(env('SATUSEHAT_RUJUKAN_ORGANIZATION_ID'))) {
             $kurang[] = 'SATUSEHAT_ORGANIZATION_ID belum diset';
         }
         if (empty($this->encounterUuid())) {
