@@ -110,11 +110,20 @@ new class extends Component {
             // Sasaran = PENERIMA edukasi; bisa berbeda dari penanda tangan (form.ttd.*).
             'sasaran' => ['nama' => '', 'hubungan' => 'pasien'],
 
+            // Default MAU: penolakan adalah pengecualian, bukan keadaan normal.
+            // Bila false, isian 1–6 tidak ditampilkan & tidak divalidasi — cukup TTD
+            // sebagai bukti pasien/keluarga menolak menerima informasi.
+            'bersediaMenerimaInformasi' => true,
+
             'tujuan'      => ['opsi' => [], 'lainnya' => ''],
 
             'evaluasiAwal' => [
                 'literasi'              => null,
-                'bahasaAtauPendidikan'  => '',
+                'motivasiBelajar'       => null,
+                // Dipecah dari 'bahasaAtauPendidikan' (satu kolom gabungan).
+                // Key lama tetap dibaca saat memuat entri — lihat pisahBahasaPendidikanLegacy().
+                'bahasa'                => '',
+                'tingkatPendidikan'     => '',
                 'hambatanEmosional'         => ['ada' => null, 'keterangan' => ''],
                 'keterbatasanFisikKognitif' => ['ada' => null, 'keterangan' => ''],
                 'nilaiKeyakinanBudaya'      => ['ada' => null, 'deskripsi' => ''],
@@ -276,6 +285,7 @@ new class extends Component {
             'form.pemberiInformasi.petugasName' => 'required|string|max:250',
             'form.sasaran.nama'                 => 'required|string|max:150',
             'form.sasaran.hubungan'             => 'required|string|max:50',
+            'form.bersediaMenerimaInformasi'    => 'boolean',
 
             // 1) Tujuan
             'form.tujuan.opsi'    => 'nullable|array',
@@ -284,7 +294,9 @@ new class extends Component {
 
             // 2) Evaluasi Awal
             'form.evaluasiAwal.literasi'                              => 'nullable|in:Baik,Cukup,Kurang',
-            'form.evaluasiAwal.bahasaAtauPendidikan'                  => 'nullable|string|max:200',
+            'form.evaluasiAwal.motivasiBelajar'                       => 'nullable|in:Tinggi,Sedang,Rendah',
+            'form.evaluasiAwal.bahasa'                                => 'nullable|string|max:100',
+            'form.evaluasiAwal.tingkatPendidikan'                     => 'nullable|string|max:100',
             'form.evaluasiAwal.hambatanEmosional.ada'                 => 'nullable|boolean',
             'form.evaluasiAwal.hambatanEmosional.keterangan'          => 'nullable|string|max:300',
             'form.evaluasiAwal.keterbatasanFisikKognitif.ada'         => 'nullable|boolean',
@@ -324,18 +336,27 @@ new class extends Component {
             'form.ttd.pasienKeluargaTTD'      => 'required|string',
         ];
 
-        // Conditional: "lainnya" wajib diisi kalau di-check
-        if (in_array('lainnya', $this->form['tujuan']['opsi'] ?? [], true)) {
-            $rules['form.tujuan.lainnya'] = 'required|string|max:200';
-        }
-        if (in_array('lainnya', $this->form['kebutuhan']['opsi'] ?? [], true)) {
-            $rules['form.kebutuhan.lainnya'] = 'required|string|max:200';
-        }
-        if (in_array('lainnya', $this->form['metodeMedia']['opsi'] ?? [], true)) {
-            $rules['form.metodeMedia.lainnya'] = 'required|string|max:200';
-        }
-        if (in_array('lainnya', $this->form['evaluasiAwal']['preferensiInformasi']['opsi'] ?? [], true)) {
-            $rules['form.evaluasiAwal.preferensiInformasi.lainnya'] = 'required|string|max:200';
+        // Pasien/keluarga menolak menerima informasi → isian 1–6 disembunyikan,
+        // jadi tidak boleh ada yang wajib di sana. Materi/topik satu-satunya
+        // `required`, dan kewajiban turunan "lainnya" pun ikut dilepas — kalau
+        // tidak, centang yang sempat dibuat sebelum toggle dimatikan akan
+        // memblokir simpan lewat field yang sudah tak tampak di layar.
+        if ($this->bersediaEdukasi()) {
+            // Conditional: "lainnya" wajib diisi kalau di-check
+            if (in_array('lainnya', $this->form['tujuan']['opsi'] ?? [], true)) {
+                $rules['form.tujuan.lainnya'] = 'required|string|max:200';
+            }
+            if (in_array('lainnya', $this->form['kebutuhan']['opsi'] ?? [], true)) {
+                $rules['form.kebutuhan.lainnya'] = 'required|string|max:200';
+            }
+            if (in_array('lainnya', $this->form['metodeMedia']['opsi'] ?? [], true)) {
+                $rules['form.metodeMedia.lainnya'] = 'required|string|max:200';
+            }
+            if (in_array('lainnya', $this->form['evaluasiAwal']['preferensiInformasi']['opsi'] ?? [], true)) {
+                $rules['form.evaluasiAwal.preferensiInformasi.lainnya'] = 'required|string|max:200';
+            }
+        } else {
+            $rules['form.materi.topik'] = 'nullable|string|max:150';
         }
 
         $attributes = [
@@ -502,6 +523,7 @@ new class extends Component {
     {
         // array_replace_recursive menjaga agar key nested yang hilang di data lama tetap ada
         $this->form = array_replace_recursive($this->defaultForm(), $entri['form'] ?? []);
+        $this->pisahBahasaPendidikanLegacy();
         $this->sasaranEdukasiSignature = (string) data_get($entri, 'form.ttd.pasienKeluargaTTD', '');
         $this->editingKey = $entri['id'] ?? null;
         $this->resetValidation();
@@ -643,6 +665,49 @@ new class extends Component {
         }
     }
 
+    /**
+     * Entri lama menyimpan satu kolom gabungan 'bahasaAtauPendidikan'
+     * (mis. "Indonesia / SMA"). Pecah ke dua kolom baru saat entri dimuat
+     * supaya isian lama tidak hilang dari layar saat dibuka/diedit.
+     * Pemisah "/" adalah pola yang dipakai placeholder lama; tanpa pemisah,
+     * seluruh teks masuk ke Bahasa — tebakan yang aman karena petugas tinggal
+     * memindahkannya, bukan mengetik ulang.
+     */
+    private function pisahBahasaPendidikanLegacy(): void
+    {
+        $gabungan = trim((string) ($this->form['evaluasiAwal']['bahasaAtauPendidikan'] ?? ''));
+        if ($gabungan === '') {
+            return;
+        }
+
+        $sudahTerisi = trim((string) ($this->form['evaluasiAwal']['bahasa'] ?? '')) !== ''
+            || trim((string) ($this->form['evaluasiAwal']['tingkatPendidikan'] ?? '')) !== '';
+        if ($sudahTerisi) {
+            return;
+        }
+
+        $bagian = array_map('trim', explode('/', $gabungan, 2));
+        $this->form['evaluasiAwal']['bahasa'] = $bagian[0] ?? '';
+        $this->form['evaluasiAwal']['tingkatPendidikan'] = $bagian[1] ?? '';
+    }
+
+    /**
+     * Pasien/keluarga bersedia menerima informasi? Entri lama tidak punya key
+     * ini — dianggap BERSEDIA supaya dokumen lama tetap tampil lengkap.
+     */
+    public function bersediaEdukasi(): bool
+    {
+        return filter_var($this->form['bersediaMenerimaInformasi'] ?? true, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    public function toggleBersediaEdukasi(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            return;
+        }
+        $this->form['bersediaMenerimaInformasi'] = !$this->bersediaEdukasi();
+    }
+
     // Toggle "Perlu tindak lanjut" (kebalikan flag tersimpan tidakPerluTL —
     // key JSON dipertahankan supaya cetak/riwayat/data lama tidak berubah makna).
     public function togglePerluTindakLanjut(): void
@@ -726,6 +791,11 @@ new class extends Component {
         if (isset($formData['tindakLanjut']['tidakPerluTL'])) {
             $formData['tindakLanjut']['tidakPerluTL'] = (bool) $formData['tindakLanjut']['tidakPerluTL'];
         }
+
+        $formData['bersediaMenerimaInformasi'] = filter_var(
+            $formData['bersediaMenerimaInformasi'] ?? true,
+            FILTER_VALIDATE_BOOLEAN
+        );
     }
 };
 ?>
@@ -841,9 +911,10 @@ new class extends Component {
             <fieldset @disabled($formReadOnly)>
             <div class="mt-3 space-y-5">
 
-                {{-- ─── HEADER: Waktu & Petugas ─── --}}
+                {{-- ─── HEADER: Waktu, Sasaran & Kesediaan (satu baris) ─── --}}
+                @php $bersediaEdukasi = $this->bersediaEdukasi(); @endphp
                 <div class="grid grid-cols-1 gap-3 md:grid-cols-12">
-                    <div class="md:col-span-4">
+                    <div class="md:col-span-3">
                         <x-input-label value="Tanggal Edukasi *" />
                         <div class="flex items-end gap-2 mt-1">
                             <x-text-input wire:model="form.tglEdukasi" class="flex-1 font-mono"
@@ -853,14 +924,14 @@ new class extends Component {
                         </div>
                         <x-input-error :messages="$errors->get('form.tglEdukasi')" class="mt-1" />
                     </div>
-                    <div class="md:col-span-5">
+                    <div class="md:col-span-3">
                         <x-input-label value="Sasaran Edukasi (Penerima) *" />
                         <x-text-input wire:model.blur="form.sasaran.nama" class="w-full mt-1"
                             placeholder="Nama pasien/keluarga penerima edukasi"
                             :error="$errors->has('form.sasaran.nama')" :disabled="$formReadOnly" />
                         <x-input-error :messages="$errors->get('form.sasaran.nama')" class="mt-1" />
                     </div>
-                    <div class="md:col-span-3">
+                    <div class="md:col-span-2">
                         <x-input-label value="Hubungan dengan Pasien *" />
                         <x-select-input wire:model.blur="form.sasaran.hubungan" class="w-full mt-1"
                             :error="$errors->has('form.sasaran.hubungan')" :disabled="$formReadOnly">
@@ -871,7 +942,27 @@ new class extends Component {
                         </x-select-input>
                         <x-input-error :messages="$errors->get('form.sasaran.hubungan')" class="mt-1" />
                     </div>
+                    {{-- Kesediaan menerima informasi — label toggle dipendekkan agar
+                         muat sebaris; keterangan lengkap muncul di bawah saat menolak. --}}
+                    <div class="md:col-span-4">
+                        <x-input-label value="Bersedia Menerima Informasi" />
+                        <div class="mt-1 px-3 py-2 border rounded-lg {{ $bersediaEdukasi ? 'border-hairline bg-canvas dark:bg-gray-800 dark:border-gray-700' : 'border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700' }}">
+                            <x-toggle :current="$bersediaEdukasi ? '1' : '0'" trueValue="1" falseValue="0"
+                                wireClick="toggleBersediaEdukasi"
+                                :label="$bersediaEdukasi ? 'Bersedia' : 'Menolak'"
+                                :disabled="$formReadOnly" />
+                        </div>
+                    </div>
                 </div>
+
+                @unless ($bersediaEdukasi)
+                    <div class="px-3 py-2 text-xs border rounded-lg border-amber-300 bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300">
+                        Pasien / keluarga menolak menerima informasi. Isian 1&ndash;6 tidak perlu diisi &mdash;
+                        langsung bubuhkan tanda tangan di bawah sebagai bukti penolakan.
+                    </div>
+                @endunless
+
+                @if ($bersediaEdukasi)
 
                 <hr class="border-hairline dark:border-gray-700">
 
@@ -909,19 +1000,36 @@ new class extends Component {
 
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         <div class="p-3 border border-hairline rounded-lg bg-canvas dark:bg-gray-800 dark:border-gray-700">
-                            <x-input-label value="Kemampuan membaca / menulis" />
+                            <x-input-label value="Kemampuan membaca, menulis dan menerima edukasi" />
                             <div class="flex gap-2 mt-1">
-                                @foreach (['Baik', 'Cukup', 'Kurang'] as $opt)
-                                    <x-radio-button :label="$opt" :value="$opt" name="literasi"
+                                @foreach (['Baik', 'Cukup', 'Kurang'] as $nilaiLiterasi)
+                                    <x-radio-button :label="$nilaiLiterasi" :value="$nilaiLiterasi" name="literasi"
                                         wire:model.live="form.evaluasiAwal.literasi" :disabled="$formReadOnly" />
                                 @endforeach
                             </div>
                         </div>
                         <div class="p-3 border border-hairline rounded-lg bg-canvas dark:bg-gray-800 dark:border-gray-700">
-                            <x-input-label value="Bahasa yang digunakan / tingkat pendidikan" />
-                            <x-text-input wire:model.blur="form.evaluasiAwal.bahasaAtauPendidikan" :error="$errors->has('form.evaluasiAwal.bahasaAtauPendidikan')"
-                                class="w-full mt-1" placeholder="Contoh: Indonesia / SMA"
+                            <x-input-label value="Kemauan atau motivasi belajar" />
+                            <div class="flex gap-2 mt-1">
+                                @foreach (['Tinggi', 'Sedang', 'Rendah'] as $nilaiMotivasi)
+                                    <x-radio-button :label="$nilaiMotivasi" :value="$nilaiMotivasi" name="motivasiBelajar"
+                                        wire:model.live="form.evaluasiAwal.motivasiBelajar" :disabled="$formReadOnly" />
+                                @endforeach
+                            </div>
+                        </div>
+                        <div class="p-3 border border-hairline rounded-lg bg-canvas dark:bg-gray-800 dark:border-gray-700">
+                            <x-input-label value="Bahasa yang digunakan" />
+                            <x-text-input wire:model.blur="form.evaluasiAwal.bahasa" :error="$errors->has('form.evaluasiAwal.bahasa')"
+                                class="w-full mt-1" placeholder="Contoh: Indonesia"
                                 :disabled="$formReadOnly" />
+                            <x-input-error :messages="$errors->get('form.evaluasiAwal.bahasa')" class="mt-1" />
+                        </div>
+                        <div class="p-3 border border-hairline rounded-lg bg-canvas dark:bg-gray-800 dark:border-gray-700">
+                            <x-input-label value="Tingkat pendidikan" />
+                            <x-text-input wire:model.blur="form.evaluasiAwal.tingkatPendidikan" :error="$errors->has('form.evaluasiAwal.tingkatPendidikan')"
+                                class="w-full mt-1" placeholder="Contoh: SMA"
+                                :disabled="$formReadOnly" />
+                            <x-input-error :messages="$errors->get('form.evaluasiAwal.tingkatPendidikan')" class="mt-1" />
                         </div>
                         <div class="p-3 border border-hairline rounded-lg bg-canvas dark:bg-gray-800 dark:border-gray-700">
                             <x-input-label value="Hambatan emosional / motivasi" />
@@ -1135,6 +1243,8 @@ new class extends Component {
                         </div>
                     @endif
                 </div>
+
+                @endif {{-- /bersedia menerima informasi --}}
 
                 <hr class="border-hairline dark:border-gray-700">
 

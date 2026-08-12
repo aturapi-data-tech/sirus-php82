@@ -69,9 +69,22 @@
         $tujuanOpsi = (array) ($form['tujuan']['opsi'] ?? []);
         $tujuanLain = $form['tujuan']['lainnya'] ?? '';
 
+        // Entri lama tidak punya key ini — dianggap BERSEDIA agar tetap tercetak utuh.
+        $bersediaEdukasi = filter_var($form['bersediaMenerimaInformasi'] ?? true, FILTER_VALIDATE_BOOLEAN);
+
         $evaluasiAwal = $form['evaluasiAwal'] ?? [];
         $literasi = $evaluasiAwal['literasi'] ?? '-';
-        $bahasa = $evaluasiAwal['bahasaAtauPendidikan'] ?? '-';
+        $motivasiBelajar = $evaluasiAwal['motivasiBelajar'] ?? '-';
+        // Entri lama menyimpan satu kolom gabungan; pecah agar tetap tercetak
+        // di dua baris terpisah tanpa mengubah data tersimpan.
+        $bahasaLegacy = trim((string) ($evaluasiAwal['bahasaAtauPendidikan'] ?? ''));
+        $bahasa = trim((string) ($evaluasiAwal['bahasa'] ?? ''));
+        $tingkatPendidikan = trim((string) ($evaluasiAwal['tingkatPendidikan'] ?? ''));
+        if ($bahasa === '' && $tingkatPendidikan === '' && $bahasaLegacy !== '') {
+            $bagianLegacy = array_map('trim', explode('/', $bahasaLegacy, 2));
+            $bahasa = $bagianLegacy[0] ?? '';
+            $tingkatPendidikan = $bagianLegacy[1] ?? '';
+        }
         $prefOpsi = (array) ($evaluasiAwal['preferensiInformasi']['opsi'] ?? []);
         $prefLain = $evaluasiAwal['preferensiInformasi']['lainnya'] ?? '';
 
@@ -116,6 +129,18 @@
             </td>
         </tr>
 
+        @unless ($bersediaEdukasi)
+            {{-- Menolak menerima informasi: seksi 1-6 tidak dicetak, diganti satu
+                 pernyataan. Blok tanda tangan di bawah tetap dicetak sebagai bukti. --}}
+            <tr>
+                <td colspan="2" class="border border-black px-2 py-2 text-[10px] leading-relaxed">
+                    <p class="font-bold mb-1">Penolakan Menerima Informasi</p>
+                    <p>Pasien / keluarga menyatakan <strong>tidak bersedia</strong> menerima informasi
+                    dan edukasi pada waktu tersebut di atas. Materi edukasi tidak diberikan, dan
+                    penolakan ini dibuktikan dengan tanda tangan di bawah ini.</p>
+                </td>
+            </tr>
+        @else
         {{-- ── 1. TUJUAN EDUKASI ── --}}
         <tr>
             <td colspan="2" class="border border-black px-2 py-1.5 text-[10px] leading-relaxed">
@@ -134,8 +159,10 @@
         <tr>
             <td colspan="2" class="border border-black px-2 py-1.5 text-[10px] leading-relaxed">
                 <p class="font-bold mb-1">2. Evaluasi Awal Kemampuan & Nilai</p>
-                <div>&bull; <strong>Kemampuan membaca/menulis:</strong> {{ $literasi ?: '-' }}</div>
-                <div>&bull; <strong>Bahasa / pendidikan:</strong> {{ $bahasa ?: '-' }}</div>
+                <div>&bull; <strong>Kemampuan membaca, menulis dan menerima edukasi:</strong> {{ $literasi ?: '-' }}</div>
+                <div>&bull; <strong>Kemauan / motivasi belajar:</strong> {{ $motivasiBelajar ?: '-' }}</div>
+                <div>&bull; <strong>Bahasa yang digunakan:</strong> {{ $bahasa ?: '-' }}</div>
+                <div>&bull; <strong>Tingkat pendidikan:</strong> {{ $tingkatPendidikan ?: '-' }}</div>
                 @php $hambatanEmosional = $evaluasiAwal['hambatanEmosional'] ?? []; @endphp
                 <div>&bull; <strong>Hambatan emosional / motivasi:</strong> {{ $boolLabel($hambatanEmosional['ada'] ?? null) }}@if (!empty($hambatanEmosional['keterangan'])) &mdash; {{ $hambatanEmosional['keterangan'] }}@endif</div>
                 @php $keterbatasanFisikKognitif = $evaluasiAwal['keterbatasanFisikKognitif'] ?? []; @endphp
@@ -239,6 +266,8 @@
                 @endif
             </td>
         </tr>
+
+        @endunless
 
         {{-- ── TANDA TANGAN — 2 kolom ── --}}
         <tr>
