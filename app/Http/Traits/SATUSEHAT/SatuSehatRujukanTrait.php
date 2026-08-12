@@ -24,7 +24,10 @@ use Illuminate\Support\Facades\DB;
  * - Jejaring wilayah pakai valueCoding (valueString = 0 kandidat); kode wilayah tanpa titik.
  * - Jangan meng-echo extension providerAtribute kandidat ke resource yang dikirim.
  * - Field kosong jangan dikirim (validator menolak objek/field kosong).
- * - Credential staging rujukan KHUSUS (env SATUSEHAT_RUJUKAN_*), beda dari SATUSEHAT_*.
+ * - Memakai env SATUSEHAT_* yang sama dengan modul SATUSEHAT lain (satu blok, ganti
+ *   lingkungan dgn mengomentari blok prod/dto di .env — pola yang sama dipakai VCLAIM,
+ *   ANTRIAN, ICARE, APLICARES). Token di-cache terpisah ('satusehat_rujukan_access_token')
+ *   supaya menyegarkan token rujukan tidak mengganggu modul lain.
  */
 trait SatuSehatRujukanTrait
 {
@@ -34,14 +37,14 @@ trait SatuSehatRujukanTrait
     protected function rujukanAccessToken()
     {
         return Cache::remember('satusehat_rujukan_access_token', 3500, function () {
-            $url = env('SATUSEHAT_RUJUKAN_AUTH_URL') . "accesstoken?grant_type=client_credentials";
+            $url = env('SATUSEHAT_AUTH_URL') . "accesstoken?grant_type=client_credentials";
 
             $response = Http::timeout(10)
                 ->withHeaders(['Content-Type' => 'application/x-www-form-urlencoded'])
                 ->asForm()
                 ->post($url, [
-                    'client_id' => env('SATUSEHAT_RUJUKAN_CLIENT_ID'),
-                    'client_secret' => env('SATUSEHAT_RUJUKAN_SECRET_ID'),
+                    'client_id' => env('SATUSEHAT_CLIENT_ID'),
+                    'client_secret' => env('SATUSEHAT_SECRET_ID'),
                 ]);
 
             if ($response->successful()) {
@@ -59,7 +62,7 @@ trait SatuSehatRujukanTrait
      */
     protected function rujukanRequest(string $method, string $endpoint, ?array $data = null, string $contentType = 'application/json'): array
     {
-        $url = env('SATUSEHAT_RUJUKAN_BASE_URL') . ltrim($endpoint, '/');
+        $url = env('SATUSEHAT_BASE_URL') . ltrim($endpoint, '/');
 
         try {
             $token = $this->rujukanAccessToken();
@@ -108,7 +111,7 @@ trait SatuSehatRujukanTrait
 
     protected function rujukanOrgId(): string
     {
-        return (string) env('SATUSEHAT_RUJUKAN_ORGANIZATION_ID');
+        return (string) env('SATUSEHAT_ORGANIZATION_ID');
     }
 
     private function rujukanNowIso(): string
@@ -600,7 +603,7 @@ trait SatuSehatRujukanTrait
             'occurrenceDateTime' => $this->rujukanNowIso(),
             'requester' => [
                 'reference' => 'Organization/' . $this->rujukanOrgId(),
-                'display' => (string) env('SATUSEHAT_RUJUKAN_ORGANIZATION_NAME'),
+                'display' => (string) env('SATUSEHAT_ORGANIZATION_NAME'),
             ],
             'performer' => [[
                 'reference' => 'Organization/' . $c['orgTujuanId'],

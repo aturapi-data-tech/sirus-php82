@@ -225,7 +225,7 @@ new class extends Component {
                                     <thead><tr><th>Jalur</th><th>Kredensial</th><th>Cara dapat</th></tr></thead>
                                     <tbody>
                                         <tr><td class="ds-td-strong">BPJS SISRUTE</td><td class="ds-body-sm">Cons-ID jenis <strong>SISRUTE</strong> (env <span class="ds-code">SISRUTE_CONS_ID/SECRET_KEY/USER_KEY</span>). Cons-id vclaim biasa DITOLAK ("not registered for this service").</td><td class="ds-body-sm">Ajukan ke BPJS (Kantor Cabang / form pendataan). Expired → ajukan "reaktivasi".</td></tr>
-                                        <tr><td class="ds-td-strong">SATUSEHAT Rujukan (staging)</td><td class="ds-body-sm">client_id/secret KHUSUS (env <span class="ds-code">SATUSEHAT_RUJUKAN_CLIENT_ID/SECRET_ID</span>) — BEDA dari dashboard platform.</td><td class="ds-body-sm">Japri tim SATUSEHAT Rujukan: email login platform + org-id production.</td></tr>
+                                        <tr><td class="ds-td-strong">SATUSEHAT Rujukan (staging)</td><td class="ds-body-sm">client_id/secret KHUSUS (env <span class="ds-code">SATUSEHAT_CLIENT_ID/SECRET_ID</span>) — BEDA dari dashboard platform.</td><td class="ds-body-sm">Japri tim SATUSEHAT Rujukan: email login platform + org-id production.</td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -442,10 +442,10 @@ SISRUTE_USER_KEY="xxxx"
 SISRUTE_KDPPK="0184R006"   <span style="color:#8b948c"># kode faskes env dev (MADINAH JST)</span>
 
 <span style="color:#8b948c"># ── Jalur FHIR (SATUSEHAT Rujukan) — credential KHUSUS staging dari tim SATUSEHAT (japri)</span>
-SATUSEHAT_RUJUKAN_AUTH_URL="https://api-satusehat-stg.dto.kemkes.go.id/oauth2/v1/"
-SATUSEHAT_RUJUKAN_BASE_URL="https://api-satusehat-stg.dto.kemkes.go.id/fhir-r4/v1/"
-SATUSEHAT_RUJUKAN_CLIENT_ID="xxxx"
-SATUSEHAT_RUJUKAN_SECRET_ID="xxxx"
+SATUSEHAT_AUTH_URL="https://api-satusehat-stg.dto.kemkes.go.id/oauth2/v1/"
+SATUSEHAT_BASE_URL="https://api-satusehat-stg.dto.kemkes.go.id/fhir-r4/v1/"
+SATUSEHAT_CLIENT_ID="xxxx"
+SATUSEHAT_SECRET_ID="xxxx"
 
 <span style="color:#8b948c"># ── Dipakai bersama (sudah ada) — org id SATUSEHAT production RS</span>
 SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
