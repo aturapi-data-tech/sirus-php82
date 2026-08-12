@@ -22,6 +22,18 @@ new class extends Component {
     public array $dataDaftarRI = [];
 
     /**
+     * Tab modal: 'telaah' | 'resume'. Sengaja state server, bukan Alpine —
+     * panel Resume memuat rekam-medis-display yang berat (~780 KB); dengan
+     * x-show ia tetap ikut ter-render walau tabnya tak pernah dibuka.
+     */
+    public string $tabTelaah = 'telaah';
+
+    public function setTabTelaah(string $tab): void
+    {
+        $this->tabTelaah = in_array($tab, ['telaah', 'resume'], true) ? $tab : 'telaah';
+    }
+
+    /**
      * Map productId → saldo apotek, dihitung sekali saat modal dibuka.
      * Tujuan: apoteker melihat ketersediaan per obat sebelum ttd telaah —
      * apoteker tidak bisa mengubah qty (qty dari dokter), jadi UI ini review-only.
@@ -43,6 +55,7 @@ new class extends Component {
     public function open(int $slsNo): void
     {
         $this->resetForm();
+        $this->tabTelaah = 'telaah';
         $this->slsNo = $slsNo;
 
         $sls = DB::table('imtxn_slshdrs')->where('sls_no', $slsNo)->first(['rihdr_no']);
@@ -373,30 +386,49 @@ new class extends Component {
                 $apotek = $apotekIndex !== null ? ($dataDaftarRI['apotekHdr'][$apotekIndex] ?? null) : null;
             @endphp
 
-            {{-- HEADER --}}
-            <div class="flex items-center justify-between px-6 py-4 border-b border-hairline dark:border-gray-700">
-                <div>
-                    <h3 class="text-lg font-semibold text-ink dark:text-white">
-                        Telaah Resep &amp; Obat — Rawat Inap
-                    </h3>
-                    @if ($eresep)
-                        <p class="text-sm text-muted dark:text-gray-400">
-                            {{ $dataDaftarRI['regName'] ?? '' }}
-                            &bull; No SLS: {{ $slsNo }}
-                            @if (!empty($eresep['resepNo']))
-                                &bull; Resep #{{ $eresep['resepNo'] }}
-                            @endif
-                        </p>
-                    @endif
+            {{-- HEADER — mengikuti EMR RJ: judul & nomor kunjungan dibuang, identitas
+                 pasien yang jadi kepala modal supaya ruang layar terpakai penuh.
+                 Nomor resep tetap dipertahankan sebagai badge: satu pasien RI bisa
+                 punya beberapa resep, dan kartu identitas tidak memuatnya. --}}
+            <div class="flex items-start justify-between gap-4 px-6 py-4 border-b border-hairline dark:border-gray-700">
+                <div class="flex-1 min-w-0">
+                    <livewire:pages::transaksi.ri-resep.display-pasien-ri-resep.display-pasien-ri-resep :slsNo="$slsNo"
+                        wire:key="ri-resep-telaah-display-pasien-{{ $slsNo ?? 'new' }}" />
                 </div>
-                <x-icon-button color="gray" type="button" wire:click="closeTelaah" class="shrink-0">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </x-icon-button>
+                <div class="flex items-center gap-2 shrink-0">
+                    @if (!empty($eresep['resepNo']))
+                        <x-badge variant="info">Resep #{{ $eresep['resepNo'] }}</x-badge>
+                    @endif
+                    <x-icon-button color="gray" type="button" wire:click="closeTelaah">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </x-icon-button>
+                </div>
             </div>
 
-            @if (!$eresep || !$apotek)
+            {{-- TAB --}}
+            <div class="px-6 pt-4">
+                <x-tabs variant="underline">
+                    <x-tab :active="$tabTelaah === 'telaah'" wire:click="setTabTelaah('telaah')">Telaah</x-tab>
+                    <x-tab :active="$tabTelaah === 'resume'" wire:click="setTabTelaah('resume')">Resume Rekam Medis</x-tab>
+                </x-tabs>
+            </div>
+
+            @if ($tabTelaah === 'resume')
+                {{-- REKAM MEDIS — riwayat kunjungan pasien. rjNoRefCopyTo sengaja TIDAK
+                     dikirim: apoteker menelaah, bukan menulis resep, jadi tombol salin
+                     resep ke kunjungan aktif tidak boleh aktif di sini. --}}
+                @if (filled($dataDaftarRI['regNo'] ?? ''))
+                    <div class="px-6 py-4">
+                        <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
+                            :regNo="$dataDaftarRI['regNo']"
+                            wire:key="ri-resep-telaah-rekam-medis-{{ $dataDaftarRI['regNo'] }}-{{ $slsNo ?? 'none' }}" />
+                    </div>
+                @else
+                    <div class="px-6 py-12 text-center text-muted-soft">Data pasien belum dimuat.</div>
+                @endif
+            @elseif (!$eresep || !$apotek)
                 <div class="px-6 py-12 text-center text-muted-soft">Memuat data...</div>
             @else
                 {{-- GRID --}}
@@ -405,7 +437,7 @@ new class extends Component {
                     {{-- ══════════════ KIRI: TELAAH RESEP (2/3) ══════════════ --}}
                     <div class="flex flex-col lg:col-span-2">
 
-                        <div class="px-6 py-4 overflow-y-auto max-h-[60vh]">
+                        <div class="flex-1 px-6 py-4">
                             {{-- Daftar obat (dari eresepHdr — dokter) --}}
                             @if (!empty($eresep['eresep']) || !empty($eresep['eresepRacikan']))
                                 <div class="mb-4 p-3 bg-blue-50 rounded-xl border border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
@@ -580,7 +612,7 @@ new class extends Component {
                         </div>
 
                         {{-- FOOTER kiri --}}
-                        <div class="flex items-center justify-between gap-3 px-6 py-4 border-t border-hairline bg-surface-soft dark:border-gray-700 dark:bg-gray-900">
+                        <div class="sticky bottom-0 z-10 flex items-center justify-between gap-3 px-6 py-4 border-t border-hairline bg-surface-soft dark:border-gray-700 dark:bg-gray-900">
                             <x-secondary-button wire:click="closeTelaah">Tutup</x-secondary-button>
 
                             <div class="flex gap-2">
@@ -636,7 +668,7 @@ new class extends Component {
                     {{-- ══════════════ KANAN: TELAAH OBAT ══════════════ --}}
                     <div class="flex flex-col">
 
-                        <div class="px-6 py-4 overflow-y-auto max-h-[60vh]">
+                        <div class="flex-1 px-6 py-4">
                             @if (!empty($eresep['eresep']) || !empty($eresep['eresepRacikan']))
                                 <div class="mb-4 p-3 bg-blue-50 rounded-xl border border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
                                     <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1.5">
@@ -756,7 +788,7 @@ new class extends Component {
                         </div>
 
                         {{-- FOOTER kanan --}}
-                        <div class="flex items-center justify-between gap-3 px-6 py-4 border-t border-hairline bg-surface-soft dark:border-gray-700 dark:bg-gray-900">
+                        <div class="sticky bottom-0 z-10 flex items-center justify-between gap-3 px-6 py-4 border-t border-hairline bg-surface-soft dark:border-gray-700 dark:bg-gray-900">
                             <x-secondary-button wire:click="closeTelaah">Tutup</x-secondary-button>
 
                             <div class="flex gap-2">
@@ -811,7 +843,6 @@ new class extends Component {
 
                 </div>
             @endif
-
         </div>
     </x-modal>
 </div>

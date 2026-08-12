@@ -18,6 +18,18 @@ new class extends Component {
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-telaah-apotek-ugd'];
 
+    /**
+     * Tab modal: 'telaah' | 'resume'. Sengaja state server, bukan Alpine —
+     * panel Resume memuat rekam-medis-display yang berat (~780 KB); dengan
+     * x-show ia tetap ikut ter-render walau tabnya tak pernah dibuka.
+     */
+    public string $tabTelaah = 'telaah';
+
+    public function setTabTelaah(string $tab): void
+    {
+        $this->tabTelaah = in_array($tab, ['telaah', 'resume'], true) ? $tab : 'telaah';
+    }
+
     public function mount(): void
     {
         $this->registerAreas($this->renderAreas);
@@ -40,6 +52,7 @@ new class extends Component {
 
     private function openTelaahUnified(string $rjNo): void
     {
+        $this->tabTelaah = 'telaah';
         $this->loadData($rjNo);
 
         if (!isset($this->dataDaftarUGD['telaahResep'])) {
@@ -275,18 +288,12 @@ new class extends Component {
     <x-modal name="telaah-apotek-ugd" size="full" height="full" focusable>
         <div wire:key="{{ $this->renderKey('modal-telaah-apotek-ugd', [$rjNo ?? 'new']) }}">
 
-            {{-- HEADER --}}
-            <div class="flex items-center justify-between px-6 py-4 border-b border-hairline dark:border-gray-700">
-                <div>
-                    <h3 class="text-lg font-semibold text-ink dark:text-white">
-                        Telaah Resep &amp; Obat
-                    </h3>
-                    @if (isset($dataDaftarUGD['regName']))
-                        <p class="text-sm text-muted dark:text-gray-400">
-                            {{ $dataDaftarUGD['regName'] ?? '' }}
-                            &bull; No UGD: {{ $rjNo }}
-                        </p>
-                    @endif
+            {{-- HEADER — mengikuti EMR RJ: judul & nomor kunjungan dibuang, identitas
+                 pasien yang jadi kepala modal supaya ruang layar terpakai penuh. --}}
+            <div class="flex items-start justify-between gap-4 px-6 py-4 border-b border-hairline dark:border-gray-700">
+                <div class="flex-1 min-w-0">
+                    <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                        wire:key="telaah-apotek-ugd-display-pasien-{{ $rjNo ?? 'new' }}" />
                 </div>
                 <x-icon-button color="gray" type="button" wire:click="closeTelaah" class="shrink-0">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -295,6 +302,15 @@ new class extends Component {
                 </x-icon-button>
             </div>
 
+            {{-- TAB --}}
+            <div class="px-6 pt-4">
+                <x-tabs variant="underline">
+                    <x-tab :active="$tabTelaah === 'telaah'" color="rose" wire:click="setTabTelaah('telaah')">Telaah</x-tab>
+                    <x-tab :active="$tabTelaah === 'resume'" color="rose" wire:click="setTabTelaah('resume')">Resume Rekam Medis</x-tab>
+                </x-tabs>
+            </div>
+
+            @if ($tabTelaah === 'telaah')
             {{-- GRID: TELAAH RESEP (KIRI, 2/3) | TELAAH OBAT (KANAN, 1/3) --}}
             <div
                 class="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-hairline dark:divide-gray-700">
@@ -302,7 +318,7 @@ new class extends Component {
                 {{-- ══════════════ KOLOM KIRI: TELAAH RESEP ══════════════ --}}
                 <div class="flex flex-col lg:col-span-2">
 
-                    <div class="px-6 py-4 overflow-y-auto max-h-[60vh]">
+                    <div class="flex-1 px-6 py-4">
                         @if (isset($dataDaftarUGD['telaahResep']))
 
                             @if (!empty($dataDaftarUGD['eresep']) || !empty($dataDaftarUGD['eresepRacikan']))
@@ -440,7 +456,7 @@ new class extends Component {
                     </div>
 
                     <div
-                        class="flex items-center justify-between gap-3 px-6 py-4 border-t border-hairline bg-surface-soft rounded-b-xl dark:border-gray-700 dark:bg-gray-900">
+                        class="sticky bottom-0 z-10 flex items-center justify-between gap-3 px-6 py-4 border-t border-hairline bg-surface-soft rounded-b-xl dark:border-gray-700 dark:bg-gray-900">
                         <x-secondary-button wire:click="closeTelaah">Tutup</x-secondary-button>
 
                         <div class="flex gap-2">
@@ -505,7 +521,7 @@ new class extends Component {
                 {{-- ══════════════ KOLOM KANAN: TELAAH OBAT ══════════════ --}}
                 <div class="flex flex-col">
 
-                    <div class="px-6 py-4 overflow-y-auto max-h-[60vh]">
+                    <div class="flex-1 px-6 py-4">
                         @if (isset($dataDaftarUGD['telaahObat']))
 
                             @if (!empty($dataDaftarUGD['eresep']) || !empty($dataDaftarUGD['eresepRacikan']))
@@ -641,7 +657,7 @@ new class extends Component {
                     </div>
 
                     <div
-                        class="flex items-center justify-between gap-3 px-6 py-4 border-t border-hairline bg-surface-soft rounded-b-xl dark:border-gray-700 dark:bg-gray-900">
+                        class="sticky bottom-0 z-10 flex items-center justify-between gap-3 px-6 py-4 border-t border-hairline bg-surface-soft rounded-b-xl dark:border-gray-700 dark:bg-gray-900">
                         <x-secondary-button wire:click="closeTelaah">Tutup</x-secondary-button>
 
                         <div class="flex gap-2">
@@ -704,6 +720,22 @@ new class extends Component {
                 </div>
 
             </div> {{-- /GRID --}}
+            @endif
+
+            @if ($tabTelaah === 'resume')
+                {{-- REKAM MEDIS — riwayat kunjungan pasien. rjNoRefCopyTo sengaja TIDAK
+                     dikirim: apoteker menelaah, bukan menulis resep, jadi tombol salin
+                     resep ke kunjungan aktif tidak boleh aktif di sini. --}}
+                @if (filled($dataDaftarUGD['regNo'] ?? ''))
+                    <div class="px-6 py-4">
+                        <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
+                            :regNo="$dataDaftarUGD['regNo']"
+                            wire:key="telaah-apotek-ugd-rekam-medis-{{ $dataDaftarUGD['regNo'] }}-{{ $rjNo ?? 'none' }}" />
+                    </div>
+                @else
+                    <div class="px-6 py-12 text-center text-muted-soft">Data pasien belum dimuat.</div>
+                @endif
+            @endif
         </div>
     </x-modal>
 </div>
