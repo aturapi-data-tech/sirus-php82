@@ -214,6 +214,81 @@ new class extends Component {
         $this->setDiagnosaRujukan($icdx, $payload['diag_desc'] ?? ($payload['description'] ?? ''));
     }
 
+    /**
+     * LOV poli. Yang dikirim ke BPJS adalah kd_poli_bpjs, bukan poli_id kita.
+     * Payload null = user menekan "Ubah" untuk mengosongkan; kolomnya ikut
+     * dikosongkan supaya tak ada kode basi yang ikut terkirim.
+     */
+    #[On('lov.selected.rujukanKompetensiSpesialis')]
+    public function onLovSpesialisSelected(?array $payload = null, string $target = ''): void
+    {
+        if ($this->isFormLocked) {
+            return;
+        }
+        $this->formRujukan['kodeSpesialis'] = $this->kodeBpjsDariPayloadPoli($payload);
+    }
+
+    #[On('lov.selected.rujukanKompetensiPoliRujukan')]
+    public function onLovPoliRujukanSelected(?array $payload = null, string $target = ''): void
+    {
+        if ($this->isFormLocked) {
+            return;
+        }
+        $this->formRujukan['poliRujukan'] = $this->kodeBpjsDariPayloadPoli($payload);
+    }
+
+    /**
+     * Tolak poli yang belum dipetakan ke BPJS — kalau dibiarkan lolos, kolomnya
+     * terisi string kosong dan rujukan ditolak jauh di belakang tanpa petunjuk.
+     */
+    private function kodeBpjsDariPayloadPoli(?array $payload): string
+    {
+        if ($payload === null) {
+            return '';
+        }
+
+        $kodeBpjs = strtoupper(trim((string) ($payload['kd_poli_bpjs'] ?? '')));
+        if ($kodeBpjs === '') {
+            $this->dispatch('toast', type: 'error',
+                message: 'Poli "' . ($payload['poli_desc'] ?? '-') . '" belum punya Kode BPJS di Master Poli, jadi belum bisa dipakai untuk rujukan.');
+            return '';
+        }
+
+        return $kodeBpjs;
+    }
+
+    /**
+     * Kebalikannya: form menyimpan kode BPJS, sedangkan lov-poli minta poli_id.
+     * Mengembalikan null bila kodenya tak ada di master (mis. data lama) —
+     * LOV tampil kosong, tapi kodenya tetap ditampilkan di bawah kolom.
+     */
+    private function poliIdDariKodeBpjs(string $kodeBpjs): ?string
+    {
+        $kodeBpjs = strtoupper(trim($kodeBpjs));
+        if ($kodeBpjs === '') {
+            return null;
+        }
+
+        $poliId = DB::table('rsmst_polis')
+            ->whereRaw('UPPER(TRIM(kd_poli_bpjs)) = ?', [$kodeBpjs])
+            ->value('poli_id');
+
+        return $poliId === null ? null : (string) $poliId;
+    }
+
+    // Dibaca dari blade sebagai $this->poliIdSpesialis / $this->poliIdPoliRujukan.
+    // Sengaja BUKAN #[Computed]: nilainya harus ikut berubah begitu handler LOV
+    // menulis ulang formRujukan di request yang sama.
+    public function getPoliIdSpesialisProperty(): ?string
+    {
+        return $this->poliIdDariKodeBpjs((string) ($this->formRujukan['kodeSpesialis'] ?? ''));
+    }
+
+    public function getPoliIdPoliRujukanProperty(): ?string
+    {
+        return $this->poliIdDariKodeBpjs((string) ($this->formRujukan['poliRujukan'] ?? ''));
+    }
+
     private function setDiagnosaRujukan(string $kodeDiagnosa, string $diagnosaDesc): void
     {
         $this->formRujukan['kodeDiagnosa'] = $kodeDiagnosa;
@@ -432,12 +507,23 @@ new class extends Component {
             ->map(
                 fn($faskes) => [
                     'kdppk' => (string) ($faskes['kdppk'] ?? ($faskes['bpjs-code'] ?? '')),
-                    'kodeFaskesSatuSehat' => (string) ($faskes['kodeFaskesSatuSehat'] ?? ($faskes['kemkes-code'] ?? '')),
-                    'nama' => (string) ($faskes['nmkc'] ?? ($faskes['nama'] ?? ($faskes['display'] ?? ''))),
+                    // Response memberi "Organization/100027716" — awalan WAJIB dibuang.
+                    // Nilai ini dikirim sebagai kdppkSatuSehatTujuanRujukan, sedangkan
+                    // kodeFaskesSatuSehat milik kita dikirim polos; kalau formatnya beda
+                    // BPJS menolak dengan "PPK tidak ditemukan di pemetaan".
+                    'kodeFaskesSatuSehat' => str_replace('Organization/', '', (string) ($faskes['kodeFaskesSatuSehat'] ?? ($faskes['kemkes-code'] ?? ''))),
+                    // nmppk = NAMA faskes. Jangan pakai nmkc — itu nama kota/kabupaten,
+                    // sehingga seluruh baris tampil sama ("TULUNGAGUNG").
+                    'nama' => (string) ($faskes['nmppk'] ?? ($faskes['nama'] ?? ($faskes['display'] ?? ''))),
+                    'kota' => (string) ($faskes['nmkc'] ?? ''),
+                    'alamat' => (string) ($faskes['alamatPpk'] ?? ''),
+                    'telp' => (string) ($faskes['telpPpk'] ?? ''),
                     'kelas' => (string) ($faskes['kelas'] ?? ($faskes['strata'] ?? '')),
+                    'strata' => (string) ($faskes['strataSatuSehat'] ?? ''),
                     'distance' => (string) ($faskes['distance'] ?? ''),
                     'persentase' => (string) ($faskes['persentase'] ?? ''),
-                    'jadwal' => (string) ($faskes['jadwal'] ?? ''),
+                    'kapasitas' => (string) ($faskes['kapasitas'] ?? ''),
+                    'jmlRujuk' => (string) ($faskes['jmlRujuk'] ?? ''),
                 ],
             )
             ->values()
@@ -757,6 +843,9 @@ new class extends Component {
         </div>
     @else
 
+        {{-- Tiga langkah sejajar kiri→kanan; menumpuk kembali di layar < 1280px --}}
+        <div class="grid items-start grid-cols-1 gap-4 xl:grid-cols-3">
+
         {{-- LANGKAH 1 — DIAGNOSA & KRITERIA --}}
         <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">1. Diagnosa & Kriteria Rujukan</p>
@@ -788,8 +877,16 @@ new class extends Component {
                     <p class="mt-1 text-xs text-muted-soft">Wajib ber-titik (A02.0) — kode induk ditolak SATUSEHAT.</p>
                 </div>
                 <div>
-                    <x-input-label value="Kode Spesialis (poli BPJS)" class="mb-1" />
-                    <x-text-input wire:model.blur="formRujukan.kodeSpesialis" :disabled="$isFormLocked" class="w-full" />
+                    <livewire:lov.poli.lov-poli label="Kode Spesialis (poli BPJS)"
+                        target="rujukanKompetensiSpesialis"
+                        :initialPoliId="$this->poliIdSpesialis" :disabled="$isFormLocked"
+                        wire:key="lov-poli-spesialis-{{ $rjNo }}" />
+                    <p class="mt-1 text-xs text-muted-soft">
+                        Terisi otomatis dari poli kunjungan; ganti bila poli tujuan berbeda.
+                        @if (filled($formRujukan['kodeSpesialis']))
+                            <span class="font-mono font-semibold text-ink dark:text-gray-200">Kode terkirim: {{ $formRujukan['kodeSpesialis'] }}</span>
+                        @endif
+                    </p>
                 </div>
                 <div>
                     <x-input-label value="Tgl Rencana Kunjungan" class="mb-1" />
@@ -821,16 +918,14 @@ new class extends Component {
             @if (!empty($formRujukan['kriteriaList']))
                 <div class="space-y-2">
                     <p class="text-xs text-muted-soft">Pilih <b>tepat satu</b> kriteria (aturan BPJS sejak Juli 2026):</p>
-                    @foreach ($formRujukan['kriteriaList'] as $kriteria)
-                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                            <input type="radio" name="kriteriaPilih-{{ $rjNo }}" value="{{ $kriteria['linkId'] }}"
-                                wire:model.live="formRujukan.kriteriaPilih" @disabled($isFormLocked)
-                                class="text-indigo-600 border-hairline focus:ring-indigo-500">
-                            <span>{{ $kriteria['text'] }}
-                                <span class="text-xs text-muted-soft">(linkId {{ $kriteria['linkId'] }})</span>
-                            </span>
-                        </label>
-                    @endforeach
+                    {{-- satu kolom: kartu radio ini kini tinggal 1/3 lebar layar --}}
+                    <div class="grid grid-cols-1 gap-2">
+                        @foreach ($formRujukan['kriteriaList'] as $kriteria)
+                            <x-radio-button :label="$kriteria['text'] . ' — linkId ' . $kriteria['linkId']"
+                                :value="$kriteria['linkId']" name="kriteriaPilih-{{ $rjNo }}"
+                                wire:model.live="formRujukan.kriteriaPilih" :disabled="$isFormLocked" />
+                        @endforeach
+                    </div>
                     @php
                         $kriteriaTerpilih = collect($formRujukan['kriteriaList'])->firstWhere('linkId', $formRujukan['kriteriaPilih']);
                         $butuhIcd9 = $kriteriaTerpilih && (strtolower($kriteriaTerpilih['type']) === 'text' || str_contains(strtolower($kriteriaTerpilih['text']), 'tindakan'));
@@ -846,7 +941,7 @@ new class extends Component {
                 </div>
 
                 {{-- Wilayah rujukan (auto dari server, bisa diganti) --}}
-                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div class="grid grid-cols-1 gap-3">
                     <div>
                         <x-input-label value="Propinsi Jejaring" class="mb-1" />
                         <x-select-input wire:model.live="formRujukan.kodePropinsi" :disabled="$isFormLocked" class="w-full">
@@ -884,43 +979,66 @@ new class extends Component {
             @endif
 
             @if (!empty($formRujukan['kandidatList']))
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead>
-                            <tr class="text-left border-b border-hairline text-muted-soft dark:border-gray-600">
-                                <th class="py-1 pr-2">Faskes</th>
-                                <th class="py-1 pr-2">PPK BPJS</th>
-                                <th class="py-1 pr-2">Kelas</th>
-                                <th class="py-1 pr-2">Jarak</th>
-                                <th class="py-1 pr-2">Jadwal</th>
-                                <th class="py-1"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($formRujukan['kandidatList'] as $indexKandidat => $kandidat)
-                                @php $tanpaPpk = $kandidat['kdppk'] === '' || strtolower($kandidat['kdppk']) === 'null'; @endphp
-                                <tr class="border-b border-hairline-soft dark:border-gray-700 {{ $formRujukan['kandidatIdx'] === $indexKandidat ? 'bg-indigo-50 dark:bg-indigo-950' : '' }}">
-                                    <td class="py-1 pr-2">{{ $kandidat['nama'] }}</td>
-                                    <td class="py-1 pr-2 font-mono">{{ $tanpaPpk ? '— non-BPJS' : $kandidat['kdppk'] }}</td>
-                                    <td class="py-1 pr-2">{{ $kandidat['kelas'] }}</td>
-                                    <td class="py-1 pr-2">{{ $kandidat['distance'] }}</td>
-                                    <td class="py-1 pr-2 text-xs">{{ \Illuminate\Support\Str::limit($kandidat['jadwal'], 40) }}</td>
-                                    <td class="py-1 text-right">
-                                        @if ($formRujukan['kandidatIdx'] === $indexKandidat)
-                                            <span class="text-xs font-semibold text-indigo-700 dark:text-indigo-300">✓ Dipilih</span>
+                {{-- Kolom sempit (1/3 layar): PPK, kelas, jarak & beban dilebur ke sel Faskes
+                     supaya kolom Aksi selalu kelihatan tanpa geser mendatar. --}}
+                <table class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
+                    <thead class="bg-surface-soft dark:bg-gray-800">
+                        <tr class="text-left text-muted dark:text-gray-300">
+                            <th class="px-3 py-2 border-b">Faskes</th>
+                            <th class="w-24 px-3 py-2 text-center border-b">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($formRujukan['kandidatList'] as $indexKandidat => $kandidat)
+                            @php
+                                $tanpaPpk = $kandidat['kdppk'] === '' || strtolower($kandidat['kdppk']) === 'null';
+                                $terpilih = $formRujukan['kandidatIdx'] === $indexKandidat;
+                                // Sebagian alamatPpk sudah memuat nama kota di ekornya
+                                // (mis. "JL KHR. ABDUL FATAH, BATANGSAREN, KAUMAN, TULUNGAGUNG")
+                                // — jangan ditempeli nmkc lagi supaya tak tertulis dua kali.
+                                $alamat = trim($kandidat['alamat'] ?? '');
+                                $kota = trim($kandidat['kota'] ?? '');
+                                $kotaSudahAda = $kota !== '' && stripos($alamat, $kota) !== false;
+                                $alamatKota = trim($alamat . ($kota !== '' && !$kotaSudahAda ? ' · ' . $kota : ''), ' ·');
+                            @endphp
+                            <tr class="border-b border-hairline dark:border-gray-700 {{ $terpilih ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : '' }}">
+                                <td class="px-3 py-2 align-top">
+                                    <span class="font-medium text-ink dark:text-gray-200">{{ ($kandidat['nama'] ?? '') ?: '-' }}</span>
+                                    @if (filled($alamatKota))
+                                        <span class="block text-xs text-muted dark:text-gray-400">{{ $alamatKota }}</span>
+                                    @endif
+                                    <span class="flex flex-wrap items-center mt-1 gap-x-2 gap-y-1 text-xs text-muted dark:text-gray-400">
+                                        @if ($tanpaPpk)
+                                            <x-badge variant="gray">non-BPJS</x-badge>
                                         @else
-                                            <button type="button" wire:click="pilihKandidat({{ $indexKandidat }})"
-                                                @disabled($isFormLocked || $tanpaPpk)
-                                                class="px-2 py-0.5 text-xs rounded border {{ $tanpaPpk ? 'text-muted-soft border-hairline cursor-not-allowed' : 'text-indigo-700 border-indigo-300 hover:bg-indigo-50 dark:text-indigo-300 dark:border-indigo-700' }}">
-                                                Pilih
-                                            </button>
+                                            <span class="font-mono">PPK {{ $kandidat['kdppk'] }}</span>
                                         @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                                        @if (filled($kandidat['kelas'] ?? ''))
+                                            <span>· Kelas {{ $kandidat['kelas'] }}</span>
+                                        @endif
+                                        @if (filled($kandidat['distance'] ?? ''))
+                                            <span class="tabular-nums">· {{ $kandidat['distance'] }} km</span>
+                                        @endif
+                                        @if (($kandidat['jmlRujuk'] ?? '') !== '')
+                                            <span class="tabular-nums" title="Rujukan masuk / kapasitas">· beban {{ $kandidat['jmlRujuk'] }}/{{ ($kandidat['kapasitas'] ?? '') ?: '-' }}</span>
+                                        @endif
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2 text-center align-top">
+                                    @if ($terpilih)
+                                        <x-badge variant="success">&#10003; Dipilih</x-badge>
+                                    @else
+                                        <x-secondary-button type="button" wire:click="pilihKandidat({{ $indexKandidat }})"
+                                            :disabled="$isFormLocked || $tanpaPpk"
+                                            title="{{ $tanpaPpk ? 'RS non-BPJS tidak bisa jadi tujuan rujukan BPJS' : 'Jadikan faskes tujuan rujukan' }}">
+                                            Pilih
+                                        </x-secondary-button>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             @endif
         </div>
 
@@ -929,9 +1047,17 @@ new class extends Component {
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">3. Kirim Rujukan</p>
             <div class="grid grid-cols-1 gap-3">
                 <div>
-                    <x-input-label value="Poli Rujukan (kode BPJS 3 huruf)" class="mb-1" />
-                    <x-text-input wire:model.blur="formRujukan.poliRujukan" placeholder="kosong = ikut kode spesialis"
-                        :disabled="$isFormLocked" class="w-full" />
+                    <livewire:lov.poli.lov-poli label="Poli Rujukan (kode BPJS 3 huruf)"
+                        placeholder="kosongkan = ikut kode spesialis"
+                        target="rujukanKompetensiPoliRujukan"
+                        :initialPoliId="$this->poliIdPoliRujukan" :disabled="$isFormLocked"
+                        wire:key="lov-poli-poli-rujukan-{{ $rjNo }}" />
+                    <p class="mt-1 text-xs text-muted-soft">
+                        Dibiarkan kosong = memakai Kode Spesialis di Langkah 1.
+                        @if (filled($formRujukan['poliRujukan']))
+                            <span class="font-mono font-semibold text-ink dark:text-gray-200">Kode terkirim: {{ $formRujukan['poliRujukan'] }}</span>
+                        @endif
+                    </p>
                 </div>
                 <div>
                     <x-input-label value="Catatan Rujukan" class="mb-1" />
@@ -960,6 +1086,8 @@ new class extends Component {
                 </div>
             @endif
         </div>
+
+        </div>{{-- /grid tiga langkah --}}
     @endif
                 </div>
             </div>
