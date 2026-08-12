@@ -116,8 +116,11 @@ new class extends Component {
         if (empty($this->dokterUuid())) {
             $kurang[] = 'IHS Dokter (dr_uuid) kosong di Master Dokter';
         }
-        if (empty($this->dataDaftarPoliRJ['diagnosis'])) {
-            $kurang[] = 'Diagnosa EMR belum diisi';
+        // Yang dikirim ke BPJS adalah formRujukan.kodeDiagnosa — boleh diisi lewat LOV
+        // "Cari Diagnosa Rujukan" tanpa menunggu diagnosa EMR. Diagnosa EMR hanya
+        // dipakai sebagai pra-isi + chip pintasan, jadi JANGAN dijadikan syarat.
+        if (empty($this->formRujukan['kodeDiagnosa'] ?? '')) {
+            $kurang[] = 'Diagnosa rujukan belum dipilih (Langkah 1 — Cari Diagnosa Rujukan)';
         }
         return $kurang;
     }
@@ -625,12 +628,13 @@ new class extends Component {
     @php $prasyaratKurang = $this->prasyaratKurang(); @endphp
     @if (!empty($prasyaratKurang) && empty($formRujukan['hasil']['noRujukanSatuSehat']))
         <div class="p-3 text-sm text-red-800 border border-red-200 rounded-lg bg-red-50 dark:bg-red-950 dark:text-red-200 dark:border-red-900">
-            <p class="font-semibold">Data belum siap — lengkapi dulu:</p>
+            <p class="font-semibold">Belum bisa <em>mengirim</em> rujukan — lengkapi dulu:</p>
             <ul class="mt-1 ml-4 list-disc">
                 @foreach ($prasyaratKurang as $itemKurang)
                     <li>{{ $itemKurang }}</li>
                 @endforeach
             </ul>
+            <p class="mt-2 text-xs">Langkah 1 (Ambil Kriteria) &amp; 2 (Cari Kandidat) tetap bisa dijalankan sambil melengkapi ini.</p>
         </div>
     @endif
 
