@@ -138,6 +138,9 @@ new class extends Component {
                         $baris['tgl'],
                         $baris['reg_no'],
                         $baris['nama'],
+                        // Terisi hanya untuk komponen radiologi (nama pemeriksaan);
+                        // komponen lain tidak punya padanan sedetail ini.
+                        $baris['keterangan'],
                         $baris['klaim'],
                         // Jenis klaim (BPJS/UMUM/KRONIS/DOKEL) dipisah dari namanya
                         // supaya bisa jadi kolom pivot; nama klaim terlalu banyak
@@ -168,7 +171,7 @@ new class extends Component {
      */
     public const KOLOM_CSV = [
         'Dokter', 'Periode Jasa', 'Komponen', 'Tanggal',
-        'No. RM', 'Nama Pasien', 'Klaim', 'Jenis Klaim', 'No. SEP',
+        'No. RM', 'Nama Pasien', 'Pemeriksaan', 'Klaim', 'Jenis Klaim', 'No. SEP',
         'No. Transaksi', 'Nominal', 'Masuk Slip',
     ];
 

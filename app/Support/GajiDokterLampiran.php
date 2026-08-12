@@ -154,6 +154,8 @@ class GajiDokterLampiran
                     'klaim' => trim((string) ($klaim->klaim_desc ?? $baris->klaim_id)),
                     'klaim_status' => trim((string) ($klaim->klaim_status ?? '')),
                     'no_sep' => trim((string) ($sumber->no_sep ?? '')),
+                    // Terisi hanya untuk komponen radiologi (nama pemeriksaan).
+                    'keterangan' => trim((string) ($sumber->keterangan ?? '')),
                 ];
             })
             ->sortBy([['seq', 'asc'], ['tgl_sort', 'asc'], ['nama', 'asc']])
@@ -411,22 +413,31 @@ class GajiDokterLampiran
                 adaSep: false,
             ),
 
+            // Radiologi: satu baris = satu pemeriksaan, jadi nama pemeriksaannya
+            // (RSMST_RADIOLOGIS.rad_desc) bisa ikut ditarik dan ditampilkan di
+            // bawah nama pasien. Komponen lain tidak punya padanan sedetail ini.
             'RAD RJ' => self::bentuk(
                 DB::table('rstxn_rjrads as x')
-                    ->join('rstxn_rjhdrs as h', 'h.rj_no', '=', 'x.rj_no'),
+                    ->join('rstxn_rjhdrs as h', 'h.rj_no', '=', 'x.rj_no')
+                    ->leftJoin('rsmst_radiologis as m', 'm.rad_id', '=', 'x.rad_id'),
                 'x.rad_dtl', 'h.rj_date', $nomorTransaksiList,
+                ekspresiKeterangan: 'MIN(m.rad_desc)',
             ),
 
             'RAD UGD' => self::bentuk(
                 DB::table('rstxn_ugdrads as x')
-                    ->join('rstxn_ugdhdrs as h', 'h.rj_no', '=', 'x.rj_no'),
+                    ->join('rstxn_ugdhdrs as h', 'h.rj_no', '=', 'x.rj_no')
+                    ->leftJoin('rsmst_radiologis as m', 'm.rad_id', '=', 'x.rad_id'),
                 'x.rad_dtl', 'h.rj_date', $nomorTransaksiList,
+                ekspresiKeterangan: 'MIN(m.rad_desc)',
             ),
 
             'RAD RI' => self::bentuk(
                 DB::table('rstxn_riradiologs as x')
-                    ->join('rstxn_rihdrs as h', 'h.rihdr_no', '=', 'x.rihdr_no'),
+                    ->join('rstxn_rihdrs as h', 'h.rihdr_no', '=', 'x.rihdr_no')
+                    ->leftJoin('rsmst_radiologis as m', 'm.rad_id', '=', 'x.rad_id'),
                 'x.rirad_no', 'x.rirad_date', $nomorTransaksiList,
+                ekspresiKeterangan: 'MIN(m.rad_desc)',
             ),
 
             default => null,
@@ -442,8 +453,14 @@ class GajiDokterLampiran
      * baris jasa). Tanpa agregat keduanya menghasilkan kunci kembar yang
      * diam-diam saling menimpa di peta.
      */
-    protected static function bentuk($kueri, string $kolomKunci, string $kolomTanggal, array $nomorTransaksiList, bool $adaSep = true)
-    {
+    protected static function bentuk(
+        $kueri,
+        string $kolomKunci,
+        string $kolomTanggal,
+        array $nomorTransaksiList,
+        bool $adaSep = true,
+        ?string $ekspresiKeterangan = null,
+    ) {
         // RSTXN_RJHDRKS (klinik) TIDAK punya kolom VNO_SEP — diperiksa langsung
         // ke USER_TAB_COLUMNS 2026-08-02, sementara RJHDRS/UGDHDRS/RIHDRS
         // punya. Menyeragamkannya berarti ORA-00904 pada cabang klinik saja,
@@ -451,6 +468,11 @@ class GajiDokterLampiran
         // klinik tidak muncul pada tiap dokter. NULL di-cast supaya Oracle tahu
         // tipe kolomnya saat cabang ini digabungkan di sisi PHP.
         $ekspresiSep = $adaSep ? 'MIN(h.vno_sep)' : "CAST(NULL AS VARCHAR2(30))";
+
+        // Keterangan layanan hanya ada pada komponen tertentu (radiologi punya
+        // nama pemeriksaan; visite/uang periksa tidak punya padanannya). NULL
+        // di-cast supaya Oracle tahu tipenya saat semua cabang digabung di PHP.
+        $ekspresiKeterangan ??= "CAST(NULL AS VARCHAR2(200))";
 
         return $kueri
             ->leftJoin('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
@@ -462,6 +484,7 @@ class GajiDokterLampiran
                 DB::raw("to_char(MIN({$kolomTanggal}), 'dd/mm/yyyy') AS tgl"),
                 DB::raw("to_char(MIN({$kolomTanggal}), 'yyyymmdd') AS tgl_sort"),
                 DB::raw("{$ekspresiSep} AS no_sep"),
+                DB::raw("{$ekspresiKeterangan} AS keterangan"),
             ])
             ->groupBy(DB::raw($kolomKunci));
     }
