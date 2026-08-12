@@ -155,7 +155,7 @@ trait SisruteTrait
         // 3. Data yang akan divalidasi
         $r = [
             'kodeDiagnosa' => $kodeDiagnosa,
-            'kodeFaskesSatuSehat' => $kodeFaskesSatuSehat ?: env('SATUSEHAT_ORGANIZATION_ID'),
+            'kodeFaskesSatuSehat' => $kodeFaskesSatuSehat ?: env('SATUSEHAT_RUJUKAN_ORGANIZATION_ID'),
         ];
 
         // 4. Rules validasi
