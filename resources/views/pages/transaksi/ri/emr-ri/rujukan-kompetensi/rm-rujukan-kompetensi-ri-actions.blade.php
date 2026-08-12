@@ -52,6 +52,39 @@ new class extends Component {
         }
     }
 
+    /* ═══════════════════════════════════════
+     | OPEN / CLOSE MODAL (pola modul-dokumen: kartu ringkas → tombol → x-modal)
+    ═══════════════════════════════════════ */
+    public function openModal(): void
+    {
+        if (empty($this->riHdrNo)) {
+            return;
+        }
+
+        // Baca ulang saat dibuka: SEP/Encounter/diagnosa bisa terbit setelah panel
+        // pertama kali dirender, jadi prasyarat harus dinilai dari data terkini.
+        $data = $this->findDataRI($this->riHdrNo);
+        if (empty($data)) {
+            $this->dispatch('toast', type: 'error', message: 'Data kunjungan tidak ditemukan.');
+            return;
+        }
+        $this->dataDaftarRi = $data;
+
+        $tersimpan = $data['rujukanKompetensi'] ?? [];
+        if (!empty($tersimpan) && is_array($tersimpan)) {
+            $this->formRujukan = array_replace($this->defaultFormRujukan(), $tersimpan);
+        }
+
+        $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo);
+
+        $this->dispatch('open-modal', name: 'rujukan-kompetensi-ri-' . $this->riHdrNo);
+    }
+
+    public function closeModal(): void
+    {
+        $this->dispatch('close-modal', name: 'rujukan-kompetensi-ri-' . $this->riHdrNo);
+    }
+
     private function defaultFormRujukan(): array
     {
         return [
@@ -421,19 +454,91 @@ new class extends Component {
 };
 ?>
 
-<div class="w-full p-4 space-y-4 border border-indigo-200 rounded-2xl bg-indigo-50/50 dark:bg-gray-900 dark:border-indigo-700">
+<div>
+    {{-- ══ KARTU RINGKAS (inline di tab Tindak Lanjut) ══ --}}
+    @php $sudahTerkirim = !empty($formRujukan['hasil']['noRujukanSatuSehat']); @endphp
 
-    <div class="flex items-center justify-between">
-        <h3 class="font-semibold text-gray-800 dark:text-gray-100">Rujukan Berbasis Kompetensi — Rawat Inap (SATUSEHAT FHIR)</h3>
-        @if (!empty($formRujukan['hasil']['noRujukanSatuSehat']))
-            <span class="px-2 py-0.5 text-xs font-semibold text-green-800 bg-green-100 rounded-full dark:bg-green-900 dark:text-green-200">✓ Terkirim</span>
-        @endif
+    <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+        <div class="flex flex-col gap-3">
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-indigo-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+                    </svg>
+                    <h3 class="text-base font-semibold text-ink dark:text-gray-200">
+                        Rujukan Berbasis Kompetensi — Ranap RS Lain (SATUSEHAT FHIR)
+                    </h3>
+                    @if ($sudahTerkirim)
+                        <x-badge variant="success">Terkirim</x-badge>
+                    @else
+                        <x-badge variant="warning">Belum dikirim</x-badge>
+                    @endif
+                </div>
+
+                <div class="flex shrink-0">
+                    <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
+                        wire:target="openModal" :disabled="!$riHdrNo" class="gap-2">
+                        <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                            {{ $sudahTerkirim ? 'Lihat Rujukan' : 'Buat Rujukan' }}
+                        </span>
+                        <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
+                            <x-loading class="w-4 h-4" /> Memuat...
+                        </span>
+                    </x-primary-button>
+                </div>
+            </div>
+
+            <p class="text-base text-muted dark:text-gray-400">
+                Rujukan pasien rawat inap ke ruang rawat inap RS lain, dikirim langsung ke SATUSEHAT (FHIR).
+                Alurnya: cari kandidat faskes, kirim tugas rujukan, lalu kirim rujukan (ServiceRequest).
+            </p>
+
+            @if ($sudahTerkirim)
+                <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted dark:text-gray-400">
+                    <span>No. Rujukan SATUSEHAT: <strong class="text-ink dark:text-gray-200">{{ $formRujukan['hasil']['noRujukanSatuSehat'] }}</strong></span>
+                    <span>ServiceRequest: <strong class="text-ink dark:text-gray-200">{{ $formRujukan['hasil']['serviceRequestId'] ?? '-' }}</strong></span>
+                </div>
+            @endif
+        </div>
     </div>
 
+    {{-- ══ MODAL FORMULIR ══ --}}
+    <x-modal name="rujukan-kompetensi-ri-{{ $riHdrNo }}" size="full" height="full" focusable>
+        <div class="flex flex-col min-h-[calc(100vh-8rem)]">
+
+            {{-- HEADER --}}
+            <div class="px-6 py-5 border-b border-hairline dark:border-gray-700">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-500/10">
+                            <svg class="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-semibold text-ink dark:text-gray-100">Rujukan Berbasis Kompetensi</h2>
+                            <p class="mt-0.5 text-base text-muted dark:text-gray-400">
+                                Rawat Inap → ranap RS lain · dikirim langsung ke SATUSEHAT (FHIR)
+                            </p>
+                        </div>
+                    </div>
+                    @if ($sudahTerkirim)
+                        <x-badge variant="success">Terkirim</x-badge>
+                    @endif
+                </div>
+            </div>
+
+            {{-- BODY --}}
+            <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">
+                <div class="max-w-full mx-auto space-y-4">
+    {{-- PRASYARAT --}}
     @php $prasyaratKurang = $this->prasyaratKurang(); @endphp
     @if (!empty($prasyaratKurang) && empty($formRujukan['hasil']['noRujukanSatuSehat']))
         <div class="p-3 text-sm text-red-800 border border-red-200 rounded-lg bg-red-50 dark:bg-red-950 dark:text-red-200 dark:border-red-900">
-            <p class="font-semibold">Data belum siap — lengkapi dulu:</p>
+            <p class="font-semibold">Belum bisa <em>mengirim</em> rujukan — lengkapi dulu:</p>
             <ul class="mt-1 ml-4 list-disc">
                 @foreach ($prasyaratKurang as $itemKurang)
                     <li>{{ $itemKurang }}</li>
@@ -441,7 +546,6 @@ new class extends Component {
             </ul>
         </div>
     @endif
-
     @if (!empty($formRujukan['hasil']['noRujukanSatuSehat']))
         <div class="p-3 space-y-1 text-sm border border-green-200 rounded-lg bg-green-50 dark:bg-green-950 dark:border-green-900">
             <p class="font-semibold text-green-800 dark:text-green-200">Rujukan rawat inap sudah terkirim</p>
@@ -634,4 +738,19 @@ new class extends Component {
             @endif
         </div>
     @endif
+                </div>
+            </div>
+
+            {{-- FOOTER --}}
+            <div class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <p class="text-sm text-muted dark:text-gray-400">
+                        Perubahan tersimpan otomatis ke kunjungan ini — aman ditutup lalu dilanjutkan nanti.
+                    </p>
+                    <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                </div>
+            </div>
+
+        </div>
+    </x-modal>
 </div>
