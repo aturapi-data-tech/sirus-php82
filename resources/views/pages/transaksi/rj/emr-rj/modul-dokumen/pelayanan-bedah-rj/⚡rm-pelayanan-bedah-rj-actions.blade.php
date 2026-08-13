@@ -112,28 +112,28 @@ new class extends Component {
 
     {{-- Pengkajian Pre Operasi (keperawatan) --}}
     <div x-show="subTab === 'pengkajianPreOp'" x-transition.opacity.duration.200ms>
-        <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.pengkajian-pre-op.rm-pengkajian-pre-op-rj-actions
+        <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.pengkajian-pre-op-rj.rm-pengkajian-pre-op-rj-actions
             :rjNo="$rjNo" :disabled="$disabled"
             wire:key="pengkajian-pre-op-rj-{{ $rjNo ?? 'init' }}" />
     </div>
 
     {{-- Pengkajian Pra Anestesi --}}
     <div x-show="subTab === 'praAnestesi'" x-transition.opacity.duration.200ms style="display:none">
-        <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.pra-anestesi.rm-pra-anestesi-rj-actions
+        <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.pra-anestesi-rj.rm-pra-anestesi-rj-actions
             :rjNo="$rjNo" :disabled="$disabled"
             wire:key="pra-anestesi-rj-{{ $rjNo ?? 'init' }}" />
     </div>
 
     {{-- Asesmen Pra Induksi --}}
     <div x-show="subTab === 'praInduksi'" x-transition.opacity.duration.200ms style="display:none">
-        <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.pra-induksi.rm-pra-induksi-rj-actions
+        <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.pra-induksi-rj.rm-pra-induksi-rj-actions
             :rjNo="$rjNo" :disabled="$disabled"
             wire:key="pra-induksi-rj-{{ $rjNo ?? 'init' }}" />
     </div>
 
     {{-- Surgical Safety Checklist --}}
     <div x-show="subTab === 'surgicalSafetyChecklist'" x-transition.opacity.duration.200ms style="display:none">
-        <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.surgical-safety-checklist.rm-surgical-safety-checklist-rj-actions
+        <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.surgical-safety-checklist-rj.rm-surgical-safety-checklist-rj-actions
             :rjNo="$rjNo" :disabled="$disabled"
             wire:key="surgical-safety-checklist-rj-{{ $rjNo ?? 'init' }}" />
     </div>
@@ -142,28 +142,28 @@ new class extends Component {
 
     {{-- Laporan Operasi (DPJP) --}}
     <div x-show="subTab === 'laporanOperasi'" x-transition.opacity.duration.200ms style="display:none">
-        <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.laporan-operasi.rm-laporan-operasi-rj-actions
+        <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.laporan-operasi-rj.rm-laporan-operasi-rj-actions
             :rjNo="$rjNo" :disabled="$disabled"
             wire:key="laporan-operasi-rj-{{ $rjNo ?? 'init' }}" />
     </div>
 
     {{-- Laporan Anestesi --}}
     <div x-show="subTab === 'laporanAnestesi'" x-transition.opacity.duration.200ms style="display:none">
-        <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.laporan-anestesi.rm-laporan-anestesi-rj-actions
+        <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.laporan-anestesi-rj.rm-laporan-anestesi-rj-actions
             :rjNo="$rjNo" :disabled="$disabled"
             wire:key="laporan-anestesi-rj-{{ $rjNo ?? 'init' }}" />
     </div>
 
     {{-- Monitoring Pasca Anestesi --}}
     <div x-show="subTab === 'pascaAnestesi'" x-transition.opacity.duration.200ms style="display:none">
-        <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.pasca-anestesi.rm-pasca-anestesi-rj-actions
+        <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.pasca-anestesi-rj.rm-pasca-anestesi-rj-actions
             :rjNo="$rjNo" :disabled="$disabled"
             wire:key="pasca-anestesi-rj-{{ $rjNo ?? 'init' }}" />
     </div>
 
     {{-- Instruksi Pasca Bedah --}}
     <div x-show="subTab === 'instruksiPascaBedah'" x-transition.opacity.duration.200ms style="display:none">
-        <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.instruksi-pasca-bedah.rm-instruksi-pasca-bedah-rj-actions
+        <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.instruksi-pasca-bedah-rj.rm-instruksi-pasca-bedah-rj-actions
             :rjNo="$rjNo" :disabled="$disabled"
             wire:key="instruksi-pasca-bedah-rj-{{ $rjNo ?? 'init' }}" />
     </div>

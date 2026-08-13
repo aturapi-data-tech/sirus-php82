@@ -221,34 +221,34 @@ new class extends Component {
 
                             {{-- Panel: Surat Keterangan --}}
                             <div x-show="activeTab === 'suket'" x-transition.opacity.duration.300ms>
-                                <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.suket.rm-suket-rj-actions
+                                <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.suket-rj.rm-suket-rj-actions
                                     :rjNo="$rjNo" wire:key="suket-rj-{{ $rjNo }}" />
                             </div>
 
                             {{-- Panel: General Consent --}}
                             <div x-show="activeTab === 'general-consent'" x-transition.opacity.duration.300ms>
-                                <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.general-consent.rm-general-consent-rj-actions
+                                <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.general-consent-rj.rm-general-consent-rj-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="general-consent-rj-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                             {{-- Panel: Inform Consent --}}
                             <div x-show="activeTab === 'inform-consent'" x-transition.opacity.duration.300ms>
-                                <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.inform-consent.rm-inform-consent-rj-actions
+                                <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.inform-consent-rj.rm-inform-consent-rj-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="inform-consent-rj-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                             {{-- Panel: Penundaan Pelayanan --}}
                             <div x-show="activeTab === 'penundaan-pelayanan'" x-transition.opacity.duration.300ms>
-                                <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.penundaan-pelayanan.rm-penundaan-pelayanan-rj-actions
+                                <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.penundaan-pelayanan-rj.rm-penundaan-pelayanan-rj-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="penundaan-pelayanan-rj-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                             {{-- Panel: Pelayanan Bedah — 8 form operasi (pola sama dengan EMR RI). --}}
                             <div x-show="activeTab === 'pelayanan-bedah'" x-transition.opacity.duration.300ms>
-                                <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.pelayanan-bedah.rm-pelayanan-bedah-rj-actions
+                                <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.pelayanan-bedah-rj.rm-pelayanan-bedah-rj-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="pelayanan-bedah-rj-{{ $rjNo ?? 'init' }}" />
                             </div>

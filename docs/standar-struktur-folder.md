@@ -142,9 +142,18 @@ Suffix di luar tabel ini **tidak dibuat baru**. Prefix `_` untuk menandai partia
 | `cetak-` | pembungkus cetak (tombol/modal) berpasangan dengan `-print` | `pages/components/modul-dokumen/<jalur>/<modul>/` |
 | `lov-` | list-of-value | `livewire/lov/<entitas>/` |
 
-### 3.4 Suffix jalur — wajib, di folder DAN nama berkas
+### 3.4 Suffix jalur — wajib untuk SEMUA modul-dokumen, di folder DAN nama berkas
 
-Dokumen yang ada di lebih dari satu jalur **wajib** menyandang jalurnya, di folder maupun berkas:
+**Setiap** folder & berkas di bawah `emr-<jalur>/modul-dokumen/` menyandang jalurnya — bukan hanya
+yang kebetulan ada di lebih dari satu jalur. Alasannya: RI sudah begitu di 38/38 folder, dan patokan
+“hanya kalau multi-jalur” akan memaksa 23 folder RI **dilepas** suffix-nya — arah yang salah,
+sekaligus menghilangkan petunjuk “ini EMR yang mana” saat berkas dibuka sendirian di editor.
+
+**Satu pengecualian: jangan stutter.** Kalau nama dokumen sudah memuat jalurnya, tidak ditambah lagi
+— `form-trf-ugd-ri/` tetap apa adanya, bukan `form-trf-ugd-ri-ugd/`, dan berkasnya tetap
+`⚡rm-form-trf-ugd-ri-actions.blade.php`.
+
+Contoh:
 
 ```
 pages/transaksi/ri/emr-ri/modul-dokumen/pengkajian-pre-op-ri/⚡rm-pengkajian-pre-op-ri-actions.blade.php
@@ -152,11 +161,13 @@ pages/transaksi/rj/emr-rj/modul-dokumen/pengkajian-pre-op-rj/⚡rm-pengkajian-pr
 pages/transaksi/ugd/emr-ugd/modul-dokumen/pengkajian-pre-op-ugd/⚡rm-pengkajian-pre-op-ugd-actions.blade.php
 ```
 
-(Baris RJ & UGD di atas adalah **keadaan yang dituju**; folder keduanya belum bersuffix — §8 item 4.)
-
 Alasannya bukan estetika: ketiga berkas ini **berbeda isi** (tabel sumber, kolom, guard), sering
-dibuka bersamaan, dan tanpa suffix ketiga tab editor bernama identik. RI sudah patuh 38/38;
-RJ 0/13 dan UGD 0/18 belum (§6).
+dibuka bersamaan, dan tanpa suffix ketiga tab editor bernama identik. Ketiga jalur sudah patuh
+(RI 38/38, RJ 13/13, UGD 18/18 — §8 item 4 selesai 2026-08-13).
+
+Berlaku juga untuk partial di dalamnya: `suket-rj/tabs/suket-sehat-rj-tab.blade.php` — jalur
+ditulis **sebelum** suffix peran (`-rj-tab`, bukan `-tab-rj`), dan kumpulan tab memakai folder
+`tabs/` seperti §3.2.
 
 ### 3.5 Akronim di nama folder
 
@@ -356,8 +367,8 @@ tersentuh (**bukan** `view:cache` — ia tidak menangkap galat kelas Volt, lihat
 | ✅ 2 | Hapus prefix `_` : `_patient-detail`, `_breakdown-dokter` | 2 | 🟢 | **SELESAI 2026-08-13** — jadi `penunjang-detail-pasien` & `pendapatan-rs-rincian-dokter` (pola `<modul>-<bagian>`), 6 `@include` disesuaikan |
 | ✅ 3 | `⚡` untuk SFC Volt yang belum punya | 546 | 🟢 | **SELESAI 2026-08-13** — 546 rename |
 | ✅ 3b | 3 LOV: hapus `render()` mubazir lalu rename | 3 | 🟡 | **SELESAI 2026-08-13** — output render dibandingkan byte-per-byte dgn baseline (identik sesudah `wire:id`/`snapshot`/id Alpine acak dinormalkan). Kini 691/691 patuh, tanpa pengecualian |
-| 4 | Suffix jalur folder+berkas modul-dokumen RJ (13) & UGD (18) | 31 folder | 🟡 | referensi `<livewire:pages::…>` ikut berubah — grep per modul |
-| 5 | 7 `rm-*-actions` UGD tanpa suffix `-ugd` | 7 | 🟡 | subset item 4 |
+| ✅ 4 | Suffix jalur folder+berkas modul-dokumen RJ & UGD | 32 folder | 🟡 | **SELESAI 2026-08-13** — 32 folder + 11 berkas + 34 referensi. Termasuk `suket/tab/` → `suket-<jalur>/tabs/` dan 4 partial tab yang tadinya bernama identik di dua jalur. `form-trf-ugd-ri` dikecualikan (anti-stutter, §3.4) |
+| ✅ 5 | 7 `rm-*-actions` UGD tanpa suffix `-ugd` | 7 | 🟡 | **SELESAI** — bagian dari item 4 |
 | 6 | Folder akronim `r-i/ r-j/ u-g-d/ b-p-j-s/` → `ri/ rj/ ugd/ bpjs/` | 7 folder, 184 berkas | 🟡 | di `pages/components/{modul-dokumen,rekam-medis}/` |
 | 7 | `app/Support` → sub-namespace §6.2 | 35 berkas | 🟡 | ubah `namespace` + semua `use App\Support\…` |
 | 8 | `Traits/WithRenderVersioning`, `Traits/WithValidationToast` → `Traits/Concerns/` | 2 | 🟡 | hapus nesting mubazir |

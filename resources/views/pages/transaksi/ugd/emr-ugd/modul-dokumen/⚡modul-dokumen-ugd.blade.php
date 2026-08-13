@@ -289,7 +289,7 @@ new class extends Component {
 
                             {{-- Panel: Surat Keterangan --}}
                             <div x-show="activeTab === 'suket'" x-transition.opacity.duration.300ms>
-                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.suket.rm-suket-ugd-actions
+                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.suket-ugd.rm-suket-ugd-actions
                                     :rjNo="$rjNo" wire:key="suket-ugd-{{ $rjNo }}" />
                             </div>
 
@@ -301,48 +301,48 @@ new class extends Component {
 
                             {{-- Panel: General Consent --}}
                             <div x-show="activeTab === 'general-consent'" x-transition.opacity.duration.300ms>
-                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.general-consent.rm-general-consent-actions
+                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.general-consent-ugd.rm-general-consent-ugd-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="general-consent-ugd-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                             {{-- Panel: Inform Consent --}}
                             <div x-show="activeTab === 'inform-consent'" x-transition.opacity.duration.300ms>
-                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.inform-consent.rm-inform-consent-actions
+                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.inform-consent-ugd.rm-inform-consent-ugd-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="inform-consent-ugd-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                             {{-- Panel: Form Penjaminan & Orientasi Kamar --}}
                             <div x-show="activeTab === 'form-penjaminan'" x-transition.opacity.duration.300ms>
-                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.form-penjaminan.rm-form-penjaminan-actions
+                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.form-penjaminan-ugd.rm-form-penjaminan-ugd-actions
                                     :rjNo="$rjNo" wire:key="form-penjaminan-ugd-{{ $rjNo }}" />
                             </div>
 
                             {{-- Panel: Penundaan Pelayanan --}}
                             <div x-show="activeTab === 'penundaan-pelayanan'" x-transition.opacity.duration.300ms>
-                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.penundaan-pelayanan.rm-penundaan-pelayanan-actions
+                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.penundaan-pelayanan-ugd.rm-penundaan-pelayanan-ugd-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="penundaan-pelayanan-ugd-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                             {{-- Panel: Penolakan Pengobatan / Obat Tertentu --}}
                             <div x-show="activeTab === 'penolakan-obat'" x-transition.opacity.duration.300ms>
-                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.penolakan-obat.rm-penolakan-obat-actions
+                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.penolakan-obat-ugd.rm-penolakan-obat-ugd-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="penolakan-obat-ugd-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                             {{-- Panel: Pelayanan Bedah — 8 form operasi (pola sama dengan EMR RI). --}}
                             <div x-show="activeTab === 'pelayanan-bedah'" x-transition.opacity.duration.300ms>
-                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.pelayanan-bedah.rm-pelayanan-bedah-ugd-actions
+                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.pelayanan-bedah-ugd.rm-pelayanan-bedah-ugd-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="pelayanan-bedah-ugd-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                             {{-- Panel: Pengkajian Akhir Hayat --}}
                             <div x-show="activeTab === 'akhir-hayat'" x-transition.opacity.duration.300ms>
-                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.akhir-hayat.rm-akhir-hayat-actions
+                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.akhir-hayat-ugd.rm-akhir-hayat-ugd-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="akhir-hayat-ugd-{{ $rjNo ?? 'init' }}" />
                             </div>
@@ -350,7 +350,7 @@ new class extends Component {
                             {{-- Panel: Surat Keterangan Kematian --}}
                             @if (($dataDaftarUGD['screening']['triaseSaran'] ?? '') === 'P0')
                                 <div x-show="activeTab === 'surat-kematian'" x-transition.opacity.duration.300ms>
-                                    <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.surat-kematian.rm-surat-kematian-actions
+                                    <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.surat-kematian-ugd.rm-surat-kematian-ugd-actions
                                         :rjNo="$rjNo" :disabled="$isFormLocked"
                                         wire:key="surat-kematian-ugd-{{ $rjNo ?? 'init' }}" />
                                 </div>

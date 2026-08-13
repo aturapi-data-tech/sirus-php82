@@ -112,28 +112,28 @@ new class extends Component {
 
     {{-- Pengkajian Pre Operasi (keperawatan) --}}
     <div x-show="subTab === 'pengkajianPreOp'" x-transition.opacity.duration.200ms>
-        <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.pengkajian-pre-op.rm-pengkajian-pre-op-ugd-actions
+        <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.pengkajian-pre-op-ugd.rm-pengkajian-pre-op-ugd-actions
             :rjNo="$rjNo" :disabled="$disabled"
             wire:key="pengkajian-pre-op-ugd-{{ $rjNo ?? 'init' }}" />
     </div>
 
     {{-- Pengkajian Pra Anestesi --}}
     <div x-show="subTab === 'praAnestesi'" x-transition.opacity.duration.200ms style="display:none">
-        <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.pra-anestesi.rm-pra-anestesi-ugd-actions
+        <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.pra-anestesi-ugd.rm-pra-anestesi-ugd-actions
             :rjNo="$rjNo" :disabled="$disabled"
             wire:key="pra-anestesi-ugd-{{ $rjNo ?? 'init' }}" />
     </div>
 
     {{-- Asesmen Pra Induksi --}}
     <div x-show="subTab === 'praInduksi'" x-transition.opacity.duration.200ms style="display:none">
-        <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.pra-induksi.rm-pra-induksi-ugd-actions
+        <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.pra-induksi-ugd.rm-pra-induksi-ugd-actions
             :rjNo="$rjNo" :disabled="$disabled"
             wire:key="pra-induksi-ugd-{{ $rjNo ?? 'init' }}" />
     </div>
 
     {{-- Surgical Safety Checklist --}}
     <div x-show="subTab === 'surgicalSafetyChecklist'" x-transition.opacity.duration.200ms style="display:none">
-        <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.surgical-safety-checklist.rm-surgical-safety-checklist-ugd-actions
+        <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.surgical-safety-checklist-ugd.rm-surgical-safety-checklist-ugd-actions
             :rjNo="$rjNo" :disabled="$disabled"
             wire:key="surgical-safety-checklist-ugd-{{ $rjNo ?? 'init' }}" />
     </div>
@@ -142,28 +142,28 @@ new class extends Component {
 
     {{-- Laporan Operasi (DPJP) --}}
     <div x-show="subTab === 'laporanOperasi'" x-transition.opacity.duration.200ms style="display:none">
-        <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.laporan-operasi.rm-laporan-operasi-ugd-actions
+        <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.laporan-operasi-ugd.rm-laporan-operasi-ugd-actions
             :rjNo="$rjNo" :disabled="$disabled"
             wire:key="laporan-operasi-ugd-{{ $rjNo ?? 'init' }}" />
     </div>
 
     {{-- Laporan Anestesi --}}
     <div x-show="subTab === 'laporanAnestesi'" x-transition.opacity.duration.200ms style="display:none">
-        <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.laporan-anestesi.rm-laporan-anestesi-ugd-actions
+        <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.laporan-anestesi-ugd.rm-laporan-anestesi-ugd-actions
             :rjNo="$rjNo" :disabled="$disabled"
             wire:key="laporan-anestesi-ugd-{{ $rjNo ?? 'init' }}" />
     </div>
 
     {{-- Monitoring Pasca Anestesi --}}
     <div x-show="subTab === 'pascaAnestesi'" x-transition.opacity.duration.200ms style="display:none">
-        <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.pasca-anestesi.rm-pasca-anestesi-ugd-actions
+        <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.pasca-anestesi-ugd.rm-pasca-anestesi-ugd-actions
             :rjNo="$rjNo" :disabled="$disabled"
             wire:key="pasca-anestesi-ugd-{{ $rjNo ?? 'init' }}" />
     </div>
 
     {{-- Instruksi Pasca Bedah --}}
     <div x-show="subTab === 'instruksiPascaBedah'" x-transition.opacity.duration.200ms style="display:none">
-        <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.instruksi-pasca-bedah.rm-instruksi-pasca-bedah-ugd-actions
+        <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.instruksi-pasca-bedah-ugd.rm-instruksi-pasca-bedah-ugd-actions
             :rjNo="$rjNo" :disabled="$disabled"
             wire:key="instruksi-pasca-bedah-ugd-{{ $rjNo ?? 'init' }}" />
     </div>
