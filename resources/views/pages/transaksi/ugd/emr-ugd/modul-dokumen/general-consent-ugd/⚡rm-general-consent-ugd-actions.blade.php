@@ -709,23 +709,25 @@ new class extends Component {
 
                                 <x-input-error :messages="$errors->get('signature')" />
 
-                                <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                                <div class="grid grid-cols-1 gap-6 md:grid-cols-2 items-stretch">
                                     {{-- Pasien / Wali --}}
                                     <div class="flex flex-col">
                                         <div
                                             class="mb-2 text-sm font-semibold tracking-wide text-center text-muted uppercase dark:text-gray-400">
                                             Pasien / Wali
                                         </div>
-                                        @if (!empty($consent['signature']))
-                                            <x-signature.signature-result :signature="$consent['signature']"
-                                                :date="$consent['signatureDate'] ?? ''" :disabled="$isFormLocked"
-                                                wireMethod="clearSignature" />
-                                        @elseif (!$isFormLocked)
-                                            <x-signature.signature-pad wireMethod="setSignature" />
-                                        @else
-                                            <p class="py-8 text-base italic text-center text-muted-soft">Belum
-                                                ditandatangani.</p>
-                                        @endif
+                                        <div class="min-h-56 flex flex-col justify-center">
+                                            @if (!empty($consent['signature']))
+                                                <x-signature.signature-result :signature="$consent['signature']"
+                                                    :date="$consent['signatureDate'] ?? ''" :disabled="$isFormLocked"
+                                                    wireMethod="clearSignature" />
+                                            @elseif (!$isFormLocked)
+                                                <x-signature.signature-pad wireMethod="setSignature" />
+                                            @else
+                                                <p class="py-8 text-base italic text-center text-muted-soft">Belum
+                                                    ditandatangani.</p>
+                                            @endif
+                                        </div>
 
                                         <div class="mt-3">
                                             <x-input-label value="Nama Pasien / Wali *" class="mb-1" />
@@ -755,16 +757,18 @@ new class extends Component {
                                             class="mb-2 text-sm font-semibold tracking-wide text-center text-muted uppercase dark:text-gray-400">
                                             Petugas Pemberi Penjelasan
                                         </div>
-                                        @if (empty($consent['petugasPemeriksa']) && !empty($consent['signature']))
-                                            <div class="mb-2 text-center">
-                                                <x-badge variant="warning">Menunggu TTD Petugas</x-badge>
-                                            </div>
-                                        @endif
-                                        <x-signature.ttd-petugas :framed="false" :allowClear="false"
-                                            :ttd="$consent['petugasPemeriksa'] ?? ''"
-                                            :date="$consent['petugasPemeriksaDate'] ?? ''"
-                                            :code="$consent['petugasPemeriksaCode'] ?? ''" :locked="$isFormLocked"
-                                            sign="setPetugasPemeriksa" label="" signLabel="TTD sebagai Petugas" />
+                                        <div class="min-h-56 flex flex-col justify-center">
+                                            @if (empty($consent['petugasPemeriksa']) && !empty($consent['signature']))
+                                                <div class="mb-2 text-center">
+                                                    <x-badge variant="warning">Menunggu TTD Petugas</x-badge>
+                                                </div>
+                                            @endif
+                                            <x-signature.ttd-petugas :framed="false" :allowClear="false"
+                                                :ttd="$consent['petugasPemeriksa'] ?? ''"
+                                                :date="$consent['petugasPemeriksaDate'] ?? ''"
+                                                :code="$consent['petugasPemeriksaCode'] ?? ''" :locked="$isFormLocked"
+                                                sign="setPetugasPemeriksa" label="" signLabel="TTD sebagai Petugas" />
+                                        </div>
                                     </div>
                                 </div>
                             </section>
