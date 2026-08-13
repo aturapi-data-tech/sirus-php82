@@ -174,6 +174,11 @@ Contoh nyata: `<x-site-marking-diagram>`. `id` panel (`priaFront`) tersimpan seb
 lewat `\Illuminate\Support\Str::kebab($p['id'])`. Mengubah `id` = menghilangkan tanda operasi pada
 record lama. Cek pertanyaan ini sebelum me-rename apa pun: *“apakah nama ini pernah ditulis ke DB?”*
 
+> Status data per 2026-08-13: belum ada satu pun record pengkajian pre-op tersimpan
+> (RI 8.976 baris ber-JSON, UGD 37.604, RJ 167.003 — nol yang memuat `pengkajianPreOp`/`marks`,
+> modulnya memang baru). Jadi risikonya masih **laten**, bukan kerusakan yang sudah terjadi.
+> Aturannya tetap berlaku: begitu petugas mulai mengisi, `id` tidak boleh lagi disentuh.
+
 ---
 
 ## 4. Aturan penempatan per area
@@ -359,6 +364,24 @@ tersentuh (**bukan** `view:cache` — ia tidak menangkap galat kelas Volt, lihat
 
 Item 1–3 dan 12 sudah dikerjakan 2026-08-13. Item 10–11 bukan pekerjaan pemfolderan dan tidak perlu
 dipaksakan sekarang.
+
+### Hasil verifikasi render (2026-08-13, Oracle hidup)
+
+Sesudah keempat item di atas, dengan DB hidup: **0 gagal**.
+
+- `Livewire::test()` mount 12 komponen terdampak (host EMR RI/RJ/UGD, induk daftar-ri &
+  pelayanan-rj/ugd yang tag `<livewire:>`-nya diedit, modal tambah lab & upload radiologi,
+  pendapatan-rs, pengkajian pre-op ×3) — semuanya render, tanpa penanda komentar bocor.
+- `View::exists()` untuk 2 `@include` yang di-rename → ada; 2 nama lamanya → **tidak** ada.
+- Resolusi 690 referensi komponen lewat `Livewire\Finder\Finder` asli
+  (`app('livewire.finder')`, **bukan** `app(Finder::class)` — yang terakhir memberi instance baru
+  tanpa namespace sehingga semuanya tampak gagal): 683 ter-resolve, 7 sisanya prosa komentar,
+  placeholder tutorial `koding-master`, template generator `MakeLov`, dan route ter-komentar.
+- `<x-site-marking-diagram>` diuji per-panel di jalur layar **dan** PDF dengan `id` camelCase,
+  plus kontrol negatif (`view` tak dikenal → panel tidak digambar).
+
+Uji dilakukan mount-only tanpa memanggil aksi, dan dipastikan tidak menulis apa pun
+(0 baris baru di `api_log_status`/`web_log_status` selama pengujian).
 
 ### Cara memverifikasi tanpa DB
 
