@@ -95,8 +95,8 @@ new class extends Component {
 
         $consent = $this->dataDaftarUGD['generalConsentPasienUGD'];
         // Default Nama Pasien/Wali = nama pasien & hubungan = Pasien Sendiri bila belum diisi (pola penundaan)
-        $this->wali = $consent['wali'] ?: ($this->dataDaftarUGD['regName'] ?? '');
-        $this->waliHubungan = $consent['waliHubungan'] ?: 'pasien';
+        $this->wali = ($consent['wali'] ?? '') ?: ($this->dataDaftarUGD['regName'] ?? '');
+        $this->waliHubungan = ($consent['waliHubungan'] ?? '') ?: 'pasien';
         $this->agreement = $consent['agreement'] ?? '1';
         $this->signature = $consent['signature'] ?? '';
 
