@@ -2,7 +2,9 @@
     <x-site-marking-diagram> — Diagram Penanda Lokasi Operasi (reusable).
 
     16 figur SVG vektor "Formulir Penandaan Area Operasi", 1 file/figur di
-    resources/views/components/site-marking/figs/<id>.blade.php (kanvas 210x297).
+    resources/views/components/site-marking/figs/<id-kebab>.blade.php (kanvas 210x297).
+    Nama berkas = kebab-case dari id panel; id sendiri tetap camelCase karena tersimpan
+    sebagai marks[].view di record lama (lihat catatan di dalam loop panel).
     Tiap panel: viewBox = bounding-box figur (vx,vy,vw,vh) → figur fit penuh.
     Tinggi tampil seragam per-grup (lebar dihitung dari tinggi & aspek figur).
     Portable: salin folder components/site-marking* + komponen ini ke aplikasi lain.
@@ -73,6 +75,11 @@
                                 $w = round($H * $p['vw'] / $p['vh']);
                                 $r = round($p['vw'] * 0.09, 1);
                                 $fs = round($r * 1.4, 1);
+                                // Nama berkas figur = versi kebab-case dari id (priaFront -> pria-front).
+                                // id SENGAJA tetap camelCase: ia tersimpan sebagai marks[].view di record
+                                // pengkajian pre-op yang sudah ada. Mengubah id = menghilangkan tanda pada
+                                // record lama. Yang kebab-case hanya NAMA BERKAS.
+                                $fig = $figBase . \Illuminate\Support\Str::kebab($p['id']);
                             @endphp
                             <div style="display:inline-block; vertical-align:top; margin:4px 8px; text-align:center">
                                 <div class="text-xs font-medium text-muted dark:text-gray-400" style="margin-bottom:2px">
@@ -93,7 +100,7 @@
                                             }
                                         }
                                         $svgDoc = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' . $p['vx'] . ' ' . $p['vy'] . ' ' . $p['vw'] . ' ' . $p['vh'] . '" width="' . $w . '" height="' . $H . '">'
-                                            . view($figBase . $p['id'])->render()
+                                            . view($fig)->render()
                                             . $marksSvg
                                             . '</svg>';
                                         $svgUri = 'data:image/svg+xml;base64,' . base64_encode($svgDoc);
@@ -106,7 +113,7 @@
                                         class="bg-white border border-hairline rounded-lg {{ $editable ? 'cursor-crosshair' : '' }}"
                                         style="touch-action:none; max-width:100%; height:auto; display:inline-block"
                                         @if ($editable) x-on:click="const _r = $el.getBoundingClientRect(); $wire.{{ $wireAddMark }}('{{ $p['id'] }}', ($event.clientX - _r.left) / _r.width * 100, ($event.clientY - _r.top) / _r.height * 100)" @endif>
-                                        @include($figBase . $p['id'])
+                                        @include($fig)
                                         @php $n = 0; @endphp
                                         @foreach ($marks ?? [] as $m)
                                             @if (($m['view'] ?? '') === $p['id'])
