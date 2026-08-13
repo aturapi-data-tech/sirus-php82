@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Options;
 
 /**
  * Opsi & peta label Pengkajian Pra Anestesi dan Pra Sedasi (PAB 4 / RM 50).

@@ -4,7 +4,7 @@
 //
 // Sumber = datadaftarpolirj_json → penilaian.resikoJatuh[] & penilaian.gizi[] (MULTI-ENTRI).
 // Node penilaian RJ/RI/UGD IDENTIK (jarang di repo ini) → pemetaan LOINC dipakai bareng
-// lewat App\Support\PenilaianObservationMap. Beda RJ: trait EmrRJTrait, PK rj_no,
+// lewat App\Support\Terminologi\PenilaianObservationMap. Beda RJ: trait EmrRJTrait, PK rj_no,
 // kolom CLOB datadaftarpolirj_json, event ss-penilaian-rj.kirim, fallback waktu rjDate.
 //
 // CATATAN DATA: mayoritas entri RJ tersimpan tanpa skala (metode='', skor=0,
@@ -17,7 +17,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\SATUSEHAT\ObservationTrait;
-use App\Support\PenilaianObservationMap;
+use App\Support\Terminologi\PenilaianObservationMap;
 
 new class extends Component {
     use EmrRJTrait, ObservationTrait;

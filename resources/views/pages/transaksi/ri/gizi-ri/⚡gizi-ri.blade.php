@@ -21,8 +21,8 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Support\OracleLob;
-use App\Support\GiziOptions;
-use App\Support\AlergiSnomed;
+use App\Support\Options\GiziOptions;
+use App\Support\Terminologi\AlergiSnomed;
 
 new class extends Component {
     use WithPagination;

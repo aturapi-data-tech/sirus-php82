@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
-use App\Support\PenolakanObatClause;
+use App\Support\Clause\PenolakanObatClause;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -813,7 +813,7 @@ new class extends Component {
                         </section>
 
                         {{-- ══ PERNYATAAN (teks klausul ber-versi) ══ --}}
-                        @php $clause = App\Support\PenolakanObatClause::get($newForm['clauseVersion'] ?? null); @endphp
+                        @php $clause = App\Support\Clause\PenolakanObatClause::get($newForm['clauseVersion'] ?? null); @endphp
                         <div
                             class="px-4 py-3 space-y-2 text-sm border rounded-2xl bg-red-50 border-red-200 text-red-900 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200">
                             <p class="font-semibold">Isi pernyataan yang ditandatangani:</p>

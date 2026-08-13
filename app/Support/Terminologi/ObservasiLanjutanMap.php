@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Terminologi;
 
 /**
  * Pemetaan Observasi Lanjutan RI (EMR) → payload FHIR SATUSEHAT.

@@ -77,7 +77,7 @@
         <tr>
             <td class="border border-black px-2 py-1.5 align-top">
                 <p class="font-bold mb-0.5">Fungsi Sistem Organ</p>
-                @php $organTerpilih = \App\Support\PraAnestesiOptions::fungsiSistemOrganTerpilih($form['fungsiSistemOrgan'] ?? [], $form['fungsiSistemOrganLainKet'] ?? []); @endphp
+                @php $organTerpilih = \App\Support\Options\PraAnestesiOptions::fungsiSistemOrganTerpilih($form['fungsiSistemOrgan'] ?? [], $form['fungsiSistemOrganLainKet'] ?? []); @endphp
                 @forelse ($organTerpilih as $organGroupLabel => $organLabels)
                     <p><span class="font-bold">{{ $organGroupLabel }}:</span> {{ implode(', ', $organLabels) }}</p>
                 @empty

@@ -2,7 +2,7 @@
 // resources/views/pages/manajemen/rs/tu/gaji-dokter/gaji-dokter.blade.php
 //
 // Slip gaji dokter per periode — RSTXN_GAJIDOCTORHDRS / RSTXN_GAJIDOCTORDTLS.
-// Seluruh perhitungan ada di App\Support\GajiDokter; komponen ini hanya
+// Seluruh perhitungan ada di App\Support\GajiDokter\GajiDokter; komponen ini hanya
 // menyajikan dan memanggil aksinya.
 //
 // PERIODE: yang dipilih adalah BULAN JASA. Gaji dibayarkan bulan berikutnya —
@@ -15,7 +15,7 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
-use App\Support\GajiDokter;
+use App\Support\GajiDokter\GajiDokter;
 use Carbon\Carbon;
 
 new class extends Component {

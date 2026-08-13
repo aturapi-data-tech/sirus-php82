@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Terminologi;
 
 /**
  * Status pulang RI (`perencanaan.tindakLanjut.tindakLanjutKode`) → SNOMED CT

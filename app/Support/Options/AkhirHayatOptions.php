@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Options;
 
 /**
  * Sumber tunggal peta label opsi Pengkajian Akhir Hayat (KARS + RM.RI.62).

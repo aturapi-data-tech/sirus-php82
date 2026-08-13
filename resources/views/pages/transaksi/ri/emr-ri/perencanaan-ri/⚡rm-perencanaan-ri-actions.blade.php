@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
 use Illuminate\Support\Str;
-use App\Support\DischargePlanningOptions;
-use App\Support\DischargeDisposition;
+use App\Support\Options\DischargePlanningOptions;
+use App\Support\Terminologi\DischargeDisposition;
 use App\Support\NomorSuratKematian;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
 
@@ -27,7 +27,7 @@ new class extends Component {
     public array $formPelayanan = [];
     public array $formAlat = [];
 
-    // Opsi status pulang = SUMBER TUNGGAL di App\Support\DischargeDisposition::OPTIONS
+    // Opsi status pulang = SUMBER TUNGGAL di App\Support\Terminologi\DischargeDisposition::OPTIONS
     // (dipakai bareng cetak ringkasan pulang). Diisi saat mount().
     public array $tindakLanjutOptions = [];
 
@@ -553,7 +553,7 @@ new class extends Component {
                                 <x-select-input wire:model="formPelayanan.jenisPelayanan" class="mt-1 w-full"
                                     :error="$errors->has('formPelayanan.jenisPelayanan')" :disabled="$isFormLocked">
                                     <option value="">-- pilih --</option>
-                                    @foreach (\App\Support\DischargePlanningOptions::PELAYANAN as $opt)
+                                    @foreach (\App\Support\Options\DischargePlanningOptions::PELAYANAN as $opt)
                                         <option value="{{ $opt['label'] }}">{{ $opt['label'] }}</option>
                                     @endforeach
                                 </x-select-input>
@@ -662,7 +662,7 @@ new class extends Component {
                                 <x-select-input wire:model="formAlat.jenisAlat" class="mt-1 w-full"
                                     :error="$errors->has('formAlat.jenisAlat')" :disabled="$isFormLocked">
                                     <option value="">-- pilih --</option>
-                                    @foreach (\App\Support\DischargePlanningOptions::ALAT_BANTU as $opt)
+                                    @foreach (\App\Support\Options\DischargePlanningOptions::ALAT_BANTU as $opt)
                                         <option value="{{ $opt['label'] }}">{{ $opt['label'] }}</option>
                                     @endforeach
                                 </x-select-input>
@@ -673,7 +673,7 @@ new class extends Component {
                                 <x-select-input wire:model="formAlat.sumberAlat" class="mt-1 w-full"
                                     :disabled="$isFormLocked">
                                     <option value="">-- pilih --</option>
-                                    @foreach (\App\Support\DischargePlanningOptions::SUMBER_ALAT as $opt)
+                                    @foreach (\App\Support\Options\DischargePlanningOptions::SUMBER_ALAT as $opt)
                                         <option value="{{ $opt }}">{{ $opt }}</option>
                                     @endforeach
                                 </x-select-input>

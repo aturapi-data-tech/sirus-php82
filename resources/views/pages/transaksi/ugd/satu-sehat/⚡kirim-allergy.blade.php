@@ -9,7 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\SATUSEHAT\AllergyIntoleranceTrait;
-use App\Support\AlergiSnomed;
+use App\Support\Terminologi\AlergiSnomed;
 
 new class extends Component {
     use EmrUGDTrait, AllergyIntoleranceTrait;

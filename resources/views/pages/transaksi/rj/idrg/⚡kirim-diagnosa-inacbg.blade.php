@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\iDRG\iDrgTrait;
-use App\Support\Diagnosa\KodeIm;
+use App\Support\Terminologi\KodeIm;
 
 new class extends Component {
     use EmrRJTrait, iDrgTrait;

@@ -12,7 +12,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
-use App\Support\DischargeDisposition;
+use App\Support\Terminologi\DischargeDisposition;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 
 new class extends Component {
@@ -146,7 +146,7 @@ new class extends Component {
         }
 
         // Kondisi pulang ← kunci internal status pulang. Label diambil dari SUMBER TUNGGAL
-        // (App\Support\DischargeDisposition) — dulu file ini punya peta sendiri yang
+        // (App\Support\Terminologi\DischargeDisposition) — dulu file ini punya peta sendiri yang
         // BERTENTANGAN dgn form ('371828006' ditulis "Membaik", form: "Pulang Tanpa Perbaikan").
         $kondisiPulang = e(DischargeDisposition::label((string) data_get($dataRI, 'perencanaan.tindakLanjut.tindakLanjut', '')));
 

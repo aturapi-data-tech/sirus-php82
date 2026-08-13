@@ -13,14 +13,14 @@
 // Versi cetak PDF-nya masih ada di riwayat git pada commit 7d2b9298 bila kelak
 // dibutuhkan lagi.
 //
-// Mesin datanya tetap App\Support\GajiDokterLampiran — yang berubah hanya cara
+// Mesin datanya tetap App\Support\GajiDokter\GajiDokterLampiran — yang berubah hanya cara
 // menyajikannya.
 
 use Livewire\Component;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
-use App\Support\GajiDokterLampiran;
+use App\Support\GajiDokter\GajiDokterLampiran;
 
 new class extends Component {
     /**

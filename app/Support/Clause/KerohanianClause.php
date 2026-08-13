@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Clause;
 
 /**
  * Registry TEKS KLAUSUL Formulir Permintaan Pelayanan Kerohaniawan (RI) per-VERSI — SUMBER TUNGGAL.
  *
- * Pola sama dengan App\Support\GeneralConsentClause / PenjaminanClause
+ * Pola sama dengan App\Support\Clause\GeneralConsentClause / PenjaminanClause
  * (lihat docs/clause-versioning.md + skill clause-versioning): dokumen bertanda tangan
  * harus bisa dicetak ulang dengan redaksi SAAT DITANDATANGANI walau teks diubah kemudian.
  *

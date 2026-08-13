@@ -4,7 +4,7 @@
 //
 // Sumber = datadaftarugd_json → penilaian.resikoJatuh[] & penilaian.gizi[] (MULTI-ENTRI).
 // Node penilaian di UGD IDENTIK dengan RI (jarang: modul lain biasanya beda struktur),
-// jadi pemetaan LOINC dipakai bareng lewat App\Support\PenilaianObservationMap.
+// jadi pemetaan LOINC dipakai bareng lewat App\Support\Terminologi\PenilaianObservationMap.
 // Beda dari RI: trait EmrUGDTrait, PK rj_no, event ss-penilaian-ugd.kirim,
 // dan fallback waktu = rjDate (RI: entryDate).
 
@@ -14,7 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\SATUSEHAT\ObservationTrait;
-use App\Support\PenilaianObservationMap;
+use App\Support\Terminologi\PenilaianObservationMap;
 
 new class extends Component {
     use EmrUGDTrait, ObservationTrait;

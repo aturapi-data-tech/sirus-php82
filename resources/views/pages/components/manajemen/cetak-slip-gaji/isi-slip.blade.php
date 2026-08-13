@@ -7,7 +7,7 @@
      RSTXN_GAJIDOCTORDTLS), $tanggalCetak (teks kota + tanggal). --}}
 
 @php
-    use App\Support\GajiDokter;
+    use App\Support\GajiDokter\GajiDokter;
     use App\Support\Terbilang;
 
     $rupiah = fn($nilai) => number_format((float) $nilai, 0, ',', '.');

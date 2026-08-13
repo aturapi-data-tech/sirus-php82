@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Clause;
 
 /**
  * Registry TEKS KLAUSUL General Consent per-VERSI (RJ/UGD/RI) — SUMBER TUNGGAL.

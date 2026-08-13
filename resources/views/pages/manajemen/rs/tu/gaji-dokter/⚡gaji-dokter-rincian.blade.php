@@ -15,7 +15,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
-use App\Support\GajiDokter;
+use App\Support\GajiDokter\GajiDokter;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 new class extends Component {

@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ugd/penolakan-obat/cetak-penolakan-obat-print.blade.php --}}
 
-@use('App\Support\PenolakanObatClause')
+@use('App\Support\Clause\PenolakanObatClause')
 
 <x-pdf.layout-a4-with-out-background title="SURAT PERNYATAAN PENOLAKAN PENGOBATAN / OBAT TERTENTU">
 
@@ -26,7 +26,7 @@
         $hubunganText = $hubunganMap[$form['hubunganPasien'] ?? ''] ?? '-';
         $namaObatText = ($form['namaObat'] ?? '') ?: '-';
 
-        // Teks klausa per-versi (SUMBER TUNGGAL: App\Support\PenolakanObatClause; fallback v1 utk record legacy)
+        // Teks klausa per-versi (SUMBER TUNGGAL: App\Support\Clause\PenolakanObatClause; fallback v1 utk record legacy)
         $clause = PenolakanObatClause::get($form['clauseVersion'] ?? 'v1');
     @endphp
 

@@ -7,7 +7,7 @@ use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use Livewire\Attributes\On;
-use App\Support\AlergiSnomed;
+use App\Support\Terminologi\AlergiSnomed;
 
 new class extends Component {
     use EmrRJTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -75,7 +75,7 @@ new class extends Component {
 
         // ✅ Seragamkan node alergi + turunkan radio "Ada alergi?" (default Tidak -> SNOMED
         // 716186003). Record lama tak punya key adaAlergi -> diturunkan dari teksnya, jadi
-        // tak perlu migrasi data. Lihat App\Support\AlergiSnomed.
+        // tak perlu migrasi data. Lihat App\Support\Terminologi\AlergiSnomed.
         $this->dataDaftarPoliRJ['anamnesa']['alergi'] = AlergiSnomed::normalisasi(
             $this->dataDaftarPoliRJ['anamnesa']['alergi'] ?? [],
         );

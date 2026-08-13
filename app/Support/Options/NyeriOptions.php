@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Options;
 
 /**
  * Sumber tunggal definisi SKALA NYERI: sasaran populasi, rentang skor,

@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ugd/surat-kematian/cetak-surat-kematian-print.blade.php --}}
 
-@use('App\Support\SuratKematianClause')
+@use('App\Support\Clause\SuratKematianClause')
 
 <x-pdf.layout-a4-with-out-background title="SURAT KETERANGAN KEMATIAN">
 

@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Support\Terminologi\DischargeDisposition;
+
 /**
  * Cara masuk & cara keluar RS untuk satu episode Rawat Inap — DITURUNKAN, bukan diketik ulang.
  *
@@ -10,7 +12,7 @@ namespace App\Support;
  *   Cara masuk  ← `entryDesc` pada datadaftarri_json (diisi saat pendaftaran RI;
  *                 asalnya rstxn_rihdrs.entry_id → rsmst_entrytypes).
  *   Cara keluar ← `perencanaan.tindakLanjut.tindakLanjutKode` (diisi saat pasien pulang),
- *                 label lewat App\Support\DischargeDisposition.
+ *                 label lewat App\Support\Terminologi\DischargeDisposition.
  *
  * CATATAN: `rstxn_rihdrs.status_pulang` (L/H/I/F) BUKAN cara keluar klinis — itu status
  * penagihan (lunas/hutang). Jangan dipakai untuk kolom ini.

@@ -39,13 +39,13 @@
         $rsName = $identitasRs->int_name ?? 'RSI MADINAH';
         $rsAddress = $identitasRs->int_address ?? '';
 
-        // ── Maps key → label (satu sumber: App\Support\EdukasiTerintegrasiOptions) ──
-        $mapTujuan = \App\Support\EdukasiTerintegrasiOptions::tujuan();
-        $mapPref = \App\Support\EdukasiTerintegrasiOptions::preferensi();
-        $mapKebutuhan = \App\Support\EdukasiTerintegrasiOptions::kebutuhan();
-        $mapMetode = \App\Support\EdukasiTerintegrasiOptions::metode();
-        $mapHasil = \App\Support\EdukasiTerintegrasiOptions::hasil();
-        $mapRujuk = \App\Support\EdukasiTerintegrasiOptions::rujuk();
+        // ── Maps key → label (satu sumber: App\Support\Options\EdukasiTerintegrasiOptions) ──
+        $mapTujuan = \App\Support\Options\EdukasiTerintegrasiOptions::tujuan();
+        $mapPref = \App\Support\Options\EdukasiTerintegrasiOptions::preferensi();
+        $mapKebutuhan = \App\Support\Options\EdukasiTerintegrasiOptions::kebutuhan();
+        $mapMetode = \App\Support\Options\EdukasiTerintegrasiOptions::metode();
+        $mapHasil = \App\Support\Options\EdukasiTerintegrasiOptions::hasil();
+        $mapRujuk = \App\Support\Options\EdukasiTerintegrasiOptions::rujuk();
 
         // Centang aman-font: font default dompdf (Helvetica) tak punya glyph U+2713 → tampil "?".
         // DejaVu Sans (dibundel dompdf) punya glyph-nya.
@@ -115,7 +115,7 @@
             </td>
         </tr>
         @php
-            $mapHubungan = \App\Support\EdukasiTerintegrasiOptions::hubungan();
+            $mapHubungan = \App\Support\Options\EdukasiTerintegrasiOptions::hubungan();
             // Entri lama belum punya node sasaran → fallback ke penanda tangan (ttd.*).
             $sasaranNama = ($form['sasaran']['nama'] ?? '') ?: ($form['ttd']['pasienKeluargaNama'] ?? '');
             $sasaranHubungan = ($form['sasaran']['hubungan'] ?? '') ?: ($form['ttd']['pasienKeluargaHubungan'] ?? '');
@@ -289,7 +289,7 @@
                             <div class="border-t border-black pt-[3px] mt-1 min-w-[140px] inline-block">
                                 <p class="font-bold">{{ strtoupper($form['ttd']['pasienKeluargaNama'] ?? '-') }}</p>
                                 @php
-                                    $hubunganMap = \App\Support\EdukasiTerintegrasiOptions::hubungan();
+                                    $hubunganMap = \App\Support\Options\EdukasiTerintegrasiOptions::hubungan();
                                     $hubunganVal = $form['ttd']['pasienKeluargaHubungan'] ?? '';
                                 @endphp
                                 @if ($hubunganVal)

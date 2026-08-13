@@ -10,7 +10,7 @@ use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
-use App\Support\SurveilansHaisOptions;
+use App\Support\Options\SurveilansHaisOptions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
@@ -276,7 +276,7 @@ new class extends Component {
 ?>
 
 @php
-    $opsiPenyebutHais = \App\Support\SurveilansHaisOptions::PENYEBUT_HAIS;
+    $opsiPenyebutHais = \App\Support\Options\SurveilansHaisOptions::PENYEBUT_HAIS;
 @endphp
 
 <div>

@@ -310,14 +310,23 @@ Folder yang namanya sama dengan satu-satunya berkas di dalamnya
 Support = **class stateless**, semua method `static`, tidak tahu-menahu soal Livewire. Saat ini 35
 dari 38 berkas menumpuk rata di akar folder sehingga kategorinya tak terlihat. Sub-namespace resmi:
 
-| Sub-namespace | Isi | Penghuni (dari kondisi sekarang) |
+**Aturan pembentukan: sub-namespace dibuat HANYA bila anggotanya ≥ 2.** Folder berisi satu berkas
+menambah kedalaman tanpa memberi informasi — biarkan ia di akar `App\Support`. Karena itu yang
+dibentuk cuma 4 kelompok (+ `Downtime/` yang sudah ada), bukan satu folder per domain.
+
+| Sub-namespace | Isi | Penghuni |
 |---|---|---|
-| `Clause/` | teks legal berversi (lihat `docs/clause-versioning.md`) | `GeneralConsentClause`, `AkhirHayatClause`, `KerohanianClause`, `PenjaminanClause`, `PenolakanObatClause`, `SuratKematianClause` |
-| `Options/` | daftar opsi & skala formulir EMR | `NyeriOptions`, `GiziOptions`, `AkhirHayatOptions`, `PraAnestesiOptions`, `SafetyPlanOptions`, `PermintaanDarahOptions`, `DischargePlanningOptions`, `EdukasiTerintegrasiOptions`, `SurveilansHaisOptions` |
-| `Terminologi/` | pemetaan kode standar (SNOMED/KFA/LOINC/ICD/FHIR) | `AlergiSnomed`, `ObatKfa`, `RacikanKfa`, `MedicationRequestItem`, `PenilaianObservationMap`, `ObservasiLanjutanMap`, `DischargeDisposition`, `Diagnosa/KodeIm` |
-| `Oracle/` | akses/penanganan khas Oracle | `OracleLob` |
-| `Cetak/` | pembantu format cetakan | `Terbilang`, `LogText` |
-| `<Domain>/` | logika satu modul | `GajiDokter/`, `KamarOperasi/`, `Downtime/`, `Ri/` (`AdmisiPulangRI`, `DpjpUtamaRI`, `KelasKamar`) |
+| `Clause/` (6) | teks legal berversi (lihat `docs/clause-versioning.md`) | `GeneralConsentClause`, `AkhirHayatClause`, `KerohanianClause`, `PenjaminanClause`, `PenolakanObatClause`, `SuratKematianClause` |
+| `Options/` (9) | daftar opsi & skala formulir EMR | `NyeriOptions`, `GiziOptions`, `AkhirHayatOptions`, `PraAnestesiOptions`, `SafetyPlanOptions`, `PermintaanDarahOptions`, `DischargePlanningOptions`, `EdukasiTerintegrasiOptions`, `SurveilansHaisOptions` |
+| `Terminologi/` (8) | pemetaan kode standar (SNOMED/KFA/LOINC/ICD/FHIR) | `AlergiSnomed`, `ObatKfa`, `RacikanKfa`, `MedicationRequestItem`, `PenilaianObservationMap`, `ObservasiLanjutanMap`, `DischargeDisposition`, `KodeIm` |
+| `GajiDokter/` (2) | modul slip gaji dokter | `GajiDokter`, `GajiDokterLampiran` |
+| `Downtime/` (2) | formulir & tarif waktu henti | `FormulirDowntime`, `TarifDowntime` |
+| *(akar)* (11) | pembantu tunggal per domain — nama sudah menjelaskan dirinya | `OracleLob`, `Terbilang`, `LogText`, `EresepJson`, `AdmisiPulangRI`, `DpjpUtamaRI`, `KelasKamar`, `KamarOperasiTarif`, `ModulDokumenAksiRole`, `NomorSuratKematian`, `SatuSehatMonitor` |
+
+> **Jangan mengandalkan resolusi satu-namespace antar kelas Support.** Sebelum penataan ini ada 7
+> tempat yang memanggil `Foo::` tanpa `use` maupun FQCN, mengandalkan keduanya kebetulan berada di
+> `App\Support`. Tiga di antaranya langsung putus saat salah satunya pindah — dan putusnya **senyap**,
+> baru meledak ketika jalur kode itu dijalankan. Tulis `use` eksplisit, selalu.
 
 **Batas Trait vs Support** (pertanyaan yang paling sering salah dijawab): butuh `$this` /
 `dispatch()` / properti komponen → Trait. Murni input→output → Support. Kalau sebuah trait tidak
@@ -370,7 +379,7 @@ tersentuh (**bukan** `view:cache` — ia tidak menangkap galat kelas Volt, lihat
 | ✅ 4 | Suffix jalur folder+berkas modul-dokumen RJ & UGD | 32 folder | 🟡 | **SELESAI 2026-08-13** — 32 folder + 11 berkas + 34 referensi. Termasuk `suket/tab/` → `suket-<jalur>/tabs/` dan 4 partial tab yang tadinya bernama identik di dua jalur. `form-trf-ugd-ri` dikecualikan (anti-stutter, §3.4) |
 | ✅ 5 | 7 `rm-*-actions` UGD tanpa suffix `-ugd` | 7 | 🟡 | **SELESAI** — bagian dari item 4 |
 | ✅ 6 | Folder akronim `r-i/ r-j/ u-g-d/ b-p-j-s/` → `ri/ rj/ ugd/ bpjs/` | 7 folder, 184 berkas | 🟡 | **SELESAI 2026-08-13** — 363 referensi dalam **tiga** bentuk penulisan: dotted (`components.modul-dokumen.r-i.`), path (`components/modul-dokumen/r-i/`), dan path singkat tanpa prefix `components/` di docs |
-| 7 | `app/Support` → sub-namespace §6.2 | 35 berkas | 🟡 | ubah `namespace` + semua `use App\Support\…` |
+| ✅ 7 | `app/Support` → sub-namespace §6.2 | 25 berkas | 🟡 | **SELESAI 2026-08-13** — 25 pindah ke 4 kelompok, 11 tetap di akar (aturan ≥2 anggota), `Diagnosa/KodeIm` → `Terminologi/KodeIm`, 217 FQCN + 3 `use` eksplisit yang tadinya implisit |
 | 8 | `Traits/WithRenderVersioning`, `Traits/WithValidationToast` → `Traits/Concerns/` | 2 | 🟡 | hapus nesting mubazir |
 | 9 | `Traits/iDRG` → `Traits/IDRG` | 1 folder | 🟡 | konsisten dengan `BPJS`/`SATUSEHAT`/`SIRS` |
 | 10 | Pecah 22 berkas > 1.500 baris (§5) | 22 | 🔴 | bukan rename — jadwalkan per modul saat modul itu disentuh |

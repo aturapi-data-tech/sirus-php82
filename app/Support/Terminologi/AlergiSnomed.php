@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Terminologi;
 
 /**
  * Kode SNOMED "tidak ada alergi" untuk anamnesa RJ/UGD (AllergyIntolerance SATUSEHAT).

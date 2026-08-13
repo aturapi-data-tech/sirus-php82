@@ -6,7 +6,7 @@ use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
-use App\Support\EdukasiTerintegrasiOptions;
+use App\Support\Options\EdukasiTerintegrasiOptions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -32,7 +32,7 @@ new class extends Component {
     // true = entri terkunci ditampilkan di form dalam mode read-only.
     public bool $viewOnly = false;
 
-    // Daftar opsi (key => label) — satu sumber di App\Support\EdukasiTerintegrasiOptions,
+    // Daftar opsi (key => label) — satu sumber di App\Support\Options\EdukasiTerintegrasiOptions,
     // diisi saat mount; dipakai render checkbox / radio + ringkasan riwayat.
     public array $tujuanList = [];
     public array $kebutuhanList = [];

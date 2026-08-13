@@ -5,7 +5,7 @@
     'barisBaru' => [],
     // Read-only (form terkunci / mode lihat).
     'formReadOnly' => false,
-    // Peta opsi dari App\Support\SurveilansHaisOptions.
+    // Peta opsi dari App\Support\Options\SurveilansHaisOptions.
     'opsiRute' => [],
     'opsiIndikasi' => [],
 ])

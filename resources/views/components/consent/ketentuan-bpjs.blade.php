@@ -6,10 +6,10 @@
     'version' => null,
 ])
 
-@use('App\Support\PenjaminanClause')
+@use('App\Support\Clause\PenjaminanClause')
 
 @php
-    // ── Teks ketentuan BPJS per-versi (SUMBER TUNGGAL: App\Support\PenjaminanClause) ──
+    // ── Teks ketentuan BPJS per-versi (SUMBER TUNGGAL: App\Support\Clause\PenjaminanClause) ──
     $clause = PenjaminanClause::get('bpjs', $version);
     $intro = $clause['intro'] ?? '';
     $points = $clause['points'] ?? [];

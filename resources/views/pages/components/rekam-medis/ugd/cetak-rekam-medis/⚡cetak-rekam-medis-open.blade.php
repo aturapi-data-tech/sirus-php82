@@ -8,7 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
-use App\Support\NyeriOptions;
+use App\Support\Options\NyeriOptions;
 
 new class extends Component {
     use EmrUGDTrait, MasterPasienTrait;
@@ -411,7 +411,7 @@ new class extends Component {
                                     class="text-body dark:text-gray-300">{{ $dataDaftarTxn['anamnesa']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? '-' }}</span>
                             </p>
                             <p class="flex gap-3 text-base leading-relaxed pb-1.5 border-b border-hairline-soft dark:border-gray-800 last:border-0"><span class="w-56 shrink-0 text-right text-muted">Alergi :</span><span
-                                    class="text-body dark:text-gray-300">{{ \App\Support\AlergiSnomed::untukCetak($dataDaftarTxn['anamnesa']['alergi'] ?? []) }}</span>
+                                    class="text-body dark:text-gray-300">{{ \App\Support\Terminologi\AlergiSnomed::untukCetak($dataDaftarTxn['anamnesa']['alergi'] ?? []) }}</span>
                             </p>
                             <div>
                                 <p class="mb-1.5 text-base text-muted">Rekonsiliasi Obat :</p>

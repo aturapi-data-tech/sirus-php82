@@ -10,7 +10,7 @@ use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
 use App\Support\DpjpUtamaRI;
-use App\Support\SurveilansHaisOptions;
+use App\Support\Options\SurveilansHaisOptions;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -703,13 +703,13 @@ new class extends Component {
 ?>
 
 @php
-    $opsiFaktorRisiko = \App\Support\SurveilansHaisOptions::FAKTOR_RISIKO;
-    $opsiKelompokUsia = \App\Support\SurveilansHaisOptions::KELOMPOK_USIA;
-    $opsiJenisKateter = \App\Support\SurveilansHaisOptions::JENIS_KATETER_ISK;
-    $opsiTandaBalita = \App\Support\SurveilansHaisOptions::TANDA_ISK_BALITA;
-    $opsiTandaDewasa = \App\Support\SurveilansHaisOptions::TANDA_ISK_DEWASA;
-    $opsiRute = \App\Support\SurveilansHaisOptions::RUTE_ANTIBIOTIK;
-    $opsiIndikasi = \App\Support\SurveilansHaisOptions::INDIKASI_ANTIBIOTIK;
+    $opsiFaktorRisiko = \App\Support\Options\SurveilansHaisOptions::FAKTOR_RISIKO;
+    $opsiKelompokUsia = \App\Support\Options\SurveilansHaisOptions::KELOMPOK_USIA;
+    $opsiJenisKateter = \App\Support\Options\SurveilansHaisOptions::JENIS_KATETER_ISK;
+    $opsiTandaBalita = \App\Support\Options\SurveilansHaisOptions::TANDA_ISK_BALITA;
+    $opsiTandaDewasa = \App\Support\Options\SurveilansHaisOptions::TANDA_ISK_DEWASA;
+    $opsiRute = \App\Support\Options\SurveilansHaisOptions::RUTE_ANTIBIOTIK;
+    $opsiIndikasi = \App\Support\Options\SurveilansHaisOptions::INDIKASI_ANTIBIOTIK;
 @endphp
 
 <div>

@@ -6,7 +6,7 @@
 // Catatan struktur: tiap entri BERSARANG GANDA, mis. entri.resikoJatuh.kategoriResiko
 // dan entri.resikoJatuh.resikoJatuhMetode.resikoJatuhMetodeScore. Waktu = entri.tglPenilaian.
 //
-// Pemetaan LOINC ada di App\Support\PenilaianObservationMap (dipakai bareng sender UGD).
+// Pemetaan LOINC ada di App\Support\Terminologi\PenilaianObservationMap (dipakai bareng sender UGD).
 
 use Livewire\Component;
 use Livewire\Attributes\On;
@@ -14,7 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\SATUSEHAT\ObservationTrait;
-use App\Support\PenilaianObservationMap;
+use App\Support\Terminologi\PenilaianObservationMap;
 
 new class extends Component {
     use EmrRITrait, ObservationTrait;

@@ -12,7 +12,7 @@ use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
-use App\Support\PermintaanDarahOptions;
+use App\Support\Options\PermintaanDarahOptions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -34,7 +34,7 @@ new class extends Component {
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-permintaan-darah-ri'];
 
-    // Opsi (label & pilihan) — sumber tunggal di App\Support\PermintaanDarahOptions.
+    // Opsi (label & pilihan) — sumber tunggal di App\Support\Options\PermintaanDarahOptions.
     public array $jenisOptions = PermintaanDarahOptions::JENIS;
     public array $golonganOptions = PermintaanDarahOptions::GOLONGAN;
     public array $rhesusOptions = PermintaanDarahOptions::RHESUS;

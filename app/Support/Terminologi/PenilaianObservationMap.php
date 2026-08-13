@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Terminologi;
 
 /**
  * Pemetaan entri Penilaian EMR → payload FHIR Observation (SATUSEHAT).

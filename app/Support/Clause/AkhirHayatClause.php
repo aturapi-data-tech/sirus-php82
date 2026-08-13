@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Clause;
 
 /**
  * Registry TEKS PERNYATAAN Pengkajian Akhir Hayat (RI) per-VERSI — SUMBER TUNGGAL.
  *
- * Pola sama dengan App\Support\GeneralConsentClause / KerohanianClause
+ * Pola sama dengan App\Support\Clause\GeneralConsentClause / KerohanianClause
  * (lihat docs/clause-versioning.md + skill clause-versioning): dokumen bertanda tangan
  * harus bisa dicetak ulang dengan redaksi SAAT DITANDATANGANI walau teks diubah kemudian.
  *

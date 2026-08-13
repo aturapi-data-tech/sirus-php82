@@ -16,8 +16,8 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\SATUSEHAT\MedicationDispenseTrait;
-use App\Support\MedicationRequestItem;
-use App\Support\RacikanKfa;
+use App\Support\Terminologi\MedicationRequestItem;
+use App\Support\Terminologi\RacikanKfa;
 
 new class extends Component {
     use EmrRJTrait, MedicationDispenseTrait;

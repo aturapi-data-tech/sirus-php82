@@ -5,7 +5,7 @@ use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
-use App\Support\GiziOptions;
+use App\Support\Options\GiziOptions;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
@@ -39,7 +39,7 @@ new class extends Component {
     ];
 
     // Port list GIZIM_DIET dari Oracle Forms rit003gizi.fmb (ANTRI_RI_GIZI → RSTXN_RIGIZIS),
-    // urutan & redaksi persis list item legacy. Sumber tunggal: App\Support\GiziOptions
+    // urutan & redaksi persis list item legacy. Sumber tunggal: App\Support\Options\GiziOptions
     // (dipakai juga worklist Gizi Rawat Inap /ri/gizi).
     public array $programDietOptions = GiziOptions::PROGRAM_DIET;
 

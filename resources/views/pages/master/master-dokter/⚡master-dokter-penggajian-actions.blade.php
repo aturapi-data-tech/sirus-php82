@@ -20,7 +20,7 @@
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
-use App\Support\GajiDokter;
+use App\Support\GajiDokter\GajiDokter;
 
 new class extends Component {
     public ?string $drId = null;

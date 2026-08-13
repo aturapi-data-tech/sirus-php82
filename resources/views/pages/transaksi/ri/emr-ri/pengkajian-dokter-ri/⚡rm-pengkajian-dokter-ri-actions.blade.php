@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
-use App\Support\AlergiSnomed;
+use App\Support\Terminologi\AlergiSnomed;
 
 new class extends Component {
     use EmrRITrait, EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -658,7 +658,7 @@ new class extends Component {
 
             {{-- Ada alergi? — pola sama RJ/UGD. Default "Tidak" -> SNOMED 716186003 diisi di
                  server (bukan lewat LOV zat: 716186003 konsep *situation*, bukan zat, jadi
-                 ditolak substance-code). Lihat App\Support\AlergiSnomed. --}}
+                 ditolak substance-code). Lihat App\Support\Terminologi\AlergiSnomed. --}}
             <div>
                 <x-input-label value="Ada Alergi?" />
                 <div class="flex gap-4 mt-2">

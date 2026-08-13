@@ -10,7 +10,7 @@ use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
-use App\Support\SuratKematianClause;
+use App\Support\Clause\SuratKematianClause;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -70,7 +70,7 @@ new class extends Component {
 
     /**
      * Gate RI BEDA dari UGD: tak ada triase P0 di rawat inap. Penanda meninggal di RI
-     * adalah status pulang BPJS 4 di Perencanaan (App\Support\DischargeDisposition:
+     * adalah status pulang BPJS 4 di Perencanaan (App\Support\Terminologi\DischargeDisposition:
      * 'Meninggal' => tindakLanjutKode 419099009, tindakLanjutKodeBpjs 4).
      */
     public function isPasienMeninggal(): bool

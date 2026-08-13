@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\GajiDokter;
 
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;

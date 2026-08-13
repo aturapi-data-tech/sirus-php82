@@ -7,8 +7,8 @@ use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Dokumen\DokumenViewSupportTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
-use App\Support\AkhirHayatClause;
-use App\Support\AkhirHayatOptions;
+use App\Support\Clause\AkhirHayatClause;
+use App\Support\Options\AkhirHayatOptions;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 

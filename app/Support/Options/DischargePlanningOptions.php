@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Options;
 
 /**
  * Opsi Discharge Planning RI (pelayanan berkelanjutan & alat bantu) + kode SNOMED-nya.
@@ -13,7 +13,7 @@ namespace App\Support;
  * (CodeSystem/$lookup). JANGAN menambah/mengubah kode dari hafalan — daftar
  * `tindakLanjutOptions` di modul yang sama membuktikan bahayanya: 2 dari 6 kodenya
  * salah arti, salah satunya melaporkan pasien pulang hidup sebagai MENINGGAL
- * (lihat App\Support\DischargeDisposition).
+ * (lihat App\Support\Terminologi\DischargeDisposition).
  *
  * Catatan: "Tongkat" dan "Walker" SENGAJA dipisah — SNOMED membedakannya
  * (Walking stick vs Walking frame); digabung berarti salah satunya pasti salah kode.

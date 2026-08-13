@@ -3,9 +3,9 @@
      State di komponen induk: formEntryResikoBunuhDiri.safetyPlan.*
      Checklist array pakai x-toggle Mode 2 (current + wireClick) yang mengirim
      nama field + INDEKS ke toggleSafetyPlan(); opsi bersumber dari
-     App\Support\SafetyPlanOptions supaya indeks blade & server selalu sinkron. --}}
+     App\Support\Options\SafetyPlanOptions supaya indeks blade & server selalu sinkron. --}}
 @php
-    use App\Support\SafetyPlanOptions;
+    use App\Support\Options\SafetyPlanOptions;
 
     $sp = 'formEntryResikoBunuhDiri.safetyPlan';
     $tandaBahayaOptions = SafetyPlanOptions::TANDA_BAHAYA;

@@ -729,8 +729,8 @@
                 <tbody>
                     @forelse ($daftarEdukasi as $edukasi)
                         @php
-                            $labelTujuan = \App\Support\EdukasiTerintegrasiOptions::tujuan();
-                            $labelMetode = \App\Support\EdukasiTerintegrasiOptions::metode();
+                            $labelTujuan = \App\Support\Options\EdukasiTerintegrasiOptions::tujuan();
+                            $labelMetode = \App\Support\Options\EdukasiTerintegrasiOptions::metode();
                             $tujuan = collect((array) data_get($edukasi, 'form.tujuan.opsi', []))
                                 ->map(fn($kunci) => $labelTujuan[$kunci] ?? $kunci)
                                 ->push(data_get($edukasi, 'form.tujuan.lainnya'))

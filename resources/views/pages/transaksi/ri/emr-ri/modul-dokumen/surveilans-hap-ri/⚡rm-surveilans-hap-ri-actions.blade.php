@@ -10,7 +10,7 @@ use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
 use App\Support\DpjpUtamaRI;
-use App\Support\SurveilansHaisOptions;
+use App\Support\Options\SurveilansHaisOptions;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -633,10 +633,10 @@ new class extends Component {
 ?>
 
 @php
-    $opsiFaktorRisiko = \App\Support\SurveilansHaisOptions::FAKTOR_RISIKO;
-    $opsiFotoToraks = \App\Support\SurveilansHaisOptions::FOTO_TORAKS;
-    $opsiRute = \App\Support\SurveilansHaisOptions::RUTE_ANTIBIOTIK;
-    $opsiIndikasi = \App\Support\SurveilansHaisOptions::INDIKASI_ANTIBIOTIK;
+    $opsiFaktorRisiko = \App\Support\Options\SurveilansHaisOptions::FAKTOR_RISIKO;
+    $opsiFotoToraks = \App\Support\Options\SurveilansHaisOptions::FOTO_TORAKS;
+    $opsiRute = \App\Support\Options\SurveilansHaisOptions::RUTE_ANTIBIOTIK;
+    $opsiIndikasi = \App\Support\Options\SurveilansHaisOptions::INDIKASI_ANTIBIOTIK;
 @endphp
 
 <div>
@@ -854,7 +854,7 @@ new class extends Component {
                                             <x-input-label value="Leukosit (/mm³)" />
                                             <x-text-input wire:model="newForm.leukosit" class="w-full mt-1" placeholder="mis. 13500"
                                                 :error="$errors->has('newForm.leukosit')" />
-                                            @php $leukositAbnormal = \App\Support\SurveilansHaisOptions::leukositAbnormal($newForm['leukosit'] ?? null); @endphp
+                                            @php $leukositAbnormal = \App\Support\Options\SurveilansHaisOptions::leukositAbnormal($newForm['leukosit'] ?? null); @endphp
                                             <p class="mt-1 text-xs {{ $leukositAbnormal ? 'font-semibold text-rose-700 dark:text-rose-400' : 'text-muted dark:text-gray-400' }}">
                                                 {{ $leukositAbnormal ? 'Memenuhi kriteria.' : 'Kriteria: <4.000 atau ≥12.000.' }}
                                             </p>

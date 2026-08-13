@@ -19,7 +19,7 @@ new class extends Component {
 
     private string $printView = 'pages.components.modul-dokumen.ri.edukasi-terintegrasi.cetak-edukasi-terintegrasi-ri-print';
 
-    // Label tujuan — satu sumber di App\Support\EdukasiTerintegrasiOptions (diisi saat mount).
+    // Label tujuan — satu sumber di App\Support\Options\EdukasiTerintegrasiOptions (diisi saat mount).
     public array $tujuanLabels = [];
 
     public function mount(?string $riHdrNo = null, array $entries = []): void
@@ -27,7 +27,7 @@ new class extends Component {
         $this->riHdrNo = $riHdrNo ?: null;
         $this->list = array_values($entries);
         $this->navField = 'id';
-        $this->tujuanLabels = \App\Support\EdukasiTerintegrasiOptions::tujuan();
+        $this->tujuanLabels = \App\Support\Options\EdukasiTerintegrasiOptions::tujuan();
     }
 
     public function lihat(string $id): void

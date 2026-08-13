@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Terminologi;
 
 /**
  * Peta item MedicationRequest: pasangan "obat mana → MedicationRequest yang mana".

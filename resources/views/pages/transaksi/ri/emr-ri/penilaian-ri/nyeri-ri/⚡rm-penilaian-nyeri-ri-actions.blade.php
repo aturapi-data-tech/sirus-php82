@@ -5,7 +5,7 @@ use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
-use App\Support\NyeriOptions;
+use App\Support\Options\NyeriOptions;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Livewire\Attributes\Computed;
@@ -50,7 +50,7 @@ new class extends Component {
         ],
     ];
 
-    /* Definisi skala (sasaran populasi, rentang, item, interpretasi) — App\Support\NyeriOptions. */
+    /* Definisi skala (sasaran populasi, rentang, item, interpretasi) — App\Support\Options\NyeriOptions. */
     #[Computed]
     public function daftarSkala(): array
     {

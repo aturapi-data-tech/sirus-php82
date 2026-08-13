@@ -4,7 +4,7 @@ namespace App\Http\Traits\Manajemen\Rs\Ri;
 
 use App\Support\AdmisiPulangRI;
 use App\Support\OracleLob;
-use App\Support\SurveilansHaisOptions;
+use App\Support\Options\SurveilansHaisOptions;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -72,7 +72,7 @@ trait SurveilansHaisTrait
 
     /**
      * Peta jenis alat pada entri Observasi RI → field penyebut di rekap.
-     * Kunci mengikuti App\Support\SurveilansHaisOptions::PENYEBUT_HAIS.
+     * Kunci mengikuti App\Support\Options\SurveilansHaisOptions::PENYEBUT_HAIS.
      */
     private const FIELD_HARI_ALAT = [
         'ivPerifer' => 'ivlHari',

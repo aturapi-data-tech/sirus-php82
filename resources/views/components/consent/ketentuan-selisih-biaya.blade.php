@@ -6,10 +6,10 @@
     'version' => null,
 ])
 
-@use('App\Support\PenjaminanClause')
+@use('App\Support\Clause\PenjaminanClause')
 
 @php
-    // ── Ketentuan selisih biaya naik kelas per-versi (SUMBER TUNGGAL: App\Support\PenjaminanClause) ──
+    // ── Ketentuan selisih biaya naik kelas per-versi (SUMBER TUNGGAL: App\Support\Clause\PenjaminanClause) ──
     $rows = PenjaminanClause::get('selisih', $version)['rows'] ?? [];
 @endphp
 

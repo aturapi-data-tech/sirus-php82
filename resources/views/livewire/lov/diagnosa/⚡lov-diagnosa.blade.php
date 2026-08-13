@@ -131,7 +131,7 @@
 | accpdx='Y', jadi lolos GUARD 1 & 2. Tanpa `blockIm`, kode IM masuk coder
 | INACBG dan baru ketahuan salah setelah klaim dikirim lalu dibalas
 | validcode=0 oleh E-Klaim. Jangan nyalakan di LOV iDRG — di sana kode IM
-| memang yang dipakai. Penandaannya di App\Support\Diagnosa\KodeIm (dua sumber:
+| memang yang dipakai. Penandaannya di App\Support\Terminologi\KodeIm (dua sumber:
 | kolom `im` DAN deskripsi berakhiran "(IM)").
 |
 |
@@ -155,7 +155,7 @@
 */
 
 use Livewire\Component;
-use App\Support\Diagnosa\KodeIm;
+use App\Support\Terminologi\KodeIm;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Reactive;
 
@@ -236,7 +236,7 @@ new class extends Component {
      * bisa masuk daftar coder — memang disengaja, supaya kelihatan lalu diganti;
      * penandanya badge merah di kolom Keterangan.
      *
-     * Penandanya App\Support\Diagnosa\KodeIm.
+     * Penandanya App\Support\Terminologi\KodeIm.
      */
     public bool $blockIm = false;
 
@@ -575,7 +575,7 @@ new class extends Component {
                             $isHeaderCode = (int) ($option['valid_code'] ?? 0) !== 1;
                             $isInvalid = $isHeaderCode && $blockHeader;
                             $isBlockedNonPrimary = $blockNonPrimary && ($option['accpdx'] ?? 'N') !== 'Y';
-                            $isBlockedIm = $blockIm && App\Support\Diagnosa\KodeIm::adalah($option);
+                            $isBlockedIm = $blockIm && App\Support\Terminologi\KodeIm::adalah($option);
                             $isBlocked = $isInvalid || $isBlockedNonPrimary || $isBlockedIm;
                             $rowClass = $isBlocked
                                 ? 'bg-red-50 dark:bg-red-900/10 cursor-not-allowed'

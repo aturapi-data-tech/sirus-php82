@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Diagnosa;
+namespace App\Support\Terminologi;
 
 use Illuminate\Support\Facades\DB;
 

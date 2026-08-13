@@ -8,7 +8,7 @@
 //   pengeluaranCairan.pengeluaranCairan[]   → Observation (volume urine)
 //
 // Tanda vital (observasi.observasiLanjutan.tandaVital[]) TIDAK di sini — sudah dikirim kartu 5.
-// Pemetaan kode ada di App\Support\ObservasiLanjutanMap.
+// Pemetaan kode ada di App\Support\Terminologi\ObservasiLanjutanMap.
 //
 // CATATAN DATA: hanya ~31% baris pemberian obat punya productId (cairan sering diketik
 // bebas tanpa pilih master obat) → baris tanpa productId/KFA DILEWATI tapi DIHITUNG &
@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\SATUSEHAT\ObservationTrait;
 use App\Http\Traits\SATUSEHAT\MedicationAdministrationTrait;
-use App\Support\ObservasiLanjutanMap;
+use App\Support\Terminologi\ObservasiLanjutanMap;
 
 new class extends Component {
     use EmrRITrait, ObservationTrait, MedicationAdministrationTrait;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Options;
 
 /**
  * Satu sumber label & pemetaan opsi Formulir Edukasi Terintegrasi RI.

@@ -10,7 +10,7 @@ use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
 use App\Support\DpjpUtamaRI;
-use App\Support\SurveilansHaisOptions;
+use App\Support\Options\SurveilansHaisOptions;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -649,12 +649,12 @@ new class extends Component {
 ?>
 
 @php
-    $opsiFaktorRisiko = \App\Support\SurveilansHaisOptions::FAKTOR_RISIKO;
-    $opsiJenisOperasi = \App\Support\SurveilansHaisOptions::JENIS_OPERASI;
-    $opsiAsa = \App\Support\SurveilansHaisOptions::ASA_SCORE;
-    $opsiParamPemantauan = \App\Support\SurveilansHaisOptions::PARAM_PEMANTAUAN_ILO;
-    $opsiRute = \App\Support\SurveilansHaisOptions::RUTE_ANTIBIOTIK;
-    $opsiIndikasi = \App\Support\SurveilansHaisOptions::INDIKASI_ANTIBIOTIK;
+    $opsiFaktorRisiko = \App\Support\Options\SurveilansHaisOptions::FAKTOR_RISIKO;
+    $opsiJenisOperasi = \App\Support\Options\SurveilansHaisOptions::JENIS_OPERASI;
+    $opsiAsa = \App\Support\Options\SurveilansHaisOptions::ASA_SCORE;
+    $opsiParamPemantauan = \App\Support\Options\SurveilansHaisOptions::PARAM_PEMANTAUAN_ILO;
+    $opsiRute = \App\Support\Options\SurveilansHaisOptions::RUTE_ANTIBIOTIK;
+    $opsiIndikasi = \App\Support\Options\SurveilansHaisOptions::INDIKASI_ANTIBIOTIK;
 @endphp
 
 <div>

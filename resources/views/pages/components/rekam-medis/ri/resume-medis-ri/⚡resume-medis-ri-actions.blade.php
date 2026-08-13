@@ -147,7 +147,7 @@ use Livewire\Attributes\On;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
-use App\Support\DischargeDisposition;
+use App\Support\Terminologi\DischargeDisposition;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 
 new class extends Component {
@@ -370,7 +370,7 @@ new class extends Component {
 
         // ── 9) Kondisi Saat Pulang ← perencanaan.tindakLanjut.tindakLanjut ─
         // `tindakLanjut` menyimpan KUNCI INTERNAL (bentuknya mirip SNOMED tapi 2 di antaranya
-        // salah arti — lihat App\Support\DischargeDisposition). Label diambil dari SUMBER
+        // salah arti — lihat App\Support\Terminologi\DischargeDisposition). Label diambil dari SUMBER
         // TUNGGAL di helper itu: dulu file ini punya peta sendiri yang menulis '371828006'
         // = "Perbaikan", padahal form menyebutnya "Pulang Tanpa Perbaikan" — makna TERBALIK
         // (komentar di peta lama pun sudah menulis "Pulang Tanpa Perbaikan" di sebelahnya).

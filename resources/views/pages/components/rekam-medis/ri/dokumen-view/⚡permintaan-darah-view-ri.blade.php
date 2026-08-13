@@ -6,7 +6,7 @@ use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Dokumen\DokumenViewSupportTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
-use App\Support\PermintaanDarahOptions;
+use App\Support\Options\PermintaanDarahOptions;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 
@@ -72,7 +72,7 @@ new class extends Component {
     <x-border-form title="Formulir Permintaan Darah">
         @forelse (collect($list)->filter(fn($entri) => filled(data_get($entri, 'id')))->values() as $entri)
             @php
-                $jenis = collect(\App\Support\PermintaanDarahOptions::JENIS)
+                $jenis = collect(\App\Support\Options\PermintaanDarahOptions::JENIS)
                     ->filter(fn($l, $k) => !empty(data_get($entri, "form.jenisDarah.$k.pilih")))
                     ->values()->implode(', ');
             @endphp

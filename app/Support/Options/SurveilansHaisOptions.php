@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Options;
 
 /**
  * Sumber tunggal peta label Surveilans HAIs (Healthcare-Associated Infections)

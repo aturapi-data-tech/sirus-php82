@@ -203,7 +203,7 @@ trait MedicationRequestTrait
         ];
 
         // Racikan (compound): kode KFA-nya ada di tiap bahan, bukan di campurannya.
-        // Pemanggil menyusunnya lewat App\Support\RacikanKfa::fhirIngredient().
+        // Pemanggil menyusunnya lewat App\Support\Terminologi\RacikanKfa::fhirIngredient().
         if (!empty($data['ingredient'])) {
             $containedMedication['ingredient'] = $data['ingredient'];
         }

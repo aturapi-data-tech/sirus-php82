@@ -130,7 +130,7 @@ trait MedicationDispenseTrait
         ];
 
         // Racikan: bahan-bahannya yang membawa kode KFA
-        // (App\Support\RacikanKfa::fhirIngredient()).
+        // (App\Support\Terminologi\RacikanKfa::fhirIngredient()).
         if (!empty($data['ingredient'])) {
             $payload['contained'][0]['ingredient'] = $data['ingredient'];
         }

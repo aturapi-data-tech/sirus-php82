@@ -14,7 +14,7 @@ use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
-use App\Support\AkhirHayatClause;
+use App\Support\Clause\AkhirHayatClause;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -1404,7 +1404,7 @@ new class extends Component {
                     <x-border-form title="5. Pernyataan Persetujuan & Tanda Tangan" align="start"
                         bgcolor="bg-surface-soft" :collapsible="true" :open="true">
                         <fieldset @disabled($formReadOnly)>
-                            @php $clause = \App\Support\AkhirHayatClause::get($form['ttd']['clauseVersion'] ?? null); @endphp
+                            @php $clause = \App\Support\Clause\AkhirHayatClause::get($form['ttd']['clauseVersion'] ?? null); @endphp
                             <p class="p-3 mt-3 text-sm border rounded-lg text-body bg-canvas border-hairline dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
                                 {{ $clause['persetujuan'] }}
                             </p>

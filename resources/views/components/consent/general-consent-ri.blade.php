@@ -10,7 +10,7 @@
     'version' => null,
 ])
 
-@use('App\Support\GeneralConsentClause')
+@use('App\Support\Clause\GeneralConsentClause')
 
 @php
     $hubunganMap = [
@@ -30,7 +30,7 @@
     $agreementText = $setuju ? 'SETUJU' : 'TIDAK SETUJU';
     $namaRs = trim($rsName) !== '' ? $rsName : 'rumah sakit ini';
 
-    // ── Teks klausul per-versi (SUMBER TUNGGAL: App\Support\GeneralConsentClause) ──
+    // ── Teks klausul per-versi (SUMBER TUNGGAL: App\Support\Clause\GeneralConsentClause) ──
     $clause = GeneralConsentClause::get('ri', $version);
     $introHtml = strtr($clause['introTemplate'] ?? '', [
         '%WALI%' => e($wali),

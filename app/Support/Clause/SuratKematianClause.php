@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Clause;
 
 /**
  * Registry TEKS KLAUSUL Surat Keterangan Kematian (UGD) per-VERSI — SUMBER TUNGGAL.
  *
- * Pola sama dengan App\Support\GeneralConsentClause / AkhirHayatClause / KerohanianClause
+ * Pola sama dengan App\Support\Clause\GeneralConsentClause / AkhirHayatClause / KerohanianClause
  * (lihat docs/clause-versioning.md + skill clause-versioning): dokumen bertanda tangan
  * harus bisa dicetak ulang dengan redaksi SAAT DITANDATANGANI walau teks diubah kemudian.
  *

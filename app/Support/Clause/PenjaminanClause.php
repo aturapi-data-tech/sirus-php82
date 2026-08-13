@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Clause;
 
 /**
  * Registry TEKS KLAUSUL Form Penjaminan (ketentuan BPJS & selisih biaya) per-VERSI — SUMBER TUNGGAL.
  *
- * Pola sama dengan App\Support\GeneralConsentClause (lihat docs/clause-versioning.md + skill clause-versioning):
+ * Pola sama dengan App\Support\Clause\GeneralConsentClause (lihat docs/clause-versioning.md + skill clause-versioning):
  * dokumen bertanda tangan harus bisa dicetak ulang dengan redaksi SAAT DITANDATANGANI walau
  * kebijakan berubah (mis. INA-CBG → iDRG mengubah aturan selisih biaya).
  *

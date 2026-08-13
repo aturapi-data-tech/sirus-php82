@@ -40,8 +40,8 @@
         // Nama kelas ditulis lengkap: berkas cetak ini tidak bisa mengimpor kelas —
         // di dalam komponen PDF blok ini terkompilasi bukan di scope berkas, dan
         // impor di atas tag komponen bikin tag pembuka gagal terkompilasi.
-        $nyeriTerakhir = \App\Support\NyeriOptions::entriTerakhir($dataDaftarTxn['penilaian']['nyeri'] ?? null);
-        $ringkasNyeri = \App\Support\NyeriOptions::ringkasEntri($nyeriTerakhir);
+        $nyeriTerakhir = \App\Support\Options\NyeriOptions::entriTerakhir($dataDaftarTxn['penilaian']['nyeri'] ?? null);
+        $ringkasNyeri = \App\Support\Options\NyeriOptions::ringkasEntri($nyeriTerakhir);
         $resikoJatuhTerakhir = !empty($dataDaftarTxn['penilaian']['resikoJatuh']) ? end($dataDaftarTxn['penilaian']['resikoJatuh']) : null;
         $resikoBunuhDiriTerakhir = !empty($dataDaftarTxn['penilaian']['resikoBunuhDiri']) ? end($dataDaftarTxn['penilaian']['resikoBunuhDiri']) : null;
         $dekubitusTerakhir = !empty($dataDaftarTxn['penilaian']['dekubitus']) ? end($dataDaftarTxn['penilaian']['dekubitus']) : null;
@@ -151,7 +151,7 @@
                 {!! nl2br(e($dataDaftarTxn['anamnesa']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? '-')) !!}
                 <br>
                 <span class="font-bold">Alergi :</span>
-                {!! nl2br(e(\App\Support\AlergiSnomed::untukCetak($dataDaftarTxn['anamnesa']['alergi'] ?? []))) !!}
+                {!! nl2br(e(\App\Support\Terminologi\AlergiSnomed::untukCetak($dataDaftarTxn['anamnesa']['alergi'] ?? []))) !!}
                 <br>
                 {{-- Rekonsiliasi Obat — TIDAK dicetak di RJ: entry-nya memang tidak ada di
                      EMR RJ (skema rekonsiliasiObat dikomentari di rm-anamnesa-rj-actions.blade.php),

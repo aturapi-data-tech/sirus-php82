@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/permintaan-kerohanian-ri/cetak-permintaan-kerohanian-ri-print.blade.php --}}
 
-@use('App\Support\KerohanianClause')
+@use('App\Support\Clause\KerohanianClause')
 
 <x-pdf.layout-a4-with-out-background title="FORMULIR PERMINTAAN PELAYANAN KEROHANIAWAN">
 
@@ -26,7 +26,7 @@
         $hubunganText = $hubunganMap[$form['hubunganPasien'] ?? ''] ?? '-';
         $agamaText = ($form['agama'] ?? '') ?: '-';
 
-        // Teks klausa per-versi (SUMBER TUNGGAL: App\Support\KerohanianClause; fallback v1 utk record legacy)
+        // Teks klausa per-versi (SUMBER TUNGGAL: App\Support\Clause\KerohanianClause; fallback v1 utk record legacy)
         $clause = KerohanianClause::get($form['clauseVersion'] ?? 'v1');
     @endphp
 

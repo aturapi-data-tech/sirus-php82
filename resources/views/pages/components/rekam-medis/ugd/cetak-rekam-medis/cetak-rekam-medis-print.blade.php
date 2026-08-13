@@ -36,8 +36,8 @@
         // Nama kelas ditulis lengkap: berkas cetak ini tidak bisa mengimpor kelas —
         // di dalam komponen PDF blok ini terkompilasi bukan di scope berkas, dan
         // impor di atas tag komponen bikin tag pembuka gagal terkompilasi.
-        $nyeriTerakhir = \App\Support\NyeriOptions::entriTerakhir($dataDaftarTxn['penilaian']['nyeri'] ?? null);
-        $ringkasNyeri = \App\Support\NyeriOptions::ringkasEntri($nyeriTerakhir);
+        $nyeriTerakhir = \App\Support\Options\NyeriOptions::entriTerakhir($dataDaftarTxn['penilaian']['nyeri'] ?? null);
+        $ringkasNyeri = \App\Support\Options\NyeriOptions::ringkasEntri($nyeriTerakhir);
         $resikoJatuhTerakhir = !empty($dataDaftarTxn['penilaian']['resikoJatuh']) ? end($dataDaftarTxn['penilaian']['resikoJatuh']) : null;
         $resikoBunuhDiriTerakhir = !empty($dataDaftarTxn['penilaian']['resikoBunuhDiri']) ? end($dataDaftarTxn['penilaian']['resikoBunuhDiri']) : null;
         $dekubitusTerakhir = !empty($dataDaftarTxn['penilaian']['dekubitus']) ? end($dataDaftarTxn['penilaian']['dekubitus']) : null;
@@ -165,7 +165,7 @@
                 @endif
                 <span class="font-bold">Riwayat Penyakit Sekarang :</span> {!! nl2br(e($dataDaftarTxn['anamnesa']['riwayatPenyakitSekarangUmum']['riwayatPenyakitSekarangUmum'] ?? '-')) !!}<br>
                 <span class="font-bold">Riwayat Penyakit Dahulu :</span> {!! nl2br(e($dataDaftarTxn['anamnesa']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? '-')) !!}<br>
-                <span class="font-bold">Alergi :</span> {!! nl2br(e(\App\Support\AlergiSnomed::untukCetak($dataDaftarTxn['anamnesa']['alergi'] ?? []))) !!}<br>
+                <span class="font-bold">Alergi :</span> {!! nl2br(e(\App\Support\Terminologi\AlergiSnomed::untukCetak($dataDaftarTxn['anamnesa']['alergi'] ?? []))) !!}<br>
                 <span class="font-bold">Rekonsiliasi Obat :</span>
                 <table class="w-full border-collapse mt-0.5 text-[10px]">
                     <thead>

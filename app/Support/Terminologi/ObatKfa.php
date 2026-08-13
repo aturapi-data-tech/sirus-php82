@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Terminologi;
 
+use App\Support\EresepJson;
 use Illuminate\Support\Facades\DB;
 
 /**

@@ -8,7 +8,7 @@ use Carbon\Carbon;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Support\KelasKamar;
-use App\Support\PenjaminanClause;
+use App\Support\Clause\PenjaminanClause;
 use Illuminate\Validation\ValidationException;
 
 new class extends Component {

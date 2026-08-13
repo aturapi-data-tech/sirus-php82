@@ -5,7 +5,7 @@ use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Dokumen\DokumenViewSupportTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
-use App\Support\SurveilansHaisOptions;
+use App\Support\Options\SurveilansHaisOptions;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait, DokumenViewSupportTrait;
@@ -27,7 +27,7 @@ new class extends Component {
         $this->navField = 'createdAt';
     }
 
-    /** Payload tambahan: peta label opsi (satu sumber di App\Support\SurveilansHaisOptions). */
+    /** Payload tambahan: peta label opsi (satu sumber di App\Support\Options\SurveilansHaisOptions). */
     private function extraPayload(): array
     {
         return ['opsiLabel' => SurveilansHaisOptions::labels()];

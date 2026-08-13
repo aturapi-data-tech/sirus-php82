@@ -2,7 +2,7 @@
 // resources/views/pages/transaksi/ri/emr-ri/modul-dokumen/surveilans-plebitis-ri/rm-surveilans-plebitis-ri-actions.blade.php
 // Surveilans HAIs — IADP & Plebitis (Formulir Surveilans HIPPII F/011/001/R/03).
 // Multi-entri: Draft → TTD (kunci) → Lihat/Cetak → Buka Kunci/Hapus. Disimpan di datadaftarri_json.
-// Peta opsi tunggal ada di App\Support\SurveilansHaisOptions (dipakai form, cetak & viewer RM).
+// Peta opsi tunggal ada di App\Support\Options\SurveilansHaisOptions (dipakai form, cetak & viewer RM).
 
 use Livewire\Component;
 use Livewire\Attributes\On;
@@ -11,7 +11,7 @@ use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
 use App\Support\DpjpUtamaRI;
-use App\Support\SurveilansHaisOptions;
+use App\Support\Options\SurveilansHaisOptions;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -738,14 +738,14 @@ new class extends Component {
 ?>
 
 @php
-    $opsiFaktorRisiko = \App\Support\SurveilansHaisOptions::FAKTOR_RISIKO;
-    $opsiKelompokUsia = \App\Support\SurveilansHaisOptions::KELOMPOK_USIA;
-    $opsiJenisAkses = \App\Support\SurveilansHaisOptions::JENIS_AKSES;
-    $opsiTandaBalita = \App\Support\SurveilansHaisOptions::TANDA_IADP_BALITA;
-    $opsiTandaDewasa = \App\Support\SurveilansHaisOptions::TANDA_IADP_DEWASA;
-    $opsiTujuan = \App\Support\SurveilansHaisOptions::TUJUAN_PEMASANGAN;
-    $opsiRute = \App\Support\SurveilansHaisOptions::RUTE_ANTIBIOTIK;
-    $opsiIndikasi = \App\Support\SurveilansHaisOptions::INDIKASI_ANTIBIOTIK;
+    $opsiFaktorRisiko = \App\Support\Options\SurveilansHaisOptions::FAKTOR_RISIKO;
+    $opsiKelompokUsia = \App\Support\Options\SurveilansHaisOptions::KELOMPOK_USIA;
+    $opsiJenisAkses = \App\Support\Options\SurveilansHaisOptions::JENIS_AKSES;
+    $opsiTandaBalita = \App\Support\Options\SurveilansHaisOptions::TANDA_IADP_BALITA;
+    $opsiTandaDewasa = \App\Support\Options\SurveilansHaisOptions::TANDA_IADP_DEWASA;
+    $opsiTujuan = \App\Support\Options\SurveilansHaisOptions::TUJUAN_PEMASANGAN;
+    $opsiRute = \App\Support\Options\SurveilansHaisOptions::RUTE_ANTIBIOTIK;
+    $opsiIndikasi = \App\Support\Options\SurveilansHaisOptions::INDIKASI_ANTIBIOTIK;
 @endphp
 
 <div>

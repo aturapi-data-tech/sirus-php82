@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\SATUSEHAT\MedicationRequestTrait;
 use App\Support\EresepJson;
-use App\Support\ObatKfa;
-use App\Support\RacikanKfa;
+use App\Support\Terminologi\ObatKfa;
+use App\Support\Terminologi\RacikanKfa;
 
 new class extends Component {
     use EmrRJTrait, MedicationRequestTrait;

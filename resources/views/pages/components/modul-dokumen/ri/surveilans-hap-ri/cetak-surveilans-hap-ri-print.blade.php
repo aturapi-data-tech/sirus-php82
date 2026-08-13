@@ -85,7 +85,7 @@
         </tr>
         <tr>
             <td class="lbl">Leukosit (/mm&sup3;)</td>
-            <td>{{ $nilai('leukosit') }}{{ \App\Support\SurveilansHaisOptions::leukositAbnormal($form['leukosit'] ?? null) ? ' — memenuhi kriteria' : '' }}</td>
+            <td>{{ $nilai('leukosit') }}{{ \App\Support\Options\SurveilansHaisOptions::leukositAbnormal($form['leukosit'] ?? null) ? ' — memenuhi kriteria' : '' }}</td>
             <td class="lbl">Sputum Purulen / Berubah Sifat</td><td>{{ $nilai('sputumPurulen') }}</td>
         </tr>
         <tr>

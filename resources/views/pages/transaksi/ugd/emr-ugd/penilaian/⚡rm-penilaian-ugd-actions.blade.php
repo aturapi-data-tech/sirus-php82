@@ -6,7 +6,7 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
-use App\Support\NyeriOptions;
+use App\Support\Options\NyeriOptions;
 use Livewire\Attributes\Computed;
 use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
 use Illuminate\Validation\ValidationException;
@@ -28,7 +28,7 @@ new class extends Component {
     public ?int $umurPasienTahun = null;
     public array $skalaDisarankan = [];
 
-    /* Definisi skala (sasaran populasi, rentang, item, interpretasi) — App\Support\NyeriOptions. */
+    /* Definisi skala (sasaran populasi, rentang, item, interpretasi) — App\Support\Options\NyeriOptions. */
     #[Computed]
     public function daftarSkala(): array
     {
@@ -612,9 +612,9 @@ new class extends Component {
         }
 
         // Kirim nama field + INDEKS (bukan nilai string) mengikuti pola
-        // toggleTindakLanjutBunuhDiri; opsi dari App\Support\SafetyPlanOptions
+        // toggleTindakLanjutBunuhDiri; opsi dari App\Support\Options\SafetyPlanOptions
         // supaya urutan blade & server selalu sinkron.
-        $options = \App\Support\SafetyPlanOptions::for($field);
+        $options = \App\Support\Options\SafetyPlanOptions::for($field);
         if ($options === null) {
             return;
         }

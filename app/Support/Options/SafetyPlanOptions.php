@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support;
+namespace App\Support\Options;
 
 /**
  * Sumber tunggal opsi checklist Safety Plan (Stanley-Brown) pada sub-penilaian

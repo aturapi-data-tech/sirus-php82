@@ -14,7 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\SATUSEHAT\EncounterTrait;
-use App\Support\DischargeDisposition;
+use App\Support\Terminologi\DischargeDisposition;
 
 new class extends Component {
     use EmrRITrait, EncounterTrait;
