@@ -7,10 +7,10 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
-use Illuminate\Validation\ValidationException;
+use App\Http\Traits\Concerns\WithValidationToastTrait;
 
 new class extends Component {
-    use EmrUGDTrait, WithRenderVersioningTrait;
+    use EmrUGDTrait, WithRenderVersioningTrait, WithValidationToastTrait;
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
@@ -21,12 +21,19 @@ new class extends Component {
     protected array $renderAreas = ['modal-inform-consent-ugd'];
 
     public array $newConsent = [
+        'jenisConsent' => 'umum',
         'tindakan' => '',
         'diagnosa' => '',
+        'dasarDiagnosis' => '',
+        'indikasi' => '',
+        'tataCara' => '',
         'komplikasi' => '',
         'tujuan' => '',
         'resiko' => '',
+        'prognosis' => '',
         'alternatif' => '',
+        'jenisAnestesi' => '',
+        'analgesiaPasca' => '',
         'dokter' => '',
         'wali' => '',
         'waliHubungan' => '',
@@ -38,6 +45,16 @@ new class extends Component {
         'petugasPemeriksaCode' => '',
         'petugasPemeriksaDate' => '',
     ];
+
+    // Satu form melayani semua jenis persetujuan (PAB) — hindari form berlipat
+    public array $jenisConsentOptions = [
+        ['value' => 'umum', 'label' => 'Tindakan Medis / Prosedur (umum)'],
+        ['value' => 'operasi', 'label' => 'Operasi / Prosedur Invasif'],
+        ['value' => 'anestesi', 'label' => 'Anestesi & Sedasi'],
+        ['value' => 'transfusi', 'label' => 'Transfusi Darah & Produk Darah'],
+    ];
+
+    public array $jenisAnestesiOptions = ['Umum', 'Regional', 'Sedasi'];
 
     public string $signature = '';
     public string $signatureSaksi = '';
@@ -130,15 +147,24 @@ new class extends Component {
      =============================== */
     protected function rules(): array
     {
+        $isAnestesi = ($this->newConsent['jenisConsent'] ?? 'umum') === 'anestesi';
+
         return [
+            'newConsent.jenisConsent' => 'required|in:umum,operasi,anestesi,transfusi',
             'newConsent.petugasPemeriksa' => 'required|string|max:150',
             'newConsent.petugasPemeriksaCode' => 'nullable|string',
             'newConsent.tindakan' => 'required|string|max:500',
             'newConsent.diagnosa' => 'required|string|max:500',
+            'newConsent.dasarDiagnosis' => 'required|string|max:500',
+            'newConsent.indikasi' => 'required|string|max:500',
+            'newConsent.tataCara' => 'required|string|max:1000',
             'newConsent.komplikasi' => 'required|string|max:500',
             'newConsent.tujuan' => 'required|string',
             'newConsent.resiko' => 'required|string',
+            'newConsent.prognosis' => 'required|string|max:500',
             'newConsent.alternatif' => 'required|string',
+            'newConsent.jenisAnestesi' => ($isAnestesi ? 'required' : 'nullable') . '|in:Umum,Regional,Sedasi',
+            'newConsent.analgesiaPasca' => $isAnestesi ? 'required|string|max:500' : 'nullable|string|max:500',
             'newConsent.dokter' => 'nullable|string',
             'newConsent.wali' => 'required|string|max:200',
             'newConsent.waliHubungan' => 'required|string|max:50',
@@ -161,14 +187,21 @@ new class extends Component {
     protected function validationAttributes(): array
     {
         return [
+            'newConsent.jenisConsent' => 'Jenis persetujuan',
             'newConsent.petugasPemeriksa' => 'PPA / Profesional Pemberi Asuhan',
             'newConsent.petugasPemeriksaCode' => 'PPA / Profesional Pemberi Asuhan',
             'newConsent.tindakan' => 'Nama tindakan',
             'newConsent.diagnosa' => 'Diagnosa',
+            'newConsent.dasarDiagnosis' => 'Dasar diagnosis',
+            'newConsent.indikasi' => 'Indikasi kedokteran',
+            'newConsent.tataCara' => 'Tata cara',
             'newConsent.komplikasi' => 'Komplikasi',
             'newConsent.tujuan' => 'Tujuan tindakan',
             'newConsent.resiko' => 'Risiko tindakan',
+            'newConsent.prognosis' => 'Prognosis',
             'newConsent.alternatif' => 'Alternatif tindakan',
+            'newConsent.jenisAnestesi' => 'Jenis anestesi',
+            'newConsent.analgesiaPasca' => 'Analgesia pasca tindakan',
             'newConsent.dokter' => 'Pemberi Informasi',
             'newConsent.wali' => 'Nama pasien/wali',
             'newConsent.waliHubungan' => 'Hubungan wali',
@@ -230,12 +263,8 @@ new class extends Component {
         }
         // Semua kolom wajib (termasuk TTD pasien/wali) divalidasi di sini agar field kosong
         // di-highlight MERAH — jangan short-circuit sebelum validate().
-        try {
-            $this->validate();
-        } catch (ValidationException $e) {
-            $this->dispatch('toast', type: 'error', message: 'Lengkapi seluruh kolom wajib sebelum TTD petugas.');
-            throw $e;
-        }
+        // validateWithToast() = standar RI: toast menyebut error pertama, bukan pesan generik.
+        $this->validateWithToast();
 
         // Stempel TTD petugas (pemberi informasi) = user login.
         $this->newConsent['dokter'] = auth()->user()->myuser_name ?? '';
@@ -398,12 +427,19 @@ new class extends Component {
         $ppaName = trim($this->newConsent['petugasPemeriksa'] ?? '');
 
         return [
+            'jenisConsent' => $this->newConsent['jenisConsent'] ?? 'umum',
             'tindakan' => $this->newConsent['tindakan'] ?? '',
             'diagnosa' => $this->newConsent['diagnosa'] ?? '',
+            'dasarDiagnosis' => $this->newConsent['dasarDiagnosis'] ?? '',
+            'indikasi' => $this->newConsent['indikasi'] ?? '',
+            'tataCara' => $this->newConsent['tataCara'] ?? '',
             'komplikasi' => $this->newConsent['komplikasi'] ?? '',
             'tujuan' => $this->newConsent['tujuan'] ?? '',
             'resiko' => $this->newConsent['resiko'] ?? '',
+            'prognosis' => $this->newConsent['prognosis'] ?? '',
             'alternatif' => $this->newConsent['alternatif'] ?? '',
+            'jenisAnestesi' => $this->newConsent['jenisAnestesi'] ?? '',
+            'analgesiaPasca' => $this->newConsent['analgesiaPasca'] ?? '',
             'dokter' => $this->newConsent['dokter'] ?? '',
             'dokterCode' => $this->newConsent['dokterCode'] ?? '',
             'dokterDate' => $this->newConsent['dokterDate'] ?? '',
@@ -494,12 +530,19 @@ new class extends Component {
     private function hydrateFormFromEntry(array $entry, string $key): void
     {
         $this->newConsent = [
+            'jenisConsent' => $entry['jenisConsent'] ?? 'umum',
             'tindakan' => $entry['tindakan'] ?? '',
             'diagnosa' => $entry['diagnosa'] ?? '',
+            'dasarDiagnosis' => $entry['dasarDiagnosis'] ?? '',
+            'indikasi' => $entry['indikasi'] ?? '',
+            'tataCara' => $entry['tataCara'] ?? '',
             'komplikasi' => $entry['komplikasi'] ?? '',
             'tujuan' => $entry['tujuan'] ?? '',
             'resiko' => $entry['resiko'] ?? '',
+            'prognosis' => $entry['prognosis'] ?? '',
             'alternatif' => $entry['alternatif'] ?? '',
+            'jenisAnestesi' => $entry['jenisAnestesi'] ?? '',
+            'analgesiaPasca' => $entry['analgesiaPasca'] ?? '',
             'dokter' => $entry['dokter'] ?? '',
             'wali' => $entry['wali'] ?? '',
             'waliHubungan' => $entry['waliHubungan'] ?? '',
@@ -636,12 +679,19 @@ new class extends Component {
     private function resetNewConsent(): void
     {
         $this->newConsent = [
+            'jenisConsent' => 'umum',
             'tindakan' => '',
             'diagnosa' => '',
+            'dasarDiagnosis' => '',
+            'indikasi' => '',
+            'tataCara' => '',
             'komplikasi' => '',
             'tujuan' => '',
             'resiko' => '',
+            'prognosis' => '',
             'alternatif' => '',
+            'jenisAnestesi' => '',
+            'analgesiaPasca' => '',
             'dokter' => '',
             'wali' => '',
             'waliHubungan' => '',
@@ -672,7 +722,7 @@ new class extends Component {
 
 <div>
     {{-- ══ SUMMARY CARD (inline di tab) ══ --}}
-    @php $icCount = count($consentList ?? []); @endphp
+    @php $informConsentCount = count($consentList ?? []); @endphp
 
     <div
         class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
@@ -682,8 +732,8 @@ new class extends Component {
                     <h3 class="text-base font-semibold text-ink dark:text-gray-200">
                         Inform Consent
                     </h3>
-                    @if ($icCount > 0)
-                        <x-badge variant="success">{{ $icCount }} tindakan</x-badge>
+                    @if ($informConsentCount > 0)
+                        <x-badge variant="success">{{ $informConsentCount }} tindakan</x-badge>
                     @else
                         <x-badge variant="warning">Belum ada</x-badge>
                     @endif
@@ -711,7 +761,7 @@ new class extends Component {
                 pasien/wali, dokter penjelas, dan saksi.
             </p>
 
-            @if ($icCount > 0)
+            @if ($informConsentCount > 0)
                 <div class="overflow-x-auto">
                     <h4 class="mb-2 text-sm font-semibold text-body dark:text-gray-300">Daftar Inform Consent Tersimpan</h4>
                     <table class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
@@ -725,24 +775,24 @@ new class extends Component {
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (array_reverse($consentList) as $ic)
+                            @foreach (array_reverse($consentList) as $entry)
                                 <tr class="border-b border-hairline dark:border-gray-700">
                                     <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">
-                                        {{ \Illuminate\Support\Str::limit($ic['tindakan'] ?? '-', 50) }}
+                                        {{ \Illuminate\Support\Str::limit($entry['tindakan'] ?? '-', 50) }}
                                     </td>
-                                    <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $ic['signatureDate'] ?? '-' }}</td>
+                                    <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $entry['signatureDate'] ?? '-' }}</td>
                                     <td class="px-3 py-2 text-muted dark:text-gray-400">
-                                        @if (!empty($ic['dokter'])){{ $ic['dokter'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
+                                        @if (!empty($entry['dokter'])){{ $entry['dokter'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
                                     </td>
                                     <td class="px-3 py-2 text-center">
-                                        @if (($ic['agreement'] ?? '1') === '1')
+                                        @if (($entry['agreement'] ?? '1') === '1')
                                             <x-badge variant="success">Menyetujui</x-badge>
                                         @else
                                             <x-badge variant="danger">Menolak</x-badge>
                                         @endif
                                     </td>
                                     <td class="px-3 py-2 text-center">
-                                        @if ($this->entryIsFinal($ic))
+                                        @if ($this->entryIsFinal($entry))
                                             <x-badge variant="info">Terkunci</x-badge>
                                         @else
                                             <x-badge variant="warning">Draft</x-badge>
@@ -790,8 +840,8 @@ new class extends Component {
 
                         <div class="flex flex-wrap gap-2 mt-3">
                             <x-badge variant="danger">UGD</x-badge>
-                            @if ($icCount > 0)
-                                <x-badge variant="info">{{ $icCount }} tersimpan</x-badge>
+                            @if ($informConsentCount > 0)
+                                <x-badge variant="info">{{ $informConsentCount }} tersimpan</x-badge>
                             @endif
                             @if ($isFormLocked)
                                 <x-badge variant="danger">Read Only</x-badge>
@@ -863,6 +913,17 @@ new class extends Component {
                                 Informasi Tindakan
                             </h3>
 
+                            <div class="md:max-w-md">
+                                <x-input-label value="Jenis Persetujuan *" class="mb-1" />
+                                <x-select-input wire:model.live="newConsent.jenisConsent" :error="$errors->has('newConsent.jenisConsent')"
+                                    :disabled="$formReadOnly" class="w-full">
+                                    @foreach ($jenisConsentOptions as $opt)
+                                        <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
+                                    @endforeach
+                                </x-select-input>
+                                <x-input-error :messages="$errors->get('newConsent.jenisConsent')" class="mt-1" />
+                            </div>
+
                             <div>
                                 <x-input-label value="PPA — Profesional Pemberi Asuhan *" class="mb-1" />
                                 @if (!$formReadOnly)
@@ -896,31 +957,93 @@ new class extends Component {
                                 <x-input-error :messages="$errors->get('newConsent.petugasPemeriksa')" class="mt-1" />
                             </div>
 
+                            @php
+                                $jenisConsent = $newConsent['jenisConsent'] ?? 'umum';
+                                $tindakanLabel = match ($jenisConsent) {
+                                    'operasi' => 'Nama Operasi / Prosedur Invasif *',
+                                    'anestesi' => 'Tindakan Anestesi *',
+                                    'transfusi' => 'Tindakan Transfusi / Jenis Produk Darah *',
+                                    default => 'Nama Tindakan / Prosedur *',
+                                };
+                                $tindakanPlaceholder = match ($jenisConsent) {
+                                    'operasi' => 'Contoh: Laparotomi, Sectio Caesaria, Appendektomi...',
+                                    'anestesi' => 'Contoh: Anestesi Umum, Spinal, Blok regional...',
+                                    'transfusi' => 'Contoh: Transfusi PRC 2 kolf, WB, Trombosit...',
+                                    default => 'Contoh: Hecting, Resusitasi, Pemberian O2...',
+                                };
+                            @endphp
+
+                            {{-- 1) Diagnosis & Dasar Diagnosis --}}
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div>
-                                    <x-input-label value="Diagnosa *" class="mb-1" />
+                                    <x-input-label value="Diagnosis (WD & DD) *" class="mb-1" />
                                     <x-text-input wire:model.live="newConsent.diagnosa" :error="$errors->has('newConsent.diagnosa')"
                                         placeholder="Diagnosa kerja / penyakit..." :disabled="$formReadOnly"
                                         class="w-full" />
                                     <x-input-error :messages="$errors->get('newConsent.diagnosa')" class="mt-1" />
                                 </div>
                                 <div>
-                                    <x-input-label value="Komplikasi *" class="mb-1" />
-                                    <x-text-input wire:model.live="newConsent.komplikasi" :error="$errors->has('newConsent.komplikasi')"
-                                        placeholder="Kemungkinan komplikasi..." :disabled="$formReadOnly"
+                                    <x-input-label value="Dasar Diagnosis *" class="mb-1" />
+                                    <x-text-input wire:model.live="newConsent.dasarDiagnosis" :error="$errors->has('newConsent.dasarDiagnosis')"
+                                        placeholder="Anamnesis / pemeriksaan / penunjang..." :disabled="$formReadOnly"
                                         class="w-full" />
-                                    <x-input-error :messages="$errors->get('newConsent.komplikasi')" class="mt-1" />
+                                    <x-input-error :messages="$errors->get('newConsent.dasarDiagnosis')" class="mt-1" />
                                 </div>
                             </div>
 
+                            {{-- 2) Tindakan (+ jenis anestesi khusus consent anestesi) --}}
                             <div>
-                                <x-input-label value="Nama Tindakan / Prosedur *" class="mb-1" />
+                                <x-input-label :value="$tindakanLabel" class="mb-1" />
                                 <x-text-input wire:model.live="newConsent.tindakan" :error="$errors->has('newConsent.tindakan')"
-                                    placeholder="Contoh: Hecting, Resusitasi, Pemberian O2..." :disabled="$formReadOnly"
-                                    class="w-full" />
+                                    :placeholder="$tindakanPlaceholder" :disabled="$formReadOnly" class="w-full" />
                                 <x-input-error :messages="$errors->get('newConsent.tindakan')" class="mt-1" />
                             </div>
 
+                            @if ($jenisConsent === 'anestesi')
+                                <div>
+                                    <x-input-label value="Jenis Anestesi *" class="mb-1" />
+                                    <div class="flex flex-wrap gap-3">
+                                        {{-- name = kunci error, bukan 'jenisAnestesi': x-radio-button
+                                             menghitung border merahnya dari $errors->has($name). --}}
+                                        @foreach ($jenisAnestesiOptions as $opt)
+                                            <x-radio-button :label="$opt" :value="$opt" name="newConsent.jenisAnestesi"
+                                                wire:model.live="newConsent.jenisAnestesi"
+                                                :checked="($newConsent['jenisAnestesi'] ?? '') === $opt"
+                                                :disabled="$formReadOnly" />
+                                        @endforeach
+                                    </div>
+                                    <x-input-error :messages="$errors->get('newConsent.jenisAnestesi')" class="mt-1" />
+                                </div>
+                            @endif
+
+                            {{-- 3) Indikasi & Prognosis --}}
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div>
+                                    <x-input-label value="Indikasi Kedokteran *" class="mb-1" />
+                                    <x-text-input wire:model.live="newConsent.indikasi" :error="$errors->has('newConsent.indikasi')"
+                                        placeholder="Alasan medis dilakukannya tindakan..." :disabled="$formReadOnly"
+                                        class="w-full" />
+                                    <x-input-error :messages="$errors->get('newConsent.indikasi')" class="mt-1" />
+                                </div>
+                                <div>
+                                    <x-input-label value="Prognosis *" class="mb-1" />
+                                    <x-text-input wire:model.live="newConsent.prognosis" :error="$errors->has('newConsent.prognosis')"
+                                        placeholder="Perkiraan hasil (dubia ad bonam/malam)..." :disabled="$formReadOnly"
+                                        class="w-full" />
+                                    <x-input-error :messages="$errors->get('newConsent.prognosis')" class="mt-1" />
+                                </div>
+                            </div>
+
+                            {{-- 4) Tata Cara --}}
+                            <div>
+                                <x-input-label value="Tata Cara *" class="mb-1" />
+                                <x-textarea wire:model.live="newConsent.tataCara" :error="$errors->has('newConsent.tataCara')" rows="2"
+                                    placeholder="Uraian tata cara / prosedur tindakan..." :disabled="$formReadOnly"
+                                    class="w-full" />
+                                <x-input-error :messages="$errors->get('newConsent.tataCara')" class="mt-1" />
+                            </div>
+
+                            {{-- 5) Tujuan · Risiko · Komplikasi --}}
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                                 <div>
                                     <x-input-label value="Tujuan Tindakan / Terapi *" class="mb-1" />
@@ -938,12 +1061,32 @@ new class extends Component {
                                 </div>
 
                                 <div>
-                                    <x-input-label value="Alternatif Tindakan / Terapi *" class="mb-1" />
+                                    <x-input-label value="Komplikasi *" class="mb-1" />
+                                    <x-textarea wire:model.live="newConsent.komplikasi" :error="$errors->has('newConsent.komplikasi')" rows="3"
+                                        placeholder="Kemungkinan komplikasi..." :disabled="$formReadOnly" />
+                                    <x-input-error :messages="$errors->get('newConsent.komplikasi')" class="mt-1" />
+                                </div>
+                            </div>
+
+                            {{-- 6) Alternatif (+ analgesia pasca khusus anestesi) --}}
+                            <div class="grid grid-cols-1 gap-4 {{ $jenisConsent === 'anestesi' ? 'md:grid-cols-2' : '' }}">
+                                <div>
+                                    <x-input-label value="Alternatif Tindakan & Risiko *" class="mb-1" />
                                     <x-textarea wire:model.live="newConsent.alternatif" :error="$errors->has('newConsent.alternatif')" rows="3"
                                         placeholder="Alternatif lain yang dapat dilakukan..."
                                         :disabled="$formReadOnly" />
                                     <x-input-error :messages="$errors->get('newConsent.alternatif')" class="mt-1" />
                                 </div>
+
+                                @if ($jenisConsent === 'anestesi')
+                                    <div>
+                                        <x-input-label value="Analgesia Pasca Tindakan Sedasi / Anestesi *" class="mb-1" />
+                                        <x-textarea wire:model.live="newConsent.analgesiaPasca" :error="$errors->has('newConsent.analgesiaPasca')" rows="3"
+                                            placeholder="Rencana penanganan nyeri pasca anestesi..."
+                                            :disabled="$formReadOnly" />
+                                        <x-input-error :messages="$errors->get('newConsent.analgesiaPasca')" class="mt-1" />
+                                    </div>
+                                @endif
                             </div>
 
                             <div class="md:max-w-xs">
@@ -1142,9 +1285,25 @@ new class extends Component {
                                     </thead>
                                     @foreach (array_reverse($consentList) as $consent)
                                         @php
+                                            // Entri UGD yang tersimpan SEBELUM field PAB ditambahkan tidak punya
+                                            // dasarDiagnosis/indikasi/tataCara/prognosis/jenisAnestesi/analgesiaPasca.
+                                            // Normalisasi dulu supaya detail expand tak memicu "Undefined array key".
+                                            $consent = array_replace([
+                                                'jenisConsent' => 'umum', 'tindakan' => '', 'diagnosa' => '',
+                                                'dasarDiagnosis' => '', 'indikasi' => '', 'tataCara' => '',
+                                                'komplikasi' => '', 'tujuan' => '', 'resiko' => '', 'prognosis' => '',
+                                                'alternatif' => '', 'jenisAnestesi' => '', 'analgesiaPasca' => '',
+                                                'dokter' => '', 'dokterCode' => '', 'dokterDate' => '',
+                                                'wali' => '', 'waliHubungan' => '', 'saksi' => '', 'agreement' => '1',
+                                                'signature' => '', 'signatureDate' => '',
+                                                'signatureSaksi' => '', 'signatureSaksiDate' => '',
+                                                'petugasPemeriksa' => '', 'petugasPemeriksaCode' => '', 'petugasPemeriksaDate' => '',
+                                            ], $consent);
                                             $isFinal = $this->entryIsFinal($consent);
                                             $rowKey = $consent['signatureDate'] ?? '';
                                             $waliHub = collect($waliHubunganOptions)->firstWhere('value', $consent['waliHubungan'] ?? '')['label'] ?? ($consent['waliHubungan'] ?? '');
+                                            $jenisConsentBaris = $consent['jenisConsent'] ?? 'umum';
+                                            $labelJenisConsent = ['umum' => 'Tindakan', 'operasi' => 'Operasi', 'anestesi' => 'Anestesi', 'transfusi' => 'Transfusi'][$jenisConsentBaris] ?? 'Tindakan';
                                         @endphp
                                         <tbody x-data="{ open: {{ $loop->first ? 'true' : 'false' }} }" class="border-b border-hairline dark:border-gray-700">
                                             <tr @click="open = !open"
@@ -1155,6 +1314,7 @@ new class extends Component {
                                                     </svg>
                                                 </td>
                                                 <td class="px-4 py-3 align-middle font-semibold text-ink dark:text-gray-100">
+                                                    <x-badge variant="info" class="mr-1">{{ $labelJenisConsent }}</x-badge>
                                                     {{ Str::limit($consent['tindakan'] ?: '(tanpa nama tindakan)', 50) }}
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-sm tabular-nums text-muted dark:text-gray-400">
@@ -1267,6 +1427,32 @@ new class extends Component {
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Diagnosa</dt>
                                                             <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $consent['diagnosa'] ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Dasar Diagnosis</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $consent['dasarDiagnosis'] ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Indikasi Kedokteran</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $consent['indikasi'] ?: '-' }}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Prognosis</dt>
+                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $consent['prognosis'] ?: '-' }}</dd>
+                                                        </div>
+                                                        @if (($consent['jenisConsent'] ?? 'umum') === 'anestesi')
+                                                            <div>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Jenis Anestesi</dt>
+                                                                <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $consent['jenisAnestesi'] ?: '-' }}</dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Analgesia Pasca Tindakan</dt>
+                                                                <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $consent['analgesiaPasca'] ?: '-' }}</dd>
+                                                            </div>
+                                                        @endif
+                                                        <div class="md:col-span-2">
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tata Cara</dt>
+                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $consent['tataCara'] ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Komplikasi</dt>

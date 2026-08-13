@@ -2,9 +2,14 @@
 
 @php
     $isSetuju = ($data['consent']['agreement'] ?? '1') === '1';
-    $cetakTitle = $isSetuju
-        ? 'FORMULIR PERSETUJUAN TINDAKAN MEDIS (INFORM CONSENT)'
-        : 'FORMULIR PENOLAKAN TINDAKAN MEDIS';
+    $jenisConsent = $data['consent']['jenisConsent'] ?? 'umum';
+    $labelJenisConsent = match ($jenisConsent) {
+        'operasi' => 'OPERASI / PROSEDUR INVASIF',
+        'anestesi' => 'ANESTESI & SEDASI',
+        'transfusi' => 'TRANSFUSI DARAH & PRODUK DARAH',
+        default => 'TINDAKAN MEDIS',
+    };
+    $cetakTitle = ($isSetuju ? 'FORMULIR PERSETUJUAN ' : 'FORMULIR PENOLAKAN ') . $labelJenisConsent . ' — UGD';
 @endphp
 
 <x-pdf.layout-a4-with-out-background :title="$cetakTitle">
@@ -71,33 +76,62 @@
             </td>
         </tr>
 
+        @php
+            $jenisConsent = $consent['jenisConsent'] ?? 'umum';
+            $tindakanLabelPrint = match ($jenisConsent) {
+                'operasi' => 'NAMA OPERASI / PROSEDUR INVASIF',
+                'anestesi' => 'TINDAKAN ANESTESI',
+                'transfusi' => 'TINDAKAN TRANSFUSI / PRODUK DARAH',
+                default => 'NAMA TINDAKAN / TERAPI',
+            };
+        @endphp
+
+        {{-- 1) Diagnosis (WD & DD) --}}
         @if (!empty($consent['diagnosa']))
             <tr>
-                <td class="border border-black px-1.5 py-0.5 font-bold align-top w-36">DIAGNOSA</td>
+                <td class="border border-black px-1.5 py-0.5 font-bold align-top w-36">DIAGNOSIS (WD &amp; DD)</td>
                 <td class="border border-black px-1.5 py-0.5 align-top">
                     {{ strtoupper($consent['diagnosa']) }}
                 </td>
             </tr>
         @endif
 
-        @if (!empty($consent['komplikasi']))
+        {{-- 2) Dasar Diagnosis --}}
+        @if (!empty($consent['dasarDiagnosis']))
             <tr>
-                <td class="border border-black px-1.5 py-0.5 font-bold align-top w-36">KOMPLIKASI</td>
-                <td class="border border-black px-1.5 py-0.5 align-top">
-                    {{ strtoupper($consent['komplikasi']) }}
-                </td>
+                <td class="border border-black px-1.5 py-0.5 font-bold align-top w-36">DASAR DIAGNOSIS</td>
+                <td class="border border-black px-1.5 py-0.5 align-top">{!! nl2br(e($consent['dasarDiagnosis'])) !!}</td>
             </tr>
         @endif
 
-        {{-- Nama Tindakan --}}
+        {{-- 3) Tindakan (+ jenis anestesi) --}}
         <tr>
-            <td class="border border-black px-1.5 py-0.5 font-bold align-top w-36">NAMA TINDAKAN / TERAPI</td>
+            <td class="border border-black px-1.5 py-0.5 font-bold align-top w-36">{{ $tindakanLabelPrint }}</td>
             <td class="border border-black px-1.5 py-0.5 align-top">
                 {{ strtoupper($consent['tindakan'] ?? '-') }}
+                @if ($jenisConsent === 'anestesi' && !empty($consent['jenisAnestesi']))
+                    <span class="font-bold">&mdash; {{ strtoupper($consent['jenisAnestesi']) }}</span>
+                @endif
             </td>
         </tr>
 
-        {{-- Tujuan / Penjelasan --}}
+        {{-- 4) Indikasi Kedokteran --}}
+        @if (!empty($consent['indikasi']))
+            <tr>
+                <td class="border border-black px-1.5 py-0.5 font-bold align-top w-36">INDIKASI KEDOKTERAN</td>
+                <td class="border border-black px-1.5 py-0.5 align-top">{!! nl2br(e($consent['indikasi'])) !!}</td>
+            </tr>
+        @endif
+
+        {{-- 5) Tata Cara --}}
+        @if (!empty($consent['tataCara']))
+            <tr>
+                <td class="border border-black px-1.5 py-0.5 font-bold align-top">TATA CARA</td>
+                <td class="border border-black px-1.5 py-0.5 align-top">{!! nl2br(e($consent['tataCara'])) !!}</td>
+            </tr>
+        @endif
+
+        {{-- 6) Tujuan / Penjelasan --}}
         @if (!empty($consent['tujuan']))
             <tr>
                 <td class="border border-black px-1.5 py-0.5 font-bold align-top">TUJUAN TINDAKAN / TERAPI</td>
@@ -107,7 +141,7 @@
             </tr>
         @endif
 
-        {{-- Risiko --}}
+        {{-- 7) Risiko --}}
         @if (!empty($consent['resiko']))
             <tr>
                 <td class="border border-black px-1.5 py-0.5 font-bold align-top">RISIKO TINDAKAN / TERAPI</td>
@@ -117,13 +151,37 @@
             </tr>
         @endif
 
-        {{-- Alternatif --}}
+        {{-- 8) Komplikasi --}}
+        @if (!empty($consent['komplikasi']))
+            <tr>
+                <td class="border border-black px-1.5 py-0.5 font-bold align-top w-36">KOMPLIKASI</td>
+                <td class="border border-black px-1.5 py-0.5 align-top">{!! nl2br(e($consent['komplikasi'])) !!}</td>
+            </tr>
+        @endif
+
+        {{-- 9) Prognosis --}}
+        @if (!empty($consent['prognosis']))
+            <tr>
+                <td class="border border-black px-1.5 py-0.5 font-bold align-top w-36">PROGNOSIS</td>
+                <td class="border border-black px-1.5 py-0.5 align-top">{!! nl2br(e($consent['prognosis'])) !!}</td>
+            </tr>
+        @endif
+
+        {{-- 10) Alternatif & Risiko --}}
         @if (!empty($consent['alternatif']))
             <tr>
-                <td class="border border-black px-1.5 py-0.5 font-bold align-top">ALTERNATIF TINDAKAN / TERAPI</td>
+                <td class="border border-black px-1.5 py-0.5 font-bold align-top">ALTERNATIF TINDAKAN &amp; RISIKO</td>
                 <td class="border border-black px-1.5 py-0.5 align-top">
                     {!! nl2br(e($consent['alternatif'])) !!}
                 </td>
+            </tr>
+        @endif
+
+        {{-- 11) Analgesia Pasca (khusus anestesi) --}}
+        @if ($jenisConsent === 'anestesi' && !empty($consent['analgesiaPasca']))
+            <tr>
+                <td class="border border-black px-1.5 py-0.5 font-bold align-top">ANALGESIA PASCA TINDAKAN</td>
+                <td class="border border-black px-1.5 py-0.5 align-top">{!! nl2br(e($consent['analgesiaPasca'])) !!}</td>
             </tr>
         @endif
 
