@@ -205,7 +205,7 @@ new class extends Component {
                             @endif
                         </x-tab>
 
-                        @hasanyrole('Perawat|Admin|MPP')
+                        @can('ri.caseManager')
                             <x-tab variant="underline" active-expr="activeTab === 'caseManager'"
                                 x-on:click="activeTab = 'caseManager'" class="inline-flex items-center gap-2">
                                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor"
@@ -219,7 +219,7 @@ new class extends Component {
                                     <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ $jumlahMpp }}</x-badge>
                                 @endif
                             </x-tab>
-                        @endhasanyrole
+                        @endcan
 
                         <x-tab variant="underline" active-expr="activeTab === 'edukasiTerintegrasi'"
                             x-on:click="activeTab = 'edukasiTerintegrasi'" class="inline-flex items-center gap-2">
@@ -367,13 +367,13 @@ new class extends Component {
                 </div>
 
                 {{-- TAB: CASE MANAGER --}}
-                @hasanyrole('Perawat|Admin|MPP')
+                @can('ri.caseManager')
                     <div x-show="activeTab === 'caseManager'" x-transition.opacity.duration.200ms style="display:none">
                         <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.case-manager-ri.rm-case-manager-ri-actions
                             :riHdrNo="$riHdrNo" :disabled="$isFormLocked"
                             wire:key="case-manager-ri-{{ $riHdrNo ?? 'init' }}" />
                     </div>
-                @endhasanyrole
+                @endcan
 
                 {{-- TAB: EDUKASI TERINTEGRASI (gabungan — termasuk entri form Edukasi Pasien lama) --}}
                 <div x-show="activeTab === 'edukasiTerintegrasi'" x-transition.opacity.duration.200ms style="display:none">

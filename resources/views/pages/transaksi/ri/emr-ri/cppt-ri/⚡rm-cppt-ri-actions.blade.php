@@ -836,7 +836,7 @@ new class extends Component {
 
                     @if ($activeProfession === 'MPP')
                         {{-- ── TAMPILAN KHUSUS TAB MPP ── --}}
-                        @hasanyrole('Perawat|Admin|MPP')
+                        @can('ri.caseManager')
                             @php
                                 // Sumber data MPP = case-manager (formMPP). Dikelompokkan: Form A + Form B (accordion tabel).
                                 $mppColors = [
@@ -934,7 +934,7 @@ new class extends Component {
                             @endforelse
                         @else
                             <p class="text-sm text-center text-muted-soft py-6">Akses terbatas.</p>
-                        @endhasanyrole
+                        @endcan
                     @else
                         {{-- ── TAMPILAN NORMAL (tab selain MPP) ── --}}
                         @forelse ($filtered as $idx => $cppt)

@@ -68,6 +68,24 @@ class AksiRole
     /** Membuka form Pindah Kamar pasien rawat inap. */
     public const RI_PINDAH_KAMAR = ['Mr', 'Admin', 'Perawat', 'Tu'];
 
+    /**
+     * Mengakses tab Case Manager (Form A & B MPP) di modul dokumen RI.
+     *
+     * CATATAN — MPP itu JABATAN, bukan role. Yang menjabat MPP biasanya seorang
+     * Perawat atau Dokter; jabatannya tidak tersimpan di mana pun saat ini
+     * (`users.myuser_profesi` isinya PROFESI: Perawat/Dokter/Apoteker/Gizi, dan
+     * 'MPP' di modul Case Manager hanya label yang distempel ke TTD petugas).
+     *
+     * Karena itu guard di sini memakai ROLE, dan 'MPP' yang dulu ikut ditulis
+     * di @hasanyrole DIBUANG: role bernama MPP tidak ada di tabel roles, jadi
+     * ia tidak pernah cocok — dead weight yang menyesatkan pembaca.
+     *
+     * Kalau kelak jabatan MPP mau benar-benar ditegakkan (hanya yang ditunjuk
+     * boleh mengisi), jabatannya perlu tempat penyimpanan lebih dulu; ubah
+     * cukup di sini + Gate 'ri.caseManager'.
+     */
+    public const RI_CASE_MANAGER = ['Perawat', 'Admin'];
+
     /* ─────────────────────────────── GUDANG ─────────────────────────────── */
 
     /**
