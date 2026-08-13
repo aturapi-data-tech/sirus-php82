@@ -787,40 +787,26 @@ new class extends Component {
             {{-- FOOTER --}}
             <div
                 class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
-                <div class="flex flex-col items-end gap-2">
-                    {{-- Baris atas: aksi non-destruktif (Tutup/Cetak/Simpan) --}}
-                    <div class="flex flex-wrap items-center justify-end gap-3">
-                        <x-secondary-button wire:click="closeModal">Tutup</x-secondary-button>
+                {{-- Satu baris: Tutup · Cetak · Buka Kunci · Simpan (primary paling kanan) --}}
+                <div class="flex flex-wrap items-center justify-end gap-3">
+                    <x-secondary-button wire:click="closeModal">Tutup</x-secondary-button>
 
-                        @if ($riHdrNo)
-                            <x-secondary-button wire:click="cetak" wire:loading.attr="disabled" wire:target="cetak"
-                                class="gap-2">
-                                <span wire:loading.remove wire:target="cetak" class="flex items-center gap-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                    </svg>
-                                    Cetak
-                                </span>
-                                <span wire:loading wire:target="cetak" class="flex items-center gap-1">
-                                    <x-loading /> Mencetak...
-                                </span>
-                            </x-secondary-button>
+                    @if ($riHdrNo)
+                        <x-secondary-button wire:click="cetak" wire:loading.attr="disabled" wire:target="cetak"
+                            class="gap-2">
+                            <span wire:loading.remove wire:target="cetak" class="flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                </svg>
+                                Cetak
+                            </span>
+                            <span wire:loading wire:target="cetak" class="flex items-center gap-1">
+                                <x-loading /> Mencetak...
+                            </span>
+                        </x-secondary-button>
 
-                            @if (!$isFormLocked)
-                                <x-primary-button wire:click.prevent="save" wire:loading.attr="disabled"
-                                    wire:target="save" class="gap-2 min-w-[160px] justify-center">
-                                    <span wire:loading.remove wire:target="save">Simpan General Consent</span>
-                                    <span wire:loading wire:target="save"><x-loading class="w-4 h-4" />
-                                        Menyimpan...</span>
-                                </x-primary-button>
-                            @endif
-                        @endif
-                    </div>
-
-                    {{-- Baris bawah: aksi terkunci (Buka Kunci) --}}
-                    @if ($riHdrNo && $isFormLocked && !empty($consent['petugasPemeriksa']))
-                        <div class="flex flex-wrap items-center justify-end gap-3">
+                        @if ($isFormLocked && !empty($consent['petugasPemeriksa']))
                             @can('dokumen.bukaKunci')
                                 <x-confirm-button action="bukaKunci()"
                                     title="Buka Kunci General Consent"
@@ -831,7 +817,16 @@ new class extends Component {
                                     Buka Kunci
                                 </x-confirm-button>
                             @endcan
-                        </div>
+                        @endif
+
+                        @if (!$isFormLocked)
+                            <x-primary-button wire:click.prevent="save" wire:loading.attr="disabled"
+                                wire:target="save" class="gap-2 min-w-[160px] justify-center">
+                                <span wire:loading.remove wire:target="save">Simpan General Consent</span>
+                                <span wire:loading wire:target="save"><x-loading class="w-4 h-4" />
+                                    Menyimpan...</span>
+                            </x-primary-button>
+                        @endif
                     @endif
                 </div>
             </div>
