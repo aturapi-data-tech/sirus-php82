@@ -680,6 +680,9 @@ new class extends Component {
                     <livewire:pages::components.rekam-medis.ri.dokumen-view.penolakan-obat-view-ri :riHdrNo="(string) $riHdrNo"
                         :entries="$ri['penolakanObatRI'] ?? []" wire:key="rm-view-penolakan-obat-{{ $riHdrNo }}" />
 
+                    <livewire:pages::components.rekam-medis.ri.dokumen-view.second-opinion-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['secondOpinionRI'] ?? []" wire:key="rm-view-second-opinion-{{ $riHdrNo }}" />
+
                     {{-- ── Pengkajian Akhir Hayat — viewer (Lihat + Cetak dalam modal) ── --}}
                     <livewire:pages::components.rekam-medis.ri.dokumen-view.akhir-hayat-view-ri :riHdrNo="(string) $riHdrNo"
                         :entries="$ri['pengkajianAkhirHayatRI'] ?? []" wire:key="rm-view-akhir-hayat-{{ $riHdrNo }}" />

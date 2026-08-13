@@ -29,7 +29,6 @@
         $identitasRs = $data['identitasRs'] ?? null;
         $rsName = $identitasRs->int_name ?? 'RSI MADINAH';
 
-        $kategoriOptions = ['Tindakan Medis', 'Pengobatan / Obat', 'Pemilihan Tenaga Medis'];
         $kategoriDipilih = $form['kategori'] ?? '';
 
         $hubunganMap = [
@@ -44,11 +43,6 @@
             'lainnya' => 'Lainnya',
         ];
         $hubunganText = $hubunganMap[$form['hubunganPasien'] ?? ''] ?? '-';
-
-        $kotak = fn(bool $aktif) =>
-            '<span style="display:inline-block;width:9px;height:9px;border:1px solid #000;text-align:center;line-height:9px;font-size:8px;font-family: DejaVu Sans, sans-serif;">' .
-            ($aktif ? '&#10003;' : '&nbsp;') .
-            '</span>';
     @endphp
 
     <table class="w-full text-[10px] border-collapse">
@@ -61,14 +55,8 @@
 
         {{-- ── KATEGORI ── --}}
         <tr>
-            <td colspan="2" class="border border-black px-2 py-1.5">
-                <p class="font-bold mb-1">KATEGORI PERMINTAAN SECOND OPINION</p>
-                <div class="flex gap-4">
-                    @foreach ($kategoriOptions as $opt)
-                        <span>{!! $kotak($kategoriDipilih === $opt) !!} {{ $opt }}</span>
-                    @endforeach
-                </div>
-            </td>
+            <td class="border border-black px-2 py-1.5 w-1/3"><strong>Kategori Permintaan</strong></td>
+            <td class="border border-black px-2 py-1.5">{{ $kategoriDipilih ?: '-' }}</td>
         </tr>
 
         {{-- ── URAIAN PERMINTAAN ── --}}

@@ -197,11 +197,9 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Form read-only.');
             return;
         }
-        if (empty($this->signature)) {
-            $this->dispatch('toast', type: 'error', message: 'TTD pasien/keluarga wajib sebelum TTD petugas.');
-            return;
-        }
-
+        // validate() HARUS duluan — guard yang return lebih awal bikin $errors
+        // kosong, sehingga border & teks merah per-field tak pernah tampil.
+        // TTD pasien sudah tercakup rule 'signature' => required.
         $this->validateWithToast();
 
         $this->newForm['pemberiInfo'] = auth()->user()->myuser_name ?? '';
@@ -755,12 +753,13 @@ new class extends Component {
                                 </div>
                                 <div>
                                     <x-input-label value="Kategori Permintaan *" class="mb-1" />
-                                    <div class="flex flex-wrap gap-2 mt-1.5">
+                                    <x-select-input wire:model.live="newForm.kategori" :error="$errors->has('newForm.kategori')"
+                                        :disabled="$formReadOnly" class="w-full">
+                                        <option value="">— Pilih kategori —</option>
                                         @foreach ($kategoriOptions as $opt)
-                                            <x-radio-button :label="$opt" :value="$opt" name="kategori"
-                                                wire:model.live="newForm.kategori" :disabled="$formReadOnly" />
+                                            <option value="{{ $opt }}">{{ $opt }}</option>
                                         @endforeach
-                                    </div>
+                                    </x-select-input>
                                     <x-input-error :messages="$errors->get('newForm.kategori')" class="mt-1" />
                                 </div>
                             </div>
