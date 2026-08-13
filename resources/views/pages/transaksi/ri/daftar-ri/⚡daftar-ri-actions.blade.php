@@ -1110,7 +1110,7 @@ new class extends Component {
     </x-modal>
 
     {{-- Cetak SEP --}}
-    <livewire:pages::components.modul-dokumen.b-p-j-s.cetak-sep.cetak-sep wire:key="cetak-sep-ri" />
+    <livewire:pages::components.modul-dokumen.bpjs.cetak-sep.cetak-sep wire:key="cetak-sep-ri" />
 
     {{-- iDRG (E-Klaim) Modal --}}
 </div>

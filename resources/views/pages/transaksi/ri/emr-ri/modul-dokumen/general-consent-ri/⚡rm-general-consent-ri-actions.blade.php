@@ -405,7 +405,7 @@ new class extends Component {
 
             set_time_limit(300);
 
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.r-i.general-consent.cetak-general-consent-ri-print', ['data' => $data])->setPaper('A4');
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.general-consent.cetak-general-consent-ri-print', ['data' => $data])->setPaper('A4');
 
             $this->dispatch('toast', type: 'success', message: 'Berhasil mencetak General Consent.');
             return response()->streamDownload(fn() => print $pdf->output(), 'general-consent-ri-' . ($pasien['regNo'] ?? $this->riHdrNo) . '.pdf');

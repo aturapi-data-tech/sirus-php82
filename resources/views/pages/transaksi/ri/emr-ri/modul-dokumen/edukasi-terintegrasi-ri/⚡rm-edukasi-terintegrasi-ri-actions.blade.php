@@ -656,7 +656,7 @@ new class extends Component {
 
             set_time_limit(300);
 
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.r-i.edukasi-terintegrasi.cetak-edukasi-terintegrasi-ri-print', ['data' => $data])->setPaper('A4');
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.edukasi-terintegrasi.cetak-edukasi-terintegrasi-ri-print', ['data' => $data])->setPaper('A4');
 
             $this->dispatch('toast', type: 'success', message: 'Berhasil mencetak Edukasi Terintegrasi.');
             return response()->streamDownload(fn() => print $pdf->output(), 'edukasi-terintegrasi-ri-' . ($pasien['regNo'] ?? $this->riHdrNo) . '.pdf');

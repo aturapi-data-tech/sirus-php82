@@ -642,7 +642,7 @@ new class extends Component {
 
             set_time_limit(300);
 
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.r-i.pengkajian-pre-op-ri.cetak-pengkajian-pre-op-ri-print', ['data' => $data])->setPaper('A4');
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.pengkajian-pre-op-ri.cetak-pengkajian-pre-op-ri-print', ['data' => $data])->setPaper('A4');
 
             $this->dispatch('toast', type: 'success', message: 'Berhasil mencetak pengkajian pre operasi.');
             return response()->streamDownload(fn() => print $pdf->output(), 'pengkajian-pre-op-rj-' . ($pasien['regNo'] ?? $this->rjNo) . '.pdf');

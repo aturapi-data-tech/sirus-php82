@@ -389,6 +389,6 @@ new class extends Component {
     </x-modal>
 
     {{-- Cetak components — daftar sekali di parent/modal --}}
-    <livewire:pages::components.modul-dokumen.r-j.suket-sakit.cetak-suket-sakit-rj wire:key="cetak-suket-sakit-rj" />
-    <livewire:pages::components.modul-dokumen.r-j.suket-sehat.cetak-suket-sehat-rj wire:key="cetak-suket-sehat-rj" />
+    <livewire:pages::components.modul-dokumen.rj.suket-sakit.cetak-suket-sakit-rj wire:key="cetak-suket-sakit-rj" />
+    <livewire:pages::components.modul-dokumen.rj.suket-sehat.cetak-suket-sehat-rj wire:key="cetak-suket-sehat-rj" />
 </div>

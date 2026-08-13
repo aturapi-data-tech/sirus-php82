@@ -731,7 +731,7 @@ new class extends Component {
             <livewire:pages::transaksi.ri.gizi-ri.gizi-ri-entri wire:key="gizi-ri-entri" />
 
             {{-- Cetak etiket diet (langsung download PDF 6x4 cm) --}}
-            <livewire:pages::components.rekam-medis.r-i.cetak-etiket-gizi.cetak-etiket-gizi wire:key="cetak-etiket-gizi" />
+            <livewire:pages::components.rekam-medis.ri.cetak-etiket-gizi.cetak-etiket-gizi wire:key="cetak-etiket-gizi" />
 
             {{-- Modul Dokumen & Administrasi — modal sama dgn daftar-ri (sibling, dengar event emr-ri.*) --}}
             <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.modul-dokumen-ri wire:key="modul-dokumen-ri" />

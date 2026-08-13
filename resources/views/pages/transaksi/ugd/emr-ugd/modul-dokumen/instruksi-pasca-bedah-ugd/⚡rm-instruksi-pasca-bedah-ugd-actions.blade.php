@@ -432,7 +432,7 @@ new class extends Component {
 
             set_time_limit(300);
 
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.r-i.instruksi-pasca-bedah-ri.cetak-instruksi-pasca-bedah-ri-print', ['data' => $data])->setPaper('A4');
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.instruksi-pasca-bedah-ri.cetak-instruksi-pasca-bedah-ri-print', ['data' => $data])->setPaper('A4');
 
             $this->dispatch('toast', type: 'success', message: 'Berhasil mencetak instruksi pasca bedah.');
             return response()->streamDownload(fn() => print $pdf->output(), 'instruksi-pasca-bedah-ugd-' . ($pasien['regNo'] ?? $this->rjNo) . '.pdf');

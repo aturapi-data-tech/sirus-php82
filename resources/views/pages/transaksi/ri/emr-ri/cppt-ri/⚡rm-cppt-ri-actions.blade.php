@@ -523,7 +523,7 @@ new class extends Component {
             return null;
         }
 
-        $pdf = Pdf::loadView('pages.components.rekam-medis.r-i.cetak-cppt.cetak-cppt-ri-print', [
+        $pdf = Pdf::loadView('pages.components.rekam-medis.ri.cetak-cppt.cetak-cppt-ri-print', [
             'cppt' => $cppt,
             'dataPasien' => $pasienData,
             'dataDaftarRi' => $this->dataDaftarRi,

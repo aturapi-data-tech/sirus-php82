@@ -691,15 +691,15 @@ new class extends Component {
             wire:key="ri-resep-administrasi-modal" />
 
         {{-- PDF dispatcher (listen 'cetak-kwitansi-ri-obat.open') --}}
-        <livewire:pages::components.modul-dokumen.r-i.kwitansi.cetak-kwitansi-ri-obat
+        <livewire:pages::components.modul-dokumen.ri.kwitansi.cetak-kwitansi-ri-obat
             wire:key="cetak-kwitansi-ri-obat" />
 
         {{-- PDF dispatcher etiket obat RI (listen 'cetak-etiket-obat-ri.open') --}}
-        <livewire:pages::components.rekam-medis.r-i.etiket-obat.cetak-etiket-obat
+        <livewire:pages::components.rekam-medis.ri.etiket-obat.cetak-etiket-obat
             wire:key="cetak-etiket-obat-ri" />
 
         {{-- PDF dispatcher cetak e-resep RI (listen 'cetak-eresep-ri.open') --}}
-        <livewire:pages::components.rekam-medis.r-i.cetak-eresep.cetak-eresep
+        <livewire:pages::components.rekam-medis.ri.cetak-eresep.cetak-eresep
             wire:key="cetak-eresep-ri" />
 
     </div>

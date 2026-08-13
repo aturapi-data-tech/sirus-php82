@@ -434,7 +434,7 @@ new class extends Component {
                 'ttdPath' => $ttdPath, 'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
             ]);
             set_time_limit(300);
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.r-i.laporan-anestesi-ri.cetak-laporan-anestesi-ri-print', ['data' => $data])->setPaper('A4');
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.laporan-anestesi-ri.cetak-laporan-anestesi-ri-print', ['data' => $data])->setPaper('A4');
             $this->dispatch('toast', type: 'success', message: 'Berhasil mencetak laporan anestesi.');
             return response()->streamDownload(fn() => print $pdf->output(), 'laporan-anestesi-ugd-' . ($pasien['regNo'] ?? $this->rjNo) . '.pdf');
         } catch (\Throwable $e) {

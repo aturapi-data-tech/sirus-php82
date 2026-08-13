@@ -876,7 +876,7 @@ new class extends Component {
     </x-modal>
 
     {{-- Cetak components — daftar sekali di parent/modal --}}
-    <livewire:pages::components.modul-dokumen.r-j.kwitansi.cetak-kwitansi-rj wire:key="cetak-kwitansi-rj" />
-    <livewire:pages::components.modul-dokumen.r-j.kwitansi.cetak-kwitansi-rj-obat wire:key="cetak-kwitansi-rj-obat" />
-    <livewire:pages::components.modul-dokumen.r-j.resep-iter.cetak-resep-iter-rj wire:key="cetak-resep-iter-rj" />
+    <livewire:pages::components.modul-dokumen.rj.kwitansi.cetak-kwitansi-rj wire:key="cetak-kwitansi-rj" />
+    <livewire:pages::components.modul-dokumen.rj.kwitansi.cetak-kwitansi-rj-obat wire:key="cetak-kwitansi-rj-obat" />
+    <livewire:pages::components.modul-dokumen.rj.resep-iter.cetak-resep-iter-rj wire:key="cetak-resep-iter-rj" />
 </div>

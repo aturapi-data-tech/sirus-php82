@@ -308,7 +308,7 @@ new class extends Component {
 
         set_time_limit(300);
 
-        $pdf = Pdf::loadView('pages.components.modul-dokumen.r-i.surat-kematian-ri.cetak-surat-kematian-ri-print', ['data' => $data])->setPaper('A4');
+        $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.surat-kematian-ri.cetak-surat-kematian-ri-print', ['data' => $data])->setPaper('A4');
 
         return response()->streamDownload(fn() => print $pdf->output(), 'surat-kematian-ri-' . ($pasien['regNo'] ?? $this->riHdrNo) . '.pdf');
     }

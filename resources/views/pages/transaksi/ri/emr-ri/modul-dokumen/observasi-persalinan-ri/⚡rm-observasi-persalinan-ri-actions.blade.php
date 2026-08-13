@@ -674,7 +674,7 @@ new class extends Component {
             ]);
 
             set_time_limit(300);
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.r-i.observasi-persalinan-ri.cetak-observasi-persalinan-ri-print', ['data' => $data])->setPaper('A4');
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.observasi-persalinan-ri.cetak-observasi-persalinan-ri-print', ['data' => $data])->setPaper('A4');
 
             return response()->streamDownload(fn() => print $pdf->output(), 'observasi-persalinan-' . ($pasien['regNo'] ?? $this->riHdrNo) . '.pdf');
         } catch (\Throwable $e) {

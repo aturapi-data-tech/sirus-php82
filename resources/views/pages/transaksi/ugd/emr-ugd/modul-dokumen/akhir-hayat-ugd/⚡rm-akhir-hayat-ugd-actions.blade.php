@@ -812,7 +812,7 @@ new class extends Component {
 
             set_time_limit(300);
 
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.u-g-d.akhir-hayat.cetak-akhir-hayat-print', ['data' => $data])->setPaper('A4');
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ugd.akhir-hayat.cetak-akhir-hayat-print', ['data' => $data])->setPaper('A4');
 
             $this->dispatch('toast', type: 'success', message: 'Berhasil mencetak Pengkajian Akhir Hayat.');
             return response()->streamDownload(fn() => print $pdf->output(), 'akhir-hayat-ugd-' . ($pasien['regNo'] ?? $this->rjNo) . '.pdf');

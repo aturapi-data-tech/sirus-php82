@@ -727,7 +727,7 @@ new class extends Component {
             ]);
 
             set_time_limit(300);
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.r-i.surveilans-plebitis-ri.cetak-surveilans-plebitis-ri-print', ['data' => $data])->setPaper('A4');
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.surveilans-plebitis-ri.cetak-surveilans-plebitis-ri-print', ['data' => $data])->setPaper('A4');
 
             return response()->streamDownload(fn() => print $pdf->output(), 'surveilans-plebitis-' . ($pasien['regNo'] ?? $this->riHdrNo) . '.pdf');
         } catch (\Throwable $e) {

@@ -807,6 +807,6 @@ new class extends Component {
         </div>
     </div>
 
-    <livewire:pages::components.rekam-medis.u-g-d.etiket-obat.cetak-etiket-obat wire:key="cetak-etiket-obat-ugd" />
+    <livewire:pages::components.rekam-medis.ugd.etiket-obat.cetak-etiket-obat wire:key="cetak-etiket-obat-ugd" />
 
 </div>

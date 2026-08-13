@@ -1119,6 +1119,6 @@ new class extends Component {
     </x-modal>
 
     {{-- Cetak component --}}
-    <livewire:pages::components.modul-dokumen.u-g-d.penundaan-pelayanan.cetak-penundaan-pelayanan
+    <livewire:pages::components.modul-dokumen.ugd.penundaan-pelayanan.cetak-penundaan-pelayanan
         wire:key="cetak-penundaan-pelayanan-ugd-{{ $rjNo ?? 'init' }}" />
 </div>

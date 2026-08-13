@@ -825,5 +825,5 @@ new class extends Component {
     </div>
 
     {{-- Cetak PRB --}}
-    <livewire:pages::components.modul-dokumen.b-p-j-s.cetak-prb.cetak-prb wire:key="cetak-prb-rj-{{ $rjNo ?? 'init' }}" />
+    <livewire:pages::components.modul-dokumen.bpjs.cetak-prb.cetak-prb wire:key="cetak-prb-rj-{{ $rjNo ?? 'init' }}" />
 </div>

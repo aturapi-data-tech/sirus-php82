@@ -155,7 +155,7 @@ new class extends Component {
             ];
 
             set_time_limit(300);
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.b-p-j-s.cetak-sep.cetak-sep-print', ['data' => $data])
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.bpjs.cetak-sep.cetak-sep-print', ['data' => $data])
                 ->setPaper('A5', 'landscape');
 
             $this->saveBerkasBpjs($rjNo, 1, $pdf->output());
@@ -196,7 +196,7 @@ new class extends Component {
             ]);
 
             set_time_limit(300);
-            $pdf = Pdf::loadView('pages.components.rekam-medis.r-j.cetak-rekam-medis.cetak-rekam-medis-print', ['data' => $data])
+            $pdf = Pdf::loadView('pages.components.rekam-medis.rj.cetak-rekam-medis.cetak-rekam-medis-print', ['data' => $data])
                 ->setPaper('A4');
 
             $this->saveBerkasBpjs($rjNo, 3, $pdf->output());
@@ -254,7 +254,7 @@ new class extends Component {
             ];
 
             set_time_limit(300);
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.b-p-j-s.cetak-skdp.cetak-skdp-print', ['data' => $data])
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.bpjs.cetak-skdp.cetak-skdp-print', ['data' => $data])
                 ->setPaper('A5', 'landscape');
 
             $this->saveBerkasBpjs($rjNo, 4, $pdf->output());

@@ -589,7 +589,7 @@ new class extends Component {
             ]);
 
             set_time_limit(300);
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.r-i.pengkajian-awal-ginekologi-ri.cetak-pengkajian-awal-ginekologi-ri-print', ['data' => $data])->setPaper('A4');
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.pengkajian-awal-ginekologi-ri.cetak-pengkajian-awal-ginekologi-ri-print', ['data' => $data])->setPaper('A4');
 
             return response()->streamDownload(fn() => print $pdf->output(), 'pengkajian-awal-ginekologi-' . ($pasien['regNo'] ?? $this->riHdrNo) . '.pdf');
         } catch (\Throwable $e) {

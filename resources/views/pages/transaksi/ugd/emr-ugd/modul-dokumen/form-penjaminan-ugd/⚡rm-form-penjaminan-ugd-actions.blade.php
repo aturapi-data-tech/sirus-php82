@@ -1155,6 +1155,6 @@ new class extends Component {
     </x-modal>
 
     {{-- Cetak component --}}
-    <livewire:pages::components.modul-dokumen.u-g-d.form-penjaminan.cetak-form-penjaminan
+    <livewire:pages::components.modul-dokumen.ugd.form-penjaminan.cetak-form-penjaminan
         wire:key="cetak-form-penjaminan-{{ $rjNo ?? 'init' }}" />
 </div>

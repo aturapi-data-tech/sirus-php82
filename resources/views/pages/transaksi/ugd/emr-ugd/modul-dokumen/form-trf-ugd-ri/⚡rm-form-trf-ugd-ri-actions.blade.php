@@ -1312,6 +1312,6 @@ new class extends Component {
     </x-modal>
 
     {{-- Cetak component — dengerin event cetak-form-trf-ugd-ri.open --}}
-    <livewire:pages::components.modul-dokumen.u-g-d.form-trf-ugd-ri.cetak-form-trf-ugd-ri
+    <livewire:pages::components.modul-dokumen.ugd.form-trf-ugd-ri.cetak-form-trf-ugd-ri
         wire:key="cetak-form-trf-ugd-ri-{{ $rjNo ?? 'init' }}" />
 </div>

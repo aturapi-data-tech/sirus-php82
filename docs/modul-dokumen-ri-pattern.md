@@ -18,7 +18,7 @@ Acuan kanonik: **Inform Consent RI** (paling lengkap) dan **Pengkajian Akhir Hay
 
 ```
 resources/views/pages/transaksi/ri/emr-ri/modul-dokumen/<nama>/rm-<nama>-actions.blade.php   ← komponen Volt
-resources/views/pages/components/modul-dokumen/r-i/<nama>/cetak-<nama>-print.blade.php       ← cetak PDF
+resources/views/pages/components/modul-dokumen/ri/<nama>/cetak-<nama>-print.blade.php       ← cetak PDF
 resources/views/pages/transaksi/ri/emr-ri/modul-dokumen/⚡modul-dokumen-ri.blade.php           ← daftarkan tab
 ```
 

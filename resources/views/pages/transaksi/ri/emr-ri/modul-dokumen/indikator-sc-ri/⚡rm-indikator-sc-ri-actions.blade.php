@@ -553,7 +553,7 @@ new class extends Component {
             ]);
 
             set_time_limit(300);
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.r-i.indikator-sc-ri.cetak-indikator-sc-ri-print', ['data' => $data])->setPaper('A4');
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.indikator-sc-ri.cetak-indikator-sc-ri-print', ['data' => $data])->setPaper('A4');
 
             return response()->streamDownload(fn() => print $pdf->output(), 'indikator-sc-' . ($pasien['regNo'] ?? $this->riHdrNo) . '.pdf');
         } catch (\Throwable $e) {

@@ -1670,7 +1670,7 @@ new class extends Component {
     </x-modal>
 
     {{-- Cetak SEP --}}
-    <livewire:pages::components.modul-dokumen.b-p-j-s.cetak-sep.cetak-sep wire:key="cetak-sep-rj" />
+    <livewire:pages::components.modul-dokumen.bpjs.cetak-sep.cetak-sep wire:key="cetak-sep-rj" />
 
     {{-- Satu Sehat & iDRG modal embed pindah ke ⚡daftar-rj.blade.php (page level)
          supaya pola konsisten dengan openRekamMedis/openSatuSehat/openIdrg dispatcher

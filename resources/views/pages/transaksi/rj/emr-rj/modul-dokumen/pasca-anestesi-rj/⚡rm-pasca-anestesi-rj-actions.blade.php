@@ -557,7 +557,7 @@ new class extends Component {
 
             set_time_limit(300);
 
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.r-i.pasca-anestesi-ri.cetak-pasca-anestesi-ri-print', ['data' => $data])->setPaper('A4');
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.pasca-anestesi-ri.cetak-pasca-anestesi-ri-print', ['data' => $data])->setPaper('A4');
 
             $this->dispatch('toast', type: 'success', message: 'Berhasil mencetak monitoring pasca anestesi.');
             return response()->streamDownload(fn() => print $pdf->output(), 'pasca-anestesi-rj-' . ($pasien['regNo'] ?? $this->rjNo) . '.pdf');

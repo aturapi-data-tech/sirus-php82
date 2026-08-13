@@ -369,7 +369,7 @@ tersentuh (**bukan** `view:cache` — ia tidak menangkap galat kelas Volt, lihat
 | ✅ 3b | 3 LOV: hapus `render()` mubazir lalu rename | 3 | 🟡 | **SELESAI 2026-08-13** — output render dibandingkan byte-per-byte dgn baseline (identik sesudah `wire:id`/`snapshot`/id Alpine acak dinormalkan). Kini 691/691 patuh, tanpa pengecualian |
 | ✅ 4 | Suffix jalur folder+berkas modul-dokumen RJ & UGD | 32 folder | 🟡 | **SELESAI 2026-08-13** — 32 folder + 11 berkas + 34 referensi. Termasuk `suket/tab/` → `suket-<jalur>/tabs/` dan 4 partial tab yang tadinya bernama identik di dua jalur. `form-trf-ugd-ri` dikecualikan (anti-stutter, §3.4) |
 | ✅ 5 | 7 `rm-*-actions` UGD tanpa suffix `-ugd` | 7 | 🟡 | **SELESAI** — bagian dari item 4 |
-| 6 | Folder akronim `r-i/ r-j/ u-g-d/ b-p-j-s/` → `ri/ rj/ ugd/ bpjs/` | 7 folder, 184 berkas | 🟡 | di `pages/components/{modul-dokumen,rekam-medis}/` |
+| ✅ 6 | Folder akronim `r-i/ r-j/ u-g-d/ b-p-j-s/` → `ri/ rj/ ugd/ bpjs/` | 7 folder, 184 berkas | 🟡 | **SELESAI 2026-08-13** — 363 referensi dalam **tiga** bentuk penulisan: dotted (`components.modul-dokumen.r-i.`), path (`components/modul-dokumen/r-i/`), dan path singkat tanpa prefix `components/` di docs |
 | 7 | `app/Support` → sub-namespace §6.2 | 35 berkas | 🟡 | ubah `namespace` + semua `use App\Support\…` |
 | 8 | `Traits/WithRenderVersioning`, `Traits/WithValidationToast` → `Traits/Concerns/` | 2 | 🟡 | hapus nesting mubazir |
 | 9 | `Traits/iDRG` → `Traits/IDRG` | 1 folder | 🟡 | konsisten dengan `BPJS`/`SATUSEHAT`/`SIRS` |

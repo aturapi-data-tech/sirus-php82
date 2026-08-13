@@ -509,6 +509,6 @@ new class extends Component {
     </x-modal>
 
     {{-- Opener cetak PDF --}}
-    <livewire:pages::components.modul-dokumen.u-g-d.surat-kematian.cetak-surat-kematian
+    <livewire:pages::components.modul-dokumen.ugd.surat-kematian.cetak-surat-kematian
         wire:key="cetak-surat-kematian-ugd-{{ $rjNo ?? 'init' }}" />
 </div>

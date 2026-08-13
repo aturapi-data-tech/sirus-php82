@@ -1188,6 +1188,6 @@ new class extends Component {
     </x-modal>
 
     {{-- Cetak component — dengerin event cetak-form-pindah-antar-ruang-ri.open --}}
-    <livewire:pages::components.modul-dokumen.r-i.form-pindah-antar-ruang-ri.cetak-form-pindah-antar-ruang-ri
+    <livewire:pages::components.modul-dokumen.ri.form-pindah-antar-ruang-ri.cetak-form-pindah-antar-ruang-ri
         wire:key="cetak-form-pindah-ri-{{ $riHdrNo ?? 'init' }}" />
 </div>

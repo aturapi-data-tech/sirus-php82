@@ -616,7 +616,7 @@ new class extends Component {
             ]);
 
             set_time_limit(300);
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.r-i.riwayat-obstetri-ri.cetak-riwayat-obstetri-ri-print', ['data' => $data])->setPaper('A4', 'landscape');
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.riwayat-obstetri-ri.cetak-riwayat-obstetri-ri-print', ['data' => $data])->setPaper('A4', 'landscape');
 
             return response()->streamDownload(fn() => print $pdf->output(), 'riwayat-obstetri-' . ($pasien['regNo'] ?? $this->riHdrNo) . '.pdf');
         } catch (\Throwable $e) {

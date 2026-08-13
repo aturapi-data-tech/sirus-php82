@@ -364,7 +364,7 @@ Output HTML Quill yang sudah tersimpan di DB (terutama `hasil_bacaan` di radiolo
 
 ## 11. Contoh implementasi referensi
 
-- **Resume Medis RM 41** — `resources/views/pages/components/rekam-medis/r-i/resume-medis-ri/⚡resume-medis-ri-actions.blade.php`
+- **Resume Medis RM 41** — `resources/views/pages/components/rekam-medis/ri/resume-medis-ri/⚡resume-medis-ri-actions.blade.php`
   - Full TinyMCE dgn table support, auto pre-fill template dari EMR data, reload-event, EMR status lock, sticky footer, separate Simpan & Cetak PDF.
 
 ---

@@ -610,11 +610,11 @@ new class extends Component {
     <livewire:pages::transaksi.ri.eresep-ri.eresep-ri wire:key="eresep-ri-modal-{{ $riHdrNo ?? 'new' }}" />
 
     {{-- Modal Resume Medis — editor TinyMCE + generate PDF (listen: resume-medis-ri.open) --}}
-    <livewire:pages::components.rekam-medis.r-i.resume-medis-ri.resume-medis-ri-actions
+    <livewire:pages::components.rekam-medis.ri.resume-medis-ri.resume-medis-ri-actions
         wire:key="resume-medis-ri-actions" />
 
     {{-- Modal Ringkasan Pemulangan Pasien — form terstruktur perawat (listen: ringkasan-pulang-ri.open) --}}
-    <livewire:pages::components.rekam-medis.r-i.ringkasan-pulang-ri.ringkasan-pulang-ri-actions
+    <livewire:pages::components.rekam-medis.ri.ringkasan-pulang-ri.ringkasan-pulang-ri-actions
         wire:key="ringkasan-pulang-ri-actions" />
 
 </div>

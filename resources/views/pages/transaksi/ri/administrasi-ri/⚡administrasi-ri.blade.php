@@ -540,6 +540,6 @@ new class extends Component {
     </x-modal>
 
     {{-- PDF dispatchers (listener 'cetak-kwitansi-ri-detail.open' & 'cetak-kwitansi-ri-ringkas.open') --}}
-    <livewire:pages::components.modul-dokumen.r-i.kwitansi.cetak-kwitansi-ri-detail wire:key="cetak-kwitansi-ri-detail" />
-    <livewire:pages::components.modul-dokumen.r-i.kwitansi.cetak-kwitansi-ri-ringkas wire:key="cetak-kwitansi-ri-ringkas" />
+    <livewire:pages::components.modul-dokumen.ri.kwitansi.cetak-kwitansi-ri-detail wire:key="cetak-kwitansi-ri-detail" />
+    <livewire:pages::components.modul-dokumen.ri.kwitansi.cetak-kwitansi-ri-ringkas wire:key="cetak-kwitansi-ri-ringkas" />
 </div>

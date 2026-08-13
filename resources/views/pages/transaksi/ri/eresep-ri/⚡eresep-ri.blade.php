@@ -928,6 +928,6 @@ new class extends Component {
     </x-modal>
 
     {{-- PDF dispatcher cetak e-resep RI (listen 'cetak-eresep-ri.open') --}}
-    <livewire:pages::components.rekam-medis.r-i.cetak-eresep.cetak-eresep
+    <livewire:pages::components.rekam-medis.ri.cetak-eresep.cetak-eresep
         wire:key="cetak-eresep-ri-emr" />
 </div>

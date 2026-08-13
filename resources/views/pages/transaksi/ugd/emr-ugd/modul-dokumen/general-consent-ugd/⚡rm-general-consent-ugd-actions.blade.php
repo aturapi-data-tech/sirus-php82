@@ -842,6 +842,6 @@ new class extends Component {
     </x-modal>
 
     {{-- Cetak component --}}
-    <livewire:pages::components.modul-dokumen.u-g-d.general-consent.cetak-general-consent
+    <livewire:pages::components.modul-dokumen.ugd.general-consent.cetak-general-consent
         wire:key="cetak-general-consent-ugd-{{ $rjNo ?? 'init' }}" />
 </div>

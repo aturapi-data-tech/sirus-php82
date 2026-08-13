@@ -426,7 +426,7 @@ new class extends Component {
 
             set_time_limit(300);
 
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.r-i.permintaan-kerohanian-ri.cetak-permintaan-kerohanian-ri-print', ['data' => $data])->setPaper('A4');
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.permintaan-kerohanian-ri.cetak-permintaan-kerohanian-ri-print', ['data' => $data])->setPaper('A4');
 
             $this->dispatch('toast', type: 'success', message: 'Berhasil mencetak formulir permintaan kerohaniawan.');
             return response()->streamDownload(fn() => print $pdf->output(), 'permintaan-kerohanian-ri-' . ($pasien['regNo'] ?? $this->riHdrNo) . '.pdf');

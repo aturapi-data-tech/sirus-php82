@@ -781,8 +781,8 @@ new class extends Component {
         </div>
     </x-modal>
 
-    <livewire:pages::components.modul-dokumen.u-g-d.kwitansi.cetak-kwitansi-ugd wire:key="cetak-kwitansi-ugd" />
-    <livewire:pages::components.modul-dokumen.u-g-d.kwitansi.cetak-kwitansi-ugd-obat
+    <livewire:pages::components.modul-dokumen.ugd.kwitansi.cetak-kwitansi-ugd wire:key="cetak-kwitansi-ugd" />
+    <livewire:pages::components.modul-dokumen.ugd.kwitansi.cetak-kwitansi-ugd-obat
         wire:key="cetak-kwitansi-ugd-obat" />
 
 </div>

@@ -587,5 +587,5 @@ new class extends Component {
     </x-modal>
 
     {{-- Cetak E-Resep PDF (headless: listen event cetak-eresep-ugd.open) --}}
-    <livewire:pages::components.rekam-medis.u-g-d.cetak-eresep.cetak-eresep wire:key="cetak-eresep-ugd-emr" />
+    <livewire:pages::components.rekam-medis.ugd.cetak-eresep.cetak-eresep wire:key="cetak-eresep-ugd-emr" />
 </div>

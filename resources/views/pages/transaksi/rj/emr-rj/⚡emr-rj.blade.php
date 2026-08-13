@@ -558,7 +558,7 @@ new class extends Component {
     </x-modal>
 
     {{-- Cetak E-Resep PDF (headless: listen event cetak-eresep-rj.open) --}}
-    <livewire:pages::components.rekam-medis.r-j.cetak-eresep.cetak-eresep wire:key="cetak-eresep-rj-emr" />
+    <livewire:pages::components.rekam-medis.rj.cetak-eresep.cetak-eresep wire:key="cetak-eresep-rj-emr" />
 
     {{-- Screening RJ (x-modal, dibuka via tombol / dispatch open-rm-screening-rj) --}}
     <livewire:pages::transaksi.rj.emr-rj.screening.rm-screening-rj-actions :rjNo="$rjNo"

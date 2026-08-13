@@ -506,7 +506,7 @@ new class extends Component {
 
             set_time_limit(300);
 
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.r-i.penolakan-obat-ri.cetak-penolakan-obat-ri-print', ['data' => $data])->setPaper('A4');
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.penolakan-obat-ri.cetak-penolakan-obat-ri-print', ['data' => $data])->setPaper('A4');
 
             $this->dispatch('toast', type: 'success', message: 'Berhasil mencetak surat pernyataan penolakan obat.');
             return response()->streamDownload(fn() => print $pdf->output(), 'penolakan-obat-ri-' . ($pasien['regNo'] ?? $this->riHdrNo) . '.pdf');

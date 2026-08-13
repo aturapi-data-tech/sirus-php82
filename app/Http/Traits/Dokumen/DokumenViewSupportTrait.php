@@ -106,7 +106,7 @@ trait DokumenViewSupportTrait
 
     /**
      * Render blade print jadi HTML self-contained (untuk preview iframe di modal Lihat).
-     * $view = nama blade lengkap (mis. 'pages.components.modul-dokumen.r-i.xxx.cetak-xxx-print').
+     * $view = nama blade lengkap (mis. 'pages.components.modul-dokumen.ri.xxx.cetak-xxx-print').
      * Memakai payload yg sama dgn cetak → isi Lihat = persis tampilan Cetak.
      */
     protected function renderDokumenPreview(string $view, array $data): string
@@ -129,7 +129,7 @@ trait DokumenViewSupportTrait
      * Identik dgn aksi cetak asli di komponen EMR modul-dokumen RI.
      *
      * @param  ?array   $entry         entri dokumen (null → toast error)
-     * @param  string   $view          path relatif di 'pages.components.modul-dokumen.r-i.'
+     * @param  string   $view          path relatif di 'pages.components.modul-dokumen.ri.'
      * @param  string   $filePrefix    prefix nama file PDF
      * @param  string   $ttdKey        key TTD yg diharapkan print ('ttdPath'/'ttdOperatorPath'/'ttdPemberiPath')
      * @param  ?string  $ttdCodeField  field myuser_code di entri utk resolve TTD (null = tanpa TTD)
@@ -144,7 +144,7 @@ trait DokumenViewSupportTrait
 
         $data = $this->dataDokumenRi($entry, $ttdKey, $ttdCodeField, $extra);
         set_time_limit(300);
-        $pdf = Pdf::loadView('pages.components.modul-dokumen.r-i.' . $view, ['data' => $data])->setPaper('A4');
+        $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.' . $view, ['data' => $data])->setPaper('A4');
         return response()->streamDownload(fn() => print $pdf->output(), $filePrefix . '-' . ($data['regNo'] ?? $this->riHdrNo) . '.pdf');
     }
 
@@ -154,7 +154,7 @@ trait DokumenViewSupportTrait
         if (empty($entry)) {
             return '';
         }
-        return $this->renderDokumenPreview('pages.components.modul-dokumen.r-i.' . $view, $this->dataDokumenRi($entry, $ttdKey, $ttdCodeField, $extra));
+        return $this->renderDokumenPreview('pages.components.modul-dokumen.ri.' . $view, $this->dataDokumenRi($entry, $ttdKey, $ttdCodeField, $extra));
     }
 
     /** Bangun payload cetak dokumen RI (payload seragam dataRi/form/identitasRs/ttd*). */

@@ -692,7 +692,7 @@ new class extends Component {
             ]);
 
             set_time_limit(300);
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.r-i.surveilans-isk-ri.cetak-surveilans-isk-ri-print', ['data' => $data])->setPaper('A4');
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.surveilans-isk-ri.cetak-surveilans-isk-ri-print', ['data' => $data])->setPaper('A4');
 
             return response()->streamDownload(fn() => print $pdf->output(), 'surveilans-isk-' . ($pasien['regNo'] ?? $this->riHdrNo) . '.pdf');
         } catch (\Throwable $e) {

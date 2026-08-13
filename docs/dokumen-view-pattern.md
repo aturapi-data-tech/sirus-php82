@@ -36,7 +36,7 @@ new class extends Component {
     public array $list = [];         // entri dioper via prop dari parent (bukan baca CLOB ulang)
     public ?array $selected = null;
     public string $previewHtml = '';
-    private string $printView = 'pages.components.modul-dokumen.r-i.<doc>.cetak-<doc>-print';
+    private string $printView = 'pages.components.modul-dokumen.ri.<doc>.cetak-<doc>-print';
 
     public function lihat(string $id): void {
         $this->selected = collect($this->list)->firstWhere('id', $id) ?: null;

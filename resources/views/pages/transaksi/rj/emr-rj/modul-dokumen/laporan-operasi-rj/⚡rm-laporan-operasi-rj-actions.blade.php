@@ -464,7 +464,7 @@ new class extends Component {
 
             set_time_limit(300);
 
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.r-i.laporan-operasi-ri.cetak-laporan-operasi-ri-print', ['data' => $data])->setPaper('A4');
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.laporan-operasi-ri.cetak-laporan-operasi-ri-print', ['data' => $data])->setPaper('A4');
 
             $this->dispatch('toast', type: 'success', message: 'Berhasil mencetak laporan operasi.');
             return response()->streamDownload(fn() => print $pdf->output(), 'laporan-operasi-rj-' . ($pasien['regNo'] ?? $this->rjNo) . '.pdf');

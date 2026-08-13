@@ -687,7 +687,7 @@ new class extends Component {
                         </tbody>
                     </table>
 
-                    <livewire:pages::components.rekam-medis.u-g-d.cetak-eresep.cetak-eresep
+                    <livewire:pages::components.rekam-medis.ugd.cetak-eresep.cetak-eresep
                         wire:key="cetak-eresep-ugd" />
                 </div>
 

@@ -420,5 +420,5 @@ new class extends Component {
     </div>
 
     {{-- Cetak SKDP --}}
-    <livewire:pages::components.modul-dokumen.b-p-j-s.cetak-skdp.cetak-skdp wire:key="cetak-skdp-ri-{{ $riHdrNo }}" />
+    <livewire:pages::components.modul-dokumen.bpjs.cetak-skdp.cetak-skdp wire:key="cetak-skdp-ri-{{ $riHdrNo }}" />
 </div>
