@@ -123,7 +123,7 @@ new class extends Component {
      */
     public function simpanOpname(): void
     {
-        if (!auth()->user()->hasAnyRole(['Admin', 'Apoteker'])) {
+        if (!auth()->user()->can('gudang.opnameMedis')) {
             $this->dispatch('toast', type: 'error', message: 'Hanya Admin & Apoteker yang dapat melakukan stock opname.');
             return;
         }
@@ -568,7 +568,7 @@ new class extends Component {
                         </div>
 
                         {{-- Card: Stock Opname --}}
-                        @hasanyrole('Admin|Apotek')
+                        @can('gudang.opnameMedis')
                             @php $isCurrentYear = $year === (string) now()->year; @endphp
                             <div class="bg-canvas border-2 border-amber-200 shadow-sm rounded-2xl dark:border-amber-700 dark:bg-gray-900">
                                 <div class="px-5 py-4 border-b border-amber-200 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20">
@@ -654,7 +654,7 @@ new class extends Component {
                                     </x-confirm-button>
                                 </div>
                             </div>
-                        @endhasanyrole
+                        @endcan
                     </div>
                 </div>
             @else

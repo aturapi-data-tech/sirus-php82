@@ -67,4 +67,15 @@ class AksiRole
 
     /** Membuka form Pindah Kamar pasien rawat inap. */
     public const RI_PINDAH_KAMAR = ['Mr', 'Admin', 'Perawat', 'Tu'];
+
+    /* ─────────────────────────────── GUDANG ─────────────────────────────── */
+
+    /**
+     * Stock Opname barang MEDIS (kartu stock obat & apotek) — mengubah saldo awal.
+     * Dipisah dari non-medis karena pemiliknya beda unit: obat = Apoteker.
+     */
+    public const GUDANG_OPNAME_MEDIS = ['Admin', 'Apoteker'];
+
+    /** Stock Opname barang NON-MEDIS — pemiliknya TU, bukan Apoteker. */
+    public const GUDANG_OPNAME_NONMEDIS = ['Admin', 'Tu'];
 }
