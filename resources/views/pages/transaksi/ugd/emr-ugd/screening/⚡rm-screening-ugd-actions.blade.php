@@ -364,18 +364,21 @@ new class extends Component {
 
     /* ===============================
      | BUKA KUNCI — cabut TTD petugas → screening editable lagi.
-     | Hanya Admin / Manager Umum / Manager Medis. Tak bisa bila EMR-level terkunci.
+     | Role dari SATU sumber: Gate 'dokumen.bukaKunci' (AksiRole::DOKUMEN_BUKA_KUNCI),
+     | sama seperti 43 modul dokumen lain — mekanisme kuncinya identik (terkunci
+     | begitu petugas TTD) dan yang menandatangani screening juga Perawat.
+     | Tak bisa bila EMR-level terkunci.
      |   Catatan: hanya mencabut TTD; hasil triase/P0 yang tersimpan TIDAK diubah.
      =============================== */
     private function bolehBukaKunci(): bool
     {
-        return (bool) auth()->user()?->hasAnyRole(['Admin', 'Manager Umum', 'Manager Medis']);
+        return (bool) auth()->user()?->can('dokumen.bukaKunci');
     }
 
     public function bukaKunci(): void
     {
         if (!$this->bolehBukaKunci()) {
-            $this->dispatch('toast', type: 'error', message: 'Hanya Admin / Manager yang dapat membuka kunci.');
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk membuka kunci.');
             return;
         }
         if ($this->isEmrLocked) {
@@ -865,7 +868,7 @@ new class extends Component {
 
                     {{-- Terkunci oleh TTD (bukan EMR-level) → Admin/Manager boleh Buka Kunci --}}
                     @if ($isFormLocked && !$isEmrLocked)
-                        @hasanyrole('Admin|Manager Umum|Manager Medis')
+                        @can('dokumen.bukaKunci')
                             <x-confirm-button action="bukaKunci" title="Buka Kunci Screening"
                                 message="TTD petugas akan dicabut & screening kembali bisa diedit. Hasil triase/P0 yang tersimpan tidak diubah. Lanjutkan?"
                                 confirmText="Ya, Buka Kunci" class="gap-1.5">
@@ -875,7 +878,7 @@ new class extends Component {
                                 </svg>
                                 Buka Kunci
                             </x-confirm-button>
-                        @endhasanyrole
+                        @endcan
                     @endif
 
                     @if (!$isFormLocked)
