@@ -10,7 +10,7 @@
 
     {{-- Shortcut tombol E-Resep — auto-save SOAP child dulu, tunggu konfirmasi,
          baru buka modal eresep. Logika identik dengan tombol toolbar parent EMR
-         (lihat erm-ugd.blade.php → "Tombol E-Resep"). --}}
+         (lihat emr-ugd.blade.php → "Tombol E-Resep"). --}}
     @hasanyrole('Dokter|Admin|Perawat')
         <div class="flex justify-end">
             <x-primary-button type="button" class="gap-1"

@@ -4,7 +4,7 @@
 //
 // ⚠️  Nama event SENGAJA beda dari cetak-surat-kematian.blade.php ('cetak-surat-kematian-ugd.open').
 //     Di halaman Pelayanan UGD kedua komponen hidup bersamaan (⚡pelayanan-ugd me-mount
-//     erm-ugd → rekam-medis-display DAN modul-dokumen-ugd → rm-surat-kematian-actions),
+//     emr-ugd → rekam-medis-display DAN modul-dokumen-ugd → rm-surat-kematian-actions),
 //     jadi event yang sama akan ditangkap dua instance → PDF ter-download dobel.
 
 use Livewire\Component;

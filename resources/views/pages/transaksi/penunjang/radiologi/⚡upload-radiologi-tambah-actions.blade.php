@@ -550,7 +550,7 @@ new class extends Component {
                                 </div>
                                 {{-- Kanan: detail per-sumber (RI/RJ/UGD) --}}
                                 <div class="pt-2 border-t sm:pt-0 sm:border-t-0 sm:border-l border-brand-green/20 dark:border-brand-lime/20 sm:pl-4">
-                                    @include('pages.transaksi.penunjang._patient-detail', ['p' => $selectedPatient, 'source' => $source])
+                                    @include('pages.transaksi.penunjang.penunjang-detail-pasien', ['p' => $selectedPatient, 'source' => $source])
                                 </div>
                             </div>
                             <x-secondary-button type="button" wire:click="changePatient" class="px-3 py-1 text-xs shrink-0">
@@ -623,7 +623,7 @@ new class extends Component {
                                             </td>
                                             {{-- Detail per-sumber (RI: kamar/DPJP; RJ: poli/dokter; UGD: dokter/cara masuk) --}}
                                             <td class="px-4 py-3 leading-tight align-top whitespace-nowrap">
-                                                @include('pages.transaksi.penunjang._patient-detail', ['p' => $identity, 'source' => $source])
+                                                @include('pages.transaksi.penunjang.penunjang-detail-pasien', ['p' => $identity, 'source' => $source])
                                             </td>
                                         </tr>
                                     @empty

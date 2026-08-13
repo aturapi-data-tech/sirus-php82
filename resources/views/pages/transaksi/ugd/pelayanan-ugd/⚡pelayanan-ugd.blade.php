@@ -912,7 +912,7 @@ new class extends Component {
             </div>
 
             {{-- Child components — pelayanan-only: EMR + Modul Dokumen + Administrasi + Cetak Etiket --}}
-            <livewire:pages::transaksi.ugd.emr-ugd.erm-ugd wire:key="emr-ugd-actions" />
+            <livewire:pages::transaksi.ugd.emr-ugd.emr-ugd wire:key="emr-ugd-actions" />
             <livewire:pages::transaksi.ugd.administrasi-ugd.administrasi-ugd wire:key="administrasi-ugd-actions" />
             <livewire:pages::transaksi.ugd.administrasi-ugd.transfer-ugd-ke-ri-actions wire:key="transfer-ugd-ke-ri-actions" />
             <livewire:pages::transaksi.ugd.pelayanan-ugd.cek-peserta-bpjs-ugd-actions wire:key="cek-peserta-bpjs-ugd-actions" />

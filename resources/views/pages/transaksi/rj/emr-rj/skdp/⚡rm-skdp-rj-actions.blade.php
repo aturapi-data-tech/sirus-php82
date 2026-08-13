@@ -243,7 +243,7 @@ new class extends Component {
             return;
         }
 
-        // 2b. Simpan SOAP dulu (pola sama erm-rj.save()) — supaya diagnosa free text yang belum
+        // 2b. Simpan SOAP dulu (pola sama emr-rj.save()) — supaya diagnosa free text yang belum
         //     tersimpan ikut terkirim saat kirim SKDP, jadi tidak hilang. Dispatch sebelum validasi
         //     supaya free text tetap tersimpan meski validasi SKDP gagal.
         // silent: true → section save tanpa toast masing-masing; cukup 1 toast "Surat Kontrol" di akhir.

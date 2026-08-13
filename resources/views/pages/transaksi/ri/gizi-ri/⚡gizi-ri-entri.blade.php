@@ -75,7 +75,7 @@ new class extends Component {
     <x-modal name="gizi-ri-entri" size="full" height="full" focusable>
         {{-- wire:key per pasien: ganti pasien → konten remount → Alpine reset ke tab gizi.
              Komponen tab EMR memuat data lewat event open-rm-* (bukan prop) — dikirim
-             lazy saat tab pertama kali dibuka, sama semangat reloadEvent di erm-ri. --}}
+             lazy saat tab pertama kali dibuka, sama semangat reloadEvent di emr-ri. --}}
         <div class="flex flex-col min-h-[calc(100vh-4rem)]"
             x-data="{
                 activeTab: 'gizi',
@@ -90,7 +90,7 @@ new class extends Component {
             }"
             wire:key="gizi-entri-content-{{ $riHdrNo ?? 'new' }}">
 
-            {{-- ═══════════ HEADER — display pasien RI (pola erm-ri) ═══════════ --}}
+            {{-- ═══════════ HEADER — display pasien RI (pola emr-ri) ═══════════ --}}
             <div class="relative px-6 py-4 border-b border-hairline dark:border-gray-700 shrink-0">
                 <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10] pointer-events-none"
                     style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
@@ -117,7 +117,7 @@ new class extends Component {
                     </x-icon-button>
                 </div>
 
-                {{-- ── TAB NAVIGATION — set tab relevan gizi (selaras filter role Gizi di erm-ri) ── --}}
+                {{-- ── TAB NAVIGATION — set tab relevan gizi (selaras filter role Gizi di emr-ri) ── --}}
                 <div class="relative mt-3">
                     <x-scrollable-tabs class="w-full">
                         <x-tabs variant="underline" class="flex-nowrap w-max min-w-full gap-1">
@@ -166,7 +166,7 @@ new class extends Component {
                                     ],
                                 ];
 
-                                // Event pemuat data per tab (pola reloadEvent erm-ri).
+                                // Event pemuat data per tab (pola reloadEvent emr-ri).
                                 // gizi & riwayat tidak perlu: gizi dimuat saat modal dibuka,
                                 // riwayat memuat sendiri dari prop regNo.
                                 $tabOpenEvents = [
@@ -345,7 +345,7 @@ new class extends Component {
                         @endhasanyrole
 
                         {{-- Simpan CPPT/SBAR — komponennya tanpa tombol simpan sendiri (pola
-                             erm-ri: footer dispatch save-rm-*); label ikut mode edit --}}
+                             emr-ri: footer dispatch save-rm-*); label ikut mode edit --}}
                         <x-primary-button type="button" x-show="activeTab === 'cppt'" x-cloak
                             class="min-w-[120px]" x-data="{ editing: false }"
                             x-on:cppt-edit-mode.window="editing = $event.detail?.editing ?? false"

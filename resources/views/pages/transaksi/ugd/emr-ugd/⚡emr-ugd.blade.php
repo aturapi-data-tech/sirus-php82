@@ -312,7 +312,7 @@ new class extends Component {
                     </div>
 
                     {{-- TAB GROUP N | L | T (Penilaian / Observasi / Obat-Cairan)
-                         Pola disamakan dgn EMR RI (erm-ri) yg TERBUKTI aman saat Simpan:
+                         Pola disamakan dgn EMR RI (emr-ri) yg TERBUKTI aman saat Simpan:
                          panel = `x-show` + `x-transition` polos, TANPA wire:key & TANPA x-cloak.
                          wire:key HANYA di komponen anak (island). Panel ber-wire:key bikin morphdom
                          boleh melepas/pindah node saat parent morph → anak RE-MOUNT ($rjNo reset).

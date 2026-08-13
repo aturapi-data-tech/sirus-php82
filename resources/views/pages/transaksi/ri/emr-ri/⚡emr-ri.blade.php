@@ -1,5 +1,5 @@
 <?php
-// resources/views/pages/transaksi/ri/emr-ri/erm-ri.blade.php
+// resources/views/pages/transaksi/ri/emr-ri/emr-ri.blade.php
 
 use Livewire\Component;
 use Livewire\Attributes\On;

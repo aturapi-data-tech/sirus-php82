@@ -293,7 +293,7 @@ TXT,
 // E-RESEP (diisi dokter) — modal SIBLING di atas EMR, bukan section SOAP.
 // pages/transaksi/rj/eresep-rj/: host + tab NonRacikan + tab Racikan.
 //
-// Pemicu (2 tombol): header EMR (erm-rj) & tab Terapi di section Perencanaan
+// Pemicu (2 tombol): header EMR (emr-rj) & tab Terapi di section Perencanaan
 //   → dispatch('emr-rj.eresep.open', rjNo) → host buka modal 2 tab
 //   → host menyebarkan open-eresep-non-racikan-rj / open-eresep-racikan-rj.
 
@@ -978,7 +978,7 @@ TXT,
                                 <tbody>
                                     <tr><td class="ds-td-strong">Pendaftaran</td><td class="ds-td-class">/rawat-jalan/daftar</td><td class="ds-td-class">/ugd/daftar</td><td class="ds-td-class">/ri/daftar</td></tr>
                                     <tr><td class="ds-td-strong">Pelayanan</td><td class="ds-td-class">/rawat-jalan/pelayanan</td><td class="ds-td-class">/ugd/pelayanan</td><td class="ds-body-sm">— (dari daftar-ri)</td></tr>
-                                    <tr><td class="ds-td-strong">EMR (host)</td><td class="ds-td-class">emr-rj/erm-rj (modal)</td><td class="ds-td-class">emr-ugd (modal)</td><td class="ds-td-class">emr-ri (modal)</td></tr>
+                                    <tr><td class="ds-td-strong">EMR (host)</td><td class="ds-td-class">emr-rj/emr-rj (modal)</td><td class="ds-td-class">emr-ugd (modal)</td><td class="ds-td-class">emr-ri (modal)</td></tr>
                                     <tr><td class="ds-td-strong">Modul Dokumen</td><td class="ds-td-class">emr-rj/modul-dokumen (4 form)</td><td class="ds-td-class">emr-ugd/modul-dokumen</td><td class="ds-td-class">emr-ri/modul-dokumen (±28 form)</td></tr>
                                     <tr><td class="ds-td-strong">Administrasi</td><td class="ds-td-class">administrasi-rj (modal)</td><td class="ds-td-class">administrasi-ugd</td><td class="ds-td-class">administrasi-ri</td></tr>
                                     <tr><td class="ds-td-strong">Antrian Kasir</td><td class="ds-td-class">/transaksi/rj/antrian-kasir-rj</td><td class="ds-td-class">/transaksi/ugd/antrian-kasir-ugd</td><td class="ds-td-class">/transaksi/kasir/antrian-kasir-ri + daftar-kasir-ri</td></tr>
@@ -1208,7 +1208,7 @@ TXT,
 
                         {{-- visual SOAP grid --}}
                         <div class="ds-frame mt-2 mb-6">
-                            <div class="ds-frame-label">Tata letak host EMR (erm-rj)</div>
+                            <div class="ds-frame-label">Tata letak host EMR (emr-rj)</div>
                             <div class="grid grid-cols-2 gap-2 mt-3">
                                 @foreach ([
                                     ['S', 'Subjective — Anamnesa', 'var(--info)'],
@@ -1673,7 +1673,7 @@ TXT,
                                     'steps' => [
                                         'Buat folder section + satu file actions: <span class="ds-code">emr-rj/&lt;section&gt;/rm-&lt;section&gt;-rj-actions.blade.php</span> — salin section acuan yang paling mirip; kerangka utuhnya (open → default → save → markup) ada di Bab 06. Section = child Livewire mandiri yang menerima <span class="ds-code">:rjNo</span>.',
                                         'Sepakati <strong>key JSON</strong> section di CLOB — bukan kolom baru. Simpan lewat trait jalur: <span class="ds-code">lockRJRow → findDataRJ → array_replace → updateJsonRJ</span> di dalam <span class="ds-code">DB::transaction</span> (Bab 03).',
-                                        'Mount di host <span class="ds-code">erm-rj.blade.php</span> dengan <span class="ds-code">:rjNo</span> + <span class="ds-code">wire:key</span>, lalu daftarkan event <span class="ds-code">save-rm-&lt;section&gt;-rj</span> ke daftar <span class="ds-code">save-events</span> supaya ikut tombol Simpan Semua — save menerima flag <span class="ds-code">silent</span> (Bab 06).',
+                                        'Mount di host <span class="ds-code">emr-rj.blade.php</span> dengan <span class="ds-code">:rjNo</span> + <span class="ds-code">wire:key</span>, lalu daftarkan event <span class="ds-code">save-rm-&lt;section&gt;-rj</span> ke daftar <span class="ds-code">save-events</span> supaya ikut tombol Simpan Semua — save menerima flag <span class="ds-code">silent</span> (Bab 06).',
                                         'Tutup save() dengan helper <span class="ds-code">afterSave()</span>: incrementVersion area modal + dispatch <span class="ds-code">refresh-after-rj.saved</span> + toast (hormati flag silent). Halaman list mendengarkan event itu untuk me-refresh status &amp; persen kelengkapan — tanpa ini, data tersimpan tapi layar basi (Bab 06).',
                                         'Hormati <span class="ds-code">isFormLocked</span> (read-only penuh) dan pakai <span class="ds-code">wire:model.blur</span> untuk input numerik. Method jangan senama dengan trait EMR lain — helper lintas section = class statis.',
                                         'Bila section masuk hitungan kelengkapan EMR → tambah bobotnya di <span class="ds-code">EmrCompletenessRJTrait</span>; bila datanya tampil di display / cetakan lain (resume medis dsb.) → update konsumennya sekalian.',
@@ -1741,9 +1741,9 @@ TXT,
                                             </tr>
                                             <tr>
                                                 <td class="ds-td-strong">Host EMR</td>
-                                                <td class="ds-td-class">erm-rj.blade.php</td>
-                                                <td class="ds-td-class">erm-ugd.blade.php</td>
-                                                <td class="ds-td-class">erm-ri.blade.php <span class="ds-body-sm">(section terdaftar di array key/label/saveEvent)</span></td>
+                                                <td class="ds-td-class">emr-rj.blade.php</td>
+                                                <td class="ds-td-class">emr-ugd.blade.php</td>
+                                                <td class="ds-td-class">emr-ri.blade.php <span class="ds-body-sm">(section terdaftar di array key/label/saveEvent)</span></td>
                                             </tr>
                                             <tr>
                                                 <td class="ds-td-strong">Prop kunci</td>
@@ -1794,7 +1794,7 @@ TXT,
                                     Awas dua jebakan: UGD juga memakai nama kolom <span class="ds-code">rj_no</span>
                                     (tapi tabelnya <span class="ds-code">rstxn_ugdhdrs</span>, bukan rjhdrs) — jangan tertukar;
                                     dan di RI seluruh folder/file/event <strong>bersuffix -ri</strong> serta section
-                                    baru harus didaftarkan ke array section di host <span class="ds-code">erm-ri</span>.
+                                    baru harus didaftarkan ke array section di host <span class="ds-code">emr-ri</span>.
                                 </p>
                             @endif
                         @endforeach
