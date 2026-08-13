@@ -62,9 +62,9 @@ Dokter order via tab **"Pelayanan Penunjang"** di EMR. Komponen order (Volt SFC)
 
 | Layanan | File order |
 |---|---|
-| RJ | `pages/transaksi/rj/emr-rj/pemeriksaan/penunjang/laborat/rm-laborat-rj-actions.blade.php` |
-| UGD | `pages/transaksi/ugd/emr-ugd/pemeriksaan/penunjang/laborat/rm-laborat-ugd-actions.blade.php` |
-| RI | `pages/transaksi/ri/emr-ri/pemeriksaan-ri/penunjang/laborat/rm-laborat-ri-actions.blade.php` |
+| RJ | `pages/transaksi/rj/emr-rj/pemeriksaan/penunjang/laborat/⚡rm-laborat-rj-actions.blade.php` |
+| UGD | `pages/transaksi/ugd/emr-ugd/pemeriksaan/penunjang/laborat/⚡rm-laborat-ugd-actions.blade.php` |
+| RI | `pages/transaksi/ri/emr-ri/pemeriksaan-ri/penunjang/laborat/⚡rm-laborat-ri-actions.blade.php` |
 
 Daftar "sudah di-order" (read-only, per kunjungan): `rm-daftar-laborat-{rj,ugd,ri}.blade.php` (+ varian `-luar-`).
 
@@ -117,9 +117,9 @@ Ringkas:
 
 | Layanan | File tab | Sumber angka |
 |---|---|---|
-| RJ | `pages/transaksi/rj/administrasi-rj/laboratorium-rj.blade.php` | `rstxn_rjlabs` |
-| UGD | `pages/transaksi/ugd/administrasi-ugd/laboratorium-ugd.blade.php` | `rstxn_ugdlabs` |
-| RI | `pages/transaksi/ri/administrasi-ri/laboratorium-ri.blade.php` | `rstxn_rilabs` |
+| RJ | `pages/transaksi/rj/administrasi-rj/⚡laboratorium-rj.blade.php` | `rstxn_rjlabs` |
+| UGD | `pages/transaksi/ugd/administrasi-ugd/⚡laboratorium-ugd.blade.php` | `rstxn_ugdlabs` |
+| RI | `pages/transaksi/ri/administrasi-ri/⚡laboratorium-ri.blade.php` | `rstxn_rilabs` |
 
 - Angka **berasal dari `rstxn_*labs`** yang di-POST petugas saat P→C (bukan dihitung ulang di Administrasi).
   Refresh via `#[On('administrasi-lab-*.updated')]`.
@@ -147,7 +147,7 @@ Komponen reusable **`laboratorium-display`** (scoped `regNo`), di-embed di banya
 | Cetak Rekam Medis RJ/UGD/RI | `pages/components/rekam-medis/{r-j,u-g-d,r-i}/cetak-rekam-medis/cetak-rekam-medis-open.blade.php` |
 | Berkas BPJS RJ/UGD/RI | `.../daftar-{rj,ugd,ri}-bulanan/⚡berkas-bpjs-*-actions.blade.php` |
 
-File: `pages/components/rekam-medis/penunjang/laboratorium-display/laboratorium-display.blade.php`
+File: `pages/components/rekam-medis/penunjang/laboratorium-display/⚡laboratorium-display.blade.php`
 (layar) + `-print.blade.php` (PDF).
 
 - **List checkup** (`baseQuery`): view `rsview_checkups` WHERE `reg_no=regNo` AND `checkup_status!='F'` AND
@@ -195,7 +195,7 @@ dalamnya + gate tambahan `nilai_kritis=Y`. Mode teks → `normal_m/normal_f`.
 
 ### 7.1 Perhitungan `lab_result_status` (H/L/N/R) — **BUKAN di master**
 
-Ada di `pages/transaksi/penunjang/laborat/pemeriksaan-laborat.blade.php`. `sex==='P'` = Wanita.
+Ada di `pages/transaksi/penunjang/laborat/⚡pemeriksaan-laborat.blade.php`. `sex==='P'` = Wanita.
 
 ```
 mode ANGKA (lowhigh_status='Y' & hasil numerik):

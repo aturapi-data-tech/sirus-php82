@@ -50,7 +50,7 @@ belakang** (1 hijau valid + 1 merah invalid di dropdown LOV) → perilaku pilih 
 
 ---
 
-## 2. LOV: `livewire/lov/diagnosa/lov-diagnosa.blade.php`
+## 2. LOV: `livewire/lov/diagnosa/⚡lov-diagnosa.blade.php`
 
 Satu-satunya picker diagnosa standar. **Selalu pakai ini** untuk field diagnosa baru —
 jangan bikin autocomplete sendiri.
@@ -94,18 +94,18 @@ adalah kode anaknya (`E11.9`, `K29.7`).
 
 | # | Konsumen | File : baris | `target` | `blockHeader` | `blockIm` | `blockNonPrimary` |
 |---|---|---|---|---|---|---|
-| 1 | SEP / VClaim | `transaksi/rj/daftar-rj/vclaim-rj-actions.blade.php` : 1264 | `rjFormDiagnosaVclaim` | false | false | false |
-| 2 | SEP / VClaim | `transaksi/ugd/daftar-ugd/vclaim-ugd-actions.blade.php` : 671 | `ugdFormDiagnosaVclaim` | false | false | false |
-| 3 | SEP / VClaim | `transaksi/ri/daftar-ri/vclaim-ri-actions.blade.php` : 1380 | `riFormDiagnosaVclaim` | false | false | false |
-| 4 | EMR Diagnosis | `transaksi/rj/emr-rj/diagnosa/rm-diagnosa-rj-actions.blade.php` : 485 | `rjFormDiagnosaRm` | **true** | false | false |
-| 5 | EMR Diagnosis | `transaksi/ugd/emr-ugd/diagnosa/rm-diagnosa-ugd-actions.blade.php` : 422 | `ugdFormDiagnosaRm` | **true** | false | false |
-| 6 | EMR Diagnosis | `transaksi/ri/emr-ri/diagnosa-ri/rm-diagnosa-ri-actions.blade.php` : 441 | `riFormDiagnosaRm` | **true** | false | false |
-| 7 | Coder iDRG | `transaksi/rj/idrg/kirim-diagnosa-idrg.blade.php` : 441 | `rjFormDiagnosaIdrgCoder` | **true** | **true** | false |
-| 8 | Coder iDRG | `transaksi/ugd/idrg/kirim-diagnosa-idrg.blade.php` : 436 | `ugdFormDiagnosaIdrgCoder` | **true** | **true** | false |
-| 9 | Coder iDRG | `transaksi/ri/idrg/kirim-diagnosa-idrg.blade.php` : 434 | `riFormDiagnosaIdrgCoder` | **true** | **true** | false |
-| 10 | Coder INACBG | `transaksi/rj/idrg/kirim-diagnosa-inacbg.blade.php` : 473 | `rjFormDiagnosaInacbgCoder` | false | false | false |
-| 11 | Coder INACBG | `transaksi/ugd/idrg/kirim-diagnosa-inacbg.blade.php` : 473 | `ugdFormDiagnosaInacbgCoder` | false | false | false |
-| 12 | Coder INACBG | `transaksi/ri/idrg/kirim-diagnosa-inacbg.blade.php` : 473 | `riFormDiagnosaInacbgCoder` | false | false | false |
+| 1 | SEP / VClaim | `transaksi/rj/daftar-rj/⚡vclaim-rj-actions.blade.php` : 1264 | `rjFormDiagnosaVclaim` | false | false | false |
+| 2 | SEP / VClaim | `transaksi/ugd/daftar-ugd/⚡vclaim-ugd-actions.blade.php` : 671 | `ugdFormDiagnosaVclaim` | false | false | false |
+| 3 | SEP / VClaim | `transaksi/ri/daftar-ri/⚡vclaim-ri-actions.blade.php` : 1380 | `riFormDiagnosaVclaim` | false | false | false |
+| 4 | EMR Diagnosis | `transaksi/rj/emr-rj/diagnosa/⚡rm-diagnosa-rj-actions.blade.php` : 485 | `rjFormDiagnosaRm` | **true** | false | false |
+| 5 | EMR Diagnosis | `transaksi/ugd/emr-ugd/diagnosa/⚡rm-diagnosa-ugd-actions.blade.php` : 422 | `ugdFormDiagnosaRm` | **true** | false | false |
+| 6 | EMR Diagnosis | `transaksi/ri/emr-ri/diagnosa-ri/⚡rm-diagnosa-ri-actions.blade.php` : 441 | `riFormDiagnosaRm` | **true** | false | false |
+| 7 | Coder iDRG | `transaksi/rj/idrg/⚡kirim-diagnosa-idrg.blade.php` : 441 | `rjFormDiagnosaIdrgCoder` | **true** | **true** | false |
+| 8 | Coder iDRG | `transaksi/ugd/idrg/⚡kirim-diagnosa-idrg.blade.php` : 436 | `ugdFormDiagnosaIdrgCoder` | **true** | **true** | false |
+| 9 | Coder iDRG | `transaksi/ri/idrg/⚡kirim-diagnosa-idrg.blade.php` : 434 | `riFormDiagnosaIdrgCoder` | **true** | **true** | false |
+| 10 | Coder INACBG | `transaksi/rj/idrg/⚡kirim-diagnosa-inacbg.blade.php` : 473 | `rjFormDiagnosaInacbgCoder` | false | false | false |
+| 11 | Coder INACBG | `transaksi/ugd/idrg/⚡kirim-diagnosa-inacbg.blade.php` : 473 | `ugdFormDiagnosaInacbgCoder` | false | false | false |
+| 12 | Coder INACBG | `transaksi/ri/idrg/⚡kirim-diagnosa-inacbg.blade.php` : 473 | `riFormDiagnosaInacbgCoder` | false | false | false |
 
 Rekap: `blockHeader` menutup di 6 call site (EMR diagnosis + coder iDRG) dan DIBUKA di
 6 lainnya (SEP/VClaim + coder INACBG). `blockIm` aktif hanya di 3 coder iDRG.

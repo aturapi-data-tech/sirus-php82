@@ -2,9 +2,9 @@
 
 Pola untuk dokumen EMR Rawat Inap yang berisi **banyak entri catatan** dalam satu pasien, di mana tiap entri ditulis oleh PPA (profesi klinis) berbeda, lalu di-review/TTD DPJP. Contoh kanonik: **CPPT** dan **SBAR**.
 
-- CPPT: `resources/views/pages/transaksi/ri/emr-ri/cppt-ri/rm-cppt-ri-actions.blade.php`
-- SBAR: `resources/views/pages/transaksi/ri/emr-ri/sbar-ri/rm-sbar-ri-actions.blade.php`
-- Host modal EMR (footer Simpan + saveMap): `resources/views/pages/transaksi/ri/emr-ri/erm-ri.blade.php`
+- CPPT: `resources/views/pages/transaksi/ri/emr-ri/cppt-ri/⚡rm-cppt-ri-actions.blade.php`
+- SBAR: `resources/views/pages/transaksi/ri/emr-ri/sbar-ri/⚡rm-sbar-ri-actions.blade.php`
+- Host modal EMR (footer Simpan + saveMap): `resources/views/pages/transaksi/ri/emr-ri/⚡emr-ri.blade.php`
 
 Gunakan pola ini kalau ingin membuat dokumen EMR RI baru yang: **daftar entri kronologis + form entri tunggal + tab per-profesi + review DPJP + cetak per-entri**. Jangan reinvent — clone salah satu file di atas lalu ganti nama field.
 
@@ -62,7 +62,7 @@ State: `public ?string $editing<Dok>Id = null;`
 - **Banner indigo** di atas form saat `$editing<Dok>Id` (ikon pensil + "Mengedit … milik <petugas> — ubah lalu klik **Perbarui <Dok>**") + tombol **Batal** (`wire:click="cancelEdit<Dok>"`).
 - **Tombol Edit** (pensil, warna indigo) per kartu, gating `$canEdit` (`$isAdmin || ownerCode === myuser_code`). Taruh sebelum tombol Copy.
 
-### Label tombol Simpan di footer host (`erm-ri.blade.php`)
+### Label tombol Simpan di footer host (`emr-ri.blade.php`)
 Tombol Simpan modal adalah **satu** tombol Alpine yang membaca `saveMap[activeTab]` dan dispatch `saveEvent` tab aktif. Untuk label "Perbarui":
 ```blade
 x-data="{ cpptEditing: false, sbarEditing: false }"
@@ -96,7 +96,7 @@ x-on:open-modal.window="cpptEditing = false; sbarEditing = false"
 ## Checklist bikin dokumen multi-entri baru
 1. Clone `rm-cppt-ri-actions.blade.php` (atau sbar) → ganti `cppt`→`<dok>`, `soap`→struktur isi.
 2. Pastikan enam aksi + guard hak sesuai tabel di atas (Edit=pemilik, Hapus=supervisor).
-3. Daftarkan tab di `erm-ri.blade.php` `saveMap` (`['key','label','saveEvent']`).
+3. Daftarkan tab di `emr-ri.blade.php` `saveMap` (`['key','label','saveEvent']`).
 4. Kalau ada Edit → tambah flag `<dok>Editing` + listener `<dok>-edit-mode` di footer Simpan.
 5. Buat blade cetak + entri di menu tab EMR.
 6. Verifikasi Volt: **`?>` tepat 1**, tak ada `?>` dalam string (skill `blade-safe-edit`).

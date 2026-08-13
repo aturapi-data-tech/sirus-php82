@@ -319,7 +319,7 @@ Bukan tombol aksi, melainkan input radio yang ditampilkan sebagai tombol.
 > **Jangan** pakai raw `<button class="text-red-600 ...">` atau `<x-icon-button>`
 > untuk tombol sampah di tabel — selalu `x-outline-button` merah-tint di atas
 > agar ukuran, hover, focus-ring, dan dark-mode seragam. Referensi:
-> `transaksi/ri/eresep-ri/eresep-ri-non-racikan.blade.php` & `…-racikan.blade.php`.
+> `transaksi/ri/eresep-ri/⚡eresep-ri-non-racikan.blade.php` & `…-racikan.blade.php`.
 
 ### Modul Dokumen: gate role Hapus & Buka Kunci (TERPUSAT)
 
@@ -402,9 +402,9 @@ pakai `x-outline-button` merah-tint:
 </x-outline-button>
 ```
 
-**Referensi implementasi:** footer `transaksi/ri/emr-ri/erm-ri.blade.php`
+**Referensi implementasi:** footer `transaksi/ri/emr-ri/⚡emr-ri.blade.php`
 (i-Care=emerald, Pindah Kamar=amber, Dokumen=indigo, Administrasi=teal,
-E-Resep=brand, Resume=rose) & panel aksi `transaksi/ri/eresep-ri/eresep-ri.blade.php`
+E-Resep=brand, Resume=rose) & panel aksi `transaksi/ri/eresep-ri/⚡eresep-ri.blade.php`
 (TTD & Kirim=emerald, Edit=amber, Salin=indigo, Plan CPPT=teal, Cetak e-Resep=brand,
 Hapus Draft=merah-tint).
 

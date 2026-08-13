@@ -3,7 +3,7 @@
 Formulir EMR Rawat Inap yang **ditandatangani** dan bisa berulang: General Consent,
 Inform Consent, Permintaan Kerohanian, Edukasi Terintegrasi, Penundaan Pelayanan,
 Pengkajian Akhir Hayat, dst. Semua tampil sebagai tab di
-`transaksi/ri/emr-ri/modul-dokumen/modul-dokumen-ri.blade.php`.
+`transaksi/ri/emr-ri/modul-dokumen/⚡modul-dokumen-ri.blade.php`.
 
 Acuan kanonik: **Inform Consent RI** (paling lengkap) dan **Pengkajian Akhir Hayat**
 (paling baru; contoh gabungan formulir KARS + RM.RI).
@@ -19,7 +19,7 @@ Acuan kanonik: **Inform Consent RI** (paling lengkap) dan **Pengkajian Akhir Hay
 ```
 resources/views/pages/transaksi/ri/emr-ri/modul-dokumen/<nama>/rm-<nama>-actions.blade.php   ← komponen Volt
 resources/views/pages/components/modul-dokumen/r-i/<nama>/cetak-<nama>-print.blade.php       ← cetak PDF
-resources/views/pages/transaksi/ri/emr-ri/modul-dokumen/modul-dokumen-ri.blade.php           ← daftarkan tab
+resources/views/pages/transaksi/ri/emr-ri/modul-dokumen/⚡modul-dokumen-ri.blade.php           ← daftarkan tab
 ```
 
 Pendaftaran tab = 2 tempat di file yang sama: `<x-tab …>` + panel `<div x-show="activeTab === '<key>'">`

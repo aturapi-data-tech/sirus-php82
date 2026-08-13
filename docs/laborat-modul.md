@@ -98,7 +98,7 @@ isKritis(item, hasil):
 
 | Tempat | File | Basis kritis |
 |---|---|---|
-| Display layar | `components/rekam-medis/penunjang/laboratorium-display/laboratorium-display.blade.php` | ambang **+ fallback**; badge KRITIS + baris rose |
+| Display layar | `components/rekam-medis/penunjang/laboratorium-display/⚡laboratorium-display.blade.php` | ambang **+ fallback**; badge KRITIS + baris rose |
 | Cetak PDF | `...laboratorium-display/laboratorium-display-print.blade.php` | idem (ambang + fallback) |
 | Laporan | `App\Http\Traits\...\Lab\NilaiKritisLabTrait` (`pages/manajemen/rs/penunjang/lab/laporan-nilai-kritis`) | **ambang SAJA (tanpa fallback)** — item tanpa ambang tak muncul |
 

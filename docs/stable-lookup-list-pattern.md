@@ -96,14 +96,14 @@ Total **17 file** punya `dokterList()` — semua sudah comply ke pola ini per 20
 - `transaksi/ri/daftar-ri/⚡daftar-ri.blade.php` — pakai `NVL(ri_status,'I')='I'` (Inap aktif, snapshot natural)
 - `transaksi/ri/daftar-ri-bulanan/⚡daftar-ri-bulanan.blade.php` — `whereBetween('exit_date')`
 - `transaksi/apotek/antrian-apotek-ri/antrian-apotek-ri.blade.php` — `whereBetween('sls_date') + whereNotNull('rihdr_no')`
-- `transaksi/kasir/antrian-kasir-ri/antrian-kasir-ri.blade.php` — sama dengan apotek RI
-- `transaksi/ugd/antrian-apotek-ugd/antrian-apotek-ugd.blade.php` — `whereBetween('rj_date') + klaim_id != 'KR'` (KR=batal, structural exclusion)
-- `transaksi/ugd/antrian-kasir-ugd/antrian-kasir-ugd.blade.php` — sama dengan apotek UGD
-- `transaksi/rj/antrian-apotek-rj/antrian-apotek-rj.blade.php` — sama
-- `transaksi/rj/antrian-kasir-rj/antrian-kasir-rj.blade.php` — sama
-- `manajemen/rs/ugd/laporan-task-id-ugd/laporan-task-id-ugd.blade.php` — laporan
-- `manajemen/rs/rj/laporan-task-id-rj/laporan-task-id-rj.blade.php` — laporan
-- `manajemen/rs/tu/pendapatan-jasa-dokter/pendapatan-jasa-dokter.blade.php` — laporan keuangan
+- `transaksi/kasir/antrian-kasir-ri/⚡antrian-kasir-ri.blade.php` — sama dengan apotek RI
+- `transaksi/ugd/antrian-apotek-ugd/⚡antrian-apotek-ugd.blade.php` — `whereBetween('rj_date') + klaim_id != 'KR'` (KR=batal, structural exclusion)
+- `transaksi/ugd/antrian-kasir-ugd/⚡antrian-kasir-ugd.blade.php` — sama dengan apotek UGD
+- `transaksi/rj/antrian-apotek-rj/⚡antrian-apotek-rj.blade.php` — sama
+- `transaksi/rj/antrian-kasir-rj/⚡antrian-kasir-rj.blade.php` — sama
+- `manajemen/rs/ugd/laporan-task-id-ugd/⚡laporan-task-id-ugd.blade.php` — laporan
+- `manajemen/rs/rj/laporan-task-id-rj/⚡laporan-task-id-rj.blade.php` — laporan
+- `manajemen/rs/tu/pendapatan-jasa-dokter/⚡pendapatan-jasa-dokter.blade.php` — laporan keuangan
 
 ### Catatan exception: structural filter (bukan operasional)
 

@@ -13,7 +13,7 @@ Ringkasan keputusan cepat:
 | Lapisan | Lokasi |
 |---|---|
 | Master + 4 flag iDRG (`valid_code/accpdx/asterisk/im`) | `RSMST_MSTDIAGS`, UI `/master/diagnosa` |
-| Picker standar (SATU-satunya) | `livewire/lov/diagnosa/lov-diagnosa.blade.php` — guard `valid_code!==1`, `blockNonPrimary`, `blockIm` ada di `choose()`, berlaku utk SEMUA pemakai |
+| Picker standar (SATU-satunya) | `livewire/lov/diagnosa/⚡lov-diagnosa.blade.php` — guard `valid_code!==1`, `blockNonPrimary`, `blockIm` ada di `choose()`, berlaku utk SEMUA pemakai |
 | Penanda kode IM (lintas komponen) | `App\Support\Diagnosa\KodeIm` — `adalah(array)` & `adalahKode(string)` |
 | EMR diagnosis (RJ/UGD/RI) | `rm-diagnosa-*-actions.blade.php` — dual-write `rstxn_*dtls.diag_id` + JSON `diagnosis[]` (`diagId/icdX/kategoriDiagnosa`) |
 | SEP / VClaim | `vclaim-*-actions.blade.php` — `SEPForm.diagAwal` = **icdx** |

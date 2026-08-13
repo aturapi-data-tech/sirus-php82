@@ -495,7 +495,7 @@ Lihat `app/Http/Traits/SATUSEHAT/SatuSehatTrait.php` untuk implementasi lengkap.
 
 ## 8. Halaman monitoring `/database-monitor/log-bpjs`
 
-Setelah trait baru dipakai, log otomatis muncul di halaman monitoring. Filter berdasar pattern URL via fungsi `detectService()` di `resources/views/pages/database-monitor/log-bpjs/log-bpjs.blade.php`:
+Setelah trait baru dipakai, log otomatis muncul di halaman monitoring. Filter berdasar pattern URL via fungsi `detectService()` di `resources/views/pages/database-monitor/log-bpjs/⚡log-bpjs.blade.php`:
 
 ```php
 public static function detectService(?string $url): string

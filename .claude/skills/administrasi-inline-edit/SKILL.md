@@ -6,7 +6,7 @@ description: Pola sel tabel yang bisa diedit langsung ke DB di modul Administras
 # Edit Inline di Tabel Administrasi/Transaksi
 
 Sel tabel yang langsung tersimpan saat blur (tanpa tombol Simpan). Dipakai di
-`transaksi/ri/administrasi-ri/room-ri.blade.php` (Hari, 3 tarif, tgl Mulai/Selesai),
+`transaksi/ri/administrasi-ri/⚡room-ri.blade.php` (Hari, 3 tarif, tgl Mulai/Selesai),
 dan bertetangga dengan `visit-ri.blade.php`, `konsul-ri.blade.php`.
 
 Yang berbahaya di sini **bukan UI-nya** — melainkan angka biaya yang ikut bergerak.

@@ -9,7 +9,7 @@ Pola cepat untuk menambah item ke transaksi penunjang / administrasi:
 **LOV pilih item → isi field penunjang (qty, tarif, dst) → Enter untuk simpan**.
 Tidak pakai tombol Tambah; hapus baris pakai ikon sampah standar e-resep.
 
-Contoh implementasi: `resources/views/pages/transaksi/penunjang/kamar-operasi/tindakan-kamar-operasi.blade.php`
+Contoh implementasi: `resources/views/pages/transaksi/penunjang/kamar-operasi/⚡tindakan-kamar-operasi.blade.php`
 dan `bahan-alat-kamar-operasi.blade.php`.
 
 ---

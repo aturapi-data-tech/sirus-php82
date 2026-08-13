@@ -256,5 +256,5 @@ Untuk child Livewire component (yang di-embed di grid cell), buat root-nya juga 
 | Empty state tabel standar (`@forelse`/`@empty`) | `resources/views/pages/transaksi/rj/daftar-rj/⚡daftar-rj.blade.php` |
 | Multi-card grid (2-cell) | `resources/views/pages/master/master-laborat/clab/⚡master-clab.blade.php` |
 | Child component dalam grid cell | `resources/views/pages/master/master-laborat/clabitem/⚡master-clabitem.blade.php` |
-| Action bar di atas | `resources/views/pages/manajemen/rs/tu/pendapatan-rs/pendapatan-rs.blade.php` |
-| Form / dashboard (tanpa flex-fill) | `resources/views/livewire/dashboard.blade.php` |
+| Action bar di atas | `resources/views/pages/manajemen/rs/tu/pendapatan-rs/⚡pendapatan-rs.blade.php` |
+| Form / dashboard (tanpa flex-fill) | `resources/views/livewire/⚡dashboard.blade.php` |

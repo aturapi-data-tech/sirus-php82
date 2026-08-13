@@ -53,7 +53,7 @@ Dipakai luas di repo ini: EMR RJ, EMR UGD, modal master (kamar/bed/akun/karyawan
 
 ### Contoh Pemakaian
 
-`resources/views/pages/transaksi/rj/emr-rj/erm-rj.blade.php`:
+`resources/views/pages/transaksi/rj/emr-rj/⚡emr-rj.blade.php`:
 
 ```blade
 <x-modal name="rm-perawat-actions" size="full" height="full" focusable>
@@ -102,7 +102,7 @@ Modal multi-tab di mana **tiap tab adalah Livewire sub-component independen** de
 - "Tutup dan Simpan" cuma dispatch save event untuk tab yang dirty saja
 - Warning dialog list nama tab yang dirty
 
-Saat ini dipakai khusus oleh **EMR Rawat Inap** (`pages/transaksi/ri/emr-ri/erm-ri.blade.php`).
+Saat ini dipakai khusus oleh **EMR Rawat Inap** (`pages/transaksi/ri/emr-ri/⚡emr-ri.blade.php`).
 
 ### Props
 
@@ -154,7 +154,7 @@ Berbeda dengan single — **source of truth ada di sub-component, bukan wrapper*
 
 ### Contoh Pemakaian
 
-`resources/views/pages/transaksi/ri/emr-ri/erm-ri.blade.php`:
+`resources/views/pages/transaksi/ri/emr-ri/⚡emr-ri.blade.php`:
 
 ```blade
 <x-modal name="rm-ri-actions" size="full" height="full" focusable>
@@ -322,7 +322,7 @@ public array $subDirty = [
 **2. Bridge handler — iterate dirty sub-tabs dispatch save event masing-masing:**
 
 ```php
-#[On('save-active-rm-penilaian-ri')]   // ← saveEvent dari :tabs di erm-ri
+#[On('save-active-rm-penilaian-ri')]   // ← saveEvent dari :tabs di emr-ri
 public function dispatchActiveSubTabSave(): void
 {
     $eventMap = [
@@ -432,7 +432,7 @@ Payload `subTab` penting supaya parent Alpine bisa clean **sub-tab spesifik** (b
 
 #### Modal Footer Config
 
-Di erm-ri.blade.php (level `<x-tabbed-dirty-modal-content>`), tambah entry di `:tabs` dengan saveEvent generic yang akan di-handle bridge:
+Di emr-ri.blade.php (level `<x-tabbed-dirty-modal-content>`), tambah entry di `:tabs` dengan saveEvent generic yang akan di-handle bridge:
 
 ```blade
 :tabs="[
@@ -441,7 +441,7 @@ Di erm-ri.blade.php (level `<x-tabbed-dirty-modal-content>`), tambah entry di `:
 ]"
 ```
 
-Label `'Penilaian Nyeri'` adalah label awal — di-mutate via Alpine `x-effect` ikut sub-tab aktif kalau perlu (lihat erm-ri penilaian-ri parent).
+Label `'Penilaian Nyeri'` adalah label awal — di-mutate via Alpine `x-effect` ikut sub-tab aktif kalau perlu (lihat emr-ri penilaian-ri parent).
 
 ### Trade-off
 

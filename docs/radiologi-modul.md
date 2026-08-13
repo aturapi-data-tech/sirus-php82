@@ -19,9 +19,9 @@ Lokasi utama: `resources/views/pages/transaksi/penunjang/radiologi/`. Semua Volt
 | `⚡upload-radiologi-view-actions.blade.php` | Modal **viewer file** (`view-radiologi-pdf`) — baca foto/hasil di iframe (pola `radiologi-display` RM), bukan tab baru. Generik: terima `file`+`title`. Foto & Hasil Bacaan dilihat **sendiri-sendiri** (tombol Lihat masing-masing). Listen `radiologi.view.open`. |
 
 **Ordering pemeriksaan** dilakukan dari **EMR** (bukan folder penunjang):
-- RJ: `transaksi/rj/emr-rj/pemeriksaan/penunjang/radiologi/rm-radiologi-rj-actions.blade.php` (+ `rm-daftar-radiologi-rj.blade.php`)
-- UGD: `transaksi/ugd/emr-ugd/pemeriksaan/penunjang/radiologi/rm-daftar-radiologi-ugd.blade.php`
-- RI: `transaksi/ri/emr-ri/pemeriksaan-ri/penunjang/radiologi/rm-radiologi-ri-actions.blade.php` (+ `rm-daftar-radiologi-ri.blade.php`); tab administrasi RI: `transaksi/ri/administrasi-ri/radiologi-ri.blade.php`
+- RJ: `transaksi/rj/emr-rj/pemeriksaan/penunjang/radiologi/⚡rm-radiologi-rj-actions.blade.php` (+ `rm-daftar-radiologi-rj.blade.php`)
+- UGD: `transaksi/ugd/emr-ugd/pemeriksaan/penunjang/radiologi/⚡rm-daftar-radiologi-ugd.blade.php`
+- RI: `transaksi/ri/emr-ri/pemeriksaan-ri/penunjang/radiologi/⚡rm-radiologi-ri-actions.blade.php` (+ `rm-daftar-radiologi-ri.blade.php`); tab administrasi RI: `transaksi/ri/administrasi-ri/⚡radiologi-ri.blade.php`
 
 **Display/cetak (RM):** `resources/views/pages/components/rekam-medis/penunjang/radiologi-display/`
 (`radiologi-display.blade.php` = display layar per pasien, `radiologi-display-print.blade.php` = cetak PDF hasil bacaan).
