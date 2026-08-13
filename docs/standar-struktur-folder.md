@@ -278,7 +278,21 @@ anak menambah satu round-trip dan satu titik race Alpine/morph.
 2. **Rekonstruksi byte-eksak** — induk dengan tiap `@include` diganti kembali oleh isi partial-nya
    harus sama byte-per-byte dengan berkas asli. Ini invarian **tekstual**, jadi ia tidak bergantung
    pada apakah suatu cabang `@if` kebetulan ikut dirender saat diuji — kelemahan yang dimiliki
-   verifikasi berbasis render. Kalau lolos, keluaran render tidak mungkin berubah isinya.
+   verifikasi berbasis render.
+
+3. **Impor kelas ikut dipindah** — dan ini yang paling mudah terlewat.
+   **Partial `@include` dikompilasi ke berkas TERPISAH, jadi ia TIDAK mewarisi `use` dari blok
+   kelas induk.** Ia mewarisi **variabel**, bukan **import**. Begitu blok yang diekstrak memanggil
+   nama kelas pendek (`PraAnestesiOptions::…`), partial-nya meledak `Class not found`.
+
+   Perbaikannya: tambah directive `@use('App\Support\Options\PraAnestesiOptions')` di kolom 0 pada
+   partial (pola yang dipakai 12 berkas repo, mis. `components/consent/*`) — **bukan**
+   `@php use …; @endphp` yang dilarang di berkas komponen.
+
+> **Syarat 2 tidak menjamin syarat 3.** Teks identik ≠ scope import identik — dan render komponen
+> `-actions` sendirian pun bisa lolos, karena cabang yang memanggil kelas itu hanya hidup kalau
+> induk mengirim props. Yang menangkapnya: pemeriksa #8 (sapu halaman utuh) dan pemeriksa nama
+> kelas pendek di partial. Ini kejadian nyata di `rm-pra-anestesi-*-sistem-organ` (commit `94ba1652`).
 
 Yang berubah setelah pecah hanyalah **baris kosong**: `@include` menelan newline di sekitarnya.
 Tidak berpengaruh pada tampilan karena letaknya antar-blok.
@@ -453,6 +467,42 @@ sudah dipakai untuk memvalidasi item 1–3 & 12:
    dan 1 route yang di-komentar di `web.php` (`pages::master.poli.index`).
 
 Sesudah rename massal, hapus isi `storage/framework/views/` secara manual (`view:clear` butuh boot).
+
+### Pemeriksa #8 — sapu halaman utuh lewat HTTP kernel (yang paling menentukan)
+
+Butuh DB hidup, dan **inilah pemeriksa yang paling dekat dengan kenyataan**: middleware + layout +
+seluruh komponen anak ikut dirender, termasuk cabang yang hanya hidup kalau induk mengirim props.
+
+```php
+$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+auth()->loginUsingId(1);
+foreach ($routeGetTanpaParameter as $uri) {
+    $res = $kernel->handle(Illuminate\Http\Request::create('/'.$uri, 'GET'));
+    if ($res->getStatusCode() >= 500) { /* laporkan */ }
+}
+```
+
+Dua hal praktis:
+- **Potong per-batch** (±20 halaman/proses). 164 halaman berat (2–4 MB HTML masing-masing)
+  menghabiskan memori kalau dirender dalam satu proses.
+- **Pisahkan yang bukan salahmu.** Buktikan lewat git per berkas
+  (`git log <base>..HEAD -- <berkas>`), jangan diasumsikan. Saat sapuan pertama, 5 halaman 500 dan
+  **nol** disebabkan 18 commit penyeragaman: 4× `ORA-00904` karena kolom DDL memang belum ada di
+  env ini (`RSTXN_RJRADS.TGL_BACAAN`, `LBMST_CLABITEMS.CRITICAL_LOW_M`), 1× PHP 8.2 melarang akses
+  konstanta trait langsung (`RL41Trait::AGE_GROUPS_RL41`).
+
+### Pemeriksa #9 — nama kelas pendek di dalam partial
+
+Menangkap pelanggaran syarat 3 di §5. Untuk tiap berkas **tanpa** blok kelas Volt, cari rujukan
+`NamaKelas::` bernama pendek yang tidak punya import lokal dan tidak ada di namespace global —
+kalau basename-nya cocok dengan sebuah kelas `App\*`, itu akan meledak saat dirender.
+
+Tiga jebakan yang membuat pemeriksa ini melaporkan berkas sehat sebagai rusak (semuanya sudah
+kejadian, dan bikin daftar temuan turun 27 → 16 → 10):
+- Lupa mengenali directive **`@use('App\Foo')`** — 12 berkas repo memakainya.
+- Regex `use` yang menuntut kolom 0, padahal `use` sering **berindentasi di dalam blok `@php`**.
+- Nama kelas yang muncul sebagai **prosa** — di komentar Blade, atau sebagai teks contoh di halaman
+  tutorial `/panduan-dev`. Dari 10 temuan terakhir, 7 adalah prosa.
 
 ---
 
