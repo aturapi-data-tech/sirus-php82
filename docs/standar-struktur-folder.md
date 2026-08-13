@@ -266,6 +266,24 @@ Cara pecah: **partial per section logis** (`<modul>-<bagian>.blade.php`, di-`@in
 murni, state tetap di induk. Bukan dengan menambah komponen Livewire anak, karena tiap komponen
 anak menambah satu round-trip dan satu titik race Alpine/morph.
 
+**Dua syarat batas partial**, dua-duanya wajib dicek sebelum memecah:
+
+1. **Imbang tag** — `<div>`, komponen `<x-*>`, `@if`, `@foreach`, dan penanda komentar Blade harus
+   imbang DI DALAM partial. Batas yang enak dibaca belum tentu imbang. (Awas menghitung komponen
+   self-closing multi-baris: `<x-text-input\n … />` — lookahead `/>` tidak melewati newline, jadi
+   regex naif mengiranya tag pembuka.)
+2. **Rekonstruksi byte-eksak** — induk dengan tiap `@include` diganti kembali oleh isi partial-nya
+   harus sama byte-per-byte dengan berkas asli. Ini invarian **tekstual**, jadi ia tidak bergantung
+   pada apakah suatu cabang `@if` kebetulan ikut dirender saat diuji — kelemahan yang dimiliki
+   verifikasi berbasis render. Kalau lolos, keluaran render tidak mungkin berubah isinya.
+
+Yang berubah setelah pecah hanyalah **baris kosong**: `@include` menelan newline di sekitarnya.
+Tidak berpengaruh pada tampilan karena letaknya antar-blok.
+
+**Batas ini hanya berlaku untuk MARKUP.** Berkas yang besar karena blok kelas Volt-nya (mis.
+`⚡daftar-rj-actions` — 1.330 dari 1.679 baris adalah kelas) tidak terbantu oleh pemecahan partial;
+yang perlu dikurangi kelasnya (pisah ke trait/Support), dan itu keputusan desain per modul.
+
 Sebaran saat ini: 22 berkas 1.501–3.000 baris, 106 berkas 801–1.500. Kandidat pecah terbesar:
 `rm-pengkajian-pre-op-*-actions` (1.781 × 3 jalur), `rm-akhir-hayat*-actions` (1.714 × 2),
 `⚡daftar-rj-actions` (1.679), `vclaim-ri-actions` (1.661).
@@ -387,7 +405,7 @@ tersentuh (**bukan** `view:cache` — ia tidak menangkap galat kelas Volt, lihat
 | ✅ 7 | `app/Support` → sub-namespace §6.2 | 25 berkas | 🟡 | **SELESAI 2026-08-13** — 25 pindah ke 4 kelompok, 11 tetap di akar (aturan ≥2 anggota), `Diagnosa/KodeIm` → `Terminologi/KodeIm`, 217 FQCN + 3 `use` eksplisit yang tadinya implisit |
 | ✅ 8 | `Traits/WithRenderVersioning`, `Traits/WithValidationToast` → `Traits/Concerns/` | 2 | 🟡 | **SELESAI 2026-08-13** — 347 rujukan |
 | ✅ 9 | `Traits/iDRG` → `Traits/IDRG` | 1 folder | 🟡 | **SELESAI 2026-08-13** — 59 rujukan. Nama trait `iDrgTrait` sendiri TIDAK diubah (di luar lingkup pemfolderan; kalau mau PSR-1 penuh, itu pekerjaan terpisah) |
-| 10 | Pecah 22 berkas > 1.500 baris (§5) | 22 | 🔴 | bukan rename — jadwalkan per modul saat modul itu disentuh |
+| 🟡 10 | Pecah berkas > 1.500 baris (§5) | 22 → **11 sisa** | 🔴 | **SEBAGIAN 2026-08-13** — 11 berkas dipecah jadi 53 partial: 5 halaman panduan-dev (per kelompok bab), pengkajian-pre-op ×3 & pra-anestesi ×3 (per section formulir). **Sisa 11 belum**: bulk-nya blok kelas Volt, bukan markup (mis. `daftar-rj-actions` 1.330 dari 1.679 baris = kelas). Memecah markup saja tidak menurunkannya ke bawah ambang — yang perlu dikurangi kelasnya, dan itu keputusan desain per modul |
 | ✅ 11 | Seragamkan prefix URL (§7) + redirect lama | 20 route | 🔴 | **SELESAI 2026-08-13** — 20 route + 20 `Route::redirect` (302, bukan 301) supaya bookmark petugas tetap jalan. Termasuk anti-stutter `/ri/update-tt-ri` → `/ri/update-tt`. Nama route ikut berubah; `transaksi.rj.` sengaja TIDAK disapu buta karena 167 kemunculannya adalah nama KOMPONEN |
 | ✅ 12 | `site-marking/figs/*.blade.php` camelCase → kebab-case | 16 | 🟢 | **SELESAI 2026-08-13** — `footDorsumKanan` → `foot-dorsum-kanan`. Istilah anatomi (dorsum/palm) DIPERTAHANKAN; `id` panel tidak ikut diubah, lihat §3.6 |
 
