@@ -152,6 +152,18 @@ new class extends Component {
                             @endif
                         </x-tab>
 
+                        <x-tab variant="underline" active-expr="activeTab === 'secondOpinion'"
+                            x-on:click="activeTab = 'secondOpinion'" class="inline-flex items-center gap-2">
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                            </svg>
+                            Second Opinion
+                            @if (count($dataDaftarRi['secondOpinionRI'] ?? []) > 0)
+                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ count($dataDaftarRi['secondOpinionRI']) }}</x-badge>
+                            @endif
+                        </x-tab>
+
                         {{-- Dikembalikan 2026-07-30: permintaan rohaniwan tidak selalu terkait
                              akhir hayat — pasien/keluarga bisa memintanya kapan saja selama
                              dirawat. Pengkajian Akhir Hayat tetap punya bagian spiritualnya
@@ -334,6 +346,14 @@ new class extends Component {
                     <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.penundaan-pelayanan-ri.rm-penundaan-pelayanan-ri-actions
                         :riHdrNo="$riHdrNo" :disabled="$isFormLocked"
                         wire:key="penundaan-pelayanan-ri-{{ $riHdrNo ?? 'init' }}" />
+                </div>
+
+                {{-- TAB: SECOND OPINION --}}
+                <div x-show="activeTab === 'secondOpinion'" x-transition.opacity.duration.200ms
+                    style="display:none">
+                    <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.second-opinion-ri.rm-second-opinion-ri-actions
+                        :riHdrNo="$riHdrNo" :disabled="$isFormLocked"
+                        wire:key="second-opinion-ri-{{ $riHdrNo ?? 'init' }}" />
                 </div>
 
                 {{-- TAB: PENGKAJIAN PASIEN MENJELANG AKHIR HAYAT (RM.RI.62) --}}
