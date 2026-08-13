@@ -659,7 +659,7 @@ new class extends Component {
                                                             <div class="grid grid-cols-2 gap-1">
 
                                                                 {{-- Kirim iDRG — Admin, Casemix, Tu; BPJS + rj_status=Selesai --}}
-                                                                @hasanyrole('Admin|Casemix|Tu')
+                                                                @can('idrg.kirim')
                                                                     @if (($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM') && $row->rj_status === 'L')
                                                                         <x-dropdown-link href="#"
                                                                             wire:click.prevent="openIdrg('{{ $row->rj_no }}')"
@@ -680,7 +680,7 @@ new class extends Component {
                                                                             </div>
                                                                         </x-dropdown-link>
                                                                     @endif
-                                                                @endhasanyrole
+                                                                @endcan
 
                                                                 {{-- Administrasi (View-only) — Admin/Casemix/Tu; status=Selesai (L) --}}
                                                                 @hasanyrole('Admin|Casemix|Tu')

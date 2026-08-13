@@ -1282,7 +1282,7 @@ new class extends Component {
                                                                 @endhasanyrole
 
                                                                 {{-- Kirim Satu Sehat — Admin, Mr --}}
-                                                                @hasanyrole('Admin|Mr')
+                                                                @can('satusehat.kirim')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openSatuSehat('{{ $row->rj_no }}')"
                                                                         class="px-3 py-2 text-sm rounded-lg bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40">
@@ -1301,7 +1301,7 @@ new class extends Component {
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
-                                                                @endhasanyrole
+                                                                @endcan
 
                                                             </div>
 
@@ -1334,7 +1334,7 @@ new class extends Component {
 
                                                 {{-- SATU SEHAT — status kirim PER-RESOURCE, di kanan tombol titik-3.
                                                      Abu-abu = belum dikirim, hijau/brand = sudah. Klik chip mana pun = buka modal Kirim Satu Sehat. --}}
-                                                @hasanyrole('Admin|Mr')
+                                                @can('satusehat.kirim')
                                                     <div class="flex-1 min-w-0">
                                                         <x-input-label value="Satu Sehat" class="mb-1 text-[10px] uppercase tracking-wide text-muted" />
                                                     <div class="flex flex-wrap items-center gap-1">
@@ -1350,7 +1350,7 @@ new class extends Component {
                                                         @endforeach
                                                     </div>
                                                     </div>
-                                                @endhasanyrole
+                                                @endcan
                                                 </div>{{-- /baris atas tombol aksi sejajar --}}
 
                                                 {{-- Batal (Task ID 99) — baris bawah. Manager Medis/Umum (Admin otomatis via super-user).

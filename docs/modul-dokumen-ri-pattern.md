@@ -63,8 +63,8 @@ Aturan yang mengikat:
 - **Hapus entri** juga digate: `@can('dokumen.hapus')` di tombol + guard
   `if (!auth()->user()?->can('dokumen.hapus')) { toast; return; }` sebagai statement pertama
   method hapus. Berlaku baik untuk draft maupun entri final.
-- **Role terpusat**: daftar role Hapus & Buka Kunci ada di **satu file** `App\Support\ModulDokumenAksiRole`
-  (konstanta `HAPUS` & `BUKA_KUNCI`, saat ini triad `Admin | Manager Umum | Manager Medis`), didaftarkan
+- **Role terpusat**: daftar role Hapus & Buka Kunci ada di **satu file** `App\Support\AksiRole`
+  (konstanta `DOKUMEN_HAPUS` & `DOKUMEN_BUKA_KUNCI`, saat ini triad `Admin | Manager Umum | Manager Medis`), didaftarkan
   sebagai Gate `dokumen.hapus` & `dokumen.bukaKunci` di `AppServiceProvider::boot()`. Menambah role =
   ubah 1 file itu. **JANGAN** tulis `@hasanyrole('Admin|...')`/`hasAnyRole([...])` literal di modul dokumen.
 

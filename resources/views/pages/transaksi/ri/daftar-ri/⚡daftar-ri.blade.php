@@ -801,7 +801,7 @@ new class extends Component {
                                                                 </x-dropdown-link>
                                                             @endhasanyrole
 
-                                                            @hasanyrole('Mr|Admin|Perawat|Tu')
+                                                            @can('ri.pindahKamar')
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="openPindahKamar('{{ $row->rihdr_no }}')"
                                                                     class="px-3 py-2 text-sm rounded-lg bg-orange-50 hover:bg-orange-100 dark:bg-orange-900/20">
@@ -820,10 +820,10 @@ new class extends Component {
                                                                         </span>
                                                                     </div>
                                                                 </x-dropdown-link>
-                                                            @endhasanyrole
+                                                            @endcan
 
                                                             {{-- Kirim iDRG — Admin, Casemix, Tu; BPJS + ri_status=Pulang --}}
-                                                            @hasanyrole('Admin|Casemix|Tu')
+                                                            @can('idrg.kirim')
                                                                 @if (($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM') && $row->ri_status === 'P')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openIdrg('{{ $row->rihdr_no }}')"
@@ -846,7 +846,7 @@ new class extends Component {
                                                                         </div>
                                                                     </x-dropdown-link>
                                                                 @endif
-                                                            @endhasanyrole
+                                                            @endcan
 
                                                             {{-- Berkas BPJS — Admin/Casemix/Tu/Mr --}}
                                                             @hasanyrole('Admin|Casemix|Tu|Mr')
@@ -870,7 +870,7 @@ new class extends Component {
                                                             @endhasanyrole
 
                                                             {{-- Kirim Satu Sehat — Admin, Mr --}}
-                                                            @hasanyrole('Admin|Mr')
+                                                            @can('satusehat.kirim')
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="openSatuSehat('{{ $row->rihdr_no }}')"
                                                                     class="px-3 py-2 text-sm rounded-lg bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40">
@@ -888,7 +888,7 @@ new class extends Component {
                                                                         </span>
                                                                     </div>
                                                                 </x-dropdown-link>
-                                                            @endhasanyrole
+                                                            @endcan
 
                                                         </div>
 

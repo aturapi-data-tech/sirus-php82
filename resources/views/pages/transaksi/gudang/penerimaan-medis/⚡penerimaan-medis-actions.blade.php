@@ -1245,7 +1245,7 @@ new class extends Component {
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     {{-- KIRI: Batalkan Transaksi --}}
                     <div class="flex items-center gap-3">
-                        @hasanyrole('Admin|Tu')
+                        @can('transaksi.batalPenerimaan')
                             @if ($formMode === 'edit' && $rcvNo && $rcvStatus !== 'F')
                                 @php
                                     $batalMsg = $rcvStatus === 'A'
@@ -1258,7 +1258,7 @@ new class extends Component {
                                     Batalkan Transaksi
                                 </x-confirm-button>
                             @endif
-                        @endhasanyrole
+                        @endcan
                         <div class="text-xs text-muted dark:text-gray-400">
                             <strong>{{ count($details) }}</strong> item &middot; Grand Total:
                             <strong class="font-mono text-brand dark:text-brand-lime">Rp

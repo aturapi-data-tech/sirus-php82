@@ -404,7 +404,7 @@ new class extends Component {
                             </x-primary-button>
                         @endhasanyrole
 
-                        @hasanyrole('Admin|Manager Umum|Manager Medis')
+                        @can('emr.logAktivitas')
                             {{-- Log Aktivitas — slate solid (manager ke atas) --}}
                             <x-primary-button type="button" wire:click="openLogAktivitas('{{ $rjNo }}')"
                                 wire:loading.attr="disabled" wire:target="openLogAktivitas"
@@ -421,7 +421,7 @@ new class extends Component {
                                     <x-loading /> Memuat...
                                 </span>
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
 
                         @hasanyrole('Dokter|Admin|Perawat')
                             <x-primary-button type="button" class="gap-1" x-data="{
@@ -471,7 +471,7 @@ new class extends Component {
                             </x-primary-button>
                         @endhasanyrole
 
-                        @hasanyrole('Perawat|Dokter|Casemix|Manager Medis|Manager Umum|Admin')
+                        @can('emr.cetakEresep')
                             @if ($this->hasEresep())
                                 <x-outline-button type="button" wire:click="cetakEresep('{{ $rjNo }}')"
                                     wire:loading.attr="disabled" wire:target="cetakEresep">
@@ -488,7 +488,7 @@ new class extends Component {
                                     </span>
                                 </x-outline-button>
                             @endif
-                        @endhasanyrole
+                        @endcan
                     </div>
 
                     {{-- KANAN: Tutup + Simpan sebelahan --}}

@@ -326,7 +326,7 @@ Bukan tombol aksi, melainkan input radio yang ditampilkan sebagai tombol.
 Aksi sensitif di **modul dokumen** (formulir bertanda tangan: consent, laporan,
 pengkajian, dll) — **Hapus** entri & **Buka Kunci** (cabut TTD) — WAJIB digate lewat
 **Gate terpusat**, bukan `@hasanyrole` literal. Daftar role ada di **satu file**
-`App\Support\ModulDokumenAksiRole` (konstanta `HAPUS` & `BUKA_KUNCI`), didaftarkan
+`App\Support\AksiRole` (konstanta `DOKUMEN_HAPUS` & `DOKUMEN_BUKA_KUNCI`), didaftarkan
 sebagai Gate `dokumen.hapus` & `dokumen.bukaKunci` di `AppServiceProvider::boot()`.
 
 ```blade
@@ -355,7 +355,7 @@ if (!auth()->user()?->can('dokumen.hapus')) {
 ```
 
 > Menambah/mengurangi role yang boleh Hapus/Buka Kunci = ubah **1 baris** di
-> `App\Support\ModulDokumenAksiRole` — otomatis berlaku di SEMUA modul (RI/UGD/RJ).
+> `App\Support\AksiRole` — otomatis berlaku di SEMUA modul (RI/UGD/RJ).
 > **DILARANG** menulis `@hasanyrole('Admin|Manager Umum|Manager Medis')` atau
 > `hasAnyRole([...])` literal di file modul dokumen. Domain lain (administrasi, EMR
 > unlock, log-aktivitas, saldo-kas) punya kebijakan sendiri — jangan pakai gate `dokumen.*`.

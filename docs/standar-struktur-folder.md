@@ -361,7 +361,7 @@ dibentuk cuma 4 kelompok (+ `Downtime/` yang sudah ada), bukan satu folder per d
 | `Terminologi/` (8) | pemetaan kode standar (SNOMED/KFA/LOINC/ICD/FHIR) | `AlergiSnomed`, `ObatKfa`, `RacikanKfa`, `MedicationRequestItem`, `PenilaianObservationMap`, `ObservasiLanjutanMap`, `DischargeDisposition`, `KodeIm` |
 | `GajiDokter/` (2) | modul slip gaji dokter | `GajiDokter`, `GajiDokterLampiran` |
 | `Downtime/` (2) | formulir & tarif waktu henti | `FormulirDowntime`, `TarifDowntime` |
-| *(akar)* (11) | pembantu tunggal per domain — nama sudah menjelaskan dirinya | `OracleLob`, `Terbilang`, `LogText`, `EresepJson`, `AdmisiPulangRI`, `DpjpUtamaRI`, `KelasKamar`, `KamarOperasiTarif`, `ModulDokumenAksiRole`, `NomorSuratKematian`, `SatuSehatMonitor` |
+| *(akar)* (11) | pembantu tunggal per domain — nama sudah menjelaskan dirinya | `OracleLob`, `Terbilang`, `LogText`, `EresepJson`, `AdmisiPulangRI`, `DpjpUtamaRI`, `KelasKamar`, `KamarOperasiTarif`, `AksiRole`, `NomorSuratKematian`, `SatuSehatMonitor` |
 
 > **Jangan mengandalkan resolusi satu-namespace antar kelas Support.** Sebelum penataan ini ada 7
 > tempat yang memanggil `Foo::` tanpa `use` maupun FQCN, mengandalkan keduanya kebetulan berada di

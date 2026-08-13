@@ -462,7 +462,7 @@ new class extends Component {
                             <x-badge variant="danger">Read Only</x-badge>
                         @endif
 
-                        @hasanyrole('Mr|Admin|Perawat|Tu')
+                        @can('ri.pindahKamar')
                             {{-- Pindah Kamar — amber solid --}}
                             <x-primary-button type="button" wire:click="openPindahKamar('{{ $riHdrNo }}')"
                                 wire:loading.attr="disabled" wire:target="openPindahKamar"
@@ -476,7 +476,7 @@ new class extends Component {
                                 <span wire:loading wire:target="openPindahKamar"
                                     class="flex items-center gap-1"><x-loading /> Memuat...</span>
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
 
                         @hasanyrole('Admin|Perawat|Dokter|Casemix|Apoteker|Gizi')
                             {{-- Dokumen — indigo solid --}}
@@ -512,7 +512,7 @@ new class extends Component {
                             </x-primary-button>
                         @endhasanyrole
 
-                        @hasanyrole('Admin|Manager Umum|Manager Medis')
+                        @can('emr.logAktivitas')
                             {{-- Log Aktivitas — slate solid (manager ke atas) --}}
                             <x-primary-button type="button" wire:click="openLogAktivitas('{{ $riHdrNo }}')"
                                 wire:loading.attr="disabled" wire:target="openLogAktivitas"
@@ -527,7 +527,7 @@ new class extends Component {
                                 <span wire:loading wire:target="openLogAktivitas"
                                     class="flex items-center gap-1"><x-loading /> Memuat...</span>
                             </x-primary-button>
-                        @endhasanyrole
+                        @endcan
 
                         @hasanyrole('Dokter|Admin|Perawat')
                             {{-- E-Resep — brand (x-primary default) --}}
