@@ -11,6 +11,9 @@ Dokumen ini **melengkapi**, bukan menggantikan:
 
 Di sini kita hanya bicara **pohon direktori dan nama berkas**.
 
+> **Versi web (tutorial interaktif, 11 bab):** route `/panduan-dev/koding-struktur`.
+> Isinya sama dengan dokumen ini; buka yang mana saja. Kalau salah satu diubah, ubah keduanya.
+
 > Hasil audit 2026-08-13 (dasar dokumen ini): 1.021 berkas Blade — **691 SFC Volt** (berkelas
 > `new class extends Component`) + **330 partial** markup murni; `app/` 128 berkas PHP
 > (68 trait, 38 support); `routes/web.php` 146 `Route::livewire`.

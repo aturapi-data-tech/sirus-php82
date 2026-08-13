@@ -48,6 +48,12 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/panduan-dev/koding-administrasi', 'pages::panduan-dev.koding-administrasi.koding-administrasi')
         ->name('panduan-dev.koding-administrasi');
 
+    // Tutorial standar struktur folder & penamaan berkas (app/ + resources/views/):
+    // prefix ⚡, suffix peran & jalur, batas Trait vs Support, prefix URL, 7 pemeriksa
+    // — docs/standar-struktur-folder.md versi web
+    Route::livewire('/panduan-dev/koding-struktur', 'pages::panduan-dev.koding-struktur.koding-struktur')
+        ->name('panduan-dev.koding-struktur');
+
     // Katalog skill repo (.claude/skills/*) — versi web dari docs/skills-index.md
     Route::livewire('/panduan-dev/koding-skill', 'pages::panduan-dev.koding-skill.koding-skill')
         ->name('panduan-dev.koding-skill');
