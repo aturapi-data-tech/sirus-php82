@@ -1,3 +1,5 @@
+@use('App\Support\Options\PraAnestesiOptions')
+
                             {{-- ══ SISTEM ORGAN & PENUNJANG ══ --}}
                             <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
                                 <h3 class="text-base font-semibold text-ink dark:text-gray-200">Fungsi Sistem Organ</h3>
