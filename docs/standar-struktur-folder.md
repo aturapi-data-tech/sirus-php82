@@ -388,7 +388,7 @@ tersentuh (**bukan** `view:cache` — ia tidak menangkap galat kelas Volt, lihat
 | ✅ 8 | `Traits/WithRenderVersioning`, `Traits/WithValidationToast` → `Traits/Concerns/` | 2 | 🟡 | **SELESAI 2026-08-13** — 347 rujukan |
 | ✅ 9 | `Traits/iDRG` → `Traits/IDRG` | 1 folder | 🟡 | **SELESAI 2026-08-13** — 59 rujukan. Nama trait `iDrgTrait` sendiri TIDAK diubah (di luar lingkup pemfolderan; kalau mau PSR-1 penuh, itu pekerjaan terpisah) |
 | 10 | Pecah 22 berkas > 1.500 baris (§5) | 22 | 🔴 | bukan rename — jadwalkan per modul saat modul itu disentuh |
-| 11 | Seragamkan prefix URL (§7) + redirect lama | ~30 route | 🔴 | menyentuh bookmark petugas — perlu keputusan operasional |
+| ✅ 11 | Seragamkan prefix URL (§7) + redirect lama | 20 route | 🔴 | **SELESAI 2026-08-13** — 20 route + 20 `Route::redirect` (302, bukan 301) supaya bookmark petugas tetap jalan. Termasuk anti-stutter `/ri/update-tt-ri` → `/ri/update-tt`. Nama route ikut berubah; `transaksi.rj.` sengaja TIDAK disapu buta karena 167 kemunculannya adalah nama KOMPONEN |
 | ✅ 12 | `site-marking/figs/*.blade.php` camelCase → kebab-case | 16 | 🟢 | **SELESAI 2026-08-13** — `footDorsumKanan` → `foot-dorsum-kanan`. Istilah anatomi (dorsum/palm) DIPERTAHANKAN; `id` panel tidak ikut diubah, lihat §3.6 |
 
 Item 1–3 dan 12 sudah dikerjakan 2026-08-13. Item 10–11 bukan pekerjaan pemfolderan dan tidak perlu

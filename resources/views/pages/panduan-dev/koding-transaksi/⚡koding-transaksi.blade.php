@@ -933,7 +933,7 @@ TXT,
                         {{-- flow RJ --}}
                         <div class="ds-caption-up mb-2">Rawat Jalan (RJ)</div>
                         <div class="flex flex-wrap items-center gap-2 mb-6">
-                            @foreach ([['Daftar RJ', '/rawat-jalan/daftar'], ['Pelayanan', '/rawat-jalan/pelayanan'], ['Antrian Kasir', 'poll 30s'], ['Administrasi', 'modal'], ['Apotek', 'antrian-apotek-rj']] as $i => [$tahap, $ket])
+                            @foreach ([['Daftar RJ', '/rj/daftar'], ['Pelayanan', '/rj/pelayanan'], ['Antrian Kasir', 'poll 30s'], ['Administrasi', 'modal'], ['Apotek', 'antrian-apotek-rj']] as $i => [$tahap, $ket])
                                 @if ($i > 0)<span class="ds-code" style="color:var(--primary)">▶</span>@endif
                                 <span class="ds-card-outline" style="padding:8px 14px">
                                     <span class="block text-sm font-semibold" style="color:var(--ink)">{{ $tahap }}</span>

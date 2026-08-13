@@ -126,7 +126,7 @@ new class extends Component {
 
                     {{-- RIGHT ACTIONS --}}
                     <div class="flex items-center justify-end gap-2">
-                        <a href="{{ route('rawat-jalan.daftar') }}" wire:navigate>
+                        <a href="{{ route('rj.daftar') }}" wire:navigate>
                             <x-outline-button type="button">Pendaftaran Rawat Jalan</x-outline-button>
                         </a>
                         <a href="{{ route('ugd.daftar') }}" wire:navigate>

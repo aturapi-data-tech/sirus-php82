@@ -150,24 +150,24 @@ Route::middleware(['auth'])->group(function () {
     // ===========================================
     // RAWAT JALAN (RJ) - DAFTAR RAWAT JALAN (Pendaftaran)
     // ===========================================
-    Route::livewire('/rawat-jalan/daftar', 'pages::transaksi.rj.daftar-rj.daftar-rj')
-        ->name('rawat-jalan.daftar');
+    Route::livewire('/rj/daftar', 'pages::transaksi.rj.daftar-rj.daftar-rj')
+        ->name('rj.daftar');
 
     // Jadwal Kontrol Pasien (SKDP RJ+RI) — pendaftaran geser tanggal kontrol + update BPJS
-    Route::livewire('/jadwal-kontrol', 'pages::transaksi.kontrol.jadwal-kontrol.jadwal-kontrol')
-        ->name('jadwal-kontrol');
+    Route::livewire('/kontrol/jadwal-kontrol', 'pages::transaksi.kontrol.jadwal-kontrol.jadwal-kontrol')
+        ->name('kontrol.jadwal-kontrol');
 
     // ===========================================
     // RAWAT JALAN (RJ) - PELAYANAN POLI (Dokter/Perawat)
     // ===========================================
-    Route::livewire('/rawat-jalan/pelayanan', 'pages::transaksi.rj.pelayanan-rj.pelayanan-rj')
-        ->name('rawat-jalan.pelayanan');
+    Route::livewire('/rj/pelayanan', 'pages::transaksi.rj.pelayanan-rj.pelayanan-rj')
+        ->name('rj.pelayanan');
 
     // ===========================================
     // RAWAT JALAN (RJ) - DAFTAR PASIEN BULANAN
     // ===========================================
-    Route::livewire('/rawat-jalan/daftar-bulanan', 'pages::transaksi.rj.daftar-rj-bulanan.daftar-rj-bulanan')
-        ->name('rawat-jalan.daftar-bulanan');
+    Route::livewire('/rj/daftar-bulanan', 'pages::transaksi.rj.daftar-rj-bulanan.daftar-rj-bulanan')
+        ->name('rj.daftar-bulanan');
 
     // ===========================================
     // FILES — Serve private file (auth required)
@@ -225,20 +225,20 @@ Route::middleware(['auth'])->group(function () {
     // ===========================================
     // RAWAT JALAN (RJ) - BOOKING RJ (Mobile JKN)
     // ===========================================
-    Route::livewire('/rawat-jalan/booking', 'pages::transaksi.rj.booking-rj.booking-rj')
-        ->name('rawat-jalan.booking');
+    Route::livewire('/rj/booking', 'pages::transaksi.rj.booking-rj.booking-rj')
+        ->name('rj.booking');
 
     // ===========================================
     // TRANSAKSI RJ - ANTRIAN APOTEK
     // ===========================================
-    Route::livewire('/transaksi/rj/antrian-apotek-rj', 'pages::transaksi.rj.antrian-apotek-rj.antrian-apotek-rj')
-        ->name('transaksi.rj.antrian-apotek-rj');
+    Route::livewire('/rj/antrian-apotek', 'pages::transaksi.rj.antrian-apotek-rj.antrian-apotek-rj')
+        ->name('rj.antrian-apotek');
 
     // ===========================================
     // TRANSAKSI RJ - ANTRIAN KASIR (clone Apotek RJ)
     // ===========================================
-    Route::livewire('/transaksi/rj/antrian-kasir-rj', 'pages::transaksi.rj.antrian-kasir-rj.antrian-kasir-rj')
-        ->name('transaksi.rj.antrian-kasir-rj');
+    Route::livewire('/rj/antrian-kasir', 'pages::transaksi.rj.antrian-kasir-rj.antrian-kasir-rj')
+        ->name('rj.antrian-kasir');
 
 
     // ===========================================
@@ -260,49 +260,49 @@ Route::middleware(['auth'])->group(function () {
     // ===========================================
     // TRANSAKSI UGD - ANTRIAN APOTEK
     // ===========================================
-    Route::livewire('/transaksi/ugd/antrian-apotek-ugd', 'pages::transaksi.ugd.antrian-apotek-ugd.antrian-apotek-ugd')
-        ->name('transaksi.ugd.antrian-apotek-ugd');
+    Route::livewire('/ugd/antrian-apotek', 'pages::transaksi.ugd.antrian-apotek-ugd.antrian-apotek-ugd')
+        ->name('ugd.antrian-apotek');
 
     // ===========================================
     // TRANSAKSI UGD - ANTRIAN KASIR (clone Apotek UGD)
     // ===========================================
-    Route::livewire('/transaksi/ugd/antrian-kasir-ugd', 'pages::transaksi.ugd.antrian-kasir-ugd.antrian-kasir-ugd')
-        ->name('transaksi.ugd.antrian-kasir-ugd');
+    Route::livewire('/ugd/antrian-kasir', 'pages::transaksi.ugd.antrian-kasir-ugd.antrian-kasir-ugd')
+        ->name('ugd.antrian-kasir');
 
 
     // ===========================================
     // TRANSAKSI APOTEK - GABUNGAN RJ + UGD + RI (tab)
     // ===========================================
-    Route::livewire('/transaksi/apotek', 'pages::transaksi.apotek.apotek')
-        ->name('transaksi.apotek');
+    Route::livewire('/apotek', 'pages::transaksi.apotek.apotek')
+        ->name('apotek');
 
     // ===========================================
     // TRANSAKSI KASIR - GABUNGAN RJ + UGD + RI (tab) — clone Apotek
     // ===========================================
-    Route::livewire('/transaksi/kasir', 'pages::transaksi.kasir.kasir')
-        ->name('transaksi.kasir');
+    Route::livewire('/kasir', 'pages::transaksi.kasir.kasir')
+        ->name('kasir');
 
     // ===========================================
     // TRANSAKSI CASEMIX - GABUNGAN Bulanan RJ + UGD + RI (tab)
     // ===========================================
-    Route::livewire('/transaksi/casemix', 'pages::transaksi.casemix.casemix')
-        ->name('transaksi.casemix');
+    Route::livewire('/casemix', 'pages::transaksi.casemix.casemix')
+        ->name('casemix');
 
     // Direct route — Antrian Apotek RI (tanpa wrapper tab)
-    Route::livewire('/transaksi/ri-resep/antrian-ri-resep', 'pages::transaksi.ri-resep.antrian-ri-resep.antrian-ri-resep')
-        ->name('transaksi.ri-resep.antrian-ri-resep');
+    Route::livewire('/ri-resep/antrian', 'pages::transaksi.ri-resep.antrian-ri-resep.antrian-ri-resep')
+        ->name('ri-resep.antrian');
 
     // PTO — Pemantauan Terapi Obat (program apoteker, baca e-resep RI)
     Route::livewire('/ri/pto', 'pages::transaksi.ri.pto.pto')
         ->name('ri.pto');
 
     // Direct route — Antrian Kasir RI (clone Apotek RI)
-    Route::livewire('/transaksi/kasir/antrian-kasir-ri', 'pages::transaksi.kasir.antrian-kasir-ri.antrian-kasir-ri')
-        ->name('transaksi.kasir.antrian-kasir-ri');
+    Route::livewire('/kasir/antrian-ri', 'pages::transaksi.kasir.antrian-kasir-ri.antrian-kasir-ri')
+        ->name('kasir.antrian-ri');
 
     // Direct route — Daftar Pasien RI Kasir (per rihdr, action: Administrasi saja)
-    Route::livewire('/transaksi/kasir/daftar-kasir-ri', 'pages::transaksi.kasir.daftar-kasir-ri.daftar-kasir-ri')
-        ->name('transaksi.kasir.daftar-kasir-ri');
+    Route::livewire('/kasir/daftar-ri', 'pages::transaksi.kasir.daftar-kasir-ri.daftar-kasir-ri')
+        ->name('kasir.daftar-ri');
 
 
     // ===========================================
@@ -321,8 +321,8 @@ Route::middleware(['auth'])->group(function () {
     // ===========================================
     // RI — UPDATE TEMPAT TIDUR (Aplicares + SIRS)
     // ===========================================
-    Route::livewire('/ri/update-tt-ri', 'pages::transaksi.ri.update-tt-ri.update-tt-ri')
-        ->name('ri.update-tt-ri');
+    Route::livewire('/ri/update-tt', 'pages::transaksi.ri.update-tt-ri.update-tt-ri')
+        ->name('ri.update-tt');
     // ===========================================
     // OPERASI - JADWAL OPERASI
     // ===========================================
@@ -463,20 +463,20 @@ Route::middleware(['auth'])->group(function () {
     // ===========================================
     // TRANSAKSI PENUNJANG - LABORATORIUM
     // ===========================================
-    Route::livewire('/transaksi/penunjang/laborat', 'pages::transaksi.penunjang.laborat.daftar-laborat')
-        ->name('transaksi.penunjang.laborat');
+    Route::livewire('/penunjang/laborat', 'pages::transaksi.penunjang.laborat.daftar-laborat')
+        ->name('penunjang.laborat');
 
-    Route::livewire('/transaksi/penunjang/laborat/lab-luar', 'pages::transaksi.penunjang.laborat.lab-luar.lab-luar')
-        ->name('transaksi.penunjang.laborat.lab-luar');
+    Route::livewire('/penunjang/laborat/lab-luar', 'pages::transaksi.penunjang.laborat.lab-luar.lab-luar')
+        ->name('penunjang.laborat.lab-luar');
 
-    Route::livewire('/transaksi/penunjang/radiologi/upload', 'pages::transaksi.penunjang.radiologi.upload-radiologi')
-        ->name('transaksi.penunjang.radiologi.upload');
+    Route::livewire('/penunjang/radiologi/upload', 'pages::transaksi.penunjang.radiologi.upload-radiologi')
+        ->name('penunjang.radiologi.upload');
 
     // ===========================================
     // TRANSAKSI PENUNJANG - KAMAR OPERASI
     // ===========================================
-    Route::livewire('/transaksi/penunjang/kamar-operasi', 'pages::transaksi.penunjang.kamar-operasi.daftar-kamar-operasi')
-        ->name('transaksi.penunjang.kamar-operasi');
+    Route::livewire('/penunjang/kamar-operasi', 'pages::transaksi.penunjang.kamar-operasi.daftar-kamar-operasi')
+        ->name('penunjang.kamar-operasi');
 
     // ===========================================
     // DATABASE MONITOR - MONITORING DASHBOARD
@@ -649,3 +649,36 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__ . '/auth.php';
+
+/*
+|--------------------------------------------------------------------------
+| REDIRECT URL LAMA -> BARU (penyeragaman prefix, docs/standar-struktur-folder.md §7)
+|--------------------------------------------------------------------------
+| Petugas menyimpan URL lama di bookmark & pintasan browser. Redirect ini menjaga
+| keduanya tetap bekerja. Sengaja 302 (default Route::redirect), BUKAN 301: 301
+| di-cache permanen oleh browser, jadi kalau nanti ada penyesuaian lagi, pengguna
+| yang sudah pernah membuka URL lama akan sulit dilepas dari cache-nya.
+|
+| Boleh dihapus kalau sudah yakin tidak ada lagi yang memakai URL lama.
+*/
+
+Route::redirect('/rawat-jalan/daftar', '/rj/daftar');
+Route::redirect('/rawat-jalan/pelayanan', '/rj/pelayanan');
+Route::redirect('/rawat-jalan/daftar-bulanan', '/rj/daftar-bulanan');
+Route::redirect('/rawat-jalan/booking', '/rj/booking');
+Route::redirect('/jadwal-kontrol', '/kontrol/jadwal-kontrol');
+Route::redirect('/transaksi/rj/antrian-apotek-rj', '/rj/antrian-apotek');
+Route::redirect('/transaksi/rj/antrian-kasir-rj', '/rj/antrian-kasir');
+Route::redirect('/transaksi/ugd/antrian-apotek-ugd', '/ugd/antrian-apotek');
+Route::redirect('/transaksi/ugd/antrian-kasir-ugd', '/ugd/antrian-kasir');
+Route::redirect('/transaksi/apotek', '/apotek');
+Route::redirect('/transaksi/kasir', '/kasir');
+Route::redirect('/transaksi/casemix', '/casemix');
+Route::redirect('/transaksi/ri-resep/antrian-ri-resep', '/ri-resep/antrian');
+Route::redirect('/transaksi/kasir/antrian-kasir-ri', '/kasir/antrian-ri');
+Route::redirect('/transaksi/kasir/daftar-kasir-ri', '/kasir/daftar-ri');
+Route::redirect('/transaksi/penunjang/laborat', '/penunjang/laborat');
+Route::redirect('/transaksi/penunjang/laborat/lab-luar', '/penunjang/laborat/lab-luar');
+Route::redirect('/transaksi/penunjang/radiologi/upload', '/penunjang/radiologi/upload');
+Route::redirect('/transaksi/penunjang/kamar-operasi', '/penunjang/kamar-operasi');
+Route::redirect('/ri/update-tt-ri', '/ri/update-tt');
