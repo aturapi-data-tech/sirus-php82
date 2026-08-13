@@ -27,10 +27,7 @@ new class extends Component {
         'tglPermintaan' => '',
         'kategori' => '',
         'uraian' => '',
-        'dokterAsal' => '',
-        'dokterTujuan' => '',
         'alasan' => '',
-        'hasilOpini' => '',
         'namaPenanda' => '',
         'hubunganPasien' => 'pasien',
         'pemberiInfo' => '',
@@ -130,10 +127,7 @@ new class extends Component {
             'newForm.tglPermintaan' => 'required|date_format:d/m/Y H:i:s',
             'newForm.kategori' => 'required|string|max:200',
             'newForm.uraian' => 'required|string|max:1000',
-            'newForm.dokterAsal' => 'nullable|string|max:200',
-            'newForm.dokterTujuan' => 'nullable|string|max:200',
             'newForm.alasan' => 'required|string|max:1000',
-            'newForm.hasilOpini' => 'nullable|string|max:2000',
             'newForm.namaPenanda' => 'required|string|max:200',
             'newForm.hubunganPasien' => 'required|string|max:50',
             'signature' => 'required|string',
@@ -155,10 +149,7 @@ new class extends Component {
             'newForm.tglPermintaan' => 'Tanggal/jam permintaan',
             'newForm.kategori' => 'Kategori second opinion',
             'newForm.uraian' => 'Uraian permintaan',
-            'newForm.dokterAsal' => 'Dokter / tenaga medis asal',
-            'newForm.dokterTujuan' => 'Dokter / tenaga medis tujuan',
             'newForm.alasan' => 'Alasan permintaan second opinion',
-            'newForm.hasilOpini' => 'Hasil / rekomendasi second opinion',
             'newForm.namaPenanda' => 'Nama pasien/keluarga',
             'newForm.hubunganPasien' => 'Hubungan dengan pasien',
             'signature' => 'Tanda tangan pasien/keluarga',
@@ -249,10 +240,7 @@ new class extends Component {
             'tglPermintaan' => $this->newForm['tglPermintaan'] ?? '',
             'kategori' => $this->newForm['kategori'] ?? '',
             'uraian' => $this->newForm['uraian'] ?? '',
-            'dokterAsal' => $this->newForm['dokterAsal'] ?? '',
-            'dokterTujuan' => $this->newForm['dokterTujuan'] ?? '',
             'alasan' => $this->newForm['alasan'] ?? '',
-            'hasilOpini' => $this->newForm['hasilOpini'] ?? '',
             'namaPenanda' => $this->newForm['namaPenanda'] ?? '',
             'hubunganPasien' => $this->newForm['hubunganPasien'] ?? 'pasien',
             'signature' => $this->signature,
@@ -336,10 +324,7 @@ new class extends Component {
             'tglPermintaan' => $entry['tglPermintaan'] ?? '',
             'kategori' => $entry['kategori'] ?? '',
             'uraian' => $entry['uraian'] ?? '',
-            'dokterAsal' => $entry['dokterAsal'] ?? '',
-            'dokterTujuan' => $entry['dokterTujuan'] ?? '',
             'alasan' => $entry['alasan'] ?? '',
-            'hasilOpini' => $entry['hasilOpini'] ?? '',
             'namaPenanda' => $entry['namaPenanda'] ?? '',
             'hubunganPasien' => $entry['hubunganPasien'] ?? 'pasien',
             'pemberiInfo' => $entry['pemberiInfo'] ?? '',
@@ -551,10 +536,7 @@ new class extends Component {
             'tglPermintaan' => '',
             'kategori' => '',
             'uraian' => '',
-            'dokterAsal' => '',
-            'dokterTujuan' => '',
             'alasan' => '',
-            'hasilOpini' => '',
             'namaPenanda' => '',
             'hubunganPasien' => 'pasien',
             'pemberiInfo' => '',
@@ -756,84 +738,51 @@ new class extends Component {
                             </div>
                         @endif
 
-                        {{-- ══ TANGGAL/JAM PERMINTAAN ══ --}}
+                        {{-- ══ TANGGAL & KATEGORI (satu baris) ══ --}}
                         <section>
-                            <x-input-label value="Tanggal / Jam Permintaan *" class="mb-1" />
-                            <div class="flex items-center gap-2">
-                                <x-text-input wire:model.live="newForm.tglPermintaan" placeholder="dd/mm/yyyy HH:mm:ss"
-                                    :error="$errors->has('newForm.tglPermintaan')" :disabled="$formReadOnly"
-                                    class="w-full max-w-xs" />
-                                @if (!$formReadOnly)
-                                    <x-now-button wire:click="setNow('tglPermintaan')" :disabled="$formReadOnly" />
-                                @endif
-                            </div>
-                            <x-input-error :messages="$errors->get('newForm.tglPermintaan')" class="mt-1" />
-                        </section>
-
-                        {{-- ══ KATEGORI SECOND OPINION ══ --}}
-                        <section class="pt-6 space-y-3 border-t border-hairline dark:border-gray-700">
-                            <h3 class="text-base font-semibold text-ink dark:text-gray-200">
-                                Kategori Permintaan Second Opinion *
-                            </h3>
-                            <div class="flex flex-wrap gap-2">
-                                @foreach ($kategoriOptions as $opt)
-                                    <x-radio-button :label="$opt" :value="$opt" name="kategori"
-                                        wire:model.live="newForm.kategori" :disabled="$formReadOnly" />
-                                @endforeach
-                            </div>
-                            <x-input-error :messages="$errors->get('newForm.kategori')" class="mt-1" />
-                        </section>
-
-                        {{-- ══ URAIAN PERMINTAAN ══ --}}
-                        <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
-                            <div>
-                                <x-input-label value="Uraian Permintaan Second Opinion *" class="mb-1" />
-                                <x-textarea wire:model.live="newForm.uraian" :error="$errors->has('newForm.uraian')" rows="3"
-                                    placeholder="Jelaskan tindakan/obat/tenaga medis yang dimintakan second opinion..."
-                                    :disabled="$formReadOnly" class="w-full" />
-                                <x-input-error :messages="$errors->get('newForm.uraian')" class="mt-1" />
-                            </div>
-                        </section>
-
-                        {{-- ══ DOKTER ASAL & TUJUAN ══ --}}
-                        <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div>
-                                    <x-input-label value="Dokter / Tenaga Medis Asal" class="mb-1" />
-                                    <x-text-input wire:model.live="newForm.dokterAsal" :error="$errors->has('newForm.dokterAsal')"
-                                        placeholder="Nama DPJP / tenaga medis yang merawat..."
-                                        :disabled="$formReadOnly" class="w-full" />
-                                    <x-input-error :messages="$errors->get('newForm.dokterAsal')" class="mt-1" />
+                                    <x-input-label value="Tanggal / Jam Permintaan *" class="mb-1" />
+                                    <div class="flex items-center gap-2">
+                                        <x-text-input wire:model.live="newForm.tglPermintaan" placeholder="dd/mm/yyyy HH:mm:ss"
+                                            :error="$errors->has('newForm.tglPermintaan')" :disabled="$formReadOnly"
+                                            class="w-full" />
+                                        @if (!$formReadOnly)
+                                            <x-now-button wire:click="setNow('tglPermintaan')" :disabled="$formReadOnly" />
+                                        @endif
+                                    </div>
+                                    <x-input-error :messages="$errors->get('newForm.tglPermintaan')" class="mt-1" />
                                 </div>
                                 <div>
-                                    <x-input-label value="Dokter / Tenaga Medis Tujuan (Second Opinion)" class="mb-1" />
-                                    <x-text-input wire:model.live="newForm.dokterTujuan" :error="$errors->has('newForm.dokterTujuan')"
-                                        placeholder="Nama dokter/tenaga medis yang dimintai pendapat..."
-                                        :disabled="$formReadOnly" class="w-full" />
-                                    <x-input-error :messages="$errors->get('newForm.dokterTujuan')" class="mt-1" />
+                                    <x-input-label value="Kategori Permintaan *" class="mb-1" />
+                                    <div class="flex flex-wrap gap-2 mt-1.5">
+                                        @foreach ($kategoriOptions as $opt)
+                                            <x-radio-button :label="$opt" :value="$opt" name="kategori"
+                                                wire:model.live="newForm.kategori" :disabled="$formReadOnly" />
+                                        @endforeach
+                                    </div>
+                                    <x-input-error :messages="$errors->get('newForm.kategori')" class="mt-1" />
                                 </div>
                             </div>
                         </section>
 
-                        {{-- ══ ALASAN PERMINTAAN ══ --}}
-                        <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
-                            <div>
-                                <x-input-label value="Alasan Permintaan Second Opinion *" class="mb-1" />
-                                <x-textarea wire:model.live="newForm.alasan" :error="$errors->has('newForm.alasan')" rows="3"
-                                    placeholder="Jelaskan alasan pasien/keluarga meminta second opinion..."
-                                    :disabled="$formReadOnly" class="w-full" />
-                                <x-input-error :messages="$errors->get('newForm.alasan')" class="mt-1" />
-                            </div>
-                        </section>
-
-                        {{-- ══ HASIL / REKOMENDASI ══ --}}
-                        <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
-                            <div>
-                                <x-input-label value="Hasil / Rekomendasi Second Opinion" class="mb-1" />
-                                <x-textarea wire:model.live="newForm.hasilOpini" :error="$errors->has('newForm.hasilOpini')" rows="3"
-                                    placeholder="Diisi setelah second opinion dilakukan — hasil dan rekomendasi..."
-                                    :disabled="$formReadOnly" class="w-full" />
-                                <x-input-error :messages="$errors->get('newForm.hasilOpini')" class="mt-1" />
+                        {{-- ══ URAIAN & ALASAN ══ --}}
+                        <section class="pt-6 border-t border-hairline dark:border-gray-700">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <x-input-label value="Uraian Permintaan Second Opinion *" class="mb-1" />
+                                    <x-textarea wire:model.live="newForm.uraian" :error="$errors->has('newForm.uraian')" rows="3"
+                                        placeholder="Jelaskan tindakan/obat/tenaga medis yang dimintakan second opinion..."
+                                        :disabled="$formReadOnly" class="w-full" />
+                                    <x-input-error :messages="$errors->get('newForm.uraian')" class="mt-1" />
+                                </div>
+                                <div>
+                                    <x-input-label value="Alasan Permintaan Second Opinion *" class="mb-1" />
+                                    <x-textarea wire:model.live="newForm.alasan" :error="$errors->has('newForm.alasan')" rows="3"
+                                        placeholder="Jelaskan alasan pasien/keluarga meminta second opinion..."
+                                        :disabled="$formReadOnly" class="w-full" />
+                                    <x-input-error :messages="$errors->get('newForm.alasan')" class="mt-1" />
+                                </div>
                             </div>
                         </section>
 
@@ -957,9 +906,8 @@ new class extends Component {
                                     @foreach (array_reverse($secondOpinionList) as $entry)
                                         @php
                                             $entry = array_replace([
-                                                'tglPermintaan' => '', 'kategori' => '', 'uraian' => '',
-                                                'dokterAsal' => '', 'dokterTujuan' => '', 'alasan' => '',
-                                                'hasilOpini' => '', 'namaPenanda' => '', 'hubunganPasien' => '',
+                                                'tglPermintaan' => '', 'kategori' => '', 'uraian' => '', 'alasan' => '',
+                                                'namaPenanda' => '', 'hubunganPasien' => '',
                                                 'pemberiInfo' => '', 'pemberiInfoCode' => '', 'pemberiInfoDate' => '',
                                                 'signature' => '', 'signatureDate' => '',
                                             ], $entry);
@@ -1074,21 +1022,9 @@ new class extends Component {
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Uraian Permintaan</dt>
                                                             <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['uraian'] ?: '-' }}</dd>
                                                         </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Dokter / Tenaga Medis Asal</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['dokterAsal'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Dokter / Tenaga Medis Tujuan</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['dokterTujuan'] ?: '-' }}</dd>
-                                                        </div>
                                                         <div class="md:col-span-2">
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Alasan Permintaan</dt>
                                                             <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['alasan'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div class="md:col-span-2">
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Hasil / Rekomendasi</dt>
-                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['hasilOpini'] ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Nama Pasien / Keluarga</dt>
