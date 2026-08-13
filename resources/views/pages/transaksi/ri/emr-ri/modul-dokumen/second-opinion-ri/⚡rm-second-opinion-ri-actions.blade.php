@@ -27,8 +27,6 @@ new class extends Component {
         'tglPermintaan' => '',
         'kategori' => '',
         'uraian' => '',
-        'dokterAsal' => '',
-        'dokterTujuan' => '',
         'alasan' => '',
         'hasilOpini' => '',
         'namaPenanda' => '',
@@ -130,8 +128,6 @@ new class extends Component {
             'newForm.tglPermintaan' => 'required|date_format:d/m/Y H:i:s',
             'newForm.kategori' => 'required|string|max:200',
             'newForm.uraian' => 'required|string|max:1000',
-            'newForm.dokterAsal' => 'nullable|string|max:200',
-            'newForm.dokterTujuan' => 'nullable|string|max:200',
             'newForm.alasan' => 'required|string|max:1000',
             'newForm.hasilOpini' => 'nullable|string|max:2000',
             'newForm.namaPenanda' => 'required|string|max:200',
@@ -155,8 +151,6 @@ new class extends Component {
             'newForm.tglPermintaan' => 'Tanggal/jam permintaan',
             'newForm.kategori' => 'Kategori second opinion',
             'newForm.uraian' => 'Uraian permintaan',
-            'newForm.dokterAsal' => 'Dokter / tenaga medis asal',
-            'newForm.dokterTujuan' => 'Dokter / tenaga medis tujuan',
             'newForm.alasan' => 'Alasan permintaan second opinion',
             'newForm.hasilOpini' => 'Hasil / rekomendasi second opinion',
             'newForm.namaPenanda' => 'Nama pasien/keluarga',
@@ -249,8 +243,6 @@ new class extends Component {
             'tglPermintaan' => $this->newForm['tglPermintaan'] ?? '',
             'kategori' => $this->newForm['kategori'] ?? '',
             'uraian' => $this->newForm['uraian'] ?? '',
-            'dokterAsal' => $this->newForm['dokterAsal'] ?? '',
-            'dokterTujuan' => $this->newForm['dokterTujuan'] ?? '',
             'alasan' => $this->newForm['alasan'] ?? '',
             'hasilOpini' => $this->newForm['hasilOpini'] ?? '',
             'namaPenanda' => $this->newForm['namaPenanda'] ?? '',
@@ -336,8 +328,6 @@ new class extends Component {
             'tglPermintaan' => $entry['tglPermintaan'] ?? '',
             'kategori' => $entry['kategori'] ?? '',
             'uraian' => $entry['uraian'] ?? '',
-            'dokterAsal' => $entry['dokterAsal'] ?? '',
-            'dokterTujuan' => $entry['dokterTujuan'] ?? '',
             'alasan' => $entry['alasan'] ?? '',
             'hasilOpini' => $entry['hasilOpini'] ?? '',
             'namaPenanda' => $entry['namaPenanda'] ?? '',
@@ -795,26 +785,6 @@ new class extends Component {
                             </div>
                         </section>
 
-                        {{-- ══ DOKTER ASAL & TUJUAN ══ --}}
-                        <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
-                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div>
-                                    <x-input-label value="Dokter / Tenaga Medis Asal" class="mb-1" />
-                                    <x-text-input wire:model.live="newForm.dokterAsal" :error="$errors->has('newForm.dokterAsal')"
-                                        placeholder="Nama DPJP / tenaga medis yang merawat..."
-                                        :disabled="$formReadOnly" class="w-full" />
-                                    <x-input-error :messages="$errors->get('newForm.dokterAsal')" class="mt-1" />
-                                </div>
-                                <div>
-                                    <x-input-label value="Dokter / Tenaga Medis Tujuan (Second Opinion)" class="mb-1" />
-                                    <x-text-input wire:model.live="newForm.dokterTujuan" :error="$errors->has('newForm.dokterTujuan')"
-                                        placeholder="Nama dokter/tenaga medis yang dimintai pendapat..."
-                                        :disabled="$formReadOnly" class="w-full" />
-                                    <x-input-error :messages="$errors->get('newForm.dokterTujuan')" class="mt-1" />
-                                </div>
-                            </div>
-                        </section>
-
                         {{-- ══ ALASAN PERMINTAAN ══ --}}
                         <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
                             <div>
@@ -957,8 +927,7 @@ new class extends Component {
                                     @foreach (array_reverse($secondOpinionList) as $entry)
                                         @php
                                             $entry = array_replace([
-                                                'tglPermintaan' => '', 'kategori' => '', 'uraian' => '',
-                                                'dokterAsal' => '', 'dokterTujuan' => '', 'alasan' => '',
+                                                'tglPermintaan' => '', 'kategori' => '', 'uraian' => '', 'alasan' => '',
                                                 'hasilOpini' => '', 'namaPenanda' => '', 'hubunganPasien' => '',
                                                 'pemberiInfo' => '', 'pemberiInfoCode' => '', 'pemberiInfoDate' => '',
                                                 'signature' => '', 'signatureDate' => '',
@@ -1073,14 +1042,6 @@ new class extends Component {
                                                         <div class="md:col-span-2">
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Uraian Permintaan</dt>
                                                             <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['uraian'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Dokter / Tenaga Medis Asal</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['dokterAsal'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Dokter / Tenaga Medis Tujuan</dt>
-                                                            <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['dokterTujuan'] ?: '-' }}</dd>
                                                         </div>
                                                         <div class="md:col-span-2">
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Alasan Permintaan</dt>

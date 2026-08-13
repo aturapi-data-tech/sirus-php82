@@ -79,16 +79,6 @@
             </td>
         </tr>
 
-        {{-- ── DOKTER ASAL & TUJUAN ── --}}
-        <tr>
-            <td class="border border-black px-2 py-1.5 w-1/3"><strong>Dokter / Tenaga Medis Asal</strong></td>
-            <td class="border border-black px-2 py-1.5">{{ ($form['dokterAsal'] ?? '') ?: '-' }}</td>
-        </tr>
-        <tr>
-            <td class="border border-black px-2 py-1.5 w-1/3"><strong>Dokter / Tenaga Medis Tujuan</strong></td>
-            <td class="border border-black px-2 py-1.5">{{ ($form['dokterTujuan'] ?? '') ?: '-' }}</td>
-        </tr>
-
         {{-- ── ALASAN ── --}}
         <tr>
             <td colspan="2" class="border border-black px-2 py-1.5">
