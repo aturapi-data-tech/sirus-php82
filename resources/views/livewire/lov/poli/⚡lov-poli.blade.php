@@ -226,11 +226,6 @@ new class extends Component {
     {
         $this->dispatch('lov-scroll', id: $this->getId(), index: $this->selectedIndex);
     }
-
-    public function render(): \Illuminate\View\View
-    {
-        return view('livewire.lov.poli.lov-poli');
-    }
 };
 ?>
 

@@ -87,17 +87,20 @@ Kenapa aturan ini yang dipilih (bukan “`⚡` hanya untuk halaman ber-route”)
   dengan `⚡master-obat.blade.php`), jadi menambah/melepas prefix **tidak memutus referensi** —
   selama referensinya lewat resolver Livewire, bukan view finder (lihat pengecualian di bawah).
 
-Keadaan sekarang: **688 SFC ber-`⚡`**, 3 dikecualikan, **0 partial** ber-`⚡`.
+Keadaan sekarang: **691 SFC ber-`⚡`** (semua), **0 SFC tanpa `⚡`**, **0 partial** ber-`⚡`.
 
-**Pengecualian tercatat — 3 LOV.** `lov-poli`, `lov-diag-kep`, `lov-asuhan-keperawatan` punya
-`render()` eksplisit yang memanggil view-nya sendiri **by name**
-(`return view('livewire.lov.poli.lov-poli')`). Jalur itu memakai **view finder**, bukan resolver
-Livewire, sehingga `⚡` di nama berkas akan memutusnya. Ketiganya sengaja dibiarkan tanpa `⚡`
-sampai `render()` mubazirnya dihapus lebih dulu (SFC merender template-nya sendiri secara otomatis
-— ketiga `render()` itu sisa porting dari komponen berkelas). Selama itu belum dilakukan, pemeriksa
-di bawah akan melaporkan tepat 3 berkas ini dan itu wajar.
+**Tidak ada pengecualian.** Sempat ada 3: `lov-poli`, `lov-diag-kep`, `lov-asuhan-keperawatan`
+punya `render()` eksplisit yang memanggil view-nya sendiri **by name**
+(`return view('livewire.lov.poli.lov-poli')`) — jalur itu memakai **view finder**, bukan resolver
+Livewire, sehingga `⚡` akan memutusnya. `render()` itu mubazir (SFC merender template-nya sendiri;
+32 LOV lain tidak punya, ketiganya sisa porting dari komponen berkelas), jadi dihapus lebih dulu
+lalu berkasnya di-rename — 2026-08-13, §8 item 3b.
 
-Cek kepatuhan:
+> Pelajaran polanya: kalau sebuah SFC memanggil `view('<nama-dirinya>')`, ia mengikat nama berkas
+> ke view finder dan membuat berkasnya tidak bisa di-rename. Jangan tulis `render()` di SFC kecuali
+> ia mengembalikan view yang **berbeda** dari dirinya.
+
+Cek kepatuhan (dua-duanya harus kosong):
 
 ```bash
 # Harus kosong: SFC Volt yang belum ber-⚡
@@ -351,7 +354,8 @@ tersentuh (**bukan** `view:cache` — ia tidak menangkap galat kelas Volt, lihat
 |---|---|---|---|---|
 | ✅ 1 | `erm-<jalur>.blade.php` → `emr-<jalur>.blade.php` | 3 berkas | 🟢 | **SELESAI 2026-08-13** — 3 rename + 3 tag `<livewire:>` + 28 penyebutan di komentar/docs |
 | ✅ 2 | Hapus prefix `_` : `_patient-detail`, `_breakdown-dokter` | 2 | 🟢 | **SELESAI 2026-08-13** — jadi `penunjang-detail-pasien` & `pendapatan-rs-rincian-dokter` (pola `<modul>-<bagian>`), 6 `@include` disesuaikan |
-| ✅ 3 | `⚡` untuk SFC Volt yang belum punya | 546 | 🟢 | **SELESAI 2026-08-13** — 546 rename. Sisa 3 LOV dikecualikan, alasan di §3.1 |
+| ✅ 3 | `⚡` untuk SFC Volt yang belum punya | 546 | 🟢 | **SELESAI 2026-08-13** — 546 rename |
+| ✅ 3b | 3 LOV: hapus `render()` mubazir lalu rename | 3 | 🟡 | **SELESAI 2026-08-13** — output render dibandingkan byte-per-byte dgn baseline (identik sesudah `wire:id`/`snapshot`/id Alpine acak dinormalkan). Kini 691/691 patuh, tanpa pengecualian |
 | 4 | Suffix jalur folder+berkas modul-dokumen RJ (13) & UGD (18) | 31 folder | 🟡 | referensi `<livewire:pages::…>` ikut berubah — grep per modul |
 | 5 | 7 `rm-*-actions` UGD tanpa suffix `-ugd` | 7 | 🟡 | subset item 4 |
 | 6 | Folder akronim `r-i/ r-j/ u-g-d/ b-p-j-s/` → `ri/ rj/ ugd/ bpjs/` | 7 folder, 184 berkas | 🟡 | di `pages/components/{modul-dokumen,rekam-medis}/` |
