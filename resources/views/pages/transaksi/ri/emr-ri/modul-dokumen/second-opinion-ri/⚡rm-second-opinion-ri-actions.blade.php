@@ -766,25 +766,23 @@ new class extends Component {
                             </div>
                         </section>
 
-                        {{-- ══ URAIAN PERMINTAAN ══ --}}
-                        <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
-                            <div>
-                                <x-input-label value="Uraian Permintaan Second Opinion *" class="mb-1" />
-                                <x-textarea wire:model.live="newForm.uraian" :error="$errors->has('newForm.uraian')" rows="3"
-                                    placeholder="Jelaskan tindakan/obat/tenaga medis yang dimintakan second opinion..."
-                                    :disabled="$formReadOnly" class="w-full" />
-                                <x-input-error :messages="$errors->get('newForm.uraian')" class="mt-1" />
-                            </div>
-                        </section>
-
-                        {{-- ══ ALASAN PERMINTAAN ══ --}}
-                        <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
-                            <div>
-                                <x-input-label value="Alasan Permintaan Second Opinion *" class="mb-1" />
-                                <x-textarea wire:model.live="newForm.alasan" :error="$errors->has('newForm.alasan')" rows="3"
-                                    placeholder="Jelaskan alasan pasien/keluarga meminta second opinion..."
-                                    :disabled="$formReadOnly" class="w-full" />
-                                <x-input-error :messages="$errors->get('newForm.alasan')" class="mt-1" />
+                        {{-- ══ URAIAN & ALASAN ══ --}}
+                        <section class="pt-6 border-t border-hairline dark:border-gray-700">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <x-input-label value="Uraian Permintaan Second Opinion *" class="mb-1" />
+                                    <x-textarea wire:model.live="newForm.uraian" :error="$errors->has('newForm.uraian')" rows="3"
+                                        placeholder="Jelaskan tindakan/obat/tenaga medis yang dimintakan second opinion..."
+                                        :disabled="$formReadOnly" class="w-full" />
+                                    <x-input-error :messages="$errors->get('newForm.uraian')" class="mt-1" />
+                                </div>
+                                <div>
+                                    <x-input-label value="Alasan Permintaan Second Opinion *" class="mb-1" />
+                                    <x-textarea wire:model.live="newForm.alasan" :error="$errors->has('newForm.alasan')" rows="3"
+                                        placeholder="Jelaskan alasan pasien/keluarga meminta second opinion..."
+                                        :disabled="$formReadOnly" class="w-full" />
+                                    <x-input-error :messages="$errors->get('newForm.alasan')" class="mt-1" />
+                                </div>
                             </div>
                         </section>
 
