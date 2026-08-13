@@ -746,32 +746,32 @@ new class extends Component {
                             </div>
                         @endif
 
-                        {{-- ══ TANGGAL/JAM PERMINTAAN ══ --}}
+                        {{-- ══ TANGGAL & KATEGORI (satu baris) ══ --}}
                         <section>
-                            <x-input-label value="Tanggal / Jam Permintaan *" class="mb-1" />
-                            <div class="flex items-center gap-2">
-                                <x-text-input wire:model.live="newForm.tglPermintaan" placeholder="dd/mm/yyyy HH:mm:ss"
-                                    :error="$errors->has('newForm.tglPermintaan')" :disabled="$formReadOnly"
-                                    class="w-full max-w-xs" />
-                                @if (!$formReadOnly)
-                                    <x-now-button wire:click="setNow('tglPermintaan')" :disabled="$formReadOnly" />
-                                @endif
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div>
+                                    <x-input-label value="Tanggal / Jam Permintaan *" class="mb-1" />
+                                    <div class="flex items-center gap-2">
+                                        <x-text-input wire:model.live="newForm.tglPermintaan" placeholder="dd/mm/yyyy HH:mm:ss"
+                                            :error="$errors->has('newForm.tglPermintaan')" :disabled="$formReadOnly"
+                                            class="w-full" />
+                                        @if (!$formReadOnly)
+                                            <x-now-button wire:click="setNow('tglPermintaan')" :disabled="$formReadOnly" />
+                                        @endif
+                                    </div>
+                                    <x-input-error :messages="$errors->get('newForm.tglPermintaan')" class="mt-1" />
+                                </div>
+                                <div>
+                                    <x-input-label value="Kategori Permintaan *" class="mb-1" />
+                                    <div class="flex flex-wrap gap-2 mt-1.5">
+                                        @foreach ($kategoriOptions as $opt)
+                                            <x-radio-button :label="$opt" :value="$opt" name="kategori"
+                                                wire:model.live="newForm.kategori" :disabled="$formReadOnly" />
+                                        @endforeach
+                                    </div>
+                                    <x-input-error :messages="$errors->get('newForm.kategori')" class="mt-1" />
+                                </div>
                             </div>
-                            <x-input-error :messages="$errors->get('newForm.tglPermintaan')" class="mt-1" />
-                        </section>
-
-                        {{-- ══ KATEGORI SECOND OPINION ══ --}}
-                        <section class="pt-6 space-y-3 border-t border-hairline dark:border-gray-700">
-                            <h3 class="text-base font-semibold text-ink dark:text-gray-200">
-                                Kategori Permintaan Second Opinion *
-                            </h3>
-                            <div class="flex flex-wrap gap-2">
-                                @foreach ($kategoriOptions as $opt)
-                                    <x-radio-button :label="$opt" :value="$opt" name="kategori"
-                                        wire:model.live="newForm.kategori" :disabled="$formReadOnly" />
-                                @endforeach
-                            </div>
-                            <x-input-error :messages="$errors->get('newForm.kategori')" class="mt-1" />
                         </section>
 
                         {{-- ══ URAIAN PERMINTAAN ══ --}}
