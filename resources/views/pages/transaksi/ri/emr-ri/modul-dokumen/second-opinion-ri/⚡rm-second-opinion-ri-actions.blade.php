@@ -559,7 +559,7 @@ new class extends Component {
 
 <div>
     {{-- ══ SUMMARY CARD (inline) ══ --}}
-    @php $soCount = count($secondOpinionList ?? []); @endphp
+    @php $secondOpinionCount = count($secondOpinionList ?? []); @endphp
 
     <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-3">
@@ -568,8 +568,8 @@ new class extends Component {
                     <h3 class="text-base font-semibold text-ink dark:text-gray-200">
                         Permintaan Second Opinion
                     </h3>
-                    @if ($soCount > 0)
-                        <x-badge variant="success">{{ $soCount }} catatan</x-badge>
+                    @if ($secondOpinionCount > 0)
+                        <x-badge variant="success">{{ $secondOpinionCount }} catatan</x-badge>
                     @else
                         <x-badge variant="warning">Belum ada</x-badge>
                     @endif
@@ -597,7 +597,7 @@ new class extends Component {
                 atau pemilihan tenaga medis. Dapat lebih dari satu catatan.
             </p>
 
-            @if ($soCount > 0)
+            @if ($secondOpinionCount > 0)
                 <div class="overflow-x-auto">
                     <h4 class="mb-2 text-sm font-semibold text-body dark:text-gray-300">Daftar Permintaan Tersimpan</h4>
                     <table class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
@@ -610,17 +610,17 @@ new class extends Component {
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (array_reverse($secondOpinionList) as $so)
+                            @foreach (array_reverse($secondOpinionList) as $entry)
                                 <tr class="border-b border-hairline dark:border-gray-700">
                                     <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">
-                                        {{ Str::limit($so['kategori'] ?? '-', 50) }}
+                                        {{ Str::limit($entry['kategori'] ?? '-', 50) }}
                                     </td>
-                                    <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $so['signatureDate'] ?? '-' }}</td>
+                                    <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $entry['signatureDate'] ?? '-' }}</td>
                                     <td class="px-3 py-2 text-muted dark:text-gray-400">
-                                        @if (!empty($so['pemberiInfo'])){{ $so['pemberiInfo'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
+                                        @if (!empty($entry['pemberiInfo'])){{ $entry['pemberiInfo'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
                                     </td>
                                     <td class="px-3 py-2 text-center">
-                                        @if ($this->entryIsFinal($so))
+                                        @if ($this->entryIsFinal($entry))
                                             <x-badge variant="info">Terkunci</x-badge>
                                         @else
                                             <x-badge variant="warning">Draft</x-badge>
