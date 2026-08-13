@@ -28,7 +28,6 @@ new class extends Component {
         'kategori' => '',
         'uraian' => '',
         'alasan' => '',
-        'hasilOpini' => '',
         'namaPenanda' => '',
         'hubunganPasien' => 'pasien',
         'pemberiInfo' => '',
@@ -129,7 +128,6 @@ new class extends Component {
             'newForm.kategori' => 'required|string|max:200',
             'newForm.uraian' => 'required|string|max:1000',
             'newForm.alasan' => 'required|string|max:1000',
-            'newForm.hasilOpini' => 'nullable|string|max:2000',
             'newForm.namaPenanda' => 'required|string|max:200',
             'newForm.hubunganPasien' => 'required|string|max:50',
             'signature' => 'required|string',
@@ -152,7 +150,6 @@ new class extends Component {
             'newForm.kategori' => 'Kategori second opinion',
             'newForm.uraian' => 'Uraian permintaan',
             'newForm.alasan' => 'Alasan permintaan second opinion',
-            'newForm.hasilOpini' => 'Hasil / rekomendasi second opinion',
             'newForm.namaPenanda' => 'Nama pasien/keluarga',
             'newForm.hubunganPasien' => 'Hubungan dengan pasien',
             'signature' => 'Tanda tangan pasien/keluarga',
@@ -244,7 +241,6 @@ new class extends Component {
             'kategori' => $this->newForm['kategori'] ?? '',
             'uraian' => $this->newForm['uraian'] ?? '',
             'alasan' => $this->newForm['alasan'] ?? '',
-            'hasilOpini' => $this->newForm['hasilOpini'] ?? '',
             'namaPenanda' => $this->newForm['namaPenanda'] ?? '',
             'hubunganPasien' => $this->newForm['hubunganPasien'] ?? 'pasien',
             'signature' => $this->signature,
@@ -329,7 +325,6 @@ new class extends Component {
             'kategori' => $entry['kategori'] ?? '',
             'uraian' => $entry['uraian'] ?? '',
             'alasan' => $entry['alasan'] ?? '',
-            'hasilOpini' => $entry['hasilOpini'] ?? '',
             'namaPenanda' => $entry['namaPenanda'] ?? '',
             'hubunganPasien' => $entry['hubunganPasien'] ?? 'pasien',
             'pemberiInfo' => $entry['pemberiInfo'] ?? '',
@@ -541,10 +536,7 @@ new class extends Component {
             'tglPermintaan' => '',
             'kategori' => '',
             'uraian' => '',
-            'dokterAsal' => '',
-            'dokterTujuan' => '',
             'alasan' => '',
-            'hasilOpini' => '',
             'namaPenanda' => '',
             'hubunganPasien' => 'pasien',
             'pemberiInfo' => '',
@@ -796,17 +788,6 @@ new class extends Component {
                             </div>
                         </section>
 
-                        {{-- ══ HASIL / REKOMENDASI ══ --}}
-                        <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
-                            <div>
-                                <x-input-label value="Hasil / Rekomendasi Second Opinion" class="mb-1" />
-                                <x-textarea wire:model.live="newForm.hasilOpini" :error="$errors->has('newForm.hasilOpini')" rows="3"
-                                    placeholder="Diisi setelah second opinion dilakukan — hasil dan rekomendasi..."
-                                    :disabled="$formReadOnly" class="w-full" />
-                                <x-input-error :messages="$errors->get('newForm.hasilOpini')" class="mt-1" />
-                            </div>
-                        </section>
-
                         {{-- ══ TANDA TANGAN ══ --}}
                         <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
                             <h3 class="text-base font-semibold text-ink dark:text-gray-200">
@@ -928,7 +909,7 @@ new class extends Component {
                                         @php
                                             $entry = array_replace([
                                                 'tglPermintaan' => '', 'kategori' => '', 'uraian' => '', 'alasan' => '',
-                                                'hasilOpini' => '', 'namaPenanda' => '', 'hubunganPasien' => '',
+                                                'namaPenanda' => '', 'hubunganPasien' => '',
                                                 'pemberiInfo' => '', 'pemberiInfoCode' => '', 'pemberiInfoDate' => '',
                                                 'signature' => '', 'signatureDate' => '',
                                             ], $entry);
@@ -1046,10 +1027,6 @@ new class extends Component {
                                                         <div class="md:col-span-2">
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Alasan Permintaan</dt>
                                                             <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['alasan'] ?: '-' }}</dd>
-                                                        </div>
-                                                        <div class="md:col-span-2">
-                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Hasil / Rekomendasi</dt>
-                                                            <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['hasilOpini'] ?: '-' }}</dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Nama Pasien / Keluarga</dt>

@@ -87,14 +87,6 @@
             </td>
         </tr>
 
-        {{-- ── HASIL / REKOMENDASI ── --}}
-        <tr>
-            <td colspan="2" class="border border-black px-2 py-1.5">
-                <p class="font-bold mb-1">Hasil / Rekomendasi Second Opinion</p>
-                <p class="leading-relaxed">{{ ($form['hasilOpini'] ?? '') ?: '-' }}</p>
-            </td>
-        </tr>
-
         {{-- ── TANDA TANGAN ── --}}
         <tr>
             <td colspan="2" class="border border-black px-1.5 py-1">
