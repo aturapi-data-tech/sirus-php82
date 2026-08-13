@@ -559,7 +559,7 @@ new class extends Component {
                 'ttdPath' => $ttdPath, 'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
             ]);
             set_time_limit(300);
-            $pdf = Pdf::loadView('pages.components.modul-dokumen.ri.surgical-safety-checklist-rj.cetak-surgical-safety-checklist-rj-print', ['data' => $data])->setPaper('A4');
+            $pdf = Pdf::loadView('pages.components.modul-dokumen.rj.surgical-safety-checklist-rj.cetak-surgical-safety-checklist-rj-print', ['data' => $data])->setPaper('A4');
             $this->dispatch('toast', type: 'success', message: 'Berhasil mencetak Surgical Safety Checklist.');
             return response()->streamDownload(fn() => print $pdf->output(), 'surgical-safety-checklist-rj-' . ($pasien['regNo'] ?? $this->rjNo) . '.pdf');
         } catch (\Throwable $e) {
