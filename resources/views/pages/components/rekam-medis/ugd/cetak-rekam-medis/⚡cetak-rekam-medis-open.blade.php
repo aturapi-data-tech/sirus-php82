@@ -796,6 +796,10 @@ new class extends Component {
                     <livewire:pages::components.rekam-medis.ugd.dokumen-view.penolakan-obat-view-ugd :rjNo="$rjNo"
                         :entries="$dataDaftarTxn['penolakanObatUGD'] ?? []" wire:key="rm-view-penolakan-obat-ugd-{{ $rjNo }}" />
 
+                    {{-- ── Permintaan Second Opinion — viewer (Lihat + Cetak dalam modal) ── --}}
+                    <livewire:pages::components.rekam-medis.ugd.dokumen-view.second-opinion-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['secondOpinionUGD'] ?? []" wire:key="rm-view-second-opinion-ugd-{{ $rjNo }}" />
+
                     {{-- ── Pengkajian Pre Operasi (Site Marking) — viewer (Lihat + Cetak dalam modal) ── --}}
                     <livewire:pages::components.rekam-medis.ugd.dokumen-view.pengkajian-pre-op-view-ugd :rjNo="$rjNo"
                         :entries="$dataDaftarTxn['pengkajianPreOpUGD'] ?? []" wire:key="rm-view-pengkajian-pre-op-ugd-{{ $rjNo }}" />

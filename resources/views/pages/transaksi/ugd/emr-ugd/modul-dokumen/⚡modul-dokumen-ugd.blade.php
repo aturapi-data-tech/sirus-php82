@@ -237,6 +237,21 @@ new class extends Component {
                                         @endif
                                     </x-tab>
 
+                                    {{-- Permintaan Second Opinion --}}
+                                    <x-tab variant="underline" active-expr="activeTab === 'secondOpinion'"
+                                        x-on:click="activeTab = 'secondOpinion'"
+                                        class="inline-flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                        </svg>
+                                        Second Opinion
+                                        @if (count($dataDaftarUGD['secondOpinionUGD'] ?? []) > 0)
+                                            <x-badge variant="success"
+                                                class="text-[10px] px-1.5 py-0">{{ count($dataDaftarUGD['secondOpinionUGD']) }}</x-badge>
+                                        @endif
+                                    </x-tab>
+
                                     <x-tab variant="underline" active-expr="activeTab === 'pelayanan-bedah'"
                                         x-on:click="activeTab = 'pelayanan-bedah'"
                                         class="inline-flex items-center gap-2">
@@ -331,6 +346,13 @@ new class extends Component {
                                 <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.penolakan-obat-ugd.rm-penolakan-obat-ugd-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="penolakan-obat-ugd-{{ $rjNo ?? 'init' }}" />
+                            </div>
+
+                            {{-- Panel: Permintaan Second Opinion --}}
+                            <div x-show="activeTab === 'secondOpinion'" x-transition.opacity.duration.300ms>
+                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.second-opinion-ugd.rm-second-opinion-ugd-actions
+                                    :rjNo="$rjNo" :disabled="$isFormLocked"
+                                    wire:key="second-opinion-ugd-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                             {{-- Panel: Pelayanan Bedah — 8 form operasi (pola sama dengan EMR RI). --}}
