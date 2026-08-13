@@ -17,7 +17,7 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
 use App\Support\OracleLob;
-use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
+use App\Http\Traits\Concerns\WithValidationToastTrait;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Txn\Ri\EmrRITrait;

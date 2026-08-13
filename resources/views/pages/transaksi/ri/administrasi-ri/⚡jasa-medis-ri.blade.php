@@ -6,7 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
-use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait;

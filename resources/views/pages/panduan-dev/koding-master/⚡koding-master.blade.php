@@ -2336,7 +2336,7 @@ TXT,
                                     <tr><td class="ds-td-strong">Token &amp; kelas ds-*</td><td class="ds-td-class">resources/css/app.css (warna: tailwind.config.cjs)</td></tr>
                                     <tr><td class="ds-td-strong">Komponen aksi tabel</td><td class="ds-td-class">resources/views/components/action-{edit,delete}.blade.php</td></tr>
                                     <tr><td class="ds-td-strong">Toolbar refresh/reset</td><td class="ds-td-class">resources/views/components/toolbar-refresh-reset.blade.php</td></tr>
-                                    <tr><td class="ds-td-strong">Render versioning</td><td class="ds-td-class">app/Http/Traits/WithRenderVersioning/WithRenderVersioningTrait.php</td></tr>
+                                    <tr><td class="ds-td-strong">Render versioning</td><td class="ds-td-class">app/Http/Traits/Concerns/WithRenderVersioningTrait.php</td></tr>
                                     <tr><td class="ds-td-strong">Frame halaman &amp; empty state</td><td class="ds-td-class">docs/page-frame-pattern.md</td></tr>
                                     <tr><td class="ds-td-strong">Modal dirty-guard</td><td class="ds-td-class">docs/dirty-modal-pattern.md</td></tr>
                                     <tr><td class="ds-td-strong">Tombol &amp; UI umum</td><td class="ds-td-class">docs/standar-komponen-tombol.md · docs/standar-ui-komponen.md</td></tr>

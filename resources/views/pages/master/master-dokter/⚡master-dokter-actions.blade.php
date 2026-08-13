@@ -5,7 +5,7 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
-use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\SATUSEHAT\PractitionerTrait;
 
 new class extends Component {

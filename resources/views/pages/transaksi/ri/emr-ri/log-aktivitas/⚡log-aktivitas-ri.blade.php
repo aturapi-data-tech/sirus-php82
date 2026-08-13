@@ -5,7 +5,7 @@
 use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
-use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait;

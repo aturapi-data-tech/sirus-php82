@@ -8,7 +8,7 @@ use Carbon\Carbon;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Support\Options\NyeriOptions;
 use Livewire\Attributes\Computed;
-use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use Illuminate\Validation\ValidationException;
 
 new class extends Component {

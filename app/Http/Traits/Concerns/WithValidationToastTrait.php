@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Traits\WithValidationToast;
+namespace App\Http\Traits\Concerns;
 
 use Illuminate\Validation\ValidationException;
 
@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
  * error tetap di-render via $errors bag (pakai <x-input-error> di view).
  *
  * Pemakaian:
- *   use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
+ *   use App\Http\Traits\Concerns\WithValidationToastTrait;
  *   ...
  *   new class extends Component {
  *       use WithValidationToastTrait;

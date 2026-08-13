@@ -38,7 +38,7 @@ resources/views/pages/transaksi/{modul}/
 
 | Lapisan | File | Tanggung jawab |
 |---|---|---|
-| **Trait API** | `app/Http/Traits/iDRG/iDrgTrait.php` | Pemanggilan API e-klaim (encrypt/decrypt, all 17+ method) |
+| **Trait API** | `app/Http/Traits/IDRG/iDrgTrait.php` | Pemanggilan API e-klaim (encrypt/decrypt, all 17+ method) |
 | **Trait EMR** | `app/Http/Traits/Txn/{Ri,Rj,Ugd}/Emr{RI,RJ,UGD}Trait.php` | Akses `findDataXX()`, `updateJsonXX()`, `lockXXRow()` ke JSON header transaksi |
 | **Orchestrator** | `idrg-{modul}-actions.blade.php` | Modal full-screen, sidebar "Cara Pakai", load SFC per step, gating section B/C/D |
 | **SFC per-step** | `kirim-*.blade.php` (Volt SFC) | Self-contained: state, API call, view |
@@ -347,7 +347,7 @@ $idrg['inacbgProsedurString'] = null;
 
 ## 6. Trait API — `iDrgTrait`
 
-`app/Http/Traits/iDRG/iDrgTrait.php`
+`app/Http/Traits/IDRG/iDrgTrait.php`
 
 ### 6.1 Method list
 

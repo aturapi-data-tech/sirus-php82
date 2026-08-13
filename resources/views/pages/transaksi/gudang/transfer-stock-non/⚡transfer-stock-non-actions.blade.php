@@ -5,7 +5,7 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Stock\StockBalanceTrait;
 
 new class extends Component {

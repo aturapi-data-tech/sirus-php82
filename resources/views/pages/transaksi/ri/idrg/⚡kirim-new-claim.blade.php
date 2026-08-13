@@ -9,7 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
-use App\Http\Traits\iDRG\iDrgTrait;
+use App\Http\Traits\IDRG\iDrgTrait;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait, iDrgTrait;

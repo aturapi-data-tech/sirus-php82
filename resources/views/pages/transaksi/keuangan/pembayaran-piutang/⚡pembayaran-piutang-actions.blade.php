@@ -31,7 +31,7 @@ use App\Http\Traits\Manajemen\Rs\Tu\PiutangPasienTrait;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
-use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
     use PiutangPasienTrait, EmrRJTrait, EmrUGDTrait, EmrRITrait, WithRenderVersioningTrait;

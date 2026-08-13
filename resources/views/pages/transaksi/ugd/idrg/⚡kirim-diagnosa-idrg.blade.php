@@ -8,7 +8,7 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
-use App\Http\Traits\iDRG\iDrgTrait;
+use App\Http\Traits\IDRG\iDrgTrait;
 
 new class extends Component {
     use EmrUGDTrait, iDrgTrait;

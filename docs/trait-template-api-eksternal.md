@@ -11,7 +11,7 @@ Pola ini sudah dipakai di:
 | `AplicaresTrait`  | `app/Http/Traits/BPJS/AplicaresTrait.php`  | Sama, tambah `Content-Type: application/json` |
 | `iCareTrait`      | `app/Http/Traits/BPJS/iCareTrait.php`      | Sama dengan Aplicares |
 | `SirsTrait`       | `app/Http/Traits/SIRS/SirsTrait.php`       | REST polos tanpa enkripsi (Kemenkes RS Online) |
-| `iDrgTrait`       | `app/Http/Traits/iDRG/iDrgTrait.php`       | AES-256-CBC + HMAC 10-byte signature (E-Klaim INACBG) |
+| `iDrgTrait`       | `app/Http/Traits/IDRG/iDrgTrait.php`       | AES-256-CBC + HMAC 10-byte signature (E-Klaim INACBG) |
 | `SatuSehatTrait`  | `app/Http/Traits/SATUSEHAT/SatuSehatTrait.php` | OAuth2 Bearer token (cache 3500s) + REST FHIR (SatuSehat Kemenkes) |
 
 Ikuti pola yang sama supaya halaman monitoring `/database-monitor/log-bpjs` otomatis menampilkan log-nya.
@@ -380,7 +380,7 @@ if (!$debug && is_string($wireBody) && $wireBody !== '') {
 }
 ```
 
-Lihat `app/Http/Traits/iDRG/iDrgTrait.php` untuk implementasi lengkap.
+Lihat `app/Http/Traits/IDRG/iDrgTrait.php` untuk implementasi lengkap.
 
 ---
 

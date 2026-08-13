@@ -168,8 +168,8 @@ TXT,
 
 use Livewire\Component;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
-use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
-use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithValidationToastTrait;
 
 new class extends Component {
     use EmrRJTrait, WithRenderVersioningTrait, WithValidationToastTrait;

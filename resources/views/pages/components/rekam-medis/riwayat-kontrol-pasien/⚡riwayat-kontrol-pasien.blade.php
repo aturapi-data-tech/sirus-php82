@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\BPJS\VclaimTrait;
-use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
+use App\Http\Traits\Concerns\WithValidationToastTrait;
 
 new class extends Component {
     use EmrRJTrait, EmrRITrait, WithValidationToastTrait;

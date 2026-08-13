@@ -314,7 +314,7 @@ Modul yang sudah 100% sesuai: `master-agama`, `master-stocklocations`, `master-a
 | `x-action-edit` / `x-action-delete` | `resources/views/components/action-{edit,delete}.blade.php` |
 | `x-toolbar-refresh-reset` | `resources/views/components/toolbar-refresh-reset.blade.php` |
 | `x-border-form`, `x-dirty-modal-content`, `x-tabbed-dirty-modal-content`, `x-page-title` | `resources/views/components/` |
-| `WithRenderVersioningTrait` | `app/Http/Traits/WithRenderVersioning/WithRenderVersioningTrait.php` |
+| `WithRenderVersioningTrait` | `app/Http/Traits/Concerns/WithRenderVersioningTrait.php` |
 | Pola frame halaman | `docs/page-frame-pattern.md` |
 | Modal dirty-guard | `docs/dirty-modal-pattern.md` |
 | Tombol & UI umum | `docs/standar-komponen-tombol.md`, `docs/standar-ui-komponen.md` |

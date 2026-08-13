@@ -8,7 +8,7 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Support\OracleLob;
 use Carbon\Carbon;
-use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Txn\Ri\EmrCompletenessRITrait;
 
 new class extends Component {

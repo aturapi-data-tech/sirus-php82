@@ -9,7 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
-use App\Http\Traits\iDRG\iDrgTrait;
+use App\Http\Traits\IDRG\iDrgTrait;
 // Dipanggil statik (VclaimTrait::peserta_nomorkartu) — TIDAK di-use sebagai trait
 // untuk hindari collision method dengan iDrgTrait/MasterPasienTrait/EmrRITrait.
 use App\Http\Traits\BPJS\VclaimTrait;

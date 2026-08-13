@@ -4,7 +4,7 @@
 use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\BPJS\VclaimTrait;
-use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
 use App\Support\Options\DischargePlanningOptions;
 use App\Support\Terminologi\DischargeDisposition;
 use App\Support\NomorSuratKematian;
-use App\Http\Traits\WithValidationToast\WithValidationToastTrait;
+use App\Http\Traits\Concerns\WithValidationToastTrait;
 
 new class extends Component {
     use EmrRITrait, WithRenderVersioningTrait, WithValidationToastTrait;

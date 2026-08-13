@@ -295,15 +295,20 @@ properti komponen). Grup level-1 adalah **daftar tertutup**:
 
 | Grup | Isi | Contoh |
 |---|---|---|
-| `BPJS/` `SATUSEHAT/` `SIRS/` `IDRG/` | klien API eksternal, satu trait per resource/layanan | `VclaimTrait`, `EncounterTrait` |
 | `Concerns/` | lintas-komponen, bukan domain | `WithRenderVersioningTrait`, `WithValidationToastTrait` |
+| `BPJS/` `SATUSEHAT/` `SIRS/` `IDRG/` | klien API eksternal, satu trait per resource/layanan | `VclaimTrait`, `EncounterTrait` |
 | `Txn/<Jalur>/` | logika transaksi per jalur | `Txn/Ri/EmrRITrait` |
 | `Manajemen/<Sumber>/<Unit>/` | query laporan, cermin §4.3 | `Manajemen/Sirs/Ri/RL32Trait` |
 | `Master/<Modul>/` | logika master berat | `Master/MasterPasien/MasterPasienTrait` |
+| `<Area>/` | area domain lain | `Dokumen/`, `Keuangan/`, `Stock/` |
 
-Grup baru di luar daftar ini = tanda bahwa isinya sebenarnya milik `Support/` (§6.2).
-Folder yang namanya sama dengan satu-satunya berkas di dalamnya
-(`WithRenderVersioning/WithRenderVersioningTrait.php`) adalah nesting mubazir → pindah ke `Concerns/`.
+Bukan daftar tertutup — grup baru boleh lahir untuk area domain baru. Yang menentukan penghuni
+`Traits/` bukan nama grupnya, melainkan **satu uji**: trait menyentuh `$this` (properti komponen,
+`dispatch()`, `validate()`). Kalau tidak, ia bukan mixin dan tempatnya di `Support/` (§6.2).
+
+Nama grup ditulis PascalCase atau akronim huruf besar utuh (`IDRG`, bukan `iDRG`). Folder yang
+namanya sama dengan satu-satunya berkas di dalamnya (`WithRenderVersioning/WithRenderVersioningTrait.php`)
+adalah nesting mubazir — isinya masuk `Concerns/`.
 
 ### 6.2 `app/Support/<SubNamespace>/<Nama>.php`
 
@@ -380,8 +385,8 @@ tersentuh (**bukan** `view:cache` — ia tidak menangkap galat kelas Volt, lihat
 | ✅ 5 | 7 `rm-*-actions` UGD tanpa suffix `-ugd` | 7 | 🟡 | **SELESAI** — bagian dari item 4 |
 | ✅ 6 | Folder akronim `r-i/ r-j/ u-g-d/ b-p-j-s/` → `ri/ rj/ ugd/ bpjs/` | 7 folder, 184 berkas | 🟡 | **SELESAI 2026-08-13** — 363 referensi dalam **tiga** bentuk penulisan: dotted (`components.modul-dokumen.r-i.`), path (`components/modul-dokumen/r-i/`), dan path singkat tanpa prefix `components/` di docs |
 | ✅ 7 | `app/Support` → sub-namespace §6.2 | 25 berkas | 🟡 | **SELESAI 2026-08-13** — 25 pindah ke 4 kelompok, 11 tetap di akar (aturan ≥2 anggota), `Diagnosa/KodeIm` → `Terminologi/KodeIm`, 217 FQCN + 3 `use` eksplisit yang tadinya implisit |
-| 8 | `Traits/WithRenderVersioning`, `Traits/WithValidationToast` → `Traits/Concerns/` | 2 | 🟡 | hapus nesting mubazir |
-| 9 | `Traits/iDRG` → `Traits/IDRG` | 1 folder | 🟡 | konsisten dengan `BPJS`/`SATUSEHAT`/`SIRS` |
+| ✅ 8 | `Traits/WithRenderVersioning`, `Traits/WithValidationToast` → `Traits/Concerns/` | 2 | 🟡 | **SELESAI 2026-08-13** — 347 rujukan |
+| ✅ 9 | `Traits/iDRG` → `Traits/IDRG` | 1 folder | 🟡 | **SELESAI 2026-08-13** — 59 rujukan. Nama trait `iDrgTrait` sendiri TIDAK diubah (di luar lingkup pemfolderan; kalau mau PSR-1 penuh, itu pekerjaan terpisah) |
 | 10 | Pecah 22 berkas > 1.500 baris (§5) | 22 | 🔴 | bukan rename — jadwalkan per modul saat modul itu disentuh |
 | 11 | Seragamkan prefix URL (§7) + redirect lama | ~30 route | 🔴 | menyentuh bookmark petugas — perlu keputusan operasional |
 | ✅ 12 | `site-marking/figs/*.blade.php` camelCase → kebab-case | 16 | 🟢 | **SELESAI 2026-08-13** — `footDorsumKanan` → `foot-dorsum-kanan`. Istilah anatomi (dorsum/palm) DIPERTAHANKAN; `id` panel tidak ikut diubah, lihat §3.6 |

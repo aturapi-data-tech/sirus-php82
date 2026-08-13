@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Traits\iDRG;
+namespace App\Http\Traits\IDRG;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;

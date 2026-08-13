@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 
 // Deklarasi Render Versioning Trait //
-use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 // Registrasi Location SATUSEHAT (mendaftarkan poli → poli_uuid; dipakai Encounter UGD/RJ).
 use App\Http\Traits\SATUSEHAT\LocationTrait;
 

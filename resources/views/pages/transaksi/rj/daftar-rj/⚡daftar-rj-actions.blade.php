@@ -11,7 +11,7 @@ use Carbon\Carbon;
 use App\Http\Traits\BPJS\VclaimTrait;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
-use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Support\OracleLob;
 
 new class extends Component {

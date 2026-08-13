@@ -4,7 +4,7 @@
 use Livewire\Component;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 
 new class extends Component {

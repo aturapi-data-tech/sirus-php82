@@ -19,7 +19,7 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
 use App\Http\Traits\Stock\StockBalanceTrait;
 use App\Http\Traits\Keuangan\AnalisaPerputaranObatTrait;
-use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
     use StockBalanceTrait, AnalisaPerputaranObatTrait, WithRenderVersioningTrait;

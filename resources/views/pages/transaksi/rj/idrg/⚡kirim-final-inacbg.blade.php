@@ -6,7 +6,7 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
-use App\Http\Traits\iDRG\iDrgTrait;
+use App\Http\Traits\IDRG\iDrgTrait;
 
 new class extends Component {
     use EmrRJTrait, iDrgTrait;

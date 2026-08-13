@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Traits\WithRenderVersioning;
+namespace App\Http\Traits\Concerns;
 
 /**
  * Trait WithRenderVersioning

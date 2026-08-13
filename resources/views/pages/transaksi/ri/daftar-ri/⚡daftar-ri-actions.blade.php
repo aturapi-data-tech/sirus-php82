@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
-use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Support\OracleLob;
 use Illuminate\Validation\ValidationException;
 

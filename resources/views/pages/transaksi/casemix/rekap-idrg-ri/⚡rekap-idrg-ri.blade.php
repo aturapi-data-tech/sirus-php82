@@ -11,8 +11,8 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Session;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-use App\Http\Traits\WithRenderVersioning\WithRenderVersioningTrait;
-use App\Http\Traits\iDRG\iDrgTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Http\Traits\IDRG\iDrgTrait;
 
 new class extends Component {
     use WithPagination, WithRenderVersioningTrait, iDrgTrait;
