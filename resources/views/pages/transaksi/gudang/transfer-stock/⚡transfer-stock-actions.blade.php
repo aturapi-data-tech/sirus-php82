@@ -120,6 +120,13 @@ new class extends Component {
     #[On('transfer-stock.requestBatalTransaksi')]
     public function batalTransaksi(int $trfNo): void
     {
+        // Guard SERVER wajib: wire:click memanggil method publik, jadi guard blade
+        // saja bisa ditembus. Sumber role sama dengan guard blade -> Gate 'gudang.transferBatalMedis'.
+        if (!auth()->user()?->can('gudang.transferBatalMedis')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk membatalkan transaksi transfer.');
+            return;
+        }
+
         try {
             DB::transaction(function () use ($trfNo) {
                 $hdr = DB::table('imtxn_trfhdrs')->where('trf_no', $trfNo)->lockForUpdate()->first();
@@ -149,6 +156,13 @@ new class extends Component {
     #[On('transfer-stock.requestBatal')]
     public function batalFromList(int $trfNo): void
     {
+        // Guard SERVER wajib: wire:click memanggil method publik, jadi guard blade
+        // saja bisa ditembus. Sumber role sama dengan guard blade -> Gate 'gudang.transferBatalMedis'.
+        if (!auth()->user()?->can('gudang.transferBatalMedis')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak memiliki akses untuk menghapus transfer.');
+            return;
+        }
+
         try {
             DB::transaction(function () use ($trfNo) {
                 $hdr = DB::table('imtxn_trfhdrs')->where('trf_no', $trfNo)->lockForUpdate()->first();
@@ -732,24 +746,28 @@ new class extends Component {
                     {{-- KIRI: Batal Transaksi (hanya saat view + posted) --}}
                     <div>
                         @if ($formMode === 'view' && $trfStatus === self::STATUS_POSTED && $trfNo)
-                            <x-confirm-button variant="danger" :action="'batalTransaksi(' . $trfNo . ')'"
-                                title="Batalkan Transaksi"
-                                message="Yakin batalkan transaksi ini? Mutasi stok di Kartu Stock akan dikembalikan (saldo asal & tujuan kembali seperti sebelum diproses)."
-                                confirmText="Ya, batalkan" cancelText="Batal">
-                                Batal Transaksi
-                            </x-confirm-button>
+                            @can('gudang.transferBatalMedis')
+                                <x-confirm-button variant="danger" :action="'batalTransaksi(' . $trfNo . ')'"
+                                    title="Batalkan Transaksi"
+                                    message="Yakin batalkan transaksi ini? Mutasi stok di Kartu Stock akan dikembalikan (saldo asal & tujuan kembali seperti sebelum diproses)."
+                                    confirmText="Ya, batalkan" cancelText="Batal">
+                                    Batal Transaksi
+                                </x-confirm-button>
+                            @endcan
                         @endif
                     </div>
 
                     {{-- KANAN: Tutup + tombol mode edit --}}
                     <div class="flex flex-wrap items-center gap-2">
                         @if ($formMode === 'edit' && $trfNo)
-                            <x-confirm-button variant="danger" :action="'batalFromList(' . $trfNo . ')'"
-                                title="Hapus Transfer"
-                                message="Yakin hapus transfer ini? Header & semua barang di daftar akan dihapus permanen — hanya transfer yang belum diproses."
-                                confirmText="Ya, hapus" cancelText="Batal">
-                                Hapus Transfer
-                            </x-confirm-button>
+                            @can('gudang.transferBatalMedis')
+                                <x-confirm-button variant="danger" :action="'batalFromList(' . $trfNo . ')'"
+                                    title="Hapus Transfer"
+                                    message="Yakin hapus transfer ini? Header & semua barang di daftar akan dihapus permanen — hanya transfer yang belum diproses."
+                                    confirmText="Ya, hapus" cancelText="Batal">
+                                    Hapus Transfer
+                                </x-confirm-button>
+                            @endcan
                         @endif
 
                         @unless ($this->isReadonly)

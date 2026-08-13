@@ -96,4 +96,24 @@ class AksiRole
 
     /** Stock Opname barang NON-MEDIS — pemiliknya TU, bukan Apoteker. */
     public const GUDANG_OPNAME_NONMEDIS = ['Admin', 'Tu'];
+
+    /**
+     * Batalkan / hapus transfer stok — MEDIS (obat).
+     * Membalik mutasi stok di Kartu Stock, dan batalFromList() menghapus permanen.
+     */
+    public const GUDANG_TRANSFER_BATAL_MEDIS = ['Admin', 'Manager Umum', 'Supervisor Tu', 'Gudang Obat', 'Apoteker'];
+
+    /** Batalkan / hapus transfer stok — NON-MEDIS. */
+    public const GUDANG_TRANSFER_BATAL_NONMEDIS = ['Admin', 'Manager Umum', 'Supervisor Tu', 'Gudang Non Medis', 'Tu'];
+
+    /*
+     * CATATAN — Batal di LABORAT & KAMAR OPERASI sengaja TIDAK diklaster di sini.
+     * Keduanya sudah punya guard sendiri yang lebih ketat dan disengaja:
+     *   laborat        isAllowedBatal()   -> ['Admin','Supervisor Penunjang']
+     *   kamar operasi  isAllowedBatalOk() -> ['Admin','Supervisor Penunjang']
+     *                  (KamarOperasiTrait)
+     * Aturannya "batal = eskalasi ke atasan": operator Lab/OK tidak boleh
+     * membatalkan pekerjaannya sendiri. Jangan disamakan dengan daftar akses
+     * modulnya (yang memuat Laboratorium/Perawat) — itu justru melonggarkan.
+     */
 }
