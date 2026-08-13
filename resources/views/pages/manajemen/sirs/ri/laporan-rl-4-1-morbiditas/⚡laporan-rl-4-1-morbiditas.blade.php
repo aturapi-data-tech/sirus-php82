@@ -105,12 +105,12 @@ new class extends Component {
                                 <th colspan="3" rowspan="2" class="px-2 py-2 border border-hairline dark:border-gray-700 text-center text-rose-700 dark:text-rose-300">Total Pasien Keluar Mati</th>
                             </tr>
                             <tr>
-                                @foreach (App\Http\Traits\Manajemen\Sirs\Ri\RL41Trait::AGE_GROUPS_RL41 as $ag)
+                                @foreach ($this::AGE_GROUPS_RL41 as $ag)
                                     <th colspan="2" class="px-1 py-1 border border-hairline dark:border-gray-700 text-center text-blue-700 dark:text-blue-300 whitespace-nowrap" style="font-size:9px;">{{ $ag['label'] }}</th>
                                 @endforeach
                             </tr>
                             <tr>
-                                @foreach (App\Http\Traits\Manajemen\Sirs\Ri\RL41Trait::AGE_GROUPS_RL41 as $ag)
+                                @foreach ($this::AGE_GROUPS_RL41 as $ag)
                                     <th class="px-1 py-1 border border-hairline dark:border-gray-700 text-right text-blue-700 dark:text-blue-300" style="font-size:9px;">L</th>
                                     <th class="px-1 py-1 border border-hairline dark:border-gray-700 text-right text-pink-700 dark:text-pink-300" style="font-size:9px;">P</th>
                                 @endforeach
