@@ -374,6 +374,7 @@ new class extends Component {
             'practitionerName' => $this->dokterNama(),
             'orgTujuanId' => $kandidat['orgId'],
             'orgTujuanNama' => $kandidat['nama'],
+            'jalur' => $keRanap ? 'ranap' : 'igd',
             'deskripsi' => trim($this->formRujukan['deskripsi']) !== '' ? trim($this->formRujukan['deskripsi']) : 'Rujukan ' . $labelJalur . ' — ' . $this->formRujukan['kodeDiagnosa'] . ' ' . $this->formRujukan['diagnosaDesc'],
             'specialityCode' => trim($this->formRujukan['specialityCode']) !== '' ? trim($this->formRujukan['specialityCode']) : 'L03',
             'specialityDisplay' => trim($this->formRujukan['specialityDisplay']) !== '' ? trim($this->formRujukan['specialityDisplay']) : 'Pelayanan Gawat Darurat',

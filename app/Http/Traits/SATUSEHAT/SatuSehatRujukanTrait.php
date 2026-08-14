@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * SATUSEHAT Rujukan (SRBK) — jalur FHIR LANGSUNG untuk Rawat Inap & Rawat Darurat.
@@ -17,6 +18,10 @@ use Illuminate\Support\Facades\DB;
  *   3. GET  Task?_id=...                         → poll kandidat di output[]
  *   4. POST Bundle Task+CarePlan referral-approval → tugas rujukan ke faskes tujuan (Task.owner = tujuan)
  *   5. POST ServiceRequest                       → rujukan; sukses = identifier referral-number-satusehat
+ *
+ * Sisi FASKES TUJUAN (kotak masuk, lihat §7 di bawah):
+ *   6. GET   Task?owner=<org kita>&code=referral-approval-request&_include=Task:based-on
+ *   7. PATCH Task/<id>                           → status completed + output accepted/rejected
  *
  * Jebakan terdokumentasi (docs/rujukan-kompetensi.md §3):
  * - Task.identifier.value WAJIB unik SETIAP POST, termasuk retry (reuse → response
@@ -427,14 +432,27 @@ trait SatuSehatRujukanTrait
      | 4. BUNDLE TASK + CAREPLAN (referral-approval)
      | $konteks: identifierTask, identifierCarePlan, encounterId, patientUuid, patientName,
      |     practitionerUuid, practitionerName, orgTujuanId, orgTujuanNama,
-     |     deskripsi, specialityCode, specialityDisplay
+     |     deskripsi, specialityCode, specialityDisplay, jalur ('ranap'|'igd')
      | Task.owner = Organization TUJUAN (kunci alur approval).
     ═══════════════════════════════════════ */
+
+    /**
+     * Kategori CarePlan penentu LAYANAN yang diminta — inilah satu-satunya beda
+     * bundle ranap vs gawat darurat di Postman V30062026, dan yang dibaca faskes
+     * tujuan untuk tahu permintaan ini masuk ke Ranap atau IGD.
+     */
+    protected function rujukanKategoriRencana(string $jalur): array
+    {
+        return $jalur === 'ranap'
+            ? ['system' => 'http://snomed.info/sct', 'code' => '736353004', 'display' => 'Inpatient care plan']
+            : ['system' => 'http://terminology.kemkes.go.id', 'code' => 'TK000068', 'display' => 'Emergency care plan'];
+    }
+
     protected function rujukanBundleApproval(array $konteks): array
     {
         $now = $this->rujukanNowIso();
-        $uuidTask = (string) \Illuminate\Support\Str::uuid();
-        $uuidCarePlan = (string) \Illuminate\Support\Str::uuid();
+        $uuidTask = (string) Str::uuid();
+        $uuidCarePlan = (string) Str::uuid();
 
         $bundle = [
             'resourceType' => 'Bundle',
@@ -503,11 +521,7 @@ trait SatuSehatRujukanTrait
                         'status' => 'active',
                         'intent' => 'plan',
                         'category' => [
-                            ['coding' => [[
-                                'system' => 'http://terminology.kemkes.go.id',
-                                'code' => 'TK000068',
-                                'display' => 'Emergency care plan',
-                            ]]],
+                            ['coding' => [$this->rujukanKategoriRencana($konteks['jalur'] ?? 'igd')]],
                             ['coding' => [[
                                 'system' => 'http://snomed.info/sct',
                                 'code' => '3457005',
@@ -651,5 +665,192 @@ trait SatuSehatRujukanTrait
             [['op' => 'replace', 'path' => '/status', 'value' => 'cancelled']],
             'application/json-patch+json'
         );
+    }
+
+    /* ═══════════════════════════════════════
+     | 7. SISI FASKES TUJUAN — persetujuan/penolakan tugas rujukan MASUK
+     | Postman: "Faskes Rujukan - Persetujuan/Penolakan Tugas Rujukan"
+     | (ada di use case Rawat Inap & Rawat Darurat; Rawat Jalan tidak lewat sini)
+    ═══════════════════════════════════════ */
+
+    /**
+     * Kotak masuk permintaan rujukan: Task yang owner-nya RS kita.
+     * `_include=Task:based-on` menarik sekalian CarePlan-nya — di situlah nama
+     * pasien, deskripsi klinis, layanan yang diminta, dan penanda jalur berada.
+     */
+    protected function rujukanTaskMasuk(): array
+    {
+        return $this->rujukanRequest(
+            'GET',
+            'Task?owner=' . urlencode($this->rujukanOrgId())
+                . '&code=referral-approval-request&_include=Task:based-on'
+        );
+    }
+
+    /**
+     * Sisi PERUJUK — baca keputusan accepted/rejected dari faskes tujuan.
+     * Parameter `encounter` sah sebagai filter (konfirmasi tim SATUSEHAT 14/08/26),
+     * jadi tak perlu menyapu seluruh Task RS untuk memantau satu kunjungan.
+     */
+    protected function rujukanTaskByRequester(?string $encounterId = null): array
+    {
+        $endpoint = 'Task?code=referral-approval-request&requester=' . urlencode($this->rujukanOrgId());
+        if (!empty($encounterId)) {
+            $endpoint .= '&encounter=' . urlencode($encounterId);
+        }
+
+        return $this->rujukanRequest('GET', $endpoint);
+    }
+
+    /**
+     * Jawab satu tugas rujukan: status jadi completed + output berisi keputusan.
+     * JSON Patch, content-type application/json-patch+json (sama dengan pembatalan).
+     */
+    protected function rujukanTaskRespon(string $taskId, string $keputusan): array
+    {
+        $keputusan = $keputusan === 'accepted' ? 'accepted' : 'rejected';
+
+        $patch = [
+            ['op' => 'replace', 'path' => '/status', 'value' => 'completed'],
+            [
+                'op' => 'add',
+                'path' => '/output',
+                'value' => [[
+                    'type' => [
+                        'coding' => [[
+                            'system' => 'http://terminology.kemkes.go.id',
+                            'code' => 'response-referral-task',
+                            'display' => 'Response referral task',
+                        ]],
+                        'text' => 'Respon atas Task Rujukan',
+                    ],
+                    'valueCoding' => [
+                        'system' => 'http://hl7.org/fhir/task-status',
+                        'code' => $keputusan,
+                        'display' => ucfirst($keputusan),
+                    ],
+                ]],
+            ],
+        ];
+
+        return $this->rujukanRequest('PATCH', 'Task/' . $taskId, $patch, 'application/json-patch+json');
+    }
+
+    /**
+     * Bundle searchset (Task + CarePlan hasil _include) → baris siap tampil.
+     * Terbaru di atas. Tahan bentuk: CarePlan boleh tidak ikut (baris tetap muncul,
+     * kolomnya kosong) supaya permintaan tidak hilang dari kotak masuk hanya
+     * karena rencana perawatannya gagal di-include.
+     *
+     * @return array<int, array<string, string>>
+     */
+    protected function rujukanParsePermintaanMasuk($body): array
+    {
+        if (!is_array($body)) {
+            return [];
+        }
+
+        $daftarRencana = [];
+        $daftarTask = [];
+        foreach ($body['entry'] ?? [] as $entry) {
+            $resource = $entry['resource'] ?? [];
+            $tipe = $resource['resourceType'] ?? '';
+            if ($tipe === 'Task') {
+                $daftarTask[] = $resource;
+            } elseif ($tipe === 'CarePlan') {
+                $daftarRencana[(string) ($resource['id'] ?? '')] = $resource;
+            }
+        }
+
+        $baris = [];
+        foreach ($daftarTask as $task) {
+            $rencanaId = str_replace('CarePlan/', '', (string) ($task['basedOn'][0]['reference'] ?? ''));
+            $rencana = $daftarRencana[$rencanaId] ?? [];
+            $layanan = $rencana['activity'][0]['detail']['code'] ?? [];
+
+            $baris[] = [
+                'taskId' => (string) ($task['id'] ?? ''),
+                'noPermintaan' => (string) ($task['identifier'][0]['value'] ?? ''),
+                'statusTask' => (string) ($task['status'] ?? ''),
+                'keputusan' => $this->rujukanKeputusanDariTask($task),
+                'waktu' => (string) ($task['authoredOn'] ?? ($task['lastModified'] ?? '')),
+                'pasienId' => str_replace('Patient/', '', (string) ($task['for']['reference'] ?? '')),
+                'pasienNama' => (string) ($rencana['subject']['display'] ?? ''),
+                'perujukOrgId' => str_replace('Organization/', '', (string) ($task['requester']['reference'] ?? '')),
+                'encounterId' => str_replace('Encounter/', '', (string) ($task['encounter']['reference'] ?? '')),
+                'diagnosaId' => str_replace('Condition/', '', (string) ($task['reasonReference']['reference'] ?? '')),
+                'rencanaId' => $rencanaId,
+                'jalur' => $this->rujukanJalurDariRencana($rencana),
+                'layananKode' => (string) ($layanan['coding'][0]['code'] ?? ''),
+                'layananNama' => (string) ($layanan['coding'][0]['display'] ?? ($layanan['text'] ?? '')),
+                'deskripsi' => (string) ($rencana['description'] ?? ''),
+                'dokterPerujuk' => (string) ($rencana['author']['display'] ?? ''),
+            ];
+        }
+
+        usort($baris, fn($a, $b) => strcmp($b['waktu'], $a['waktu']));
+
+        return $baris;
+    }
+
+    /**
+     * Jalur yang diminta perujuk, dibaca dari kategori CarePlan
+     * (736353004 Inpatient care plan vs TK000068 Emergency care plan).
+     */
+    protected function rujukanJalurDariRencana(array $rencana): string
+    {
+        foreach ($rencana['category'] ?? [] as $kategori) {
+            foreach ($kategori['coding'] ?? [] as $coding) {
+                $kode = (string) ($coding['code'] ?? '');
+                if ($kode === '736353004') {
+                    return 'ranap';
+                }
+                if ($kode === 'TK000068') {
+                    return 'igd';
+                }
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Keputusan yang sudah tercatat di Task.output — '' berarti belum dijawab.
+     */
+    protected function rujukanKeputusanDariTask(array $task): string
+    {
+        foreach ($task['output'] ?? [] as $output) {
+            $kode = strtolower((string) ($output['valueCoding']['code'] ?? ''));
+            if ($kode === 'accepted' || $kode === 'rejected') {
+                return $kode;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Nama RS dari Organization. Di-cache 1 hari; kegagalan TIDAK di-cache
+     * supaya gangguan sesaat tidak membuat kolom perujuk kosong seharian.
+     */
+    protected function rujukanNamaOrganisasi(string $orgId): string
+    {
+        if ($orgId === '') {
+            return '';
+        }
+
+        $kunci = 'satusehat_rujukan_org_' . $orgId;
+        $tersimpan = Cache::get($kunci);
+        if (is_string($tersimpan) && $tersimpan !== '') {
+            return $tersimpan;
+        }
+
+        $hasil = $this->rujukanRequest('GET', 'Organization/' . urlencode($orgId));
+        $nama = $hasil['code'] === 200 && is_array($hasil['body']) ? (string) ($hasil['body']['name'] ?? '') : '';
+        if ($nama !== '') {
+            Cache::put($kunci, $nama, 86400);
+        }
+
+        return $nama;
     }
 }
