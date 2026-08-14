@@ -489,12 +489,30 @@ Belum punya sumbernya: 1b, 1d, 1e, 1f (FamilyMemberHistory), 1g (MedicationState
 **Section yang sumbernya kosong tidak dibuat** — jangan kirim `entry: []`
 (validator menolak elemen objek kosong, lihat §3 skill `satusehat-kirim`).
 
-**Implementasi (RJ):** `App\Support\Terminologi\ResumeMedisSection` (peta 13 section +
+#### Jalur IGD — susunannya BEDA, jangan disamakan
+
+Playbook *Pelayanan Instalasi Gawat Darurat* memakai `type` **`97663-9`**
+*Emergency medicine Emergency department Discharge summary* (bukan 88645-7), dan susunan
+section-nya berbeda dari rawat jalan:
+
+- **Dua section tambahan di depan:** `Asesmen Awal IGD` (LOINC `97667-0`, entry → Observation
+  triase & asesmen awal kecuali pemeriksaan fisik) dan `Skrining` (kemkes `TK000129`,
+  entry → Observation + QuestionnaireResponse).
+- **Tidak punya section Diet maupun Edukasi.**
+- Sisanya (Anamnesis 7 sub, Pemeriksaan Fisik 2 sub, Fungsional, Perencanaan Perawatan,
+  Penunjang 2 sub, Diagnosis 2 sub, Tindakan, Farmasi 2 sub, Kondisi Pulang, Rencana Tindak
+  Lanjut, Perjalanan Kunjungan) identik kodenya dengan RJ.
+
+Total slot yang bisa diisi: **RJ 24, IGD 23**. `ResumeMedisSection::daftar($jalur)` yang
+mengurus perbedaan ini; jalur yang playbook-nya belum dibaca (mis. `ri`) sengaja melempar.
+
+**Implementasi (RJ & UGD):** `App\Support\Terminologi\ResumeMedisSection` (peta 13 section +
 `tipeDokumen()` per jalur — jalur selain `rj` sengaja melempar sampai playbooknya dibaca),
 `App\Http\Traits\SATUSEHAT\CompositionTrait` (`buildComposition()` terpisah dari
 `createComposition()` supaya payload bisa diuji tanpa API), dan kartu ke-13
-`pages/transaksi/rj/satu-sehat/⚡kirim-resume-medis` — dipasang di bawah kartu
-"Selesaikan Encounter" dan menolak jalan sebelum `encounterFinished`.
+`⚡kirim-resume-medis` di `pages/transaksi/rj/satu-sehat/` **dan**
+`pages/transaksi/ugd/satu-sehat/` — dipasang paling bawah (RJ: di bawah kartu
+"Selesaikan Encounter") dan menolak jalan sebelum `encounterFinished`.
 
 ---
 

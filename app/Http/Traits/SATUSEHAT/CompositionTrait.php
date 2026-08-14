@@ -41,7 +41,7 @@ trait CompositionTrait
      *  - authorName   (string) nama penyusun (display)
      *  - title        (string) judul dokumen
      *  - status       (string) default 'final'
-     *  - jalur        (string) 'rj' (menentukan Composition.type)
+     *  - jalur        (string) 'rj'|'ugd' — menentukan Composition.type DAN susunan section
      *  - date         (string) ISO; default sekarang UTC
      *  - entri        (array)  slug ResumeMedisSection => list referensi ('Condition/xxx')
      *  - narasi       (string) isi section Perjalanan Kunjungan (teks biasa/XHTML)
@@ -51,12 +51,13 @@ trait CompositionTrait
      */
     public function buildComposition(array $data): array
     {
+        $jalur = $data['jalur'] ?? 'rj';
         $tanggal = $this->waktuComposition($data['date'] ?? null);
 
         $payload = [
             'resourceType' => 'Composition',
             'status' => $data['status'] ?? 'final',
-            'type' => ['coding' => [ResumeMedisSection::tipeDokumen($data['jalur'] ?? 'rj')]],
+            'type' => ['coding' => [ResumeMedisSection::tipeDokumen($jalur)]],
             'category' => [['coding' => [ResumeMedisSection::kategoriDokumen()]]],
             'subject' => array_filter([
                 'reference' => 'Patient/' . $data['patientId'],
@@ -94,7 +95,7 @@ trait CompositionTrait
             ])];
         }
 
-        $section = $this->susunSectionComposition($data['entri'] ?? [], $data['narasi'] ?? '');
+        $section = $this->susunSectionComposition($data['entri'] ?? [], $data['narasi'] ?? '', $jalur);
         if ($section !== []) {
             $payload['section'] = $section;
         }
@@ -115,27 +116,27 @@ trait CompositionTrait
      *
      * @return array<int, string> judul section yang kosong
      */
-    public function sectionCompositionKosong(array $entri, string $narasi = ''): array
+    public function sectionCompositionKosong(array $entri, string $narasi = '', string $jalur = 'rj'): array
     {
         $kosong = [];
-        foreach (ResumeMedisSection::daftarKunci() as $kunci) {
-            $terisi = $kunci === 'perjalananKunjungan'
+        foreach (ResumeMedisSection::daftarKunci($jalur) as $kunci) {
+            $terisi = $kunci === ResumeMedisSection::KUNCI_NARATIF
                 ? trim($narasi) !== ''
                 : $this->bersihkanReferensi($entri[$kunci] ?? []) !== [];
 
             if (!$terisi) {
-                $kosong[] = ResumeMedisSection::judulKunci($kunci);
+                $kosong[] = ResumeMedisSection::judulKunci($kunci, $jalur);
             }
         }
 
         return $kosong;
     }
 
-    private function susunSectionComposition(array $entri, string $narasi): array
+    private function susunSectionComposition(array $entri, string $narasi, string $jalur): array
     {
         $section = [];
 
-        foreach (ResumeMedisSection::daftar() as $definisi) {
+        foreach (ResumeMedisSection::daftar($jalur) as $definisi) {
             if (!empty($definisi['anak'])) {
                 $anakTerisi = [];
                 foreach ($definisi['anak'] as $anak) {

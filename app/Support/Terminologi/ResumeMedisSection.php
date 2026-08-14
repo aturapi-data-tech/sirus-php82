@@ -3,147 +3,190 @@
 namespace App\Support\Terminologi;
 
 /**
- * Definisi 13 section Resume Medis (Composition) SATUSEHAT.
+ * Definisi section Resume Medis (Composition) SATUSEHAT, per jalur layanan.
  *
- * Sumber: playbook "Resume Medis - Rawat Jalan" Bab 28 (sunting 2 Desember 2025);
- * salinan tabel lengkapnya ada di docs/satusehat-api.md §9.4.
+ * Sumber: playbook "Resume Medis - Rawat Jalan" Bab 28 (sunting 2 Desember 2025) dan
+ * playbook "Pelayanan Instalasi Gawat Darurat (IGD)"; salinan tabelnya di
+ * docs/satusehat-api.md §9.4.
  *
  * Composition BUKAN dokumen naratif — ia indeks resource yang sudah dikirim selama
- * kunjungan, dirangkai lewat section[].entry. Hanya section 13 (Perjalanan Kunjungan
- * Pasien) yang benar-benar naratif lewat section.text.div.
+ * kunjungan, dirangkai lewat section[].entry. Hanya section "Perjalanan Kunjungan
+ * Pasien" yang benar-benar naratif lewat section.text.div.
  *
- * Ditaruh sebagai helper statis (bukan trait) mengikuti pola PenilaianObservationMap:
- * dipakai bersama RJ/RI/UGD tanpa menambah risiko tabrakan nama method di komponen EMR.
+ * SUSUNAN TIAP JALUR BEDA, jangan disamakan:
+ * - RJ  : 13 section, ada Diet & Edukasi, tanpa asesmen awal.
+ * - UGD : 13 section, diawali Asesmen Awal IGD + Skrining, TANPA Diet & Edukasi.
+ * Kode leaf yang sama namanya kebetulan identik di kedua jalur — makanya kamusnya
+ * dipakai bersama, yang berbeda hanya susunannya.
  *
- * JANGAN mengganti kode dari hafalan. Kode `TK*` bersistem terminology.kemkes.go.id,
- * sisanya LOINC. Kode tipe dokumen pernah berubah (changelog playbook v6.1 24/10/2024)
- * — sebelum mengubah, baca ulang playbooknya.
+ * Ditaruh sebagai helper statis (bukan trait) mengikuti pola PenilaianObservationMap.
+ * JANGAN mengganti kode dari hafalan: kode tipe dokumen pernah berubah (changelog
+ * playbook RJ v6.1, 24/10/2024).
  */
 class ResumeMedisSection
 {
     public const SISTEM_LOINC = 'http://loinc.org';
     public const SISTEM_KEMKES = 'http://terminology.kemkes.go.id';
 
-    /** Tipe dokumen per jalur layanan (Composition.type). */
+    /** Composition.type per jalur layanan. */
     private const TIPE_DOKUMEN = [
-        'rj' => ['code' => '88645-7', 'display' => 'Outpatient hospital Discharge summary'],
+        'rj' => ['88645-7', 'Outpatient hospital Discharge summary'],
+        'ugd' => ['97663-9', 'Emergency medicine Emergency department Discharge summary'],
     ];
+
+    /**
+     * Kamus simpul: kunci => [judul, sistem, kode, display].
+     * Sistem null = simpul tanpa kode (hanya judul) — dipakai induk "Diet" di jalur RJ,
+     * yang di playbook memang tidak diberi kode (tampak salah tulis, lihat docs §9.4).
+     */
+    private const KAMUS = [
+        'asesmenAwalIgd' => ['Asesmen Awal IGD', self::SISTEM_LOINC, '97667-0', 'Emergency medicine Emergency department Initial evaluation note'],
+        'skrining' => ['Skrining', self::SISTEM_KEMKES, 'TK000129', 'Skrining'],
+
+        'anamnesis' => ['Anamnesis', self::SISTEM_KEMKES, 'TK000003', 'Anamnesis'],
+        'keluhanUtama' => ['Keluhan Utama', self::SISTEM_LOINC, '10154-3', 'Chief complaint Narrative - Reported'],
+        'keluhanPenyerta' => ['Keluhan Penyerta', self::SISTEM_LOINC, '11450-4', 'Problem list - Reported'],
+        'riwayatAlergi' => ['Riwayat Alergi', self::SISTEM_LOINC, '48765-2', 'Allergies'],
+        'riwayatPenyakitTerdahulu' => ['Riwayat Penyakit Pribadi Terdahulu', self::SISTEM_LOINC, '11348-0', 'History of Past illness Narrative'],
+        'riwayatPenyakitSekarang' => ['Riwayat Penyakit Pribadi Sekarang', self::SISTEM_LOINC, '10164-2', 'History of Present illness Narrative'],
+        'riwayatPenyakitKeluarga' => ['Riwayat Penyakit Keluarga', self::SISTEM_LOINC, '10157-6', 'History of family member diseases Narrative'],
+        'riwayatPengobatan' => ['Riwayat Pengobatan', self::SISTEM_LOINC, '10160-0', 'History of Medication use Narrative'],
+
+        'pemeriksaanFisik' => ['Pemeriksaan Fisik', self::SISTEM_KEMKES, 'TK000007', 'Pemeriksaan Fisik'],
+        'tandaVital' => ['Tanda Vital', self::SISTEM_LOINC, '8716-3', 'Vital signs'],
+        'headToToe' => ['Pemeriksaan Fisik Head to Toe', self::SISTEM_LOINC, '10187-3', 'Review of systems Narrative - Reported'],
+
+        'pemeriksaanFungsional' => ['Pemeriksaan Fungsional', self::SISTEM_LOINC, '47420-5', 'Functional status assessment note'],
+        'perencanaanPerawatan' => ['Perencanaan Perawatan', self::SISTEM_LOINC, '18776-5', 'Plan of care note'],
+
+        'pemeriksaanPenunjang' => ['Pemeriksaan Penunjang', self::SISTEM_KEMKES, 'TK000009', 'Hasil Pemeriksaan Penunjang'],
+        'hasilLab' => ['Hasil Pemeriksaan Laboratorium', self::SISTEM_LOINC, '11502-2', 'Laboratory report'],
+        'hasilRadiologi' => ['Hasil Pemeriksaan Radiologi', self::SISTEM_LOINC, '18782-3', 'Radiology Study observation (narrative)'],
+
+        'diagnosis' => ['Diagnosis', self::SISTEM_KEMKES, 'TK000004', 'Diagnosis'],
+        'diagnosisAwal' => ['Diagnosis Awal', self::SISTEM_LOINC, '42347-5', 'Admission diagnosis (narrative)'],
+        'diagnosisAkhir' => ['Diagnosis Akhir', self::SISTEM_LOINC, '78375-3', 'Discharge diagnosis Narrative'],
+
+        'tindakan' => ['Tindakan/Prosedur Medis', self::SISTEM_KEMKES, 'TK000005', 'Tindakan/Prosedur Medis'],
+
+        'farmasi' => ['Farmasi', self::SISTEM_KEMKES, 'TK000013', 'Obat'],
+        'obatSaatKunjungan' => ['Obat Saat Kunjungan', self::SISTEM_LOINC, '42346-7', 'Medications on admission (narrative)'],
+        'obatPulang' => ['Obat Pulang', self::SISTEM_LOINC, '75311-1', 'Discharge medications Narrative'],
+
+        'diet' => ['Diet', null, null, null],
+        'rekomendasiDiet' => ['Rekomendasi Diet', self::SISTEM_LOINC, '42344-2', 'Discharge diet (narrative)'],
+        'dietDiberikan' => ['Diet yang diberikan', self::SISTEM_LOINC, '61144-2', 'Diet and nutrition Narrative'],
+
+        'edukasi' => ['Edukasi', self::SISTEM_LOINC, '34895-3', 'Education note'],
+        'kondisiPulang' => ['Kondisi Saat Meninggalkan Rumah Sakit', self::SISTEM_LOINC, '10184-0', 'Hospital discharge physical findings Narrative'],
+        'rencanaTindakLanjut' => ['Rencana Tindak Lanjut', self::SISTEM_LOINC, '8653-8', 'Hospital Discharge instructions'],
+        'perjalananKunjungan' => ['Perjalanan Kunjungan Pasien', self::SISTEM_LOINC, '8648-8', 'Hospital course Narrative'],
+    ];
+
+    /** Anak-anak baku yang dipakai kedua jalur. */
+    private const ANAK_ANAMNESIS = [
+        'keluhanUtama', 'keluhanPenyerta', 'riwayatAlergi', 'riwayatPenyakitTerdahulu',
+        'riwayatPenyakitSekarang', 'riwayatPenyakitKeluarga', 'riwayatPengobatan',
+    ];
+
+    /**
+     * Susunan section per jalur, urut sesuai playbook masing-masing.
+     * Nilai string = section daun; array = induk => daftar kunci anaknya.
+     */
+    private const SUSUNAN = [
+        'rj' => [
+            ['anamnesis' => self::ANAK_ANAMNESIS],
+            ['pemeriksaanFisik' => ['tandaVital', 'headToToe']],
+            'pemeriksaanFungsional',
+            'perencanaanPerawatan',
+            ['pemeriksaanPenunjang' => ['hasilLab', 'hasilRadiologi']],
+            ['diagnosis' => ['diagnosisAwal', 'diagnosisAkhir']],
+            'tindakan',
+            ['farmasi' => ['obatSaatKunjungan', 'obatPulang']],
+            ['diet' => ['rekomendasiDiet', 'dietDiberikan']],
+            'edukasi',
+            'kondisiPulang',
+            'rencanaTindakLanjut',
+            'perjalananKunjungan',
+        ],
+        // IGD: dua section khusus di depan, dan TIDAK punya Diet maupun Edukasi.
+        'ugd' => [
+            'asesmenAwalIgd',
+            'skrining',
+            ['anamnesis' => self::ANAK_ANAMNESIS],
+            ['pemeriksaanFisik' => ['tandaVital', 'headToToe']],
+            'pemeriksaanFungsional',
+            'perencanaanPerawatan',
+            ['pemeriksaanPenunjang' => ['hasilLab', 'hasilRadiologi']],
+            ['diagnosis' => ['diagnosisAwal', 'diagnosisAkhir']],
+            'tindakan',
+            ['farmasi' => ['obatSaatKunjungan', 'obatPulang']],
+            'kondisiPulang',
+            'rencanaTindakLanjut',
+            'perjalananKunjungan',
+        ],
+    ];
+
+    /** Kunci section naratif (diisi section.text.div, bukan entry). */
+    public const KUNCI_NARATIF = 'perjalananKunjungan';
 
     /** Composition.category — sama untuk semua jalur. */
     public static function kategoriDokumen(): array
     {
-        return [
-            'system' => self::SISTEM_LOINC,
-            'code' => 'LP173421-1',
-            'display' => 'Report',
-        ];
+        return ['system' => self::SISTEM_LOINC, 'code' => 'LP173421-1', 'display' => 'Report'];
     }
 
     /**
-     * Composition.type. Jalur di luar 'rj' belum dibaca playbook-nya — sengaja
-     * melempar, bukan diam-diam memakai kode rawat jalan untuk rawat inap.
+     * Composition.type. Jalur yang playbook-nya belum dibaca sengaja melempar,
+     * bukan diam-diam memakai kode jalur lain.
      */
     public static function tipeDokumen(string $jalur = 'rj'): array
     {
-        if (!isset(self::TIPE_DOKUMEN[$jalur])) {
-            throw new \InvalidArgumentException(
+        [$kode, $display] = self::TIPE_DOKUMEN[$jalur]
+            ?? throw new \InvalidArgumentException(
                 "Tipe dokumen Resume Medis untuk jalur '{$jalur}' belum ditetapkan — baca playbook jalur tsb dulu."
             );
-        }
 
-        return array_merge(['system' => self::SISTEM_LOINC], self::TIPE_DOKUMEN[$jalur]);
+        return ['system' => self::SISTEM_LOINC, 'code' => $kode, 'display' => $display];
     }
 
     /**
-     * Susunan section resume medis, urut sesuai playbook.
+     * Susunan section siap pakai.
      *
-     * Tiap simpul: ['kunci', 'judul', 'kode' => [system, code, display]|null, 'anak' => [...]]
-     * - Simpul ber-'anak' TIDAK menampung entry sendiri; entry ada di anaknya.
-     * - 'kunci' = nama slot yang dipakai pemanggil untuk menyetorkan referensi resource.
-     * - Section 9 (Diet) sengaja TANPA kode di level induk: playbook memang tidak
-     *   memberikannya (tampak salah tulis — lihat catatan di docs §9.4). Kalau nanti
-     *   dikonfirmasi, tambahkan di sini saja.
+     * Tiap simpul: ['kunci', 'judul', 'kode' => [system, code, display]|null, 'naratif' => bool]
+     * Simpul induk membawa 'anak' berisi simpul-simpul daun dan TIDAK menampung entry sendiri.
      *
      * @return array<int, array<string, mixed>>
      */
-    public static function daftar(): array
+    public static function daftar(string $jalur = 'rj'): array
     {
-        return [
-            [
-                'kunci' => 'anamnesis',
-                'judul' => 'Anamnesis',
-                'kode' => self::kemkes('TK000003', 'Anamnesis'),
-                'anak' => [
-                    self::simpul('keluhanUtama', 'Keluhan Utama', self::loinc('10154-3', 'Chief complaint Narrative - Reported')),
-                    self::simpul('keluhanPenyerta', 'Keluhan Penyerta', self::loinc('11450-4', 'Problem list - Reported')),
-                    self::simpul('riwayatAlergi', 'Riwayat Alergi', self::loinc('48765-2', 'Allergies')),
-                    self::simpul('riwayatPenyakitTerdahulu', 'Riwayat Penyakit Pribadi Terdahulu', self::loinc('11348-0', 'History of Past illness Narrative')),
-                    self::simpul('riwayatPenyakitSekarang', 'Riwayat Penyakit Pribadi Sekarang', self::loinc('10164-2', 'History of Present illness Narrative')),
-                    self::simpul('riwayatPenyakitKeluarga', 'Riwayat Penyakit Keluarga', self::loinc('10157-6', 'History of family member diseases Narrative')),
-                    self::simpul('riwayatPengobatan', 'Riwayat Pengobatan', self::loinc('10160-0', 'History of Medication use Narrative')),
-                ],
-            ],
-            [
-                'kunci' => 'pemeriksaanFisik',
-                'judul' => 'Pemeriksaan Fisik',
-                'kode' => self::kemkes('TK000007', 'Pemeriksaan Fisik'),
-                'anak' => [
-                    self::simpul('tandaVital', 'Tanda Vital', self::loinc('8716-3', 'Vital signs')),
-                    self::simpul('headToToe', 'Pemeriksaan Fisik Head to Toe', self::loinc('10187-3', 'Review of systems Narrative - Reported')),
-                ],
-            ],
-            self::simpul('pemeriksaanFungsional', 'Pemeriksaan Fungsional', self::loinc('47420-5', 'Functional status assessment note')),
-            self::simpul('perencanaanPerawatan', 'Perencanaan Perawatan', self::loinc('18776-5', 'Plan of care note')),
-            [
-                'kunci' => 'pemeriksaanPenunjang',
-                'judul' => 'Pemeriksaan Penunjang',
-                'kode' => self::kemkes('TK000009', 'Hasil Pemeriksaan Penunjang'),
-                'anak' => [
-                    self::simpul('hasilLab', 'Hasil Pemeriksaan Laboratorium', self::loinc('11502-2', 'Laboratory report')),
-                    self::simpul('hasilRadiologi', 'Hasil Pemeriksaan Radiologi', self::loinc('18782-3', 'Radiology Study observation (narrative)')),
-                ],
-            ],
-            [
-                'kunci' => 'diagnosis',
-                'judul' => 'Diagnosis',
-                'kode' => self::kemkes('TK000004', 'Diagnosis'),
-                'anak' => [
-                    self::simpul('diagnosisAwal', 'Diagnosis Awal', self::loinc('42347-5', 'Admission diagnosis (narrative)')),
-                    self::simpul('diagnosisAkhir', 'Diagnosis Akhir', self::loinc('78375-3', 'Discharge diagnosis Narrative')),
-                ],
-            ],
-            self::simpul('tindakan', 'Tindakan/Prosedur Medis', self::kemkes('TK000005', 'Tindakan/Prosedur Medis')),
-            [
-                'kunci' => 'farmasi',
-                'judul' => 'Farmasi',
-                'kode' => self::kemkes('TK000013', 'Obat'),
-                'anak' => [
-                    self::simpul('obatSaatKunjungan', 'Obat Saat Kunjungan', self::loinc('42346-7', 'Medications on admission (narrative)')),
-                    self::simpul('obatPulang', 'Obat Pulang', self::loinc('75311-1', 'Discharge medications Narrative')),
-                ],
-            ],
-            [
-                'kunci' => 'diet',
-                'judul' => 'Diet',
-                'kode' => null,
-                'anak' => [
-                    self::simpul('rekomendasiDiet', 'Rekomendasi Diet', self::loinc('42344-2', 'Discharge diet (narrative)')),
-                    self::simpul('dietDiberikan', 'Diet yang diberikan', self::loinc('61144-2', 'Diet and nutrition Narrative')),
-                ],
-            ],
-            self::simpul('edukasi', 'Edukasi', self::loinc('34895-3', 'Education note')),
-            self::simpul('kondisiPulang', 'Kondisi Saat Meninggalkan Rumah Sakit', self::loinc('10184-0', 'Hospital discharge physical findings Narrative')),
-            self::simpul('rencanaTindakLanjut', 'Rencana Tindak Lanjut', self::loinc('8653-8', 'Hospital Discharge instructions')),
-            // Satu-satunya section naratif: diisi section.text.div, bukan entry.
-            self::simpul('perjalananKunjungan', 'Perjalanan Kunjungan Pasien', self::loinc('8648-8', 'Hospital course Narrative'), true),
-        ];
+        if (!isset(self::SUSUNAN[$jalur])) {
+            throw new \InvalidArgumentException(
+                "Susunan section Resume Medis untuk jalur '{$jalur}' belum ditetapkan — baca playbook jalur tsb dulu."
+            );
+        }
+
+        $daftar = [];
+        foreach (self::SUSUNAN[$jalur] as $baris) {
+            if (is_string($baris)) {
+                $daftar[] = self::simpul($baris);
+                continue;
+            }
+
+            $kunciInduk = array_key_first($baris);
+            $daftar[] = self::simpul($kunciInduk) + [
+                'anak' => array_map(fn($anak) => self::simpul($anak), $baris[$kunciInduk]),
+            ];
+        }
+
+        return $daftar;
     }
 
     /** Semua kunci slot yang bisa diisi pemanggil (termasuk anak), urut tampil. */
-    public static function daftarKunci(): array
+    public static function daftarKunci(string $jalur = 'rj'): array
     {
         $kunci = [];
-        foreach (self::daftar() as $section) {
+        foreach (self::daftar($jalur) as $section) {
             if (!empty($section['anak'])) {
                 foreach ($section['anak'] as $anak) {
                     $kunci[] = $anak['kunci'];
@@ -157,9 +200,9 @@ class ResumeMedisSection
     }
 
     /** Judul slot untuk pesan "section kosong" di kartu pengirim. */
-    public static function judulKunci(string $kunci): string
+    public static function judulKunci(string $kunci, string $jalur = 'rj'): string
     {
-        foreach (self::daftar() as $section) {
+        foreach (self::daftar($jalur) as $section) {
             if ($section['kunci'] === $kunci) {
                 return $section['judul'];
             }
@@ -173,18 +216,16 @@ class ResumeMedisSection
         return $kunci;
     }
 
-    private static function simpul(string $kunci, string $judul, array $kode, bool $naratif = false): array
+    private static function simpul(string $kunci): array
     {
-        return ['kunci' => $kunci, 'judul' => $judul, 'kode' => $kode, 'naratif' => $naratif];
-    }
+        [$judul, $sistem, $kode, $display] = self::KAMUS[$kunci]
+            ?? throw new \InvalidArgumentException("Simpul Resume Medis '{$kunci}' tidak dikenal.");
 
-    private static function loinc(string $kode, string $display): array
-    {
-        return ['system' => self::SISTEM_LOINC, 'code' => $kode, 'display' => $display];
-    }
-
-    private static function kemkes(string $kode, string $display): array
-    {
-        return ['system' => self::SISTEM_KEMKES, 'code' => $kode, 'display' => $display];
+        return [
+            'kunci' => $kunci,
+            'judul' => $judul,
+            'kode' => $sistem ? ['system' => $sistem, 'code' => $kode, 'display' => $display] : null,
+            'naratif' => $kunci === self::KUNCI_NARATIF,
+        ];
     }
 }

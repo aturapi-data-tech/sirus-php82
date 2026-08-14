@@ -128,6 +128,11 @@ new class extends Component {
                         wire:key="ss-allergy-ugd-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-penilaian :rjNo="$rjNo"
                         wire:key="ss-penilaian-ugd-{{ $rjNo ?? 'none' }}" />
+
+                    {{-- Resume medis dikirim SESUDAH encounter finished (playbook IGD),
+                         jadi kartunya paling bawah. Susunan section IGD beda dari RJ. --}}
+                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-resume-medis :rjNo="$rjNo"
+                        wire:key="ss-resume-medis-ugd-{{ $rjNo ?? 'none' }}" />
                 </div>
             </div>
         </div>
