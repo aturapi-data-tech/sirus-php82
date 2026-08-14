@@ -162,7 +162,7 @@ Kolom di dashboard platform SATUSEHAT (jumlah resource per bulan) vs kondisi di 
 | Jumlah Laboratorium (**Specimen**) | ✅ | ⚠️ trait saja | — |
 | Jumlah Pelaporan Diagnostik (**DiagnosticReport**) | ✅ | ⚠️ trait saja | LOINC |
 | Jumlah Intoleransi Alergi (**AllergyIntolerance**) | ✅ | ⚠️ trait saja | SNOMED |
-| Jumlah Diet (**Composition**) | ❌ | ❌ | LOINC 88645-7 — label dashboard "Diet" menyesatkan, resource-nya Resume Medis (§9.4) |
+| Jumlah Diet (**Composition**) | ⚠️ dibangun, belum diuji live | ❌ | LOINC 88645-7 — label dashboard "Diet" menyesatkan, resource-nya Resume Medis (§9.4) |
 | Jumlah Impresi Klinik (**ClinicalImpression**) | ❌ | ❌ | — |
 | Jumlah Radiologi (**ImagingStudy**) | ❌ | ❌ | — |
 | Jumlah Imunisasi (**Immunization**) | ❌ | ❌ | — |
@@ -220,7 +220,7 @@ pemetaan sumber data SIRUS, dan gap yang harus ditutup dulu.
 | 1 | **EpisodeOfCare** | `POST /EpisodeOfCare` | episodeofcare-type | `rstxn_rihdrs` (RI) | ✅ data ada |
 | 2 | **ClinicalImpression** | `POST /ClinicalImpression` | SNOMED (finding) | asesmen "A" SOAP EMR | ✅ data ada |
 | 3 | **NutritionOrder** | `POST /NutritionOrder` | SNOMED (oralDiet) | order diet EMR (role Gizi) | ◑ perlu petakan kode |
-| 4 | **Composition** | `POST /Composition` | LOINC 88645-7 + LP173421-1 | indeks ID resource kunjungan → 13 section | ◑ kode section lengkap di §9.4 |
+| 4 | **Composition** | `POST /Composition` | LOINC 88645-7 + LP173421-1 | indeks ID resource kunjungan → 13 section | ⚠️ RJ dibangun (`CompositionTrait` + kartu 13), belum diuji live |
 | 5 | **ImagingStudy** | `POST /ImagingStudy` | DICOM DCM + ICD-9-CM | modul Radiologi | ⚠️ gap: UID DICOM |
 | 6 | **Immunization** | `POST /Immunization` | KFA (vaksin) | — | ⚠️ gap: belum ada modul |
 
@@ -488,6 +488,13 @@ Belum punya sumbernya: 1b, 1d, 1e, 1f (FamilyMemberHistory), 1g (MedicationState
 10 Edukasi, 11 Kondisi pulang, 12 Rencana tindak lanjut.
 **Section yang sumbernya kosong tidak dibuat** — jangan kirim `entry: []`
 (validator menolak elemen objek kosong, lihat §3 skill `satusehat-kirim`).
+
+**Implementasi (RJ):** `App\Support\Terminologi\ResumeMedisSection` (peta 13 section +
+`tipeDokumen()` per jalur — jalur selain `rj` sengaja melempar sampai playbooknya dibaca),
+`App\Http\Traits\SATUSEHAT\CompositionTrait` (`buildComposition()` terpisah dari
+`createComposition()` supaya payload bisa diuji tanpa API), dan kartu ke-13
+`pages/transaksi/rj/satu-sehat/⚡kirim-resume-medis` — dipasang di bawah kartu
+"Selesaikan Encounter" dan menolak jalan sebelum `encounterFinished`.
 
 ---
 

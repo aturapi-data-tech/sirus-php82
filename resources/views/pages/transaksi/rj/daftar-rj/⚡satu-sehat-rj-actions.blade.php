@@ -131,6 +131,11 @@ new class extends Component {
                          dikerjakan setelah semua resource di atasnya terkirim. --}}
                     <livewire:pages::transaksi.rj.satu-sehat.kirim-encounter :rjNo="$rjNo" bagian="selesai"
                         wire:key="ss-encounter-selesai-rj-{{ $rjNo ?? 'none' }}" />
+
+                    {{-- Resume medis dikirim SESUDAH encounter finished (playbook Bab 28),
+                         jadi kartunya di bawah kartu penutup di atas. --}}
+                    <livewire:pages::transaksi.rj.satu-sehat.kirim-resume-medis :rjNo="$rjNo"
+                        wire:key="ss-resume-medis-rj-{{ $rjNo ?? 'none' }}" />
                 </div>
             </div>
         </div>
