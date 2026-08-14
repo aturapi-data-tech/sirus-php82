@@ -61,6 +61,49 @@ Body JSON: `kodeDiagnosa` + `kodeFaskesSatuSehat` (+ `encounter.reference` bila 
 - **`Task.identifier.value` WAJIB UNIK SETIAP POST (termasuk retry!)** — reuse = response tanpa `contained`/`output` yang menyesatkan, atau `Found duplicate: Task`. Ini akar kasus paling sering di grup.
 - Org-id di token = org-id di resource; jangan campur token prod/staging.
 
+### 3.1 Sisi FASKES TUJUAN — persetujuan/penolakan tugas rujukan (kotak masuk)
+
+Sudah diimplementasikan: `/rujukan/persetujuan` (`pages::transaksi.rujukan.persetujuan-rujukan.*`),
+method sisi penerima ada di `SatuSehatRujukanTrait` §7. Postman: *Contoh Rujukan → 02. Rawat Inap /
+03. Rawat Darurat → 03. Pengiriman Tugas Rujukan → Faskes Rujukan - Persetujuan/Penolakan Tugas Rujukan*.
+Rawat Jalan **tidak punya langkah ini** (BPJS yang mengorkestrasi).
+
+```
+GET   {base}/Task?owner=<org kita>&code=referral-approval-request&_include=Task:based-on
+PATCH {base}/Task/<id>          Content-Type: application/json-patch+json
+[ {"op":"replace","path":"/status","value":"completed"},
+  {"op":"add","path":"/output","value":[{
+      "type":{"coding":[{"system":"http://terminology.kemkes.go.id",
+                         "code":"response-referral-task","display":"Response referral task"}],
+              "text":"Respon atas Task Rujukan"},
+      "valueCoding":{"system":"http://hl7.org/fhir/task-status",
+                     "code":"accepted",     // atau "rejected"
+                     "display":"Accepted"}}]} ]
+```
+
+- **`_include=Task:based-on` itu wajib secara praktis**: Task sendiri tidak memuat nama pasien,
+  keterangan klinis, maupun layanan yang diminta — semuanya di CarePlan. Tanpa include, kotak
+  masuk cuma berisi UUID.
+- **Jalur (Ranap vs IGD) dibaca dari `CarePlan.category`** — itu satu-satunya beda antara bundle
+  Rawat Inap dan Rawat Darurat di Postman V30062026:
+  | Jalur | Coding kategori |
+  |---|---|
+  | Rawat Inap | `http://snomed.info/sct` · `736353004` · *Inpatient care plan* |
+  | Gawat Darurat | `http://terminology.kemkes.go.id` · `TK000068` · *Emergency care plan* |
+  Kalau perujuk mengirim kategori yang salah, RS tujuan akan menyortirnya ke antrean yang keliru.
+- Nama RS perujuk **tidak ikut** di `Task.requester` (hanya reference) → ambil dari
+  `GET Organization/<id>`, cache; jangan cache kegagalan.
+- Sudah dijawab = `Task.output[].valueCoding.code` berisi `accepted`/`rejected`. Perujuk boleh
+  membatalkan lebih dulu (`status: cancelled`) → jangan tawarkan tombol jawab.
+- Sisi perujuk membaca keputusan lewat `GET Task?code=referral-approval-request&requester=<org perujuk>`.
+  **Parameter `encounter` sah sebagai filter tambahan** (konfirmasi tim SATUSEHAT 14/08/26) —
+  tidak perlu menyapu seluruh Task RS untuk memantau satu kunjungan.
+- Alternatif PUT Task utuh juga ada di Postman, tapi PATCH yang dipakai: lebih pendek dan tidak
+  berisiko menimpa field yang tidak kita kirim.
+- Sesudah *accepted*, perujuk melanjutkan ke ServiceRequest; **pendaftaran kunjungan pasien rujukan
+  di sisi RS tujuan** (Postman "04. Pengiriman Rujukan → Faskes Rujukan - Pendaftaran Kunjungan
+  Rujukan") masih langkah terpisah yang belum dibangun.
+
 ## 4. Katalog error → penanganan di SIMRS
 
 | Pesan | Arti sebenarnya | Aksi |
@@ -75,6 +118,7 @@ Body JSON: `kodeDiagnosa` + `kodeFaskesSatuSehat` (+ `encounter.reference` bila 
 | `Gagal mendapatkan nomor Rujukan Satu Sehat` (400) | Upstream SATUSEHAT gagal menerbitkan nomor (kambuhan: Jul–Agu 2026) | Simpan payload+response mentah, retry nanti; TIDAK ada workaround klien |
 | `Value was either too large or too small for a Decimal` (500) | Bug sisi BPJS/SATUSEHAT (gel. 11/08/26) | Tunggu perbaikan |
 | `noSep tidak ditemukan` (400) | Sinkronisasi SEP dev | Cek SEP, coba ulang |
+| `dokter tidak valid` di `postKunjungan` (13/08/26) | Bukan soal `kdDokterSatuSehat` — **kode dokter BPJS** di faskes tsb belum ada/salah | Lengkapi pemetaan dokter BPJS, bukan hanya IHS Practitioner |
 | `Found duplicate: Task (20002)` | identifier di-reuse | Generate UUID baru tiap POST |
 | 429 `Rate limit quota violation` | Kuota staging habis | Hemat panggilan; lapor minta perpanjang |
 | `upstream connect error` / timeout / HTML | Infra BPJS down | Retry-later; jangan blokir EMR |
@@ -93,6 +137,9 @@ Body JSON: `kodeDiagnosa` + `kodeFaskesSatuSehat` (+ `encounter.reference` bila 
 
 ## 6. Referensi
 
-- Folder export chat + lampiran: `~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim/` — berisi **Postman collection V30062026**, **Playbook Rujukan Pasien (RJ/RI/IGD)**, **Skenario UAT SRBK FKTL ver 1.0**, sample payload/response JSON, Surat Himbauan.
+- Export chat terbaru (s/d **14/08/26**): `~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim(1)/`.
+  Kemkes menjalankan *Check Point Progres Modul Rujukan RME* daring 14/08/26 + spreadsheet progres
+  pengembangan per faskes — pantau undangan berikutnya di grup.
+- Folder export chat lama + lampiran: `~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim/` — berisi **Postman collection V30062026**, **Playbook Rujukan Pasien (RJ/RI/IGD)**, **Skenario UAT SRBK FKTL ver 1.0**, sample payload/response JSON, Surat Himbauan.
 - Postman publik: folder "04 Pengiriman Rujukan" (satusehat-public); playbook online: satusehat.kemkes.go.id/platform/docs/id/interoperability/rujukan/
 - Terminologi: clinical-speciality & practitioner-speciality (gsheet Kemkes); Kelompok Layanan per ICD-10 (Playbook Lampiran 4).
