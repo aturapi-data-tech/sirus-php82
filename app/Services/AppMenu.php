@@ -197,11 +197,16 @@ class AppMenu
             $entry(['group' => 'Operasi', 'groupOrder' => 13, 'order' => 1, 'route' => 'operasi.jadwal-operasi', 'title' => 'Jadwal Operasi', 'desc' => 'Booking & manajemen jadwal operasi pasien', 'roles' => ['admin', 'manager medis', 'dokter', 'perawat'], 'badge' => 'JDW']),
             $entry(['group' => 'Operasi', 'groupOrder' => 13, 'order' => 2, 'route' => 'penunjang.kamar-operasi', 'title' => 'Transaksi Kamar Operasi', 'desc' => 'Tindakan operasi, tarif, & transfer biaya ke rawat inap', 'roles' => ['admin', 'manager umum', 'supervisor penunjang', 'dokter', 'perawat'], 'badge' => 'OK']),
 
+            // ── Rujukan ───────────────────────────────────────────────
+            // Kotak masuk permintaan rujukan dari RS lain (SRBK/SATUSEHAT). Yang
+            // menjawab = petugas yang tahu ketersediaan layanan: admisi ranap & IGD.
+            $entry(['group' => 'Rujukan', 'groupOrder' => 14, 'order' => 1, 'route' => 'rujukan.persetujuan', 'title' => 'Persetujuan Rujukan Masuk', 'desc' => 'Setujui / tolak permintaan rujukan Rawat Inap & Gawat Darurat dari RS lain (SATUSEHAT Rujukan)', 'roles' => ['admin', 'manager medis', 'supervisor tu', 'perawat', 'dokter', 'tu'], 'badge' => 'RJK']),
+
             // ── Down Time ─────────────────────────────────────────────
             // Terbuka untuk SEMUA role: saat SIMRS bermasalah, siapa pun yang masih
             // bisa membuka aplikasi harus dapat mengunduh formulir cadangannya.
-            $entry(['group' => 'Down Time', 'groupOrder' => 14, 'order' => 1, 'route' => 'downtime.formulir-manual', 'title' => 'Formulir Manual Down Time', 'desc' => 'Formulir cadangan saat SIMRS tidak dapat diakses — EMR, administrasi, kasir & apotek RJ/UGD/RI + log & rekonsiliasi IT', 'roles' => [self::SEMUA_ROLE], 'badge' => 'DT']),
-            $entry(['group' => 'Down Time', 'groupOrder' => 14, 'order' => 2, 'route' => 'downtime.daftar-tarif', 'title' => 'Daftar Tarif Down Time', 'desc' => 'Price list acuan pengisian nominal formulir manual — kamar, visite & konsul, jasa medis/dokter/karyawan, lab, radiologi, obat & lain-lain', 'roles' => [self::SEMUA_ROLE], 'badge' => 'TRF']),
+            $entry(['group' => 'Down Time', 'groupOrder' => 15, 'order' => 1, 'route' => 'downtime.formulir-manual', 'title' => 'Formulir Manual Down Time', 'desc' => 'Formulir cadangan saat SIMRS tidak dapat diakses — EMR, administrasi, kasir & apotek RJ/UGD/RI + log & rekonsiliasi IT', 'roles' => [self::SEMUA_ROLE], 'badge' => 'DT']),
+            $entry(['group' => 'Down Time', 'groupOrder' => 15, 'order' => 2, 'route' => 'downtime.daftar-tarif', 'title' => 'Daftar Tarif Down Time', 'desc' => 'Price list acuan pengisian nominal formulir manual — kamar, visite & konsul, jasa medis/dokter/karyawan, lab, radiologi, obat & lain-lain', 'roles' => [self::SEMUA_ROLE], 'badge' => 'TRF']),
 
             $entry(['group' => 'Down Time', 'groupOrder' => 14, 'order' => 3, 'route' => 'downtime.pelaporan', 'title' => 'Pelaporan Down Time SIMRS', 'desc' => 'Rekam formulir DT-01 sesudah layanan pulih — kejadian, penanganan, dampak & evaluasi', 'roles' => ['admin', 'manager umum'], 'badge' => 'DT-01']),
 

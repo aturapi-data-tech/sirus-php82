@@ -342,6 +342,15 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/ri/update-tt', 'pages::transaksi.ri.update-tt-ri.update-tt-ri')
         ->name('ri.update-tt');
     // ===========================================
+    // RUJUKAN — PERSETUJUAN RUJUKAN MASUK (SRBK sisi faskes tujuan)
+    // ===========================================
+    // RS lain mengirim Task referral-approval-request dengan owner = RS kita;
+    // layar ini menyetujui/menolaknya (Ranap & Gawat Darurat). Rujukan rawat jalan
+    // diorkestrasi BPJS, jadi tidak lewat sini.
+    Route::livewire('/rujukan/persetujuan', 'pages::transaksi.rujukan.persetujuan-rujukan.persetujuan-rujukan')
+        ->name('rujukan.persetujuan');
+
+    // ===========================================
     // OPERASI - JADWAL OPERASI
     // ===========================================
     Route::livewire('/operasi/jadwal-operasi', 'pages::operasi.jadwal-operasi.jadwal-operasi')
