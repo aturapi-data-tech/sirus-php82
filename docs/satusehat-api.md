@@ -162,7 +162,7 @@ Kolom di dashboard platform SATUSEHAT (jumlah resource per bulan) vs kondisi di 
 | Jumlah Laboratorium (**Specimen**) | ✅ | ⚠️ trait saja | — |
 | Jumlah Pelaporan Diagnostik (**DiagnosticReport**) | ✅ | ⚠️ trait saja | LOINC |
 | Jumlah Intoleransi Alergi (**AllergyIntolerance**) | ✅ | ⚠️ trait saja | SNOMED |
-| Jumlah Diet (**Composition**) | ❌ | ❌ | — |
+| Jumlah Diet (**Composition**) | ❌ | ❌ | LOINC 88645-7 — label dashboard "Diet" menyesatkan, resource-nya Resume Medis (§9.4) |
 | Jumlah Impresi Klinik (**ClinicalImpression**) | ❌ | ❌ | — |
 | Jumlah Radiologi (**ImagingStudy**) | ❌ | ❌ | — |
 | Jumlah Imunisasi (**Immunization**) | ❌ | ❌ | — |
@@ -220,7 +220,7 @@ pemetaan sumber data SIRUS, dan gap yang harus ditutup dulu.
 | 1 | **EpisodeOfCare** | `POST /EpisodeOfCare` | episodeofcare-type | `rstxn_rihdrs` (RI) | ✅ data ada |
 | 2 | **ClinicalImpression** | `POST /ClinicalImpression` | SNOMED (finding) | asesmen "A" SOAP EMR | ✅ data ada |
 | 3 | **NutritionOrder** | `POST /NutritionOrder` | SNOMED (oralDiet) | order diet EMR (role Gizi) | ◑ perlu petakan kode |
-| 4 | **Composition** | `POST /Composition` | LOINC (doc type) | narasi EMR → section | ◑ perlu tipe LOINC |
+| 4 | **Composition** | `POST /Composition` | LOINC 88645-7 + LP173421-1 | indeks ID resource kunjungan → 13 section | ◑ kode section lengkap di §9.4 |
 | 5 | **ImagingStudy** | `POST /ImagingStudy` | DICOM DCM + ICD-9-CM | modul Radiologi | ⚠️ gap: UID DICOM |
 | 6 | **Immunization** | `POST /Immunization` | KFA (vaksin) | — | ⚠️ gap: belum ada modul |
 
@@ -407,73 +407,87 @@ public function createNutritionOrder(array $data): array
 
 ---
 
-### 9.4 Composition — Dokumen Klinis Terstruktur (label dashboard "Diet")
+### 9.4 Composition — Resume Medis (Bab 28 playbook Rawat Jalan)
 
-Dokumen ber-section (mis. ringkasan pasien pulang / rencana). Dashboard Kemkes melabelinya
-"Diet" tetapi resource-nya adalah **Composition** (dokumen FHIR generik).
+Composition **bukan** dokumen naratif baru: ia **indeks** dari resource yang sudah dikirim
+selama kunjungan, dirangkai lewat `section[].entry`. Satu kunjungan = satu payload, dikirim
+saat kunjungan selesai (setelah `PUT Encounter` status `finished`).
 
-**Payload FHIR R4:**
+> Sumber: playbook *Resume Medis - Rawat Jalan* Bab 28, disunting 2 Desember 2025.
+> **Koreksi penting:** dokumen lama repo ini menulis `type` = `18842-5` *Discharge summary*
+> dan menyebut label dashboard "Diet". Keduanya SALAH — changelog playbook v6.1 (24/10/2024)
+> mencatat "perubahan kode tipe resume medis". Nilai yang benar ada di tabel bawah.
 
-```json
-{
-  "resourceType": "Composition",
-  "identifier": {
-    "system": "http://sys-ids.kemkes.go.id/composition/{organizationId}",
-    "value": "{docNo}"
-  },
-  "status": "final",
-  "type": {
-    "coding": [{ "system": "http://loinc.org", "code": "18842-5", "display": "Discharge summary" }]
-  },
-  "subject": { "reference": "Patient/{ihsPatient}" },
-  "encounter": { "reference": "Encounter/{ihsEncounter}" },
-  "date": "2026-07-14T12:00:00+07:00",
-  "author": [{ "reference": "Practitioner/{ihsDpjp}" }],
-  "title": "Ringkasan Pasien Pulang",
-  "section": [{
-    "title": "Ringkasan",
-    "code": { "coding": [{ "system": "http://loinc.org", "code": "8648-8", "display": "Hospital course" }] },
-    "text": { "status": "generated", "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">...</div>" }
-  }]
-}
-```
+**Elemen wajib** (bertanda `*` di playbook): `status`, `type`, `subject`, `date`, `author[]`,
+`title`, `attester.mode`, `relatesTo[i].code`, `relatesTo[i].target`.
+Opsional yang relevan: `identifier`, `category`, `encounter`, `custodian`, `event[]`, `section[]`.
 
-**Metode:**
+- `identifier.system` = `http://sys-ids.kemkes.go.id/composition/{organizationId}`
+- `date` UTC+00 (`YYYY-MM-DDThh:mm:ss+00:00`), tidak boleh < 3 Juni 2014
+- `subject` = `Patient/{ihs}`, `encounter` = `Encounter/{id}`, `author[]` = `Practitioner/{ihs}`
 
-```php
-public function createComposition(array $data): array
-{
-    $payload = [
-        'resourceType' => 'Composition',
-        'identifier'   => [
-            'system' => 'http://sys-ids.kemkes.go.id/composition/' . $this->organizationId,
-            'value'  => $data['docNo'],
-        ],
-        'status' => $data['status'] ?? 'final',
-        'type'   => [ 'coding' => [[
-            'system'  => 'http://loinc.org',
-            'code'    => $data['loincDocType'],        // jenis dokumen (LOINC)
-            'display' => $data['loincDisplay'],
-        ]]],
-        'subject'   => ['reference' => 'Patient/'   . $data['patientId']],
-        'encounter' => ['reference' => 'Encounter/' . $data['encounterId']],
-        'date'      => $data['date'] ?? now()->toIso8601String(),
-        'author'    => [['reference' => 'Practitioner/' . $data['authorId']]],
-        'title'     => $data['title'],
-        'section'   => array_map(fn ($s) => [
-            'title' => $s['title'],
-            'code'  => ['coding' => [$s['code']]],
-            'text'  => ['status' => 'generated', 'div' => $s['html']],
-        ], $data['sections'] ?? []),
-    ];
-    return $this->makeRequest('post', '/Composition', $payload);
-}
-```
+| Elemen | Nilai |
+|---|---|
+| `type.coding` | `http://loinc.org` · **`88645-7`** · *Outpatient hospital Discharge summary* |
+| `category.coding` | `http://loinc.org` · **`LP173421-1`** · *Report* |
 
-- **Pemetaan SIRUS:** `section[].text.div` = narasi EMR (ringkasan/rencana) dibungkus XHTML valid;
-  `authorId` = DPJP; `docNo` = nomor dokumen unik.
-- **PR:** tentukan `type` LOINC dokumen (mis. `18842-5` discharge summary); `div` **wajib**
-  XHTML valid ber-namespace (`xmlns="http://www.w3.org/1999/xhtml"`).
+**Tiga belas section** (kode `TK*` bersistem `http://terminology.kemkes.go.id`, sisanya LOINC).
+Sub-section ditulis di `section[i].section[j]`:
+
+| # | Section | Kode | Sub-section | Kode sub | `entry` → resource |
+|---|---|---|---|---|---|
+| 1 | Anamnesis | TK000003 | Keluhan Utama | 10154-3 | Condition (keluhan utama) |
+| | | | Keluhan Penyerta | 11450-4 | Condition |
+| | | | Riwayat Alergi | 48765-2 | AllergyIntolerance |
+| | | | Riw. Penyakit Pribadi Terdahulu | 11348-0 | Condition (`inactive`) |
+| | | | Riw. Penyakit Pribadi Sekarang | 10164-2 | Condition (`active`) |
+| | | | Riwayat Penyakit Keluarga | 10157-6 | FamilyMemberHistory |
+| | | | Riwayat Pengobatan | 10160-0 | MedicationStatement |
+| 2 | Pemeriksaan Fisik | TK000007 | Tanda Vital | 8716-3 | Observation (TTV, kesadaran, antropometri) |
+| | | | Head to Toe | 10187-3 | Observation |
+| 3 | Pemeriksaan Fungsional | 47420-5 | — | — | Observation (status psikologis) |
+| 4 | Perencanaan Perawatan | 18776-5 | — | — | ClinicalImpression, Goal, CarePlan |
+| 5 | Pemeriksaan Penunjang | TK000009 | Hasil Lab | 11502-2 | ServiceRequest, Procedure, Specimen, Observation, DiagnosticReport |
+| | | | Hasil Radiologi | 18782-3 | ServiceRequest, Observation, Procedure, AllergyIntolerance, DiagnosticReport |
+| 6 | Diagnosis | TK000004 | Diagnosis Awal | 42347-5 | Condition (diagnosis masuk) |
+| | | | Diagnosis Akhir | 78375-3 | ClinicalImpression, Condition, RiskAssessment |
+| 7 | Tindakan/Prosedur Medis | TK000005 | — | — | ServiceRequest, Procedure, Observation |
+| 8 | Farmasi (*display* "Obat") | TK000013 | Obat Saat Kunjungan | 42346-7 | MedicationRequest, MedicationDispense, MedicationAdministration |
+| | | | Obat Pulang | 75311-1 | MedicationRequest, MedicationDispense |
+| 9 | Diet | — | Rekomendasi Diet | 42344-2 | NutritionOrder (`intent: proposal`) |
+| | | | Diet yang Diberikan | 61144-2 | NutritionOrder (`intent: order`) |
+| 10 | Edukasi | 34895-3 | — | — | Procedure (edukasi) |
+| 11 | Kondisi Saat Meninggalkan RS | 10184-0 | — | — | ClinicalImpression, Condition |
+| 12 | Rencana Tindak Lanjut | 8653-8 | — | — | Observation, CarePlan, ServiceRequest |
+| 13 | Perjalanan Kunjungan Pasien | 8648-8 | — | — | **narasi** `section.text.div` (bukan `entry`) |
+
+**Dua hal yang belum jelas dari playbook** — tanyakan sebelum kirim produksi:
+1. Section 9 (Diet) tidak diberi kode di level section-nya; playbook menulis
+   `Composition.section.code` padahal judulnya `section.section.title`. Kemungkinan salah tulis.
+2. `relatesTo[i].code` + `.target` ditandai **wajib**, padahal resume pertama tidak
+   menggantikan/merujuk dokumen mana pun. Perlu konfirmasi nilai yang diterima validator.
+
+**Pemetaan ke node `satuSehat` (RJ) — apa yang SUDAH bisa diisi hari ini:**
+
+| Section | Sumber di node |
+|---|---|
+| 1a Keluhan Utama | `chiefComplaintId` |
+| 1c Riwayat Alergi | `allergyId` |
+| 2a Tanda Vital | `observationIds` |
+| 3 Pemeriksaan Fungsional | `penilaianObservationIds` (perlu dipilah: playbook memaksudkan status psikologis) |
+| 4 Perencanaan Perawatan | `clinicalImpressionId` |
+| 5a Lab | `labServiceRequestIds`, `labSpecimenIds`, `labObservationIds`, `labDiagnosticReportIds` |
+| 5b Radiologi | `radServiceRequestIds`, `radDiagnosticReportIds` |
+| 6a/6b Diagnosis | `conditionIds` (+ `clinicalImpressionId` di 6b) |
+| 7 Tindakan | `procedureIds` |
+| 8a Obat Saat Kunjungan | `medicationRequestIds`, `medicationDispenseIds` |
+| 13 Perjalanan Kunjungan | narasi dirakit dari EMR |
+
+Belum punya sumbernya: 1b, 1d, 1e, 1f (FamilyMemberHistory), 1g (MedicationStatement),
+2b head-to-toe (kalau tak dikirim), 8b obat pulang (RJ tidak membedakan), 9 Diet,
+10 Edukasi, 11 Kondisi pulang, 12 Rencana tindak lanjut.
+**Section yang sumbernya kosong tidak dibuat** — jangan kirim `entry: []`
+(validator menolak elemen objek kosong, lihat §3 skill `satusehat-kirim`).
 
 ---
 
