@@ -20,6 +20,16 @@ chat grup resmi BPJS×Kemkes Apr–Agu 2026). Skill ini = model integrasi + FAQ 
 Urutan endpoint RJ: `GetKriteriaRujukan` → `GetFaskesRujukan` → `Rujukan/Insert`
 (+ `Rujukan/Delete` pakai HTTP method **DELETE**, `GetSpesialistik` untuk master).
 
+**Dua sisi, jangan tertukar.** Sisi PERUJUK (kirim) ada di panel EMR RI/UGD/RJ; sisi
+FASKES TUJUAN (kotak masuk) ada di layar tersendiri `/rujukan/persetujuan`:
+
+| Peran | Endpoint | Ada di |
+|---|---|---|
+| Perujuk kirim tugas | POST Bundle Task+CarePlan `referral-approval` | `rujukanBundleApproval()` |
+| **Tujuan baca kotak masuk** | `GET Task?owner=<org kita>&code=referral-approval-request&_include=Task:based-on` | `rujukanTaskMasuk()` |
+| **Tujuan menjawab** | `PATCH Task/<id>` json-patch: status `completed` + output `accepted`/`rejected` | `rujukanTaskRespon()` |
+| Perujuk baca keputusan | `GET Task?code=referral-approval-request&requester=<org perujuk>` (+`&encounter=` sah sbg filter) | `rujukanTaskByRequester()` |
+
 Env: `SISRUTE_URL/CONS_ID/SECRET_KEY/USER_KEY/KDPPK` (dev: CID 8334, faskes 0184R006
 MADINAH JST). Signature/header = pola VClaim persis; cons-id SISRUTE terdaftar TERPISAH
 dari cons-id vclaim biasa. Semua call wajib `timeout(8)->connectTimeout(3)` + try/catch
@@ -51,6 +61,13 @@ dari cons-id vclaim biasa. Semua call wajib `timeout(8)->connectTimeout(3)` + tr
    jejaring wilayah pakai `valueCoding` (bukan `valueString`); kode wilayah tanpa titik.
 10. Simpan **payload + response mentah** tiap call di node JSON — bukti wajib saat lapor
     Issue Tracker, sekaligus audit.
+11. **`CarePlan.category` menentukan LAYANAN yang diminta**, dan itu satu-satunya beda bundle
+    ranap vs gawat darurat: ranap `736353004` *Inpatient care plan* (SNOMED), IGD `TK000068`
+    *Emergency care plan* (terminology.kemkes). Salah kategori = permintaan masuk ke antrean
+    yang keliru di RS tujuan. Nama pasien, keterangan klinis, dan layanan **hanya ada di
+    CarePlan**, bukan di Task — makanya kotak masuk wajib `_include=Task:based-on`.
+12. Nama RS perujuk tidak ikut di `Task.requester` → `GET Organization/<id>` + cache;
+    **jangan cache kegagalan** (gangguan sesaat bisa mengosongkan kolom seharian).
 
 ## 3. FAQ / katalog error tersering
 
@@ -68,6 +85,8 @@ dari cons-id vclaim biasa. Semua call wajib `timeout(8)->connectTimeout(3)` + tr
 | `Found duplicate: Task (20002)` | identifier di-reuse | UUID baru tiap POST |
 | 429 `Rate limit quota violation` | Kuota staging habis | Hemat panggilan; lapor |
 | **Error identik di ≥2 endpoint** | Hampir pasti gangguan jaringan SATUSEHAT | Tampilkan hint "gangguan pusat"; JANGAN debug payload |
+| `dokter tidak valid` saat `postKunjungan` | Bukan `kdDokterSatuSehat` — **kode dokter BPJS** di faskes itu belum ada | Lengkapi pemetaan dokter BPJS, bukan IHS-nya |
 
 Sumber lampiran (Postman V30062026, Playbook, Skenario UAT, sample JSON):
-`~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim/`.
+`~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim/`
+— export terbaru (s/d 14/08/26) ada di folder bersuffix `(1)`.

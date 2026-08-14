@@ -291,12 +291,13 @@ new class extends Component {
                         <div class="ds-eyebrow mb-3">05 — Alur</div>
                         <h1 class="ds-display-md mb-4">Jalur FHIR Langsung — IGD &amp; Ranap</h1>
                         <div class="ds-card-outline mb-6" style="padding:20px">
-                            <div class="ds-caption-up mb-4" style="color:var(--muted)">Empat fase (Postman "30. Use Case - Rujukan Pasien V30062026")</div>
+                            <div class="ds-caption-up mb-4" style="color:var(--muted)">Empat fase perujuk + satu langkah di faskes tujuan (Postman "30. Use Case - Rujukan Pasien V30062026")</div>
                             <div class="flex flex-wrap items-stretch gap-2">
                                 @foreach ([
                                     ['1', 'Pra Permintaan', 'Task referral-pre-request'],
                                     ['2', 'Cari Kandidat', 'Task + Q100 kriteria + Q101 wilayah'],
                                     ['3', 'Tugas Rujukan', 'Bundle Task+CarePlan → approval'],
+                                    ['3b', 'Jawaban Tujuan', 'RS tujuan PATCH accepted / rejected'],
                                     ['4', 'ServiceRequest', 'Nomor rujukan terbit'],
                                 ] as [$no, $judul, $sub])
                                     <div class="flex-1 min-w-[150px] rounded-xl p-4" style="background:var(--surface-card)">
@@ -320,6 +321,8 @@ new class extends Component {
                                         <tr><td class="ds-td-strong">Kriteria per jalur</td><td class="ds-body-sm">IGD: 5 pertanyaan GAWAT DARURAT (linkId 000001–000005, minimal satu, TANPA validasi ICD). Ranap: Terapi/Tindakan ICD-9/Upaya Diagnosis (tepat satu).</td></tr>
                                         <tr><td class="ds-td-strong">Wilayah valueCoding</td><td class="ds-body-sm">Q101 wajib <span class="ds-code">valueCoding</span> administrative-area (valueString = 0 kandidat); kode tanpa titik (3504).</td></tr>
                                         <tr><td class="ds-td-strong">Task.owner = TUJUAN</td><td class="ds-body-sm">Pada bundle approval, owner = Organization faskes tujuan — tanpa ini RS tujuan tidak melihat rujukan masuk. CarePlan.author = Practitioner perujuk (mandatory).</td></tr>
+                                        <tr><td class="ds-td-strong">CarePlan.category = jalur</td><td class="ds-body-sm">Ranap <span class="ds-code">736353004</span> Inpatient care plan (SNOMED) vs IGD <span class="ds-code">TK000068</span> Emergency care plan (kemkes) — SATU-SATUNYA beda bundle ranap dan gawat darurat. RS tujuan memakainya untuk memilah antrean, jadi salah kategori = permintaan mendarat di unit yang keliru.</td></tr>
+                                        <tr><td class="ds-td-strong">Kotak masuk sisi tujuan</td><td class="ds-body-sm">Kalau KITA yang dirujuk: <span class="ds-code">GET Task?owner=&lt;org kita&gt;&amp;code=referral-approval-request&amp;_include=Task:based-on</span> lalu PATCH keputusan. Layarnya <strong>Rujukan → Persetujuan Rujukan Masuk</strong>, terpisah dari EMR.</td></tr>
                                         <tr><td class="ds-td-strong">Jangan echo providerAtribute</td><td class="ds-body-sm">Extension kandidat (distance/strata/bpjs-code) adalah OUTPUT server — menyalinnya ke resource yang dikirim = ditolak validator.</td></tr>
                                         <tr><td class="ds-td-strong">1 CarePlan = 1 nomor</td><td class="ds-body-sm">Jangan tembak beberapa RS sekaligus; penerima punya ±15 menit sebelum perujuk disarankan pindah kandidat. Di staging, approval boleh dilewati (langsung ServiceRequest setelah bundle).</td></tr>
                                     </tbody>
@@ -844,6 +847,7 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
                                 <p class="ds-body-sm mb-1">Fungsi : Fase 3 — kirim tugas rujukan ke faskes tujuan (meta.tag <span class="ds-code">referral-approval</span>)</p>
                                 <p class="ds-body-sm mb-1">Method : <strong>POST</strong> · Format : <strong>Json (FHIR R4 Bundle)</strong></p>
                                 <p class="ds-body-sm mb-1">Catatan : <span class="ds-code">Task.owner</span> = Organization TUJUAN; <span class="ds-code">CarePlan.author</span> = Practitioner perujuk (mandatory)</p>
+                                <p class="ds-body-sm mb-1">Kategori CarePlan menentukan LAYANAN yang diminta — <strong>IGD</strong> <span class="ds-code">TK000068</span> Emergency care plan; <strong>Ranap</strong> <span class="ds-code">736353004</span> Inpatient care plan (SNOMED). Salah kategori = permintaan masuk ke antrean yang keliru di RS tujuan.</p>
                                 <div class="ds-card-dark my-4" style="padding:0; overflow:hidden">
                                     <div class="px-4 py-2" style="background:var(--surface-dark-soft)"><span class="ds-caption-up" style="color:var(--on-dark-soft)">Request (dipadatkan)</span></div>
 @verbatim<pre class="ds-code" style="margin:0; padding:20px; color:var(--on-dark-soft); overflow-x:auto">{
@@ -945,6 +949,72 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
                                 </div>
                             </div>
                         </div>
+
+                        {{-- ── Get Task by Owner (kotak masuk faskes tujuan) ── --}}
+                        <div x-data="{ open: false }" class="mb-2">
+                            <button type="button" x-on:click="open = !open"
+                                class="w-full flex items-center gap-2 px-4 py-3 text-left rounded-lg transition"
+                                style="background:var(--surface-card); color:var(--muted)">
+                                <span class="text-xs font-semibold tracking-wide uppercase">Get Task by Owner — Kotak Masuk Rujukan</span>
+                                <span class="px-2 py-0.5 text-xs font-semibold rounded-full" style="background:var(--success-tint); color:var(--success-deep)">GET</span>
+                                <span class="ml-auto" x-text="open ? '−' : '+'"></span>
+                            </button>
+                            <div x-show="open" x-cloak class="rounded-b-lg px-5 py-4" style="border:1px solid var(--hairline); border-top:0; background:var(--canvas)">
+                                <div class="ds-title-lg mb-3" style="font-style:italic; color:var(--ink)">{BASE URL}/Task?owner={Org kita}&amp;code=referral-approval-request&amp;_include=Task:based-on</div>
+                                <p class="ds-body-sm mb-1">Fungsi : Kita jadi <strong>FASKES TUJUAN</strong> — daftar permintaan rujukan yang dikirim RS lain</p>
+                                <p class="ds-body-sm mb-1">Method : <strong>GET</strong></p>
+                                <p class="ds-body-sm mb-1">Catatan : <span class="ds-code">_include=Task:based-on</span> praktis WAJIB — nama pasien, keterangan klinis, dan layanan yang diminta ada di <strong>CarePlan</strong>, bukan di Task. Tanpa include, kotak masuk cuma berisi UUID.</p>
+                                <div class="ds-card-outline my-4" style="padding:0; overflow:hidden">
+                                    <div class="overflow-x-auto">
+                                        <table class="ds-table">
+                                            <thead><tr><th>Yang dibaca</th><th>Dari mana</th></tr></thead>
+                                            <tbody>
+                                                <tr><td class="ds-td-strong">Jalur diminta (Ranap / IGD)</td><td class="ds-body-sm"><span class="ds-code">CarePlan.category</span> — ranap <span class="ds-code">736353004</span> Inpatient care plan (SNOMED); IGD <span class="ds-code">TK000068</span> Emergency care plan (kemkes). <strong>Satu-satunya beda bundle ranap vs gawat darurat.</strong></td></tr>
+                                                <tr><td class="ds-td-strong">Nama pasien</td><td class="ds-body-sm"><span class="ds-code">CarePlan.subject.display</span> (Task hanya menyimpan reference)</td></tr>
+                                                <tr><td class="ds-td-strong">Keterangan klinis</td><td class="ds-body-sm"><span class="ds-code">CarePlan.description</span> · layanan di <span class="ds-code">activity[0].detail.code</span></td></tr>
+                                                <tr><td class="ds-td-strong">Nama RS perujuk</td><td class="ds-body-sm">TIDAK ikut di <span class="ds-code">Task.requester</span> → <span class="ds-code">GET Organization/{id}</span> lalu cache (jangan cache kegagalan)</td></tr>
+                                                <tr><td class="ds-td-strong">Sudah dijawab?</td><td class="ds-body-sm"><span class="ds-code">Task.output[].valueCoding.code</span> = accepted/rejected; <span class="ds-code">status:"cancelled"</span> = dibatalkan perujuk, jangan tawarkan tombol jawab</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <p class="ds-body-sm mb-1">Sisi perujuk memantau keputusan lewat <span class="ds-code">GET {BASE URL}/Task?code=referral-approval-request&amp;requester={Org perujuk}</span> — parameter <span class="ds-code">&amp;encounter=</span> sah sebagai filter (konfirmasi tim SATUSEHAT 14/08/26), jadi tak perlu menyapu seluruh Task RS.</p>
+                            </div>
+                        </div>
+
+                        {{-- ── Patch Respon Approval (accept/reject) ── --}}
+                        <div x-data="{ open: false }" class="mb-2">
+                            <button type="button" x-on:click="open = !open"
+                                class="w-full flex items-center gap-2 px-4 py-3 text-left rounded-lg transition"
+                                style="background:var(--surface-card); color:var(--muted)">
+                                <span class="text-xs font-semibold tracking-wide uppercase">Task — Setujui / Tolak Rujukan Masuk</span>
+                                <span class="px-2 py-0.5 text-xs font-semibold rounded-full" style="background:var(--success-tint); color:var(--success-deep)">PATCH</span>
+                                <span class="ml-auto" x-text="open ? '−' : '+'"></span>
+                            </button>
+                            <div x-show="open" x-cloak class="rounded-b-lg px-5 py-4" style="border:1px solid var(--hairline); border-top:0; background:var(--canvas)">
+                                <div class="ds-title-lg mb-3" style="font-style:italic; color:var(--ink)">{BASE URL}/Task/{Parameter 1}</div>
+                                <p class="ds-body-sm mb-1">Fungsi : Jawaban faskes tujuan atas tugas rujukan — status jadi <span class="ds-code">completed</span> + keputusan di <span class="ds-code">output</span></p>
+                                <p class="ds-body-sm mb-1">Method : <strong>PATCH</strong></p>
+                                <p class="ds-body-sm mb-1">Content-Type : <strong>application/json-patch+json</strong></p>
+                                <p class="ds-body-sm mb-1">Parameter 1 : <strong>id Task dari kotak masuk</strong></p>
+                                <div class="ds-card-dark my-4" style="padding:0; overflow:hidden">
+                                    <div class="px-4 py-2" style="background:var(--surface-dark-soft)"><span class="ds-caption-up" style="color:var(--on-dark-soft)">Request (JSON Patch) — ganti code jadi "rejected" untuk penolakan</span></div>
+@verbatim<pre class="ds-code" style="margin:0; padding:20px; color:var(--on-dark-soft); overflow-x:auto">[
+    { "op": "replace", "path": "/status", "value": "completed" },
+    { "op": "add", "path": "/output", "value": [
+        { "type": { "coding": [ { "system": "http://terminology.kemkes.go.id",
+                                  "code": "response-referral-task",
+                                  "display": "Response referral task" } ],
+                    "text": "Respon atas Task Rujukan" },
+          "valueCoding": { "system": "http://hl7.org/fhir/task-status",
+                           "code": "accepted", "display": "Accepted" } }
+    ] }
+]</pre>@endverbatim
+                                </div>
+                                <p class="ds-body-sm mb-1">Postman juga menyediakan varian <strong>PUT Task utuh</strong>; kita pakai PATCH — lebih pendek dan tidak berisiko menimpa field yang tidak kita kirim.</p>
+                                <p class="ds-body-sm">Sesudah <em>accepted</em>, perujuk melanjutkan ke ServiceRequest. <strong>Pendaftaran kunjungan pasien rujukan di sisi RS tujuan</strong> (Postman "Faskes Rujukan - Pendaftaran Kunjungan Rujukan") adalah langkah terpisah yang belum dibangun.</p>
+                            </div>
+                        </div>
                     </section>
 
                     {{-- ====== LOKASI PANEL ====== --}}
@@ -960,6 +1030,7 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
                                         <tr><td class="ds-td-strong">RJ → IGD/Ranap RS lain (FHIR)</td><td class="ds-body-sm">EMR RJ → Tindak Lanjut = Rujuk (di bawah panel vclaim)</td><td class="ds-td-meta">rujukanKompetensiFhir</td><td class="ds-td-meta">rm-rujukan-kompetensi-fhir-rj-actions</td></tr>
                                         <tr><td class="ds-td-strong">UGD → IGD/Ranap RS lain</td><td class="ds-body-sm">EMR UGD → Tindak Lanjut = <strong>Rujuk</strong> (bersanding form Rujukan Antar RS lama) — selector tujuan IGD|Ranap</td><td class="ds-td-meta">rujukanKompetensi</td><td class="ds-td-meta">rm-rujukan-kompetensi-ugd-actions</td></tr>
                                         <tr><td class="ds-td-strong">RI → Ranap RS lain</td><td class="ds-body-sm">EMR RI → Perencanaan → Tindak Lanjut = <strong>Pulang Pindah / Rujuk</strong></td><td class="ds-td-meta">rujukanKompetensi</td><td class="ds-td-meta">rm-rujukan-kompetensi-ri-actions</td></tr>
+                                        <tr><td class="ds-td-strong">Rujukan MASUK (kita jadi tujuan)</td><td class="ds-body-sm">Menu <strong>Rujukan → Persetujuan Rujukan Masuk</strong> (<span class="ds-code">/rujukan/persetujuan</span>) — layar tersendiri, bukan di EMR</td><td class="ds-td-meta">— (murni API, tanpa tabel/node lokal)</td><td class="ds-td-meta">persetujuan-rujukan + persetujuan-rujukan-actions</td></tr>
                                     </tbody>
                                 </table>
                             </div>
