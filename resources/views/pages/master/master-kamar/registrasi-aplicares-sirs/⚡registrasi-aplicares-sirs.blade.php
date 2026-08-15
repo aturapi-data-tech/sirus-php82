@@ -931,7 +931,7 @@ new class extends Component {
                         <div class="flex items-center gap-2">
                             @if (!empty($aplicaresData))
                                 <x-confirm-button variant="danger"
-                                    action="hapusSemuaDariAplicares"
+                                    action="hapusSemuaDariAplicares()"
                                     title="Hapus Semua dari Aplicares"
                                     :message="'Yakin hapus SEMUA ' . count($aplicaresData) . ' ruangan dari Aplicares BPJS? Aksi ini TIDAK BISA DIBATALKAN — semua data ketersediaan kamar di sisi BPJS akan dihapus dan perlu didaftarkan ulang.'"
                                     confirmText="Ya, hapus semua" cancelText="Batal"
@@ -1359,7 +1359,7 @@ new class extends Component {
                         <div class="flex items-center gap-2">
                             @if (!empty($sirsData))
                                 <x-confirm-button variant="danger"
-                                    action="hapusSemuaDariSirs"
+                                    action="hapusSemuaDariSirs()"
                                     title="Hapus Semua dari SIRS"
                                     :message="'Yakin hapus SEMUA ' . count($sirsData) . ' tempat tidur dari SIRS Kemenkes? Aksi ini TIDAK BISA DIBATALKAN — semua id_t_tt akan dihapus dari sisi Kemenkes dan di-null-kan di rsmst_rooms lokal; perlu didaftarkan ulang untuk pelaporan.'"
                                     confirmText="Ya, hapus semua" cancelText="Batal"
