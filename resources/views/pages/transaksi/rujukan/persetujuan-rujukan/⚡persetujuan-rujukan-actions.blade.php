@@ -259,14 +259,14 @@ new class extends Component {
                 </x-secondary-button>
 
                 @if ($this->menunggu())
-                    <x-confirm-button variant="danger" action="tolak"
+                    <x-confirm-button variant="danger" action="tolak()"
                         title="Tolak permintaan rujukan?"
                         message="Penolakan langsung terkirim ke SATUSEHAT dan terbaca RS perujuk. Pastikan alasannya sudah dikomunikasikan lewat jalur komunikasi RS."
                         confirmText="Ya, Tolak" wire:key="tolak-{{ $permintaan['taskId'] ?? 'x' }}">
                         Tolak
                     </x-confirm-button>
 
-                    <x-confirm-button variant="primary" action="setujui"
+                    <x-confirm-button variant="primary" action="setujui()"
                         title="Setujui permintaan rujukan?"
                         message="Pastikan tempat tidur / layanan yang diminta memang tersedia. Persetujuan langsung terkirim ke SATUSEHAT."
                         confirmText="Ya, Setujui" wire:key="setujui-{{ $permintaan['taskId'] ?? 'x' }}">
