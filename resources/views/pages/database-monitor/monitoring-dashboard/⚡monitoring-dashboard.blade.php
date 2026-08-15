@@ -905,9 +905,13 @@ SQL
                                                                         Disconnect
                                                                     </x-confirm-button>
                                                                 @else
-                                                                    <x-confirm-button variant="danger" :disabled="true">
+                                                                    {{-- SID/serial blocker tak lengkap → tak ada aksi yang bisa dipanggil.
+                                                                         Pakai tombol biasa, BUKAN x-confirm-button: komponen itu wajib
+                                                                         punya `action`, tanpa itu ia merender `$wire.;` (JS tak valid). --}}
+                                                                    <x-danger-button :disabled="true"
+                                                                        title="SID/serial blocker tidak tersedia">
                                                                         Kill Blocker
-                                                                    </x-confirm-button>
+                                                                    </x-danger-button>
                                                                 @endif
 
                                                                 @if ($wOk)
@@ -921,9 +925,10 @@ SQL
                                                                         Kill Waiter
                                                                     </x-confirm-button>
                                                                 @else
-                                                                    <x-confirm-button variant="secondary" :disabled="true">
+                                                                    <x-secondary-button :disabled="true"
+                                                                        title="SID/serial waiter tidak tersedia">
                                                                         Kill Waiter
-                                                                    </x-confirm-button>
+                                                                    </x-secondary-button>
                                                                 @endif
                                                             </div>
                                                         </td>
@@ -1055,9 +1060,10 @@ SQL
                                                                     </x-confirm-button>
                                                                 </div>
                                                             @else
-                                                                <x-confirm-button variant="danger" :disabled="true">
+                                                                <x-danger-button :disabled="true"
+                                                                    title="SID/serial sesi tidak tersedia">
                                                                     Kill Session
-                                                                </x-confirm-button>
+                                                                </x-danger-button>
                                                             @endif
                                                         </td>
 
@@ -1185,9 +1191,10 @@ SQL
                                                                     Kill Session
                                                                 </x-confirm-button>
                                                             @else
-                                                                <x-confirm-button variant="danger" :disabled="true">
+                                                                <x-danger-button :disabled="true"
+                                                                    title="SID/serial sesi tidak tersedia">
                                                                     Kill Session
-                                                                </x-confirm-button>
+                                                                </x-danger-button>
                                                             @endif
                                                         </td>
 
