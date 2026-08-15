@@ -412,8 +412,14 @@ new class extends Component {
                 <div class="relative flex items-start justify-between gap-4">
                     {{-- Identitas pasien menggantikan judul --}}
                     <div class="flex-1 min-w-0">
+                        {{-- Key WAJIB ikut versi render pembungkus di atas. Kalau tidak: versi naik
+                             (open/simpan/buka kunci) → key pembungkus berubah → morph membuang subtree
+                             ini, sedangkan server menganggap anak dengan key sama "sudah dirender" lalu
+                             cuma mengirim stub <div wire:id> tanpa wire:snapshot → JS lempar
+                             "Snapshot missing on Livewire component with id: ...". --}}
                         <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
-                            wire:key="display-pasien-rj-screening-{{ $rjNo }}" />
+                            wire:key="{{ $this->renderKey('modal-screening-rj', ['display-pasien', $rjNo ?? 'new']) }}" />
+
                         @if ($isFormLocked)
                             <div class="mt-2">
                                 <x-badge variant="danger">Read Only</x-badge>

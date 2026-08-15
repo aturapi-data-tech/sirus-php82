@@ -582,8 +582,11 @@ new class extends Component {
 
                     {{-- Display Pasien --}}
                     <div class="mb-4">
+                        {{-- Key WAJIB ikut versi render pembungkus di atas — lihat catatan sama di
+                             screening RJ: kalau tidak, versi naik → subtree dibuang morph sementara
+                             server cuma kirim stub tanpa wire:snapshot → "Snapshot missing". --}}
                         <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
-                            wire:key="display-pasien-ugd-screening-{{ $rjNo }}" />
+                            wire:key="{{ $this->renderKey('modal-screening-ugd', ['display-pasien', $rjNo ?? 'new']) }}" />
                     </div>
 
                     <x-border-form :title="__('Screening Awal')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
