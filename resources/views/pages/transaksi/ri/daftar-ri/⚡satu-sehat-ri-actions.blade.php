@@ -212,12 +212,12 @@ new class extends Component {
                                 Mengirim <span class="font-semibold">{{ $langkahAktif ?: '…' }}</span>
                                 · sisa {{ count($antrianKirim) }} langkah
                             </span>
-                            <x-outline-button type="button" wire:click="batalkanKirimSemua">
+                            <x-danger-button type="button" wire:click="batalkanKirimSemua">
                                 <span class="inline-flex items-center gap-1.5">
                                     <x-satu-sehat.ikon-tombol jenis="hentikan" />
                                     Hentikan
                                 </span>
-                            </x-outline-button>
+                            </x-danger-button>
                         @else
                             <x-confirm-button variant="primary" action="kirimSemua()"
                                 title="Kirim semua langkah ke SATUSEHAT?"
