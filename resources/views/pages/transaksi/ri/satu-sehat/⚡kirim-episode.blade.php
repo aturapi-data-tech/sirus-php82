@@ -256,13 +256,13 @@ new class extends Component {
             </div>
             <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled" :disabled="!$hasEncounter"
                 class="!bg-teal-600 hover:!bg-teal-700 {{ !empty($episodeId) ? '!bg-emerald-600' : '' }}">
-                <span wire:loading.remove wire:target="kirimForCurrent">
+                <span wire:loading.remove wire:target="kirimForCurrent,kirim">
                     <span class="inline-flex items-center gap-1.5">
                         <x-satu-sehat.ikon-tombol :selesai="!empty($episodeId)" jenis="kirim" />
                         {{ !empty($episodeId) ? 'Terkirim' : 'Kirim' }}
                     </span>
                 </span>
-                <span wire:loading wire:target="kirimForCurrent"><x-loading />...</span>
+                <span wire:loading wire:target="kirimForCurrent,kirim"><x-loading />...</span>
             </x-primary-button>
         </div>
 
@@ -287,13 +287,13 @@ new class extends Component {
             </div>
             <x-primary-button type="button" wire:click="finishForCurrent" wire:loading.attr="disabled"
                 class="{{ $episodeFinished ? '!bg-emerald-600' : '!bg-teal-600 hover:!bg-teal-700' }}">
-                <span wire:loading.remove wire:target="finishForCurrent">
+                <span wire:loading.remove wire:target="finishForCurrent,finish">
                     <span class="inline-flex items-center gap-1.5">
                         <x-satu-sehat.ikon-tombol :selesai="$episodeFinished" jenis="finish" />
                         {{ $episodeFinished ? 'Selesai' : 'Finish' }}
                     </span>
                 </span>
-                <span wire:loading wire:target="finishForCurrent"><x-loading />...</span>
+                <span wire:loading wire:target="finishForCurrent,finish"><x-loading />...</span>
             </x-primary-button>
         </div>
     @endif

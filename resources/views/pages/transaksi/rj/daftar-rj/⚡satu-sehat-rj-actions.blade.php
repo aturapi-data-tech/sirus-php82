@@ -43,6 +43,14 @@ new class extends Component {
             return;
         }
 
+        // Sekali jalan saja. Tanpa penjaga ini, klik kedua MERESTART antrean dari
+        // awal sementara langkah pertama masih di udara — dua rantai berjalan
+        // bergantian dan langkah yang sama berangkat dua kali ke SATUSEHAT.
+        if (!empty($this->antrianKirim) || $this->langkahAktif !== '') {
+            $this->dispatch('toast', type: 'info', message: 'Kirim Semua sedang berjalan. Tunggu selesai, atau tekan Hentikan.');
+            return;
+        }
+
         $this->antrianKirim = self::URUTAN_KIRIM;
         $this->langkahAktif = '';
         $this->jalankanLangkahBerikutnya();
@@ -107,6 +115,12 @@ new class extends Component {
     #[On('daftar-rj.satu-sehat.open')]
     public function handleOpenSatuSehat(string $rjNo): void
     {
+        // Antrean SELALU direset saat modal dibuka. Rantai yang tersangkut pada
+        // pasien sebelumnya tidak boleh ikut terbawa: langkah berikutnya akan
+        // dikirim atas nama pasien yang SEDANG dibuka, bukan pemilik aslinya.
+        $this->antrianKirim = [];
+        $this->langkahAktif = '';
+
         $this->rjNo = $rjNo;
 
         if (!$this->loadData()) {
@@ -211,7 +225,20 @@ new class extends Component {
             </div>
 
             {{-- BODY — 5 SFC self-contained --}}
-            <div class="flex-1 px-6 py-6 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">
+            <div class="relative flex-1 px-6 py-6 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">
+
+                {{-- PENGHALANG selama Kirim Semua berjalan. Tiap langkah menunggu jawaban
+                     SATUSEHAT, jadi jendela untuk salah klik lebar: tanpa ini petugas bisa
+                     menekan Kirim di kartu lain di tengah rantai dan mengirim satu langkah
+                     dua kali. Dipasang di wadah, bukan menonaktifkan 41 tombol satu per
+                     satu — dan sekalian jadi penanda visual bahwa proses sedang jalan.
+                     Header di atasnya tetap bisa diklik, jadi tombol Hentikan tetap hidup. --}}
+                @if (!empty($antrianKirim) || $langkahAktif !== '')
+                    <div class="absolute inset-0 z-20 cursor-not-allowed bg-surface-soft/60 dark:bg-gray-950/40"
+                        title="Kirim Semua sedang berjalan — tekan Hentikan di atas untuk membatalkan sisanya.">
+                    </div>
+                @endif
+
                 {{-- Grid, bukan tumpukan: modal ini full-width dan 13-15 kartu berderet ke
                      bawah menyisakan dua pertiga layar kosong. items-start supaya kartu
                      yang pratinjaunya dibuka memanjang sendiri, tidak ikut menarik tinggi
