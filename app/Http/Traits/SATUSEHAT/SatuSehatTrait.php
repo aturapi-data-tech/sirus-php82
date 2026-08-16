@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 use Exception;
 
@@ -116,5 +117,30 @@ trait SatuSehatTrait
             'http_payload'        => $payload,
             'requestTransferTime' => $rtt,
         ]);
+    }
+
+    /**
+     * Kalimat pendek dan terpakai dari Exception makeRequest(), untuk toast.
+     *
+     * makeRequest() melempar "API request failed: <body OperationOutcome mentah>".
+     * Body itu utuh dan berguna di web_log_status, tapi kalau ditempel apa adanya
+     * ke toast, petugas cuma melihat pagar JSON dan pesan aslinya justru terpotong
+     * di tengah. Nama diberi akhiran SatuSehat supaya tidak bentrok dengan method
+     * ringkasError milik komponen Livewire yang memakai trait ini.
+     */
+    protected function ringkasErrorSatuSehat(\Throwable $e): string
+    {
+        $pesan = $e->getMessage();
+
+        if (preg_match('~\{.*\}~s', $pesan, $cocok)) {
+            $body = json_decode($cocok[0], true);
+            $teks = $body['issue'][0]['details']['text']
+                ?? ($body['issue'][0]['diagnostics'] ?? null);
+            if (is_string($teks) && $teks !== '') {
+                return Str::limit($teks, 160);
+            }
+        }
+
+        return Str::limit($pesan, 160);
     }
 }

@@ -64,7 +64,10 @@ new class extends Component {
 
             $satuSehat = $dataRJ['satusehat'] ?? [];
             if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($satuSehat['conditionIds'])) { $this->dispatch('toast', type: 'info', message: 'Diagnosa sudah pernah dikirim.'); return; }
+            // Sengaja TIDAK memblokir kiriman ulang begitu ada satu id tersimpan:
+            // kiriman yang separuh jalan harus bisa dilengkapi. Pengulangan aman
+            // karena diagnosa yang sudah ada di SATUSEHAT dipungut id-nya, bukan
+            // dibuat ulang. Yang diblokir hanya bila semuanya memang sudah lengkap.
 
             $patientId = $this->getPatientIHS($dataRJ['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -76,25 +79,53 @@ new class extends Component {
             $diagnosaList = $dataRJ['diagnosis'] ?? [];
             if (empty($diagnosaList)) { $this->dispatch('toast', type: 'error', message: 'Tidak ada data diagnosa untuk dikirim.'); return; }
 
-            $satuSehat['conditionIds'] = [];
-            $count = 0;
+            // Id lama TIDAK dibuang: yang sudah terkirim tetap dihitung, sisanya dilengkapi.
+            $terkumpul = array_values($satuSehat['conditionIds'] ?? []);
+            $baru = 0;
+            $dipungut = 0;
+            $gagal = [];
+
             foreach ($diagnosaList as $diagnosa) {
                 $kode = $diagnosa['icdX'] ?? ($diagnosa['diagId'] ?? '');
                 $display = $diagnosa['diagDesc'] ?? '';
                 if (empty($kode)) continue;
 
-                $respons = $this->createFinalDiagnosis([
-                    'patientId' => $patientId, 'encounterId' => $satuSehat['encounterId'],
-                    'icd10_code' => $kode, 'icd10_display' => $display,
-                    'diagnosis_text' => "{$kode} - {$display}",
-                    'recordedDate' => $rjDate->toIso8601String(),
-                ]);
-                if (!empty($respons['id'])) { $satuSehat['conditionIds'][] = $respons['id']; $count++; }
+                // Per diagnosa, JANGAN biarkan satu kegagalan menghanguskan yang lain.
+                // Dulu exception dari satu baris melompati saveResult(), sehingga
+                // Condition yang SUDAH terbentuk di SATUSEHAT tidak pernah tercatat
+                // id-nya — dan ronde berikutnya ia balik jadi duplikat. Sekali
+                // tergelincir, macetnya permanen.
+                try {
+                    $respons = $this->createFinalDiagnosis([
+                        'patientId' => $patientId, 'encounterId' => $satuSehat['encounterId'],
+                        'icd10_code' => $kode, 'icd10_display' => $display,
+                        'diagnosis_text' => "{$kode} - {$display}",
+                        'recordedDate' => $rjDate->toIso8601String(),
+                    ]);
+                    if (!empty($respons['id'])) { $terkumpul[] = $respons['id']; $baru++; }
+                } catch (\Throwable $e) {
+                    if (!$this->isDuplicateError($e)) { $gagal[] = "{$kode}: " . $this->ringkasErrorSatuSehat($e); continue; }
+
+                    // Ditolak duplikat = resource-nya memang sudah ada di sana.
+                    $idLama = $this->findExistingConditionId($satuSehat['encounterId'], $kode, $terkumpul, $patientId);
+                    if ($idLama !== '') { $terkumpul[] = $idLama; $dipungut++; }
+                    else { $gagal[] = "{$kode}: sudah ada di SATUSEHAT tapi id-nya tidak ditemukan di encounter ini"; }
+                }
             }
 
+            // SELALU disimpan, walau ada yang gagal — inti perbaikannya di sini.
+            $satuSehat['conditionIds'] = array_values(array_unique($terkumpul));
             $this->saveResult($rjNo, $satuSehat);
-            $this->dispatch('toast', type: 'success', message: "Diagnosa berhasil dikirim ({$count} item).");
             $this->dispatch('rj-satu-sehat.refresh', rjNo: $rjNo);
+
+            if (!empty($gagal)) {
+                $this->dispatch('toast', type: 'error', message: 'Sebagian diagnosa gagal — ' . implode('; ', $gagal));
+                return;
+            }
+
+            $pesan = "Diagnosa berhasil dikirim ({$baru} item).";
+            if ($dipungut > 0) { $pesan = "Diagnosa lengkap: {$baru} baru, {$dipungut} sudah ada di SATUSEHAT dan id-nya dipulihkan."; }
+            $this->dispatch('toast', type: 'success', message: $pesan);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Diagnosa gagal: ' . $e->getMessage());
         }

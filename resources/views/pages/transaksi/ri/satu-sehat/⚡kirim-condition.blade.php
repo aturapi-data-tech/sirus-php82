@@ -83,7 +83,9 @@ new class extends Component {
 
             $satuSehat = $dataRI['satusehat'] ?? [];
             if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($satuSehat['conditionIds'])) { $this->dispatch('toast', type: 'info', message: 'Diagnosa sudah pernah dikirim.'); return; }
+            // Kiriman ulang sengaja DIBIARKAN: yang separuh jalan harus bisa dilengkapi.
+            // Aman karena diagnosa yang sudah ada di SATUSEHAT dipungut id-nya, bukan
+            // dibuat ulang. (Lihat catatan panjang di sender RJ.)
 
             $patientId = $this->getPatientIHS($dataRI['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -93,25 +95,50 @@ new class extends Component {
 
             $recordedDate = $this->parseDate($dataRI['entryDate'] ?? '');
 
-            $satuSehat['conditionIds'] = [];
-            $count = 0;
+            // Id lama TIDAK dibuang: yang sudah terkirim tetap dihitung, sisanya dilengkapi.
+            $terkumpul = array_values($satuSehat['conditionIds'] ?? []);
+            $baru = 0;
+            $dipungut = 0;
+            $gagal = [];
+
             foreach ($diagnosaList as $diagnosa) {
                 $kode = $diagnosa['code'];
                 $display = $diagnosa['display'];
                 if (empty($kode)) continue;
 
-                $respons = $this->createFinalDiagnosis([
-                    'patientId' => $patientId, 'encounterId' => $satuSehat['encounterId'],
-                    'icd10_code' => $kode, 'icd10_display' => $display,
-                    'diagnosis_text' => "{$kode} - {$display}",
-                    'recordedDate' => $recordedDate->toIso8601String(),
-                ]);
-                if (!empty($respons['id'])) { $satuSehat['conditionIds'][] = $respons['id']; $count++; }
+                // Per diagnosa: satu kegagalan tidak boleh menghanguskan yang lain,
+                // karena dulu exception melompati saveResult() sehingga Condition yang
+                // SUDAH terbentuk di SATUSEHAT tak pernah tercatat id-nya.
+                try {
+                    $respons = $this->createFinalDiagnosis([
+                        'patientId' => $patientId, 'encounterId' => $satuSehat['encounterId'],
+                        'icd10_code' => $kode, 'icd10_display' => $display,
+                        'diagnosis_text' => "{$kode} - {$display}",
+                        'recordedDate' => $recordedDate->toIso8601String(),
+                    ]);
+                    if (!empty($respons['id'])) { $terkumpul[] = $respons['id']; $baru++; }
+                } catch (\Throwable $e) {
+                    if (!$this->isDuplicateError($e)) { $gagal[] = "{$kode}: " . $this->ringkasErrorSatuSehat($e); continue; }
+
+                    $idLama = $this->findExistingConditionId($satuSehat['encounterId'], $kode, $terkumpul, $patientId);
+                    if ($idLama !== '') { $terkumpul[] = $idLama; $dipungut++; }
+                    else { $gagal[] = "{$kode}: sudah ada di SATUSEHAT tapi id-nya tidak ditemukan di encounter ini"; }
+                }
             }
 
+            // SELALU disimpan, walau ada yang gagal — inti perbaikannya di sini.
+            $satuSehat['conditionIds'] = array_values(array_unique($terkumpul));
             $this->saveResult($riHdrNo, $satuSehat);
-            $this->dispatch('toast', type: 'success', message: "Diagnosa berhasil dikirim ({$count} item).");
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
+
+            if (!empty($gagal)) {
+                $this->dispatch('toast', type: 'error', message: 'Sebagian diagnosa gagal — ' . implode('; ', $gagal));
+                return;
+            }
+
+            $pesan = "Diagnosa berhasil dikirim ({$baru} item).";
+            if ($dipungut > 0) { $pesan = "Diagnosa lengkap: {$baru} baru, {$dipungut} sudah ada di SATUSEHAT dan id-nya dipulihkan."; }
+            $this->dispatch('toast', type: 'success', message: $pesan);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Diagnosa gagal: ' . $e->getMessage());
         }
