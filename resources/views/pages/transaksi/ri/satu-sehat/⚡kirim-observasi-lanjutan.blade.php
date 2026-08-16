@@ -228,6 +228,12 @@ new class extends Component {
             $this->dispatch('toast', type: 'success', message: $pesan);
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
         } catch (\Throwable $e) {
+            // Simpan dulu yang sudah TERLANJUR terbentuk di SATUSEHAT sebelum melapor
+            // gagal. Tanpa ini id-nya hangus padahal resource-nya SUDAH ada di sana,
+            // lalu percobaan berikutnya menumpuk resource yatim — persis penyebab
+            // diagnosa macet permanen dulu (lihat sender Condition). Dibungkus try
+            // sendiri supaya kegagalan menyimpan tidak menutupi error aslinya.
+            try { if (isset($satuSehat)) { $this->saveResult($riHdrNo, $satuSehat); } } catch (\Throwable) {}
             $this->dispatch('toast', type: 'error', message: 'Observasi lanjutan gagal: ' . $e->getMessage());
         }
     }
