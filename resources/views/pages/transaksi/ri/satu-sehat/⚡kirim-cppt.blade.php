@@ -14,6 +14,7 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
@@ -25,6 +26,41 @@ new class extends Component {
     public ?string $riHdrNo = null;
     public bool $hasEncounter = false;
     public int $count = 0;       // jumlah CPPT sudah terkirim (ClinicalImpression)
+
+    /** Pratinjau dihitung hanya saat dibuka — jangan bebani muat halaman belasan kartu. */
+    public bool $pratinjauTerbuka = false;
+
+    public function togglePratinjau(): void
+    {
+        $this->pratinjauTerbuka = !$this->pratinjauTerbuka;
+    }
+
+    /**
+     * Entri CPPT yang AKAN dikirim, dari sumber yang SAMA dengan kirim().
+     * Satu entri = satu ClinicalImpression, jadi tiap baris di sini mewakili satu
+     * resource yang berangkat — bukan sekadar ringkasan.
+     */
+    #[Computed]
+    public function pratinjau(): array
+    {
+        if (empty($this->riHdrNo)) {
+            return [];
+        }
+
+        $baris = [];
+        foreach (($this->findDataRI($this->riHdrNo)['cppt'] ?? []) as $urutan => $entri) {
+            $profesi = trim((string) ($entri['profession'] ?? ''));
+            $tanggal = trim((string) ($entri['tglCPPT'] ?? ''));
+            $baris[] = [
+                'label' => 'CPPT ' . ($urutan + 1),
+                'nilai' => $profesi ?: '(profesi kosong)',
+                'ket' => $tanggal,
+            ];
+        }
+
+        return $baris;
+    }
+
     public int $entryCount = 0;  // jumlah entri CPPT tersedia
 
     public function mount(?string $riHdrNo = null): void
@@ -178,30 +214,44 @@ new class extends Component {
 };
 ?>
 
-<div class="flex items-center justify-between p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700">
-    <div class="flex items-center gap-3">
-        <div
-            class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
-            <span class="text-sm font-bold">10</span>
-        </div>
-        <div>
-            <div class="font-semibold text-ink dark:text-gray-100">ClinicalImpression <span class="text-xs font-normal text-muted">(CPPT)</span></div>
-            <div class="text-xs text-muted dark:text-gray-400">
-                Catatan perkembangan SOAP. Assessor = DPJP.
-                @if ($entryCount > 0)
-                    <span class="text-muted-soft">{{ $count }}/{{ $entryCount }} entri terkirim.</span>
-                @endif
+<div class="p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div
+                class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
+                <span class="text-sm font-bold">10</span>
             </div>
-            @if ($count > 0)
-                <div class="mt-1 font-mono text-xs text-success dark:text-success">
-                    {{ $count }} terkirim
+            <div>
+                <div class="font-semibold text-ink dark:text-gray-100">ClinicalImpression <span class="text-xs font-normal text-muted">(CPPT)</span></div>
+                <div class="text-xs text-muted dark:text-gray-400">
+                    Catatan perkembangan SOAP. Assessor = DPJP.
+                    @if ($entryCount > 0)
+                        <span class="text-muted-soft">{{ $count }}/{{ $entryCount }} entri terkirim.</span>
+                    @endif
                 </div>
-            @endif
+                @if ($count > 0)
+                    <div class="mt-1 font-mono text-xs text-success dark:text-success">
+                        {{ $count }} terkirim
+                    </div>
+                @endif
+                {{-- wire:click, bukan x-show Alpine: kartu ini ikut di-morph tiap kali
+                     daftar langkah disegarkan, dan state Alpine bisa putus di situ. --}}
+                <button type="button" wire:click="togglePratinjau" wire:loading.attr="disabled"
+                    wire:target="togglePratinjau"
+                    class="mt-1 text-xs font-medium underline text-info-deep hover:no-underline dark:text-blue-300">
+                    {{ $pratinjauTerbuka ? 'Sembunyikan data' : 'Lihat data yang akan dikirim' }}
+                </button>
+            </div>
         </div>
+        <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled" :disabled="!$hasEncounter"
+            class="!bg-teal-600 hover:!bg-teal-700 {{ $count > 0 && $count >= $entryCount ? '!bg-emerald-600' : '' }}">
+            <span wire:loading.remove wire:target="kirimForCurrent">{{ $count > 0 && $count >= $entryCount ? 'Terkirim' : 'Kirim' }}</span>
+            <span wire:loading wire:target="kirimForCurrent"><x-loading />...</span>
+        </x-primary-button>
     </div>
-    <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled" :disabled="!$hasEncounter"
-        class="!bg-teal-600 hover:!bg-teal-700 {{ $count > 0 && $count >= $entryCount ? '!bg-emerald-600' : '' }}">
-        <span wire:loading.remove wire:target="kirimForCurrent">{{ $count > 0 && $count >= $entryCount ? 'Terkirim' : 'Kirim' }}</span>
-        <span wire:loading wire:target="kirimForCurrent"><x-loading />...</span>
-    </x-primary-button>
+
+    @if ($pratinjauTerbuka)
+        <x-satu-sehat.pratinjau :baris="$this->pratinjau"
+            kosong="Belum ada entri CPPT — Kirim akan ditolak." />
+    @endif
 </div>

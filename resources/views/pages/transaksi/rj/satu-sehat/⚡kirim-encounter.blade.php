@@ -3,6 +3,7 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
@@ -24,6 +25,41 @@ new class extends Component {
      * induk merender komponen ini dua kali dengan $bagian berbeda.
      */
     public string $bagian = 'kirim';
+
+    /** Pratinjau dihitung hanya saat dibuka — jangan bebani muat halaman belasan kartu. */
+    public bool $pratinjauTerbuka = false;
+
+    public function togglePratinjau(): void
+    {
+        $this->pratinjauTerbuka = !$this->pratinjauTerbuka;
+    }
+
+    /**
+     * Identitas kunjungan yang AKAN dikirim. Tanggal ditampilkan apa adanya dari
+     * basis data — kalau kosong, di situlah Kirim akan berhenti, dan pratinjau ini
+     * memperlihatkan sebabnya sebelum tombol ditekan.
+     */
+    #[Computed]
+    public function pratinjau(): array
+    {
+        if (empty($this->rjNo)) {
+            return [];
+        }
+
+        $data = $this->findDataRJ($this->rjNo);
+        $tanggal = trim((string) ($data['rjDate'] ?? ''));
+
+        return [
+            ['label' => 'Pasien', 'nilai' => (string) ($data['regName'] ?? '-'),
+             'ket' => 'No. RM ' . ($data['regNo'] ?? '-')],
+            ['label' => 'Dokter', 'nilai' => (string) ($data['drDesc'] ?? '-')],
+            ['label' => 'Waktu mulai (period.start)',
+             'nilai' => $tanggal ?: '(KOSONG — Kirim akan ditolak)',
+             'ket' => $tanggal ? 'dibekukan di SATUSEHAT begitu Encounter terbentuk' : 'betulkan dulu di pendaftaran'],
+            ['label' => 'Kelas kunjungan', 'nilai' => 'AMB (rawat jalan)'],
+        ];
+    }
+
 
     public function mount(?string $rjNo = null, string $bagian = 'kirim'): void
     {
@@ -258,29 +294,43 @@ new class extends Component {
 <div class="space-y-3">
     @if ($bagian !== 'selesai')
     {{-- Step 1: Encounter --}}
-    <div class="flex items-center justify-between p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex items-center gap-3">
-            <div
-                class="flex items-center justify-center w-8 h-8 rounded-full {{ !empty($encounterId) ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
-                <span class="text-sm font-bold">1</span>
+    <div class="p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div
+                    class="flex items-center justify-center w-8 h-8 rounded-full {{ !empty($encounterId) ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
+                    <span class="text-sm font-bold">1</span>
+                </div>
+                <div>
+                    <div class="font-semibold text-ink dark:text-gray-100">Encounter</div>
+                    <div class="text-xs text-muted dark:text-gray-400">Kunjungan pasien ke RS.</div>
+                    @if (!empty($encounterId))
+                        <div class="mt-1 font-mono text-xs text-success dark:text-success">
+                            ID: {{ $encounterId }}
+                        </div>
+                    @endif
+                    {{-- wire:click, bukan x-show Alpine: kartu ini ikut di-morph tiap kali
+                         daftar langkah disegarkan, dan state Alpine bisa putus di situ. --}}
+                    <button type="button" wire:click="togglePratinjau" wire:loading.attr="disabled"
+                        wire:target="togglePratinjau"
+                        class="mt-1 text-xs font-medium underline text-info-deep hover:no-underline dark:text-blue-300">
+                        {{ $pratinjauTerbuka ? 'Sembunyikan data' : 'Lihat data yang akan dikirim' }}
+                    </button>
+                </div>
             </div>
-            <div>
-                <div class="font-semibold text-ink dark:text-gray-100">Encounter</div>
-                <div class="text-xs text-muted dark:text-gray-400">Kunjungan pasien ke RS.</div>
-                @if (!empty($encounterId))
-                    <div class="mt-1 font-mono text-xs text-success dark:text-success">
-                        ID: {{ $encounterId }}
-                    </div>
-                @endif
-            </div>
+            <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled"
+                class="!bg-teal-600 hover:!bg-teal-700 {{ !empty($encounterId) ? '!bg-emerald-600' : '' }}">
+                <span wire:loading.remove wire:target="kirimForCurrent">
+                    {{ !empty($encounterId) ? 'Terkirim' : 'Kirim' }}
+                </span>
+                <span wire:loading wire:target="kirimForCurrent"><x-loading />...</span>
+            </x-primary-button>
         </div>
-        <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled"
-            class="!bg-teal-600 hover:!bg-teal-700 {{ !empty($encounterId) ? '!bg-emerald-600' : '' }}">
-            <span wire:loading.remove wire:target="kirimForCurrent">
-                {{ !empty($encounterId) ? 'Terkirim' : 'Kirim' }}
-            </span>
-            <span wire:loading wire:target="kirimForCurrent"><x-loading />...</span>
-        </x-primary-button>
+
+        @if ($pratinjauTerbuka)
+            <x-satu-sehat.pratinjau :baris="$this->pratinjau"
+                kosong="Data kunjungan belum lengkap — lihat pesan saat menekan Kirim." />
+        @endif
     </div>
     @endif
 

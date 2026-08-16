@@ -19,6 +19,7 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
@@ -31,6 +32,42 @@ new class extends Component {
     public ?string $rjNo = null;
     public bool $encounterFinished = false;
     public int $count = 0;
+
+    /** Pratinjau dihitung hanya saat dibuka — jangan bebani muat halaman belasan kartu. */
+    public bool $pratinjauTerbuka = false;
+
+    public function togglePratinjau(): void
+    {
+        $this->pratinjauTerbuka = !$this->pratinjauTerbuka;
+    }
+
+    /**
+     * Bagian Composition yang AKAN terisi, memakai petaEntri() yang SAMA dengan
+     * kirim(). Resume Medis tidak mengambil data EMR sendiri — ia merangkum
+     * resource yang SUDAH terkirim, jadi yang ditampilkan di sini adalah jumlah
+     * rujukan per bagian, bukan isi klinisnya.
+     */
+    #[Computed]
+    public function pratinjau(): array
+    {
+        if (empty($this->rjNo)) {
+            return [];
+        }
+
+        $satuSehat = $this->findDataUGD($this->rjNo)['satusehat'] ?? [];
+        $baris = [];
+        foreach ($this->petaEntri($satuSehat) as $bagian => $rujukan) {
+            $jumlah = count($rujukan);
+            $baris[] = [
+                'label' => $bagian,
+                'nilai' => $jumlah > 0 ? $jumlah . ' resource' : '(belum ada — bagian dikosongkan)',
+                'ket' => $jumlah > 0 ? implode(', ', array_slice($rujukan, 0, 3)) . ($jumlah > 3 ? ' …' : '') : '',
+            ];
+        }
+
+        return $baris;
+    }
+
     public int $sectionTerisi = 0;
     public int $sectionTotal = 0;
 
@@ -247,30 +284,43 @@ new class extends Component {
 };
 ?>
 
-<div
-    class="flex items-center justify-between p-4 bg-canvas border-2 border-teal-300 shadow-sm rounded-xl dark:bg-gray-900 dark:border-teal-700">
-    <div class="flex items-center gap-3">
-        <div
-            class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400' }}">
-            <span class="text-sm font-bold">13</span>
-        </div>
-        <div>
-            <div class="font-semibold text-ink dark:text-gray-100">Resume Medis IGD</div>
-            <div class="text-xs text-muted dark:text-gray-400">
-                Ringkasan kunjungan gawat darurat (Composition) — merangkum resource yang sudah terkirim.
+<div class="p-4 bg-canvas border-2 border-teal-300 shadow-sm rounded-xl dark:bg-gray-900 dark:border-teal-700">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div
+                class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400' }}">
+                <span class="text-sm font-bold">13</span>
             </div>
-            <div class="mt-1 text-xs {{ $count > 0 ? 'text-success' : 'text-muted-soft' }}">
-                {{ $count > 0 ? 'terkirim · ' : '' }}{{ $sectionTerisi }} dari {{ $sectionTotal }} bagian terisi
-                @if (!$encounterFinished)
-                    · <span class="text-warning-deep dark:text-amber-300">menunggu Encounter diselesaikan</span>
-                @endif
+            <div>
+                <div class="font-semibold text-ink dark:text-gray-100">Resume Medis IGD</div>
+                <div class="text-xs text-muted dark:text-gray-400">
+                    Ringkasan kunjungan gawat darurat (Composition) — merangkum resource yang sudah terkirim.
+                </div>
+                <div class="mt-1 text-xs {{ $count > 0 ? 'text-success' : 'text-muted-soft' }}">
+                    {{ $count > 0 ? 'terkirim · ' : '' }}{{ $sectionTerisi }} dari {{ $sectionTotal }} bagian terisi
+                    @if (!$encounterFinished)
+                        · <span class="text-warning-deep dark:text-amber-300">menunggu Encounter diselesaikan</span>
+                    @endif
+                </div>
+                {{-- wire:click, bukan x-show Alpine: kartu ini ikut di-morph tiap kali
+                     daftar langkah disegarkan, dan state Alpine bisa putus di situ. --}}
+                <button type="button" wire:click="togglePratinjau" wire:loading.attr="disabled"
+                    wire:target="togglePratinjau"
+                    class="mt-1 text-xs font-medium underline text-info-deep hover:no-underline dark:text-blue-300">
+                    {{ $pratinjauTerbuka ? 'Sembunyikan data' : 'Lihat data yang akan dikirim' }}
+                </button>
             </div>
         </div>
+        <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled"
+            :disabled="!$encounterFinished"
+            class="{{ $count > 0 ? '!bg-emerald-600' : '!bg-teal-600 hover:!bg-teal-700' }}">
+            <span wire:loading.remove wire:target="kirimForCurrent">{{ $count > 0 ? 'Terkirim' : 'Kirim' }}</span>
+            <span wire:loading wire:target="kirimForCurrent"><x-loading />...</span>
+        </x-primary-button>
     </div>
-    <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled"
-        :disabled="!$encounterFinished"
-        class="{{ $count > 0 ? '!bg-emerald-600' : '!bg-teal-600 hover:!bg-teal-700' }}">
-        <span wire:loading.remove wire:target="kirimForCurrent">{{ $count > 0 ? 'Terkirim' : 'Kirim' }}</span>
-        <span wire:loading wire:target="kirimForCurrent"><x-loading />...</span>
-    </x-primary-button>
+
+    @if ($pratinjauTerbuka)
+        <x-satu-sehat.pratinjau :baris="$this->pratinjau"
+            kosong="Belum ada resource terkirim untuk dirangkum — kirim langkah-langkah di atas dulu." />
+    @endif
 </div>

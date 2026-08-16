@@ -9,10 +9,12 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\SATUSEHAT\MedicationDispenseTrait;
+use App\Support\Terminologi\MedicationRequestItem;
 
 new class extends Component {
     use EmrRITrait, MedicationDispenseTrait;
@@ -20,6 +22,46 @@ new class extends Component {
     public ?string $riHdrNo = null;
     public bool $hasRequest = false;
     public int $count = 0;
+
+    /** Pratinjau dihitung hanya saat dibuka — jangan bebani muat halaman belasan kartu. */
+    public bool $pratinjauTerbuka = false;
+
+    public function togglePratinjau(): void
+    {
+        $this->pratinjauTerbuka = !$this->pratinjauTerbuka;
+    }
+
+    /**
+     * Obat yang AKAN diserahkan, memakai peta yang SAMA dengan kirim() —
+     * MedicationRequestItem::ambil(). Peta inilah yang menautkan tiap penyerahan
+     * ke resep yang benar; kalau ia kosong, kirim() memang membatalkan diri.
+     */
+    #[Computed]
+    public function pratinjau(): array
+    {
+        if (empty($this->riHdrNo)) {
+            return [];
+        }
+
+        $data = $this->findDataRI($this->riHdrNo);
+        $itemList = MedicationRequestItem::ambil($data['satusehat'] ?? [], $data);
+        if (empty($itemList)) {
+            return [];
+        }
+
+        $baris = [];
+        foreach ($itemList as $urutan => $item) {
+            $jenis = ($item['jenis'] ?? '') === 'racikan' ? 'Racikan' : 'Non-racikan';
+            $baris[] = [
+                'label' => $jenis . ' ' . ($urutan + 1),
+                'nilai' => (string) ($item['display'] ?? ($item['kunci'] ?? '-')),
+                'ket' => trim('qty ' . ($item['qty'] ?? 1) . ' · ' . ($item['kode'] ? 'KFA ' . $item['kode'] : 'racikan')),
+            ];
+        }
+
+        return $baris;
+    }
+
 
     public function mount(?string $riHdrNo = null): void
     {
@@ -188,25 +230,39 @@ new class extends Component {
 };
 ?>
 
-<div class="flex items-center justify-between p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700">
-    <div class="flex items-center gap-3">
-        <div
-            class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
-            <span class="text-sm font-bold">7</span>
+<div class="p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div
+                class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
+                <span class="text-sm font-bold">7</span>
+            </div>
+            <div>
+                <div class="font-semibold text-ink dark:text-gray-100">MedicationDispense</div>
+                <div class="text-xs text-muted dark:text-gray-400">Obat diserahkan (butuh MedicationRequest dulu).</div>
+                @if ($count > 0)
+                    <div class="mt-1 font-mono text-xs text-success dark:text-success">
+                        {{ $count }} terkirim
+                    </div>
+                @endif
+                {{-- wire:click, bukan x-show Alpine: kartu ini ikut di-morph tiap kali
+                     daftar langkah disegarkan, dan state Alpine bisa putus di situ. --}}
+                <button type="button" wire:click="togglePratinjau" wire:loading.attr="disabled"
+                    wire:target="togglePratinjau"
+                    class="mt-1 text-xs font-medium underline text-info-deep hover:no-underline dark:text-blue-300">
+                    {{ $pratinjauTerbuka ? 'Sembunyikan data' : 'Lihat data yang akan dikirim' }}
+                </button>
+            </div>
         </div>
-        <div>
-            <div class="font-semibold text-ink dark:text-gray-100">MedicationDispense</div>
-            <div class="text-xs text-muted dark:text-gray-400">Obat diserahkan (butuh MedicationRequest dulu).</div>
-            @if ($count > 0)
-                <div class="mt-1 font-mono text-xs text-success dark:text-success">
-                    {{ $count }} terkirim
-                </div>
-            @endif
-        </div>
+        <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled" :disabled="!$hasRequest"
+            class="!bg-teal-600 hover:!bg-teal-700 {{ $count > 0 ? '!bg-emerald-600' : '' }}">
+            <span wire:loading.remove wire:target="kirimForCurrent">{{ $count > 0 ? 'Terkirim' : 'Kirim' }}</span>
+            <span wire:loading wire:target="kirimForCurrent"><x-loading />...</span>
+        </x-primary-button>
     </div>
-    <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled" :disabled="!$hasRequest"
-        class="!bg-teal-600 hover:!bg-teal-700 {{ $count > 0 ? '!bg-emerald-600' : '' }}">
-        <span wire:loading.remove wire:target="kirimForCurrent">{{ $count > 0 ? 'Terkirim' : 'Kirim' }}</span>
-        <span wire:loading wire:target="kirimForCurrent"><x-loading />...</span>
-    </x-primary-button>
+
+    @if ($pratinjauTerbuka)
+        <x-satu-sehat.pratinjau :baris="$this->pratinjau"
+            kosong="Resep belum dikirim atau rincian itemnya tak bisa dipastikan — Dispense akan ditolak." />
+    @endif
 </div>

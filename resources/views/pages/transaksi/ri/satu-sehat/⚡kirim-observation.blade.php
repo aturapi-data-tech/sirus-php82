@@ -11,6 +11,7 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
@@ -23,6 +24,56 @@ new class extends Component {
     public bool $hasEncounter = false;
     public int $count = 0;      // jumlah Observation terkirim
     public int $entryCount = 0; // jumlah entri waktu vital tersedia
+
+    /** Pratinjau dihitung hanya saat dibuka — jangan bebani muat halaman belasan kartu. */
+    public bool $pratinjauTerbuka = false;
+
+    public function togglePratinjau(): void
+    {
+        $this->pratinjauTerbuka = !$this->pratinjauTerbuka;
+    }
+
+    /**
+     * Isi yang AKAN dikirim, memanggil tandaVitalEntries() yang SAMA dengan kirim().
+     * RI punya BANYAK waktu ukur (observasi lanjutan), jadi tiap baris diberi awalan
+     * jam pengukurannya — tanpa itu lima "Nadi" berturut-turut tak bisa dibedakan.
+     */
+    #[Computed]
+    public function pratinjau(): array
+    {
+        if (empty($this->riHdrNo)) {
+            return [];
+        }
+
+        $dataRI = $this->findDataRI($this->riHdrNo);
+        $baris = [];
+        foreach ($this->tandaVitalEntries($dataRI) as $entri) {
+            $waktu = trim((string) ($entri['waktuPemeriksaan'] ?? ''));
+            $awalan = $waktu !== '' ? $waktu . ' · ' : '';
+
+            $sistolik = $entri['sistolik'] ?? null;
+            $distolik = $entri['distolik'] ?? null;
+            if (!empty($sistolik) && !empty($distolik)) {
+                $baris[] = ['label' => $awalan . 'Tekanan darah', 'nilai' => "{$sistolik}/{$distolik} mm[Hg]", 'ket' => 'LOINC 85354-9'];
+            }
+
+            foreach ([
+                ['frekuensiNadi', 'Nadi', 'x/menit', '8867-4'],
+                ['suhu', 'Suhu', '°C', '8310-5'],
+                ['frekuensiNafas', 'Pernapasan', 'x/menit', '9279-1'],
+                ['spo2', 'Saturasi O₂', '%', '59408-5'],
+            ] as [$key, $label, $satuan, $loinc]) {
+                $nilai = $entri[$key] ?? null;
+                if (empty($nilai)) {
+                    continue;
+                }
+                $baris[] = ['label' => $awalan . $label, 'nilai' => "{$nilai} {$satuan}", 'ket' => 'LOINC ' . $loinc];
+            }
+        }
+
+        return $baris;
+    }
+
 
     public function mount(?string $riHdrNo = null): void
     {
@@ -168,30 +219,44 @@ new class extends Component {
 };
 ?>
 
-<div class="flex items-center justify-between p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700">
-    <div class="flex items-center gap-3">
-        <div
-            class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
-            <span class="text-sm font-bold">5</span>
-        </div>
-        <div>
-            <div class="font-semibold text-ink dark:text-gray-100">Observation</div>
-            <div class="text-xs text-muted dark:text-gray-400">
-                Tanda vital (TD, nadi, suhu, RR, SpO₂).
-                @if ($entryCount > 0)
-                    <span class="text-muted-soft">{{ $entryCount }} waktu ukur.</span>
-                @endif
+<div class="p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div
+                class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
+                <span class="text-sm font-bold">5</span>
             </div>
-            @if ($count > 0)
-                <div class="mt-1 font-mono text-xs text-success dark:text-success">
-                    {{ $count }} terkirim
+            <div>
+                <div class="font-semibold text-ink dark:text-gray-100">Observation</div>
+                <div class="text-xs text-muted dark:text-gray-400">
+                    Tanda vital (TD, nadi, suhu, RR, SpO₂).
+                    @if ($entryCount > 0)
+                        <span class="text-muted-soft">{{ $entryCount }} waktu ukur.</span>
+                    @endif
                 </div>
-            @endif
+                @if ($count > 0)
+                    <div class="mt-1 font-mono text-xs text-success dark:text-success">
+                        {{ $count }} terkirim
+                    </div>
+                @endif
+                {{-- wire:click, bukan x-show Alpine: kartu ini ikut di-morph tiap kali
+                     daftar langkah disegarkan, dan state Alpine bisa putus di situ. --}}
+                <button type="button" wire:click="togglePratinjau" wire:loading.attr="disabled"
+                    wire:target="togglePratinjau"
+                    class="mt-1 text-xs font-medium underline text-info-deep hover:no-underline dark:text-blue-300">
+                    {{ $pratinjauTerbuka ? 'Sembunyikan data' : 'Lihat data yang akan dikirim' }}
+                </button>
+            </div>
         </div>
+        <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled" :disabled="!$hasEncounter"
+            class="!bg-teal-600 hover:!bg-teal-700 {{ $count > 0 ? '!bg-emerald-600' : '' }}">
+            <span wire:loading.remove wire:target="kirimForCurrent">{{ $count > 0 ? 'Terkirim' : 'Kirim' }}</span>
+            <span wire:loading wire:target="kirimForCurrent"><x-loading />...</span>
+        </x-primary-button>
     </div>
-    <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled" :disabled="!$hasEncounter"
-        class="!bg-teal-600 hover:!bg-teal-700 {{ $count > 0 ? '!bg-emerald-600' : '' }}">
-        <span wire:loading.remove wire:target="kirimForCurrent">{{ $count > 0 ? 'Terkirim' : 'Kirim' }}</span>
-        <span wire:loading wire:target="kirimForCurrent"><x-loading />...</span>
-    </x-primary-button>
+
+    @if ($pratinjauTerbuka)
+        <x-satu-sehat.pratinjau :baris="$this->pratinjau"
+            kosong="Belum ada tanda vital (Observasi Lanjutan) — Kirim akan ditolak sampai diisi." />
+    @endif
 </div>

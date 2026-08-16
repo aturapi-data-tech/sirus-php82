@@ -10,6 +10,7 @@
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
@@ -22,6 +23,57 @@ new class extends Component {
     public ?string $riHdrNo = null;
     public bool $hasEncounter = false;
     public int $count = 0;       // jumlah Observation terkirim
+
+    /** Pratinjau dihitung hanya saat dibuka — jangan bebani muat halaman belasan kartu. */
+    public bool $pratinjauTerbuka = false;
+
+    public function togglePratinjau(): void
+    {
+        $this->pratinjauTerbuka = !$this->pratinjauTerbuka;
+    }
+
+    /**
+     * Isi yang AKAN dikirim, memanggil helper yang SAMA dengan kirim() —
+     * resikoJatuhEntries() & giziEntries(). Tiap entri jadi satu Observation.
+     */
+    #[Computed]
+    public function pratinjau(): array
+    {
+        if (empty($this->riHdrNo)) {
+            return [];
+        }
+
+        $data = $this->findDataRI($this->riHdrNo);
+        $baris = [];
+
+        foreach ($this->resikoJatuhEntries($data) as $urutan => $entri) {
+            $skor = $entri['skor'] ?? ($entri['totalSkor'] ?? null);
+            $kategori = $entri['kategori'] ?? ($entri['hasil'] ?? '');
+            $baris[] = [
+                'label' => 'Risiko jatuh ' . ($urutan + 1),
+                'nilai' => trim(($skor !== null ? 'skor ' . $skor : '') . ($kategori !== '' ? ' · ' . $kategori : '')) ?: '(nilai kosong)',
+                'ket' => trim((string) ($entri['waktuPemeriksaan'] ?? ($entri['tglPenilaian'] ?? ''))),
+            ];
+        }
+
+        foreach ($this->giziEntries($data) as $urutan => $entri) {
+            $bb = $entri['beratBadan'] ?? ($entri['bb'] ?? null);
+            $tb = $entri['tinggiBadan'] ?? ($entri['tb'] ?? null);
+            $imt = $entri['imt'] ?? null;
+            $isi = [];
+            if (!empty($bb)) { $isi[] = "BB {$bb} kg"; }
+            if (!empty($tb)) { $isi[] = "TB {$tb} cm"; }
+            if (!empty($imt)) { $isi[] = "IMT {$imt}"; }
+            $baris[] = [
+                'label' => 'Gizi ' . ($urutan + 1),
+                'nilai' => implode(' · ', $isi) ?: '(nilai kosong)',
+                'ket' => trim((string) ($entri['waktuPemeriksaan'] ?? ($entri['tglPenilaian'] ?? ''))),
+            ];
+        }
+
+        return $baris;
+    }
+
     public int $jatuhCount = 0;  // entri risiko jatuh tersedia
     public int $giziCount = 0;   // entri gizi tersedia
 
@@ -176,30 +228,44 @@ new class extends Component {
 };
 ?>
 
-<div class="flex items-center justify-between p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700">
-    <div class="flex items-center gap-3">
-        <div
-            class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
-            <span class="text-sm font-bold">12</span>
-        </div>
-        <div>
-            <div class="font-semibold text-ink dark:text-gray-100">Penilaian</div>
-            <div class="text-xs text-muted dark:text-gray-400">
-                Risiko jatuh (skor &amp; kategori) dan gizi (BB, TB, IMT).
-                @if ($jatuhCount > 0 || $giziCount > 0)
-                    <span class="text-muted-soft">{{ $jatuhCount }} risiko jatuh, {{ $giziCount }} gizi.</span>
-                @endif
+<div class="p-4 bg-canvas border border-hairline shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div
+                class="flex items-center justify-center w-8 h-8 rounded-full {{ $count > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-surface-soft text-muted-soft dark:bg-gray-800 dark:text-gray-500' }}">
+                <span class="text-sm font-bold">12</span>
             </div>
-            @if ($count > 0)
-                <div class="mt-1 font-mono text-xs text-success dark:text-success">
-                    {{ $count }} terkirim
+            <div>
+                <div class="font-semibold text-ink dark:text-gray-100">Penilaian</div>
+                <div class="text-xs text-muted dark:text-gray-400">
+                    Risiko jatuh (skor &amp; kategori) dan gizi (BB, TB, IMT).
+                    @if ($jatuhCount > 0 || $giziCount > 0)
+                        <span class="text-muted-soft">{{ $jatuhCount }} risiko jatuh, {{ $giziCount }} gizi.</span>
+                    @endif
                 </div>
-            @endif
+                @if ($count > 0)
+                    <div class="mt-1 font-mono text-xs text-success dark:text-success">
+                        {{ $count }} terkirim
+                    </div>
+                @endif
+                {{-- wire:click, bukan x-show Alpine: kartu ini ikut di-morph tiap kali
+                     daftar langkah disegarkan, dan state Alpine bisa putus di situ. --}}
+                <button type="button" wire:click="togglePratinjau" wire:loading.attr="disabled"
+                    wire:target="togglePratinjau"
+                    class="mt-1 text-xs font-medium underline text-info-deep hover:no-underline dark:text-blue-300">
+                    {{ $pratinjauTerbuka ? 'Sembunyikan data' : 'Lihat data yang akan dikirim' }}
+                </button>
+            </div>
         </div>
+        <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled" :disabled="!$hasEncounter"
+            class="!bg-teal-600 hover:!bg-teal-700 {{ $count > 0 ? '!bg-emerald-600' : '' }}">
+            <span wire:loading.remove wire:target="kirimForCurrent">{{ $count > 0 ? 'Terkirim' : 'Kirim' }}</span>
+            <span wire:loading wire:target="kirimForCurrent"><x-loading />...</span>
+        </x-primary-button>
     </div>
-    <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled" :disabled="!$hasEncounter"
-        class="!bg-teal-600 hover:!bg-teal-700 {{ $count > 0 ? '!bg-emerald-600' : '' }}">
-        <span wire:loading.remove wire:target="kirimForCurrent">{{ $count > 0 ? 'Terkirim' : 'Kirim' }}</span>
-        <span wire:loading wire:target="kirimForCurrent"><x-loading />...</span>
-    </x-primary-button>
+
+    @if ($pratinjauTerbuka)
+        <x-satu-sehat.pratinjau :baris="$this->pratinjau"
+            kosong="Belum ada penilaian risiko jatuh maupun gizi — Kirim akan ditolak sampai salah satunya diisi." />
+    @endif
 </div>
