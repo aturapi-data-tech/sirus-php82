@@ -255,6 +255,10 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/rj/antrian-apotek', 'pages::transaksi.rj.antrian-apotek-rj.antrian-apotek-rj')
         ->name('rj.antrian-apotek');
 
+    // Apotek Online BPJS RJ — worklist klaim obat PRB/kronis/kemo (harian & bulanan)
+    Route::livewire('/apotek-online/rj', 'pages::transaksi.rj.apotek-online-rj.apotek-online-rj')
+        ->name('apotek-online.rj');
+
     // ===========================================
     // TRANSAKSI RJ - ANTRIAN KASIR (clone Apotek RJ)
     // ===========================================
@@ -561,6 +565,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::livewire('/manajemen/rs/vclaim/laporan-rujukan-masuk', 'pages::manajemen.rs.vclaim.laporan-rujukan-masuk.laporan-rujukan-masuk')
         ->name('manajemen.rs.vclaim.laporan-rujukan-masuk');
+
+    // Monitoring klaim Apotek Online BPJS — rekap per periode (apotek_monitoring_klaim)
+    Route::livewire('/manajemen/rs/apotek-online/laporan-klaim', 'pages::manajemen.rs.apotek-online.laporan-klaim-apotek.laporan-klaim-apotek')
+        ->name('manajemen.rs.apotek-online.laporan-klaim');
 
     Route::livewire('/manajemen/laporan-diagnosa', 'pages::manajemen.laporan-diagnosa.laporan-diagnosa')
         ->name('manajemen.laporan-diagnosa');
