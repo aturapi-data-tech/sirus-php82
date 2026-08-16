@@ -202,7 +202,10 @@ new class extends Component {
                                 message="15 langkah dijalankan berurutan mulai dari Encounter, ditutup Finish Encounter lalu Finish Episode. Langkah yang datanya belum lengkap akan ditolak dan dilewati — rantai tetap lanjut. Kiriman yang sudah berangkat TIDAK bisa dibatalkan."
                                 confirmText="Ya, Kirim Semua"
                                 wire:key="kirim-semua-ri-{{ $riHdrNo ?? 'none' }}">
-                                Kirim Semua
+                                <span class="inline-flex items-center gap-1.5">
+                                    <x-satu-sehat.ikon-tombol />
+                                    Kirim Semua
+                                </span>
                             </x-confirm-button>
                         @endif
                     </div>

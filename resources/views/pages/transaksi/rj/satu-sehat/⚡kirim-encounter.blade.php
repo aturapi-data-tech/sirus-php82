@@ -333,7 +333,10 @@ new class extends Component {
             <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled"
                 class="!bg-teal-600 hover:!bg-teal-700 {{ !empty($encounterId) ? '!bg-emerald-600' : '' }}">
                 <span wire:loading.remove wire:target="kirimForCurrent">
-                    {{ !empty($encounterId) ? 'Terkirim' : 'Kirim' }}
+                    <span class="inline-flex items-center gap-1.5">
+                        <x-satu-sehat.ikon-tombol :selesai="!empty($encounterId)" jenis="kirim" />
+                        {{ !empty($encounterId) ? 'Terkirim' : 'Kirim' }}
+                    </span>
                 </span>
                 <span wire:loading wire:target="kirimForCurrent"><x-loading />...</span>
             </x-primary-button>
@@ -364,7 +367,10 @@ new class extends Component {
             <x-primary-button type="button" wire:click="finishForCurrent" wire:loading.attr="disabled"
                 class="{{ $encounterFinished ? '!bg-emerald-600' : '!bg-teal-600 hover:!bg-teal-700' }}">
                 <span wire:loading.remove wire:target="finishForCurrent">
-                    {{ $encounterFinished ? 'Selesai' : 'Finish' }}
+                    <span class="inline-flex items-center gap-1.5">
+                        <x-satu-sehat.ikon-tombol :selesai="$encounterFinished" jenis="finish" />
+                        {{ $encounterFinished ? 'Selesai' : 'Finish' }}
+                    </span>
                 </span>
                 <span wire:loading wire:target="finishForCurrent"><x-loading />...</span>
             </x-primary-button>

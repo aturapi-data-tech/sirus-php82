@@ -204,7 +204,12 @@ new class extends Component {
         </div>
         <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled" :disabled="!$hasEncounter"
             class="!bg-teal-600 hover:!bg-teal-700 {{ $count > 0 ? '!bg-emerald-600' : '' }}">
-            <span wire:loading.remove wire:target="kirimForCurrent">{{ $count > 0 ? 'Terkirim' : 'Kirim' }}</span>
+            <span wire:loading.remove wire:target="kirimForCurrent">
+                    <span class="inline-flex items-center gap-1.5">
+                        <x-satu-sehat.ikon-tombol :selesai="$count > 0" jenis="kirim" />
+                        {{ $count > 0 ? 'Terkirim' : 'Kirim' }}
+                    </span>
+                </span>
             <span wire:loading wire:target="kirimForCurrent"><x-loading />...</span>
         </x-primary-button>
     </div>
