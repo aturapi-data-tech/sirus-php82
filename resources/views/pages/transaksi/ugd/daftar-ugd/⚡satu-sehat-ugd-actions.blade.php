@@ -14,6 +14,90 @@ new class extends Component {
     public ?string $rjNo = null;
     public array $dataDaftarUGD = [];
 
+    /**
+     * URUTAN KANONIK "Kirim Semua". Bukan sekadar urutan tampilan — ada
+     * ketergantungan keras di dalamnya:
+     *   - encounter WAJIB pertama; semua resource lain menunjuk padanya;
+     *   - medication-dispense butuh medication-request sudah terkirim (ia
+     *     menautkan penyerahan ke resep lewat id yang tersimpan);
+     *   - encounter-selesai butuh condition (SATUSEHAT mewajibkan
+     *     Encounter.diagnosis saat finish, RuleNumber 10457);
+     *   - resume-medis paling akhir, sesudah encounter finished dan sesudah semua
+     *     resource yang dirangkumnya ada.
+     * Mengubah urutan di sini berarti mengubah perilaku kirim, bukan tata letak.
+     */
+    private const URUTAN_KIRIM = [
+        'encounter', 'condition', 'observation', 'procedure', 'medication-request',
+        'medication-dispense', 'lab', 'radiologi', 'clinical-impression',
+        'chief-complaint', 'allergy', 'penilaian', 'encounter-selesai', 'resume-medis',
+    ];
+
+    /** Sisa langkah yang belum dijalankan; kosong = tidak ada rantai berjalan. */
+    public array $antrianKirim = [];
+
+    /** Langkah yang sedang ditunggu kabarnya. Dikosongkan begitu kabarnya datang. */
+    public string $langkahAktif = '';
+
+    public function kirimSemua(): void
+    {
+        if (empty($this->rjNo)) {
+            return;
+        }
+
+        $this->antrianKirim = self::URUTAN_KIRIM;
+        $this->langkahAktif = '';
+        $this->jalankanLangkahBerikutnya();
+    }
+
+    public function batalkanKirimSemua(): void
+    {
+        $this->antrianKirim = [];
+        $this->langkahAktif = '';
+        $this->dispatch('toast', type: 'info', message: 'Kirim Semua dihentikan. Langkah yang sudah berjalan tidak dibatalkan.');
+    }
+
+    /**
+     * Satu langkah dijalankan per putaran, TIDAK ditembakkan serentak. Kalau 14
+     * event dilepas sekaligus, Livewire menjalankannya paralel dan Condition bisa
+     * berangkat sebelum Encounter-nya ada.
+     */
+    private function jalankanLangkahBerikutnya(): void
+    {
+        $langkah = array_shift($this->antrianKirim);
+        if ($langkah === null) {
+            $this->langkahAktif = '';
+            $this->dispatch('toast', type: 'success', message: 'Kirim Semua selesai. Periksa status tiap langkah di bawah.');
+            return;
+        }
+
+        $this->langkahAktif = $langkah;
+
+        if ($langkah === 'encounter-selesai') {
+            $this->dispatch('ss-encounter-ugd.finish', rjNo: $this->rjNo);
+            return;
+        }
+
+        $this->dispatch('ss-' . $langkah . '-ugd.kirim', rjNo: $this->rjNo);
+    }
+
+    /**
+     * Kabar selesai dari sebuah langkah, dicocokkan dengan yang SEDANG ditunggu
+     * lalu penandanya dikosongkan. Di UGD kartu Encounter memang hanya dirender
+     * sekali (tombol Kirim & Finish menyatu), tapi pencocokan ini tetap dipasang:
+     * ia juga menangkal laporan susulan dari tombol Kirim satuan yang ditekan
+     * petugas di tengah rantai berjalan.
+     */
+    #[On('ugd-satu-sehat.langkah-selesai')]
+    public function langkahSelesai(string $langkah): void
+    {
+        if ($this->langkahAktif === '' || $langkah !== $this->langkahAktif) {
+            return;
+        }
+
+        $this->langkahAktif = '';
+        $this->jalankanLangkahBerikutnya();
+    }
+
     public function mount(?string $initialRjNo = null): void
     {
         if (!empty($initialRjNo)) {
@@ -90,6 +174,31 @@ new class extends Component {
                             </div>
                         </div>
                     </div>
+                    {{-- KIRIM SEMUA — menjalankan langkah 1..14 berurutan, satu per putaran.
+                         Sengaja TIDAK memakai orkestrator lama KirimRawatJalanTrait (583 baris,
+                         tak dipakai siapa pun): ia salinan logika terpisah yang tidak ikut
+                         menerima perbaikan pemulihan duplikat, penyimpanan hasil parsial,
+                         maupun guard tanggal masuk kosong. --}}
+                    <div class="flex items-center gap-2 ml-auto">
+                        @if (!empty($antrianKirim) || $langkahAktif !== '')
+                            <span class="text-xs text-muted dark:text-gray-400">
+                                Mengirim <span class="font-semibold">{{ $langkahAktif ?: '…' }}</span>
+                                · sisa {{ count($antrianKirim) }} langkah
+                            </span>
+                            <x-outline-button type="button" wire:click="batalkanKirimSemua">
+                                Hentikan
+                            </x-outline-button>
+                        @else
+                            <x-confirm-button variant="primary" action="kirimSemua()"
+                                title="Kirim semua langkah ke SATUSEHAT?"
+                                message="14 langkah dijalankan berurutan mulai dari Encounter. Langkah yang datanya belum lengkap akan ditolak dan dilewati — rantai tetap lanjut. Kiriman yang sudah berangkat TIDAK bisa dibatalkan."
+                                confirmText="Ya, Kirim Semua"
+                                wire:key="kirim-semua-ugd-{{ $rjNo ?? 'none' }}">
+                                Kirim Semua
+                            </x-confirm-button>
+                        @endif
+                    </div>
+
                     <x-icon-button color="gray" type="button"
                         x-on:click="$dispatch('close-modal', { name: 'ugd-satu-sehat' })">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">

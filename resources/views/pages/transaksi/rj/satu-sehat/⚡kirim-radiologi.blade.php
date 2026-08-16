@@ -97,8 +97,20 @@ new class extends Component {
         $this->reloadState();
     }
 
+    /**
+     * Pembungkus untuk rantai "Kirim Semua": apa pun hasilnya — berhasil, ditolak
+     * SATUSEHAT, atau berhenti di guard — langkah ini WAJIB memberi kabar, supaya
+     * orkestrator bisa melanjutkan. Tanpa ini rantai menggantung diam-diam pada
+     * langkah pertama yang gagal, dan petugas cuma melihat modal yang membeku.
+     */
     #[On('ss-radiologi-rj.kirim')]
     public function kirim(string $rjNo): void
+    {
+        $this->kirimInti($rjNo);
+        $this->dispatch('rj-satu-sehat.langkah-selesai', langkah: 'radiologi');
+    }
+
+    public function kirimInti(string $rjNo): void
     {
         try {
             $this->initializeSatuSehat();

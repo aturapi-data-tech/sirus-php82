@@ -13,6 +13,96 @@ new class extends Component {
     public ?string $riHdrNo = null;
     public array $dataDaftarRI = [];
 
+    /**
+     * URUTAN KANONIK "Kirim Semua". Bukan sekadar urutan tampilan — ada
+     * ketergantungan keras di dalamnya:
+     *   - encounter WAJIB pertama; semua resource lain menunjuk padanya;
+     *   - episode dibuat sesudah encounter, karena ia merujuk encounter itu;
+     *   - medication-dispense butuh medication-request sudah terkirim;
+     *   - encounter-selesai butuh condition (SATUSEHAT mewajibkan
+     *     Encounter.diagnosis saat finish, RuleNumber 10457);
+     *   - episode-selesai PALING AKHIR: episode membungkus seluruh masa rawat,
+     *     jadi ia baru ditutup setelah encounter-nya sendiri ditutup.
+     *
+     * chief-complaint & allergy SENGAJA TIDAK ADA di sini. Kedua kartunya masih
+     * dimatikan `@if (false)` di bawah (menunggu LOV SNOMED di Pengkajian Dokter),
+     * sehingga komponennya TIDAK dirender. Memasukkannya ke antrean berarti
+     * menembakkan event yang tak ada pendengarnya — tak ada kabar selesai, dan
+     * rantai menggantung selamanya di langkah itu. Kalau kelak kedua kartu itu
+     * dihidupkan, tambahkan namanya di sini juga.
+     */
+    private const URUTAN_KIRIM = [
+        'encounter', 'episode', 'condition', 'procedure', 'observation',
+        'medication-request', 'medication-dispense', 'lab', 'radiologi',
+        'cppt', 'diet', 'penilaian', 'observasi-lanjutan',
+        'encounter-selesai', 'episode-selesai',
+    ];
+
+    /** Sisa langkah yang belum dijalankan; kosong = tidak ada rantai berjalan. */
+    public array $antrianKirim = [];
+
+    /** Langkah yang sedang ditunggu kabarnya. Dikosongkan begitu kabarnya datang. */
+    public string $langkahAktif = '';
+
+    public function kirimSemua(): void
+    {
+        if (empty($this->riHdrNo)) {
+            return;
+        }
+
+        $this->antrianKirim = self::URUTAN_KIRIM;
+        $this->langkahAktif = '';
+        $this->jalankanLangkahBerikutnya();
+    }
+
+    public function batalkanKirimSemua(): void
+    {
+        $this->antrianKirim = [];
+        $this->langkahAktif = '';
+        $this->dispatch('toast', type: 'info', message: 'Kirim Semua dihentikan. Langkah yang sudah berjalan tidak dibatalkan.');
+    }
+
+    /**
+     * Satu langkah dijalankan per putaran, TIDAK ditembakkan serentak. Kalau 15
+     * event dilepas sekaligus, Livewire menjalankannya paralel dan Condition bisa
+     * berangkat sebelum Encounter-nya ada.
+     */
+    private function jalankanLangkahBerikutnya(): void
+    {
+        $langkah = array_shift($this->antrianKirim);
+        if ($langkah === null) {
+            $this->langkahAktif = '';
+            $this->dispatch('toast', type: 'success', message: 'Kirim Semua selesai. Periksa status tiap langkah di bawah.');
+            return;
+        }
+
+        $this->langkahAktif = $langkah;
+
+        // Dua langkah penutup RI memakai event finish, bukan kirim.
+        if (str_ends_with($langkah, '-selesai')) {
+            $this->dispatch('ss-' . str_replace('-selesai', '', $langkah) . '-ri.finish', riHdrNo: $this->riHdrNo);
+            return;
+        }
+
+        $this->dispatch('ss-' . $langkah . '-ri.kirim', riHdrNo: $this->riHdrNo);
+    }
+
+    /**
+     * Kabar selesai dari sebuah langkah, dicocokkan dengan yang SEDANG ditunggu
+     * lalu penandanya dikosongkan. Pencocokan ini juga menangkal laporan susulan
+     * dari tombol Kirim satuan yang ditekan petugas di tengah rantai berjalan.
+     */
+    #[On('ri-satu-sehat.langkah-selesai')]
+    public function langkahSelesai(string $langkah): void
+    {
+        if ($this->langkahAktif === '' || $langkah !== $this->langkahAktif) {
+            return;
+        }
+
+        $this->langkahAktif = '';
+        $this->jalankanLangkahBerikutnya();
+    }
+
     public function mount(?string $initialRiHdrNo = null): void
     {
         if (!empty($initialRiHdrNo)) {
@@ -92,6 +182,31 @@ new class extends Component {
                             </div>
                         </div>
                     </div>
+                    {{-- KIRIM SEMUA — menjalankan langkah 1..15 berurutan, satu per putaran.
+                         Sengaja TIDAK memakai orkestrator lama KirimRawatJalanTrait (583 baris,
+                         tak dipakai siapa pun): ia salinan logika terpisah yang tidak ikut
+                         menerima perbaikan pemulihan duplikat, penyimpanan hasil parsial,
+                         maupun guard tanggal masuk kosong. --}}
+                    <div class="flex items-center gap-2 ml-auto">
+                        @if (!empty($antrianKirim) || $langkahAktif !== '')
+                            <span class="text-xs text-muted dark:text-gray-400">
+                                Mengirim <span class="font-semibold">{{ $langkahAktif ?: '…' }}</span>
+                                · sisa {{ count($antrianKirim) }} langkah
+                            </span>
+                            <x-outline-button type="button" wire:click="batalkanKirimSemua">
+                                Hentikan
+                            </x-outline-button>
+                        @else
+                            <x-confirm-button variant="primary" action="kirimSemua()"
+                                title="Kirim semua langkah ke SATUSEHAT?"
+                                message="15 langkah dijalankan berurutan mulai dari Encounter, ditutup Finish Encounter lalu Finish Episode. Langkah yang datanya belum lengkap akan ditolak dan dilewati — rantai tetap lanjut. Kiriman yang sudah berangkat TIDAK bisa dibatalkan."
+                                confirmText="Ya, Kirim Semua"
+                                wire:key="kirim-semua-ri-{{ $riHdrNo ?? 'none' }}">
+                                Kirim Semua
+                            </x-confirm-button>
+                        @endif
+                    </div>
+
                     <x-icon-button color="gray" type="button"
                         x-on:click="$dispatch('close-modal', { name: 'ri-satu-sehat' })">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
