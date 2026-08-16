@@ -88,6 +88,9 @@ new class extends Component {
     public ?string $productIdSatusehat = null;
     public ?string $productNameSatusehat = null;
 
+    /** Kode obat DPHO BPJS (Apotek Online, field KDOBT). Diisi lewat LOV. */
+    public ?string $kodeDpho = null;
+
     /** Hasil Cek Kode KFA ke API KFA v2: ['kode', 'status' => ada|tidak_ada|gagal, 'produk' => ?array]. */
     public ?array $hasilCekKfa = null;
 
@@ -179,7 +182,7 @@ new class extends Component {
      * ------------------------- */
     protected function resetFormFields(): void
     {
-        $this->reset(['productId', 'productName', 'kode', 'uomId', 'catId', 'grpId', 'suppId', 'costPrice', 'salesPrice', 'stock', 'stockwh', 'stockklinik', 'stockOk', 'stockUgd', 'stockLaborat', 'stockUtara', 'stockSelatan', 'stockVk', 'stockTu', 'stockArm', 'stockRd', 'limitStock', 'limitStockwh', 'limitStockklinik', 'qtyPerBox', 'takar', 'qtyBox', 'stockPrintNumber', 'stockwhPrintNumber', 'productStatus', 'activeStatus', 'fornasNonfornasStatus', 'productIdSatusehat', 'productNameSatusehat', 'productNumber']);
+        $this->reset(['productId', 'productName', 'kode', 'uomId', 'catId', 'grpId', 'suppId', 'costPrice', 'salesPrice', 'stock', 'stockwh', 'stockklinik', 'stockOk', 'stockUgd', 'stockLaborat', 'stockUtara', 'stockSelatan', 'stockVk', 'stockTu', 'stockArm', 'stockRd', 'limitStock', 'limitStockwh', 'limitStockklinik', 'qtyPerBox', 'takar', 'qtyBox', 'stockPrintNumber', 'stockwhPrintNumber', 'productStatus', 'activeStatus', 'fornasNonfornasStatus', 'productIdSatusehat', 'productNameSatusehat', 'kodeDpho', 'productNumber']);
 
         // Set default values
         $this->stock = '0';
@@ -258,6 +261,7 @@ new class extends Component {
         $this->fornasNonfornasStatus = (string) ($row->fornas_nonfornas_status ?? '0');
         $this->productIdSatusehat = $row->product_id_satusehat;
         $this->productNameSatusehat = $row->product_name_satusehat;
+        $this->kodeDpho = $row->kode_dpho ?? null;
 
         // Auto-Generate
         $this->productNumber = $row->product_number;
@@ -323,6 +327,7 @@ new class extends Component {
             'fornasNonfornasStatus' => ['required', Rule::in(['0', '1'])],
             'productIdSatusehat' => ['nullable', 'string', 'max:25'],
             'productNameSatusehat' => ['nullable', 'string', 'max:250'],
+            'kodeDpho' => ['nullable', 'string', 'max:20'],
         ];
     }
 
@@ -419,6 +424,7 @@ new class extends Component {
             'fornas_nonfornas_status' => $data['fornasNonfornasStatus'],
             'product_id_satusehat' => $data['productIdSatusehat'],
             'product_name_satusehat' => $data['productNameSatusehat'],
+            'kode_dpho' => $data['kodeDpho'] ?? null,
         ];
 
         if ($this->formMode === 'create') {
@@ -543,6 +549,13 @@ new class extends Component {
             'selisih' => $hargaJual - $hargaBeli,
             'persen' => ($hargaJual - $hargaBeli) / $hargaBeli * 100,
         ];
+    }
+
+    #[On('lov.selected.masterObatDpho')]
+    public function masterObatDpho(string $target, array $payload): void
+    {
+        // payload kosong = LOV di-clear; simpan '' agar kolom ikut dikosongkan saat save.
+        $this->kodeDpho = ($payload['kode'] ?? '') !== '' ? $payload['kode'] : null;
     }
 
     /* -------------------------
@@ -1040,6 +1053,27 @@ new class extends Component {
                                         </div>
                                         <x-input-error :messages="$errors->get('fornasNonfornasStatus')" class="mt-1" />
                                         <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Aktif = obat masuk Formularium Nasional.</p>
+                                    </div>
+
+                                    {{-- Kode DPHO BPJS (Apotek Online). Sumber LOV = API referensi/dpho;
+                                         selama CID belum aktif, LOV menampilkan status "belum bisa diakses"
+                                         dan field tetap siap dipakai begitu koneksi hidup. --}}
+                                    <div>
+                                        <x-input-label value="Kode DPHO BPJS (Apotek Online)" />
+                                        <div class="mt-1">
+                                            @if ($formMode === 'edit')
+                                                <livewire:lov.dpho.lov-dpho target="masterObatDpho"
+                                                    :initial-kode="$kodeDpho"
+                                                    wire:key="lov-dpho-{{ $productId ?? 'new' }}" />
+                                            @else
+                                                <livewire:lov.dpho.lov-dpho target="masterObatDpho"
+                                                    wire:key="lov-dpho-new" />
+                                            @endif
+                                        </div>
+                                        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                                            Kode obat DPHO untuk klaim Apotek Online (PRB / kronis / kemoterapi).
+                                            Dipilih dari daftar BPJS, bukan diketik manual.
+                                        </p>
                                     </div>
                                 </div>
 
