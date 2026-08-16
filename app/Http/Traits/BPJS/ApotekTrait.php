@@ -192,8 +192,13 @@ trait ApotekTrait
 
     /**
      * Panggilan DELETE baku — BPJS mengirim kriteria hapus lewat BODY, bukan URL.
-     * Laravel HTTP client mendukungnya; yang perlu diingat cuma Content-Type-nya
-     * tetap x-www-form-urlencoded seperti POST.
+     *
+     * PENGECUALIAN CONTENT-TYPE: kedua endpoint DELETE apotek (hapusresep dan
+     * pelayanan/obat/hapus) menuntut `application/json` SUNGGUHAN, bukan tipuan
+     * `x-www-form-urlencoded` yang dipakai seluruh endpoint POST. Awalnya di sini
+     * disamakan dengan POST — keliru, dan dikoreksi setelah dicocokkan dengan
+     * implementasi pihak ketiga ssecd/jkn yang secara eksplisit menandai kedua
+     * endpoint ini sebagai "skipContentTypeHack".
      */
     private static function apotekDelete(string $endpoint, array $data)
     {
@@ -201,7 +206,7 @@ trait ApotekTrait
 
         try {
             $signature = self::apotekSignature();
-            $signature['Content-Type'] = 'application/x-www-form-urlencoded';
+            $signature['Content-Type'] = 'application/json';
 
             $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
@@ -305,14 +310,16 @@ trait ApotekTrait
      *
      * kdJenisObat: 1 = PRB · 2 = Kronis belum stabil · 3 = Kemoterapi
      */
-    public static function apotek_referensi_obat($kdJenisObat, string $tglResep, string $filter)
+    public static function apotek_referensi_obat($kdJenisObat, string $tglResep, string $filter = '')
     {
         $validator = Validator::make(
             compact('kdJenisObat', 'tglResep', 'filter'),
             [
                 'kdJenisObat' => 'required|in:1,2,3',
                 'tglResep' => 'required|date_format:Y-m-d',
-                'filter' => 'required',
+                // Filter OPSIONAL — katalog menuliskannya sebagai parameter, tapi
+                // implementasi lain memperlakukannya boleh kosong (:filter?).
+                'filter' => 'nullable',
             ],
             [
                 'required' => ':attribute wajib diisi.',
@@ -384,6 +391,15 @@ trait ApotekTrait
      *
      * KDJNSOBAT: 1 = Obat PRB · 2 = Obat Kronis Belum Stabil · 3 = Obat Kemoterapi
      * iterasi  : 0 = Non Iterasi · 1 = Iterasi
+     *
+     * NORESEP maksimal 5 digit dan TIDAK BOLEH ADA YANG SAMA dalam satu bulan klaim.
+     * Panjangnya dijaga validator di bawah; KEUNIKANNYA tidak bisa — itu tanggung
+     * jawab pemanggil, karena hanya SIMRS yang tahu resep apa saja yang sudah
+     * dikirim bulan itu. Nomor kembar kemungkinan besar ditolak saat verifikasi,
+     * bukan saat kirim.
+     *
+     * Respons memuat `noApotik` = No. SJP apotek. SIMPAN NOMOR ITU: seluruh langkah
+     * sesudahnya (simpan obat, daftar pelayanan, hapus) memakainya sebagai NOSJP.
      */
     public static function apotek_resep_insert(array $r)
     {
@@ -392,7 +408,10 @@ trait ApotekTrait
             'REFASALSJP' => 'required',
             'POLIRSP' => 'required',
             'KDJNSOBAT' => 'required|in:1,2,3',
-            'NORESEP' => 'required',
+            // Maks 5 digit & TIDAK BOLEH SAMA dalam satu bulan klaim — aturan yang tak
+            // tertulis di halaman Trust Mark, ditemukan dari implementasi ssecd/jkn.
+            // Panjangnya bisa dijaga di sini; keunikan per bulan HARUS dijaga pemanggil.
+            'NORESEP' => 'required|max:5',
             'IDUSERSJP' => 'required',
             'TGLRSP' => 'required',
             'TGLPELRSP' => 'required',
@@ -400,6 +419,7 @@ trait ApotekTrait
         ], [
             'required' => ':attribute wajib diisi.',
             'in' => ':attribute tidak dikenal BPJS.',
+            'max' => ':attribute maksimal :max karakter.',
         ], [
             // Nama field BPJS HURUF BESAR tanpa pemisah; tanpa label eksplisit Laravel
             // memecahnya jadi "n o r e s e p" dan pesannya jadi tak terbaca petugas.
