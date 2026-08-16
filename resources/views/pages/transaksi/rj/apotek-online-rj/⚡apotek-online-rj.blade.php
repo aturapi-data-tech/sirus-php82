@@ -148,7 +148,7 @@ new class extends Component {
         $paginator->setCollection(
             $paginator->getCollection()->map(function ($r) {
             $data = $this->decodeJson($r->datadaftarpolirj_json);
-            $ringkas = $this->ringkasResep($data);
+            $ringkas = $this->ringkasKronis($r->rj_no);
             $apotek = $data['apotekOnline'] ?? [];
 
             return (object) [
@@ -163,8 +163,7 @@ new class extends Component {
                 'noSep' => $r->vno_sep,
                 'statusKronis' => $r->status_kronis,
                 'statusIter' => $r->status_iter,
-                'jmlNonRacikan' => $ringkas['nonRacikan'],
-                'jmlRacikan' => $ringkas['racikan'],
+                'jmlKronis' => $ringkas['kronis'],
                 'jmlBerDpho' => $ringkas['berDpho'],
                 'jmlTanpaDpho' => $ringkas['tanpaDpho'],
                 'sudahDaftar' => !empty($apotek['noSjp']),
@@ -176,41 +175,28 @@ new class extends Component {
         return $paginator;
     }
 
-    /** Ringkas resep: hitung obat & berapa yang SUDAH ber-kode DPHO (siap kirim). */
-    private function ringkasResep(array $data): array
+    /**
+     * Hitung obat KRONIS (rstxn_rjobats status_kronis='Y') & berapa yang sudah
+     * ber-kode DPHO — itulah yang benar-benar bisa diklaim Apotek Online. Bukan
+     * seluruh e-resep: obat dalam paket INA-CBG (qty_bpjs) tak diklaim di sini.
+     * Satu query per baris, tapi hanya untuk halaman aktif (~15 baris).
+     */
+    private function ringkasKronis(string $rjNo): array
     {
-        $productIds = [];
-        $nonRacikan = 0;
-        $racikan = 0;
+        $obat = DB::table('rstxn_rjobats as o')
+            ->leftJoin('immst_products as p', 'o.product_id', '=', 'p.product_id')
+            ->where('o.rj_no', $rjNo)
+            ->where('o.status_kronis', 'Y')
+            ->where('o.qty_kronis', '>', 0)
+            ->select('p.kode_dpho')
+            ->get();
 
-        foreach (EresepJson::lembar($data) as $lembar) {
-            foreach ($lembar['nonRacikan'] as $obat) {
-                $nonRacikan++;
-                $pid = trim((string) ($obat['productId'] ?? ''));
-                if ($pid !== '') { $productIds[$pid] = true; }
-            }
-            foreach ($lembar['racikan'] as $grup) {
-                $racikan++;
-                foreach ($grup as $bahan) {
-                    $pid = trim((string) ($bahan['productId'] ?? ''));
-                    if ($pid !== '') { $productIds[$pid] = true; }
-                }
-            }
-        }
-
-        $berDpho = 0;
-        if ($productIds !== []) {
-            $berDpho = DB::table('immst_products')
-                ->whereIn('product_id', array_keys($productIds))
-                ->whereRaw("kode_dpho IS NOT NULL AND LENGTH(TRIM(kode_dpho)) > 0")
-                ->count();
-        }
+        $berDpho = $obat->filter(fn($x) => trim((string) ($x->kode_dpho ?? '')) !== '')->count();
 
         return [
-            'nonRacikan' => $nonRacikan,
-            'racikan' => $racikan,
+            'kronis' => $obat->count(),
             'berDpho' => $berDpho,
-            'tanpaDpho' => count($productIds) - $berDpho,
+            'tanpaDpho' => $obat->count() - $berDpho,
         ];
     }
 
@@ -332,15 +318,17 @@ new class extends Component {
                                     @endif
                                 </td>
                                 <td class="px-6 py-3 text-sm">
-                                    <div class="text-body dark:text-gray-200">
-                                        {{ $row->jmlNonRacikan }} non-racikan · {{ $row->jmlRacikan }} racikan
-                                    </div>
-                                    <div class="mt-0.5 text-xs">
-                                        <span class="text-success">{{ $row->jmlBerDpho }} siap (ber-DPHO)</span>
-                                        @if ($row->jmlTanpaDpho > 0)
-                                            · <span class="text-warning-deep dark:text-amber-300">{{ $row->jmlTanpaDpho }} belum dipetakan</span>
-                                        @endif
-                                    </div>
+                                    @if ($row->jmlKronis > 0)
+                                        <div class="text-body dark:text-gray-200">{{ $row->jmlKronis }} obat kronis</div>
+                                        <div class="mt-0.5 text-xs">
+                                            <span class="text-success">{{ $row->jmlBerDpho }} siap (ber-DPHO)</span>
+                                            @if ($row->jmlTanpaDpho > 0)
+                                                · <span class="text-warning-deep dark:text-amber-300">{{ $row->jmlTanpaDpho }} belum dipetakan</span>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <span class="text-xs text-muted-soft">tidak ada obat kronis</span>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-3">
                                     @if ($row->sudahDaftar)
@@ -351,12 +339,17 @@ new class extends Component {
                                     @endif
                                 </td>
                                 <td class="px-6 py-3 text-center rounded-r-2xl">
-                                    {{-- Langkah 2: modal Daftarkan & Kirim. Untuk sekarang tombol
-                                         menandai tempatnya; dinonaktifkan agar tak memberi harapan
-                                         palsu selama alurnya belum tersambung. --}}
-                                    <x-outline-button type="button" disabled title="Menyusul — menunggu modal Daftarkan & koneksi BPJS aktif">
-                                        Daftarkan
-                                    </x-outline-button>
+                                    @if ($row->sudahDaftar)
+                                        <x-outline-button type="button"
+                                            wire:click="$dispatch('apotek-online-rj.daftarkan', { rjNo: '{{ $row->rjNo }}' })">
+                                            Lihat
+                                        </x-outline-button>
+                                    @else
+                                        <x-primary-button type="button"
+                                            wire:click="$dispatch('apotek-online-rj.daftarkan', { rjNo: '{{ $row->rjNo }}' })">
+                                            Daftarkan
+                                        </x-primary-button>
+                                    @endif
                                 </td>
                             </tr>
                         @empty
@@ -385,4 +378,7 @@ new class extends Component {
         </div>
 
     </div>
+
+    {{-- Modal Daftarkan & Kirim (Langkah 2) --}}
+    <livewire:pages::transaksi.rj.apotek-online-rj.apotek-online-rj-actions />
 </div>
