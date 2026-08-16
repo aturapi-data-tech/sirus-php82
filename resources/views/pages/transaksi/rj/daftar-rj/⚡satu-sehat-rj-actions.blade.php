@@ -101,7 +101,11 @@ new class extends Component {
 
             {{-- BODY — 5 SFC self-contained --}}
             <div class="flex-1 px-6 py-6 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">
-                <div class="max-w-4xl mx-auto space-y-3">
+                {{-- Grid, bukan tumpukan: modal ini full-width dan 13-15 kartu berderet ke
+                     bawah menyisakan dua pertiga layar kosong. items-start supaya kartu
+                     yang pratinjaunya dibuka memanjang sendiri, tidak ikut menarik tinggi
+                     tetangga sebarisnya. --}}
+                <div class="grid items-start max-w-7xl gap-3 mx-auto grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
                     <livewire:pages::transaksi.rj.satu-sehat.kirim-encounter :rjNo="$rjNo"
                         wire:key="ss-encounter-rj-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.rj.satu-sehat.kirim-condition :rjNo="$rjNo"
@@ -127,15 +131,20 @@ new class extends Component {
                     <livewire:pages::transaksi.rj.satu-sehat.kirim-penilaian :rjNo="$rjNo"
                         wire:key="ss-penilaian-rj-{{ $rjNo ?? 'none' }}" />
 
-                    {{-- Penutup: status encounter jadi finished. Sengaja paling bawah —
-                         dikerjakan setelah semua resource di atasnya terkirim. --}}
-                    <livewire:pages::transaksi.rj.satu-sehat.kirim-encounter :rjNo="$rjNo" bagian="selesai"
-                        wire:key="ss-encounter-selesai-rj-{{ $rjNo ?? 'none' }}" />
+                    {{-- Dua kartu penutup melebar SATU BARIS PENUH: keduanya langkah akhir
+                         yang berurutan (finish dulu, baru resume), jadi menyelipkannya di
+                         tengah baris grid akan mengaburkan urutannya. --}}
+                    <div class="md:col-span-2 xl:col-span-3 space-y-3">
+                        {{-- Penutup: status encounter jadi finished. Sengaja paling bawah —
+                             dikerjakan setelah semua resource di atasnya terkirim. --}}
+                        <livewire:pages::transaksi.rj.satu-sehat.kirim-encounter :rjNo="$rjNo" bagian="selesai"
+                            wire:key="ss-encounter-selesai-rj-{{ $rjNo ?? 'none' }}" />
 
-                    {{-- Resume medis dikirim SESUDAH encounter finished (playbook Bab 28),
-                         jadi kartunya di bawah kartu penutup di atas. --}}
-                    <livewire:pages::transaksi.rj.satu-sehat.kirim-resume-medis :rjNo="$rjNo"
-                        wire:key="ss-resume-medis-rj-{{ $rjNo ?? 'none' }}" />
+                        {{-- Resume medis dikirim SESUDAH encounter finished (playbook Bab 28),
+                             jadi kartunya di bawah kartu penutup di atas. --}}
+                        <livewire:pages::transaksi.rj.satu-sehat.kirim-resume-medis :rjNo="$rjNo"
+                            wire:key="ss-resume-medis-rj-{{ $rjNo ?? 'none' }}" />
+                    </div>
                 </div>
             </div>
         </div>

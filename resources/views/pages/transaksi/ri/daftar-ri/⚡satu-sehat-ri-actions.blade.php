@@ -105,7 +105,11 @@ new class extends Component {
 
             {{-- BODY — SFC self-contained per resource --}}
             <div class="flex-1 px-6 py-6 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">
-                <div class="max-w-4xl mx-auto space-y-3">
+                {{-- Grid, bukan tumpukan: modal ini full-width dan 13-15 kartu berderet ke
+                     bawah menyisakan dua pertiga layar kosong. items-start supaya kartu
+                     yang pratinjaunya dibuka memanjang sendiri, tidak ikut menarik tinggi
+                     tetangga sebarisnya. --}}
+                <div class="grid items-start max-w-7xl gap-3 mx-auto grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
                     <livewire:pages::transaksi.ri.satu-sehat.kirim-encounter :riHdrNo="$riHdrNo"
                         wire:key="ss-encounter-ri-{{ $riHdrNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ri.satu-sehat.kirim-episode :riHdrNo="$riHdrNo"
