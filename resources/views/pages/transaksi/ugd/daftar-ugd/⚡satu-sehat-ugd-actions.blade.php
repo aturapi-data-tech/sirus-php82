@@ -195,12 +195,20 @@ new class extends Component {
                          maupun guard tanggal masuk kosong. --}}
                     <div class="flex items-center gap-2 ml-auto">
                         @if (!empty($antrianKirim) || $langkahAktif !== '')
-                            <span class="text-xs text-muted dark:text-gray-400">
+                            {{-- Spinner dirender apa adanya, TIDAK lewat wire:loading: tiap langkah
+                                 dijalankan oleh komponen ANAK, jadi wadah ini sendiri tidak sedang
+                                 memuat dan wire:loading di sini takkan pernah menyala. Selama antrean
+                                 belum habis, prosesnya memang sedang berjalan — itu yang ditandai. --}}
+                            <span class="inline-flex items-center gap-1.5 text-xs text-muted dark:text-gray-400">
+                                <x-loading class="text-teal-600 dark:text-teal-400" />
                                 Mengirim <span class="font-semibold">{{ $langkahAktif ?: '…' }}</span>
                                 · sisa {{ count($antrianKirim) }} langkah
                             </span>
                             <x-outline-button type="button" wire:click="batalkanKirimSemua">
-                                Hentikan
+                                <span class="inline-flex items-center gap-1.5">
+                                    <x-satu-sehat.ikon-tombol jenis="hentikan" />
+                                    Hentikan
+                                </span>
                             </x-outline-button>
                         @else
                             <x-confirm-button variant="primary" action="kirimSemua()"

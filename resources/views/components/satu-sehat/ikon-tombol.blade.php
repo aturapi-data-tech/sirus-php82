@@ -11,11 +11,19 @@
     siap kirim, emerald saat sudah), dan currentColor mengikutinya.
 
     @param bool $selesai  keadaan langkah: sudah terkirim / sudah difinish
-    @param string $jenis  'kirim' (pesawat kertas) | 'finish' (bendera)
+    @param string $jenis  'kirim' (pesawat kertas) | 'finish' (bendera) | 'hentikan' (kotak stop)
 --}}
 @props(['selesai' => false, 'jenis' => 'kirim'])
 
-@if ($selesai)
+@if ($jenis === 'hentikan')
+    {{-- Kotak stop: menghentikan rantai yang berjalan. Sengaja BUKAN tanda silang —
+         silang berarti menutup/membatalkan, padahal langkah yang sudah berangkat
+         tidak ikut dibatalkan; yang berhenti cuma sisanya. --}}
+    <svg {{ $attributes->merge(['class' => 'w-4 h-4 shrink-0']) }} fill="none" stroke="currentColor"
+        viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+        <rect x="6" y="6" width="12" height="12" rx="2" stroke-linejoin="round" />
+    </svg>
+@elseif ($selesai)
     {{-- Centang: langkah sudah tiba di SATUSEHAT --}}
     <svg {{ $attributes->merge(['class' => 'w-4 h-4 shrink-0']) }} fill="none" stroke="currentColor"
         viewBox="0 0 24 24" stroke-width="2.5" aria-hidden="true">
