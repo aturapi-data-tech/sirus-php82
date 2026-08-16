@@ -62,6 +62,10 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/panduan-dev/alur-pelayanan', 'pages::panduan-dev.alur-pelayanan.alur-pelayanan')
         ->name('panduan-dev.alur-pelayanan');
 
+    // Apotek Online BPJS (apotek-rest): katalog 18 endpoint, alur klaim, & jebakannya
+    Route::livewire('/panduan-dev/apotek-online', 'pages::panduan-dev.apotek-online.apotek-online')
+        ->name('panduan-dev.apotek-online');
+
     // ===========================================
     // DOWN TIME — FORMULIR MANUAL WAKTU HENTI SIMRS
     // ===========================================
