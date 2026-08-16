@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\SATUSEHAT\ServiceRequestTrait;
+use App\Support\PenanggungJawabPenunjang;
 use App\Http\Traits\SATUSEHAT\DiagnosticReportTrait;
 
 new class extends Component {
@@ -77,6 +78,11 @@ new class extends Component {
             $orgId       = env('SATUSEHAT_ORGANIZATION_ID');
             $encounterId = $satuSehat['encounterId'];
             $drDesc      = $dataUGD['drDesc'] ?? '';
+
+            // performer ServiceRequest = dokter penanggung jawab unit penunjang.
+            // Array kosong bila dr_uuid-nya belum diisi; ServiceRequestTrait lalu
+            // memakai dokter pengirim sebagai pengganti (lihat catatan di sana).
+            $pjPenunjang = PenanggungJawabPenunjang::practitionerRef(PenanggungJawabPenunjang::POLI_RADIOLOGI);
             $waktu        = $this->parseDate($dataUGD['rjDate'] ?? '')->toIso8601String();
 
             $orders = DB::table('rstxn_ugdrads as a')
@@ -102,6 +108,8 @@ new class extends Component {
                     'subject' => "Patient/{$patientId}", 'encounter' => "Encounter/{$encounterId}",
                     'occurrenceDateTime' => $waktu, 'authoredOn' => $waktu,
                     'requester' => "Practitioner/{$practitionerId}", 'requesterDisplay' => $drDesc,
+                    'performer' => $pjPenunjang['reference'] ?? null,
+                    'performerDisplay' => $pjPenunjang['display'] ?? null,
                 ]);
                 $serviceRequestId = $serviceRequest['id'] ?? null;
                 if (empty($serviceRequestId)) { continue; }

@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\SATUSEHAT\ServiceRequestTrait;
+use App\Support\PenanggungJawabPenunjang;
 use App\Http\Traits\SATUSEHAT\SpecimenTrait;
 use App\Http\Traits\SATUSEHAT\ObservationTrait;
 use App\Http\Traits\SATUSEHAT\DiagnosticReportTrait;
@@ -80,6 +81,11 @@ new class extends Component {
             $encounterId = $satuSehat['encounterId'];
             $drDesc      = $dataUGD['drDesc'] ?? '';
 
+            // performer ServiceRequest = dokter penanggung jawab unit penunjang.
+            // Array kosong bila dr_uuid-nya belum diisi; ServiceRequestTrait lalu
+            // memakai dokter pengirim sebagai pengganti (lihat catatan di sana).
+            $pjPenunjang = PenanggungJawabPenunjang::practitionerRef(PenanggungJawabPenunjang::POLI_LABORATORIUM);
+
             $checkups = DB::table('lbtxn_checkuphdrs')
                 ->where('ref_no', $rjNo)
                 ->where('status_rjri', 'UGD')
@@ -120,6 +126,8 @@ new class extends Component {
                     'subject' => "Patient/{$patientId}", 'encounter' => "Encounter/{$encounterId}",
                     'occurrenceDateTime' => $waktu, 'authoredOn' => $waktu,
                     'requester' => "Practitioner/{$practitionerId}", 'requesterDisplay' => $drDesc,
+                    'performer' => $pjPenunjang['reference'] ?? null,
+                    'performerDisplay' => $pjPenunjang['display'] ?? null,
                 ]);
                 $serviceRequestId = $serviceRequest['id'] ?? null;
                 if (empty($serviceRequestId)) { continue; }
