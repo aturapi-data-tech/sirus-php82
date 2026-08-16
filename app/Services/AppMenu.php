@@ -227,6 +227,7 @@ class AppMenu
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 15, 'route' => 'panduan-dev.koding-struktur', 'title' => 'Standar Struktur Folder', 'desc' => 'Di mana berkas ditaruh & dinamai — prefix ⚡, suffix peran/jalur, Trait vs Support, prefix URL', 'roles' => ['admin'], 'badge' => 'DOC']),
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 16, 'route' => 'panduan-dev.koding-skill', 'title' => 'Katalog Skill', 'desc' => 'Daftar skill repo (.claude/skills/*) + kapan dibaca', 'roles' => ['admin'], 'badge' => 'DOC']),
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 17, 'route' => 'panduan-dev.mobile-jkn', 'title' => 'Panduan Mobile JKN', 'desc' => 'Cara kerja API Antrean Online BPJS — booking, checkin, kuota, host API, penanganan masalah', 'roles' => ['admin'], 'badge' => 'DOC']),
+            $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 18, 'route' => 'panduan-dev.apotek-online', 'title' => 'Apotek Online BPJS', 'desc' => 'Katalog 18 endpoint apotek-rest, alur klaim obat PRB/kronis/kemo, & jebakan yang berbalas menyesatkan', 'roles' => ['admin'], 'badge' => 'DOC']),
         ];
     }
 }

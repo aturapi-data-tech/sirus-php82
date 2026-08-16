@@ -71,6 +71,9 @@ Route::middleware(['auth'])->group(function () {
     // operasional petugas & penanganan masalah — docs/mobile-jkn-api.md versi web
     Route::livewire('/panduan-dev/mobile-jkn', 'pages::panduan-dev.mobile-jkn.mobile-jkn')
         ->name('panduan-dev.mobile-jkn');
+    // Apotek Online BPJS (apotek-rest): katalog 18 endpoint, alur klaim, & jebakannya
+    Route::livewire('/panduan-dev/apotek-online', 'pages::panduan-dev.apotek-online.apotek-online')
+        ->name('panduan-dev.apotek-online');
 
     // ===========================================
     // DOWN TIME — FORMULIR MANUAL WAKTU HENTI SIMRS
