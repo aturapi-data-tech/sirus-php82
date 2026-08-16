@@ -742,7 +742,13 @@ trait SatuSehatRujukanTrait
      * kolomnya kosong) supaya permintaan tidak hilang dari kotak masuk hanya
      * karena rencana perawatannya gagal di-include.
      *
-     * @return array<int, array<string, string>>
+     * PENTING — CarePlan sering TIDAK ikut bukan karena perujuk lalai, melainkan
+     * karena SATUSEHAT menyensornya: entry pengganti bertipe OperationOutcome
+     * berbunyi "No consent available for CarePlan/<id>". Referensi yang disensor
+     * dikumpulkan ke `diblokir` supaya UI bisa membedakan "perujuk tidak mengisi"
+     * dari "kita tidak boleh membaca" — dua hal yang menuntut tindak lanjut beda.
+     *
+     * @return array<int, array<string, mixed>>
      */
     protected function rujukanParsePermintaanMasuk($body): array
     {
@@ -752,6 +758,7 @@ trait SatuSehatRujukanTrait
 
         $daftarRencana = [];
         $daftarTask = [];
+        $diblokir = [];
         foreach ($body['entry'] ?? [] as $entry) {
             $resource = $entry['resource'] ?? [];
             $tipe = $resource['resourceType'] ?? '';
@@ -759,6 +766,8 @@ trait SatuSehatRujukanTrait
                 $daftarTask[] = $resource;
             } elseif ($tipe === 'CarePlan') {
                 $daftarRencana[(string) ($resource['id'] ?? '')] = $resource;
+            } elseif ($tipe === 'OperationOutcome') {
+                $diblokir += $this->rujukanReferensiTersensor($resource);
             }
         }
 
@@ -785,12 +794,80 @@ trait SatuSehatRujukanTrait
                 'layananNama' => (string) ($layanan['coding'][0]['display'] ?? ($layanan['text'] ?? '')),
                 'deskripsi' => (string) ($rencana['description'] ?? ''),
                 'dokterPerujuk' => (string) ($rencana['author']['display'] ?? ''),
+                // Semua kolom di atas yang bersumber CarePlan kosong berjamaah kalau
+                // rencananya disensor. Penanda ini yang dipakai blade untuk memilih
+                // kalimat "diblokir consent" alih-alih menuduh perujuk tidak mengisi.
+                'rencanaDiblokir' => $rencanaId !== '' && !$rencana && isset($diblokir['CarePlan/' . $rencanaId]),
             ];
         }
 
         usort($baris, fn($a, $b) => strcmp($b['waktu'], $a['waktu']));
 
         return $baris;
+    }
+
+    /**
+     * PERMINTAAN yang hilang seluruhnya karena consent — bukan sekadar rencananya.
+     *
+     * Bundle bisa menyensor Task-nya sendiri, bukan cuma CarePlan:
+     *   "No consent available for Task/7a974c5c-…"   (contoh resmi Postman V30062026)
+     * Bedanya besar. CarePlan tersensor cuma mengosongkan kolom — barisnya tetap ada
+     * dan petugas masih bisa menjawab. TASK tersensor tidak menyisakan baris apa pun:
+     * permintaan itu tak pernah tampil, tak bisa dijawab, dan tanpa penanda di layar
+     * tidak ada yang tahu ia pernah datang — padahal perujuk menunggu dan disarankan
+     * pindah kandidat setelah ±15 menit. Karena itu jumlahnya wajib dimunculkan.
+     *
+     * @return array<string, string> ['Task/<id>' => alasan]
+     */
+    protected function rujukanPermintaanTersensor($body): array
+    {
+        if (!is_array($body)) {
+            return [];
+        }
+
+        $hasil = [];
+        foreach ($body['entry'] ?? [] as $entry) {
+            $resource = $entry['resource'] ?? [];
+            if (($resource['resourceType'] ?? '') !== 'OperationOutcome') {
+                continue;
+            }
+
+            foreach ($this->rujukanReferensiTersensor($resource) as $referensi => $alasan) {
+                if (str_starts_with($referensi, 'Task/')) {
+                    $hasil[$referensi] = $alasan;
+                }
+            }
+        }
+
+        return $hasil;
+    }
+
+    /**
+     * Referensi yang DISENSOR SATUSEHAT dari sebuah OperationOutcome.
+     * Bentuk yang dikirim (diamati langsung 15/08/2026):
+     *   issue[].code       = "suppressed"
+     *   issue[].details.text = "The operation did not return any information due to consent or privacy rules."
+     *   issue[].diagnostics  = "No consent available for CarePlan/a71523c5-…"
+     * Referensinya hanya ada di kalimat bebas `diagnostics`, jadi terpaksa dipungut
+     * dengan regex — tak ada field terstruktur yang menyebut resource mana.
+     * Tipe resource-nya TIDAK selalu CarePlan (Task juga disensor), karena itu
+     * regexnya sengaja generik dan penyaringan tipe dikerjakan pemanggil.
+     *
+     * @return array<string, string> ['<Tipe>/<id>' => alasan]
+     */
+    protected function rujukanReferensiTersensor(array $outcome): array
+    {
+        $hasil = [];
+        foreach ($outcome['issue'] ?? [] as $issue) {
+            $diagnostics = (string) ($issue['diagnostics'] ?? '');
+            $alasan = (string) ($issue['details']['text'] ?? $diagnostics);
+
+            if (preg_match('~\b([A-Z][A-Za-z]+)/([A-Za-z0-9\-\.]{1,64})~', $diagnostics, $cocok)) {
+                $hasil[$cocok[1] . '/' . $cocok[2]] = $alasan;
+            }
+        }
+
+        return $hasil;
     }
 
     /**
