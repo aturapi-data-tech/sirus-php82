@@ -224,7 +224,21 @@ trait EncounterTrait
     public function siapkanFinishEncounter(array $encounter, string $akhirIso, array $conditionIdList): array
     {
         $encounter['status'] = 'finished';
-        $encounter['period']['end'] = $akhirIso;
+
+        // period.end TIDAK BOLEH mendahului period.start. SATUSEHAT menegakkannya sebagai
+        // constraint FHIRPath, dan pelanggarannya dibalas menyesatkan — bukan pesan soal
+        // waktu, melainkan "unparseable_resource" + fhirpath-constraint-violation-Encounter.period.
+        //
+        // Ini bukan kasus teoretis: period.start dibekukan di SATUSEHAT saat Encounter
+        // DIBUAT, sedangkan akhirIso datang dari taskId7/taskId5 (jam obat diserahkan /
+        // keluar poli). Bila Encounter baru dikirim BELAKANGAN — dan parseDate() jatuh ke
+        // now() karena tanggal kunjungannya tak terbaca — start bisa lebih baru daripada
+        // jam layanan yang sesungguhnya. Penjagaan yang sudah lama ada di statusHistory
+        // di bawah ternyata tak pernah diterapkan ke period induknya.
+        $encounter['period']['end'] = $this->waktuTerakhir(
+            (string) ($encounter['period']['start'] ?? ''),
+            $akhirIso
+        );
 
         $riwayat = array_values(array_filter($encounter['statusHistory'] ?? [], 'is_array'));
         $riwayat[] = ['status' => 'finished', 'period' => ['start' => $akhirIso]];
@@ -237,7 +251,7 @@ trait EncounterTrait
                 $selesai = $riwayat[$indeks + 1]['period']['start'] ?? $akhirIso;
             }
             // Jaga urutan: end tak boleh mendahului start (data waktu bisa tak rapi).
-            $riwayat[$indeks]['period'] = ['start' => $mulai, 'end' => max($mulai, $selesai)];
+            $riwayat[$indeks]['period'] = ['start' => $mulai, 'end' => $this->waktuTerakhir($mulai, $selesai)];
         }
         $encounter['statusHistory'] = $riwayat;
 
@@ -257,5 +271,32 @@ trait EncounterTrait
         }
 
         return $encounter;
+    }
+
+    /**
+     * Yang paling belakangan dari dua waktu ISO8601; '' dianggap tidak ada.
+     *
+     * Dibandingkan sebagai WAKTU, bukan sebagai teks: perbandingan string hanya benar
+     * bila kedua nilai memakai offset zona yang sama, padahal `period.start` berasal
+     * dari SATUSEHAT sedangkan pembandingnya kita susun sendiri. Bila salah satu tak
+     * bisa diurai, jatuh ke perbandingan teks — tetap benar untuk offset seragam, dan
+     * tetap lebih baik daripada melempar di tengah penyusunan payload.
+     */
+    private function waktuTerakhir(string $pertama, string $kedua): string
+    {
+        if ($pertama === '') {
+            return $kedua;
+        }
+        if ($kedua === '') {
+            return $pertama;
+        }
+
+        try {
+            return \Carbon\Carbon::parse($pertama)->greaterThan(\Carbon\Carbon::parse($kedua))
+                ? $pertama
+                : $kedua;
+        } catch (\Throwable) {
+            return max($pertama, $kedua);
+        }
     }
 }

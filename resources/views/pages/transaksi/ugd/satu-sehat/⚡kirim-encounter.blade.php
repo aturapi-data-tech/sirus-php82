@@ -88,7 +88,17 @@ new class extends Component {
             $locationId = $this->resolveUgdLocation($rjNo);
             if (empty($locationId)) { $this->dispatch('toast', type: 'error', message: 'Location IHS IGD kosong. Set env SATUSEHAT_IGD_LOCATION_ID atau poli_uuid IGD.'); return; }
 
-            $ugdDate = $this->parseDate($dataUGD['rjDate'] ?? '');
+            // Tanggal masuk kosong = parseDate() diam-diam memakai now(), sehingga
+            // period.start terisi jam petugas menekan tombol lalu DIBEKUKAN di SATUSEHAT.
+            // (Alasan lengkap di sender Encounter RJ.)
+            $tanggalMasuk = trim((string) ($dataUGD['rjDate'] ?? ''));
+            if ($tanggalMasuk === '') {
+                $this->dispatch('toast', type: 'error',
+                    message: 'Tanggal masuk UGD (rj_date) kosong — betulkan dulu di pendaftaran sebelum kirim Encounter.');
+                return;
+            }
+
+            $ugdDate = $this->parseDate($tanggalMasuk);
 
             if (empty($satuSehat['encounterId'])) {
                 $respons = $this->createNewEncounter([

@@ -112,7 +112,17 @@ new class extends Component {
                 return;
             }
 
-            $entryDate = $this->parseDate($dataRI['entryDate'] ?? '');
+            // Tanggal masuk kosong = parseDate() diam-diam memakai now(), sehingga
+            // period.start terisi jam petugas menekan tombol lalu DIBEKUKAN di SATUSEHAT.
+            // (Alasan lengkap di sender Encounter RJ.)
+            $tanggalMasuk = trim((string) ($dataRI['entryDate'] ?? ''));
+            if ($tanggalMasuk === '') {
+                $this->dispatch('toast', type: 'error',
+                    message: 'Tanggal masuk rawat inap (entry_date) kosong — betulkan dulu di pendaftaran sebelum kirim Encounter.');
+                return;
+            }
+
+            $entryDate = $this->parseDate($tanggalMasuk);
 
             // 1) Buat Encounter (IMP) kalau belum ada
             if (empty($satuSehat['encounterId'])) {

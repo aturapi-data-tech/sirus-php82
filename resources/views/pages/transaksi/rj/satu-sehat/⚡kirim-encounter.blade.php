@@ -107,7 +107,21 @@ new class extends Component {
                 return;
             }
 
-            $rjDate = $this->parseDate($dataRJ['rjDate'] ?? '');
+            // Tanggal kunjungan kosong = parseDate() diam-diam memakai now(), sehingga
+            // period.start terisi JAM PETUGAS MENEKAN TOMBOL, bukan jam kunjungan. Waktu
+            // itu lalu DIBEKUKAN di SATUSEHAT begitu Encounter terbentuk dan tak bisa
+            // dikoreksi belakangan. Akibatnya berantai: Finish memakai jam layanan
+            // sesungguhnya (taskId7/taskId5) yang bisa lebih awal → melanggar constraint
+            // start<=end, dan seluruh resource yang menempel ikut salah waktu.
+            // Lebih baik ditolak di sini supaya tanggalnya dibetulkan lebih dulu.
+            $tanggalKunjungan = trim((string) ($dataRJ['rjDate'] ?? ''));
+            if ($tanggalKunjungan === '') {
+                $this->dispatch('toast', type: 'error',
+                    message: 'Tanggal kunjungan (rj_date) kosong — betulkan dulu di pendaftaran sebelum kirim Encounter.');
+                return;
+            }
+
+            $rjDate = $this->parseDate($tanggalKunjungan);
 
             if (empty($satuSehat['encounterId'])) {
                 $respons = $this->createNewEncounter([
