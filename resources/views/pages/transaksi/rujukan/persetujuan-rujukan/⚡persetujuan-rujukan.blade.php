@@ -32,6 +32,13 @@ new class extends Component {
     /** Baris mentah hasil parse Bundle Task+CarePlan. */
     public array $daftarPermintaan = [];
 
+    /**
+     * Permintaan yang DISEMBUNYIKAN SATUSEHAT karena consent — tidak punya baris
+     * di tabel, jadi satu-satunya jejaknya di layar adalah spanduk peringatan.
+     * ['Task/<id>' => alasan]
+     */
+    public array $permintaanTersensor = [];
+
     public string $filterStatus = 'menunggu'; // menunggu | accepted | rejected | '' (semua)
     public string $filterJalur = ''; // ranap | igd | '' (semua)
     public string $searchKeyword = '';
@@ -57,13 +64,13 @@ new class extends Component {
         $hasil = $this->rujukanTaskMasuk();
 
         if ($hasil['code'] < 200 || $hasil['code'] >= 300) {
-            $this->pesanGangguan = 'Gagal membaca kotak masuk rujukan [' . $hasil['code'] . '] — '
-                . $this->ringkasError($hasil['body']);
+            $this->pesanGangguan = 'Gagal membaca kotak masuk rujukan [' . $hasil['code'] . '] — ' . $this->ringkasError($hasil['body']);
             return;
         }
 
         $this->pesanGangguan = '';
         $baris = $this->rujukanParsePermintaanMasuk($hasil['body']);
+        $this->permintaanTersensor = $this->rujukanPermintaanTersensor($hasil['body']);
 
         // Nama RS perujuk tidak ikut di Task; ambil sekali per organisasi (di-cache 1 hari).
         $namaOrganisasi = [];
@@ -105,31 +112,26 @@ new class extends Component {
     {
         $kataKunci = trim(strtolower($this->searchKeyword));
 
-        return array_values(array_filter($this->daftarPermintaan, function (array $baris) use ($kataKunci) {
-            if ($this->filterStatus === 'menunggu' && !$this->menunggu($baris)) {
-                return false;
-            }
-            if (in_array($this->filterStatus, ['accepted', 'rejected'], true) && $baris['keputusan'] !== $this->filterStatus) {
-                return false;
-            }
-            if ($this->filterJalur !== '' && $baris['jalur'] !== $this->filterJalur) {
-                return false;
-            }
-            if ($kataKunci === '') {
-                return true;
-            }
+        return array_values(
+            array_filter($this->daftarPermintaan, function (array $baris) use ($kataKunci) {
+                if ($this->filterStatus === 'menunggu' && !$this->menunggu($baris)) {
+                    return false;
+                }
+                if (in_array($this->filterStatus, ['accepted', 'rejected'], true) && $baris['keputusan'] !== $this->filterStatus) {
+                    return false;
+                }
+                if ($this->filterJalur !== '' && $baris['jalur'] !== $this->filterJalur) {
+                    return false;
+                }
+                if ($kataKunci === '') {
+                    return true;
+                }
 
-            $gabungan = strtolower(implode(' ', [
-                $baris['pasienNama'],
-                $baris['pasienId'],
-                $baris['noPermintaan'],
-                $baris['perujukNama'] ?? '',
-                $baris['perujukOrgId'],
-                $baris['layananNama'],
-            ]));
+                $gabungan = strtolower(implode(' ', [$baris['pasienNama'], $baris['pasienId'], $baris['noPermintaan'], $baris['perujukNama'] ?? '', $baris['perujukOrgId'], $baris['layananNama']]));
 
-            return str_contains($gabungan, $kataKunci);
-        }));
+                return str_contains($gabungan, $kataKunci);
+            }),
+        );
     }
 
     /** Ringkasan jumlah per status — dihitung dari data mentah, bukan hasil filter. */
@@ -178,8 +180,7 @@ new class extends Component {
             return Str::limit($body, 180);
         }
         if (is_array($body)) {
-            $pesan = $body['issue'][0]['details']['text']
-                ?? ($body['issue'][0]['diagnostics'] ?? ($body['message'] ?? null));
+            $pesan = $body['issue'][0]['details']['text'] ?? ($body['issue'][0]['diagnostics'] ?? ($body['message'] ?? null));
             if ($pesan) {
                 return Str::limit((string) $pesan, 180);
             }
@@ -213,7 +214,8 @@ new class extends Component {
                         <x-input-label value="Pencarian" class="sr-only" />
                         <div class="relative mt-1">
                             <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                <svg class="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 text-muted" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
@@ -281,6 +283,26 @@ new class extends Component {
                 </div>
             </div>
 
+            {{-- PERMINTAAN TERSEMBUNYI — tidak punya baris di tabel, jadi tanpa spanduk ini
+                 petugas tidak punya cara apa pun untuk tahu ada rujukan yang tidak terbaca. --}}
+            @if (count($permintaanTersensor) > 0)
+                <div
+                    class="mt-4 px-4 py-3 border rounded-2xl bg-warning-tint border-amber-200 dark:bg-amber-900/20 dark:border-amber-800">
+                    <div class="flex flex-wrap items-start gap-x-3 gap-y-1">
+                        <span class="text-sm font-semibold text-warning-deep dark:text-amber-200">
+                            {{ count($permintaanTersensor) }} permintaan tidak dapat ditampilkan
+                        </span>
+                        <span class="text-sm text-warning-deep dark:text-amber-200">
+                            SATUSEHAT menyembunyikannya karena aturan consent/privasi. Permintaan itu
+                            tidak bisa dijawab dari layar ini — hubungi RS perujuk bila mereka menunggu.
+                        </span>
+                        <span class="w-full text-xs text-warning-deep dark:text-amber-200">
+                            Referensi: {{ implode(', ', array_keys($permintaanTersensor)) }}
+                        </span>
+                    </div>
+                </div>
+            @endif
+
             {{-- GANGGUAN PUSAT — bukan edge case, tampilkan apa adanya + tombol coba lagi --}}
             @if ($pesanGangguan !== '')
                 <div
@@ -321,9 +343,19 @@ new class extends Component {
                                        hover:shadow-lg hover:bg-surface-soft dark:hover:bg-gray-800"
                                     wire:key="permintaan-rujukan-{{ $baris['taskId'] }}">
 
+                                    @php
+                                        // CarePlan disensor SATUSEHAT → nama, layanan & jalur kosong berjamaah.
+                                        // Kalimatnya dibedakan supaya petugas tak menyalahkan perujuk.
+                                        $barisDiblokir = (bool) ($baris['rencanaDiblokir'] ?? false);
+                                    @endphp
+
                                     <td class="px-6 py-4 rounded-l-2xl">
                                         <div class="font-semibold text-ink dark:text-gray-100">
-                                            {{ $baris['pasienNama'] !== '' ? $baris['pasienNama'] : '(nama tidak dikirim perujuk)' }}
+                                            {{ $baris['pasienNama'] !== ''
+                                                ? $baris['pasienNama']
+                                                : ($barisDiblokir
+                                                    ? '(tersembunyi — consent belum ada)'
+                                                    : '(nama tidak dikirim perujuk)') }}
                                         </div>
                                         <div class="text-sm text-muted dark:text-gray-400">
                                             IHS: {{ $baris['pasienId'] !== '' ? $baris['pasienId'] : '-' }}
@@ -351,11 +383,17 @@ new class extends Component {
                                             <x-badge variant="info">Rawat Inap</x-badge>
                                         @elseif ($baris['jalur'] === 'igd')
                                             <x-badge variant="danger">Gawat Darurat</x-badge>
+                                        @elseif ($barisDiblokir)
+                                            <x-badge variant="warning">Jalur tersembunyi</x-badge>
                                         @else
                                             <x-badge variant="gray">Layanan tidak dikenali</x-badge>
                                         @endif
                                         <div class="mt-1 text-sm text-muted dark:text-gray-400">
-                                            {{ $baris['layananNama'] !== '' ? $baris['layananNama'] : '-' }}
+                                            {{ $baris['layananNama'] !== ''
+                                                ? $baris['layananNama']
+                                                : ($barisDiblokir
+                                                    ? 'Detail diblokir SATUSEHAT (consent)'
+                                                    : '-') }}
                                             @if ($baris['layananKode'] !== '')
                                                 <span class="text-muted-soft">({{ $baris['layananKode'] }})</span>
                                             @endif
@@ -379,7 +417,8 @@ new class extends Component {
                                     </td>
 
                                     <td class="px-6 py-4 text-center rounded-r-2xl">
-                                        <x-outline-button type="button" wire:click="bukaDetail({{ $indeks }})">
+                                        <x-outline-button type="button"
+                                            wire:click="bukaDetail({{ $indeks }})">
                                             {{ $this->menunggu($baris) ? 'Tinjau & Jawab' : 'Lihat Detail' }}
                                         </x-outline-button>
                                     </td>
