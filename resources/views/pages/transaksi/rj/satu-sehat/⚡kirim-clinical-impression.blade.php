@@ -188,13 +188,6 @@ new class extends Component {
                         terkirim
                     </div>
                 @endif
-                {{-- wire:click, bukan x-show Alpine: kartu ini ikut di-morph tiap kali
-                     daftar langkah disegarkan, dan state Alpine bisa putus di situ. --}}
-                <button type="button" wire:click="togglePratinjau" wire:loading.attr="disabled"
-                    wire:target="togglePratinjau"
-                    class="mt-1 text-xs font-medium underline text-info-deep hover:no-underline dark:text-blue-300">
-                    {{ $pratinjauTerbuka ? 'Sembunyikan data' : 'Lihat data yang akan dikirim' }}
-                </button>
             </div>
         </div>
         <x-primary-button type="button" wire:click="kirimForCurrent" wire:loading.attr="disabled" :disabled="!$hasEncounter"
@@ -204,8 +197,7 @@ new class extends Component {
         </x-primary-button>
     </div>
 
-    @if ($pratinjauTerbuka)
-        <x-satu-sehat.pratinjau :baris="$this->pratinjau"
-            kosong="Belum ada diagnosa di EMR — Clinical Impression merangkumnya, jadi Kirim akan ditolak." />
-    @endif
+    <x-satu-sehat.pratinjau :terbuka="$pratinjauTerbuka"
+        :baris="$pratinjauTerbuka ? $this->pratinjau : []"
+        kosong="Belum ada diagnosa di EMR — Clinical Impression merangkumnya, jadi Kirim akan ditolak." />
 </div>
