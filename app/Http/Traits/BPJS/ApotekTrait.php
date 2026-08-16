@@ -364,10 +364,12 @@ trait ApotekTrait
      */
     public static function apotek_sep(string $noSep)
     {
+        // SEP itu ALFANUMERIK 19 karakter (mis. "0184R0060726V001670"), BUKAN 19 digit
+        // angka — memakai digits:19 menolak setiap SEP asli yang memuat huruf.
         $validator = Validator::make(
             ['noSep' => $noSep],
-            ['noSep' => 'required|digits:19'],
-            ['required' => ':attribute wajib diisi.', 'digits' => ':attribute harus :digits digit.'],
+            ['noSep' => 'required|size:19'],
+            ['required' => ':attribute wajib diisi.', 'size' => ':attribute harus :size karakter.'],
             ['noSep' => 'Nomor SEP']
         );
 
