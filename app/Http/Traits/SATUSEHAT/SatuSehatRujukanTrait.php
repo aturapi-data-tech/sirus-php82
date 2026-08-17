@@ -691,10 +691,17 @@ trait SatuSehatRujukanTrait
      * Sisi PERUJUK — baca keputusan accepted/rejected dari faskes tujuan.
      * Parameter `encounter` sah sebagai filter (konfirmasi tim SATUSEHAT 14/08/26),
      * jadi tak perlu menyapu seluruh Task RS untuk memantau satu kunjungan.
+     *
+     * `_include=Task:based-on` ikut seperti di kotak masuk: nama pasien, layanan yang
+     * diminta, dan penanda jalur hanya ada di CarePlan, tidak pernah di Task. Di arah
+     * KELUAR ini CarePlan-nya kita sendiri yang membuat, jadi mestinya tidak kena
+     * sensor consent seperti rujukan masuk — tapi penanganan tersensor tetap dipakai
+     * supaya layar tidak bohong kalau ternyata kena juga.
      */
     protected function rujukanTaskByRequester(?string $encounterId = null): array
     {
-        $endpoint = 'Task?code=referral-approval-request&requester=' . urlencode($this->rujukanOrgId());
+        $endpoint = 'Task?code=referral-approval-request&requester=' . urlencode($this->rujukanOrgId())
+            . '&_include=Task:based-on';
         if (!empty($encounterId)) {
             $endpoint .= '&encounter=' . urlencode($encounterId);
         }
@@ -738,6 +745,9 @@ trait SatuSehatRujukanTrait
 
     /**
      * Bundle searchset (Task + CarePlan hasil _include) → baris siap tampil.
+     * Dipakai DUA layar: kotak masuk `Task?owner=<kita>` dan pemantauan rujukan
+     * keluar `Task?requester=<kita>`. Bentuk bundle-nya identik, yang berbeda hanya
+     * organisasi mana yang menarik untuk ditampilkan — karena itu tidak dipecah dua.
      * Terbaru di atas. Tahan bentuk: CarePlan boleh tidak ikut (baris tetap muncul,
      * kolomnya kosong) supaya permintaan tidak hilang dari kotak masuk hanya
      * karena rencana perawatannya gagal di-include.
@@ -785,7 +795,11 @@ trait SatuSehatRujukanTrait
                 'waktu' => (string) ($task['authoredOn'] ?? ($task['lastModified'] ?? '')),
                 'pasienId' => str_replace('Patient/', '', (string) ($task['for']['reference'] ?? '')),
                 'pasienNama' => (string) ($rencana['subject']['display'] ?? ''),
+                // Dua sisi sekaligus: kotak masuk memakai perujukOrgId (requester),
+                // pemantauan rujukan keluar memakai tujuanOrgId (owner). Task yang sama
+                // dibaca dari dua arah, jadi keduanya dipungut di satu tempat.
                 'perujukOrgId' => str_replace('Organization/', '', (string) ($task['requester']['reference'] ?? '')),
+                'tujuanOrgId' => str_replace('Organization/', '', (string) ($task['owner']['reference'] ?? '')),
                 'encounterId' => str_replace('Encounter/', '', (string) ($task['encounter']['reference'] ?? '')),
                 'diagnosaId' => str_replace('Condition/', '', (string) ($task['reasonReference']['reference'] ?? '')),
                 'rencanaId' => $rencanaId,

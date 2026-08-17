@@ -3,7 +3,7 @@
 // ║  PERSETUJUAN RUJUKAN MASUK — sisi FASKES TUJUAN (SRBK/SATUSEHAT)     ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 //
-// Route: /rujukan/persetujuan → pages::transaksi.rujukan.persetujuan-rujukan.persetujuan-rujukan
+// Route: /rujukan/masuk → pages::transaksi.rujukan.rujukan-masuk.rujukan-masuk
 //
 // RS lain mengirim tugas rujukan (Task code=referral-approval-request) dengan
 // owner = Organization RS kita. Layar ini kotak masuknya: petugas IGD / admisi
@@ -39,8 +39,11 @@ new class extends Component {
      */
     public array $permintaanTersensor = [];
 
-    public string $filterStatus = 'menunggu'; // menunggu | accepted | rejected | '' (semua)
-    public string $filterJalur = ''; // ranap | igd | '' (semua)
+    // Dua-duanya default SEMUA: kotak masuk dibuka untuk melihat apa saja yang datang,
+    // bukan cuma yang belum dijawab. Rekap di bawah toolbar sudah menghitung per status
+    // dari data mentah, jadi yang menunggu tetap ketara tanpa perlu memfilter duluan.
+    public string $filterStatus = ''; // '' (semua) | menunggu | accepted | rejected
+    public string $filterJalur = ''; // '' (semua) | ranap | igd
     public string $searchKeyword = '';
 
     public bool $muatOtomatis = false;
@@ -87,7 +90,7 @@ new class extends Component {
     }
 
     /** Setelah petugas menjawab di modal, kotak masuk disegarkan. */
-    #[On('persetujuan-rujukan.dijawab')]
+    #[On('rujukan-masuk.dijawab')]
     public function segarkan(): void
     {
         $this->muatPermintaan();
@@ -100,7 +103,7 @@ new class extends Component {
             return;
         }
 
-        $this->dispatch('persetujuan-rujukan-actions.open', permintaan: $baris);
+        $this->dispatch('rujukan-masuk-actions.open', permintaan: $baris);
     }
 
     /**
@@ -237,10 +240,10 @@ new class extends Component {
                     <div class="w-full sm:w-auto">
                         <x-input-label value="Status" />
                         <x-select-input wire:model.live="filterStatus" class="w-full mt-1 sm:w-52">
+                            <option value="">Semua Status</option>
                             <option value="menunggu">Menunggu Jawaban</option>
                             <option value="accepted">Disetujui</option>
                             <option value="rejected">Ditolak</option>
-                            <option value="">Semua</option>
                         </x-select-input>
                     </div>
 
@@ -446,5 +449,5 @@ new class extends Component {
         </div>
     </div>
 
-    <livewire:pages::transaksi.rujukan.persetujuan-rujukan.persetujuan-rujukan-actions />
+    <livewire:pages::transaksi.rujukan.rujukan-masuk.rujukan-masuk-actions />
 </div>
