@@ -63,8 +63,13 @@ Body JSON: `kodeDiagnosa` + `kodeFaskesSatuSehat` (+ `encounter.reference` bila 
 
 ### 3.1 Sisi FASKES TUJUAN — persetujuan/penolakan tugas rujukan (kotak masuk)
 
-Sudah diimplementasikan: `/rujukan/persetujuan` (`pages::transaksi.rujukan.persetujuan-rujukan.*`),
-method sisi penerima ada di `SatuSehatRujukanTrait` §7. Postman: *Contoh Rujukan → 02. Rawat Inap /
+Sudah diimplementasikan: `/rujukan/masuk` (`pages::transaksi.rujukan.rujukan-masuk.*`),
+method sisi penerima ada di `SatuSehatRujukanTrait` §7. Arah sebaliknya — memantau rujukan
+yang KITA kirim sampai dijawab — ada di `/rujukan/keluar`
+(`pages::transaksi.rujukan.rujukan-keluar.*`), dua tab: Ranap & Gawat Darurat dari
+`rujukanTaskByRequester()`, Rawat Jalan dari DB lokal karena jalur BPJS tak membentuk Task.
+Penamaan berkas memakai ARAH (`rujukan-masuk` / `rujukan-keluar`), bukan aktivitas
+(persetujuan/pemantauan), supaya sisi mana yang dimaksud terbaca dari nama. Postman: *Contoh Rujukan → 02. Rawat Inap /
 03. Rawat Darurat → 03. Pengiriman Tugas Rujukan → Faskes Rujukan - Persetujuan/Penolakan Tugas Rujukan*.
 Rawat Jalan **tidak punya langkah ini** (BPJS yang mengorkestrasi).
 
@@ -123,6 +128,38 @@ PATCH {base}/Task/<id>          Content-Type: application/json-patch+json
 | 429 `Rate limit quota violation` | Kuota staging habis | Hemat panggilan; lapor minta perpanjang |
 | `upstream connect error` / timeout / HTML | Infra BPJS down | Retry-later; jangan blokir EMR |
 | **Error identik di ≥2 endpoint berbeda** | Hampir pasti gangguan jaringan SATUSEHAT | Tampilkan hint "gangguan pusat", jangan debug payload |
+| `No consent available for CarePlan/<id>` di kotak masuk (HTTP **200**) | Cacat platform, bukan payload kita — lihat §4.1 | Tetap tampilkan barisnya, tandai "tersembunyi"; konfirmasi ke perujuk lewat jalur komunikasi RS |
+
+### 4.1 Kotak masuk buta karena consent — cacat sisi SATUSEHAT
+
+Rujukan masuk sering datang **tanpa data klinis**: `_include=Task:based-on` membalas
+`OperationOutcome` bertuliskan `No consent available for CarePlan/<id>`, HTTP tetap 200.
+Karena nama pasien, layanan yang diminta, jalur, dan keterangan klinis **hanya ada di
+CarePlan** (tidak pernah di Task), kolom-kolom itu kosong berjamaah.
+
+Yang sudah dibuktikan langsung dengan token kita sendiri (dua kasus: Task `6b7d4dc9` 15/08/26
+dan Task `28ca2a68` 17/08/26, keduanya dari perujuk `Organization/100024122`):
+
+- **Bukan soal payload, bukan soal urutan.** Hipotesis "baru terbaca setelah di-approve"
+  gugur: CarePlan demo yang tak pernah kita sentuh justru terbaca penuh. Hipotesis "hanya
+  owner yang boleh baca" juga gugur.
+- **Tidak bisa diakali dari sumber lain.** `Patient/<ihs>` terbaca 200 tapi hanya cangkang
+  (`active`, `id`, `identifier`, `meta`) — tanpa `name`/`gender`/`birthDate`, dan NIK-nya
+  ikut di-mask. `Encounter` & `Condition` rujukan itu sama-sama disensor.
+- **Consent-nya memang tidak ada.** Pada kasus 17/08, pasien punya **718** Consent (harus
+  ikut `link.next`; `Bundle.total` per halaman = ukuran halaman, bukan jumlah sebenarnya).
+  Hanya 2 bertipe CarePlan, dan keduanya menunjuk CarePlan lain, untuk organisasi lain,
+  dengan `period` yang sudah habis. Nol consent untuk CarePlan yang masuk ke kita.
+- Consent diterbitkan **otomatis oleh platform**, bukan oleh pengirim — tidak ada request
+  Consent di koleksi Postman resmi, jadi saat kita merujuk keluar pun tak ada yang perlu
+  disiapkan. Vendor lain melaporkan hal sama sejak 08/07/26.
+
+**Implikasi desain (sudah diterapkan di `/rujukan/masuk`):** CarePlan tersensor → baris
+tetap muncul, ditandai "tersembunyi — consent belum ada" + peringatan bahwa keputusan
+diambil tanpa data klinis. **Task tersensor tidak menyisakan baris sama sekali**, jadi
+jumlahnya dimunculkan sebagai spanduk — tanpa itu, permintaan yang hilang tak akan pernah
+diketahui siapa pun padahal perujuk menunggu. Bedakan kalimatnya dari "perujuk tidak
+mengisi": tindak lanjutnya beda.
 
 ## 5. Prinsip desain untuk rebuild kita
 

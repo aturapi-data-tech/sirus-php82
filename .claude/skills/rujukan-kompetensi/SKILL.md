@@ -21,14 +21,19 @@ Urutan endpoint RJ: `GetKriteriaRujukan` → `GetFaskesRujukan` → `Rujukan/Ins
 (+ `Rujukan/Delete` pakai HTTP method **DELETE**, `GetSpesialistik` untuk master).
 
 **Dua sisi, jangan tertukar.** Sisi PERUJUK (kirim) ada di panel EMR RI/UGD/RJ; sisi
-FASKES TUJUAN (kotak masuk) ada di layar tersendiri `/rujukan/persetujuan`:
+FASKES TUJUAN (kotak masuk) ada di layar tersendiri `/rujukan/masuk`. Pemantauan hasilnya
+ada di `/rujukan/keluar` — dua tab, karena sumbernya memang dua: tab Ranap & Gawat Darurat
+dari `Task?requester=` (API), tab Rawat Jalan dari DB lokal (node `rujukanKompetensi`,
+jalur BPJS tidak membentuk Task). Nama berkas menyebut ARAH (`rujukan-masuk` /
+`rujukan-keluar`), bukan aktivitas, supaya tidak tertukar:
 
 | Peran | Endpoint | Ada di |
 |---|---|---|
 | Perujuk kirim tugas | POST Bundle Task+CarePlan `referral-approval` | `rujukanBundleApproval()` |
 | **Tujuan baca kotak masuk** | `GET Task?owner=<org kita>&code=referral-approval-request&_include=Task:based-on` | `rujukanTaskMasuk()` |
 | **Tujuan menjawab** | `PATCH Task/<id>` json-patch: status `completed` + output `accepted`/`rejected` | `rujukanTaskRespon()` |
-| Perujuk baca keputusan | `GET Task?code=referral-approval-request&requester=<org perujuk>` (+`&encounter=` sah sbg filter) | `rujukanTaskByRequester()` |
+| Perujuk baca keputusan | `GET Task?code=referral-approval-request&requester=<org perujuk>` (+`&encounter=` sah sbg filter) | `rujukanTaskByRequester()` → `/rujukan/keluar` tab 1 |
+| Perujuk lihat rujukan RJ | — (tak ada endpoint BPJS "rujukan keluar saya") | DB lokal `datadaftarpolirj_json.rujukanKompetensi.hasil` → `/rujukan/keluar` tab 2 |
 
 Env: `SISRUTE_URL/CONS_ID/SECRET_KEY/USER_KEY/KDPPK` (dev: CID 8334, faskes 0184R006
 MADINAH JST). Signature/header = pola VClaim persis; cons-id SISRUTE terdaftar TERPISAH

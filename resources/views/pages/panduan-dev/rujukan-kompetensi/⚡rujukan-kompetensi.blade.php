@@ -35,6 +35,7 @@ new class extends Component {
                 'json-fhir' => 'Contoh JSON — Jalur FHIR',
             ],
             'Di SIMRS' => [
+                'simrs-alur' => 'Alur Program & Diagram',
                 'simrs-panel' => 'Lokasi Panel & Node Data',
             ],
             'FAQ' => [
@@ -323,6 +324,7 @@ new class extends Component {
                                         <tr><td class="ds-td-strong">Task.owner = TUJUAN</td><td class="ds-body-sm">Pada bundle approval, owner = Organization faskes tujuan — tanpa ini RS tujuan tidak melihat rujukan masuk. CarePlan.author = Practitioner perujuk (mandatory).</td></tr>
                                         <tr><td class="ds-td-strong">CarePlan.category = jalur</td><td class="ds-body-sm">Ranap <span class="ds-code">736353004</span> Inpatient care plan (SNOMED) vs IGD <span class="ds-code">TK000068</span> Emergency care plan (kemkes) — SATU-SATUNYA beda bundle ranap dan gawat darurat. RS tujuan memakainya untuk memilah antrean, jadi salah kategori = permintaan mendarat di unit yang keliru.</td></tr>
                                         <tr><td class="ds-td-strong">Kotak masuk sisi tujuan</td><td class="ds-body-sm">Kalau KITA yang dirujuk: <span class="ds-code">GET Task?owner=&lt;org kita&gt;&amp;code=referral-approval-request&amp;_include=Task:based-on</span> lalu PATCH keputusan. Layarnya <strong>Rujukan → Persetujuan Rujukan Masuk</strong>, terpisah dari EMR.</td></tr>
+                                        <tr><td class="ds-td-strong">Memantau jawaban tujuan</td><td class="ds-body-sm">Sisi perujuk membaca keputusan lewat <span class="ds-code">GET Task?code=referral-approval-request&amp;requester=&lt;org kita&gt;&amp;_include=Task:based-on</span> (parameter <span class="ds-code">&amp;encounter=</span> sah sebagai filter). Layarnya <strong>Rujukan → Pemantauan Rujukan Keluar</strong> — jawaban datang menyusul, bisa berjam-jam, jadi tidak dipantau dari EMR pasien satu per satu.</td></tr>
                                         <tr><td class="ds-td-strong">Jangan echo providerAtribute</td><td class="ds-body-sm">Extension kandidat (distance/strata/bpjs-code) adalah OUTPUT server — menyalinnya ke resource yang dikirim = ditolak validator.</td></tr>
                                         <tr><td class="ds-td-strong">1 CarePlan = 1 nomor</td><td class="ds-body-sm">Jangan tembak beberapa RS sekaligus; penerima punya ±15 menit sebelum perujuk disarankan pindah kandidat. Di staging, approval boleh dilewati (langsung ServiceRequest setelah bundle).</td></tr>
                                     </tbody>
@@ -1018,8 +1020,176 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
                     </section>
 
                     {{-- ====== LOKASI PANEL ====== --}}
-                    <section x-show="section === 'simrs-panel'" x-cloak>
+                    {{-- ====== ALUR PROGRAM & DIAGRAM ====== --}}
+                    <section x-show="section === 'simrs-alur'" x-cloak>
                         <div class="ds-eyebrow mb-3">10 — Di SIMRS</div>
+                        <h1 class="ds-display-md mb-4">Alur Program &amp; Diagram</h1>
+                        <p class="ds-body-md mb-6" style="max-width:66ch">
+                            Satu rujukan hidup di <strong>dua rumah sakit dan tiga layar</strong>. Diagram di bawah
+                            memperlihatkan siapa memanggil apa, kapan, dan layar mana yang membacanya — supaya jelas
+                            kenapa rujukan masuk dan rujukan keluar dibuat sebagai layar terpisah dari EMR.
+                        </p>
+
+                        {{-- ── DIAGRAM 1: siklus jalur FHIR ── --}}
+                        <div class="ds-card-outline mb-6" style="padding:0; overflow:hidden">
+                            <div class="ds-caption-up" style="color:var(--muted); padding:14px 24px 6px">
+                                Diagram 1 — Siklus rujukan jalur FHIR (IGD &amp; Ranap)
+                            </div>
+                            <div class="overflow-x-auto">
+                                <svg viewBox="0 0 900 430" style="min-width:820px; width:100%; font-family:inherit">
+                                    <defs>
+                                        <marker id="panah-alur" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7"
+                                            markerHeight="7" orient="auto-start-reverse">
+                                            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--muted)" />
+                                        </marker>
+                                    </defs>
+
+                                    {{-- kepala lajur --}}
+                                    <rect x="20" y="16" width="200" height="56" rx="12" fill="var(--surface-card)" />
+                                    <text x="120" y="40" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">RS PERUJUK</text>
+                                    <text x="120" y="58" text-anchor="middle" font-size="11" fill="var(--muted)">EMR RJ / UGD / RI</text>
+
+                                    <rect x="350" y="16" width="200" height="56" rx="12" fill="var(--surface-card)" />
+                                    <text x="450" y="40" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">SATUSEHAT</text>
+                                    <text x="450" y="58" text-anchor="middle" font-size="11" fill="var(--muted)">Rujukan Nasional (FHIR)</text>
+
+                                    <rect x="680" y="16" width="200" height="56" rx="12" fill="var(--surface-card)" />
+                                    <text x="780" y="40" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">RS TUJUAN</text>
+                                    <text x="780" y="58" text-anchor="middle" font-size="11" fill="var(--muted)">admisi ranap / IGD</text>
+
+                                    {{-- garis hidup --}}
+                                    <line x1="120" y1="76" x2="120" y2="410" stroke="var(--muted-soft)" stroke-width="1" stroke-dasharray="4 5" />
+                                    <line x1="450" y1="76" x2="450" y2="410" stroke="var(--muted-soft)" stroke-width="1" stroke-dasharray="4 5" />
+                                    <line x1="780" y1="76" x2="780" y2="410" stroke="var(--muted-soft)" stroke-width="1" stroke-dasharray="4 5" />
+
+                                    {{-- 1 kirim tugas --}}
+                                    <text x="285" y="102" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)">1 · POST Bundle Task + CarePlan</text>
+                                    <line x1="120" y1="112" x2="444" y2="112" stroke="var(--muted)" stroke-width="2" marker-end="url(#panah-alur)" />
+                                    <text x="285" y="128" text-anchor="middle" font-size="10" fill="var(--muted)">Task.owner = RS tujuan · CarePlan.category = jalur</text>
+
+                                    {{-- 2 kotak masuk --}}
+                                    <text x="615" y="172" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)">2 · GET Task?owner= …&amp;_include=Task:based-on</text>
+                                    <line x1="450" y1="182" x2="774" y2="182" stroke="var(--muted)" stroke-width="2" marker-end="url(#panah-alur)" />
+                                    <text x="615" y="198" text-anchor="middle" font-size="10" fill="var(--primary)">layar /rujukan/masuk</text>
+
+                                    {{-- 3 jawaban --}}
+                                    <text x="615" y="242" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)">3 · PATCH Task → completed</text>
+                                    <line x1="780" y1="252" x2="456" y2="252" stroke="var(--muted)" stroke-width="2" marker-end="url(#panah-alur)" />
+                                    <text x="615" y="268" text-anchor="middle" font-size="10" fill="var(--muted)">output accepted / rejected</text>
+
+                                    {{-- 4 perujuk memantau --}}
+                                    <text x="285" y="312" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)">4 · GET Task?requester= …&amp;_include</text>
+                                    <line x1="450" y1="322" x2="126" y2="322" stroke="var(--muted)" stroke-width="2" marker-end="url(#panah-alur)" />
+                                    <text x="285" y="338" text-anchor="middle" font-size="10" fill="var(--primary)">layar /rujukan/keluar — tab Ranap &amp; Gawat Darurat</text>
+
+                                    {{-- 5 servicerequest --}}
+                                    <text x="285" y="382" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)">5 · POST ServiceRequest</text>
+                                    <line x1="120" y1="392" x2="444" y2="392" stroke="var(--muted)" stroke-width="2" marker-end="url(#panah-alur)" />
+                                    <text x="285" y="408" text-anchor="middle" font-size="10" fill="var(--muted)">hanya bila accepted · nomor rujukan terbit di sini</text>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            <div class="ds-caption-up mb-3" style="color:var(--muted)">Langkah 1–5 dipetakan ke kode</div>
+                            <div class="overflow-x-auto">
+                                <table class="ds-table">
+                                    <thead><tr><th>Langkah</th><th>Dikerjakan di</th><th>Method / layar</th></tr></thead>
+                                    <tbody>
+                                        <tr><td class="ds-td-strong">1 · Kirim tugas rujukan</td><td class="ds-body-sm">Panel rujukan di EMR RJ / UGD / RI</td><td class="ds-td-meta">rujukanBundleApproval()</td></tr>
+                                        <tr><td class="ds-td-strong">2 · Baca kotak masuk</td><td class="ds-body-sm">Menu Rujukan → Persetujuan Rujukan Masuk</td><td class="ds-td-meta">rujukanTaskMasuk() → /rujukan/masuk</td></tr>
+                                        <tr><td class="ds-td-strong">3 · Setujui / tolak</td><td class="ds-body-sm">Modal di layar yang sama</td><td class="ds-td-meta">rujukanTaskRespon()</td></tr>
+                                        <tr><td class="ds-td-strong">4 · Pantau jawaban</td><td class="ds-body-sm">Menu Rujukan → Pemantauan Rujukan Keluar</td><td class="ds-td-meta">rujukanTaskByRequester() → /rujukan/keluar</td></tr>
+                                        <tr><td class="ds-td-strong">5 · Terbitkan rujukan</td><td class="ds-body-sm">Kembali ke panel EMR pasien</td><td class="ds-td-meta">ServiceRequest → identifier referral-number-satusehat</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <ul class="ds-body-md space-y-1 mt-4" style="max-width:66ch; list-style:disc; padding-left:20px">
+                                <li><strong>Langkah 2 dan 4 tidak terjadi seketika.</strong> Jawaban RS tujuan bisa datang
+                                    berjam-jam kemudian — itulah alasan keduanya jadi layar daftar tersendiri, bukan panel di
+                                    EMR satu pasien. Petugas tak perlu ingat siapa saja yang dirujuk hari itu.</li>
+                                <li><strong>Langkah 5 belum otomatis.</strong> Disetujui ≠ rujukan sah; nomor baru terbit
+                                    setelah ServiceRequest dikirim dari panel EMR pasien. Layar pemantauan mengingatkan ini
+                                    di modal rinciannya.</li>
+                                <li>Perujuk punya <strong>±15 menit</strong> sebelum disarankan pindah kandidat bila belum
+                                    dijawab. Satu CarePlan = satu nomor; jangan menembak beberapa RS sekaligus.</li>
+                            </ul>
+                        </div>
+
+                        {{-- ── DIAGRAM 2: jalur RJ/BPJS ── --}}
+                        <div class="ds-card-outline mb-6" style="padding:0; overflow:hidden">
+                            <div class="ds-caption-up" style="color:var(--muted); padding:14px 24px 6px">
+                                Diagram 2 — Jalur RJ ke poli RS lain (BPJS): tanpa Task, tanpa persetujuan
+                            </div>
+                            <div class="overflow-x-auto">
+                                <svg viewBox="0 0 800 280" style="min-width:720px; width:100%; font-family:inherit">
+                                    {{-- Marker didefinisikan ulang di sini, tidak meminjam milik Diagram 1:
+                                         id SVG memang berlaku se-dokumen, tapi meminjam bikin diagram ini
+                                         diam-diam kehilangan panah kalau diagram sebelahnya dipindah/dihapus. --}}
+                                    <defs>
+                                        <marker id="panah-alur-bpjs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7"
+                                            markerHeight="7" orient="auto-start-reverse">
+                                            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--muted)" />
+                                        </marker>
+                                    </defs>
+                                    <rect x="20" y="96" width="170" height="64" rx="12" fill="var(--surface-card)" />
+                                    <text x="105" y="122" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">EMR RJ</text>
+                                    <text x="105" y="140" text-anchor="middle" font-size="10" fill="var(--muted)">Tindak Lanjut = Rujuk</text>
+
+                                    <rect x="290" y="96" width="200" height="64" rx="12" fill="var(--surface-card)" />
+                                    <text x="390" y="122" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">BPJS vclaim-sisrute-rest</text>
+                                    <text x="390" y="140" text-anchor="middle" font-size="10" fill="var(--muted)">orkestrator</text>
+
+                                    <rect x="560" y="20" width="200" height="60" rx="12" fill="var(--surface-card)" />
+                                    <text x="660" y="45" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">SATUSEHAT Rujukan</text>
+                                    <text x="660" y="63" text-anchor="middle" font-size="10" fill="var(--muted)">kita TIDAK memanggil langsung</text>
+
+                                    <rect x="290" y="196" width="200" height="60" rx="12" fill="var(--surface-card)" />
+                                    <text x="390" y="220" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)">rujukanKompetensi.hasil</text>
+                                    <text x="390" y="238" text-anchor="middle" font-size="10" fill="var(--muted)">datadaftarpolirj_json (DB lokal)</text>
+
+                                    <rect x="560" y="190" width="220" height="66" rx="12" fill="var(--surface-card)" />
+                                    <text x="670" y="215" text-anchor="middle" font-size="11" font-weight="600" fill="var(--primary)">/rujukan/keluar</text>
+                                    <text x="670" y="233" text-anchor="middle" font-size="10" fill="var(--muted)">tab Rawat Jalan (BPJS)</text>
+
+                                    <line x1="190" y1="128" x2="284" y2="128" stroke="var(--muted)" stroke-width="2" marker-end="url(#panah-alur-bpjs)" />
+                                    <text x="237" y="118" text-anchor="middle" font-size="10" fill="var(--muted)">Rujukan/Insert</text>
+
+                                    <line x1="490" y1="112" x2="556" y2="66" stroke="var(--muted)" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#panah-alur-bpjs)" />
+                                    {{-- label diletakkan di bawah kotak SATUSEHAT, bukan di tengah panah miring:
+                                         garis (490,112)→(556,66) persis melintasi titik tengahnya. --}}
+                                    <text x="566" y="104" font-size="10" fill="var(--muted)">BPJS meneruskan</text>
+
+                                    <line x1="390" y1="160" x2="390" y2="190" stroke="var(--muted)" stroke-width="2" marker-end="url(#panah-alur-bpjs)" />
+                                    <text x="400" y="180" font-size="10" fill="var(--muted)">nomor terbit → disimpan</text>
+
+                                    <line x1="490" y1="223" x2="554" y2="223" stroke="var(--muted)" stroke-width="2" marker-end="url(#panah-alur-bpjs)" />
+                                    <text x="522" y="213" text-anchor="middle" font-size="10" fill="var(--muted)">dibaca layar</text>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            <div class="ds-caption-up mb-3" style="color:var(--muted)">Kenapa dua diagram ini beda bentuk</div>
+                            <p class="ds-body-md mb-3" style="max-width:66ch">
+                                Diagram 1 punya lima anak panah bolak-balik karena ada <strong>persetujuan</strong>.
+                                Diagram 2 lurus saja: BPJS yang mengorkestrasi, rujukan poli <strong>terbit seketika</strong>
+                                begitu Insert berhasil. Tidak ada Task, tidak ada yang menyetujui, jadi tidak ada yang
+                                perlu dipantau statusnya — yang membuktikan rujukan itu sah adalah <strong>nomornya</strong>.
+                            </p>
+                            <p class="ds-body-md" style="max-width:66ch">
+                                Akibatnya layar <span class="ds-code">/rujukan/keluar</span> punya dua tab dengan kolom yang
+                                berbeda: tab Ranap &amp; Gawat Darurat berkolom status jawaban (sumber API), tab Rawat Jalan
+                                berkolom nomor rujukan (sumber DB lokal, sebab BPJS tak menyediakan endpoint
+                                "daftar rujukan keluar saya"). Perbedaan itu memang begitu adanya, bukan tampilan yang
+                                belum selesai.
+                            </p>
+                        </div>
+                    </section>
+
+                    {{-- ====== LOKASI PANEL ====== --}}
+                    <section x-show="section === 'simrs-panel'" x-cloak>
+                        <div class="ds-eyebrow mb-3">11 — Di SIMRS</div>
                         <h1 class="ds-display-md mb-4">Lokasi Panel &amp; Node Data</h1>
                         <div class="ds-card-outline mb-6" style="padding:0; overflow:hidden">
                             <div class="overflow-x-auto">
@@ -1030,10 +1200,46 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
                                         <tr><td class="ds-td-strong">RJ → IGD/Ranap RS lain (FHIR)</td><td class="ds-body-sm">EMR RJ → Tindak Lanjut = Rujuk (di bawah panel vclaim)</td><td class="ds-td-meta">rujukanKompetensiFhir</td><td class="ds-td-meta">rm-rujukan-kompetensi-fhir-rj-actions</td></tr>
                                         <tr><td class="ds-td-strong">UGD → IGD/Ranap RS lain</td><td class="ds-body-sm">EMR UGD → Tindak Lanjut = <strong>Rujuk</strong> (bersanding form Rujukan Antar RS lama) — selector tujuan IGD|Ranap</td><td class="ds-td-meta">rujukanKompetensi</td><td class="ds-td-meta">rm-rujukan-kompetensi-ugd-actions</td></tr>
                                         <tr><td class="ds-td-strong">RI → Ranap RS lain</td><td class="ds-body-sm">EMR RI → Perencanaan → Tindak Lanjut = <strong>Pulang Pindah / Rujuk</strong></td><td class="ds-td-meta">rujukanKompetensi</td><td class="ds-td-meta">rm-rujukan-kompetensi-ri-actions</td></tr>
-                                        <tr><td class="ds-td-strong">Rujukan MASUK (kita jadi tujuan)</td><td class="ds-body-sm">Menu <strong>Rujukan → Persetujuan Rujukan Masuk</strong> (<span class="ds-code">/rujukan/persetujuan</span>) — layar tersendiri, bukan di EMR</td><td class="ds-td-meta">— (murni API, tanpa tabel/node lokal)</td><td class="ds-td-meta">persetujuan-rujukan + persetujuan-rujukan-actions</td></tr>
+                                        <tr><td class="ds-td-strong">Rujukan MASUK (kita jadi tujuan)</td><td class="ds-body-sm">Menu <strong>Rujukan → Persetujuan Rujukan Masuk</strong> (<span class="ds-code">/rujukan/masuk</span>) — layar tersendiri, bukan di EMR</td><td class="ds-td-meta">— (murni API, tanpa tabel/node lokal)</td><td class="ds-td-meta">rujukan-masuk + rujukan-masuk-actions</td></tr>
+                                        <tr><td class="ds-td-strong">Rujukan KELUAR (pemantauan jawaban)</td><td class="ds-body-sm">Menu <strong>Rujukan → Pemantauan Rujukan Keluar</strong> (<span class="ds-code">/rujukan/keluar</span>) — 2 tab, layar tersendiri</td><td class="ds-td-meta">tab Ranap/IGD: — (API). tab RJ: rujukanKompetensi.hasil</td><td class="ds-td-meta">rujukan-keluar + rujukan-keluar-actions</td></tr>
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            <div class="ds-caption-up mb-3" style="color:var(--muted)">Dua layar rujukan — penamaan memakai ARAH, bukan aktivitas</div>
+                            <p class="ds-body-md mb-3" style="max-width:66ch">
+                                Berkas &amp; route sengaja bernama <span class="ds-code">rujukan-masuk</span> dan
+                                <span class="ds-code">rujukan-keluar</span> (bukan "persetujuan"/"pemantauan"),
+                                supaya sisi mana yang dimaksud terbaca dari namanya sendiri. Keduanya di luar EMR:
+                                rujukan masuk datang dari RS lain (belum ada pasiennya di sini), dan jawaban rujukan
+                                keluar datang menyusul berjam-jam setelah pasien selesai ditangani.
+                            </p>
+                            <div class="ds-caption-up mb-2" style="color:var(--muted)">Kenapa layar KELUAR punya 2 tab</div>
+                            <ul class="ds-body-md space-y-1 mb-3" style="max-width:66ch; list-style:disc; padding-left:20px">
+                                <li><strong>Tab Ranap &amp; Gawat Darurat</strong> — sumber API SATUSEHAT
+                                    (<span class="ds-code">rujukanTaskByRequester()</span>). Punya siklus persetujuan,
+                                    jadi ada kolom status Menunggu / Disetujui / Ditolak.</li>
+                                <li><strong>Tab Rawat Jalan (BPJS)</strong> — sumber <strong>DB lokal</strong>, karena
+                                    BPJS tidak menyediakan endpoint "daftar rujukan keluar saya" dan jalur ini
+                                    <strong>tidak membentuk Task FHIR</strong>. Rujukan poli terbit seketika begitu
+                                    Insert berhasil, jadi tab ini <strong>tidak punya kolom status</strong> — yang
+                                    ditonjolkan nomor rujukan BPJS &amp; SATUSEHAT. Perbedaan bentuk kedua tab ini
+                                    nyata, bukan tampilan yang belum selesai.</li>
+                            </ul>
+                            <div class="ds-caption-up mb-2" style="color:var(--muted)">Jebakan kueri tab Rawat Jalan</div>
+                            <ul class="ds-body-md space-y-1" style="max-width:66ch; list-style:disc; padding-left:20px">
+                                <li>Filter <span class="ds-code">INSTR(datadaftarpolirj_json, '"rujukanKompetensi"')</span>
+                                    wajib memakai <strong>kutip penutup</strong>. Tanpa itu ia ikut mencocoki
+                                    <span class="ds-code">"rujukanKompetensiFhir"</span> — node rujukan RJ→IGD/Ranap
+                                    yang sudah tampil di tab sebelah — sehingga rujukan yang sama muncul dobel.</li>
+                                <li>Baris disaring pada <span class="ds-code">hasil.noRujukanSatuSehat</span> yang terisi.
+                                    Panel EMR juga menyimpan <strong>draft</strong> (state form untuk retry) dengan
+                                    <span class="ds-code">hasil = []</span>; draft bukan rujukan yang terbit.</li>
+                                <li>Tab ini <strong>tidak dimuat saat halaman dibuka</strong> — kueri menyapu CLOB, jadi
+                                    baru jalan setelah tabnya diklik. Rentang tanggal adalah penjaga performanya,
+                                    bukan sekadar kenyamanan.</li>
+                            </ul>
                         </div>
                         <div class="ds-card-outline mb-6" style="padding:20px">
                             <div class="ds-caption-up mb-3" style="color:var(--muted)">Perilaku bersama semua panel</div>
@@ -1048,7 +1254,7 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
 
                     {{-- ====== FAQ ERROR ====== --}}
                     <section x-show="section === 'faq-error'" x-cloak>
-                        <div class="ds-eyebrow mb-3">11 — FAQ</div>
+                        <div class="ds-eyebrow mb-3">12 — FAQ</div>
                         <h1 class="ds-display-md mb-4">Katalog Error → Penanganan</h1>
                         <p class="ds-body-md mb-4" style="max-width:62ch">
                             Dirangkum dari kasus nyata puluhan RS di grup resmi (Apr–Agu 2026). Panel di SIMRS
@@ -1074,15 +1280,46 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
                                         <tr><td class="ds-td-meta">Found duplicate: Task (20002)</td><td class="ds-body-sm">Task.identifier di-reuse</td><td class="ds-body-sm">UUID baru tiap POST (panel sudah otomatis)</td></tr>
                                         <tr><td class="ds-td-meta">429 Rate limit quota violation</td><td class="ds-body-sm">Kuota API staging habis</td><td class="ds-body-sm">Hemat panggilan; lapor minta perpanjang</td></tr>
                                         <tr><td class="ds-td-meta">Error IDENTIK di ≥2 endpoint berbeda</td><td class="ds-body-sm"><strong>Hampir pasti gangguan jaringan SATUSEHAT</strong></td><td class="ds-body-sm">JANGAN debug payload — tunggu, lalu retry (state tersimpan)</td></tr>
+                                        <tr><td class="ds-td-meta">No consent available for CarePlan/... (HTTP 200)</td><td class="ds-body-sm"><strong>Cacat platform SATUSEHAT</strong> — consent bertipe CarePlan tidak pernah terbit untuk rujukan yang masuk ke kita</td><td class="ds-body-sm">Bukan bug kita &amp; tak ada workaround klien — lihat kotak di bawah</td></tr>
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            <div class="ds-caption-up mb-3" style="color:var(--muted)">Kotak masuk buta karena consent — sudah dibuktikan, bukan dugaan</div>
+                            <p class="ds-body-md mb-3" style="max-width:66ch">
+                                Rujukan masuk sering datang tanpa data klinis: <span class="ds-code">_include=Task:based-on</span>
+                                membalas OperationOutcome <span class="ds-code">No consent available for CarePlan/&lt;id&gt;</span>,
+                                HTTP tetap 200. Karena nama pasien, layanan, jalur, dan keterangan klinis
+                                <strong>hanya ada di CarePlan</strong> — tidak pernah di Task — kolom-kolom itu kosong berjamaah.
+                            </p>
+                            <ul class="ds-body-md space-y-1 mb-3" style="max-width:66ch; list-style:disc; padding-left:20px">
+                                <li><strong>Tidak bisa diakali dari sumber lain.</strong> <span class="ds-code">Patient/&lt;ihs&gt;</span>
+                                    terbaca 200 tapi cuma cangkang (<span class="ds-code">active, id, identifier, meta</span>) —
+                                    tanpa nama, tanpa gender, tanpa tanggal lahir, NIK ikut di-mask. Encounter &amp; Condition
+                                    rujukan itu sama-sama disensor.</li>
+                                <li><strong>Consent-nya memang tidak ada.</strong> Pada kasus 17/08/2026 pasien punya 718 Consent,
+                                    hanya 2 bertipe CarePlan — keduanya menunjuk CarePlan lain, untuk organisasi lain, dan sudah
+                                    kedaluwarsa. Consent diterbitkan otomatis oleh platform, bukan oleh pengirim.</li>
+                                <li><strong>Awas saat memeriksa sendiri:</strong> <span class="ds-code">Bundle.total</span> pada
+                                    hasil pencarian Consent = ukuran halaman, bukan jumlah sebenarnya. Wajib ikuti
+                                    <span class="ds-code">link.next</span>.</li>
+                            </ul>
+                            <p class="ds-body-md" style="max-width:66ch">
+                                <strong>Yang dilakukan layar kotak masuk:</strong> CarePlan tersensor → baris tetap tampil,
+                                ditandai "tersembunyi — consent belum ada" plus peringatan bahwa keputusan diambil tanpa data
+                                klinis. Task tersensor <strong>tidak menyisakan baris sama sekali</strong>, jadi jumlahnya
+                                dimunculkan sebagai spanduk — tanpa itu, permintaan yang hilang tak akan diketahui siapa pun
+                                padahal perujuk menunggu. Kalimatnya sengaja dibedakan dari "perujuk tidak mengisi", karena
+                                tindak lanjutnya beda.
+                            </p>
                         </div>
                     </section>
 
                     {{-- ====== FAQ UMUM ====== --}}
                     <section x-show="section === 'faq-umum'" x-cloak>
-                        <div class="ds-eyebrow mb-3">12 — FAQ</div>
+                        <div class="ds-eyebrow mb-3">13 — FAQ</div>
                         <h1 class="ds-display-md mb-4">Pertanyaan Umum</h1>
                         <div class="space-y-4">
                             @foreach ([
@@ -1106,7 +1343,7 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
 
                     {{-- ====== REFERENSI ====== --}}
                     <section x-show="section === 'referensi'" x-cloak>
-                        <div class="ds-eyebrow mb-3">13 — Referensi</div>
+                        <div class="ds-eyebrow mb-3">14 — Referensi</div>
                         <h1 class="ds-display-md mb-4">Dokumen &amp; Sumber</h1>
                         <div class="ds-card-outline mb-6" style="padding:0; overflow:hidden">
                             <div class="overflow-x-auto">

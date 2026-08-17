@@ -21,12 +21,12 @@ new class extends Component {
     public array $permintaan = [];
     public bool $sedangKirim = false;
 
-    #[On('persetujuan-rujukan-actions.open')]
+    #[On('rujukan-masuk-actions.open')]
     public function open(array $permintaan): void
     {
         $this->permintaan = $permintaan;
         $this->sedangKirim = false;
-        $this->dispatch('open-modal', name: 'persetujuan-rujukan-actions');
+        $this->dispatch('open-modal', name: 'rujukan-masuk-actions');
     }
 
     public function menunggu(): bool
@@ -71,8 +71,8 @@ new class extends Component {
         $this->permintaan['statusTask'] = 'completed';
 
         $this->dispatch('toast', type: 'success', message: $keputusan === 'accepted' ? 'Permintaan rujukan DISETUJUI dan sudah dikirim ke SATUSEHAT.' : 'Permintaan rujukan DITOLAK dan sudah dikirim ke SATUSEHAT.');
-        $this->dispatch('persetujuan-rujukan.dijawab');
-        $this->dispatch('close-modal', name: 'persetujuan-rujukan-actions');
+        $this->dispatch('rujukan-masuk.dijawab');
+        $this->dispatch('close-modal', name: 'rujukan-masuk-actions');
     }
 
     public function waktuTampil(string $iso): string
@@ -107,7 +107,7 @@ new class extends Component {
 ?>
 
 <div>
-    <x-modal name="persetujuan-rujukan-actions" size="full" height="full" focusable>
+    <x-modal name="rujukan-masuk-actions" size="full" height="full" focusable>
         @php
             $jalur = $permintaan['jalur'] ?? '';
             $keputusan = $permintaan['keputusan'] ?? '';
@@ -294,7 +294,7 @@ new class extends Component {
             <div
                 class="sticky bottom-0 z-10 flex flex-wrap justify-end gap-2 px-6 py-4 border-t bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <x-secondary-button type="button"
-                    x-on:click="$dispatch('close-modal', { name: 'persetujuan-rujukan-actions' })">
+                    x-on:click="$dispatch('close-modal', { name: 'rujukan-masuk-actions' })">
                     Tutup
                 </x-secondary-button>
 
