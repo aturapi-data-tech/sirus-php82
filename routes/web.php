@@ -344,8 +344,17 @@ Route::middleware(['auth'])->group(function () {
     // RS lain mengirim Task referral-approval-request dengan owner = RS kita;
     // layar ini menyetujui/menolaknya (Ranap & Gawat Darurat). Rujukan rawat jalan
     // diorkestrasi BPJS, jadi tidak lewat sini.
-    Route::livewire('/rujukan/persetujuan', 'pages::transaksi.rujukan.persetujuan-rujukan.persetujuan-rujukan')
-        ->name('rujukan.persetujuan');
+    Route::livewire('/rujukan/masuk', 'pages::transaksi.rujukan.rujukan-masuk.rujukan-masuk')
+        ->name('rujukan.masuk');
+
+    // ===========================================
+    // RUJUKAN — PEMANTAUAN RUJUKAN KELUAR (SRBK sisi faskes perujuk)
+    // ===========================================
+    // Kebalikan layar di atas: Task yang requester-nya RS kita, dipantau sampai
+    // RS tujuan menjawab accepted/rejected. Hanya jalur FHIR (RJ→IGD/Ranap, UGD, RI);
+    // rujukan RJ→poli lewat BPJS tidak membentuk Task, jadi tidak tampil di sini.
+    Route::livewire('/rujukan/keluar', 'pages::transaksi.rujukan.rujukan-keluar.rujukan-keluar')
+        ->name('rujukan.keluar');
 
     // ===========================================
     // OPERASI - JADWAL OPERASI

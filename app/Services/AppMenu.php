@@ -199,7 +199,10 @@ class AppMenu
             // ── Rujukan ───────────────────────────────────────────────
             // Kotak masuk permintaan rujukan dari RS lain (SRBK/SATUSEHAT). Yang
             // menjawab = petugas yang tahu ketersediaan layanan: admisi ranap & IGD.
-            $entry(['group' => 'Rujukan', 'groupOrder' => 14, 'order' => 1, 'route' => 'rujukan.persetujuan', 'title' => 'Persetujuan Rujukan Masuk', 'desc' => 'Setujui / tolak permintaan rujukan Rawat Inap & Gawat Darurat dari RS lain (SATUSEHAT Rujukan)', 'roles' => ['admin', 'manager medis', 'supervisor tu', 'perawat', 'dokter', 'tu'], 'badge' => 'RJK']),
+            $entry(['group' => 'Rujukan', 'groupOrder' => 14, 'order' => 1, 'route' => 'rujukan.masuk', 'title' => 'Persetujuan Rujukan Masuk', 'desc' => 'Setujui / tolak permintaan rujukan Rawat Inap & Gawat Darurat dari RS lain (SATUSEHAT Rujukan)', 'roles' => ['admin', 'manager medis', 'supervisor tu', 'perawat', 'dokter', 'tu'], 'badge' => 'RJK']),
+            // Arah sebaliknya: memantau rujukan yang KITA kirim sampai dijawab RS tujuan.
+            // Role-nya sama — yang mengirim rujukan dan yang menunggu jawabannya orang yang sama.
+            $entry(['group' => 'Rujukan', 'groupOrder' => 14, 'order' => 2, 'route' => 'rujukan.keluar', 'title' => 'Pemantauan Rujukan Keluar', 'desc' => 'Pantau rujukan Rawat Inap & Gawat Darurat yang dikirim ke RS lain — disetujui atau ditolak (SATUSEHAT Rujukan)', 'roles' => ['admin', 'manager medis', 'supervisor tu', 'perawat', 'dokter', 'tu'], 'badge' => 'RJK']),
 
             // ── Down Time ─────────────────────────────────────────────
             // Terbuka untuk SEMUA role: saat SIMRS bermasalah, siapa pun yang masih
