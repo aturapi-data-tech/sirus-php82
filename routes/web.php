@@ -294,6 +294,12 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/casemix', 'pages::transaksi.casemix.casemix')
         ->name('casemix');
 
+    // ===========================================
+    // APPROVAL HUB — Review & approve data AI sebelum kirim ke sistem eksternal
+    // ===========================================
+    Route::livewire('/approval-hub', 'pages::transaksi.approval-hub.approval-hub')
+        ->name('approval-hub');
+
     // Direct route — Antrian Apotek RI (tanpa wrapper tab)
     Route::livewire('/ri-resep/antrian', 'pages::transaksi.ri-resep.antrian-ri-resep.antrian-ri-resep')
         ->name('ri-resep.antrian');
@@ -562,6 +568,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/manajemen/rs/tu/gaji-dokter', 'pages::manajemen.rs.tu.gaji-dokter.gaji-dokter')
         ->name('manajemen.rs.tu.gaji-dokter');
 
+    Route::livewire('/manajemen/ai-chat', 'pages::manajemen.ai-chat.ai-chat')
+        ->name('manajemen.ai-chat');
+
     Route::livewire('/manajemen/mutasi-obat', 'pages::manajemen.mutasi-obat.mutasi-obat')
         ->name('manajemen.mutasi-obat');
 
@@ -683,6 +692,7 @@ Route::redirect('/transaksi/ugd/antrian-kasir-ugd', '/ugd/antrian-kasir');
 Route::redirect('/transaksi/apotek', '/apotek');
 Route::redirect('/transaksi/kasir', '/kasir');
 Route::redirect('/transaksi/casemix', '/casemix');
+Route::redirect('/transaksi/approval-hub', '/approval-hub');
 Route::redirect('/transaksi/ri-resep/antrian-ri-resep', '/ri-resep/antrian');
 Route::redirect('/transaksi/kasir/antrian-kasir-ri', '/kasir/antrian-ri');
 Route::redirect('/transaksi/kasir/daftar-kasir-ri', '/kasir/daftar-ri');

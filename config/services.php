@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'openclaw' => [
+        'url' => env('OPENCLAW_API_URL', 'http://127.0.0.1:18789'),
+        'key' => env('OPENCLAW_API_KEY', ''),
+    ],
+
 ];
