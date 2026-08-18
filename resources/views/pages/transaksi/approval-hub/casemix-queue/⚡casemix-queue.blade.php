@@ -24,14 +24,20 @@ new class extends Component {
     public array $renderVersions = [];
     protected array $renderAreas = ['casemix-queue-toolbar'];
 
-    #[Session(key: 'approval-casemix-searchKeyword')]
-    public string $searchKeyword = '';
     #[Session(key: 'approval-casemix-filterStatus')]
     public string $filterStatus = 'pending';
     #[Session(key: 'approval-casemix-filterRefType')]
     public string $filterRefType = '';
     #[Session(key: 'approval-casemix-itemsPerPage')]
     public int $itemsPerPage = 25;
+
+    #[Session(key: 'approval-casemix-scanMode')]
+    public string $scanMode = 'bulanan';
+    #[Session(key: 'approval-casemix-scanBulan')]
+    public string $scanBulan = '';
+    #[Session(key: 'approval-casemix-scanTanggal')]
+    public string $scanTanggal = '';
+    public bool $scanning = false;
 
     // Review modal state
     public ?int $reviewId = null;
@@ -60,19 +66,41 @@ new class extends Component {
     public function mount(): void
     {
         $this->registerAreas($this->renderAreas);
+        if (empty($this->scanBulan)) {
+            $this->scanBulan = now()->format('m/Y');
+        }
+        if (empty($this->scanTanggal)) {
+            $this->scanTanggal = now()->format('d/m/Y');
+        }
     }
 
     public function updatedFilterStatus(): void { $this->resetPage(); $this->incrementVersion('casemix-queue-toolbar'); }
     public function updatedFilterRefType(): void { $this->resetPage(); $this->incrementVersion('casemix-queue-toolbar'); }
-    public function updatedItemsPerPage(): void { $this->resetPage(); $this->incrementVersion('casemix-queue-toolbar'); }
-    public function updatedSearchKeyword(): void { $this->resetPage(); }
+    public function updatedItemsPerPage(): void { $this->resetPage(); }
 
     public function resetFilters(): void
     {
-        $this->reset(['searchKeyword', 'filterRefType']);
+        $this->reset(['filterRefType']);
         $this->filterStatus = 'pending';
         $this->incrementVersion('casemix-queue-toolbar');
         $this->resetPage();
+    }
+
+    private function scanDateRange(): array
+    {
+        if ($this->scanMode === 'bulanan') {
+            if (!preg_match('/^(\d{1,2})\/(\d{4})$/', $this->scanBulan, $m)) {
+                return [now()->startOfMonth(), now()->endOfMonth()];
+            }
+            $start = Carbon::createFromDate((int) $m[2], (int) $m[1], 1)->startOfMonth();
+            return [$start, $start->copy()->endOfMonth()];
+        }
+
+        if (!preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $this->scanTanggal, $m)) {
+            return [now()->startOfDay(), now()->endOfDay()];
+        }
+        $date = Carbon::createFromDate((int) $m[3], (int) $m[2], (int) $m[1]);
+        return [$date->startOfDay(), $date->endOfDay()];
     }
 
     #[Computed]
@@ -95,14 +123,6 @@ new class extends Component {
         }
         if ($this->filterRefType !== '') {
             $query->where('ref_type', $this->filterRefType);
-        }
-        if ($this->searchKeyword !== '') {
-            $kw = '%' . strtoupper(trim($this->searchKeyword)) . '%';
-            $query->where(function ($q) use ($kw) {
-                $q->where(DB::raw('UPPER(reg_name)'), 'LIKE', $kw)
-                  ->orWhere(DB::raw('UPPER(reg_no)'), 'LIKE', $kw)
-                  ->orWhere(DB::raw('UPPER(vno_sep)'), 'LIKE', $kw);
-            });
         }
 
         $query->orderByRaw("CASE status
@@ -582,6 +602,106 @@ new class extends Component {
         }
     }
 
+    public function scanTransaksi(): void
+    {
+        [$start, $end] = $this->scanDateRange();
+        $label = $this->scanMode === 'bulanan' ? $this->scanBulan : $this->scanTanggal;
+        $this->scanning = true;
+
+        try {
+            // Hapus queue lama module casemix (clear sesi sebelumnya)
+            DB::table('rstxn_approval_queue')->where('module', 'casemix')->delete();
+
+            // Scan RJ: transaksi BPJS yang punya SEP valid (awalan digit, tanpa karakter aneh)
+            $rjRows = DB::table('rstxn_rjhdrs as h')
+                ->join('rsmst_pasiens as p', 'h.reg_no', '=', 'p.reg_no')
+                ->whereRaw("REGEXP_LIKE(h.vno_sep, '^\d{4}')")
+                ->whereRaw("trunc(h.rj_date) >= to_date(?, 'YYYY-MM-DD')", [$start->format('Y-m-d')])
+                ->whereRaw("trunc(h.rj_date) <= to_date(?, 'YYYY-MM-DD')", [$end->format('Y-m-d')])
+                ->select('h.rj_no', 'h.reg_no', 'p.reg_name', 'h.vno_sep', 'h.rj_date')
+                ->get();
+
+            $riRows = DB::table('rstxn_rihdrs as h')
+                ->join('rsmst_pasiens as p', 'h.reg_no', '=', 'p.reg_no')
+                ->whereRaw("REGEXP_LIKE(h.vno_sep, '^\d{4}')")
+                ->whereRaw("trunc(h.entry_date) >= to_date(?, 'YYYY-MM-DD')", [$start->format('Y-m-d')])
+                ->whereRaw("trunc(h.entry_date) <= to_date(?, 'YYYY-MM-DD')", [$end->format('Y-m-d')])
+                ->select('h.rihdr_no', 'h.reg_no', 'p.reg_name', 'h.vno_sep', 'h.entry_date')
+                ->get();
+
+            $inserted = 0;
+            $user = Auth::user()->myuser_name ?? Auth::user()->name ?? 'system';
+
+            foreach ($rjRows as $row) {
+                $emr = $this->findDataRJ($row->rj_no);
+                $soap = $emr['anlesaRj'] ?? $emr['assessment'] ?? '';
+                $existingDx = $emr['diagnpilek'] ?? $emr['diagnosa'] ?? [];
+
+                DB::table('rstxn_approval_queue')->insert([
+                    'module' => 'casemix',
+                    'ref_no' => $row->rj_no,
+                    'ref_type' => 'RJ',
+                    'reg_no' => $row->reg_no,
+                    'reg_name' => mb_substr($row->reg_name ?? '', 0, 100),
+                    'vno_sep' => mb_substr($row->vno_sep ?? '', 0, 30),
+                    'ai_payload' => json_encode([
+                        'diagnosa' => is_array($existingDx) ? $existingDx : [],
+                        'prosedur' => [],
+                        'soap_text' => is_string($soap) ? mb_substr($soap, 0, 2000) : '',
+                    ]),
+                    'ai_confidence' => 0,
+                    'ai_notes' => 'Scan ' . $label . ' oleh ' . $user,
+                    'status' => 'pending',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $inserted++;
+            }
+
+            foreach ($riRows as $row) {
+                $emr = $this->findDataRI($row->rihdr_no);
+                $soap = $emr['anlesaRi'] ?? $emr['assessment'] ?? '';
+                $existingDx = $emr['diagnpilek'] ?? $emr['diagnosa'] ?? [];
+
+                DB::table('rstxn_approval_queue')->insert([
+                    'module' => 'casemix',
+                    'ref_no' => $row->rihdr_no,
+                    'ref_type' => 'RI',
+                    'reg_no' => $row->reg_no,
+                    'reg_name' => mb_substr($row->reg_name ?? '', 0, 100),
+                    'vno_sep' => mb_substr($row->vno_sep ?? '', 0, 30),
+                    'ai_payload' => json_encode([
+                        'diagnosa' => is_array($existingDx) ? $existingDx : [],
+                        'prosedur' => [],
+                        'soap_text' => is_string($soap) ? mb_substr($soap, 0, 2000) : '',
+                    ]),
+                    'ai_confidence' => 0,
+                    'ai_notes' => 'Scan ' . $label . ' oleh ' . $user,
+                    'status' => 'pending',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $inserted++;
+            }
+
+            $this->dispatch('toast', type: 'success', message: $inserted . ' transaksi BPJS dimasukkan ke antrian.');
+            $this->incrementVersion('casemix-queue-toolbar');
+            $this->resetPage();
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Scan gagal: ' . $e->getMessage());
+        }
+
+        $this->scanning = false;
+    }
+
+    public function clearQueue(): void
+    {
+        $deleted = DB::table('rstxn_approval_queue')->where('module', 'casemix')->delete();
+        $this->dispatch('toast', type: 'info', message: $deleted . ' item dihapus dari antrian.');
+        $this->incrementVersion('casemix-queue-toolbar');
+        $this->resetPage();
+    }
+
     public function approve(): void
     {
         if (!$this->reviewId) return;
@@ -703,18 +823,62 @@ new class extends Component {
     <div class="sticky z-30 px-4 py-3 mb-4 bg-canvas border-b border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700"
          wire:key="casemix-queue-toolbar-{{ $renderVersions['casemix-queue-toolbar'] ?? 0 }}">
         <div class="flex flex-wrap items-end gap-3">
-            {{-- Search --}}
-            <div class="w-full sm:flex-1">
-                <x-input-label value="Pencarian" class="sr-only" />
-                <div class="relative mt-1">
-                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                        <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
+
+            {{-- MODE SCAN: Bulanan / Harian --}}
+            <div class="w-full sm:w-auto">
+                <x-input-label value="Mode" />
+                <div class="inline-flex mt-1 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+                    <button type="button" wire:click="$set('scanMode', 'bulanan')"
+                        class="px-3 py-1.5 text-xs font-medium transition-colors
+                            {{ $scanMode === 'bulanan' ? 'bg-brand text-white dark:bg-brand-lime dark:text-gray-900' : 'bg-canvas text-muted hover:bg-surface-soft dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700' }}">
+                        Bulanan
+                    </button>
+                    <button type="button" wire:click="$set('scanMode', 'harian')"
+                        class="px-3 py-1.5 text-xs font-medium transition-colors border-l border-gray-300 dark:border-gray-600
+                            {{ $scanMode === 'harian' ? 'bg-brand text-white dark:bg-brand-lime dark:text-gray-900' : 'bg-canvas text-muted hover:bg-surface-soft dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700' }}">
+                        Harian
+                    </button>
+                </div>
+            </div>
+
+            {{-- SCAN DATE INPUT + TOMBOL --}}
+            <div class="w-full sm:w-auto">
+                <x-input-label value="{{ $scanMode === 'bulanan' ? 'Bulan' : 'Tanggal' }}" />
+                <div class="flex items-center gap-1 mt-1">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        @if ($scanMode === 'bulanan')
+                            <x-text-input type="text" wire:model="scanBulan"
+                                class="block w-full pl-10 sm:w-32" placeholder="mm/yyyy" maxlength="7" />
+                        @else
+                            <x-text-input type="text" wire:model="scanTanggal"
+                                class="block w-full pl-10 sm:w-36" placeholder="dd/mm/yyyy" maxlength="10" />
+                        @endif
                     </div>
-                    <x-text-input wire:model.live.debounce.400ms="searchKeyword" class="block w-full pl-10"
-                        placeholder="Cari Nama Pasien / No RM / No SEP..." />
+                    <button type="button" wire:click="scanTransaksi" wire:loading.attr="disabled" wire:target="scanTransaksi"
+                        class="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition disabled:opacity-50">
+                        <span wire:loading.remove wire:target="scanTransaksi" class="flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            Scan
+                        </span>
+                        <span wire:loading wire:target="scanTransaksi"><x-loading /> ...</span>
+                    </button>
+                    <x-confirm-button variant="danger" action="clearQueue()"
+                        title="Hapus Antrian" message="Semua data antrian casemix akan dihapus. Lanjutkan?"
+                        confirmText="Ya, hapus semua" cancelText="Batal"
+                        class="!px-3 !py-2 !text-xs !min-w-0">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Clear
+                    </x-confirm-button>
                 </div>
             </div>
 
@@ -759,6 +923,91 @@ new class extends Component {
                         <option value="100">100</option>
                     </x-select-input>
                 </div>
+            </div>
+
+        </div>
+    </div>
+
+    {{-- PANDUAN --}}
+    <div x-data="{ buka: false }" class="mb-4 overflow-hidden border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
+        <button type="button" x-on:click="buka = !buka"
+            class="flex items-center justify-between w-full px-4 py-2.5 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/30">
+            <span class="flex items-center min-w-0 gap-2">
+                <svg class="w-4 h-4 shrink-0 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="truncate">Panduan: cara pakai Casemix / E-Klaim</span>
+            </span>
+            <svg class="w-4 h-4 ml-2 text-blue-600 transition-transform shrink-0" x-bind:class="buka && 'rotate-180'"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </button>
+
+        <div x-show="buka" x-cloak class="px-4 pb-4 space-y-4 text-sm text-blue-900 dark:text-blue-100">
+
+            {{-- PRASYARAT --}}
+            <div>
+                <div class="font-semibold">Prasyarat</div>
+                <ul class="mt-1 ml-4 space-y-0.5 list-disc">
+                    <li>Role user harus <span class="font-semibold">Admin</span> &mdash; fitur AI casemix sementara hanya untuk admin.</li>
+                    <li>Transaksi pasien BPJS harus sudah punya <span class="font-semibold">SEP</span> (via Kelola SEP di daftar RJ/RI/UGD).</li>
+                    <li>Data SOAP / assessment EMR harus sudah diisi oleh dokter.</li>
+                    <li>Koneksi ke server <span class="font-semibold">E-Klaim</span> harus aktif (bridging iDRG).</li>
+                </ul>
+            </div>
+
+            {{-- ALUR LENGKAP --}}
+            <div class="pt-3 border-t border-blue-200 dark:border-blue-800">
+                <div class="font-semibold">Alur lengkap</div>
+                <ol class="mt-1 ml-4 space-y-1 list-decimal">
+                    <li><span class="font-semibold">Scan Transaksi</span> &mdash; isi bulan
+                        <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">mm/yyyy</span>
+                        di toolbar, lalu klik
+                        <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">Scan</span>.
+                        Sistem mengambil semua transaksi BPJS (punya SEP) di bulan tersebut beserta data
+                        diagnosa dari EMR, lalu memasukkannya ke antrian
+                        <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">Pending Review</span>.
+                        <br><span class="text-xs italic">Scan baru otomatis menghapus antrian lama (clear sesi sebelumnya).</span></li>
+                    <li><span class="font-semibold">Review &amp; Approve</span> &mdash; klik baris untuk buka detail.
+                        Periksa diagnosa &amp; prosedur. Jika sesuai, klik
+                        <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">Approve</span>.
+                        Jika tidak,
+                        <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">Reject</span>.</li>
+                    <li><span class="font-semibold">Bridging iDRG / INA-CBG</span> &mdash; setelah Approve, modal bridging
+                        otomatis terbuka: New Claim &rarr; Set Diagnosa &rarr; Set Data Klaim
+                        (tarif, kondisi khusus) &rarr; Grouping &rarr; Finalisasi.</li>
+                    <li><span class="font-semibold">Upload Berkas BPJS</span> &mdash; setelah klaim
+                        <span class="font-semibold">Final</span>, klik
+                        <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">Auto Upload Berkas</span>
+                        untuk upload SEP, Rekam Medis, dan berkas lainnya.</li>
+                    <li><span class="font-semibold">Upload Grouping</span> &mdash; grouping (slot 2) baru bisa dicetak
+                        setelah klaim final. Klik Auto Upload sekali lagi setelah bridging selesai.</li>
+                </ol>
+            </div>
+
+            {{-- CLEAR --}}
+            <div class="pt-3 border-t border-blue-200 dark:border-blue-800">
+                <div class="font-semibold">Menghapus antrian</div>
+                <ul class="mt-1 ml-4 space-y-0.5 list-disc">
+                    <li>Klik tombol <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">Clear</span>
+                        di toolbar untuk menghapus semua data antrian (ada konfirmasi).</li>
+                    <li>Atau cukup klik <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">Scan</span>
+                        lagi &mdash; antrian lama otomatis diganti dengan hasil scan baru.</li>
+                </ul>
+            </div>
+
+            {{-- CATATAN --}}
+            <div class="pt-3 border-t border-blue-200 dark:border-blue-800">
+                <div class="font-semibold">Catatan</div>
+                <ul class="mt-1 ml-4 space-y-0.5 list-disc">
+                    <li>Bridging bisa dihentikan di tengah jalan &mdash; progress tersimpan di JSON transaksi,
+                        bisa dilanjutkan dari menu Casemix.</li>
+                    <li>Data EMR asli <span class="font-semibold">tidak pernah ditimpa</span> &mdash; bridging menulis
+                        ke namespace <span class="font-mono text-xs">idrg.*</span> terpisah.</li>
+                    <li>Kondisi khusus (persalinan O80/O82, neonatus APGAR, TB SITB) otomatis terdeteksi.</li>
+                </ul>
             </div>
 
         </div>

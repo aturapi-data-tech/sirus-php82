@@ -462,6 +462,77 @@ new class extends Component {
         </div>
     </div>
 
+    {{-- PANDUAN --}}
+    <div x-data="{ buka: false }" class="mb-4 overflow-hidden border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
+        <button type="button" x-on:click="buka = !buka"
+            class="flex items-center justify-between w-full px-4 py-2.5 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/30">
+            <span class="flex items-center min-w-0 gap-2">
+                <svg class="w-4 h-4 shrink-0 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="truncate">Panduan: cara pakai Bundling Klaim</span>
+            </span>
+            <svg class="w-4 h-4 ml-2 text-blue-600 transition-transform shrink-0" x-bind:class="buka && 'rotate-180'"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+        </button>
+
+        <div x-show="buka" x-cloak class="px-4 pb-4 space-y-4 text-sm text-blue-900 dark:text-blue-100">
+
+            {{-- FUNGSI --}}
+            <div>
+                <div class="font-semibold">Apa itu Bundling Klaim?</div>
+                <p class="mt-1">Menggabungkan semua berkas BPJS per klaim (SEP, Grouping, Rekam Medis, dll)
+                    menjadi <span class="font-semibold">1 file PDF</span> per nomor SEP &mdash; siap disetor ke BPJS.</p>
+            </div>
+
+            {{-- ALUR --}}
+            <div class="pt-3 border-t border-blue-200 dark:border-blue-800">
+                <div class="font-semibold">Langkah-langkah</div>
+                <ol class="mt-1 ml-4 space-y-1 list-decimal">
+                    <li><span class="font-semibold">Filter data</span> &mdash; pilih mode
+                        <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">Bulanan</span>
+                        (mm/yyyy) atau
+                        <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">Harian</span>
+                        (dd/mm/yyyy). Filter jenis rawat (RJ/RI) jika perlu.</li>
+                    <li><span class="font-semibold">Pilih klaim</span> &mdash; toggle ON per item, atau toggle
+                        header untuk pilih semua yang tampil di halaman.</li>
+                    <li><span class="font-semibold">Klik Bundling</span> &mdash; sistem merge berkas per klaim
+                        menggunakan <span class="font-mono text-xs">pdfunite</span>, urut dari slot terendah.</li>
+                    <li><span class="font-semibold">Cek hasil</span> &mdash; panel hasil muncul: berapa berhasil,
+                        error, atau dilewati (tanpa SEP / file fisik hilang).</li>
+                    <li><span class="font-semibold">Download ZIP</span> &mdash; klik tombol ZIP untuk unduh
+                        semua hasil bundling sekaligus.</li>
+                </ol>
+            </div>
+
+            {{-- OUTPUT --}}
+            <div class="pt-3 border-t border-blue-200 dark:border-blue-800">
+                <div class="font-semibold">Struktur output</div>
+                <div class="p-2 mt-1 font-mono text-xs bg-blue-100 rounded dark:bg-blue-900/40">
+                    storage/app/private/klaim/<br>
+                    &nbsp;&nbsp;MM_YYYY/<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;rj/{noSep}.pdf<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;ri/{noSep}.pdf
+                </div>
+                <p class="mt-1">Satu file PDF per klaim, nama file = nomor SEP.</p>
+            </div>
+
+            {{-- CATATAN --}}
+            <div class="pt-3 border-t border-blue-200 dark:border-blue-800">
+                <div class="font-semibold">Catatan</div>
+                <ul class="mt-1 ml-4 space-y-0.5 list-disc">
+                    <li>Klaim tanpa SEP atau tanpa file fisik otomatis dilewati.</li>
+                    <li>Jika hanya ada 1 berkas, file langsung di-copy (tidak perlu merge).</li>
+                    <li>Data bisa sampai 6000 item/bulan &mdash; gunakan pagination dan filter untuk proses bertahap.</li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
     {{-- RESULT PANEL --}}
     @if (!empty($bundlingResult))
         <div class="p-4 mb-4 bg-canvas dark:bg-gray-800 rounded-2xl border border-hairline dark:border-gray-700 space-y-3">
