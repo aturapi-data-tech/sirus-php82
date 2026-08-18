@@ -7,7 +7,7 @@ use Livewire\Component;
 new class extends Component {
     public string $activeTab = 'casemix';
 
-    private const TABS = ['casemix'];
+    private const TABS = ['casemix', 'bundling'];
 
     public function mount(): void
     {
@@ -33,6 +33,7 @@ new class extends Component {
         {{-- TAB NAV --}}
         <x-tabs variant="underline">
             <x-tab :active="$activeTab === 'casemix'" color="emerald" wire:click="setTab('casemix')">Casemix / E-Klaim</x-tab>
+            <x-tab :active="$activeTab === 'bundling'" color="indigo" wire:click="setTab('bundling')">Bundling Klaim</x-tab>
             {{-- Tab berikutnya tinggal tambah di sini --}}
             {{-- <x-tab :active="$activeTab === 'satusehat'" color="blue" wire:click="setTab('satusehat')">SATUSEHAT</x-tab> --}}
         </x-tabs>
@@ -42,6 +43,9 @@ new class extends Component {
             @if ($activeTab === 'casemix')
                 <livewire:pages::transaksi.approval-hub.casemix-queue.casemix-queue
                     wire:key="casemix-queue-wrapper" />
+            @elseif ($activeTab === 'bundling')
+                <livewire:pages::transaksi.approval-hub.bundling-klaim.bundling-klaim
+                    wire:key="bundling-klaim-wrapper" />
             @endif
         </div>
 
