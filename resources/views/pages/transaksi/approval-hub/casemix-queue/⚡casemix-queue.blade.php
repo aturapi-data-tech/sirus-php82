@@ -697,92 +697,68 @@ new class extends Component {
 <div>
     <x-page-title
         title="Approval Hub — Casemix / E-Klaim"
-        subtitle="Auto upload berkas BPJS, review ICD coding AI, bridging iDRG/INA-CBG" />
-
-    {{-- STATS CARDS --}}
-    @php $s = $this->stats; @endphp
-    <div class="grid grid-cols-2 gap-3 mb-4 sm:grid-cols-3 lg:grid-cols-6">
-        <div class="px-4 py-3 rounded-xl bg-canvas dark:bg-gray-800 border border-hairline dark:border-gray-700">
-            <div class="text-2xl font-bold text-ink dark:text-white">{{ $s['pending'] ?? 0 }}</div>
-            <div class="text-sm text-muted">Pending Review</div>
-        </div>
-        <div class="px-4 py-3 rounded-xl bg-canvas dark:bg-gray-800 border border-hairline dark:border-gray-700">
-            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ $s['approved'] ?? 0 }}</div>
-            <div class="text-sm text-muted">Approved</div>
-        </div>
-        <div class="px-4 py-3 rounded-xl bg-canvas dark:bg-gray-800 border border-hairline dark:border-gray-700">
-            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ $s['executed'] ?? 0 }}</div>
-            <div class="text-sm text-muted">Executed</div>
-        </div>
-        <div class="px-4 py-3 rounded-xl bg-canvas dark:bg-gray-800 border border-hairline dark:border-gray-700">
-            <div class="text-2xl font-bold text-red-600 dark:text-red-400">{{ $s['failed'] ?? 0 }}</div>
-            <div class="text-sm text-muted">Failed</div>
-        </div>
-        <div class="px-4 py-3 rounded-xl bg-canvas dark:bg-gray-800 border border-hairline dark:border-gray-700">
-            <div class="text-2xl font-bold text-gray-500">{{ $s['rejected'] ?? 0 }}</div>
-            <div class="text-sm text-muted">Rejected</div>
-        </div>
-        <div class="px-4 py-3 rounded-xl bg-canvas dark:bg-gray-800 border border-hairline dark:border-gray-700">
-            <div class="text-2xl font-bold text-ink dark:text-white">{{ $s['total'] ?? 0 }}</div>
-            <div class="text-sm text-muted">Total</div>
-        </div>
-    </div>
+        subtitle="Review ICD coding AI → Approve → Bridging iDRG/INA-CBG → Upload berkas BPJS & Grouping" />
 
     {{-- TOOLBAR --}}
-    <div class="p-4 mb-4 bg-canvas dark:bg-gray-800 rounded-2xl border border-hairline dark:border-gray-700"
+    <div class="sticky z-30 px-4 py-3 mb-4 bg-canvas border-b border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700"
          wire:key="casemix-queue-toolbar-{{ $renderVersions['casemix-queue-toolbar'] ?? 0 }}">
         <div class="flex flex-wrap items-end gap-3">
             {{-- Search --}}
-            <div class="flex-1 min-w-[200px]">
-                <label class="block mb-1 text-xs font-medium text-muted">Cari</label>
-                <input type="text" wire:model.live.debounce.400ms="searchKeyword"
-                    placeholder="Nama pasien, No RM, SEP..."
-                    class="w-full px-3 py-2 text-sm border rounded-lg border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-600 dark:text-white focus:ring-brand focus:border-brand" />
+            <div class="w-full sm:flex-1">
+                <x-input-label value="Pencarian" class="sr-only" />
+                <div class="relative mt-1">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <x-text-input wire:model.live.debounce.400ms="searchKeyword" class="block w-full pl-10"
+                        placeholder="Cari Nama Pasien / No RM / No SEP..." />
+                </div>
             </div>
 
             {{-- Status --}}
-            <div>
-                <label class="block mb-1 text-xs font-medium text-muted">Status</label>
-                <select wire:model.live="filterStatus"
-                    class="px-3 py-2 text-sm border rounded-lg border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-600 dark:text-white">
+            <div class="w-full sm:w-auto">
+                <x-input-label value="Status" />
+                <x-select-input wire:model.live="filterStatus" class="w-full mt-1 sm:w-36">
                     <option value="">Semua</option>
                     <option value="pending">Pending</option>
                     <option value="approved">Approved</option>
                     <option value="executed">Executed</option>
                     <option value="failed">Failed</option>
                     <option value="rejected">Rejected</option>
-                </select>
+                </x-select-input>
             </div>
 
             {{-- Ref Type --}}
-            <div>
-                <label class="block mb-1 text-xs font-medium text-muted">Jenis Rawat</label>
-                <select wire:model.live="filterRefType"
-                    class="px-3 py-2 text-sm border rounded-lg border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-600 dark:text-white">
+            <div class="w-full sm:w-auto">
+                <x-input-label value="Jenis" />
+                <x-select-input wire:model.live="filterRefType" class="w-full mt-1 sm:w-32">
                     <option value="">Semua</option>
-                    <option value="RJ">Rawat Jalan</option>
-                    <option value="RI">Rawat Inap</option>
+                    <option value="RJ">RJ</option>
+                    <option value="RI">RI</option>
                     <option value="UGD">UGD</option>
-                </select>
+                </x-select-input>
             </div>
 
-            {{-- Per Page --}}
-            <div>
-                <label class="block mb-1 text-xs font-medium text-muted">Per halaman</label>
-                <select wire:model.live="itemsPerPage"
-                    class="px-3 py-2 text-sm border rounded-lg border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-600 dark:text-white">
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                </select>
-            </div>
-
-            {{-- Reset --}}
-            <div>
-                <button type="button" wire:click="resetFilters"
-                    class="px-3 py-2 text-sm font-medium text-muted hover:text-ink dark:hover:text-white">
-                    Reset
-                </button>
+            {{-- RIGHT: stats + per page --}}
+            @php $s = $this->stats; @endphp
+            <div class="flex flex-wrap items-center gap-3 ml-auto">
+                <span class="text-xs text-amber-600 dark:text-amber-400" title="Pending Review"><strong>{{ $s['pending'] ?? 0 }}</strong> Pending</span>
+                <span class="text-xs text-blue-600 dark:text-blue-400" title="Approved"><strong>{{ $s['approved'] ?? 0 }}</strong> Appr</span>
+                <span class="text-xs text-emerald-600 dark:text-emerald-400" title="Executed"><strong>{{ $s['executed'] ?? 0 }}</strong> Exec</span>
+                <span class="text-xs text-red-600 dark:text-red-400" title="Failed"><strong>{{ $s['failed'] ?? 0 }}</strong> Fail</span>
+                <span class="text-xs text-gray-500" title="Rejected"><strong>{{ $s['rejected'] ?? 0 }}</strong> Rej</span>
+                <span class="text-xs text-ink dark:text-white font-semibold" title="Total"><strong>{{ $s['total'] ?? 0 }}</strong> Total</span>
+                <x-toolbar-refresh-reset :label="null" />
+                <div class="w-24">
+                    <x-select-input wire:model.live="itemsPerPage">
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </x-select-input>
+                </div>
             </div>
 
         </div>

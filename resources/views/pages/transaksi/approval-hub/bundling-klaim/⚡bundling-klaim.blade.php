@@ -16,13 +16,11 @@ new class extends Component {
     use WithPagination;
 
     #[Session(key: 'bundling-filterMode')]
-    public string $filterMode = 'bulan';
+    public string $filterMode = 'bulanan';
     #[Session(key: 'bundling-filterBulan')]
     public string $filterBulan = '';
-    #[Session(key: 'bundling-filterTglAwal')]
-    public string $filterTglAwal = '';
-    #[Session(key: 'bundling-filterTglAkhir')]
-    public string $filterTglAkhir = '';
+    #[Session(key: 'bundling-filterTanggal')]
+    public string $filterTanggal = '';
     #[Session(key: 'bundling-filterRefType')]
     public string $filterRefType = '';
     #[Session(key: 'bundling-itemsPerPage')]
@@ -39,20 +37,16 @@ new class extends Component {
     public function mount(): void
     {
         if (empty($this->filterBulan)) {
-            $this->filterBulan = now()->format('Y-m');
+            $this->filterBulan = now()->format('m/Y');
         }
-        if (empty($this->filterTglAwal)) {
-            $this->filterTglAwal = now()->startOfMonth()->format('Y-m-d');
-        }
-        if (empty($this->filterTglAkhir)) {
-            $this->filterTglAkhir = now()->format('Y-m-d');
+        if (empty($this->filterTanggal)) {
+            $this->filterTanggal = now()->format('d/m/Y');
         }
     }
 
     public function updatedFilterMode(): void { $this->resetPage(); }
     public function updatedFilterBulan(): void { $this->resetPage(); $this->selected = []; $this->selectAll = false; }
-    public function updatedFilterTglAwal(): void { $this->resetPage(); $this->selected = []; $this->selectAll = false; }
-    public function updatedFilterTglAkhir(): void { $this->resetPage(); $this->selected = []; $this->selectAll = false; }
+    public function updatedFilterTanggal(): void { $this->resetPage(); $this->selected = []; $this->selectAll = false; }
     public function updatedFilterRefType(): void { $this->resetPage(); $this->selected = []; $this->selectAll = false; }
     public function updatedItemsPerPage(): void { $this->resetPage(); }
     public function updatedSearchKeyword(): void { $this->resetPage(); }
@@ -66,18 +60,43 @@ new class extends Component {
         }
     }
 
+    public function toggleSelected(string $key): void
+    {
+        if (in_array($key, $this->selected, true)) {
+            $this->selected = array_values(array_diff($this->selected, [$key]));
+        } else {
+            $this->selected[] = $key;
+        }
+    }
+
     public function resetFilters(): void
     {
-        $this->filterMode = 'bulan';
-        $this->filterBulan = now()->format('Y-m');
-        $this->filterTglAwal = now()->startOfMonth()->format('Y-m-d');
-        $this->filterTglAkhir = now()->format('Y-m-d');
+        $this->filterMode = 'bulanan';
+        $this->filterBulan = now()->format('m/Y');
+        $this->filterTanggal = now()->format('d/m/Y');
         $this->filterRefType = '';
         $this->searchKeyword = '';
         $this->selected = [];
         $this->selectAll = false;
         $this->bundlingResult = [];
         $this->resetPage();
+    }
+
+    private function dateRange(): array
+    {
+        if ($this->filterMode === 'bulanan') {
+            if (!preg_match('/^(\d{1,2})\/(\d{4})$/', $this->filterBulan, $m)) {
+                return [now()->startOfMonth(), now()->endOfMonth()];
+            }
+            $start = Carbon::createFromDate((int) $m[2], (int) $m[1], 1)->startOfMonth();
+            return [$start, $start->copy()->endOfMonth()];
+        }
+
+        if (!preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $this->filterTanggal, $m)) {
+            return [now()->startOfDay(), now()->endOfDay()];
+        }
+        $date = Carbon::createFromDate((int) $m[3], (int) $m[2], (int) $m[1]);
+        return [$date->startOfDay(), $date->endOfDay()];
     }
 
     #[Computed]
@@ -148,16 +167,9 @@ new class extends Component {
 
     private function applyDateFilter($query, string $dateCol): void
     {
-        if ($this->filterMode === 'bulan' && !empty($this->filterBulan)) {
-            $query->whereRaw("to_char($dateCol, 'YYYY-MM') = ?", [$this->filterBulan]);
-        } elseif ($this->filterMode === 'tanggal') {
-            if (!empty($this->filterTglAwal)) {
-                $query->whereRaw("trunc($dateCol) >= to_date(?, 'YYYY-MM-DD')", [$this->filterTglAwal]);
-            }
-            if (!empty($this->filterTglAkhir)) {
-                $query->whereRaw("trunc($dateCol) <= to_date(?, 'YYYY-MM-DD')", [$this->filterTglAkhir]);
-            }
-        }
+        [$start, $end] = $this->dateRange();
+        $query->whereRaw("trunc($dateCol) >= to_date(?, 'YYYY-MM-DD')", [$start->format('Y-m-d')]);
+        $query->whereRaw("trunc($dateCol) <= to_date(?, 'YYYY-MM-DD')", [$end->format('Y-m-d')]);
     }
 
     #[Computed]
@@ -186,13 +198,8 @@ new class extends Component {
         $this->bundlingResult = [];
 
         try {
-            $folderBulan = $this->filterMode === 'bulan'
-                ? str_replace('-', '_', strrev(str_replace('-', '_', strrev($this->filterBulan))))
-                : Carbon::parse($this->filterTglAwal)->format('m_Y');
-            [$year, $month] = $this->filterMode === 'bulan'
-                ? explode('-', $this->filterBulan)
-                : [Carbon::parse($this->filterTglAwal)->format('Y'), Carbon::parse($this->filterTglAwal)->format('m')];
-            $folderBulan = $month . '_' . $year;
+            [$start] = $this->dateRange();
+            $folderBulan = $start->format('m_Y');
             $basePath = 'klaim/' . $folderBulan;
 
             $mountBase = Storage::disk('local')->path('mount/bpjs');
@@ -256,7 +263,7 @@ new class extends Component {
                     copy($pdfFiles[0], $outputFile);
                 } else {
                     $escaped = array_map('escapeshellarg', $pdfFiles);
-                    $cmd = 'pdfunite ' . implode(' ', $escaped) . ' ' . escapeshellarg($outputFile) . ' 2>&1';
+                    $cmd = 'env -u LD_LIBRARY_PATH pdfunite ' . implode(' ', $escaped) . ' ' . escapeshellarg($outputFile) . ' 2>&1';
                     $output = [];
                     $exitCode = 0;
                     exec($cmd, $output, $exitCode);
@@ -339,109 +346,119 @@ new class extends Component {
         subtitle="Gabungkan berkas per klaim jadi 1 PDF — struktur folder klaim/MM_YYYY/rj|ugd|ri/noSep.pdf" />
 
     {{-- TOOLBAR --}}
-    <div class="p-4 mb-4 bg-canvas dark:bg-gray-800 rounded-2xl border border-hairline dark:border-gray-700">
+    <div class="sticky z-30 px-4 py-3 mb-4 bg-canvas border-b border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-wrap items-end gap-3">
 
-            {{-- Mode filter --}}
-            <div>
-                <label class="block mb-1 text-xs font-medium text-muted">Filter</label>
-                <select wire:model.live="filterMode"
-                    class="px-3 py-2 text-sm border rounded-lg border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-600 dark:text-white">
-                    <option value="bulan">Per Bulan</option>
-                    <option value="tanggal">Per Tanggal</option>
-                </select>
+            {{-- SEARCH --}}
+            <div class="w-full sm:flex-1">
+                <x-input-label value="Pencarian" class="sr-only" />
+                <div class="relative mt-1">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <x-text-input wire:model.live.debounce.400ms="searchKeyword" class="block w-full pl-10"
+                        placeholder="Cari Nama Pasien / No RM / No SEP..." />
+                </div>
             </div>
 
-            @if ($filterMode === 'bulan')
-                <div>
-                    <label class="block mb-1 text-xs font-medium text-muted">Bulan</label>
-                    <input type="month" wire:model.live="filterBulan"
-                        class="px-3 py-2 text-sm border rounded-lg border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-600 dark:text-white" />
+            {{-- MODE FILTER: Bulanan / Harian --}}
+            <div class="w-full sm:w-auto">
+                <x-input-label value="Mode" />
+                <div class="inline-flex mt-1 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+                    <button type="button" wire:click="$set('filterMode', 'bulanan')"
+                        class="px-3 py-1.5 text-xs font-medium transition-colors
+                            {{ $filterMode === 'bulanan' ? 'bg-brand text-white dark:bg-brand-lime dark:text-gray-900' : 'bg-canvas text-muted hover:bg-surface-soft dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700' }}">
+                        Bulanan
+                    </button>
+                    <button type="button" wire:click="$set('filterMode', 'harian')"
+                        class="px-3 py-1.5 text-xs font-medium transition-colors border-l border-gray-300 dark:border-gray-600
+                            {{ $filterMode === 'harian' ? 'bg-brand text-white dark:bg-brand-lime dark:text-gray-900' : 'bg-canvas text-muted hover:bg-surface-soft dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700' }}">
+                        Harian
+                    </button>
+                </div>
+            </div>
+
+            {{-- FILTER BULAN (mode bulanan) atau TANGGAL (mode harian) --}}
+            @if ($filterMode === 'bulanan')
+                <div class="w-full sm:w-auto">
+                    <x-input-label value="Bulan" />
+                    <div class="relative mt-1">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <x-text-input type="text" wire:model.live.debounce.500ms="filterBulan"
+                            class="block w-full pl-10 sm:w-40" placeholder="mm/yyyy" maxlength="7" />
+                    </div>
                 </div>
             @else
-                <div>
-                    <label class="block mb-1 text-xs font-medium text-muted">Dari</label>
-                    <input type="date" wire:model.live="filterTglAwal"
-                        class="px-3 py-2 text-sm border rounded-lg border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-600 dark:text-white" />
-                </div>
-                <div>
-                    <label class="block mb-1 text-xs font-medium text-muted">Sampai</label>
-                    <input type="date" wire:model.live="filterTglAkhir"
-                        class="px-3 py-2 text-sm border rounded-lg border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-600 dark:text-white" />
+                <div class="w-full sm:w-auto">
+                    <x-input-label value="Tanggal" />
+                    <div class="relative mt-1">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <x-text-input type="text" wire:model.live.debounce.500ms="filterTanggal"
+                            class="block w-full pl-10 sm:w-44" placeholder="dd/mm/yyyy" maxlength="10" />
+                    </div>
                 </div>
             @endif
 
-            {{-- Jenis Rawat --}}
-            <div>
-                <label class="block mb-1 text-xs font-medium text-muted">Jenis</label>
-                <select wire:model.live="filterRefType"
-                    class="px-3 py-2 text-sm border rounded-lg border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-600 dark:text-white">
+            {{-- JENIS RAWAT --}}
+            <div class="w-full sm:w-auto">
+                <x-input-label value="Jenis" />
+                <x-select-input wire:model.live="filterRefType" class="w-full mt-1 sm:w-32">
                     <option value="">Semua</option>
                     <option value="RJ">RJ</option>
                     <option value="RI">RI</option>
-                </select>
+                </x-select-input>
             </div>
 
-            {{-- Search --}}
-            <div class="flex-1 min-w-[180px]">
-                <label class="block mb-1 text-xs font-medium text-muted">Cari</label>
-                <input type="text" wire:model.live.debounce.400ms="searchKeyword"
-                    placeholder="Nama pasien, No RM..."
-                    class="w-full px-3 py-2 text-sm border rounded-lg border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-600 dark:text-white focus:ring-brand focus:border-brand" />
-            </div>
-
-            {{-- Per Page --}}
-            <div>
-                <label class="block mb-1 text-xs font-medium text-muted">Per hal</label>
-                <select wire:model.live="itemsPerPage"
-                    class="px-3 py-2 text-sm border rounded-lg border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-600 dark:text-white">
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                    <option value="200">200</option>
-                </select>
-            </div>
-
-            <div>
-                <button type="button" wire:click="resetFilters"
-                    class="px-3 py-2 text-sm font-medium text-muted hover:text-ink dark:hover:text-white transition">
-                    Reset
+            {{-- RIGHT: stats + actions --}}
+            <div class="flex flex-wrap items-center gap-3 ml-auto">
+                <span class="text-xs text-muted">Total: <strong class="text-ink dark:text-white">{{ $this->stats['total'] }}</strong></span>
+                <span class="text-xs text-muted">Dipilih: <strong class="text-indigo-600 dark:text-indigo-400">{{ $this->stats['selected'] }}</strong></span>
+                @if (!empty($bundlingResult['generated']))
+                    <span class="text-xs text-emerald-600">Berhasil: <strong>{{ count($bundlingResult['generated']) }}</strong></span>
+                    <button type="button" wire:click="downloadBundlingZip"
+                        class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        ZIP
+                    </button>
+                @endif
+                <button type="button" wire:click="generateBundling" wire:loading.attr="disabled" wire:target="generateBundling"
+                    :disabled="@js(empty($this->selected))"
+                    class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span wire:loading.remove wire:target="generateBundling" class="flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                        </svg>
+                        Bundling ({{ count($selected) }})
+                    </span>
+                    <span wire:loading wire:target="generateBundling" class="flex items-center gap-1">
+                        <x-loading /> Processing...
+                    </span>
                 </button>
+                <x-toolbar-refresh-reset :label="null" />
+                <div class="w-24">
+                    <x-select-input wire:model.live="itemsPerPage">
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                    </x-select-input>
+                </div>
             </div>
-        </div>
-    </div>
 
-    {{-- ACTIONS BAR --}}
-    <div class="flex items-center justify-between p-4 mb-4 bg-canvas dark:bg-gray-800 rounded-2xl border border-hairline dark:border-gray-700">
-        <div class="flex items-center gap-4 text-sm text-muted">
-            <span>Total: <strong class="text-ink dark:text-white">{{ $this->stats['total'] }}</strong></span>
-            <span>Dipilih: <strong class="text-indigo-600 dark:text-indigo-400">{{ $this->stats['selected'] }}</strong></span>
-            @if (!empty($bundlingResult['generated']))
-                <span class="text-emerald-600">Berhasil: <strong>{{ count($bundlingResult['generated']) }}</strong></span>
-            @endif
-        </div>
-        <div class="flex items-center gap-2">
-            @if (!empty($bundlingResult['generated']))
-                <button type="button" wire:click="downloadBundlingZip"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Download ZIP
-                </button>
-            @endif
-            <button type="button" wire:click="generateBundling" wire:loading.attr="disabled" wire:target="generateBundling"
-                :disabled="@js(empty($this->selected))"
-                class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                <span wire:loading.remove wire:target="generateBundling" class="flex items-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                    </svg>
-                    Bundling ({{ count($selected) }})
-                </span>
-                <span wire:loading wire:target="generateBundling" class="flex items-center gap-1.5">
-                    <x-loading /> Processing...
-                </span>
-            </button>
         </div>
     </div>
 
@@ -484,9 +501,8 @@ new class extends Component {
             <table class="w-full text-sm text-left">
                 <thead class="text-xs font-semibold uppercase bg-surface-soft dark:bg-gray-900 text-muted">
                     <tr>
-                        <th class="px-3 py-3 w-10">
-                            <input type="checkbox" wire:model.live="selectAll"
-                                class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500" />
+                        <th class="px-3 py-3 w-14">
+                            <x-toggle wire:model.live="selectAll" :trueValue="true" :falseValue="false" onColor="bg-indigo-600" />
                         </th>
                         <th class="px-3 py-3">Pasien</th>
                         <th class="px-3 py-3">No. SEP</th>
@@ -504,8 +520,8 @@ new class extends Component {
                         <tr class="transition hover:bg-surface-soft dark:hover:bg-gray-800/50"
                             wire:key="bk-{{ $row->key }}">
                             <td class="px-3 py-2.5">
-                                <input type="checkbox" value="{{ $row->key }}" wire:model.live="selected"
-                                    class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500" />
+                                <x-toggle :current="in_array($row->key, $selected)" :trueValue="true" :falseValue="false"
+                                    wireClick="toggleSelected('{{ $row->key }}')" onColor="bg-indigo-600" />
                             </td>
                             <td class="px-3 py-2.5">
                                 <div class="font-medium text-ink dark:text-white">{{ $row->reg_name }}</div>
