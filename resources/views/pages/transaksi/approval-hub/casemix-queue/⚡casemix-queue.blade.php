@@ -46,6 +46,11 @@ new class extends Component {
     // Berkas BPJS status
     public array $berkasStatus = [];
 
+    // Bundling klaim state
+    public string $bundlingBulan = '';
+    public array $bundlingResult = [];
+    public bool $bundlingProcessing = false;
+
     private array $berkasLabels = [
         1 => 'SEP',
         2 => 'GROUPING',
@@ -651,6 +656,172 @@ new class extends Component {
         $this->berkasStatus = [];
     }
 
+    public function openBundling(): void
+    {
+        $this->bundlingBulan = now()->format('Y-m');
+        $this->bundlingResult = [];
+        $this->bundlingProcessing = false;
+        $this->dispatch('open-modal', name: 'casemix-bundling');
+    }
+
+    public function generateBundling(): void
+    {
+        if (empty($this->bundlingBulan) || !preg_match('/^\d{4}-\d{2}$/', $this->bundlingBulan)) {
+            $this->dispatch('toast', type: 'error', message: 'Pilih bulan yang valid.');
+            return;
+        }
+
+        $this->bundlingProcessing = true;
+        $this->bundlingResult = [];
+
+        try {
+            [$year, $month] = explode('-', $this->bundlingBulan);
+            $folderBulan = $month . '_' . $year;
+            $basePath = 'klaim/' . $folderBulan;
+
+            $rows = DB::table('rstxn_approval_queue')
+                ->where('module', 'casemix')
+                ->whereIn('status', ['approved', 'executed'])
+                ->whereNotNull('vno_sep')
+                ->whereRaw("to_char(created_at, 'YYYY-MM') = ?", [$this->bundlingBulan])
+                ->select('approval_id', 'ref_no', 'ref_type', 'vno_sep', 'reg_name')
+                ->orderBy('ref_type')
+                ->orderBy('vno_sep')
+                ->get();
+
+            if ($rows->isEmpty()) {
+                $this->dispatch('toast', type: 'warning', message: 'Tidak ada klaim approved untuk bulan ini.');
+                $this->bundlingProcessing = false;
+                return;
+            }
+
+            $generated = [];
+            $errors = [];
+            $mountBase = Storage::disk('local')->path('mount/bpjs');
+            $uploadBase = Storage::disk('local')->path('upload/bpjs');
+
+            foreach ($rows as $row) {
+                $refType = strtoupper(trim($row->ref_type));
+                $subFolder = strtolower($refType);
+                $outDir = $basePath . '/' . $subFolder;
+                Storage::disk('local')->makeDirectory($outDir);
+
+                $table = $refType === 'RI' ? 'rstxn_riuploadbpjses' : 'rstxn_rjuploadbpjses';
+                $fkCol = $refType === 'RI' ? 'rihdr_no' : 'rj_no';
+
+                $berkas = DB::table($table)
+                    ->where($fkCol, $row->ref_no)
+                    ->whereNotNull('uploadbpjs')
+                    ->orderBy('seq_file')
+                    ->pluck('uploadbpjs')
+                    ->toArray();
+
+                if (empty($berkas)) {
+                    $errors[] = $row->vno_sep . ': tidak ada berkas';
+                    continue;
+                }
+
+                $pdfFiles = [];
+                foreach ($berkas as $filename) {
+                    $fullPath = null;
+                    if (is_file($mountBase . '/' . $filename)) {
+                        $fullPath = $mountBase . '/' . $filename;
+                    } elseif (is_file($uploadBase . '/' . $filename)) {
+                        $fullPath = $uploadBase . '/' . $filename;
+                    }
+                    if ($fullPath) {
+                        $pdfFiles[] = $fullPath;
+                    }
+                }
+
+                if (empty($pdfFiles)) {
+                    $errors[] = $row->vno_sep . ': file fisik tidak ditemukan';
+                    continue;
+                }
+
+                $noSep = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $row->vno_sep);
+                $outputFile = Storage::disk('local')->path($outDir . '/' . $noSep . '.pdf');
+
+                if (count($pdfFiles) === 1) {
+                    copy($pdfFiles[0], $outputFile);
+                } else {
+                    $escaped = array_map('escapeshellarg', $pdfFiles);
+                    $cmd = 'pdfunite ' . implode(' ', $escaped) . ' ' . escapeshellarg($outputFile) . ' 2>&1';
+                    $output = [];
+                    $exitCode = 0;
+                    exec($cmd, $output, $exitCode);
+                    if ($exitCode !== 0) {
+                        $errors[] = $row->vno_sep . ': gagal merge (' . implode(' ', $output) . ')';
+                        continue;
+                    }
+                }
+
+                $generated[] = [
+                    'sep' => $row->vno_sep,
+                    'pasien' => $row->reg_name,
+                    'type' => $refType,
+                    'berkas' => count($pdfFiles),
+                    'path' => $outDir . '/' . $noSep . '.pdf',
+                ];
+            }
+
+            $this->bundlingResult = [
+                'folder' => $basePath,
+                'generated' => $generated,
+                'errors' => $errors,
+                'total' => count($rows),
+            ];
+
+            $msg = count($generated) . '/' . count($rows) . ' klaim berhasil di-bundling.';
+            if (!empty($errors)) {
+                $msg .= ' ' . count($errors) . ' error.';
+            }
+            $this->dispatch('toast', type: empty($errors) ? 'success' : 'warning', message: $msg);
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Bundling gagal: ' . $e->getMessage());
+        }
+
+        $this->bundlingProcessing = false;
+    }
+
+    public function downloadBundlingZip()
+    {
+        $folder = $this->bundlingResult['folder'] ?? '';
+        if (empty($folder)) {
+            $this->dispatch('toast', type: 'error', message: 'Generate bundling terlebih dahulu.');
+            return null;
+        }
+
+        $basePath = Storage::disk('local')->path($folder);
+        if (!is_dir($basePath)) {
+            $this->dispatch('toast', type: 'error', message: 'Folder bundling tidak ditemukan.');
+            return null;
+        }
+
+        $zipName = str_replace('/', '_', $folder) . '.zip';
+        $zipPath = Storage::disk('local')->path('klaim/' . $zipName);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuat ZIP.');
+            return null;
+        }
+
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($basePath));
+        foreach ($files as $file) {
+            if ($file->isFile()) {
+                $relativePath = str_replace($basePath . '/', '', $file->getRealPath());
+                $zip->addFile($file->getRealPath(), $relativePath);
+            }
+        }
+        $zip->close();
+
+        return response()->streamDownload(function () use ($zipPath) {
+            readfile($zipPath);
+            @unlink($zipPath);
+        }, $zipName, ['Content-Type' => 'application/zip']);
+    }
+
     public function removeDiagnosa(int $index): void
     {
         unset($this->editedDiagnosa[$index]);
@@ -781,6 +952,17 @@ new class extends Component {
                 <button type="button" wire:click="resetFilters"
                     class="px-3 py-2 text-sm font-medium text-muted hover:text-ink dark:hover:text-white">
                     Reset
+                </button>
+            </div>
+
+            {{-- Bundling --}}
+            <div>
+                <button type="button" wire:click="openBundling"
+                    class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    </svg>
+                    Bundling Klaim
                 </button>
             </div>
         </div>
@@ -1274,6 +1456,97 @@ new class extends Component {
                     @endif
                 </div>
             </div>
+        </div>
+    </x-modal>
+
+    {{-- MODAL: Bundling Klaim BPJS --}}
+    <x-modal name="casemix-bundling" size="xl" focusable>
+        <div class="p-6">
+            <h2 class="text-lg font-semibold text-ink dark:text-white mb-4">Bundling Klaim BPJS</h2>
+            <p class="text-sm text-muted dark:text-gray-400 mb-4">
+                Gabungkan semua berkas per klaim menjadi 1 file PDF (urut slot).
+                Struktur folder: <code class="text-xs bg-surface-soft dark:bg-gray-800 px-1.5 py-0.5 rounded">klaim/MM_YYYY/rj|ugd|ri/noSep.pdf</code>
+            </p>
+
+            <div class="flex items-end gap-3 mb-6">
+                <div>
+                    <label class="block mb-1 text-xs font-medium text-muted">Bulan</label>
+                    <input type="month" wire:model="bundlingBulan"
+                        class="px-3 py-2 text-sm border rounded-lg border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-600 dark:text-white" />
+                </div>
+                <button type="button" wire:click="generateBundling" wire:loading.attr="disabled" wire:target="generateBundling"
+                    class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50">
+                    <span wire:loading.remove wire:target="generateBundling">Generate Bundling</span>
+                    <span wire:loading wire:target="generateBundling" class="flex items-center gap-1.5">
+                        <x-loading /> Processing...
+                    </span>
+                </button>
+                @if (!empty($bundlingResult['generated']))
+                    <button type="button" wire:click="downloadBundlingZip"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Download ZIP
+                    </button>
+                @endif
+            </div>
+
+            @if (!empty($bundlingResult))
+                <div class="space-y-4">
+                    <div class="flex items-center gap-4 text-sm">
+                        <span class="text-muted">Total klaim: <strong class="text-ink dark:text-white">{{ $bundlingResult['total'] ?? 0 }}</strong></span>
+                        <span class="text-emerald-600">Berhasil: <strong>{{ count($bundlingResult['generated'] ?? []) }}</strong></span>
+                        @if (!empty($bundlingResult['errors']))
+                            <span class="text-red-600">Error: <strong>{{ count($bundlingResult['errors']) }}</strong></span>
+                        @endif
+                    </div>
+
+                    @if (!empty($bundlingResult['generated']))
+                        <div class="overflow-hidden border rounded-xl border-hairline dark:border-gray-700">
+                            <table class="w-full text-sm">
+                                <thead class="bg-surface-soft dark:bg-gray-900 text-xs uppercase text-muted">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left">No. SEP</th>
+                                        <th class="px-3 py-2 text-left">Pasien</th>
+                                        <th class="px-3 py-2 text-center">Tipe</th>
+                                        <th class="px-3 py-2 text-center">Berkas</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-hairline dark:divide-gray-700">
+                                    @foreach ($bundlingResult['generated'] as $item)
+                                        <tr>
+                                            <td class="px-3 py-2 font-mono text-xs text-ink dark:text-white">{{ $item['sep'] }}</td>
+                                            <td class="px-3 py-2 text-body dark:text-gray-300">{{ $item['pasien'] }}</td>
+                                            <td class="px-3 py-2 text-center">
+                                                <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">{{ $item['type'] }}</span>
+                                            </td>
+                                            <td class="px-3 py-2 text-center text-muted">{{ $item['berkas'] }} file</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+
+                    @if (!empty($bundlingResult['errors']))
+                        <div class="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                            <h4 class="text-xs font-bold text-red-800 dark:text-red-300 uppercase mb-1">Errors</h4>
+                            <ul class="text-xs text-red-700 dark:text-red-400 space-y-0.5">
+                                @foreach ($bundlingResult['errors'] as $err)
+                                    <li>{{ $err }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
+                    @if (!empty($bundlingResult['folder']))
+                        <p class="text-xs text-muted">
+                            Output: <code class="bg-surface-soft dark:bg-gray-800 px-1.5 py-0.5 rounded">storage/app/private/{{ $bundlingResult['folder'] }}</code>
+                        </p>
+                    @endif
+                </div>
+            @endif
         </div>
     </x-modal>
 
