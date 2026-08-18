@@ -16,9 +16,10 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Http\Traits\IDRG\iDrgTrait;
 
 new class extends Component {
-    use WithPagination, WithRenderVersioningTrait, EmrRJTrait, EmrRITrait, MasterPasienTrait;
+    use WithPagination, WithRenderVersioningTrait, EmrRJTrait, EmrRITrait, MasterPasienTrait, iDrgTrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['casemix-queue-toolbar'];
@@ -329,6 +330,9 @@ new class extends Component {
                 if ($slot === 1) {
                     $this->generateBerkasSep($refNo, $refType);
                     $generated[] = 'SEP';
+                } elseif ($slot === 2) {
+                    $this->generateBerkasGrouping($refNo, $refType);
+                    $generated[] = 'GROUPING';
                 } elseif ($slot === 4) {
                     $this->generateBerkasSkdp($refNo, $refType);
                     $generated[] = 'SKDP';
@@ -394,6 +398,35 @@ new class extends Component {
         $pdf = Pdf::loadView('pages.components.modul-dokumen.bpjs.cetak-sep.cetak-sep-print', ['data' => $data])
             ->setPaper('A5', 'landscape');
         $this->saveBerkasBpjs($refNo, $refType, 1, $pdf->output());
+    }
+
+    private function generateBerkasGrouping(int $refNo, string $refType): void
+    {
+        $dataTxn = in_array($refType, ['RI', 'RANAP'])
+            ? $this->findDataRI($refNo)
+            : $this->findDataRJ($refNo);
+
+        $idrg = $dataTxn['idrg'] ?? [];
+        if (empty($idrg['klaimFinal'])) {
+            throw new \RuntimeException('Klaim belum final — grouping belum bisa dicetak.');
+        }
+
+        $nomorSep = $idrg['nomorSep'] ?? null;
+        if (empty($nomorSep)) {
+            throw new \RuntimeException('Nomor SEP klaim tidak ditemukan.');
+        }
+
+        $res = $this->printClaim($nomorSep)->getOriginalContent();
+        if (($res['metadata']['code'] ?? 0) != 200) {
+            throw new \RuntimeException(self::describeEklaimError($res['metadata'] ?? [], 'Cetak Grouping'));
+        }
+
+        $pdfBase64 = $res['response']['data'] ?? ($res['response'] ?? null);
+        if (empty($pdfBase64) || !is_string($pdfBase64)) {
+            throw new \RuntimeException('Response cetak tidak berisi PDF.');
+        }
+
+        $this->saveBerkasBpjs($refNo, $refType, 2, base64_decode($pdfBase64));
     }
 
     private function generateBerkasSkdp(int $refNo, string $refType): void
