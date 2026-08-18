@@ -93,10 +93,10 @@ new class extends Component {
                 'h.reg_no',
                 'p.reg_name',
                 'h.rj_date',
-                DB::raw("(SELECT json_value(h.datadaftarpolirj_json, '$.sep.noSep') FROM dual) as no_sep"),
+                'h.vno_sep as no_sep',
                 DB::raw("COUNT(u.seq_file) as jml_berkas"),
             ])
-            ->groupBy('h.rj_no', 'h.reg_no', 'p.reg_name', 'h.rj_date', 'h.datadaftarpolirj_json');
+            ->groupBy('h.rj_no', 'h.reg_no', 'p.reg_name', 'h.rj_date', 'h.vno_sep');
 
         $riQuery = DB::table('rstxn_rihdrs as h')
             ->join('rstxn_riuploadbpjses as u', 'h.rihdr_no', '=', 'u.rihdr_no')
@@ -108,10 +108,10 @@ new class extends Component {
                 'h.reg_no',
                 'p.reg_name',
                 DB::raw("h.rihdr_date as rj_date"),
-                DB::raw("(SELECT json_value(h.datadaftarri_json, '$.sep.noSep') FROM dual) as no_sep"),
+                'h.vno_sep as no_sep',
                 DB::raw("COUNT(u.seq_file) as jml_berkas"),
             ])
-            ->groupBy('h.rihdr_no', 'h.reg_no', 'p.reg_name', 'h.rihdr_date', 'h.datadaftarri_json');
+            ->groupBy('h.rihdr_no', 'h.reg_no', 'p.reg_name', 'h.rihdr_date', 'h.vno_sep');
 
         $this->applyDateFilter($rjQuery, 'h.rj_date');
         $this->applyDateFilter($riQuery, 'h.rihdr_date');
@@ -221,13 +221,9 @@ new class extends Component {
 
                 $noSep = null;
                 if ($refType === 'RI') {
-                    $noSep = DB::table('rstxn_rihdrs')
-                        ->where('rihdr_no', $refNo)
-                        ->value(DB::raw("json_value(datadaftarri_json, '$.sep.noSep')"));
+                    $noSep = DB::table('rstxn_rihdrs')->where('rihdr_no', $refNo)->value('vno_sep');
                 } else {
-                    $noSep = DB::table('rstxn_rjhdrs')
-                        ->where('rj_no', $refNo)
-                        ->value(DB::raw("json_value(datadaftarpolirj_json, '$.sep.noSep')"));
+                    $noSep = DB::table('rstxn_rjhdrs')->where('rj_no', $refNo)->value('vno_sep');
                 }
 
                 if (empty($noSep)) {
