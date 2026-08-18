@@ -569,8 +569,21 @@ new class extends Component {
                 'updated_at' => now(),
             ]);
 
+        $refNo = (string) ($this->reviewData['ref_no'] ?? '');
+        $refType = strtoupper(trim((string) ($this->reviewData['ref_type'] ?? '')));
+        $isRI = in_array($refType, ['RI', 'RANAP']);
+
         $this->dispatch('close-modal', name: 'casemix-review');
-        $this->dispatch('toast', type: 'success', message: 'Klaim di-approve. Siap bridging iDRG.');
+        $this->dispatch('toast', type: 'success', message: 'Klaim di-approve. Membuka bridging iDRG...');
+
+        if ($isRI) {
+            $this->dispatch('daftar-ri.idrg.open', riHdrNo: $refNo);
+        } elseif ($refType === 'UGD') {
+            $this->dispatch('daftar-ugd.idrg.open', rjNo: $refNo);
+        } else {
+            $this->dispatch('daftar-rj.idrg.open', rjNo: $refNo);
+        }
+
         $this->reviewId = null;
         $this->reviewData = [];
         $this->emrData = [];
@@ -891,11 +904,11 @@ new class extends Component {
                 </div>
             </div>
 
-            {{-- Body: 2 kolom — kiri EMR, kanan form review --}}
-            <div class="flex-1 overflow-y-auto">
+            {{-- Body: 2 kolom — kiri fixed, kanan scroll --}}
+            <div class="flex-1 overflow-hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-0 h-full">
 
-                    {{-- KIRI: EMR Transaksi (read-only, data spesifik ref_no) --}}
+                    {{-- KIRI: EMR Transaksi (read-only, fixed) --}}
                     <div class="px-4 py-4 border-r border-hairline dark:border-gray-700 overflow-y-auto">
                         @if (!empty($emrData))
                             @php
@@ -1041,6 +1054,50 @@ new class extends Component {
                                     </div>
                                 </div>
                             @endif
+                            {{-- Berkas BPJS Status --}}
+                            @if (!empty($berkasStatus))
+                                <div class="mb-4">
+                                    <h4 class="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Berkas BPJS</h4>
+                                    <div class="space-y-1.5">
+                                        @foreach ($berkasStatus as $slot => $info)
+                                            <div class="flex items-center gap-2 px-3 py-2 rounded-lg border {{ !empty($info['file']) ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' }}">
+                                                @if (!empty($info['file']))
+                                                    <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                                    </svg>
+                                                @else
+                                                    <svg class="w-4 h-4 text-red-500 dark:text-red-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                                    </svg>
+                                                @endif
+                                                <span class="flex-1 text-xs font-medium {{ !empty($info['file']) ? 'text-emerald-800 dark:text-emerald-300' : 'text-red-800 dark:text-red-300' }} truncate">
+                                                    {{ $info['label'] }}
+                                                </span>
+                                                @if (!empty($info['file']))
+                                                    <a href="{{ route('files.show', ['path' => 'mount/bpjs/' . $info['file']]) }}"
+                                                        target="_blank" rel="noopener"
+                                                        class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded bg-emerald-200/60 text-emerald-700 hover:bg-emerald-300/60 dark:bg-emerald-800/40 dark:text-emerald-300 dark:hover:bg-emerald-700/40 transition shrink-0">
+                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                        </svg>
+                                                        Lihat
+                                                    </a>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                    @php
+                                        $missing = collect($berkasStatus)->filter(fn($i) => empty($i['file']))->count();
+                                    @endphp
+                                    @if ($missing > 0 && in_array($reviewData['status'] ?? '', ['pending', 'failed']))
+                                        <p class="mt-2 text-xs text-muted dark:text-gray-400">
+                                            {{ $missing }} berkas belum upload — klik "Auto Upload Berkas" untuk generate otomatis.
+                                        </p>
+                                    @endif
+                                </div>
+                            @endif
+
                         @else
                             <p class="text-sm text-muted italic">Data EMR tidak tersedia.</p>
                         @endif
@@ -1048,50 +1105,6 @@ new class extends Component {
 
                     {{-- KANAN: Form Review --}}
                     <div class="px-6 py-4 space-y-6 overflow-y-auto">
-
-                {{-- Berkas BPJS Status --}}
-                @if (!empty($berkasStatus))
-                    <div>
-                        <h3 class="mb-2 text-sm font-bold text-ink dark:text-white uppercase tracking-wider">Berkas BPJS</h3>
-                        <div class="space-y-1.5">
-                            @foreach ($berkasStatus as $slot => $info)
-                                <div class="flex items-center gap-2 px-3 py-2 rounded-lg border {{ !empty($info['file']) ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' }}">
-                                    @if (!empty($info['file']))
-                                        <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                                        </svg>
-                                    @else
-                                        <svg class="w-4 h-4 text-red-500 dark:text-red-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                                        </svg>
-                                    @endif
-                                    <span class="flex-1 text-xs font-medium {{ !empty($info['file']) ? 'text-emerald-800 dark:text-emerald-300' : 'text-red-800 dark:text-red-300' }} truncate">
-                                        {{ $info['label'] }}
-                                    </span>
-                                    @if (!empty($info['file']))
-                                        <a href="{{ route('files.show', ['path' => 'mount/bpjs/' . $info['file']]) }}"
-                                            target="_blank" rel="noopener"
-                                            class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded bg-emerald-200/60 text-emerald-700 hover:bg-emerald-300/60 dark:bg-emerald-800/40 dark:text-emerald-300 dark:hover:bg-emerald-700/40 transition shrink-0">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
-                                            Lihat
-                                        </a>
-                                    @endif
-                                </div>
-                            @endforeach
-                        </div>
-                        @php
-                            $missing = collect($berkasStatus)->filter(fn($i) => empty($i['file']))->count();
-                        @endphp
-                        @if ($missing > 0 && in_array($reviewData['status'] ?? '', ['pending', 'failed']))
-                            <p class="mt-2 text-xs text-muted dark:text-gray-400">
-                                {{ $missing }} berkas belum upload — klik "Auto Upload Berkas" untuk generate otomatis.
-                            </p>
-                        @endif
-                    </div>
-                @endif
 
                 {{-- AI Notes --}}
                 @if (!empty($reviewData['ai_notes']))
@@ -1238,4 +1251,12 @@ new class extends Component {
         wire:key="approval-hub-cetak-rm-ugd" />
     <livewire:pages::components.rekam-medis.ri.cetak-rekam-medis.cetak-rekam-medis-open
         wire:key="approval-hub-cetak-rm-ri" />
+
+    {{-- Bridging iDRG / INACBG — orchestrator existing (RJ, UGD, RI) --}}
+    <livewire:pages::transaksi.rj.daftar-rj.idrg-rj-actions
+        wire:key="approval-hub-idrg-rj" />
+    <livewire:pages::transaksi.ugd.daftar-ugd.idrg-ugd-actions
+        wire:key="approval-hub-idrg-ugd" />
+    <livewire:pages::transaksi.ri.daftar-ri.idrg-ri-actions
+        wire:key="approval-hub-idrg-ri" />
 </div>
