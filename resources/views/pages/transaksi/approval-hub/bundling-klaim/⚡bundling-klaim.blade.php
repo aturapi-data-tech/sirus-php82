@@ -107,14 +107,14 @@ new class extends Component {
                 'h.rihdr_no as ref_no',
                 'h.reg_no',
                 'p.reg_name',
-                DB::raw("h.rihdr_date as rj_date"),
+                DB::raw("h.entry_date as rj_date"),
                 'h.vno_sep as no_sep',
                 DB::raw("COUNT(u.seq_file) as jml_berkas"),
             ])
-            ->groupBy('h.rihdr_no', 'h.reg_no', 'p.reg_name', 'h.rihdr_date', 'h.vno_sep');
+            ->groupBy('h.rihdr_no', 'h.reg_no', 'p.reg_name', 'h.entry_date', 'h.vno_sep');
 
         $this->applyDateFilter($rjQuery, 'h.rj_date');
-        $this->applyDateFilter($riQuery, 'h.rihdr_date');
+        $this->applyDateFilter($riQuery, 'h.entry_date');
 
         if ($this->searchKeyword !== '') {
             $kw = '%' . strtoupper(trim($this->searchKeyword)) . '%';
