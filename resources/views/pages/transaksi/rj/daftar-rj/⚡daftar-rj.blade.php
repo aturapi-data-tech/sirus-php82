@@ -563,17 +563,20 @@ new class extends Component {
         $ss = $json['satusehat'] ?? [];
         $ssFilled = fn($v) => is_array($v) ? count($v) > 0 : !empty($v);
         $row->satusehat_items = [
-            ['label' => 'Encounter',           'full' => 'Encounter (kunjungan)',            'sent' => $ssFilled($ss['encounterId'] ?? null)],
-            ['label' => 'Condition',           'full' => 'Condition (diagnosa ICD-10)',      'sent' => $ssFilled($ss['conditionIds'] ?? null)],
-            ['label' => 'Observation',         'full' => 'Observation (vital/lab)',          'sent' => $ssFilled($ss['observationIds'] ?? null)],
-            ['label' => 'Procedure',           'full' => 'Procedure (tindakan ICD-9)',       'sent' => $ssFilled($ss['procedureIds'] ?? null)],
-            ['label' => 'Medication Request',  'full' => 'Medication Request (resep)',       'sent' => $ssFilled($ss['medicationRequestIds'] ?? null)],
-            ['label' => 'Chief Complaint',     'full' => 'Chief Complaint (keluhan utama)',  'sent' => $ssFilled($ss['chiefComplaintId'] ?? null)],
-            ['label' => 'Allergy Intolerance', 'full' => 'Allergy Intolerance',             'sent' => $ssFilled($ss['allergyId'] ?? null)],
-            ['label' => 'Medication Dispense', 'full' => 'Medication Dispense (obat pulang)', 'sent' => $ssFilled($ss['medicationDispenseIds'] ?? null)],
-            ['label' => 'Penunjang Lab',       'full' => 'Penunjang Lab',                    'sent' => $ssFilled($ss['labServiceRequestIds'] ?? null) || $ssFilled($ss['labDiagnosticReportIds'] ?? null)],
-            ['label' => 'Penunjang Radiologi', 'full' => 'Penunjang Radiologi',             'sent' => $ssFilled($ss['radServiceRequestIds'] ?? null) || $ssFilled($ss['radDiagnosticReportIds'] ?? null)],
-            ['label' => 'Clinical Impression', 'full' => 'Clinical Impression',             'sent' => $ssFilled($ss['clinicalImpressionId'] ?? null)],
+            ['label' => 'Encounter',           'full' => 'Encounter (kunjungan)',              'sent' => $ssFilled($ss['encounterId'] ?? null)],
+            ['label' => 'Condition',           'full' => 'Condition (diagnosa ICD-10)',        'sent' => $ssFilled($ss['conditionIds'] ?? null)],
+            ['label' => 'Observation',         'full' => 'Observation (tanda vital)',          'sent' => $ssFilled($ss['observationIds'] ?? null)],
+            ['label' => 'Procedure',           'full' => 'Procedure (tindakan ICD-9)',         'sent' => $ssFilled($ss['procedureIds'] ?? null)],
+            ['label' => 'Med Request',         'full' => 'Medication Request (resep)',         'sent' => $ssFilled($ss['medicationRequestIds'] ?? null)],
+            ['label' => 'Chief Complaint',     'full' => 'Chief Complaint (keluhan utama)',    'sent' => $ssFilled($ss['chiefComplaintId'] ?? null)],
+            ['label' => 'Allergy',             'full' => 'Allergy Intolerance',               'sent' => $ssFilled($ss['allergyId'] ?? null)],
+            ['label' => 'Med Dispense',        'full' => 'Medication Dispense (obat pulang)',  'sent' => $ssFilled($ss['medicationDispenseIds'] ?? null)],
+            ['label' => 'Lab',                 'full' => 'Penunjang Lab',                      'sent' => $ssFilled($ss['labServiceRequestIds'] ?? null) || $ssFilled($ss['labDiagnosticReportIds'] ?? null)],
+            ['label' => 'Radiologi',           'full' => 'Penunjang Radiologi',               'sent' => $ssFilled($ss['radServiceRequestIds'] ?? null) || $ssFilled($ss['radDiagnosticReportIds'] ?? null)],
+            ['label' => 'Clinical Impression', 'full' => 'Clinical Impression',               'sent' => $ssFilled($ss['clinicalImpressionId'] ?? null)],
+            ['label' => 'Penilaian',           'full' => 'Penilaian (nyeri/risiko jatuh)',     'sent' => $ssFilled($ss['penilaianObservationIds'] ?? null)],
+            ['label' => 'Enc. Selesai',        'full' => 'Encounter status finished',         'sent' => !empty($ss['encounterFinished'])],
+            ['label' => 'Resume Medis',        'full' => 'Resume Medis (Composition)',         'sent' => $ssFilled($ss['compositionId'] ?? null)],
         ];
 
         $row->diagnosis = isset($json['diagnosis']) && is_array($json['diagnosis']) ? implode('# ', array_column($json['diagnosis'], 'icdX')) : '-';

@@ -1,13 +1,15 @@
 <?php
 // resources/views/pages/transaksi/approval-hub/approval-hub.blade.php
-// Wrapper halaman Approval Hub — tab per modul (Casemix, SATUSEHAT, dll).
+// Wrapper halaman Approval Hub — tab per modul (Casemix RJ/UGD/RI, SATUSEHAT, dll).
 
 use Livewire\Component;
+use Livewire\Attributes\Session;
 
 new class extends Component {
-    public string $activeTab = 'casemix';
+    #[Session(key: 'approval-hub-activeTab')]
+    public string $activeTab = 'casemix-rj';
 
-    private const TABS = ['casemix', 'bundling'];
+    private const TABS = ['casemix-rj', 'casemix-ugd', 'casemix-ri', 'satusehat', 'bundling'];
 
     public function mount(): void
     {
@@ -32,17 +34,30 @@ new class extends Component {
 
         {{-- TAB NAV --}}
         <x-tabs variant="underline">
-            <x-tab :active="$activeTab === 'casemix'" color="emerald" wire:click="setTab('casemix')">Casemix / E-Klaim</x-tab>
+            <x-tab :active="$activeTab === 'casemix-rj'" color="emerald" wire:click="setTab('casemix-rj')">Casemix RJ</x-tab>
+            <x-tab :active="$activeTab === 'casemix-ugd'" color="amber" wire:click="setTab('casemix-ugd')">Casemix UGD</x-tab>
+            <x-tab :active="$activeTab === 'casemix-ri'" color="violet" wire:click="setTab('casemix-ri')">Casemix RI</x-tab>
             <x-tab :active="$activeTab === 'bundling'" color="indigo" wire:click="setTab('bundling')">Bundling Klaim</x-tab>
-            {{-- Tab berikutnya tinggal tambah di sini --}}
-            {{-- <x-tab :active="$activeTab === 'satusehat'" color="blue" wire:click="setTab('satusehat')">SATUSEHAT</x-tab> --}}
+            <x-tab :active="$activeTab === 'satusehat'" color="teal" wire:click="setTab('satusehat')">SATUSEHAT RJ</x-tab>
         </x-tabs>
 
         {{-- TAB CONTENT --}}
         <div class="mt-4">
-            @if ($activeTab === 'casemix')
+            @if ($activeTab === 'casemix-rj')
                 <livewire:pages::transaksi.approval-hub.casemix-queue.casemix-queue
-                    wire:key="casemix-queue-wrapper" />
+                    queue-type="RJ"
+                    wire:key="casemix-queue-rj" />
+            @elseif ($activeTab === 'casemix-ugd')
+                <livewire:pages::transaksi.approval-hub.casemix-queue.casemix-queue
+                    queue-type="UGD"
+                    wire:key="casemix-queue-ugd" />
+            @elseif ($activeTab === 'casemix-ri')
+                <livewire:pages::transaksi.approval-hub.casemix-queue.casemix-queue
+                    queue-type="RI"
+                    wire:key="casemix-queue-ri" />
+            @elseif ($activeTab === 'satusehat')
+                <livewire:pages::transaksi.approval-hub.satusehat-queue.satusehat-queue
+                    wire:key="satusehat-queue-wrapper" />
             @elseif ($activeTab === 'bundling')
                 <livewire:pages::transaksi.approval-hub.bundling-klaim.bundling-klaim
                     wire:key="bundling-klaim-wrapper" />

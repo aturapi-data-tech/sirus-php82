@@ -62,6 +62,10 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/panduan-dev/alur-pelayanan', 'pages::panduan-dev.alur-pelayanan.alur-pelayanan')
         ->name('panduan-dev.alur-pelayanan');
 
+    // Dokumentasi Approval Hub — arsitektur, alur kerja, referensi teknis casemix/E-Klaim/SATUSEHAT
+    Route::livewire('/panduan-dev/approval-hub', 'pages::panduan-dev.approval-hub.approval-hub')
+        ->name('panduan-dev.approval-hub');
+
     // ===========================================
     // DOWN TIME — FORMULIR MANUAL WAKTU HENTI SIMRS
     // ===========================================
