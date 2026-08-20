@@ -9,23 +9,46 @@
 //   Kita  rstxn_rjhdrs/rihdrs  -> POLI PERUJUK & DOKTER PERUJUK (tidak ada di BPJS sama sekali)
 // Jembatannya kolom vno_sep: noSep dari BPJS = vno_sep di tabel kunjungan kita.
 //
+// Hasil tarik disimpan di CACHE SERVER, bukan di properti publik. Properti publik
+// ikut diserialisasi ke snapshot Livewire dan dikirim bolak-balik tiap request —
+// periode yang lebar akan menabrak PayloadTooLargeException (batas 1 MB di
+// config/livewire.php), dan jauh sebelum mentok pun tiap ketikan di kotak Cari
+// sudah memindahkan seluruh daftar dua arah. Yang tinggal di komponen hanya
+// PERIODE yang sudah ditarik; barisnya dibaca dari cache. Konsekuensi yang
+// disengaja: tabel Rinci dipaginasi, sementara rekap & CSV tetap memakai seluruh
+// baris periode.
+//
 // Detail diambil BERTAHAP, bukan sekaligus: satu periode bisa ratusan rujukan
 // (Juli 2026 = 279) dan tiap detail = satu panggilan HTTP ke BPJS. Sekali jalan
 // akan kena timeout PHP jauh sebelum selesai. Hasil detail di-cache 30 hari
 // karena isinya tidak berubah setelah rujukan terbit.
 
 use Livewire\Component;
+use Livewire\WithPagination;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Session;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Carbon\Carbon;
 use App\Http\Traits\BPJS\VclaimTrait;
 
 new class extends Component {
+    use WithPagination;
+
     /** Berapa detail yang ditarik per klik "Lengkapi Detail". */
     private const DETAIL_PER_BATCH = 25;
 
+    /** Umur cache detail per-rujukan — isinya tidak berubah setelah rujukan terbit. */
     private const CACHE_HARI = 30;
+
+    /**
+     * Umur cache DAFTAR hasil tarik. Lebih pendek dari cache detail karena isinya
+     * potret satu periode, bukan fakta permanen. Cukup untuk sekali sesi analisa
+     * (pindah tab, ganti filter, lengkapi detail, unduh CSV).
+     */
+    private const CACHE_HASIL_MENIT = 60;
 
     #[Session(key: 'lapRujukanKeluar.tglMulai')]
     public string $tglMulai = '';
@@ -37,12 +60,16 @@ new class extends Component {
 
     public string $cariKeyword = '';
     public string $filterJenis = '';   // '' | 1 (ranap) | 2 (rajal)
+    public int $itemsPerPage = 25;
 
-    /** Baris hasil gabungan BPJS + data kita. */
-    public array $rujukanList = [];
+    /**
+     * Periode yang datanya BENAR-BENAR sudah ditarik, format "Y-m-d|Y-m-d".
+     * Sengaja dipisah dari $tglMulai/$tglAkhir: kotak tanggal boleh diubah tanpa
+     * layar diam-diam memanggil BPJS, dan string ini sekaligus jadi kunci cache.
+     */
+    public string $periodeTarik = '';
 
     public string $infoTarik = '';
-    public bool $sudahTarik = false;
 
     public function mount(): void
     {
@@ -60,18 +87,87 @@ new class extends Component {
         $this->tab = in_array($tab, ['rinci', 'perujuk', 'faskes', 'diagnosa'], true) ? $tab : 'rinci';
     }
 
+    public function updatedCariKeyword(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterJenis(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedItemsPerPage(): void
+    {
+        $this->resetPage();
+    }
+
     /** Dipakai x-toolbar-refresh-reset. Periode dikembalikan ke bulan berjalan. */
     public function resetFilters(): void
     {
+        $this->reset(['cariKeyword', 'filterJenis', 'tab', 'periodeTarik', 'infoTarik']);
         $hariIni = Carbon::now(config('app.timezone'));
         $this->tglMulai = $hariIni->copy()->startOfMonth()->format('d/m/Y');
         $this->tglAkhir = $hariIni->format('d/m/Y');
-        $this->cariKeyword = '';
-        $this->filterJenis = '';
-        $this->tab = 'rinci';
-        $this->rujukanList = [];
-        $this->sudahTarik = false;
-        $this->infoTarik = '';
+        $this->resetPage();
+        $this->lupakanRekap();
+    }
+
+    /* ===============================
+     | HASIL TARIK — disimpan di cache, bukan di payload
+     =============================== */
+    private function kunciHasil(string $periode): string
+    {
+        return 'lapRujukanKeluar.hasil.' . $periode;
+    }
+
+    private function simpanHasil(string $periode, array $daftar): void
+    {
+        Cache::put($this->kunciHasil($periode), $daftar, now()->addMinutes(self::CACHE_HASIL_MENIT));
+    }
+
+    /**
+     * Seluruh baris periode yang sedang dibuka.
+     *
+     * Cache::get, BUKAN Cache::remember: memulihkan sendiri berarti memanggil BPJS
+     * di tengah render, dan kalau BPJS sedang tumbang halamannya ikut 500 padahal
+     * tak ada yang menekan tombol apa pun. Kalau cache habis, layar bilang terus
+     * terang lewat $this->kedaluwarsa dan menyuruh menekan Ambil Data lagi.
+     */
+    #[Computed]
+    public function rujukanList(): array
+    {
+        if ($this->periodeTarik === '') {
+            return [];
+        }
+
+        return Cache::get($this->kunciHasil($this->periodeTarik), []);
+    }
+
+    /** Sudah pernah ditarik, tapi hasilnya sudah lewat umur cache. */
+    #[Computed]
+    public function kedaluwarsa(): bool
+    {
+        return $this->periodeTarik !== '' && Cache::missing($this->kunciHasil($this->periodeTarik));
+    }
+
+    /**
+     * Buang cache #[Computed]. Livewire menahan hasil computed selama satu request,
+     * jadi setelah daftar berubah di request yang SAMA (tarik / lengkapi detail /
+     * reset) baris & rekap lama akan ikut terbawa ke render kalau tidak dilupakan.
+     */
+    private function lupakanRekap(): void
+    {
+        unset(
+            $this->rujukanList,
+            $this->kedaluwarsa,
+            $this->barisTerfilter,
+            $this->rows,
+            $this->ringkasan,
+            $this->rekapPoliDokter,
+            $this->rekapFaskesDiagnosa,
+            $this->rekapDiagnosa,
+        );
     }
 
     /* ===============================
@@ -93,14 +189,16 @@ new class extends Component {
         try {
             $respon = VclaimTrait::rujukan_keluar_list_rs($mulai, $akhir)->getOriginalContent();
         } catch (\Throwable $e) {
-            $this->rujukanList = [];
+            $this->periodeTarik = '';
+            $this->lupakanRekap();
             $this->infoTarik = 'Gagal menghubungi BPJS: ' . $e->getMessage();
             $this->dispatch('toast', type: 'error', message: $this->infoTarik);
             return;
         }
 
         if ((string) ($respon['metadata']['code'] ?? '') !== '200') {
-            $this->rujukanList = [];
+            $this->periodeTarik = '';
+            $this->lupakanRekap();
             $this->infoTarik = 'BPJS menolak: ' . ($respon['metadata']['message'] ?? 'tanpa keterangan');
             $this->dispatch('toast', type: 'error', message: $this->infoTarik);
             return;
@@ -134,12 +232,16 @@ new class extends Component {
             ->values()
             ->all();
 
-        $this->rujukanList = $this->lekatkanDataKita($daftar);
-        $this->rujukanList = $this->ambilDetailTerCache($this->rujukanList);
-        $this->sudahTarik = true;
+        $daftar = $this->ambilDetailTerCache($this->lekatkanDataKita($daftar));
 
-        $tanpaPasangan = collect($this->rujukanList)->where('sumber', '')->count();
-        $this->infoTarik = count($this->rujukanList) . ' rujukan keluar ditemukan.'
+        $periode = $mulai . '|' . $akhir;
+        $this->simpanHasil($periode, $daftar);
+        $this->periodeTarik = $periode;
+        $this->resetPage();
+        $this->lupakanRekap();
+
+        $tanpaPasangan = collect($daftar)->where('sumber', '')->count();
+        $this->infoTarik = count($daftar) . ' rujukan keluar ditemukan.'
             . ($tanpaPasangan > 0 ? " {$tanpaPasangan} di antaranya belum ketemu kunjungannya di data kita (SEP tidak cocok)." : '');
     }
 
@@ -148,7 +250,19 @@ new class extends Component {
      =============================== */
     public function lengkapiDetail(): void
     {
-        $belum = collect($this->rujukanList)
+        // Daftar diambil UTUH dari cache lalu ditulis balik utuh. Baris yang dilengkapi
+        // dicari lewat indeks daftar penuh, bukan indeks hasil filter layar — kalau
+        // tidak, mengetik di kotak Cari akan membuat detail mendarat di baris lain.
+        $daftar = $this->rujukanList;
+
+        if (empty($daftar)) {
+            $this->dispatch('toast', type: 'error', message: $this->kedaluwarsa
+                ? 'Hasil tarik sudah kedaluwarsa. Tekan Ambil Data lagi.'
+                : 'Belum ada data. Tekan Ambil Data lebih dulu.');
+            return;
+        }
+
+        $belum = collect($daftar)
             ->filter(fn($baris) => $baris['diagRujukan'] === null)
             ->take(self::DETAIL_PER_BATCH)
             ->keys()
@@ -162,16 +276,19 @@ new class extends Component {
         $berhasil = 0;
         $gagal = 0;
         foreach ($belum as $index) {
-            $detail = $this->ambilDetail($this->rujukanList[$index]['noRujukan']);
+            $detail = $this->ambilDetail($daftar[$index]['noRujukan']);
             if ($detail === null) {
                 $gagal++;
                 continue;
             }
-            $this->rujukanList[$index] = array_replace($this->rujukanList[$index], $detail);
+            $daftar[$index] = array_replace($daftar[$index], $detail);
             $berhasil++;
         }
 
-        $sisa = collect($this->rujukanList)->filter(fn($baris) => $baris['diagRujukan'] === null)->count();
+        $this->simpanHasil($this->periodeTarik, $daftar);
+        $this->lupakanRekap();
+
+        $sisa = collect($daftar)->filter(fn($baris) => $baris['diagRujukan'] === null)->count();
         $this->infoTarik = "Detail terisi {$berhasil} baris"
             . ($gagal > 0 ? ", {$gagal} gagal (BPJS tidak merespons — coba lagi)" : '')
             . ($sisa > 0 ? ", sisa {$sisa} baris." : ', semua lengkap.');
@@ -311,7 +428,13 @@ new class extends Component {
     /* ===============================
      | TAMPIL & REKAP
      =============================== */
-    public function barisTampil(): array
+    /**
+     * Baris setelah filter jenis & kata kunci — sebelum dipotong per halaman.
+     * Rekap, kartu ringkas, dan CSV berangkat dari sini (bukan dari $this->rows)
+     * supaya angkanya tidak ikut berubah saat pengguna pindah halaman.
+     */
+    #[Computed]
+    public function barisTerfilter(): array
     {
         $keyword = mb_strtolower(trim($this->cariKeyword));
 
@@ -332,15 +455,32 @@ new class extends Component {
             ->all();
     }
 
+    /** Potongan halaman untuk tabel Rinci; rekap tetap membaca seluruh baris. */
+    #[Computed]
+    public function rows(): LengthAwarePaginator
+    {
+        $semua = $this->barisTerfilter;
+        $halaman = Paginator::resolveCurrentPage();
+
+        return new LengthAwarePaginator(
+            array_slice($semua, ($halaman - 1) * $this->itemsPerPage, $this->itemsPerPage),
+            count($semua),
+            $this->itemsPerPage,
+            $halaman,
+            ['path' => request()->url()],
+        );
+    }
+
     /**
      * Poli perujuk BESERTA dokter yang merujuk dari poli itu — satu rangkaian,
      * bukan dua daftar terpisah. Yang dievaluasi memang pasangannya: seorang
      * dokter bisa praktik di lebih dari satu poli, jadi angka per dokter tanpa
      * konteks polinya menyesatkan.
      */
+    #[Computed]
     public function rekapPoliDokter(): array
     {
-        return collect($this->barisTampil())
+        return collect($this->barisTerfilter)
             ->groupBy(fn($baris) => trim((string) $baris['poliPerujuk']) ?: '(SEP tak ketemu)')
             ->map(fn($grup, $namaPoli) => [
                 'nama'   => $namaPoli,
@@ -375,9 +515,10 @@ new class extends Component {
     }
 
     /** Rekap diagnosa memakai kode + nama sekaligus supaya tidak ambigu. */
+    #[Computed]
     public function rekapDiagnosa(): array
     {
-        return collect($this->barisTampil())
+        return collect($this->barisTerfilter)
             ->groupBy(fn($baris) => $this->labelDiagnosa($baris))
             ->map(fn($grup, $nama) => ['nama' => $nama, 'jumlah' => $grup->count()])
             ->sortByDesc('jumlah')
@@ -390,9 +531,10 @@ new class extends Component {
      * terpisah. Yang dievaluasi memang pasangannya: RS mana menerima kasus apa,
      * karena itulah yang menunjukkan pola rujukan sesuai/tidak sesuai kompetensi.
      */
+    #[Computed]
     public function rekapFaskesDiagnosa(): array
     {
-        return collect($this->barisTampil())
+        return collect($this->barisTerfilter)
             ->groupBy(fn($baris) => trim((string) $baris['namaPpkDirujuk']) ?: '(tanpa nama)')
             ->map(fn($grup, $namaFaskes) => [
                 'nama'     => $namaFaskes,
@@ -416,9 +558,10 @@ new class extends Component {
             ->all();
     }
 
+    #[Computed]
     public function ringkasan(): array
     {
-        $baris = collect($this->barisTampil());
+        $baris = collect($this->barisTerfilter);
         return [
             'total'         => $baris->count(),
             'rajal'         => $baris->where('jnsPelayanan', '2')->count(),
@@ -440,16 +583,16 @@ new class extends Component {
      */
     public function eksporCsv()
     {
-        $baris = $this->barisTampil();
+        $baris = $this->barisTerfilter;
         if (empty($baris)) {
             $this->dispatch('toast', type: 'error', message: 'Tidak ada data untuk diekspor.');
             return null;
         }
 
-        $perujuk = $this->rekapPoliDokter();
-        $faskes = $this->rekapFaskesDiagnosa();
-        $diagnosa = $this->rekapDiagnosa();
-        $ringkasan = $this->ringkasan();
+        $perujuk = $this->rekapPoliDokter;
+        $faskes = $this->rekapFaskesDiagnosa;
+        $diagnosa = $this->rekapDiagnosa;
+        $ringkasan = $this->ringkasan;
         $periode = $this->tglMulai . ' s/d ' . $this->tglAkhir;
 
         $namaBerkas = 'rujukan-keluar-' . str_replace('/', '', $this->tglMulai)
@@ -582,13 +725,6 @@ new class extends Component {
 };
 ?>
 
-@php
-    // Hanya pemetaan display ringan — perhitungan ada di class
-    // (skill naming-conventions §2: logika jangan ditaruh di @php template).
-    $ringkasan = $sudahTarik ? $this->ringkasan() : [];
-    $barisList = $sudahTarik ? $this->barisTampil() : [];
-@endphp
-
 <div>
     <x-page-title title="Evaluasi Rujukan Keluar RS"
         subtitle="Rujukan keluar (VClaim) — poli & dokter perujuk, faskes tujuan, dan diagnosa rujukan" />
@@ -661,19 +797,19 @@ new class extends Component {
                         </span>
                     </x-primary-button>
 
-                    @if (($ringkasan['detailBelum'] ?? 0) > 0)
+                    @if ($this->ringkasan['detailBelum'] > 0)
                         {{-- Diagnosa & poli tujuan hanya ada di endpoint detail BPJS (1 panggilan
                              per rujukan), jadi ditarik bertahap. Penjelasan panjang cukup di title
                              — dulu memakan satu spanduk penuh di badan halaman. --}}
                         <x-warning-button type="button" wire:click="lengkapiDetail" wire:loading.attr="disabled"
                             wire:target="lengkapiDetail"
-                            title="{{ $ringkasan['detailBelum'] }} baris belum punya Diagnosa & Poli Tujuan. Keduanya hanya ada di endpoint detail BPJS — satu panggilan per rujukan, jadi diambil bertahap 25 baris tiap klik. Hasilnya disimpan 30 hari, penarikan berikutnya langsung terisi.">
+                            title="{{ $this->ringkasan['detailBelum'] }} baris belum punya Diagnosa & Poli Tujuan. Keduanya hanya ada di endpoint detail BPJS — satu panggilan per rujukan, jadi diambil bertahap 25 baris tiap klik. Hasilnya disimpan 30 hari, penarikan berikutnya langsung terisi.">
                             <span wire:loading.remove wire:target="lengkapiDetail" class="inline-flex items-center gap-1.5">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round"
                                         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                Detail ({{ number_format($ringkasan['detailBelum']) }})
+                                Detail ({{ number_format($this->ringkasan['detailBelum']) }})
                             </span>
                             <span wire:loading wire:target="lengkapiDetail" class="inline-flex items-center gap-1.5">
                                 <x-loading /> Detail...
@@ -681,7 +817,7 @@ new class extends Component {
                         </x-warning-button>
                     @endif
 
-                    @if ($sudahTarik)
+                    @if ($periodeTarik !== '' && !$this->kedaluwarsa)
                         <x-secondary-button type="button" wire:click="eksporCsv" wire:loading.attr="disabled"
                             wire:target="eksporCsv" title="Unduh CSV — rincian + rekap Poli &amp; Dokter Perujuk, Faskes Tujuan &amp; Diagnosa, dan Diagnosa, mengikuti filter yang sedang aktif">
                             <span wire:loading.remove wire:target="eksporCsv" class="inline-flex items-center gap-1.5">
@@ -698,12 +834,21 @@ new class extends Component {
                     @endif
 
                     <x-toolbar-refresh-reset :label="null" />
+
+                    <div class="w-20">
+                        <x-select-input wire:model.live="itemsPerPage" class="text-sm" title="Baris per halaman (tabel Rinci)">
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </x-select-input>
+                    </div>
                 </div>
             </div>
 
             {{-- PANDUAN — gaya biru-info standar, default TERTUTUP.
                  Lihat memory project_panduan_panel_blue_info_standard.
-                 Ditaruh di luar cabang $sudahTarik supaya penjelasannya tetap bisa
+                 Ditaruh di luar cabang $periodeTarik supaya penjelasannya tetap bisa
                  dibuka setelah data tampil, tanpa menyita ruang tabel. --}}
             <div x-data="{ buka: false }"
                 class="overflow-hidden border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
@@ -765,7 +910,7 @@ new class extends Component {
                 </div>
             </div>
 
-            @if (!$sudahTarik)
+            @if ($periodeTarik === '')
                 <div class="p-8 text-center bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                     <svg class="w-10 h-10 mx-auto text-muted-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -778,6 +923,22 @@ new class extends Component {
                         <p class="mt-3 text-sm text-error-deep dark:text-red-300">{{ $infoTarik }}</p>
                     @endif
                 </div>
+            @elseif ($this->kedaluwarsa)
+                {{-- Hasil tarik hanya bertahan selama umur cache. Tanpa spanduk ini
+                     layar akan tampak melaporkan "nol rujukan keluar" — bohong yang
+                     mahal untuk laporan evaluasi. --}}
+                <div class="p-8 text-center border rounded-2xl bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-700">
+                    <svg class="w-10 h-10 mx-auto text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p class="mt-3 text-sm font-semibold text-amber-800 dark:text-amber-200">Hasil tarik sudah kedaluwarsa</p>
+                    <p class="mt-1 text-sm text-amber-700 dark:text-amber-300">
+                        Daftar periode {{ $tglMulai }} &ndash; {{ $tglAkhir }} sudah dilepas dari penyimpanan sementara.
+                        Tekan <strong>Ambil Data</strong> untuk menariknya lagi dari BPJS.
+                    </p>
+                </div>
+
             @else
 
                 {{-- ── KARTU RINGKAS — collapsible, default tutup ── --}}
@@ -793,10 +954,10 @@ new class extends Component {
                                 Ringkasan Rujukan Keluar {{ $tglMulai }} &ndash; {{ $tglAkhir }}
                             </div>
                             <div class="text-xs text-muted dark:text-gray-400">
-                                {{ number_format($ringkasan['total'] ?? 0) }} rujukan
-                                · {{ number_format($ringkasan['faskesTujuan'] ?? 0) }} faskes tujuan
-                                @if (($ringkasan['tanpaPasangan'] ?? 0) > 0)
-                                    · {{ number_format($ringkasan['tanpaPasangan']) }} SEP tak ketemu
+                                {{ number_format($this->ringkasan['total']) }} rujukan
+                                · {{ number_format($this->ringkasan['faskesTujuan']) }} faskes tujuan
+                                @if ($this->ringkasan['tanpaPasangan'] > 0)
+                                    · {{ number_format($this->ringkasan['tanpaPasangan']) }} SEP tak ketemu
                                 @endif
                             </div>
                         </div>
@@ -816,12 +977,12 @@ new class extends Component {
                         x-transition:enter-end="opacity-100 translate-y-0">
                         <div class="grid grid-cols-1 gap-3 mt-3 sm:grid-cols-3 lg:grid-cols-6">
                             @foreach ([
-                                ['Total Rujukan', $ringkasan['total'] ?? 0, 'rujukan', 'border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700'],
-                                ['Rawat Jalan', $ringkasan['rajal'] ?? 0, 'rujukan', 'border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700'],
-                                ['Rawat Inap', $ringkasan['ranap'] ?? 0, 'rujukan', 'border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700'],
-                                ['Faskes Tujuan', $ringkasan['faskesTujuan'] ?? 0, 'RS', 'border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700'],
-                                ['SEP Tak Ketemu', $ringkasan['tanpaPasangan'] ?? 0, 'rujukan', ($ringkasan['tanpaPasangan'] ?? 0) > 0 ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700' : 'border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700'],
-                                ['Detail Belum Diambil', $ringkasan['detailBelum'] ?? 0, 'rujukan', ($ringkasan['detailBelum'] ?? 0) > 0 ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700' : 'border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700'],
+                                ['Total Rujukan', $this->ringkasan['total'], 'rujukan', 'border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700'],
+                                ['Rawat Jalan', $this->ringkasan['rajal'], 'rujukan', 'border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700'],
+                                ['Rawat Inap', $this->ringkasan['ranap'], 'rujukan', 'border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700'],
+                                ['Faskes Tujuan', $this->ringkasan['faskesTujuan'], 'RS', 'border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700'],
+                                ['SEP Tak Ketemu', $this->ringkasan['tanpaPasangan'], 'rujukan', $this->ringkasan['tanpaPasangan'] > 0 ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700' : 'border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700'],
+                                ['Detail Belum Diambil', $this->ringkasan['detailBelum'], 'rujukan', $this->ringkasan['detailBelum'] > 0 ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700' : 'border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700'],
                             ] as [$labelKartu, $nilaiKartu, $satuanKartu, $kelasKartu])
                                 <div class="p-4 border rounded-xl {{ $kelasKartu }}">
                                     <div class="text-xs font-semibold uppercase text-muted dark:text-gray-300">{{ $labelKartu }}</div>
@@ -849,7 +1010,7 @@ new class extends Component {
                     <div class="bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
                         <div class="px-4 py-3 border-b border-hairline dark:border-gray-700">
                             <h3 class="text-sm font-semibold tracking-wider uppercase text-muted dark:text-gray-400">
-                                Rincian Rujukan &mdash; {{ number_format(count($barisList)) }} baris
+                                Rincian Rujukan &mdash; {{ number_format(count($this->barisTerfilter)) }} baris
                             </h3>
                         </div>
                         <div class="overflow-x-auto">
@@ -864,7 +1025,7 @@ new class extends Component {
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                                    @forelse ($barisList as $baris)
+                                    @forelse ($this->rows as $baris)
                                         <tr class="hover:bg-surface-soft dark:hover:bg-gray-800/50" wire:key="rjk-{{ $baris['noRujukan'] }}">
                                             <td class="px-3 py-2 align-top">
                                                 <span class="font-mono text-xs font-semibold text-ink dark:text-gray-100">{{ $baris['noRujukan'] }}</span>
@@ -918,12 +1079,19 @@ new class extends Component {
                                 </tbody>
                             </table>
                         </div>
+
+                        {{-- PAGINATION — hanya tabel Rinci; rekap & CSV tetap memakai seluruh baris --}}
+                        @if ($this->rows->hasPages())
+                            <div class="px-4 py-3 border-t border-hairline dark:border-gray-700">
+                                {{ $this->rows->links() }}
+                            </div>
+                        @endif
                     </div>
 
                 @elseif ($tab === 'perujuk')
                     {{-- Poli perujuk sebagai induk, dokter yang merujuk dari poli itu sebagai anak --}}
                     @php
-                        $dataPerujuk = $this->rekapPoliDokter();
+                        $dataPerujuk = $this->rekapPoliDokter;
                         $totalPerujuk = collect($dataPerujuk)->sum('jumlah');
                     @endphp
                     <div class="bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
@@ -987,7 +1155,7 @@ new class extends Component {
                 @elseif ($tab === 'faskes')
                     {{-- Faskes tujuan sebagai induk, diagnosa yang dirujuk ke sana sebagai anak --}}
                     @php
-                        $dataFaskes = $this->rekapFaskesDiagnosa();
+                        $dataFaskes = $this->rekapFaskesDiagnosa;
                         $totalFaskes = collect($dataFaskes)->sum('jumlah');
                     @endphp
                     <div class="bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
@@ -1057,7 +1225,7 @@ new class extends Component {
                 @else
                     @php
                         $judulRekap = 'Diagnosa Rujukan';
-                        $dataRekap = $this->rekapDiagnosa();
+                        $dataRekap = $this->rekapDiagnosa;
                         $totalRekap = collect($dataRekap)->sum('jumlah');
                     @endphp
                     <div class="bg-canvas border border-hairline rounded-2xl dark:border-gray-700 dark:bg-gray-900">
