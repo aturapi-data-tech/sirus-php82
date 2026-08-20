@@ -1033,9 +1033,9 @@ new class extends Component {
                             <x-input-error :messages="$errors->get('form.evaluasiAwal.tingkatPendidikan')" class="mt-1" />
                         </div>
                         <div class="p-3 border border-hairline rounded-lg bg-canvas dark:bg-gray-800 dark:border-gray-700">
-                            <x-input-label value="Hambatan emosional / motivasi" />
+                            <x-input-label value="Ada Hambatan emosional / motivasi" />
                             <div class="flex gap-2 mt-1">
-                                <x-radio-button label="Ada" value="1" name="hambatanEmo"
+                                <x-radio-button label="Ya" value="1" name="hambatanEmo"
                                     wire:model.live="form.evaluasiAwal.hambatanEmosional.ada"
                                     :disabled="$formReadOnly" />
                                 <x-radio-button label="Tidak ada" value="0" name="hambatanEmo"
@@ -1065,9 +1065,9 @@ new class extends Component {
                                 :disabled="$formReadOnly" />
                         </div>
                         <div class="p-3 border border-hairline rounded-lg bg-canvas dark:bg-gray-800 dark:border-gray-700">
-                            <x-input-label value="Nilai, keyakinan, dan budaya yang dianut" />
+                            <x-input-label value="Ada Nilai, keyakinan, dan budaya yang dianut" />
                             <div class="flex gap-2 mt-1">
-                                <x-radio-button label="Ada" value="1" name="nilaiBudaya"
+                                <x-radio-button label="Ya" value="1" name="nilaiBudaya"
                                     wire:model.live="form.evaluasiAwal.nilaiKeyakinanBudaya.ada"
                                     :disabled="$formReadOnly" />
                                 <x-radio-button label="Tidak ada" value="0" name="nilaiBudaya"

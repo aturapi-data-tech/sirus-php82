@@ -51,13 +51,28 @@
         // DejaVu Sans (dibundel dompdf) punya glyph-nya.
         $centang = '<span style="font-family: DejaVu Sans, sans-serif;">&#10003;</span>';
 
-        // Helper boolean → label
+        // Helper boolean → label. Dipakai kolom "Hasil" di tabel Hasil/Evaluasi:
+        // selebar w-12 dan pertanyaannya memang murni Ya/Tidak.
         $boolLabel = function ($nilai) {
             if (in_array($nilai, [true, 1, '1'], true)) {
                 return 'Ya';
             }
             if (in_array($nilai, [false, 0, '0'], true)) {
                 return 'Tidak';
+            }
+            return '-';
+        };
+
+        // Helper terpisah untuk butir seksi 2 yang labelnya pernyataan "Ada ...".
+        // Sengaja TIDAK menumpang $boolLabel: sisi negatifnya "Tidak ada" (mengikuti
+        // pilihan di layar), dan kalau helper bersama itu diubah, kolom "Hasil" yang
+        // sempit ikut terisi "Tidak ada".
+        $adaLabel = function ($nilai) {
+            if (in_array($nilai, [true, 1, '1'], true)) {
+                return 'Ya';
+            }
+            if (in_array($nilai, [false, 0, '0'], true)) {
+                return 'Tidak ada';
             }
             return '-';
         };
@@ -164,11 +179,11 @@
                 <div>&bull; <strong>Bahasa yang digunakan:</strong> {{ $bahasa ?: '-' }}</div>
                 <div>&bull; <strong>Tingkat pendidikan:</strong> {{ $tingkatPendidikan ?: '-' }}</div>
                 @php $hambatanEmosional = $evaluasiAwal['hambatanEmosional'] ?? []; @endphp
-                <div>&bull; <strong>Hambatan emosional / motivasi:</strong> {{ $boolLabel($hambatanEmosional['ada'] ?? null) }}@if (!empty($hambatanEmosional['keterangan'])) &mdash; {{ $hambatanEmosional['keterangan'] }}@endif</div>
+                <div>&bull; <strong>Ada Hambatan emosional / motivasi:</strong> {{ $adaLabel($hambatanEmosional['ada'] ?? null) }}@if (!empty($hambatanEmosional['keterangan'])) &mdash; {{ $hambatanEmosional['keterangan'] }}@endif</div>
                 @php $keterbatasanFisikKognitif = $evaluasiAwal['keterbatasanFisikKognitif'] ?? []; @endphp
-                <div>&bull; <strong>Ada Keterbatasan fisik / kognitif:</strong> {{ $boolLabel($keterbatasanFisikKognitif['ada'] ?? null) }}@if (!empty($keterbatasanFisikKognitif['keterangan'])) &mdash; {{ $keterbatasanFisikKognitif['keterangan'] }}@endif</div>
+                <div>&bull; <strong>Ada Keterbatasan fisik / kognitif:</strong> {{ $adaLabel($keterbatasanFisikKognitif['ada'] ?? null) }}@if (!empty($keterbatasanFisikKognitif['keterangan'])) &mdash; {{ $keterbatasanFisikKognitif['keterangan'] }}@endif</div>
                 @php $nilaiBudaya = $evaluasiAwal['nilaiKeyakinanBudaya'] ?? []; @endphp
-                <div>&bull; <strong>Nilai / keyakinan / budaya:</strong> {{ $boolLabel($nilaiBudaya['ada'] ?? null) }}@if (!empty($nilaiBudaya['deskripsi'])) &mdash; {{ $nilaiBudaya['deskripsi'] }}@endif</div>
+                <div>&bull; <strong>Ada Nilai / keyakinan / budaya:</strong> {{ $adaLabel($nilaiBudaya['ada'] ?? null) }}@if (!empty($nilaiBudaya['deskripsi'])) &mdash; {{ $nilaiBudaya['deskripsi'] }}@endif</div>
                 <div>&bull; <strong>Preferensi menerima informasi:</strong>
                     @if (count($prefOpsi) > 0)
                         @php
