@@ -1056,7 +1056,7 @@ new class extends Component {
                                 <x-radio-button label="Ya" value="1" name="keterbatasanFk"
                                     wire:model.live="form.evaluasiAwal.keterbatasanFisikKognitif.ada"
                                     :disabled="$formReadOnly" />
-                                <x-radio-button label="Tidak" value="0" name="keterbatasanFk"
+                                <x-radio-button label="Tidak ada" value="0" name="keterbatasanFk"
                                     wire:model.live="form.evaluasiAwal.keterbatasanFisikKognitif.ada"
                                     :disabled="$formReadOnly" />
                             </div>
