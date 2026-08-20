@@ -1047,12 +1047,16 @@ new class extends Component {
                                 :disabled="$formReadOnly" />
                         </div>
                         <div class="p-3 border border-hairline rounded-lg bg-canvas dark:bg-gray-800 dark:border-gray-700">
-                            <x-input-label value="Keterbatasan fisik / kognitif" />
+                            {{-- Label memuat "Ada" supaya jawabannya nyambung: pertanyaannya
+                                 pernyataan, jawabannya Ya/Tidak. Bentuk ini juga menyamakan
+                                 layar dengan blade cetak, yang memang sudah mencetak Ya/Tidak
+                                 lewat $boolLabel. --}}
+                            <x-input-label value="Ada Keterbatasan fisik / kognitif" />
                             <div class="flex gap-2 mt-1">
-                                <x-radio-button label="Ada" value="1" name="keterbatasanFk"
+                                <x-radio-button label="Ya" value="1" name="keterbatasanFk"
                                     wire:model.live="form.evaluasiAwal.keterbatasanFisikKognitif.ada"
                                     :disabled="$formReadOnly" />
-                                <x-radio-button label="Tidak ada" value="0" name="keterbatasanFk"
+                                <x-radio-button label="Tidak" value="0" name="keterbatasanFk"
                                     wire:model.live="form.evaluasiAwal.keterbatasanFisikKognitif.ada"
                                     :disabled="$formReadOnly" />
                             </div>

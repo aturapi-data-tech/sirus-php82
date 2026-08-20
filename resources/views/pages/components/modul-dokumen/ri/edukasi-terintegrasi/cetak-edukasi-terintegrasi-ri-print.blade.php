@@ -166,7 +166,7 @@
                 @php $hambatanEmosional = $evaluasiAwal['hambatanEmosional'] ?? []; @endphp
                 <div>&bull; <strong>Hambatan emosional / motivasi:</strong> {{ $boolLabel($hambatanEmosional['ada'] ?? null) }}@if (!empty($hambatanEmosional['keterangan'])) &mdash; {{ $hambatanEmosional['keterangan'] }}@endif</div>
                 @php $keterbatasanFisikKognitif = $evaluasiAwal['keterbatasanFisikKognitif'] ?? []; @endphp
-                <div>&bull; <strong>Keterbatasan fisik / kognitif:</strong> {{ $boolLabel($keterbatasanFisikKognitif['ada'] ?? null) }}@if (!empty($keterbatasanFisikKognitif['keterangan'])) &mdash; {{ $keterbatasanFisikKognitif['keterangan'] }}@endif</div>
+                <div>&bull; <strong>Ada Keterbatasan fisik / kognitif:</strong> {{ $boolLabel($keterbatasanFisikKognitif['ada'] ?? null) }}@if (!empty($keterbatasanFisikKognitif['keterangan'])) &mdash; {{ $keterbatasanFisikKognitif['keterangan'] }}@endif</div>
                 @php $nilaiBudaya = $evaluasiAwal['nilaiKeyakinanBudaya'] ?? []; @endphp
                 <div>&bull; <strong>Nilai / keyakinan / budaya:</strong> {{ $boolLabel($nilaiBudaya['ada'] ?? null) }}@if (!empty($nilaiBudaya['deskripsi'])) &mdash; {{ $nilaiBudaya['deskripsi'] }}@endif</div>
                 <div>&bull; <strong>Preferensi menerima informasi:</strong>
