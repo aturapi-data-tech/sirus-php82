@@ -1784,10 +1784,22 @@ PROMPT;
     {{-- TOOLBAR --}}
     <div class="sticky z-30 px-4 py-3 mb-4 bg-canvas border-b border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700"
          wire:key="casemix-queue-toolbar-{{ $renderVersions['casemix-queue-toolbar'] ?? 0 }}">
-        <div class="flex flex-wrap items-end gap-3">
+        <div class="flex items-end gap-3 overflow-x-auto">
 
-            {{-- MODE SCAN: Bulanan / Harian --}}
-            <div class="w-full sm:w-auto">
+            {{-- LEFT: Scan button + Mode --}}
+            <div class="mt-auto">
+                <x-primary-button wire:click="scanTransaksi" wire:loading.attr="disabled" wire:target="scanTransaksi">
+                    <span wire:loading.remove wire:target="scanTransaksi" class="flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        Scan
+                    </span>
+                    <span wire:loading wire:target="scanTransaksi"><x-loading /> Scanning ...</span>
+                </x-primary-button>
+            </div>
+
+            <div>
                 <x-input-label value="Mode" />
                 <div class="inline-flex mt-1 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
                     <button type="button" wire:click="$set('scanMode', 'bulanan')"
@@ -1803,88 +1815,85 @@ PROMPT;
                 </div>
             </div>
 
-            {{-- SCAN DATE INPUT + TOMBOL --}}
-            <div class="w-full sm:w-auto">
+            {{-- Date input --}}
+            <div>
                 <x-input-label value="{{ $scanMode === 'bulanan' ? 'Bulan' : 'Tanggal' }}" />
-                <div class="flex items-center gap-1 mt-1">
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                            <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                        </div>
-                        @if ($scanMode === 'bulanan')
-                            <x-text-input type="text" wire:model="scanBulan"
-                                class="block w-full pl-10 sm:w-32" placeholder="mm/yyyy" maxlength="7" />
-                        @else
-                            <x-text-input type="text" wire:model="scanTanggal"
-                                class="block w-full pl-10 sm:w-36" placeholder="dd/mm/yyyy" maxlength="10" />
-                        @endif
-                    </div>
-                    <x-primary-button wire:click="scanTransaksi" wire:loading.attr="disabled" wire:target="scanTransaksi"
-                        class="!px-3 !py-2 !text-xs !min-w-0">
-                        <span wire:loading.remove wire:target="scanTransaksi" class="flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            Scan
-                        </span>
-                        <span wire:loading wire:target="scanTransaksi"><x-loading /> Scanning ...</span>
-                    </x-primary-button>
-                    <x-info-button wire:click="aiSuggestBatch" wire:loading.attr="disabled"
-                        wire:target="aiSuggestBatch"
-                        class="!px-3 !py-2 !text-xs !min-w-0"
-                        title="Jalankan AI suggest ICD — {{ !empty($selectedIds) ? count($selectedIds) . ' dipilih' : '5 record per batch' }}">
-                        <span wire:loading.remove wire:target="aiSuggestBatch" class="flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
-                            </svg>
-                            Run AI {{ !empty($selectedIds) ? '(' . count($selectedIds) . ')' : '(5)' }}
-                        </span>
-                        <span wire:loading wire:target="aiSuggestBatch" class="flex items-center gap-1">
-                            <x-loading /> {{ $aiProgress }}/{{ $aiTotal }}
-                        </span>
-                    </x-info-button>
-                    <x-confirm-button variant="danger" action="clearQueue()"
-                        title="Hapus Antrian" message="Semua antrian {{ $queueType }} akan dihapus. Lanjutkan?"
-                        confirmText="Ya, hapus" cancelText="Batal"
-                        class="!px-3 !py-2 !text-xs !min-w-0">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <div class="relative mt-1">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        Clear
-                    </x-confirm-button>
+                    </div>
+                    @if ($scanMode === 'bulanan')
+                        <x-text-input type="text" wire:model="scanBulan"
+                            class="block w-full pl-10 sm:w-32" placeholder="mm/yyyy" maxlength="7" />
+                    @else
+                        <x-text-input type="text" wire:model="scanTanggal"
+                            class="block w-full pl-10 sm:w-36" placeholder="dd/mm/yyyy" maxlength="10" />
+                    @endif
                 </div>
             </div>
 
-            {{-- Status --}}
-            <div class="w-full sm:w-auto">
-                <x-input-label value="Status" />
-                <x-select-input wire:model.live="filterStatus" class="w-full mt-1 sm:w-36">
-                    <option value="">Semua</option>
-                    <option value="pending">Pending</option>
-                    <option value="approved">Approved</option>
-                    <option value="executed">Executed</option>
-                    <option value="failed">Failed</option>
-                    <option value="rejected">Rejected</option>
-                </x-select-input>
+            {{-- CENTER: AI + Status + Selected --}}
+            {{-- Status filter buttons --}}
+            @php $s = $this->stats; @endphp
+            <div class="grid grid-cols-3 gap-1 mt-auto shrink-0">
+                <button type="button" wire:click="$set('filterStatus', 'pending')"
+                    class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-all
+                        {{ $filterStatus === 'pending' ? 'bg-amber-100 border-amber-400 text-amber-700 font-semibold dark:bg-amber-900/30 dark:border-amber-500 dark:text-amber-300' : 'bg-canvas border-gray-300 text-muted hover:bg-amber-50 dark:border-gray-600 dark:hover:bg-amber-900/20' }}">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>{{ $s['pending'] ?? 0 }} Pending
+                </button>
+                <button type="button" wire:click="$set('filterStatus', 'approved')"
+                    class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-all
+                        {{ $filterStatus === 'approved' ? 'bg-blue-100 border-blue-400 text-blue-700 font-semibold dark:bg-blue-900/30 dark:border-blue-500 dark:text-blue-300' : 'bg-canvas border-gray-300 text-muted hover:bg-blue-50 dark:border-gray-600 dark:hover:bg-blue-900/20' }}">
+                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>{{ $s['approved'] ?? 0 }} Approved
+                </button>
+                <button type="button" wire:click="$set('filterStatus', 'executed')"
+                    class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-all
+                        {{ $filterStatus === 'executed' ? 'bg-emerald-100 border-emerald-400 text-emerald-700 font-semibold dark:bg-emerald-900/30 dark:border-emerald-500 dark:text-emerald-300' : 'bg-canvas border-gray-300 text-muted hover:bg-emerald-50 dark:border-gray-600 dark:hover:bg-emerald-900/20' }}">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>{{ $s['executed'] ?? 0 }} Executed
+                </button>
+                <button type="button" wire:click="$set('filterStatus', 'failed')"
+                    class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-all
+                        {{ $filterStatus === 'failed' ? 'bg-red-100 border-red-400 text-red-700 font-semibold dark:bg-red-900/30 dark:border-red-500 dark:text-red-300' : 'bg-canvas border-gray-300 text-muted hover:bg-red-50 dark:border-gray-600 dark:hover:bg-red-900/20' }}">
+                    <span class="w-2 h-2 rounded-full bg-red-500"></span>{{ $s['failed'] ?? 0 }} Failed
+                </button>
+                <button type="button" wire:click="$set('filterStatus', 'rejected')"
+                    class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-all
+                        {{ $filterStatus === 'rejected' ? 'bg-gray-200 border-gray-400 text-gray-700 font-semibold dark:bg-gray-700 dark:border-gray-500 dark:text-gray-300' : 'bg-canvas border-gray-300 text-muted hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800' }}">
+                    <span class="w-2 h-2 rounded-full bg-gray-400"></span>{{ $s['rejected'] ?? 0 }} Rejected
+                </button>
+                <button type="button" wire:click="$set('filterStatus', '')"
+                    class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-all
+                        {{ $filterStatus === '' ? 'bg-gray-100 border-gray-400 text-ink font-semibold dark:bg-gray-700 dark:border-gray-500 dark:text-white' : 'bg-canvas border-gray-300 text-muted hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800' }}">
+                    {{ $s['total'] ?? 0 }} Semua
+                </button>
             </div>
 
-            {{-- Selected badge --}}
+            {{-- Run AI --}}
+            <div class="mt-auto">
+                <x-info-button wire:click="aiSuggestBatch" wire:loading.attr="disabled"
+                    wire:target="aiSuggestBatch"
+                    title="Jalankan AI suggest ICD — {{ !empty($selectedIds) ? count($selectedIds) . ' dipilih' : '5 record per batch' }}">
+                    <span wire:loading.remove wire:target="aiSuggestBatch" class="flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+                        </svg>
+                        Run AI {{ !empty($selectedIds) ? '(' . count($selectedIds) . ')' : '(5)' }}
+                    </span>
+                    <span wire:loading wire:target="aiSuggestBatch" class="flex items-center gap-1">
+                        <x-loading /> {{ $aiProgress }}/{{ $aiTotal }}
+                    </span>
+                </x-info-button>
+            </div>
+
             @if (!empty($selectedIds))
-                <span class="text-xs font-semibold text-primary dark:text-primary-light px-2 py-0.5 rounded-full bg-primary/10">{{ count($selectedIds) }} dipilih</span>
+                <span class="text-xs font-semibold text-primary dark:text-primary-light px-2 py-0.5 rounded-full bg-primary/10 mt-auto">{{ count($selectedIds) }} dipilih</span>
             @endif
 
-            {{-- RIGHT: stats + per page --}}
-            @php $s = $this->stats; @endphp
-            <div class="flex flex-wrap items-center gap-3 ml-auto">
-                <span class="text-xs text-amber-600 dark:text-amber-400" title="Pending Review"><strong>{{ $s['pending'] ?? 0 }}</strong> Pending</span>
-                <span class="text-xs text-blue-600 dark:text-blue-400" title="Approved"><strong>{{ $s['approved'] ?? 0 }}</strong> Appr</span>
-                <span class="text-xs text-emerald-600 dark:text-emerald-400" title="Executed"><strong>{{ $s['executed'] ?? 0 }}</strong> Exec</span>
-                <span class="text-xs text-red-600 dark:text-red-400" title="Failed"><strong>{{ $s['failed'] ?? 0 }}</strong> Fail</span>
-                <span class="text-xs text-gray-500" title="Rejected"><strong>{{ $s['rejected'] ?? 0 }}</strong> Rej</span>
-                <span class="text-xs text-ink dark:text-white font-semibold" title="Total"><strong>{{ $s['total'] ?? 0 }}</strong> Total</span>
+            {{-- RIGHT: per page + Clear --}}
+            <div class="flex items-center gap-3 ml-auto shrink-0">
                 <x-toolbar-refresh-reset :label="null" />
                 <div class="w-24">
                     <x-select-input wire:model.live="itemsPerPage">
@@ -1893,6 +1902,14 @@ PROMPT;
                         <option value="100">100</option>
                     </x-select-input>
                 </div>
+                <x-confirm-button variant="danger" action="clearQueue()"
+                    title="Hapus Antrian" message="Semua antrian {{ $queueType }} akan dihapus. Lanjutkan?"
+                    confirmText="Ya, hapus" cancelText="Batal">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Clear
+                </x-confirm-button>
             </div>
 
         </div>

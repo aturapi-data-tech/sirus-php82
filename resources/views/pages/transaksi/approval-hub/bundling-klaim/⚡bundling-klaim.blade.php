@@ -15,15 +15,11 @@ use Carbon\Carbon;
 new class extends Component {
     use WithPagination;
 
-    #[Session(key: 'bundling-filterMode')]
+    public string $bundlingType = 'RJ';
+
     public string $filterMode = 'bulanan';
-    #[Session(key: 'bundling-filterBulan')]
     public string $filterBulan = '';
-    #[Session(key: 'bundling-filterTanggal')]
     public string $filterTanggal = '';
-    #[Session(key: 'bundling-filterRefType')]
-    public string $filterRefType = '';
-    #[Session(key: 'bundling-itemsPerPage')]
     public int $itemsPerPage = 50;
 
     public string $searchKeyword = '';
@@ -34,21 +30,37 @@ new class extends Component {
     public array $bundlingResult = [];
     public bool $bundlingProcessing = false;
 
-    public function mount(): void
+    public function mount(string $bundlingType = 'RJ'): void
     {
-        if (empty($this->filterBulan)) {
-            $this->filterBulan = now()->format('m/Y');
-        }
-        if (empty($this->filterTanggal)) {
-            $this->filterTanggal = now()->format('d/m/Y');
-        }
+        $this->bundlingType = strtoupper($bundlingType);
+
+        $prefix = 'bundling-' . strtolower($this->bundlingType) . '-';
+        $this->filterMode = session($prefix . 'filterMode', 'bulanan');
+        $this->filterBulan = session($prefix . 'filterBulan', now()->format('m/Y'));
+        $this->filterTanggal = session($prefix . 'filterTanggal', now()->format('d/m/Y'));
+        $this->itemsPerPage = (int) session($prefix . 'itemsPerPage', 50);
     }
 
-    public function updatedFilterMode(): void { $this->resetPage(); }
-    public function updatedFilterBulan(): void { $this->resetPage(); $this->selected = []; $this->selectAll = false; }
-    public function updatedFilterTanggal(): void { $this->resetPage(); $this->selected = []; $this->selectAll = false; }
-    public function updatedFilterRefType(): void { $this->resetPage(); $this->selected = []; $this->selectAll = false; }
-    public function updatedItemsPerPage(): void { $this->resetPage(); }
+    public function updatedFilterMode(): void
+    {
+        session()->put('bundling-' . strtolower($this->bundlingType) . '-filterMode', $this->filterMode);
+        $this->resetPage();
+    }
+    public function updatedFilterBulan(): void
+    {
+        session()->put('bundling-' . strtolower($this->bundlingType) . '-filterBulan', $this->filterBulan);
+        $this->resetPage(); $this->selected = []; $this->selectAll = false;
+    }
+    public function updatedFilterTanggal(): void
+    {
+        session()->put('bundling-' . strtolower($this->bundlingType) . '-filterTanggal', $this->filterTanggal);
+        $this->resetPage(); $this->selected = []; $this->selectAll = false;
+    }
+    public function updatedItemsPerPage(): void
+    {
+        session()->put('bundling-' . strtolower($this->bundlingType) . '-itemsPerPage', $this->itemsPerPage);
+        $this->resetPage();
+    }
     public function updatedSearchKeyword(): void { $this->resetPage(); }
 
     public function updatedSelectAll(): void
@@ -102,60 +114,65 @@ new class extends Component {
     #[Computed]
     public function rows()
     {
-        $rjQuery = DB::table('rstxn_rjhdrs as h')
-            ->join('rstxn_rjuploadbpjses as u', 'h.rj_no', '=', 'u.rj_no')
-            ->join('rsmst_pasiens as p', 'h.reg_no', '=', 'p.reg_no')
-            ->whereNotNull('u.uploadbpjs')
-            ->select([
-                DB::raw("'RJ' as ref_type"),
-                'h.rj_no as ref_no',
-                'h.reg_no',
-                'p.reg_name',
-                'h.rj_date',
-                'h.vno_sep as no_sep',
-                DB::raw("COUNT(u.seq_file) as jml_berkas"),
-            ])
-            ->groupBy('h.rj_no', 'h.reg_no', 'p.reg_name', 'h.rj_date', 'h.vno_sep');
+        [$start, $end] = $this->dateRange();
+        $startStr = $start->format('Y-m-d');
+        $endStr = $end->format('Y-m-d') . ' 23:59:59';
 
-        $riQuery = DB::table('rstxn_rihdrs as h')
-            ->join('rstxn_riuploadbpjses as u', 'h.rihdr_no', '=', 'u.rihdr_no')
-            ->join('rsmst_pasiens as p', 'h.reg_no', '=', 'p.reg_no')
-            ->whereNotNull('u.uploadbpjs')
-            ->select([
-                DB::raw("'RI' as ref_type"),
-                'h.rihdr_no as ref_no',
-                'h.reg_no',
-                'p.reg_name',
-                DB::raw("h.entry_date as rj_date"),
-                'h.vno_sep as no_sep',
-                DB::raw("COUNT(u.seq_file) as jml_berkas"),
-            ])
-            ->groupBy('h.rihdr_no', 'h.reg_no', 'p.reg_name', 'h.entry_date', 'h.vno_sep');
-
-        $this->applyDateFilter($rjQuery, 'h.rj_date');
-        $this->applyDateFilter($riQuery, 'h.entry_date');
+        if ($this->bundlingType === 'RI') {
+            $query = DB::table('rstxn_rihdrs as h')
+                ->join('rsmst_pasiens as p', 'h.reg_no', '=', 'p.reg_no')
+                ->whereExists(function ($q) {
+                    $q->select(DB::raw(1))
+                        ->from('rstxn_riuploadbpjses as u')
+                        ->whereColumn('u.rihdr_no', 'h.rihdr_no')
+                        ->whereNotNull('u.uploadbpjs');
+                })
+                ->whereBetween('h.entry_date', [
+                    DB::raw("to_date('$startStr','YYYY-MM-DD')"),
+                    DB::raw("to_date('$endStr','YYYY-MM-DD HH24:MI:SS')"),
+                ])
+                ->select([
+                    DB::raw("'RI' as ref_type"),
+                    'h.rihdr_no as ref_no',
+                    'h.reg_no',
+                    'p.reg_name',
+                    DB::raw("h.entry_date as rj_date"),
+                    'h.vno_sep as no_sep',
+                    DB::raw("(SELECT COUNT(*) FROM rstxn_riuploadbpjses u2 WHERE u2.rihdr_no = h.rihdr_no AND u2.uploadbpjs IS NOT NULL) as jml_berkas"),
+                ]);
+        } else {
+            $query = DB::table('rstxn_rjhdrs as h')
+                ->join('rsmst_pasiens as p', 'h.reg_no', '=', 'p.reg_no')
+                ->whereExists(function ($q) {
+                    $q->select(DB::raw(1))
+                        ->from('rstxn_rjuploadbpjses as u')
+                        ->whereColumn('u.rj_no', 'h.rj_no')
+                        ->whereNotNull('u.uploadbpjs');
+                })
+                ->whereBetween('h.rj_date', [
+                    DB::raw("to_date('$startStr','YYYY-MM-DD')"),
+                    DB::raw("to_date('$endStr','YYYY-MM-DD HH24:MI:SS')"),
+                ])
+                ->select([
+                    DB::raw("'{$this->bundlingType}' as ref_type"),
+                    'h.rj_no as ref_no',
+                    'h.reg_no',
+                    'p.reg_name',
+                    'h.rj_date',
+                    'h.vno_sep as no_sep',
+                    DB::raw("(SELECT COUNT(*) FROM rstxn_rjuploadbpjses u2 WHERE u2.rj_no = h.rj_no AND u2.uploadbpjs IS NOT NULL) as jml_berkas"),
+                ]);
+        }
 
         if ($this->searchKeyword !== '') {
             $kw = '%' . strtoupper(trim($this->searchKeyword)) . '%';
-            $rjQuery->where(function ($q) use ($kw) {
-                $q->where(DB::raw('UPPER(p.reg_name)'), 'LIKE', $kw)
-                  ->orWhere(DB::raw('UPPER(h.reg_no)'), 'LIKE', $kw);
-            });
-            $riQuery->where(function ($q) use ($kw) {
+            $query->where(function ($q) use ($kw) {
                 $q->where(DB::raw('UPPER(p.reg_name)'), 'LIKE', $kw)
                   ->orWhere(DB::raw('UPPER(h.reg_no)'), 'LIKE', $kw);
             });
         }
 
-        if ($this->filterRefType === 'RI') {
-            $combined = $riQuery->orderByDesc('rj_date');
-        } elseif ($this->filterRefType !== '') {
-            $combined = $rjQuery->orderByDesc('rj_date');
-        } else {
-            $combined = $rjQuery->unionAll($riQuery)->orderByDesc('rj_date');
-        }
-
-        $results = $combined->paginate($this->itemsPerPage);
+        $results = $query->orderByDesc('rj_date')->paginate($this->itemsPerPage);
 
         $results->getCollection()->transform(function ($row) {
             $row->key = $row->ref_type . '_' . $row->ref_no;
@@ -163,13 +180,6 @@ new class extends Component {
         });
 
         return $results;
-    }
-
-    private function applyDateFilter($query, string $dateCol): void
-    {
-        [$start, $end] = $this->dateRange();
-        $query->whereRaw("trunc($dateCol) >= to_date(?, 'YYYY-MM-DD')", [$start->format('Y-m-d')]);
-        $query->whereRaw("trunc($dateCol) <= to_date(?, 'YYYY-MM-DD')", [$end->format('Y-m-d')]);
     }
 
     #[Computed]
@@ -342,8 +352,8 @@ new class extends Component {
 
 <div>
     <x-page-title
-        title="Bundling Klaim BPJS"
-        subtitle="Gabungkan berkas per klaim jadi 1 PDF — struktur folder klaim/MM_YYYY/rj|ugd|ri/noSep.pdf" />
+        title="Bundling Klaim {{ $bundlingType }}"
+        subtitle="Gabungkan berkas per klaim jadi 1 PDF — struktur folder klaim/MM_YYYY/{{ strtolower($bundlingType) }}/noSep.pdf" />
 
     {{-- TOOLBAR --}}
     <div class="sticky z-30 px-4 py-3 mb-4 bg-canvas border-b border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
@@ -411,16 +421,6 @@ new class extends Component {
                     </div>
                 </div>
             @endif
-
-            {{-- JENIS RAWAT --}}
-            <div class="w-full sm:w-auto">
-                <x-input-label value="Jenis" />
-                <x-select-input wire:model.live="filterRefType" class="w-full mt-1 sm:w-32">
-                    <option value="">Semua</option>
-                    <option value="RJ">RJ</option>
-                    <option value="RI">RI</option>
-                </x-select-input>
-            </div>
 
             {{-- RIGHT: stats + actions --}}
             <div class="flex flex-wrap items-center gap-3 ml-auto">
@@ -577,7 +577,6 @@ new class extends Component {
                         </th>
                         <th class="px-3 py-3">Pasien</th>
                         <th class="px-3 py-3">No. SEP</th>
-                        <th class="px-3 py-3 text-center">Tipe</th>
                         <th class="px-3 py-3 text-center">Tanggal</th>
                         <th class="px-3 py-3 text-center">Berkas</th>
                         <th class="px-3 py-3 text-center">Status</th>
@@ -600,11 +599,6 @@ new class extends Component {
                             </td>
                             <td class="px-3 py-2.5 font-mono text-xs text-ink dark:text-white">
                                 {{ $row->no_sep ?: '-' }}
-                            </td>
-                            <td class="px-3 py-2.5 text-center">
-                                <span class="px-2 py-0.5 text-xs font-medium rounded-full {{ $row->ref_type === 'RI' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' }}">
-                                    {{ $row->ref_type }}
-                                </span>
                             </td>
                             <td class="px-3 py-2.5 text-center text-xs text-muted">
                                 {{ $row->rj_date ? Carbon::parse($row->rj_date)->format('d/m/Y') : '-' }}
@@ -630,7 +624,7 @@ new class extends Component {
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-12 text-center text-muted">
+                            <td colspan="6" class="px-4 py-12 text-center text-muted">
                                 Tidak ada data berkas untuk filter ini.
                             </td>
                         </tr>

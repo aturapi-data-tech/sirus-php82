@@ -9,7 +9,7 @@ new class extends Component {
     #[Session(key: 'approval-hub-activeTab')]
     public string $activeTab = 'casemix-rj';
 
-    private const TABS = ['casemix-rj', 'casemix-ugd', 'casemix-ri', 'satusehat', 'bundling'];
+    private const TABS = ['casemix-rj', 'casemix-ugd', 'casemix-ri', 'bundling-rj', 'bundling-ri', 'satusehat'];
 
     public function mount(): void
     {
@@ -37,7 +37,8 @@ new class extends Component {
             <x-tab :active="$activeTab === 'casemix-rj'" color="emerald" wire:click="setTab('casemix-rj')">Casemix RJ</x-tab>
             <x-tab :active="$activeTab === 'casemix-ugd'" color="amber" wire:click="setTab('casemix-ugd')">Casemix UGD</x-tab>
             <x-tab :active="$activeTab === 'casemix-ri'" color="violet" wire:click="setTab('casemix-ri')">Casemix RI</x-tab>
-            <x-tab :active="$activeTab === 'bundling'" color="indigo" wire:click="setTab('bundling')">Bundling Klaim</x-tab>
+            <x-tab :active="$activeTab === 'bundling-rj'" color="indigo" wire:click="setTab('bundling-rj')">Bundling RJ</x-tab>
+            <x-tab :active="$activeTab === 'bundling-ri'" color="pink" wire:click="setTab('bundling-ri')">Bundling RI</x-tab>
             <x-tab :active="$activeTab === 'satusehat'" color="teal" wire:click="setTab('satusehat')">SATUSEHAT RJ</x-tab>
         </x-tabs>
 
@@ -58,9 +59,14 @@ new class extends Component {
             @elseif ($activeTab === 'satusehat')
                 <livewire:pages::transaksi.approval-hub.satusehat-queue.satusehat-queue
                     wire:key="satusehat-queue-wrapper" />
-            @elseif ($activeTab === 'bundling')
+            @elseif ($activeTab === 'bundling-rj')
                 <livewire:pages::transaksi.approval-hub.bundling-klaim.bundling-klaim
-                    wire:key="bundling-klaim-wrapper" />
+                    bundling-type="RJ"
+                    wire:key="bundling-klaim-rj" />
+            @elseif ($activeTab === 'bundling-ri')
+                <livewire:pages::transaksi.approval-hub.bundling-klaim.bundling-klaim
+                    bundling-type="RI"
+                    wire:key="bundling-klaim-ri" />
             @endif
         </div>
 

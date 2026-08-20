@@ -75,6 +75,7 @@ new class extends Component {
         if ($langkah === null) {
             $this->langkahAktif = '';
             $this->dispatch('toast', type: 'success', message: 'Kirim Semua selesai. Periksa status tiap langkah di bawah.');
+            $this->dispatch('rj-satu-sehat.kirim-semua-selesai', rjNo: $this->rjNo);
             return;
         }
 
@@ -114,7 +115,7 @@ new class extends Component {
     }
 
     #[On('daftar-rj.satu-sehat.open')]
-    public function handleOpenSatuSehat(string $rjNo): void
+    public function handleOpenSatuSehat(string $rjNo, bool $autoKirim = false): void
     {
         // Antrean SELALU direset saat modal dibuka. Rantai yang tersangkut pada
         // pasien sebelumnya tidak boleh ikut terbawa: langkah berikutnya akan
@@ -125,10 +126,17 @@ new class extends Component {
         $this->rjNo = $rjNo;
 
         if (!$this->loadData()) {
+            if ($autoKirim) {
+                $this->dispatch('rj-satu-sehat.kirim-semua-selesai', rjNo: $rjNo);
+            }
             return;
         }
 
         $this->dispatch('open-modal', name: 'rj-satu-sehat');
+
+        if ($autoKirim) {
+            $this->kirimSemua();
+        }
     }
 
     #[On('rj-satu-sehat.refresh')]

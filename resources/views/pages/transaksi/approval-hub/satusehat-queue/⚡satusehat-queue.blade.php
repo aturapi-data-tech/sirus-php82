@@ -48,6 +48,11 @@ new class extends Component {
     // Selection
     public array $selectedIds = [];
 
+    // Batch kirim all
+    public array $batchKirimQueue = [];
+    public int $batchKirimProgress = 0;
+    public int $batchKirimTotal = 0;
+
     // Review modal
     public ?int $reviewId = null;
     public array $reviewData = [];
@@ -61,6 +66,15 @@ new class extends Component {
         }
         if (empty($this->scanTanggal)) {
             $this->scanTanggal = now()->format('d/m/Y');
+        }
+        $this->ensureSsSentCountColumn();
+    }
+
+    private function ensureSsSentCountColumn(): void
+    {
+        $exists = DB::selectOne("SELECT 1 FROM user_tab_columns WHERE table_name = 'RSTXN_APPROVAL_QUEUE' AND column_name = 'SS_SENT_COUNT'");
+        if (!$exists) {
+            DB::statement("ALTER TABLE rstxn_approval_queue ADD ss_sent_count NUMBER DEFAULT 0");
         }
     }
 
@@ -95,7 +109,7 @@ new class extends Component {
                 'approval_id', 'ref_no', 'ref_type', 'reg_no', 'reg_name',
                 'vno_sep', 'ai_payload', 'ai_confidence', 'ai_notes', 'ai_model',
                 'status', 'human_payload', 'reviewer', 'review_notes',
-                'exec_status', 'exec_error',
+                'exec_status', 'exec_error', 'ss_sent_count',
                 DB::raw("to_char(created_at, 'DD/MM/YYYY HH24:MI:SS') as created_display"),
                 DB::raw("to_char(reviewed_at, 'DD/MM/YYYY HH24:MI') as reviewed_display"),
                 DB::raw("to_char(ref_date, 'DD/MM/YYYY HH24:MI') as ref_date_display"),
@@ -110,9 +124,32 @@ new class extends Component {
             WHEN 'pending' THEN 1 WHEN 'approved' THEN 2 WHEN 'edited' THEN 2
             WHEN 'executed' THEN 3 WHEN 'failed' THEN 4 WHEN 'rejected' THEN 5
             ELSE 6 END")
-            ->orderByRaw('ref_date DESC NULLS LAST');
+            ->orderByRaw('NVL(ss_sent_count, 0) ASC')
+            ->orderByRaw('ref_date ASC NULLS LAST');
 
         return $query->paginate($this->itemsPerPage);
+    }
+
+    #[Computed]
+    public function satusehatStates(): array
+    {
+        $rjNos = $this->rows->pluck('ref_no')->filter()->unique()->toArray();
+        if (empty($rjNos)) return [];
+
+        $rows = DB::table('rstxn_rjhdrs')
+            ->whereIn('rj_no', $rjNos)
+            ->select('rj_no', 'datadaftarpolirj_json')
+            ->get();
+
+        $states = [];
+        foreach ($rows as $r) {
+            $jsonRaw = is_object($r->datadaftarpolirj_json) && method_exists($r->datadaftarpolirj_json, 'read')
+                ? $r->datadaftarpolirj_json->read($r->datadaftarpolirj_json->size())
+                : (string) ($r->datadaftarpolirj_json ?? '');
+            $emr = json_decode($jsonRaw ?: '{}', true) ?? [];
+            $states[$r->rj_no] = $emr['satusehat'] ?? [];
+        }
+        return $states;
     }
 
     #[Computed]
@@ -283,6 +320,54 @@ new class extends Component {
         $this->dispatch('toast', type: 'success', message: 'Item disetujui — diagnosa & alergi disinkron ke EMR.');
         $this->dispatch('close-modal', name: 'ss-review');
         $this->reviewId = null;
+        $this->incrementVersion('ss-queue-toolbar');
+    }
+
+    public function quickApprove(int $approvalId): void
+    {
+        $this->reviewId = $approvalId;
+        $this->reviewNotes = '';
+        $this->approve();
+    }
+
+    public function approveAll(): void
+    {
+        $query = DB::table('rstxn_approval_queue')
+            ->where('module', 'satusehat')
+            ->where('status', 'pending')
+            ->select('approval_id', 'ai_payload')
+            ->orderBy('approval_id');
+
+        if (!empty($this->selectedIds)) {
+            $query->whereIn('approval_id', $this->selectedIds);
+        }
+
+        $items = $query->get();
+        $approved = 0;
+        $skipped = 0;
+
+        foreach ($items as $item) {
+            $payload = json_decode($item->ai_payload ?? '{}', true) ?: [];
+
+            $ready = !empty($payload['patient_uuid'] ?? '')
+                && !empty($payload['dr_uuid'] ?? '')
+                && !empty($payload['poli_uuid'] ?? '')
+                && !empty($payload['diagnosa'] ?? []);
+
+            if (!$ready) {
+                $skipped++;
+                continue;
+            }
+
+            $this->reviewId = $item->approval_id;
+            $this->reviewNotes = '';
+            $this->approve();
+            $approved++;
+        }
+
+        $msg = $approved . ' item di-approve.';
+        if ($skipped > 0) $msg .= ' ' . $skipped . ' di-skip (setup belum lengkap).';
+        $this->dispatch('toast', type: $approved > 0 ? 'success' : 'info', message: $msg);
         $this->incrementVersion('ss-queue-toolbar');
     }
 
@@ -489,6 +574,7 @@ new class extends Component {
                     'ai_confidence' => 0,
                     'ai_notes' => '',
                     'status' => $alreadySent ? 'executed' : ($needsManual ? 'pending' : 'pending'),
+                    'ss_sent_count' => collect($satusehatItems)->where('sent', true)->count(),
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -512,6 +598,131 @@ new class extends Component {
         $this->dispatch('toast', type: 'info', message: $deleted . ' item dihapus dari antrian.');
         $this->incrementVersion('ss-queue-toolbar');
         $this->resetPage();
+    }
+
+    // ── Kirim All (batch 5 via modal) ──
+
+    public function kirimAllBatch(): void
+    {
+        if (!empty($this->batchKirimQueue)) {
+            $this->dispatch('toast', type: 'info', message: 'Batch kirim sedang berjalan.');
+            return;
+        }
+
+        $query = DB::table('rstxn_approval_queue')
+            ->where('module', 'satusehat')
+            ->where('status', 'approved')
+            ->select('approval_id', 'ref_no', 'ref_date');
+
+        if (!empty($this->selectedIds)) {
+            $query->whereIn('approval_id', $this->selectedIds);
+        }
+
+        $items = $query->get();
+        if ($items->isEmpty()) {
+            $this->dispatch('toast', type: 'info', message: 'Tidak ada item approved untuk dikirim.');
+            return;
+        }
+
+        $rjNos = $items->pluck('ref_no')->filter()->unique()->toArray();
+        $emrRows = DB::table('rstxn_rjhdrs')
+            ->whereIn('rj_no', $rjNos)
+            ->select('rj_no', 'datadaftarpolirj_json')
+            ->get();
+
+        $sentCounts = [];
+        $ssFilled = fn($v) => is_array($v) ? count($v) > 0 : !empty($v);
+        foreach ($emrRows as $r) {
+            $jsonRaw = is_object($r->datadaftarpolirj_json) && method_exists($r->datadaftarpolirj_json, 'read')
+                ? $r->datadaftarpolirj_json->read($r->datadaftarpolirj_json->size())
+                : (string) ($r->datadaftarpolirj_json ?? '');
+            $emr = json_decode($jsonRaw ?: '{}', true) ?? [];
+            $ss = $emr['satusehat'] ?? [];
+            $sentCounts[$r->rj_no] = collect([
+                $ssFilled($ss['encounterId'] ?? null),
+                $ssFilled($ss['conditionIds'] ?? null),
+                $ssFilled($ss['observationIds'] ?? null),
+                $ssFilled($ss['procedureIds'] ?? null),
+                $ssFilled($ss['medicationRequestIds'] ?? null),
+                $ssFilled($ss['chiefComplaintId'] ?? null),
+                $ssFilled($ss['allergyId'] ?? null),
+                $ssFilled($ss['medicationDispenseIds'] ?? null),
+                $ssFilled($ss['labServiceRequestIds'] ?? null) || $ssFilled($ss['labDiagnosticReportIds'] ?? null),
+                $ssFilled($ss['radServiceRequestIds'] ?? null) || $ssFilled($ss['radDiagnosticReportIds'] ?? null),
+                $ssFilled($ss['clinicalImpressionId'] ?? null),
+                $ssFilled($ss['penilaianObservationIds'] ?? null),
+                !empty($ss['encounterFinished']),
+                $ssFilled($ss['compositionId'] ?? null),
+            ])->filter()->count();
+        }
+
+        $sorted = $items->sortBy([
+            fn($a, $b) => ($sentCounts[$a->ref_no] ?? 0) <=> ($sentCounts[$b->ref_no] ?? 0),
+            fn($a, $b) => ($a->ref_date ?? '') <=> ($b->ref_date ?? ''),
+        ])->values();
+        $batch = $sorted->take(25);
+
+        $this->batchKirimQueue = $batch->pluck('ref_no')->map(fn($v) => (string) $v)->toArray();
+        $this->batchKirimTotal = $batch->count();
+        $this->batchKirimProgress = 0;
+
+        $this->kirimNextInBatch();
+    }
+
+    private function kirimNextInBatch(): void
+    {
+        if (empty($this->batchKirimQueue)) {
+            $remaining = DB::table('rstxn_approval_queue')
+                ->where('module', 'satusehat')
+                ->where('status', 'approved')
+                ->count();
+
+            $msg = 'Batch kirim selesai: ' . $this->batchKirimProgress . '/' . $this->batchKirimTotal . ' record.';
+            if ($remaining > 0) {
+                $msg .= ' Sisa ' . $remaining . ' approved — klik Kirim All lagi.';
+            }
+            $this->dispatch('toast', type: 'success', message: $msg);
+            $this->batchKirimTotal = 0;
+            $this->batchKirimProgress = 0;
+            $this->incrementVersion('ss-queue-toolbar');
+            return;
+        }
+
+        $rjNo = array_shift($this->batchKirimQueue);
+        $this->batchKirimProgress++;
+        $this->dispatch('daftar-rj.satu-sehat.open', rjNo: $rjNo, autoKirim: true);
+    }
+
+    #[On('rj-satu-sehat.kirim-semua-selesai')]
+    public function onKirimSemuaSelesai(string $rjNo): void
+    {
+        DB::table('rstxn_approval_queue')
+            ->where('module', 'satusehat')
+            ->where('ref_no', $rjNo)
+            ->where('status', 'approved')
+            ->update([
+                'status' => 'executed',
+                'exec_status' => 'success',
+                'ss_sent_count' => 14,
+                'executed_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+        if (empty($this->batchKirimQueue) && $this->batchKirimTotal === 0) {
+            return;
+        }
+
+        $this->dispatch('close-modal', name: 'rj-satu-sehat');
+        $this->kirimNextInBatch();
+    }
+
+    public function batalKirimAll(): void
+    {
+        $this->batchKirimQueue = [];
+        $this->batchKirimProgress = 0;
+        $this->batchKirimTotal = 0;
+        $this->dispatch('toast', type: 'info', message: 'Batch kirim dihentikan.');
+        $this->incrementVersion('ss-queue-toolbar');
     }
 
     // ── AI Suggest ICD (batch 5) ──
@@ -1011,10 +1222,23 @@ PROMPT;
     {{-- TOOLBAR --}}
     <div class="sticky z-30 px-4 py-3 mb-4 bg-canvas border-b border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700"
          wire:key="ss-queue-toolbar-{{ $renderVersions['ss-queue-toolbar'] ?? 0 }}">
-        <div class="flex flex-wrap items-end gap-3">
+        <div class="flex items-end gap-3 overflow-x-auto">
 
-            {{-- MODE SCAN: Bulanan / Harian --}}
-            <div class="w-full sm:w-auto">
+            {{-- Scan --}}
+            <div class="mt-auto">
+                <x-primary-button wire:click="scanTransaksi" wire:loading.attr="disabled" wire:target="scanTransaksi">
+                    <span wire:loading.remove wire:target="scanTransaksi" class="flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        Scan
+                    </span>
+                    <span wire:loading wire:target="scanTransaksi"><x-loading /> Scanning ...</span>
+                </x-primary-button>
+            </div>
+
+            {{-- Mode --}}
+            <div>
                 <x-input-label value="Mode" />
                 <div class="inline-flex mt-1 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
                     <button type="button" wire:click="$set('scanMode', 'bulanan')"
@@ -1030,108 +1254,143 @@ PROMPT;
                 </div>
             </div>
 
-            {{-- SCAN DATE INPUT + TOMBOL --}}
-            <div class="w-full sm:w-auto">
+            {{-- Date input --}}
+            <div>
                 <x-input-label value="{{ $scanMode === 'bulanan' ? 'Bulan' : 'Tanggal' }}" />
-                <div class="flex items-center gap-1 mt-1">
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                            <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                        </div>
-                        @if ($scanMode === 'bulanan')
-                            <x-text-input type="text" wire:model="scanBulan"
-                                class="block w-full pl-10 sm:w-32" placeholder="mm/yyyy" maxlength="7" />
-                        @else
-                            <x-text-input type="text" wire:model="scanTanggal"
-                                class="block w-full pl-10 sm:w-36" placeholder="dd/mm/yyyy" maxlength="10" />
-                        @endif
-                    </div>
-                    <x-primary-button wire:click="scanTransaksi" wire:loading.attr="disabled" wire:target="scanTransaksi"
-                        class="!px-3 !py-2 !text-xs !min-w-0">
-                        <span wire:loading.remove wire:target="scanTransaksi" class="flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            Scan
-                        </span>
-                        <span wire:loading wire:target="scanTransaksi"><x-loading /> ...</span>
-                    </x-primary-button>
-                    <x-info-button wire:click="aiSuggestBatch" wire:loading.attr="disabled"
-                        wire:target="aiSuggestBatch"
-                        class="!px-3 !py-2 !text-xs !min-w-0"
-                        title="AI suggest ICD untuk item tanpa diagnosa — 5 per batch">
-                        <span wire:loading.remove wire:target="aiSuggestBatch" class="flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
-                            </svg>
-                            Run AI {{ !empty($selectedIds) ? '(' . count($selectedIds) . ')' : '(5)' }}
-                        </span>
-                        <span wire:loading wire:target="aiSuggestBatch" class="flex items-center gap-1">
-                            <x-loading /> {{ $aiProgress }}/{{ $aiTotal }}
-                        </span>
-                    </x-info-button>
-                    <x-success-button wire:click="kirimBatch" wire:loading.attr="disabled"
-                        wire:target="kirimBatch"
-                        class="!px-3 !py-2 !text-xs !min-w-0"
-                        title="Kirim approved items ke SATUSEHAT — 5 per batch">
-                        <span wire:loading.remove wire:target="kirimBatch" class="flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                            </svg>
-                            Kirim {{ !empty($selectedIds) ? '(' . count($selectedIds) . ')' : '(5)' }}
-                        </span>
-                        <span wire:loading wire:target="kirimBatch" class="flex items-center gap-1">
-                            <x-loading /> {{ $sendProgress }}/{{ $sendTotal }}
-                        </span>
-                    </x-success-button>
-                    <x-confirm-button variant="danger" action="clearQueue()"
-                        title="Hapus Antrian" message="Semua data antrian SATUSEHAT akan dihapus. Lanjutkan?"
-                        confirmText="Ya, hapus semua" cancelText="Batal"
-                        class="!px-3 !py-2 !text-xs !min-w-0">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <div class="relative mt-1">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        Clear
-                    </x-confirm-button>
+                    </div>
+                    @if ($scanMode === 'bulanan')
+                        <x-text-input type="text" wire:model="scanBulan"
+                            class="block w-full pl-10 sm:w-28" placeholder="mm/yyyy" maxlength="7" />
+                    @else
+                        <x-text-input type="text" wire:model="scanTanggal"
+                            class="block w-full pl-10 sm:w-36" placeholder="dd/mm/yyyy" maxlength="10" />
+                    @endif
                 </div>
             </div>
 
-            {{-- Status --}}
-            <div class="w-full sm:w-auto">
-                <x-input-label value="Status" />
-                <x-select-input wire:model.live="filterStatus" class="w-full mt-1 sm:w-36">
-                    <option value="">Semua</option>
-                    <option value="pending">Pending</option>
-                    <option value="approved">Approved</option>
-                    <option value="executed">Terkirim</option>
-                    <option value="failed">Gagal</option>
-                    <option value="rejected">Ditolak</option>
-                </x-select-input>
+            {{-- Status filter buttons (grid 3x2) --}}
+            @php $sc = $this->statusCounts; @endphp
+            <div class="grid grid-cols-3 gap-1 mt-auto shrink-0">
+                <button type="button" wire:click="$set('filterStatus', 'pending')"
+                    class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-all
+                        {{ $filterStatus === 'pending' ? 'bg-amber-100 border-amber-400 text-amber-700 font-semibold dark:bg-amber-900/30 dark:border-amber-500 dark:text-amber-300' : 'bg-canvas border-gray-300 text-muted hover:bg-amber-50 dark:border-gray-600 dark:hover:bg-amber-900/20' }}">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>{{ $sc->pending ?? 0 }} Pending
+                </button>
+                <button type="button" wire:click="$set('filterStatus', 'approved')"
+                    class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-all
+                        {{ $filterStatus === 'approved' ? 'bg-blue-100 border-blue-400 text-blue-700 font-semibold dark:bg-blue-900/30 dark:border-blue-500 dark:text-blue-300' : 'bg-canvas border-gray-300 text-muted hover:bg-blue-50 dark:border-gray-600 dark:hover:bg-blue-900/20' }}">
+                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>{{ $sc->approved ?? 0 }} Approved
+                </button>
+                <button type="button" wire:click="$set('filterStatus', 'executed')"
+                    class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-all
+                        {{ $filterStatus === 'executed' ? 'bg-emerald-100 border-emerald-400 text-emerald-700 font-semibold dark:bg-emerald-900/30 dark:border-emerald-500 dark:text-emerald-300' : 'bg-canvas border-gray-300 text-muted hover:bg-emerald-50 dark:border-gray-600 dark:hover:bg-emerald-900/20' }}">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>{{ $sc->executed ?? 0 }} Terkirim
+                </button>
+                <button type="button" wire:click="$set('filterStatus', 'failed')"
+                    class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-all
+                        {{ $filterStatus === 'failed' ? 'bg-red-100 border-red-400 text-red-700 font-semibold dark:bg-red-900/30 dark:border-red-500 dark:text-red-300' : 'bg-canvas border-gray-300 text-muted hover:bg-red-50 dark:border-gray-600 dark:hover:bg-red-900/20' }}">
+                    <span class="w-2 h-2 rounded-full bg-red-500"></span>{{ $sc->failed ?? 0 }} Failed
+                </button>
+                <button type="button" wire:click="$set('filterStatus', 'rejected')"
+                    class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-all
+                        {{ $filterStatus === 'rejected' ? 'bg-gray-200 border-gray-400 text-gray-700 font-semibold dark:bg-gray-700 dark:border-gray-500 dark:text-gray-300' : 'bg-canvas border-gray-300 text-muted hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800' }}">
+                    <span class="w-2 h-2 rounded-full bg-gray-400"></span>{{ $sc->rejected ?? 0 }} Ditolak
+                </button>
+                <button type="button" wire:click="$set('filterStatus', '')"
+                    class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-all
+                        {{ $filterStatus === '' ? 'bg-gray-100 border-gray-400 text-ink font-semibold dark:bg-gray-700 dark:border-gray-500 dark:text-white' : 'bg-canvas border-gray-300 text-muted hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800' }}">
+                    {{ $sc->total ?? 0 }} Semua
+                </button>
             </div>
 
-            {{-- RIGHT: stats + per page --}}
-            @php $sc = $this->statusCounts; @endphp
-            <div class="flex flex-wrap items-center gap-3 ml-auto">
-                <span class="text-xs text-amber-600 dark:text-amber-400" title="Pending"><strong>{{ $sc->pending ?? 0 }}</strong> Pending</span>
-                <span class="text-xs text-blue-600 dark:text-blue-400" title="Approved"><strong>{{ $sc->approved ?? 0 }}</strong> Appr</span>
-                <span class="text-xs text-emerald-600 dark:text-emerald-400" title="Terkirim"><strong>{{ $sc->executed ?? 0 }}</strong> Sent</span>
-                <span class="text-xs text-red-600 dark:text-red-400" title="Gagal"><strong>{{ $sc->failed ?? 0 }}</strong> Fail</span>
-                <span class="text-xs text-gray-500" title="Ditolak"><strong>{{ $sc->rejected ?? 0 }}</strong> Rej</span>
-                <span class="text-xs text-ink dark:text-white font-semibold" title="Total"><strong>{{ $sc->total ?? 0 }}</strong> Total</span>
-                @if (!empty($selectedIds))
-                    <span class="text-xs font-semibold text-primary dark:text-primary-light px-2 py-0.5 rounded-full bg-primary/10">{{ count($selectedIds) }} dipilih</span>
-                @endif
+            {{-- Run AI --}}
+            <div class="mt-auto">
+                <x-info-button wire:click="aiSuggestBatch" wire:loading.attr="disabled"
+                    wire:target="aiSuggestBatch"
+                    title="AI suggest ICD untuk item tanpa diagnosa — 5 per batch">
+                    <span wire:loading.remove wire:target="aiSuggestBatch" class="flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+                        </svg>
+                        Run AI {{ !empty($selectedIds) ? '(' . count($selectedIds) . ')' : '(5)' }}
+                    </span>
+                    <span wire:loading wire:target="aiSuggestBatch" class="flex items-center gap-1">
+                        <x-loading /> {{ $aiProgress }}/{{ $aiTotal }}
+                    </span>
+                </x-info-button>
+            </div>
+
+            {{-- Approve All --}}
+            @if ($filterStatus === 'pending' || $filterStatus === '')
+                <div class="mt-auto">
+                    <x-confirm-button variant="success" action="approveAll()"
+                        title="Approve All" message="{{ !empty($selectedIds) ? count($selectedIds) . ' item terpilih' : 'Semua pending yang siap kirim' }} akan di-approve. Lanjutkan?"
+                        confirmText="Ya, approve" cancelText="Batal">
+                        <span class="flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Approve {{ !empty($selectedIds) ? '(' . count($selectedIds) . ')' : 'All' }}
+                        </span>
+                    </x-confirm-button>
+                </div>
+            @endif
+
+            {{-- Kirim All --}}
+            @if ($filterStatus === 'approved' || $filterStatus === '')
+                <div class="mt-auto">
+                    @if (!empty($batchKirimQueue) || $batchKirimTotal > 0)
+                        <span class="inline-flex items-center gap-1.5 text-xs text-muted">
+                            <x-loading class="text-teal-600 dark:text-teal-400" />
+                            Kirim {{ $batchKirimProgress }}/{{ $batchKirimTotal }}
+                        </span>
+                        <x-danger-button wire:click="batalKirimAll">
+                            Hentikan
+                        </x-danger-button>
+                    @else
+                        <x-confirm-button variant="success" action="kirimAllBatch()"
+                            title="Kirim All ke SATUSEHAT"
+                            message="{{ !empty($selectedIds) ? count($selectedIds) . ' item terpilih' : 'Semua approved' }} akan dikirim ke SATUSEHAT — 5 record per batch, masing-masing 14 resource. Lanjutkan?"
+                            confirmText="Ya, Kirim All" cancelText="Batal">
+                            <span class="flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                Kirim {{ !empty($selectedIds) ? '(' . count($selectedIds) . ')' : 'All' }}
+                            </span>
+                        </x-confirm-button>
+                    @endif
+                </div>
+            @endif
+
+            @if (!empty($selectedIds))
+                <span class="text-xs font-semibold text-primary dark:text-primary-light px-2 py-0.5 rounded-full bg-primary/10 mt-auto">{{ count($selectedIds) }} dipilih</span>
+            @endif
+
+            {{-- RIGHT: per page + Clear --}}
+            <div class="flex items-center gap-3 ml-auto shrink-0">
                 <x-toolbar-refresh-reset :label="null" />
-                <div class="w-24">
+                <div class="w-20">
                     <x-select-input wire:model.live="itemsPerPage">
                         <option value="25">25</option>
                         <option value="50">50</option>
                         <option value="100">100</option>
                     </x-select-input>
                 </div>
+                <x-confirm-button variant="danger" action="clearQueue()"
+                    title="Hapus Antrian" message="Semua data antrian SATUSEHAT akan dihapus. Lanjutkan?"
+                    confirmText="Ya, hapus semua" cancelText="Batal">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Clear
+                </x-confirm-button>
             </div>
 
         </div>
@@ -1237,6 +1496,7 @@ PROMPT;
                         <th class="px-4 py-3">Data Klinis</th>
                         <th class="px-4 py-3 text-center">Readiness</th>
                         <th class="px-4 py-3 text-center">Status</th>
+                        <th class="px-4 py-3">Status Kirim</th>
                         <th class="px-4 py-3 text-center">Tgl RJ</th>
                         <th class="px-4 py-3 text-center">Aksi</th>
                     </tr>
@@ -1352,6 +1612,40 @@ PROMPT;
                             @endif
                         </td>
 
+                        {{-- Status Kirim SATUSEHAT --}}
+                        <td class="px-4 py-3 align-top">
+                            @php
+                                $ssFilled = fn($v) => is_array($v) ? count($v) > 0 : !empty($v);
+                                $ss = $this->satusehatStates[$row->ref_no] ?? [];
+                                $ssItems = [
+                                    ['l' => 'Encounter',           's' => $ssFilled($ss['encounterId'] ?? null)],
+                                    ['l' => 'Condition',           's' => $ssFilled($ss['conditionIds'] ?? null)],
+                                    ['l' => 'Observation',         's' => $ssFilled($ss['observationIds'] ?? null)],
+                                    ['l' => 'Procedure',           's' => $ssFilled($ss['procedureIds'] ?? null)],
+                                    ['l' => 'Med Request',         's' => $ssFilled($ss['medicationRequestIds'] ?? null)],
+                                    ['l' => 'Chief Complaint',     's' => $ssFilled($ss['chiefComplaintId'] ?? null)],
+                                    ['l' => 'Allergy',             's' => $ssFilled($ss['allergyId'] ?? null)],
+                                    ['l' => 'Med Dispense',        's' => $ssFilled($ss['medicationDispenseIds'] ?? null)],
+                                    ['l' => 'Lab',                 's' => $ssFilled($ss['labServiceRequestIds'] ?? null) || $ssFilled($ss['labDiagnosticReportIds'] ?? null)],
+                                    ['l' => 'Radiologi',           's' => $ssFilled($ss['radServiceRequestIds'] ?? null) || $ssFilled($ss['radDiagnosticReportIds'] ?? null)],
+                                    ['l' => 'Clin Impression',     's' => $ssFilled($ss['clinicalImpressionId'] ?? null)],
+                                    ['l' => 'Penilaian',           's' => $ssFilled($ss['penilaianObservationIds'] ?? null)],
+                                    ['l' => 'Enc Selesai',         's' => !empty($ss['encounterFinished'])],
+                                    ['l' => 'Resume Medis',        's' => $ssFilled($ss['compositionId'] ?? null)],
+                                ];
+                                $ssSent = collect($ssItems)->where('s', true)->count();
+                                $ssTotal = count($ssItems);
+                            @endphp
+                            <div class="flex flex-wrap gap-0.5 max-w-[220px]">
+                                @foreach ($ssItems as $si)
+                                    <span title="{{ $si['l'] }}" class="inline-block px-1 py-0.5 rounded text-[9px] leading-none font-medium {{ $si['s'] ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600' }}">{{ $si['l'] }}</span>
+                                @endforeach
+                            </div>
+                            <div class="mt-1 text-[10px] font-semibold {{ $ssSent === $ssTotal ? 'text-emerald-600 dark:text-emerald-400' : ($ssSent > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted') }}">
+                                {{ $ssSent }}/{{ $ssTotal }} resource terkirim
+                            </div>
+                        </td>
+
                         {{-- Tgl RJ --}}
                         <td class="px-4 py-3 text-center align-top whitespace-nowrap">
                             <div class="text-xs font-semibold text-ink dark:text-white">{{ $row->ref_date_display ?? ($payload['rj_date'] ?? '-') }}</div>
@@ -1359,42 +1653,50 @@ PROMPT;
 
                         {{-- Aksi --}}
                         <td class="px-4 py-3 text-center align-top">
-                            <div class="flex items-center justify-center gap-1">
+                            <div class="flex flex-col items-center gap-1">
                                 @if ($row->status === 'pending')
+                                    @if ($isReady)
+                                        <x-success-button wire:click="quickApprove({{ $row->approval_id }})"
+                                            wire:loading.attr="disabled" wire:target="quickApprove({{ $row->approval_id }})"
+                                            class="!px-3 !py-1.5 !text-xs !min-w-0 w-full">
+                                            <span wire:loading.remove wire:target="quickApprove({{ $row->approval_id }})">Approve</span>
+                                            <span wire:loading wire:target="quickApprove({{ $row->approval_id }})"><x-loading /></span>
+                                        </x-success-button>
+                                    @endif
                                     <x-primary-button wire:click="openReview({{ $row->approval_id }})"
-                                        class="!px-3 !py-1.5 !text-xs !min-w-0">
+                                        class="!px-3 !py-1.5 !text-xs !min-w-0 w-full">
                                         Review
                                     </x-primary-button>
                                     @if ($needsManual)
                                         <x-secondary-button wire:click="skip({{ $row->approval_id }})"
-                                            class="!px-2 !py-1.5 !text-xs !min-w-0"
+                                            class="!px-2 !py-1.5 !text-xs !min-w-0 w-full"
                                             title="Skip — perlu setup manual dulu">
                                             Skip
                                         </x-secondary-button>
                                     @endif
                                 @elseif ($row->status === 'failed')
                                     <x-warning-button wire:click="openReview({{ $row->approval_id }})"
-                                        class="!px-3 !py-1.5 !text-xs !min-w-0">
+                                        class="!px-3 !py-1.5 !text-xs !min-w-0 w-full">
                                         Retry
                                     </x-warning-button>
                                     <x-success-button type="button"
                                         x-on:click="$dispatch('daftar-rj.satu-sehat.open', { rjNo: '{{ $row->ref_no }}' })"
-                                        class="!px-3 !py-1.5 !text-xs !min-w-0" title="Buka kirim per-resource">
+                                        class="!px-3 !py-1.5 !text-xs !min-w-0 w-full" title="Buka kirim per-resource">
                                         Kirim
                                     </x-success-button>
                                 @elseif (in_array($row->status, ['approved', 'executed']))
                                     <x-secondary-button wire:click="openReview({{ $row->approval_id }})"
-                                        class="!px-3 !py-1.5 !text-xs !min-w-0">
+                                        class="!px-3 !py-1.5 !text-xs !min-w-0 w-full">
                                         Detail
                                     </x-secondary-button>
                                     <x-success-button type="button"
                                         x-on:click="$dispatch('daftar-rj.satu-sehat.open', { rjNo: '{{ $row->ref_no }}' })"
-                                        class="!px-3 !py-1.5 !text-xs !min-w-0" title="Buka kirim per-resource">
+                                        class="!px-3 !py-1.5 !text-xs !min-w-0 w-full" title="Buka kirim per-resource">
                                         Kirim
                                     </x-success-button>
                                 @else
                                     <x-secondary-button wire:click="openReview({{ $row->approval_id }})"
-                                        class="!px-3 !py-1.5 !text-xs !min-w-0">
+                                        class="!px-3 !py-1.5 !text-xs !min-w-0 w-full">
                                         Detail
                                     </x-secondary-button>
                                 @endif
@@ -1403,7 +1705,7 @@ PROMPT;
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="px-4 py-12 text-center text-muted italic">
+                        <td colspan="9" class="px-4 py-12 text-center text-muted italic">
                             Belum ada data. Klik <strong>Scan RJ</strong> untuk memulai.
                         </td>
                     </tr>
