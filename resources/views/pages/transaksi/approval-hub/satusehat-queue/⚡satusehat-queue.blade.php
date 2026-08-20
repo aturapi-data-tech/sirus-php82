@@ -40,18 +40,20 @@ new class extends Component {
     public int $sendProgress = 0;
     public int $sendTotal = 0;
 
-    // AI batch
+    // AI batch (continuous)
     public bool $aiRunning = false;
+    public bool $aiStopRequested = false;
     public int $aiProgress = 0;
     public int $aiTotal = 0;
 
     // Selection
     public array $selectedIds = [];
 
-    // Batch kirim all
+    // Batch kirim all (continuous)
     public array $batchKirimQueue = [];
     public int $batchKirimProgress = 0;
     public int $batchKirimTotal = 0;
+    public bool $kirimStopRequested = false;
 
     // Review modal
     public ?int $reviewId = null;
@@ -604,11 +606,67 @@ new class extends Component {
 
     public function kirimAllBatch(): void
     {
-        if (!empty($this->batchKirimQueue)) {
+        if (!empty($this->batchKirimQueue) || $this->batchKirimTotal > 0) {
             $this->dispatch('toast', type: 'info', message: 'Batch kirim sedang berjalan.');
             return;
         }
 
+        $totalApproved = DB::table('rstxn_approval_queue')
+            ->where('module', 'satusehat')
+            ->where('status', 'approved')
+            ->when(!empty($this->selectedIds), fn($q) => $q->whereIn('approval_id', $this->selectedIds))
+            ->count();
+
+        if ($totalApproved === 0) {
+            $this->dispatch('toast', type: 'info', message: 'Tidak ada item approved untuk dikirim.');
+            return;
+        }
+
+        $this->batchKirimTotal = $totalApproved;
+        $this->batchKirimProgress = 0;
+        $this->kirimStopRequested = false;
+
+        $this->kirimLoadNextBatch();
+        if (empty($this->batchKirimQueue)) {
+            $this->kirimFinish();
+            return;
+        }
+
+        $this->kirimNextInBatch();
+    }
+
+    private function kirimNextInBatch(): void
+    {
+        if (empty($this->batchKirimQueue)) {
+            if ($this->kirimStopRequested) {
+                $this->kirimFinish();
+                return;
+            }
+
+            $remaining = DB::table('rstxn_approval_queue')
+                ->where('module', 'satusehat')
+                ->where('status', 'approved')
+                ->count();
+
+            if ($remaining === 0) {
+                $this->kirimFinish();
+                return;
+            }
+
+            $this->kirimLoadNextBatch();
+            if (empty($this->batchKirimQueue)) {
+                $this->kirimFinish();
+                return;
+            }
+        }
+
+        $rjNo = array_shift($this->batchKirimQueue);
+        $this->batchKirimProgress++;
+        $this->dispatch('daftar-rj.satu-sehat.open', rjNo: $rjNo, autoKirim: true);
+    }
+
+    private function kirimLoadNextBatch(): void
+    {
         $query = DB::table('rstxn_approval_queue')
             ->where('module', 'satusehat')
             ->where('status', 'approved')
@@ -619,10 +677,7 @@ new class extends Component {
         }
 
         $items = $query->get();
-        if ($items->isEmpty()) {
-            $this->dispatch('toast', type: 'info', message: 'Tidak ada item approved untuk dikirim.');
-            return;
-        }
+        if ($items->isEmpty()) return;
 
         $rjNos = $items->pluck('ref_no')->filter()->unique()->toArray();
         $emrRows = DB::table('rstxn_rjhdrs')
@@ -660,37 +715,20 @@ new class extends Component {
             fn($a, $b) => ($sentCounts[$a->ref_no] ?? 0) <=> ($sentCounts[$b->ref_no] ?? 0),
             fn($a, $b) => ($a->ref_date ?? '') <=> ($b->ref_date ?? ''),
         ])->values();
-        $batch = $sorted->take(25);
+        $batch = $sorted->take(5);
 
         $this->batchKirimQueue = $batch->pluck('ref_no')->map(fn($v) => (string) $v)->toArray();
-        $this->batchKirimTotal = $batch->count();
-        $this->batchKirimProgress = 0;
-
-        $this->kirimNextInBatch();
     }
 
-    private function kirimNextInBatch(): void
+    private function kirimFinish(): void
     {
-        if (empty($this->batchKirimQueue)) {
-            $remaining = DB::table('rstxn_approval_queue')
-                ->where('module', 'satusehat')
-                ->where('status', 'approved')
-                ->count();
-
-            $msg = 'Batch kirim selesai: ' . $this->batchKirimProgress . '/' . $this->batchKirimTotal . ' record.';
-            if ($remaining > 0) {
-                $msg .= ' Sisa ' . $remaining . ' approved — klik Kirim All lagi.';
-            }
-            $this->dispatch('toast', type: 'success', message: $msg);
-            $this->batchKirimTotal = 0;
-            $this->batchKirimProgress = 0;
-            $this->incrementVersion('ss-queue-toolbar');
-            return;
-        }
-
-        $rjNo = array_shift($this->batchKirimQueue);
-        $this->batchKirimProgress++;
-        $this->dispatch('daftar-rj.satu-sehat.open', rjNo: $rjNo, autoKirim: true);
+        $msg = 'Kirim selesai: ' . $this->batchKirimProgress . '/' . $this->batchKirimTotal . ' record terkirim.';
+        $this->dispatch('toast', type: 'success', message: $msg);
+        $this->batchKirimQueue = [];
+        $this->batchKirimProgress = 0;
+        $this->batchKirimTotal = 0;
+        $this->kirimStopRequested = false;
+        $this->incrementVersion('ss-queue-toolbar');
     }
 
     #[On('rj-satu-sehat.kirim-semua-selesai')]
@@ -718,10 +756,12 @@ new class extends Component {
 
     public function batalKirimAll(): void
     {
+        $this->kirimStopRequested = true;
         $this->batchKirimQueue = [];
+        $sent = $this->batchKirimProgress;
         $this->batchKirimProgress = 0;
         $this->batchKirimTotal = 0;
-        $this->dispatch('toast', type: 'info', message: 'Batch kirim dihentikan.');
+        $this->dispatch('toast', type: 'info', message: 'Batch kirim dihentikan. ' . $sent . ' record sudah terkirim.');
         $this->incrementVersion('ss-queue-toolbar');
     }
 
@@ -732,6 +772,35 @@ new class extends Component {
         $apiKey = config('ai.api_key');
         if (empty($apiKey)) {
             $this->dispatch('toast', type: 'error', message: 'AI API key belum dikonfigurasi.');
+            return;
+        }
+
+        $this->aiRunning = true;
+        $this->aiStopRequested = false;
+        $this->aiProgress = 0;
+        $this->aiTotal = 0;
+        $this->aiProcessNextBatch();
+    }
+
+    public function stopAi(): void
+    {
+        $this->aiStopRequested = true;
+        $sent = $this->aiProgress;
+        $this->aiRunning = false;
+        $this->aiProgress = 0;
+        $this->aiTotal = 0;
+        $this->dispatch('toast', type: 'info', message: 'AI dihentikan. ' . $sent . ' item sudah diproses.');
+        $this->incrementVersion('ss-queue-toolbar');
+    }
+
+    public function aiProcessNextBatch(): void
+    {
+        if ($this->aiStopRequested || !$this->aiRunning) {
+            $this->aiRunning = false;
+            $this->aiStopRequested = false;
+            $msg = $this->aiProgress . '/' . $this->aiTotal . ' item diproses AI.';
+            $this->dispatch('toast', type: 'success', message: $msg);
+            $this->incrementVersion('ss-queue-toolbar');
             return;
         }
 
@@ -750,7 +819,6 @@ new class extends Component {
 
         $pending = $query->get();
 
-        // proses yang belum punya diagnosa ATAU keluhan SNOMED kosong
         $needsAi = $pending->filter(function ($item) {
             $payload = json_decode($item->ai_payload ?? '{}', true) ?: [];
             $noDiagnosa = empty($payload['diagnosa']);
@@ -759,18 +827,15 @@ new class extends Component {
         });
 
         if ($needsAi->isEmpty()) {
-            $this->dispatch('toast', type: 'info', message: 'Semua item sudah lengkap (diagnosa + keluhan SNOMED).');
+            $this->aiRunning = false;
+            $msg = $this->aiProgress . ' item diproses AI. Semua sudah lengkap.';
+            $this->dispatch('toast', type: 'success', message: $msg);
+            $this->incrementVersion('ss-queue-toolbar');
             return;
         }
 
+        $this->aiTotal = $this->aiProgress + $needsAi->count();
         $batch = $needsAi->take($batchSize);
-        $remaining = $needsAi->count() - $batch->count();
-
-        $this->aiRunning = true;
-        $this->aiTotal = $batch->count();
-        $this->aiProgress = 0;
-        $processed = 0;
-        $errors = 0;
 
         foreach ($batch as $item) {
             $this->aiProgress++;
@@ -782,7 +847,16 @@ new class extends Component {
                 $emr = $this->findDataRJ($refNo);
 
                 $soapText = $this->extractSoapTextForSS($emr);
-                if (mb_strlen(trim($soapText)) < 10) continue;
+                if (mb_strlen(trim($soapText)) < 10) {
+                    DB::table('rstxn_approval_queue')
+                        ->where('approval_id', $item->approval_id)
+                        ->update([
+                            'ai_model' => 'skipped',
+                            'ai_notes' => 'SOAP terlalu pendek untuk AI',
+                            'updated_at' => now(),
+                        ]);
+                    continue;
+                }
 
                 $result = $this->callAiIcdSuggestSS($soapText, $payload);
 
@@ -803,10 +877,16 @@ new class extends Component {
                             'ai_model' => config('ai.model'),
                             'updated_at' => now(),
                         ]);
-                    $processed++;
+                } else {
+                    DB::table('rstxn_approval_queue')
+                        ->where('approval_id', $item->approval_id)
+                        ->update([
+                            'ai_model' => 'skipped',
+                            'ai_notes' => 'AI tidak menghasilkan output',
+                            'updated_at' => now(),
+                        ]);
                 }
             } catch (\Throwable $e) {
-                $errors++;
                 \Illuminate\Support\Facades\Log::warning('AI suggest SATUSEHAT error', [
                     'approval_id' => $item->approval_id,
                     'error' => $e->getMessage(),
@@ -814,12 +894,7 @@ new class extends Component {
             }
         }
 
-        $this->aiRunning = false;
-        $msg = $processed . '/' . $this->aiTotal . ' item berhasil diproses AI.';
-        if ($errors > 0) $msg .= ' ' . $errors . ' gagal.';
-        if ($remaining > 0) $msg .= ' Sisa ' . $remaining . ' — klik Run AI lagi.';
-        $this->dispatch('toast', type: $errors > 0 ? 'warning' : 'success', message: $msg);
-        $this->incrementVersion('ss-queue-toolbar');
+        $this->js('setTimeout(() => $wire.aiProcessNextBatch(), 300)');
     }
 
     private function extractSoapTextForSS(array $emr): string
@@ -1309,21 +1384,31 @@ PROMPT;
                 </button>
             </div>
 
-            {{-- Run AI --}}
+            {{-- Run AI / Stop AI --}}
             <div class="mt-auto">
-                <x-info-button wire:click="aiSuggestBatch" wire:loading.attr="disabled"
-                    wire:target="aiSuggestBatch"
-                    title="AI suggest ICD untuk item tanpa diagnosa — 5 per batch">
-                    <span wire:loading.remove wire:target="aiSuggestBatch" class="flex items-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
-                        </svg>
-                        Run AI {{ !empty($selectedIds) ? '(' . count($selectedIds) . ')' : '(5)' }}
+                @if ($aiRunning)
+                    <span class="inline-flex items-center gap-1.5 text-xs text-muted">
+                        <x-loading class="text-blue-600 dark:text-blue-400" />
+                        AI {{ $aiProgress }}/{{ $aiTotal }}
                     </span>
-                    <span wire:loading wire:target="aiSuggestBatch" class="flex items-center gap-1">
-                        <x-loading /> {{ $aiProgress }}/{{ $aiTotal }}
-                    </span>
-                </x-info-button>
+                    <x-danger-button wire:click="stopAi" title="Stop AI">
+                        Stop AI
+                    </x-danger-button>
+                @else
+                    <x-info-button wire:click="aiSuggestBatch" wire:loading.attr="disabled"
+                        wire:target="aiSuggestBatch"
+                        title="AI suggest ICD — jalan terus sampai selesai atau di-stop">
+                        <span wire:loading.remove wire:target="aiSuggestBatch" class="flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+                            </svg>
+                            Run AI
+                        </span>
+                        <span wire:loading wire:target="aiSuggestBatch" class="flex items-center gap-1">
+                            <x-loading /> Starting...
+                        </span>
+                    </x-info-button>
+                @endif
             </div>
 
             {{-- Approve All --}}
@@ -1351,13 +1436,13 @@ PROMPT;
                             Kirim {{ $batchKirimProgress }}/{{ $batchKirimTotal }}
                         </span>
                         <x-danger-button wire:click="batalKirimAll">
-                            Hentikan
+                            Stop Kirim
                         </x-danger-button>
                     @else
                         <x-confirm-button variant="success" action="kirimAllBatch()"
-                            title="Kirim All ke SATUSEHAT"
-                            message="{{ !empty($selectedIds) ? count($selectedIds) . ' item terpilih' : 'Semua approved' }} akan dikirim ke SATUSEHAT — 5 record per batch, masing-masing 14 resource. Lanjutkan?"
-                            confirmText="Ya, Kirim All" cancelText="Batal">
+                            title="Kirim ke SATUSEHAT"
+                            message="{{ !empty($selectedIds) ? count($selectedIds) . ' item terpilih' : 'Semua approved' }} akan dikirim ke SATUSEHAT secara otomatis sampai selesai. Klik Stop untuk menghentikan. Lanjutkan?"
+                            confirmText="Ya, Mulai Kirim" cancelText="Batal">
                             <span class="flex items-center gap-1">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
