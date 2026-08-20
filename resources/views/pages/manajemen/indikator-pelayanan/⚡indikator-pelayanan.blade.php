@@ -55,6 +55,24 @@ new class extends Component {
                         </div>
                     </a>
 
+                    {{-- Pasangan cermin dari Evaluasi Rujukan Keluar. Ikon panah masuk (kiri)
+                         sengaja dipilih agar keduanya terbaca sebagai satu pasangan arah. --}}
+                    <a href="{{ route('manajemen.rs.vclaim.laporan-rujukan-masuk') }}" wire:navigate
+                        class="flex items-start gap-3 p-4 transition-colors bg-canvas border border-hairline group rounded-xl hover:bg-brand-green/10 hover:border-brand-green/40 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-brand-lime/10">
+                        <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-sky-50 text-sky-700 group-hover:bg-sky-100 dark:bg-sky-900/30 dark:text-sky-300">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                        </span>
+                        <div class="min-w-0">
+                            <div class="font-semibold text-ink dark:text-gray-100">Evaluasi Rujukan Masuk RS</div>
+                            <div class="mt-0.5 text-xs text-muted dark:text-gray-400">
+                                Rujukan masuk Rawat Jalan &mdash; faskes perujuk, poli penerima, diagnosa rujukan
+                            </div>
+                        </div>
+                    </a>
+
                     <a href="{{ route('manajemen.rs.rj.laporan-task-id-rj') }}" wire:navigate
                         class="flex items-start gap-3 p-4 transition-colors bg-canvas border border-hairline group rounded-xl hover:bg-brand-green/10 dark:bg-gray-900 dark:border-gray-700 dark:hover:bg-brand-lime/15">
                         <span class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 group-hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300">
