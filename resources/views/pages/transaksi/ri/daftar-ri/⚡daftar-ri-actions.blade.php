@@ -12,6 +12,7 @@ use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Support\OracleLob;
+use App\Support\LogPerubahan;
 use Illuminate\Validation\ValidationException;
 
 new class extends Component {
@@ -395,6 +396,25 @@ new class extends Component {
      | Menyimpan seluruh dataDaftarRi ke kolom datadaftarri_json.
      | Kolom ini adalah "catch-all" untuk field yang tidak punya kolom sendiri.
      =============================== */
+    /**
+     * Field yang perubahannya layak muncul di Log Aktivitas, beserta labelnya.
+     * Subset dari $allowedFields — field teknis sengaja tidak diikutkan.
+     * bedNo TIDAK didaftarkan: nomor bed memang disembunyikan dari tampilan &
+     * cetakan (cukup kamar), dan Log Aktivitas termasuk tampilan.
+     */
+    private const LABEL_LOG_RI = [
+        'bangsalDesc' => 'Bangsal',
+        'roomDesc'    => 'Kamar',
+        'drDesc'      => 'Dokter',
+        'klaimId'     => 'Klaim',
+        'entryDesc'   => 'Cara Masuk',
+        'entryDate'   => 'Waktu masuk',
+        'shift'       => 'Shift',
+        'poliDesc'    => 'Poli asal',
+        'noReferensi' => 'No. Referensi',
+        'kasusPolisi' => 'Kasus polisi',
+    ];
+
     private function updateJsonData(int|string $riHdrNo): void
     {
         $allowedFields = ['regNo', 'drId', 'drDesc', 'klaimId', 'klaimStatus', 'entryId', 'entryDesc', 'entryDate', 'shift', 'noAntrian', 'noBooking', 'slCodeFrom', 'riStatus', 'ermStatus', 'bangsalId', 'bangsalDesc', 'roomId', 'roomDesc', 'bedNo', 'noReferensi', 'sep', 'spri', 'poliId', 'poliDesc', 'kddrbpjs', 'kdpolibpjs', 'statusAdminAge', 'adminAge', 'kasusPolisi'];
@@ -403,6 +423,13 @@ new class extends Component {
             // Sudah di-handle oleh buildPayload via datadaftarri_json
             // updateJsonRI() dari EmrRITrait dipanggil jika trait itu juga update via ORM
             $this->updateJsonRI((int) $riHdrNo, $this->dataDaftarRi);
+
+            $this->appendAdminLogRI((int) $riHdrNo, 'Pendaftaran RI - '
+                . ($this->dataDaftarRi['bangsalDesc'] ?? '-') . ' / '
+                . ($this->dataDaftarRi['roomDesc'] ?? '-') . ', '
+                . ($this->dataDaftarRi['drDesc'] ?? '-') . ', klaim '
+                . ($this->dataDaftarRi['klaimId'] ?? '-'));
+
             return;
         }
 
@@ -426,6 +453,9 @@ new class extends Component {
         if (empty($existing)) {
             throw new \RuntimeException('Data RI tidak ditemukan saat update JSON, simpan dibatalkan.');
         }
+        // Potret sebelum digabung — dasar pembanding untuk log perubahan.
+        $sebelum = $existing;
+
         foreach ($allowedFields as $field) {
             if (array_key_exists($field, $this->dataDaftarRi)) {
                 $existing[$field] = $this->dataDaftarRi[$field];
@@ -437,6 +467,14 @@ new class extends Component {
         DB::table('rstxn_rihdrs')
             ->where('rihdr_no', $riHdrNo)
             ->update(['datadaftarri_json' => json_encode($existing, JSON_UNESCAPED_UNICODE)]);
+
+        // WAJIB sesudah update() langsung di atas. Kalau ditaruh sebelumnya, tulisan
+        // mentah itu menimpa JSON dengan $existing yang belum memuat entri log —
+        // lognya hilang tanpa jejak.
+        $ringkasan = LogPerubahan::ringkas($sebelum, $existing, self::LABEL_LOG_RI);
+        if ($ringkasan !== '') {
+            $this->appendAdminLogRI((int) $riHdrNo, 'Ubah pendaftaran RI - ' . $ringkasan);
+        }
     }
 
     private function afterSave(string $message): void

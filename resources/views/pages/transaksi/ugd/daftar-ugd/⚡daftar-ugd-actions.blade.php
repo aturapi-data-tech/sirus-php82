@@ -9,6 +9,7 @@ use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Support\LogPerubahan;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Support\OracleLob;
@@ -425,12 +426,32 @@ new class extends Component {
     /* ===============================
      | UPDATE JSON DATA
      =============================== */
+    /**
+     * Field yang perubahannya layak muncul di Log Aktivitas, beserta labelnya.
+     * Subset dari $allowedFields — field teknis sengaja tidak diikutkan.
+     */
+    private const LABEL_LOG_UGD = [
+        'drDesc'      => 'Dokter',
+        'klaimId'     => 'Klaim',
+        'entryDesc'   => 'Cara Masuk',
+        'rjDate'      => 'Waktu kunjungan',
+        'shift'       => 'Shift',
+        'noAntrian'   => 'No. Antrian',
+        'noReferensi' => 'No. Referensi',
+    ];
+
     private function updateJsonData(int|string $rjNo): void
     {
         $allowedFields = ['regNo', 'drId', 'drDesc', 'klaimId', 'klaimStatus', 'entryId', 'entryDesc', 'rjDate', 'shift', 'noAntrian', 'noBooking', 'slCodeFrom', 'passStatus', 'rjStatus', 'txnStatus', 'ermStatus', 'cekLab', 'kunjunganInternalStatus', 'noReferensi', 'taskIdPelayanan', 'sep'];
 
         if ($this->formMode === 'create') {
             $this->updateJsonUGD((int) $rjNo, $this->dataDaftarUGD);
+
+            $this->appendAdminLogUGD((int) $rjNo, 'Pendaftaran UGD - '
+                . ($this->dataDaftarUGD['drDesc'] ?? '-') . ', klaim '
+                . ($this->dataDaftarUGD['klaimId'] ?? '-') . ', cara masuk '
+                . ($this->dataDaftarUGD['entryDesc'] ?? '-'));
+
             return;
         }
 
@@ -455,6 +476,9 @@ new class extends Component {
             throw new \RuntimeException('Data UGD tidak ditemukan saat update JSON, simpan dibatalkan.');
         }
 
+        // Potret sebelum digabung — dasar pembanding untuk log perubahan.
+        $sebelum = $existing;
+
         foreach ($allowedFields as $field) {
             if (array_key_exists($field, $this->dataDaftarUGD)) {
                 $existing[$field] = $this->dataDaftarUGD[$field];
@@ -462,6 +486,11 @@ new class extends Component {
         }
 
         $this->updateJsonUGD((int) $rjNo, $existing);
+
+        $ringkasan = LogPerubahan::ringkas($sebelum, $existing, self::LABEL_LOG_UGD);
+        if ($ringkasan !== '') {
+            $this->appendAdminLogUGD((int) $rjNo, 'Ubah pendaftaran UGD - ' . $ringkasan);
+        }
     }
 
     /* ===============================

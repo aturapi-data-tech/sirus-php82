@@ -13,10 +13,14 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\QueryException;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
+use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
-    use EmrRJTrait, WithRenderVersioningTrait;
+    // EmrUGDTrait dipakai HANYA untuk appendAdminLogUGD — mencatat asal pasien di
+    // kunjungan UGD yang baru dibuat. Diperiksa: nol nama method & properti yang
+    // bertabrakan dengan EmrRJTrait.
+    use EmrRJTrait, EmrUGDTrait, WithRenderVersioningTrait;
 
     public ?int $rjNo = null;
     public ?string $regName = null;
@@ -351,6 +355,17 @@ new class extends Component {
                                 ->update(['lockstatus' => 'UGD']);
 
                             $this->appendAdminLogRJ($this->rjNo, 'Transfer ke UGD #' . $ugdRjNo . ' (total biaya RJ Rp ' . number_format($totalBiayaRJ, 0, ',', '.') . ')');
+
+                            // Sisi PENERIMA. Tanpa baris ini, Log Aktivitas kunjungan UGD
+                            // yang baru sama sekali bisu soal asal pasien — padahal justru
+                            // di sisi inilah orang bertanya "pasien ini dari mana?".
+                            // Baris UGD baru saja di-insert tanpa datadaftarugd_json, jadi
+                            // appendAdminLogUGD-lah yang membentuk JSON awalnya lewat
+                            // template default. Aman terhadap simpan berikutnya: membuka
+                            // kunjungan yang sudah ada di Daftar UGD selalu masuk mode
+                            // 'edit', dan mode itu menggabung per-field (allowedFields),
+                            // tidak menimpa seluruh JSON.
+                            $this->appendAdminLogUGD($ugdRjNo, 'Pasien pindahan dari RJ #' . $this->rjNo . ' (total biaya RJ Rp ' . number_format($totalBiayaRJ, 0, ',', '.') . ')');
                         });
                     });
                     break;

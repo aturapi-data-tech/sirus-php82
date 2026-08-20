@@ -10,6 +10,7 @@ use App\Http\Traits\BPJS\AntrianTrait;
 use Carbon\Carbon;
 use App\Http\Traits\BPJS\VclaimTrait;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
+use App\Support\LogPerubahan;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Support\OracleLob;
@@ -631,12 +632,37 @@ new class extends Component {
     /* ===============================
      | UPDATE JSON DATA
      =============================== */
+    /**
+     * Field yang perubahannya layak muncul di Log Aktivitas, beserta labelnya.
+     * Sengaja SUBSET dari $allowedFields: field teknis (sep, taskIdPelayanan,
+     * *Status, kode BPJS) tidak dimasukkan supaya log tetap terbaca manusia.
+     */
+    private const LABEL_LOG_RJ = [
+        'poliDesc'      => 'Poli',
+        'drDesc'        => 'Dokter',
+        'klaimId'       => 'Klaim',
+        'rjDate'        => 'Waktu kunjungan',
+        'shift'         => 'Shift',
+        'noAntrian'     => 'No. Antrian',
+        'kunjunganId'   => 'Jenis kunjungan',
+        'noReferensi'   => 'No. Referensi',
+    ];
+
     private function updateJsonData(string $rjNo): void
     {
         $allowedFields = ['regNo', 'drId', 'drDesc', 'poliId', 'poliDesc', 'kddrbpjs', 'kdpolibpjs', 'klaimId', 'kunjunganId', 'rjDate', 'shift', 'noAntrian', 'noBooking', 'slCodeFrom', 'passStatus', 'rjStatus', 'txnStatus', 'ermStatus', 'cekLab', 'kunjunganInternalStatus', 'noReferensi', 'postInap', 'internal12', 'internal12Desc', 'kontrol12', 'kontrol12Desc', 'taskIdPelayanan', 'sep', 'klaimStatus'];
 
         if ($this->formMode === 'create') {
             $this->updateJsonRJ($rjNo, $this->dataDaftarPoliRJ);
+
+            // Dipanggil dari dalam DB::transaction milik save() dan sesudah JSON
+            // terbentuk, jadi appendAdminLogRJ (yang membaca lalu menulis ulang
+            // JSON yang sama) aman di sini.
+            $this->appendAdminLogRJ((int) $rjNo, 'Pendaftaran RJ - '
+                . ($this->dataDaftarPoliRJ['poliDesc'] ?? '-') . ', '
+                . ($this->dataDaftarPoliRJ['drDesc'] ?? '-') . ', klaim '
+                . ($this->dataDaftarPoliRJ['klaimId'] ?? '-'));
+
             return;
         }
 
@@ -663,6 +689,9 @@ new class extends Component {
             throw new \RuntimeException('Data RJ tidak ditemukan, simpan dibatalkan.');
         }
 
+        // Potret sebelum digabung — dasar pembanding untuk log perubahan.
+        $sebelum = $existingData;
+
         foreach ($allowedFields as $field) {
             if (array_key_exists($field, $this->dataDaftarPoliRJ)) {
                 $existingData[$field] = $this->dataDaftarPoliRJ[$field];
@@ -670,6 +699,14 @@ new class extends Component {
         }
 
         $this->updateJsonRJ($rjNo, $existingData);
+
+        // Hanya dicatat bila ada yang benar-benar berubah. Menyimpan tanpa mengubah
+        // apa pun adalah kejadian biasa (buka lalu tutup form), dan mencatatnya cuma
+        // menenggelamkan perubahan yang sungguhan.
+        $ringkasan = LogPerubahan::ringkas($sebelum, $existingData, self::LABEL_LOG_RJ);
+        if ($ringkasan !== '') {
+            $this->appendAdminLogRJ((int) $rjNo, 'Ubah pendaftaran RJ - ' . $ringkasan);
+        }
     }
 
     /* ===============================

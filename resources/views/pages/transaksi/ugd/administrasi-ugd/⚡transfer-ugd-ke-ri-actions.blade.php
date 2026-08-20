@@ -10,10 +10,14 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
-    use EmrUGDTrait, WithRenderVersioningTrait;
+    // EmrRITrait dipakai HANYA untuk appendAdminLogRI — mencatat asal pasien di
+    // perawatan RI yang baru dibuat. Diperiksa: nol nama method & properti yang
+    // bertabrakan dengan EmrUGDTrait.
+    use EmrUGDTrait, EmrRITrait, WithRenderVersioningTrait;
 
     public ?int $rjNo = null;
     public ?string $regName = null;
@@ -451,6 +455,13 @@ new class extends Component {
                     ->update(['lockstatus' => 'RI']);
 
                 $this->appendAdminLogUGD($this->rjNo, 'Transfer ke RI #' . $riHdrNo . ' (total biaya UGD Rp ' . number_format($totalBiayaUGD, 0, ',', '.') . ')');
+
+                // Sisi PENERIMA — lihat alasan yang sama di transfer-rj-ke-ugd-actions.
+                // Baris RI baru saja di-insert tanpa datadaftarri_json; appendAdminLogRI
+                // yang membentuk JSON awalnya. Membuka perawatan yang sudah ada di
+                // Daftar RI selalu mode 'edit' yang menggabung per-field, jadi entri ini
+                // tidak akan tertimpa simpan berikutnya.
+                $this->appendAdminLogRI($riHdrNo, 'Pasien pindahan dari UGD #' . $this->rjNo . ' (total biaya UGD Rp ' . number_format($totalBiayaUGD, 0, ',', '.') . ')');
             });
 
             // Tutup modal + refresh: kasir (lock), sibling admin, & list pelayanan
