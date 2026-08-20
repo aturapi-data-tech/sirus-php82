@@ -7,6 +7,7 @@ use Carbon\Carbon;
 use App\Support\OracleLob;
 use App\Http\Traits\BPJS\AntrianTrait;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
+use App\Support\TaskIdAntrean;
 
 /**
  * KOMPONEN AKSI Task ID apotek RJ (TaskId6 Masuk Apotek, TaskId7 Keluar Apotek)
@@ -96,6 +97,12 @@ new class extends Component {
 
             $waktuSekarang = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
 
+            // Penanda untuk log aktivitas: dicatat HANYA bila klik ini benar-benar
+            // mengubah sesuatu — stempel baru atau kiriman BPJS. Klik pada baris yang
+            // sudah lengkap tidak perlu meninggalkan jejak, itu cuma bising.
+            $sudahTercatat = !empty($data['taskIdPelayanan']['taskId6']);
+            $kodeBpjs = null;
+
             // 6. Set taskId6 jika belum ada
             if (empty($data['taskIdPelayanan']['taskId6'])) {
                 $data['taskIdPelayanan']['taskId6'] = $waktuSekarang;
@@ -132,6 +139,7 @@ new class extends Component {
                     $isSuccess = $code == 200 || $code == 208;
 
                     $data['taskIdPelayanan']['taskId6Status'] = $code;
+                    $kodeBpjs = $code;
 
                     $this->dispatch('toast', type: $isSuccess ? 'success' : 'error', message: "TaskId 6: {$message}", title: $isSuccess ? 'Berhasil' : 'Gagal');
                 }
@@ -142,7 +150,7 @@ new class extends Component {
             //    - hitung noAntrianApotek di dalam lock (cegah race condition nomor antrian dobel)
             //    - update waktu_masuk_apt
             //    - patch taskIdPelayanan + noAntrianApotek
-            DB::transaction(function () use ($data, $waktuSekarang) {
+            DB::transaction(function () use ($data, $waktuSekarang, $sudahTercatat, $kodeBpjs) {
                 $this->lockRJRow($this->rjNo);
 
                 // Re-fetch setelah lock
@@ -188,6 +196,15 @@ new class extends Component {
                     ]);
 
                 $this->updateJsonRJ($this->rjNo, $existingData);
+
+                // Log aktivitas WAJIB di dalam transaksi setelah lockRJRow —
+                // appendAdminLogRJ membaca lalu menulis ulang JSON yang sama.
+                if (!$sudahTercatat || $kodeBpjs !== null) {
+                    $this->appendAdminLogRJ(
+                        $this->rjNo,
+                        TaskIdAntrean::keterangan(6, $existingData['taskIdPelayanan']['taskId6'] ?? '-', $kodeBpjs),
+                    );
+                }
             });
 
             $this->dispatch('toast', type: 'success', message: "Berhasil masuk apotek pada {$waktuSekarang}", title: 'Berhasil');
@@ -244,8 +261,11 @@ new class extends Component {
 
             $waktuSekarang = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
 
+            $sudahTercatat = !empty($data['taskIdPelayanan']['taskId7']);
+            $kodeBpjs = null;
+
             // 6. Notifikasi jika taskId7 sudah pernah tercatat
-            if (!empty($data['taskIdPelayanan']['taskId7'])) {
+            if ($sudahTercatat) {
                 $this->dispatch('toast', type: 'warning', message: "TaskId7 sudah tercatat: {$data['taskIdPelayanan']['taskId7']}", title: 'Info');
             }
 
@@ -267,6 +287,7 @@ new class extends Component {
                     $isSuccess = $code == 200 || $code == 208;
 
                     $data['taskIdPelayanan']['taskId7Status'] = $code;
+                    $kodeBpjs = $code;
 
                     $this->dispatch('toast', type: $isSuccess ? 'success' : 'error', message: "TaskId 7: {$message}", title: $isSuccess ? 'Berhasil' : 'Gagal');
                 } else {
@@ -275,7 +296,7 @@ new class extends Component {
             }
 
             // 9. Simpan ke DB — lock + update waktu_selesai_pelayanan + patch taskIdPelayanan atomik
-            DB::transaction(function () use ($data, $waktuSekarang) {
+            DB::transaction(function () use ($data, $waktuSekarang, $sudahTercatat, $kodeBpjs) {
                 $this->lockRJRow($this->rjNo);
 
                 // Re-fetch setelah lock — patch hanya key taskIdPelayanan
@@ -294,6 +315,13 @@ new class extends Component {
 
                 $existingData['taskIdPelayanan'] = $data['taskIdPelayanan'];
                 $this->updateJsonRJ($this->rjNo, $existingData);
+
+                if (!$sudahTercatat || $kodeBpjs !== null) {
+                    $this->appendAdminLogRJ(
+                        $this->rjNo,
+                        TaskIdAntrean::keterangan(7, $existingData['taskIdPelayanan']['taskId7'] ?? '-', $kodeBpjs),
+                    );
+                }
             });
 
             $this->dispatch('toast', type: 'success', message: "Berhasil keluar apotek pada {$waktuSekarang}", title: 'Berhasil');

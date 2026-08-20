@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\BPJS\AntrianTrait;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
+use App\Support\TaskIdAntrean;
 
 new class extends Component {
     use EmrRJTrait, AntrianTrait;
@@ -51,8 +52,14 @@ new class extends Component {
             // 4. Inisialisasi taskIdPelayanan jika belum ada
             $data['taskIdPelayanan'] ??= [];
 
+            // Penanda untuk log aktivitas: dicatat HANYA bila klik ini benar-benar
+            // mengubah sesuatu — stempel baru atau kiriman BPJS. Klik pada baris yang
+            // sudah lengkap tidak perlu meninggalkan jejak, itu cuma bising.
+            $sudahTercatat = !empty($data['taskIdPelayanan']['taskId3']);
+            $kodeBpjs = null;
+
             // 5. Notifikasi jika taskId3 sudah pernah tercatat
-            if (!empty($data['taskIdPelayanan']['taskId3'])) {
+            if ($sudahTercatat) {
                 $this->dispatch('toast', type: 'warning', message: "TaskId3 sudah tercatat: {$data['taskIdPelayanan']['taskId3']}", title: 'Info');
             }
 
@@ -74,6 +81,7 @@ new class extends Component {
                     $isSuccess = $code == 200 || $code == 208;
 
                     $data['taskIdPelayanan']['taskId3Status'] = $code;
+                    $kodeBpjs = $code;
 
                     $this->dispatch('toast', type: $isSuccess ? 'success' : 'error', message: "TaskId 3: {$message}", title: $isSuccess ? 'Berhasil' : 'Gagal');
                 } else {
@@ -82,7 +90,7 @@ new class extends Component {
             }
 
             // 8. Simpan ke DB — lock + patch hanya key taskIdPelayanan
-            DB::transaction(function () use ($data) {
+            DB::transaction(function () use ($data, $sudahTercatat, $kodeBpjs) {
                 $this->lockRJRow($this->rjNo);
 
                 // Re-fetch setelah lock untuk menghindari overwrite perubahan lain
@@ -96,6 +104,15 @@ new class extends Component {
                 $existingData['taskIdPelayanan'] = $data['taskIdPelayanan'];
 
                 $this->updateJsonRJ($this->rjNo, $existingData);
+
+                // Log aktivitas WAJIB di dalam transaksi setelah lockRJRow —
+                // appendAdminLogRJ membaca lalu menulis ulang JSON yang sama.
+                if (!$sudahTercatat || $kodeBpjs !== null) {
+                    $this->appendAdminLogRJ(
+                        $this->rjNo,
+                        TaskIdAntrean::keterangan(3, $existingData['taskIdPelayanan']['taskId3'] ?? '-', $kodeBpjs),
+                    );
+                }
             });
 
             $this->dispatch('refresh-after-rj.saved');

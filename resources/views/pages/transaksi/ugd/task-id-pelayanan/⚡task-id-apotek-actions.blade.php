@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Support\OracleLob;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Support\TaskIdAntrean;
 
 /**
  * KOMPONEN AKSI Task ID apotek UGD (TaskId6 Masuk Apotek, TaskId7 Keluar Apotek)
@@ -125,6 +126,15 @@ new class extends Component {
                 // 8. Simpan JSON — row sudah di-lock
                 $this->updateJsonUGD($this->rjNo, $data);
 
+                // Log aktivitas — sudah berada di dalam transaksi & sesudah lockUGDRow,
+                // syarat appendAdminLogUGD yang membaca lalu menulis ulang JSON yang sama.
+                // Tidak perlu penjagaan "sudah tercatat": guard idempoten di atas sudah
+                // return lebih dulu, jadi baris ini hanya tercapai saat stempelnya baru.
+                $this->appendAdminLogUGD(
+                    $this->rjNo,
+                    TaskIdAntrean::keterangan(6, $waktuSekarang),
+                );
+
                 $message = "Berhasil masuk apotek pada {$waktuSekarang}.";
             });
 
@@ -193,6 +203,11 @@ new class extends Component {
                 $data['taskIdPelayanan']['taskId7'] = $waktuSekarang;
 
                 $this->updateJsonUGD($this->rjNo, $data);
+
+                $this->appendAdminLogUGD(
+                    $this->rjNo,
+                    TaskIdAntrean::keterangan(7, $waktuSekarang),
+                );
 
                 $message = "Berhasil keluar apotek pada {$waktuSekarang}.";
             });

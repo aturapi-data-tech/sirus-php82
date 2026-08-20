@@ -5,6 +5,8 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Support\OracleLob;
+use App\Support\LogText;
+use App\Support\TaskIdAntrean;
 
 /**
  * KOMPONEN AKSI Task ID apotek RI-Resep (TaskId6 Masuk Apotek, TaskId7 Keluar
@@ -185,6 +187,26 @@ new class extends Component {
         }
     }
 
+    /**
+     * Sisipkan satu entri log aktivitas ke $data yang SEDANG diproses mirror.
+     *
+     * Sengaja tidak memakai appendAdminLogRI dari EmrRITrait: method itu membaca
+     * lalu menulis ulang JSON sendiri dan mensyaratkan lockRIRow(), sedangkan di
+     * sini yang dikunci adalah imtxn_slshdrs — bukan rstxn_rihdrs. Menumpang pada
+     * satu pembacaan & satu penulisan milik mirror berarti tanpa kunci baru,
+     * tanpa baca-tulis kedua, dan tidak ada jendela untuk saling menimpa.
+     * Bentuk entrinya PERSIS appendAdminLogRI supaya terbaca layar Log Aktivitas.
+     */
+    private function catatLogRi(array &$data, int $task, string $waktu, int $slsNo): void
+    {
+        $data['AdministrasiRI']['userLogs'][] = [
+            'userLog'     => auth()->user()->myuser_name ?? auth()->user()->name ?? 'SYSTEM',
+            'userLogDate' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
+            'userLogDesc' => LogText::sanitize(TaskIdAntrean::keterangan($task, $waktu, null, 'resep ' . $slsNo)),
+            'userLogCat'  => 'ADMIN',
+        ];
+    }
+
     private function mirrorTaskId6(int $riHdrNo, int $slsNo, string $now): void
     {
         $row = DB::table('rstxn_rihdrs')->where('rihdr_no', $riHdrNo)->first();
@@ -209,8 +231,13 @@ new class extends Component {
         }
 
         $data['apotekHdr'][$idx]['taskIdPelayanan'] ??= [];
-        if (empty($data['apotekHdr'][$idx]['taskIdPelayanan']['taskId6'])) {
+        $baruDiset = empty($data['apotekHdr'][$idx]['taskIdPelayanan']['taskId6']);
+        if ($baruDiset) {
             $data['apotekHdr'][$idx]['taskIdPelayanan']['taskId6'] = $now;
+        }
+
+        if ($baruDiset) {
+            $this->catatLogRi($data, 6, $now, $slsNo);
         }
 
         DB::table('rstxn_rihdrs')
@@ -244,8 +271,13 @@ new class extends Component {
         }
 
         $data['apotekHdr'][$idx]['taskIdPelayanan'] ??= [];
-        if (empty($data['apotekHdr'][$idx]['taskIdPelayanan']['taskId7'])) {
+        $baruDiset = empty($data['apotekHdr'][$idx]['taskIdPelayanan']['taskId7']);
+        if ($baruDiset) {
             $data['apotekHdr'][$idx]['taskIdPelayanan']['taskId7'] = $now;
+        }
+
+        if ($baruDiset) {
+            $this->catatLogRi($data, 7, $now, $slsNo);
         }
 
         DB::table('rstxn_rihdrs')
