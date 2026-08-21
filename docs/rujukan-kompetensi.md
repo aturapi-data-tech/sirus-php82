@@ -220,6 +220,33 @@ jumlahnya dimunculkan sebagai spanduk — tanpa itu, permintaan yang hilang tak 
 diketahui siapa pun padahal perujuk menunggu. Bedakan kalimatnya dari "perujuk tidak
 mengisi": tindak lanjutnya beda.
 
+## 4.2 Cakupan UAT FKTL v1.0 vs implementasi kita
+
+Dokumen *Skenario UAT Uji Coba SRBK (FKTL) ver 1.0* menguji **Rawat Jalan saja** — empat
+kelompok endpoint: Kriteria Rujukan, Faskes Rujukan, Post Rujukan, Delete Rujukan. Jalur
+Ranap/IGD FHIR langsung TIDAK diuji di dokumen ini.
+
+| TC | Skenario | Di kita |
+|---|---|---|
+| TC01 | Kemampuan layanan berdasarkan diagnosa | `sisrute_get_kriteria_rujukan()` — tombol "Ambil Kriteria" |
+| TC02 | Daftar faskes (diagnosa, estimasi tgl, kriteria, spesialis, wilayah) + **pencarian procedure ICD-9** bila kriteria "Tindakan Medis" | `sisrute_get_faskes_rujukan()`; ICD-9 kini lewat `lov.procedure` (dulu kotak ketik bebas) |
+| TC03 | No. kartu BPJS, ID pasien SATUSEHAT & encounter reference = pasien yang SAMA | `pasienTidakCocok()` dipanggil sebelum Insert |
+| TC04 | Rujukan RJ terbit No VClaim + No SATUSEHAT (tipe penuh) | `sisrute_insert_rujukan()`; `tipeRujukan` dipatok `'0'`, sukses diverifikasi lewat `noRujukanSatuSehat` |
+| TC05 | Hapus kunjungan | `sisrute_delete_rujukan()` — tombol "Batalkan Rujukan" |
+
+**TC01 tidak akan PASSED sebelum BPJS memetakan PPK `0184R006` ↔ SATUSEHAT `100027469` di
+dev** (`GetKriteriaRujukan` masih 500 `Object reference not set`), dan TC02–TC05 semuanya
+bergantung pada TC01.
+
+Catatan TC03: ketiga data itu memang diturunkan dari satu kunjungan (`nomorSep()`,
+`encounterUuid()`, `patientUuid()` semuanya berpangkal pada `rjNo`/`regNo` yang sama), jadi
+secara struktur mustahil beda pasien. Yang dijaga `pasienTidakCocok()` adalah keadaan yang
+tetap mungkin: node JSON tersalin dari kunjungan lain, atau `encounterId` basi setelah
+pembetulan manual. Pemeriksaannya dua lapis — kartu BPJS dibandingkan lokal (master pasien
+vs `sep.reqSep...noKartu`), lalu satu `GET Encounter/<id>` memastikan `subject` benar-benar
+IHS pasien ini. **Gagal memeriksa ≠ tidak cocok**: kalau SATUSEHAT sedang gangguan,
+pengiriman tetap diteruskan — menolak layanan karena pusat down bukan keputusan yang sah.
+
 ## 5. Prinsip desain untuk rebuild kita
 
 1. **Outage = kondisi normal.** `timeout(8)->connectTimeout(3)` + try/catch semua call; pesan ramah + tombol retry; state form persist (pola JSON node) supaya retry tanpa isi ulang; JANGAN blokir simpan EMR.

@@ -6,9 +6,13 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\BPJS\SisruteTrait;
+use App\Http\Traits\SATUSEHAT\EncounterTrait;
 
 new class extends Component {
-    use EmrRJTrait;
+    // EncounterTrait dipakai HANYA untuk membaca Encounter saat memastikan
+    // kecocokan pasien sebelum kirim. Diperiksa: nol nama method & properti yang
+    // bertabrakan dengan EmrRJTrait.
+    use EmrRJTrait, EncounterTrait;
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
@@ -102,6 +106,7 @@ new class extends Component {
             'kriteriaSumber' => '',
             'kriteriaPilih' => '',
             'kriteriaIcd9' => '',
+            'kriteriaIcd9Desc' => '',
             // Jejaring wilayah — opsi dari response GetKriteriaRujukan
             'propinsiOptions' => [],
             'kabupatenOptions' => [],
@@ -156,6 +161,59 @@ new class extends Component {
             $kurang[] = 'Diagnosa rujukan belum dipilih (Langkah 1 — Cari Diagnosa Rujukan)';
         }
         return $kurang;
+    }
+
+    /**
+     * Pastikan nomor kartu BPJS, IHS pasien, dan Encounter menunjuk PASIEN YANG SAMA
+     * (skenario UAT TC03).
+     *
+     * Ketiganya memang diturunkan dari satu kunjungan, jadi seharusnya mustahil beda.
+     * Yang dijaga di sini keadaan yang tetap mungkin: node JSON kunjungan tersalin dari
+     * kunjungan lain, atau encounterId basi setelah data dibetulkan manual. Kalau lolos,
+     * rujukan terbit ATAS NAMA PASIEN LAIN di BPJS dan SATUSEHAT sekaligus — kesalahan
+     * yang mahal dibatalkan, jadi ongkos satu GET sebelum kirim itu murah.
+     *
+     * Sengaja TIDAK dipanggil dari prasyaratKurang(): method itu dievaluasi tiap render,
+     * dan memanggil API di sana berarti satu HTTP call untuk setiap kali panel digambar.
+     *
+     * @return array<int, string> daftar ketidakcocokan; kosong = aman
+     */
+    private function pasienTidakCocok(): array
+    {
+        $masalah = [];
+
+        // 1. Kartu BPJS — perbandingan lokal, tanpa panggilan keluar.
+        $kartuPasien = preg_replace('/\D/', '', (string) (DB::table('rsmst_pasiens')
+            ->where('reg_no', $this->dataDaftarPoliRJ['regNo'] ?? '')
+            ->value('nokartu_bpjs') ?? ''));
+        $kartuSep = preg_replace('/\D/', '', (string) ($this->dataDaftarPoliRJ['sep']['reqSep']['request']['t_sep']['noKartu'] ?? ''));
+        if ($kartuPasien !== '' && $kartuSep !== '' && $kartuPasien !== $kartuSep) {
+            $masalah[] = "No. kartu BPJS di SEP ({$kartuSep}) berbeda dari master pasien ({$kartuPasien})";
+        }
+
+        // 2. Encounter benar-benar milik IHS pasien ini — satu-satunya pemeriksaan
+        //    yang harus menyeberang ke SATUSEHAT.
+        $patientUuid = $this->patientUuid();
+        $encounterUuid = $this->encounterUuid();
+        if ($patientUuid === '' || $encounterUuid === '') {
+            return $masalah; // sudah ditangkap prasyaratKurang()
+        }
+
+        try {
+            $this->initializeSatuSehat();
+            $encounter = $this->getEncounter($encounterUuid);
+        } catch (\Throwable $e) {
+            // Gagal memeriksa BUKAN berarti tidak cocok. Menolak kirim karena SATUSEHAT
+            // sedang gangguan akan memblokir pelayanan tanpa alasan yang sah.
+            return $masalah;
+        }
+
+        $subjek = str_replace('Patient/', '', (string) ($encounter['subject']['reference'] ?? ''));
+        if ($subjek !== '' && $subjek !== $patientUuid) {
+            $masalah[] = "Encounter {$encounterUuid} milik pasien {$subjek}, bukan {$patientUuid}";
+        }
+
+        return $masalah;
     }
 
     private function nomorSep(): string
@@ -219,6 +277,45 @@ new class extends Component {
      * Payload null = user menekan "Ubah" untuk mengosongkan; kolomnya ikut
      * dikosongkan supaya tak ada kode basi yang ikut terkirim.
      */
+    /**
+     * Kriteria "Tindakan Medis" menuntut kode ICD-9-CM, dan kode itu ikut menentukan
+     * kandidat RS — salah ketik satu digit menghasilkan daftar kandidat yang keliru
+     * tanpa pesan error. Karena itu dipilih lewat LOV master, bukan diketik bebas
+     * (skenario UAT TC02 juga mensyaratkan "terdapat pencarian procedure ICD-9").
+     */
+    #[On('lov.selected.rujukanKompetensiIcd9')]
+    public function onLovIcd9Selected(string $target, array $payload): void
+    {
+        if ($this->isFormLocked) {
+            return;
+        }
+        $kode = trim((string) ($payload['proc_id'] ?? ''));
+        if ($kode === '') {
+            $this->dispatch('toast', type: 'error', message: 'Data tindakan tidak valid.');
+            return;
+        }
+        $this->formRujukan['kriteriaIcd9'] = $kode;
+        $this->formRujukan['kriteriaIcd9Desc'] = trim((string) ($payload['proc_desc'] ?? ''));
+        // Kandidat lama dihitung dari kriteria yang lama — biarkan tampil akan
+        // menyesatkan, jadi dikosongkan supaya petugas mencari ulang.
+        $this->formRujukan['kandidatList'] = [];
+        $this->formRujukan['kandidatIdx'] = null;
+        $this->simpanDraft();
+    }
+
+    #[On('lov.cleared.rujukanKompetensiIcd9')]
+    public function onLovIcd9Cleared(string $target = ''): void
+    {
+        if ($this->isFormLocked) {
+            return;
+        }
+        $this->formRujukan['kriteriaIcd9'] = '';
+        $this->formRujukan['kriteriaIcd9Desc'] = '';
+        $this->formRujukan['kandidatList'] = [];
+        $this->formRujukan['kandidatIdx'] = null;
+        $this->simpanDraft();
+    }
+
     #[On('lov.selected.rujukanKompetensiSpesialis')]
     public function onLovSpesialisSelected(?array $payload = null, string $target = ''): void
     {
@@ -298,6 +395,7 @@ new class extends Component {
         $this->formRujukan['kriteriaSumber'] = '';
         $this->formRujukan['kriteriaPilih'] = '';
         $this->formRujukan['kriteriaIcd9'] = '';
+        $this->formRujukan['kriteriaIcd9Desc'] = '';
         $this->formRujukan['kandidatList'] = [];
         $this->formRujukan['kandidatIdx'] = null;
         $this->infoKriteria = '';
@@ -351,6 +449,7 @@ new class extends Component {
         $this->formRujukan['kriteriaSumber'] = 'server';
         $this->formRujukan['kriteriaPilih'] = '';
         $this->formRujukan['kriteriaIcd9'] = '';
+        $this->formRujukan['kriteriaIcd9Desc'] = '';
 
         $this->parseJejaringWilayah($data);
         $this->simpanDraft();
@@ -570,6 +669,11 @@ new class extends Component {
         $kandidat = $this->formRujukan['kandidatList'][$this->formRujukan['kandidatIdx'] ?? -1] ?? null;
         if (!$kandidat) {
             $this->dispatch('toast', type: 'error', message: 'Pilih kandidat faskes tujuan dulu (Langkah 2). Tujuan WAJIB dari daftar kandidat.');
+            return;
+        }
+        $tidakCocok = $this->pasienTidakCocok();
+        if (!empty($tidakCocok)) {
+            $this->dispatch('toast', type: 'error', message: 'Data pasien tidak konsisten: ' . implode('; ', $tidakCocok) . '. Rujukan TIDAK dikirim.');
             return;
         }
         $itemKriteria = $this->bangunItemKriteria();
@@ -931,11 +1035,18 @@ new class extends Component {
                         $butuhIcd9 = $kriteriaTerpilih && (strtolower($kriteriaTerpilih['type']) === 'text' || str_contains(strtolower($kriteriaTerpilih['text']), 'tindakan'));
                     @endphp
                     @if ($butuhIcd9)
-                        <div class="max-w-xs">
-                            <x-input-label value="Kode Tindakan ICD-9-CM" class="mb-1" />
-                            <x-text-input wire:model.blur="formRujukan.kriteriaIcd9" placeholder="mis. 01.24"
-                                :disabled="$isFormLocked" class="w-full" />
-                            <p class="mt-1 text-xs text-muted-soft">Harus valid & sesuai diagnosa — menentukan kandidat RS.</p>
+                        <div class="max-w-md space-y-2">
+                            <livewire:lov.procedure.lov-procedure label="Cari Tindakan Rujukan (ICD-9-CM)"
+                                target="rujukanKompetensiIcd9" :disabled="$isFormLocked"
+                                wire:key="lov-procedure-rujukan-kompetensi-{{ $rjNo }}" />
+                            <div>
+                                <x-input-label value="Kode Tindakan ICD-9-CM" class="mb-1" />
+                                <x-text-input wire:model.live="formRujukan.kriteriaIcd9" :disabled="true" class="w-full" />
+                                @if (filled($formRujukan['kriteriaIcd9Desc'] ?? ''))
+                                    <p class="mt-1 text-xs text-body dark:text-gray-300">{{ $formRujukan['kriteriaIcd9Desc'] }}</p>
+                                @endif
+                                <p class="mt-1 text-xs text-muted-soft">Harus valid &amp; sesuai diagnosa — menentukan kandidat RS.</p>
+                            </div>
                         </div>
                     @endif
                 </div>
