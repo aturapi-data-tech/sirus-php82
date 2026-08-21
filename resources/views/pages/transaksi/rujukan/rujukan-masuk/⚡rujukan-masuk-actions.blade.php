@@ -118,7 +118,10 @@ new class extends Component {
             // "perujuk memang tak mengisi", karena tindak lanjutnya beda: yang satu
             // urusan consent/perizinan, yang satu urusan kelengkapan data perujuk.
             $diblokir = (bool) ($permintaan['rencanaDiblokir'] ?? false);
-            $kosongKarena = $diblokir ? '(tersembunyi — consent belum ada)' : '';
+            $dibatalkan = ($permintaan['statusTask'] ?? '') === 'cancelled';
+            $kosongKarena = $diblokir
+                ? ($dibatalkan ? '(dibatalkan perujuk)' : '(belum terbuka — menunggu persetujuan)')
+                : '';
         @endphp
 
         {{-- Modal full: padding panel jadi p-0, jadi header/body/footer memakai padding
@@ -142,7 +145,7 @@ new class extends Component {
                     @elseif ($jalur === 'igd')
                         <x-badge variant="danger">Gawat Darurat</x-badge>
                     @elseif ($diblokir)
-                        <x-badge variant="warning">Jalur tersembunyi</x-badge>
+                        <x-badge variant="warning">Jalur belum terbuka</x-badge>
                     @else
                         <x-badge variant="gray">Layanan tidak dikenali</x-badge>
                     @endif
@@ -229,16 +232,16 @@ new class extends Component {
                 @if ($diblokir)
                     <div
                         class="p-4 text-sm border rounded-xl bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200">
-                        <div class="font-semibold">Detail klinis diblokir SATUSEHAT</div>
+                        <div class="font-semibold">Detail klinis baru terbuka setelah disetujui</div>
                         <p class="mt-1">
                             SATUSEHAT membalas <span class="font-mono text-xs">No consent available</span> untuk
-                            CarePlan
-                            rujukan ini, sehingga nama pasien, layanan yang diminta, jalur, dan keterangan klinis TIDAK
-                            sampai ke kita. Kosongnya kolom di atas bukan berarti perujuk tidak mengisi.
+                            CarePlan rujukan ini, sehingga layanan yang diminta, jalur, dan keterangan klinis belum
+                            sampai ke kita. Ini <strong>perilaku normal</strong>, bukan gangguan dan bukan berarti
+                            perujuk tidak mengisi: isinya memang baru terbuka begitu permintaan dijawab.
                         </p>
                         <p class="mt-2">
-                            Artinya keputusan di bawah diambil tanpa data klinis. Konfirmasikan dulu ke RS perujuk lewat
-                            jalur komunikasi RS sebelum menyetujui atau menolak.
+                            Artinya keputusan di bawah diambil tanpa data klinis. Kalau butuh kepastian sebelum
+                            memutuskan, konfirmasikan dulu ke RS perujuk lewat jalur komunikasi RS.
                         </p>
                     </div>
                 @endif

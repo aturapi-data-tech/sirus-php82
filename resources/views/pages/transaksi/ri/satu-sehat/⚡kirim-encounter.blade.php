@@ -183,6 +183,7 @@ new class extends Component {
                     'locationId'       => $locationId,
                     'class_code'       => 'IMP',
                     'startDate'        => $entryDate->toIso8601String(),
+                    'serviceRequestId' => $dataRI['rujukanMasuk']['serviceRequestId'] ?? '',
                 ]);
                 $satuSehat['encounterId'] = $respons['id'] ?? null;
             }
