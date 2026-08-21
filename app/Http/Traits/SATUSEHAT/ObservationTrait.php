@@ -71,16 +71,35 @@ trait ObservationTrait
         elseif (isset($data['valueString'])) {
             $payload['valueString'] = $data['valueString'];
         }
+        // ...or a plain integer score (mis. NRS & Wong-Baker — contoh resmi Postman
+        // memakai valueInteger, bukan valueQuantity; jangan "dirapikan" jadi seragam)
+        elseif (isset($data['valueInteger'])) {
+            $payload['valueInteger'] = (int) $data['valueInteger'];
+        }
         // ...or a coded answer (mis. LOINC answer list LA* untuk skala survey)
         elseif (!empty($data['valueCodeableConcept']) && is_array($data['valueCodeableConcept'])) {
-            $payload['valueCodeableConcept'] = [
-                'coding' => [[
-                    'system'  => $data['valueCodeableConcept']['system'],
-                    'code'    => $data['valueCodeableConcept']['code'],
-                    'display' => $data['valueCodeableConcept']['display'],
-                ]],
-                'text' => $data['valueCodeableConcept']['display'],
-            ];
+            $konsep = $data['valueCodeableConcept'];
+
+            // Kode boleh TIDAK ADA. CodeableConcept dengan `text` saja itu sah di FHIR,
+            // dan jauh lebih jujur daripada mengarang kode: nilai yang belum punya
+            // padanan terminologi resmi tetap terkirim sebagai teks, bukan sebagai
+            // konsep yang keliru. Tanpa cabang ini, coding terisi null bertiga.
+            if (empty($konsep['code'])) {
+                $payload['valueCodeableConcept'] = [
+                    'text' => $konsep['text'] ?? ($konsep['display'] ?? ''),
+                ];
+            } else {
+                $payload['valueCodeableConcept'] = [
+                    'coding' => [[
+                        'system'  => $konsep['system'],
+                        'code'    => $konsep['code'],
+                        'display' => $konsep['display'],
+                    ]],
+                    // `text` eksplisit dipakai bila ada — label yang dibaca petugas
+                    // sering lebih berarti daripada display terminologi.
+                    'text' => $konsep['text'] ?? $konsep['display'],
+                ];
+            }
         }
         // ...or a range (mis. dosis oksigen "3-4 L/menit" — rentang pilihan, BUKAN hasil ukur;
         // jangan dipaksa jadi angka tunggal karena itu mengarang presisi yang tak pernah diukur)

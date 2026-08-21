@@ -28,7 +28,7 @@ new class extends Component {
     private const URUTAN_KIRIM = [
         'encounter', 'condition', 'observation', 'procedure', 'medication-request',
         'chief-complaint', 'allergy', 'medication-dispense', 'lab', 'radiologi',
-        'clinical-impression', 'penilaian', 'encounter-selesai', 'resume-medis',
+        'clinical-impression', 'penilaian', 'nyeri-kesadaran', 'encounter-selesai', 'resume-medis',
     ];
 
     /** Sisa langkah yang belum dijalankan; kosong = tidak ada rantai berjalan. */
@@ -276,6 +276,8 @@ new class extends Component {
                         wire:key="ss-clinical-impression-rj-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.rj.satu-sehat.kirim-penilaian :rjNo="$rjNo"
                         wire:key="ss-penilaian-rj-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.rj.satu-sehat.kirim-nyeri-kesadaran :rjNo="$rjNo"
+                        wire:key="ss-nyeri-kesadaran-rj-{{ $rjNo ?? 'none' }}" />
 
                     {{-- Dua kartu penutup melebar SATU BARIS PENUH: keduanya langkah akhir
                          yang berurutan (finish dulu, baru resume), jadi menyelipkannya di
