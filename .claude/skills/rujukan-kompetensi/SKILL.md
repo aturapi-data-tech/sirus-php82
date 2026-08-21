@@ -88,6 +88,21 @@ dari cons-id vclaim biasa. Semua call wajib `timeout(8)->connectTimeout(3)` + tr
     Yang TETAP tidak tersedia: nama pasien (`Patient/<ihs>` cangkang, NIK ter-mask,
     `CarePlan.subject` tanpa `display`).
 
+## 2b. Skenario UAT FKTL v1.0 — apa yang diuji
+
+Hanya **Rawat Jalan**: Kriteria → Faskes → Post → Delete. Jalur FHIR IGD/Ranap TIDAK diuji.
+
+| TC | Skenario | Di kita |
+|---|---|---|
+| TC01 | Kemampuan layanan dari diagnosa | `sisrute_get_kriteria_rujukan()` |
+| TC02 | Daftar faskes + **pencarian** ICD-9 bila kriteria "Tindakan Medis" | `sisrute_get_faskes_rujukan()`; ICD-9 lewat `lov.procedure` |
+| TC03 | Kartu BPJS / IHS pasien / encounter = pasien SAMA | `pasienTidakCocok()` sebelum Insert |
+| TC04 | Terbit No VClaim + No SATUSEHAT (tipe penuh) | `sisrute_insert_rujukan()`, `tipeRujukan='0'` |
+| TC05 | Hapus kunjungan | `sisrute_delete_rujukan()` |
+
+**TC01 tertahan** sampai BPJS memetakan PPK `0184R006` ↔ SATUSEHAT `100027469` di dev;
+TC02–TC05 semuanya bergantung padanya. Detail: `docs/rujukan-kompetensi.md` §4.2.
+
 ## 3. FAQ / katalog error tersering
 
 | Gejala | Penyebab sebenarnya | Aksi |
