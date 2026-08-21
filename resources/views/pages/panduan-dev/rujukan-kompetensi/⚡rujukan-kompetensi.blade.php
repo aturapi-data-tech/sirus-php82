@@ -40,6 +40,7 @@ new class extends Component {
             ],
             'FAQ' => [
                 'faq-error' => 'Katalog Error → Penanganan',
+                'uat' => 'Skenario UAT FKTL',
                 'faq-umum' => 'Pertanyaan Umum',
             ],
             'Referensi' => [
@@ -1324,8 +1325,63 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
                     </section>
 
                     {{-- ====== FAQ UMUM ====== --}}
-                    <section x-show="section === 'faq-umum'" x-cloak>
+                    <section x-show="section === 'uat'" x-cloak>
                         <div class="ds-eyebrow mb-3">13 — FAQ</div>
+                        <h1 class="ds-display-md mb-4">Skenario UAT SRBK (FKTL) v1.0</h1>
+                        <p class="ds-body-md mb-4" style="max-width:70ch">
+                            Dokumen UAT resmi menguji <strong>Rawat Jalan saja</strong> — empat kelompok endpoint:
+                            Kriteria Rujukan, Faskes Rujukan, Post Rujukan, Delete Rujukan. Jalur FHIR langsung
+                            (IGD &amp; Ranap) <strong>tidak diuji</strong> di dokumen ini, padahal justru di situ
+                            pekerjaan terbanyak belakangan. Hasil uji ditandai hijau (PASSED) / merah (FAILED)
+                            dan wajib dilampiri screenshot tiap skenario.
+                        </p>
+                        <div class="ds-card-outline mb-6" style="padding:0; overflow:hidden">
+                            <div class="overflow-x-auto">
+                                <table class="ds-table">
+                                    <thead><tr><th>TC</th><th>Skenario</th><th>Di SIMRS kita</th></tr></thead>
+                                    <tbody>
+                                        <tr><td class="ds-td-strong">TC01</td><td class="ds-body-sm">Kemampuan layanan berdasarkan diagnosa terpilih</td><td class="ds-body-sm"><span class="ds-code">sisrute_get_kriteria_rujukan()</span> — tombol "Ambil Kriteria"</td></tr>
+                                        <tr><td class="ds-td-strong">TC02</td><td class="ds-body-sm">Daftar faskes dari diagnosa + estimasi tgl + kriteria + spesialis + wilayah. Kriteria "Tindakan Medis" wajib punya <strong>pencarian</strong> procedure ICD-9</td><td class="ds-body-sm"><span class="ds-code">sisrute_get_faskes_rujukan()</span>; ICD-9 lewat <span class="ds-code">lov.procedure</span> (dulu kotak ketik bebas)</td></tr>
+                                        <tr><td class="ds-td-strong">TC03</td><td class="ds-body-sm">No. kartu BPJS, ID pasien SATUSEHAT &amp; encounter reference harus pasien yang SAMA</td><td class="ds-body-sm"><span class="ds-code">pasienTidakCocok()</span> dipanggil sebelum Insert</td></tr>
+                                        <tr><td class="ds-td-strong">TC04</td><td class="ds-body-sm">Rujukan RJ terbit No. VClaim + No. SATUSEHAT (hanya tipe rujukan penuh)</td><td class="ds-body-sm"><span class="ds-code">sisrute_insert_rujukan()</span>; <span class="ds-code">tipeRujukan</span> dipatok <span class="ds-code">'0'</span></td></tr>
+                                        <tr><td class="ds-td-strong">TC05</td><td class="ds-body-sm">Hapus kunjungan</td><td class="ds-body-sm"><span class="ds-code">sisrute_delete_rujukan()</span> — tombol "Batalkan Rujukan"</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="ds-card-outline mb-6" style="padding:20px">
+                            <div class="ds-caption-up mb-3" style="color:var(--muted)">Penghalang: TC01 belum bisa PASSED</div>
+                            <p class="ds-body-md" style="max-width:70ch">
+                                <span class="ds-code">GetKriteriaRujukan</span> masih membalas 500
+                                <span class="ds-code">Object reference not set</span> karena PPK
+                                <span class="ds-code">0184R006</span> ↔ SATUSEHAT <span class="ds-code">100027469</span>
+                                belum dipetakan BPJS di lingkungan dev. Sudah diisolasi: org karangan pun error identik,
+                                dan tanpa <span class="ds-code">kodeFaskesSatuSehat</span> justru balas 200 dengan pesan
+                                validasi rapi — jadi lapisan validasi mereka sehat, lookup-nya yang null.
+                                <strong>TC02–TC05 semuanya bergantung pada TC01</strong>, jadi seluruh UAT tertahan
+                                sampai pemetaan itu didaftarkan.
+                            </p>
+                        </div>
+                        <div class="ds-card-outline" style="padding:20px">
+                            <div class="ds-caption-up mb-3" style="color:var(--muted)">Catatan TC03 — kenapa validasinya tipis</div>
+                            <p class="ds-body-md" style="max-width:70ch">
+                                Ketiga data itu memang diturunkan dari satu kunjungan yang sama
+                                (<span class="ds-code">nomorSep()</span>, <span class="ds-code">encounterUuid()</span>,
+                                <span class="ds-code">patientUuid()</span> semuanya berpangkal pada
+                                <span class="ds-code">rjNo</span>/<span class="ds-code">regNo</span>), jadi secara
+                                struktur mustahil beda pasien. Yang dijaga adalah keadaan yang tetap mungkin: node JSON
+                                tersalin dari kunjungan lain, atau <span class="ds-code">encounterId</span> basi setelah
+                                pembetulan manual — kalau lolos, rujukan terbit ATAS NAMA PASIEN LAIN di BPJS dan
+                                SATUSEHAT sekaligus. Pemeriksaannya dua lapis: kartu BPJS dibandingkan lokal, lalu satu
+                                <span class="ds-code">GET Encounter</span> memastikan <span class="ds-code">subject</span>
+                                benar-benar IHS pasien ini. <strong>Gagal memeriksa ≠ tidak cocok</strong> — kalau
+                                SATUSEHAT sedang gangguan, pengiriman tetap diteruskan.
+                            </p>
+                        </div>
+                    </section>
+
+                    <section x-show="section === 'faq-umum'" x-cloak>
+                        <div class="ds-eyebrow mb-3">14 — FAQ</div>
                         <h1 class="ds-display-md mb-4">Pertanyaan Umum</h1>
                         <div class="space-y-4">
                             @foreach ([
@@ -1349,7 +1405,7 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
 
                     {{-- ====== REFERENSI ====== --}}
                     <section x-show="section === 'referensi'" x-cloak>
-                        <div class="ds-eyebrow mb-3">14 — Referensi</div>
+                        <div class="ds-eyebrow mb-3">15 — Referensi</div>
                         <h1 class="ds-display-md mb-4">Dokumen &amp; Sumber</h1>
                         <div class="ds-card-outline mb-6" style="padding:0; overflow:hidden">
                             <div class="overflow-x-auto">
