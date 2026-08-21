@@ -49,7 +49,7 @@ new class extends Component {
             // CarePlan disensor SATUSEHAT ("No consent available") → nama pasien,
             // layanan, jalur & keterangan klinis kosong SEKALIGUS.
             $diblokir = (bool) ($rujukan['rencanaDiblokir'] ?? false);
-            $kosongKarena = $diblokir ? '(tersembunyi — consent belum ada)' : '';
+            $kosongKarena = $diblokir ? '(detail tidak terbaca)' : '';
 
             $belumDijawab = $keputusan === '' && $statusTask !== 'cancelled';
         @endphp
@@ -75,7 +75,7 @@ new class extends Component {
                     @elseif ($jalur === 'igd')
                         <x-badge variant="danger">Gawat Darurat</x-badge>
                     @elseif ($diblokir)
-                        <x-badge variant="warning">Jalur tersembunyi</x-badge>
+                        <x-badge variant="warning">Jalur tidak terbaca</x-badge>
                     @else
                         <x-badge variant="gray">Layanan tidak dikenali</x-badge>
                     @endif
@@ -207,7 +207,7 @@ new class extends Component {
                 @if ($diblokir)
                     <div
                         class="p-4 text-sm border rounded-xl bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200">
-                        <div class="font-semibold">Detail klinis diblokir SATUSEHAT</div>
+                        <div class="font-semibold">Detail klinis tidak terbaca</div>
                         <p class="mt-1">
                             SATUSEHAT membalas <span class="font-mono text-xs">No consent available</span> untuk
                             CarePlan rujukan ini, sehingga nama pasien, layanan, jalur, dan keterangan klinis

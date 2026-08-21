@@ -138,6 +138,20 @@ trait EncounterTrait
             ]],
         ];
 
+        // Sambungan ke rujukan masuk. Aturan SATUSEHAT 19/08/26: faskes TUJUAN yang
+        // membuat kunjungan untuk pasien rujukan WAJIB menyertakan ServiceRequest
+        // rujukannya di Encounter.basedOn — tanpa itu kunjungan yang kita buat tidak
+        // pernah tersambung ke rujukan yang kita terima, dan perujuk tak bisa melihat
+        // pasiennya sudah dilayani.
+        //
+        // Ditulis HANYA bila id-nya ada, jadi kunjungan biasa (mayoritas) sama sekali
+        // tidak berubah bentuk payload-nya.
+        if (!empty($data['serviceRequestId'])) {
+            $payload['basedOn'] = [[
+                'reference' => 'ServiceRequest/' . $data['serviceRequestId'],
+            ]];
+        }
+
         return $payload;
     }
 

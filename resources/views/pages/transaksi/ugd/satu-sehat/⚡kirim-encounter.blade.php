@@ -158,6 +158,7 @@ new class extends Component {
                     'locationId' => $locationId,
                     'class_code' => 'EMER',
                     'startDate' => $ugdDate->toIso8601String(),
+                    'serviceRequestId' => $dataUGD['rujukanMasuk']['serviceRequestId'] ?? '',
                 ]);
                 $satuSehat['encounterId'] = $respons['id'] ?? null;
             }

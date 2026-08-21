@@ -347,9 +347,12 @@ new class extends Component {
                                     wire:key="permintaan-rujukan-{{ $baris['taskId'] }}">
 
                                     @php
-                                        // CarePlan disensor SATUSEHAT → nama, layanan & jalur kosong berjamaah.
-                                        // Kalimatnya dibedakan supaya petugas tak menyalahkan perujuk.
+                                        // CarePlan belum terbaca → nama, layanan & jalur kosong berjamaah.
+                                        // Ini PERILAKU SATUSEHAT, bukan cacat dan bukan salah perujuk:
+                                        // detail klinis baru terbuka setelah permintaan disetujui.
+                                        // Permintaan yang dibatalkan perujuk juga tidak pernah terbuka.
                                         $barisDiblokir = (bool) ($baris['rencanaDiblokir'] ?? false);
+                                        $barisDibatalkan = ($baris['statusTask'] ?? '') === 'cancelled';
                                     @endphp
 
                                     <td class="px-6 py-4 rounded-l-2xl">
@@ -357,7 +360,9 @@ new class extends Component {
                                             {{ $baris['pasienNama'] !== ''
                                                 ? $baris['pasienNama']
                                                 : ($barisDiblokir
-                                                    ? '(tersembunyi — consent belum ada)'
+                                                    ? ($barisDibatalkan
+                                                        ? '(dibatalkan perujuk)'
+                                                        : '(belum terbuka — menunggu persetujuan)')
                                                     : '(nama tidak dikirim perujuk)') }}
                                         </div>
                                         <div class="text-sm text-muted dark:text-gray-400">
@@ -387,7 +392,7 @@ new class extends Component {
                                         @elseif ($baris['jalur'] === 'igd')
                                             <x-badge variant="danger">Gawat Darurat</x-badge>
                                         @elseif ($barisDiblokir)
-                                            <x-badge variant="warning">Jalur tersembunyi</x-badge>
+                                            <x-badge variant="warning">Jalur belum terbuka</x-badge>
                                         @else
                                             <x-badge variant="gray">Layanan tidak dikenali</x-badge>
                                         @endif
@@ -395,7 +400,7 @@ new class extends Component {
                                             {{ $baris['layananNama'] !== ''
                                                 ? $baris['layananNama']
                                                 : ($barisDiblokir
-                                                    ? 'Detail diblokir SATUSEHAT (consent)'
+                                                    ? 'Belum terbuka — menunggu persetujuan'
                                                     : '-') }}
                                             @if ($baris['layananKode'] !== '')
                                                 <span class="text-muted-soft">({{ $baris['layananKode'] }})</span>

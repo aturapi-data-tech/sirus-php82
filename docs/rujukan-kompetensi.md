@@ -50,6 +50,16 @@ Body JSON: `kodeDiagnosa` + `kodeFaskesSatuSehat` (+ `encounter.reference` bila 
 - `kodeFaskesSatuSehat` = **kode numerik 9-digit production** (kita: `100027469`), bukan UUID, bukan org-id staging, dan harus konsisten dengan cons-id (faskes yang sama).
 - Kode wilayah tanpa titik: `3504` bukan `35.04`.
 - `authoredOn` dkk = string ISO, bukan objek.
+- **`encounter.reference` beda bentuk antar endpoint — jangan "dirapikan" jadi seragam:**
+  - `GetFaskesRujukan` → **dengan** prefix: `"Encounter/<uuid>"`
+  - `Rujukan/Insert` (`satuSehatRujukan.encounter.reference`) → **UUID polos**, tanpa prefix
+
+  Menulis prefix di Insert menghasilkan `error in parsing references Encounter/Encounter/<uuid>`
+  — BPJS menambahkan prefiksnya sendiri. Terkonfirmasi dua kali: sample lapangan 09/07/26
+  dan kasus grup 20/08/26 yang gagal berulang sampai prefiksnya dibuang.
+- **Field `display` DILARANG memuat tag HTML** (teguran SATUSEHAT 20/08/26 atas kiriman
+  `"display": "RS TK. IV 03.07.03 SARININGSIH<br><b>(0135R026)</b>"`). Kalau nama faskes
+  dirakit untuk tampilan layar, rakit versi bersihnya untuk payload.
 
 ## 3. Alur Ranap/IGD (langsung SATUSEHAT FHIR) — modul berikutnya
 
@@ -58,6 +68,13 @@ Body JSON: `kodeDiagnosa` + `kodeFaskesSatuSehat` (+ `encounter.reference` bila 
 3. Bundle **Task+CarePlan** `referral-approval` per kandidat terpilih — `Task.owner` = **Organization TUJUAN** (kunci agar RS tujuan melihat rujukan masuk), `basedOn` → CarePlan, `CarePlan.author` = Practitioner perujuk (mandatory). **JANGAN meng-echo extension `providerAtribute` kandidat ke Task yang dikirim** (validator menolak `km`/strata/bpjs-code).
 4. RS tujuan: GET **Task by owner** (filter `code=referral-approval-request`; hanya accepted/rejected/completed yang tampil) → PATCH accept/reject; perujuk: Get Task by requester.
 5. POST ServiceRequest → nomor rujukan di `identifier`.
+6. **RS TUJUAN membuat kunjungan → `Encounter.basedOn` WAJIB menunjuk ServiceRequest rujukan**
+   (aturan baru 19/08/26). Tanpa itu kunjungan yang kita buat tidak pernah tersambung ke
+   rujukan yang kita terima. Sudah didukung `EncounterTrait::buildBaseEncounterPayload()`
+   lewat parameter opsional `serviceRequestId`; ketiga pengirim Encounter (RJ/UGD/RI)
+   membacanya dari `rujukanMasuk.serviceRequestId` di JSON kunjungan. **Penulis node itu
+   belum ada** — langkah "Pendaftaran Kunjungan Rujukan" sisi RS tujuan belum dibangun,
+   jadi untuk sekarang field ini selalu kosong dan `basedOn` tidak ikut terkirim.
 - **`Task.identifier.value` WAJIB UNIK SETIAP POST (termasuk retry!)** — reuse = response tanpa `contained`/`output` yang menyesatkan, atau `Found duplicate: Task`. Ini akar kasus paling sering di grup.
 - Org-id di token = org-id di resource; jangan campur token prod/staging.
 
@@ -128,9 +145,48 @@ PATCH {base}/Task/<id>          Content-Type: application/json-patch+json
 | 429 `Rate limit quota violation` | Kuota staging habis | Hemat panggilan; lapor minta perpanjang |
 | `upstream connect error` / timeout / HTML | Infra BPJS down | Retry-later; jangan blokir EMR |
 | **Error identik di ≥2 endpoint berbeda** | Hampir pasti gangguan jaringan SATUSEHAT | Tampilkan hint "gangguan pusat", jangan debug payload |
-| `No consent available for CarePlan/<id>` di kotak masuk (HTTP **200**) | Cacat platform, bukan payload kita — lihat §4.1 | Tetap tampilkan barisnya, tandai "tersembunyi"; konfirmasi ke perujuk lewat jalur komunikasi RS |
+| `No consent available for CarePlan/<id>` di kotak masuk (HTTP **200**) | **Normal — detail klinis baru terbuka setelah permintaan DISETUJUI** (dikonfirmasi 21/08/26, §4.1). Task `cancelled` tidak pernah terbuka | Tampilkan barisnya, tandai "belum terbuka — menunggu persetujuan"; JANGAN sebut cacat platform atau menyalahkan perujuk |
+| Validasi menolak elemen yang JELAS ADA di payload (`Element not found: CarePlan.description`, `Reference is mandatory: Encounter.subject`), pesannya berubah-ubah tiap kirim (20/08/26) | Migrasi infra SATUSEHAT — diakui sendiri: *"mmg di sisi kami sdg ada migrasi di sisi infra"*. Kena bundle maupun single resource, **intermittent** | Kirim ulang payload yang sama; jangan mengubah payload yang sebetulnya benar |
+| `error in parsing references Encounter/Encounter/<uuid>` (400) | Prefix `Encounter/` ditulis dua kali — di `Rujukan/Insert` field `satuSehatRujukan.encounter.reference` harus **UUID polos** | Lihat §2.4; BPJS yang menambahkan prefiksnya |
 
-### 4.1 Kotak masuk buta karena consent — cacat sisi SATUSEHAT
+### 4.1 Kotak masuk buta karena consent — SUDAH BERUBAH per 21/08/26
+
+> **KOREKSI 21/08/26 — CarePlan kini TERBACA.** Probe ulang dengan token kita sendiri
+> atas keempat rujukan masuk yang ada menunjukkan pola yang jelas:
+>
+> | Task | status | CarePlan |
+> |---|---|---|
+> | `f32d6a60` (UGD 19/08) | `completed` | **terbaca penuh** |
+> | `28ca2a68` (Ranap 17/08) | `completed` | **terbaca penuh** — dulu diblokir |
+> | `b9da0896` | `cancelled` | `No consent available` |
+> | `6b7d4dc9` | `cancelled` | `No consent available` |
+>
+> Task `28ca2a68` adalah kasus yang 17/08 dipakai menyimpulkan "cacat platform" — kini
+> terbaca. Isinya lengkap: `title`, `description` (alasan rujukan), `category` (jalur:
+> `736353004` Inpatient / `TK000068` Emergency + `3457005` Patient referral), `encounter`,
+> `author.display` (nama dokter perujuk), dan `activity[].detail.code` (layanan diminta,
+> mis. "Spesialis - Jantung dan Pembuluh Darah").
+>
+> **Penyebabnya PERSETUJUAN, dan ini perilaku by design** — dikonfirmasi user 21/08/26,
+> sejalan dengan kesaksian grup 20/08/26: *"harus di approve dulu baru careplan bisa
+> terbaca di faskes tujuan"* dan *"coba accept dulu nanti saya proses rujukan, baru
+> careplan bisa dilihat"*. Jadi `No consent available` **bukan cacat platform** melainkan
+> keadaan normal selama permintaan belum dijawab. Task `cancelled` tidak pernah terbuka.
+>
+> Konsekuensi klinis yang tetap harus disadari: **keputusan menyetujui/menolak memang
+> diambil tanpa data klinis.** Satu peserta grup mempersoalkan ini 20/08 (*"seharusnya RS
+> yang dirujuk bisa melihat kode diagnosa dan alasan rujukan sebelum di approve"*) — jadi
+> ini isu desain yang masih terbuka di sisi Kemkes, bukan sesuatu yang bisa kita akali.
+>
+> **Yang TIDAK berubah bahkan sesudah disetujui: nama pasien tetap tidak tersedia.** `Patient/<ihs>` masih cangkang
+> (`active`, `id`, `identifier`, `meta`), `name` null, NIK `################`. `CarePlan.subject`
+> pun hanya `reference` tanpa `display`. Jadi kolom nama pasien di kotak masuk memang akan
+> tetap kosong — tampilkan nomor IHS, jangan biarkan melompong.
+>
+> Kode `rujukanParsePermintaanMasuk()` sudah memungut semua field itu sejak awal, jadi layar
+> `/rujukan/masuk` akan terisi sendiri tanpa perubahan kode.
+
+Catatan di bawah ini adalah keadaan 15–17/08/26, disimpan sebagai riwayat penyelidikan.
 
 Rujukan masuk sering datang **tanpa data klinis**: `_include=Task:based-on` membalas
 `OperationOutcome` bertuliskan `No consent available for CarePlan/<id>`, HTTP tetap 200.
@@ -154,9 +210,12 @@ dan Task `28ca2a68` 17/08/26, keduanya dari perujuk `Organization/100024122`):
   Consent di koleksi Postman resmi, jadi saat kita merujuk keluar pun tak ada yang perlu
   disiapkan. Vendor lain melaporkan hal sama sejak 08/07/26.
 
-**Implikasi desain (sudah diterapkan di `/rujukan/masuk`):** CarePlan tersensor → baris
-tetap muncul, ditandai "tersembunyi — consent belum ada" + peringatan bahwa keputusan
-diambil tanpa data klinis. **Task tersensor tidak menyisakan baris sama sekali**, jadi
+**Implikasi desain (sudah diterapkan di `/rujukan/masuk`):** CarePlan belum terbaca → baris
+tetap muncul, ditandai "belum terbuka — menunggu persetujuan" (atau "(dibatalkan perujuk)"
+bila Task `cancelled`) + peringatan bahwa keputusan diambil tanpa data klinis — dengan
+kalimat yang menegaskan itu perilaku normal, BUKAN gangguan dan bukan kelalaian perujuk.
+Di layar rujukan KELUAR kalimatnya berbeda ("detail tidak terbaca"): di sana kita perujuknya,
+CarePlan itu buatan kita sendiri, jadi "menunggu persetujuan" tidak berlaku. **Task tersensor tidak menyisakan baris sama sekali**, jadi
 jumlahnya dimunculkan sebagai spanduk — tanpa itu, permintaan yang hilang tak akan pernah
 diketahui siapa pun padahal perujuk menunggu. Bedakan kalimatnya dari "perujuk tidak
 mengisi": tindak lanjutnya beda.
