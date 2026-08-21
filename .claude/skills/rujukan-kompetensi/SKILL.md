@@ -73,6 +73,20 @@ dari cons-id vclaim biasa. Semua call wajib `timeout(8)->connectTimeout(3)` + tr
     CarePlan**, bukan di Task — makanya kotak masuk wajib `_include=Task:based-on`.
 12. Nama RS perujuk tidak ikut di `Task.requester` → `GET Organization/<id>` + cache;
     **jangan cache kegagalan** (gangguan sesaat bisa mengosongkan kolom seharian).
+13. **`encounter.reference` beda bentuk antar endpoint, jangan diseragamkan:**
+    `GetFaskesRujukan` pakai `"Encounter/<uuid>"`, tapi `Rujukan/Insert`
+    (`satuSehatRujukan.encounter.reference`) pakai **UUID polos** — prefix di Insert
+    menghasilkan `Encounter/Encounter/<uuid>` dan ditolak.
+14. **Field `display` dilarang memuat tag HTML** (`<br>`, `<b>`) — teguran SATUSEHAT 20/08/26.
+15. **Sisi TUJUAN: `Encounter.basedOn` wajib menunjuk ServiceRequest rujukan** saat membuat
+    kunjungan untuk pasien rujukan masuk (aturan 19/08/26). Didukung
+    `EncounterTrait::buildBaseEncounterPayload()` via `serviceRequestId`.
+16. **`No consent available` pada CarePlan kotak masuk = NORMAL, bukan cacat.** Detail klinis
+    baru terbuka setelah permintaan DISETUJUI (dikonfirmasi 21/08/26); Task `cancelled` tidak
+    pernah terbuka. Konsekuensinya keputusan setuju/tolak memang diambil tanpa data klinis —
+    itu isu desain sisi Kemkes, tak bisa diakali klien. Lihat `docs/rujukan-kompetensi.md` §4.1.
+    Yang TETAP tidak tersedia: nama pasien (`Patient/<ihs>` cangkang, NIK ter-mask,
+    `CarePlan.subject` tanpa `display`).
 
 ## 3. FAQ / katalog error tersering
 
