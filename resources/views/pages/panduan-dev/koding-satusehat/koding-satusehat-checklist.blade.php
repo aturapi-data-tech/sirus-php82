@@ -76,9 +76,9 @@
                                 ['Lengkapi IHS di Master (sekali)', 'Master Pasien → <span class="ds-code">patient_uuid</span> (otomatis dari NIK 16 digit), Master Dokter → <span class="ds-code">dr_uuid</span>, Master Poli → <span class="ds-code">poli_uuid</span>. Tanpa ini Encounter gagal & semua terkunci.'],
                                 ['Isi kode standar di Master (sekali)', 'KFA obat di Master Obat (<span class="ds-code">product_id_satusehat</span>), LOINC lab per item di Master Lab (<span class="ds-code">loinc_code</span>). Item tanpa kode akan dilewati saat kirim.'],
                                 ['Petugas isi EMR lengkap saat pelayanan', 'Keluhan+SNOMED, Alergi+SNOMED, tanda vital, diagnosa ICD-10, tindakan ICD-9, e-resep; selesaikan hasil lab & order radiologi.'],
-                                ['Buka modal Satu Sehat', 'Daftar RJ → klik ikon <em>Satu Sehat</em> pada baris pasien → muncul modal berisi 11 kartu.'],
+                                ['Buka modal Satu Sehat', 'Daftar RJ → klik ikon <em>Satu Sehat</em> pada baris pasien → muncul modal berisi <strong>15 kartu</strong>.'],
                                 ['Kirim kartu 1 Encounter DULU', 'Encounter = akar (wajib). Semua tombol kartu lain <strong>nonaktif</strong> sampai Encounter sukses.'],
-                                ['Kirim kartu 2–11 sesuai data terisi', 'Urutan bebas. Kartu 8 Obat Pulang: kirim kartu 5 Resep lebih dulu. Item tanpa kode standar dilewati dengan notifikasi jumlah.'],
+                                ['Kirim kartu 2–14 sesuai data terisi', 'Urutan bebas, KECUALI yang saling menunjuk: kartu 8 Obat Pulang butuh kartu 5 Resep lebih dulu, dan kartu 14 Telaah Resep menunjuk MedicationRequest dari kartu 5. Item tanpa kode standar dilewati dengan notifikasi jumlah.'],
                                 ['Cek badge & verifikasi', 'Kartu yang sukses jadi hijau "Terkirim". Verifikasi payload &amp; respons server di tabel <span class="ds-code">web_log_status</span>, lalu cek angka di dashboard SATUSEHAT.'],
                                 ['Saat pasien pulang', 'Ketika kunjungan CLOSED, Encounter otomatis di-<span class="ds-code">PUT</span> ke status <span class="ds-code">finished</span>.'],
                             ] as $i => [$judul, $isi])

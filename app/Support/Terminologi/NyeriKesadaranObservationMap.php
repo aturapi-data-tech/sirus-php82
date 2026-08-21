@@ -69,9 +69,20 @@ class NyeriKesadaranObservationMap
      * di sini; tidak ada tempat lain yang perlu disentuh.
      */
     private const KESADARAN = [
+        // RJ — 3 pilihan
         'Sadar'                => ['code' => null, 'display' => null],
         'Mengantuk / Gelisah'  => ['code' => '300202002', 'display' => 'Response to voice'],
         'Tidak Sadar'          => ['code' => null, 'display' => null],
+
+        // UGD — 5 pilihan, SELURUHNYA berbeda dari RJ (skrining gawat darurat memang
+        // lebih rinci). Belum satu pun punya padanan resmi, jadi semuanya dikirim
+        // sebagai teks sampai kodenya didapat. Didaftarkan eksplisit meski nilainya
+        // null supaya terlihat bahwa keberadaannya sudah diketahui — bukan terlewat.
+        'Sadar Penuh'          => ['code' => null, 'display' => null],
+        'Tampak Mengantuk'     => ['code' => null, 'display' => null],
+        'Gelisah'              => ['code' => null, 'display' => null],
+        'Bicara Tidak Jelas'   => ['code' => null, 'display' => null],
+        'Tidak Ada Respons'    => ['code' => null, 'display' => null],
     ];
 
     public static function surveyCategory(): array

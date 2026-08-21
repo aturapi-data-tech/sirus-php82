@@ -70,6 +70,7 @@
                                     <tr><td class="ds-td-strong">NutritionOrder</td><td class="ds-td-class">POST /NutritionOrder</td><td class="ds-body-sm">SNOMED (diet)</td><td class="ds-body-sm">◑ sebagian — order diet EMR (role Gizi)</td></tr>
                                     <tr><td class="ds-td-strong">Composition</td><td class="ds-td-class">POST /Composition</td><td class="ds-body-sm">LOINC (doc type)</td><td class="ds-body-sm">◑ sebagian — narasi EMR jadi section</td></tr>
                                     <tr><td class="ds-td-strong">ImagingStudy</td><td class="ds-td-class">POST /ImagingStudy</td><td class="ds-body-sm">DICOM DCM + ICD-9</td><td class="ds-body-sm">⚠️ gap — UID DICOM tak tersimpan</td></tr>
+                                    <tr><td class="ds-td-strong">QuestionnaireResponse</td><td class="ds-td-class">POST /QuestionnaireResponse</td><td class="ds-body-sm">Q0007 + clinical-term</td><td class="ds-body-sm" style="color:var(--primary)">✅ ada — telaahResep RJ &amp; UGD (15 butir), pengirim di kedua jalur</td></tr>
                                     <tr><td class="ds-td-strong">Immunization</td><td class="ds-td-class">POST /Immunization</td><td class="ds-body-sm">KFA (vaksin)</td><td class="ds-body-sm">⚠️ gap — belum ada modul imunisasi</td></tr>
                                 </tbody>
                             </table>

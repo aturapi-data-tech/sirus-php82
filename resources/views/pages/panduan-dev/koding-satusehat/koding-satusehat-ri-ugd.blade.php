@@ -12,11 +12,11 @@
                         <div class="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-3">
                             <div class="ds-card-outline" style="padding:16px 20px">
                                 <div class="ds-title-sm mb-1">RJ — Rawat Jalan</div>
-                                <div class="ds-body-sm">Lengkap (11 resource). Ruang lingkup awal &amp; acuan pola.</div>
+                                <div class="ds-body-sm">Lengkap (11 resource inti) + <strong>Nyeri &amp; Kesadaran</strong> (Observation) dan <strong>Telaah Resep</strong> (QuestionnaireResponse Q0007) — 15 kartu. Ruang lingkup awal &amp; acuan pola; dua tambahan terakhir kini <strong>sudah ada juga di UGD</strong>, belum di RI.</div>
                             </div>
                             <div class="ds-card-outline" style="padding:16px 20px">
                                 <div class="ds-title-sm mb-1">UGD</div>
-                                <div class="ds-body-sm">Lengkap + <strong>ChiefComplaint &amp; Allergy</strong> (LOV SNOMED ditambahkan di anamnesa keluhan utama &amp; alergi).</div>
+                                <div class="ds-body-sm">Lengkap + <strong>ChiefComplaint &amp; Allergy</strong> (LOV SNOMED di anamnesa keluhan utama &amp; alergi), serta <strong>Nyeri &amp; Kesadaran</strong> dan <strong>Telaah Resep</strong> — 15 kartu, sejajar RJ. Pilihan kesadaran UGD ada <strong>lima</strong> dan seluruhnya berbeda dari RJ; belum satu pun punya padanan SNOMED, jadi dikirim sebagai teks.</div>
                             </div>
                             <div class="ds-card-outline" style="padding:16px 20px">
                                 <div class="ds-title-sm mb-1">RI — Rawat Inap</div>

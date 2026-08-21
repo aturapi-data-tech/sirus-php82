@@ -29,7 +29,8 @@ new class extends Component {
     private const URUTAN_KIRIM = [
         'encounter', 'condition', 'observation', 'procedure', 'medication-request',
         'medication-dispense', 'lab', 'radiologi', 'clinical-impression',
-        'chief-complaint', 'allergy', 'penilaian', 'encounter-selesai', 'resume-medis',
+        'chief-complaint', 'allergy', 'penilaian', 'nyeri-kesadaran', 'telaah-resep',
+        'encounter-selesai', 'resume-medis',
     ];
 
     /** Sisa langkah yang belum dijalankan; kosong = tidak ada rantai berjalan. */
@@ -279,6 +280,10 @@ new class extends Component {
                         wire:key="ss-allergy-ugd-{{ $rjNo ?? 'none' }}" />
                     <livewire:pages::transaksi.ugd.satu-sehat.kirim-penilaian :rjNo="$rjNo"
                         wire:key="ss-penilaian-ugd-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-nyeri-kesadaran :rjNo="$rjNo"
+                        wire:key="ss-nyeri-kesadaran-ugd-{{ $rjNo ?? 'none' }}" />
+                    <livewire:pages::transaksi.ugd.satu-sehat.kirim-telaah-resep :rjNo="$rjNo"
+                        wire:key="ss-telaah-resep-ugd-{{ $rjNo ?? 'none' }}" />
 
                     {{-- Resume medis dikirim SESUDAH encounter finished (playbook IGD),
                          jadi kartunya paling bawah. Susunan section IGD beda dari RJ. --}}

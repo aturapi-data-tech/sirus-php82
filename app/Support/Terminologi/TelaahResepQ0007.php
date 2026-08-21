@@ -82,7 +82,46 @@ class TelaahResepQ0007
         'tepatRute' => 'Tepat Rute',
         'tepatWaktu' => 'Tepat Waktu',
         'ketepatanIndikasi' => 'Ketepatan Indikasi & Waktu Penggunaan',
+        'duplikasi' => 'Duplikasi Obat',
+        'alergi' => 'Riwayat Alergi',
+        'kontraIndikasiLain' => 'Kontra Indikasi Lain',
+        'interaksiObat' => 'Interaksi Obat',
     ];
+
+    /**
+     * Butir yang TIDAK ADA nilainya di telaah — penghalang kirim.
+     *
+     * Kasus nyatanya: telaah yang dibuat SEBELUM lima butir Q0007 ditambahkan
+     * (21/08/2026) hanya menyimpan 10 butir. Untuk telaah yang sudah ditandatangani,
+     * formnya terkunci sehingga lima key baru tak pernah ikut tersimpan.
+     *
+     * Tanpa penjagaan ini, butir kosong lolos sebagai "Sesuai" (valueCoding) atau
+     * "tidak ada masalah" (valueBoolean) — SIMRS mengarang jawaban atas pertanyaan
+     * yang tidak pernah diajukan ke apoteker, lalu menuliskannya ke rekam medis
+     * nasional. Jauh lebih buruk daripada tidak mengirim.
+     *
+     * @return array<int, string> label butir; kosong = semua terjawab
+     */
+    public static function butirBelumDijawab(array $telaah): array
+    {
+        $kosong = [];
+
+        foreach (self::PILIHAN as [$teks, $fieldList]) {
+            foreach ($fieldList as $field) {
+                if (self::nilai($telaah, $field) === '') {
+                    $kosong[] = self::LABEL[$field] ?? $field;
+                }
+            }
+        }
+
+        foreach (self::BOOLEAN as [$teks, $field]) {
+            if (self::nilai($telaah, $field) === '') {
+                $kosong[] = self::LABEL[$field] ?? $field;
+            }
+        }
+
+        return array_values(array_unique($kosong));
+    }
 
     public static function kodeTidakSesuaiTersedia(): bool
     {

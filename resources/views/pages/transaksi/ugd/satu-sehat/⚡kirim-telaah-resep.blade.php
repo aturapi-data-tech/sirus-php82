@@ -1,9 +1,9 @@
 <?php
-// resources/views/pages/transaksi/rj/satu-sehat/kirim-telaah-resep.blade.php
+// resources/views/pages/transaksi/ugd/satu-sehat/kirim-telaah-resep.blade.php
 // Kirim Telaah Resep sebagai QuestionnaireResponse Q0007.
 //
-// Sumber: datadaftarpolirj_json -> telaahResep (15 butir, diisi apoteker di
-// Antrian Apotek RJ). Pemetaan ke linkId Q0007 ada di
+// Sumber: datadaftarugd_json -> telaahResep (15 butir, diisi apoteker di
+// Antrian Apotek UGD). Pemetaan ke linkId Q0007 ada di
 // App\Support\Terminologi\TelaahResepQ0007 — termasuk bentuk bersarangnya yang
 // mengikuti PERSIS contoh resmi Postman (grup 2, 3, dan butir 4 di DALAM grup 1).
 //
@@ -18,12 +18,12 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use App\Http\Traits\Txn\Rj\EmrRJTrait;
+use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\SATUSEHAT\QuestionnaireResponseTrait;
 use App\Support\Terminologi\TelaahResepQ0007;
 
 new class extends Component {
-    use EmrRJTrait, QuestionnaireResponseTrait;
+    use EmrUGDTrait, QuestionnaireResponseTrait;
 
     public ?string $rjNo = null;
     public bool $hasEncounter = false;
@@ -46,7 +46,7 @@ new class extends Component {
         if (empty($this->rjNo)) {
             return [];
         }
-        $telaah = $this->findDataRJ($this->rjNo)['telaahResep'] ?? [];
+        $telaah = $this->findDataUGD($this->rjNo)['telaahResep'] ?? [];
         if ($telaah === []) {
             return [];
         }
@@ -72,7 +72,7 @@ new class extends Component {
         $this->reloadState();
     }
 
-    #[On('rj-satu-sehat.refresh')]
+    #[On('ugd-satu-sehat.refresh')]
     public function onRefresh(string $rjNo): void
     {
         if ((string) $this->rjNo !== $rjNo) {
@@ -86,7 +86,7 @@ new class extends Component {
         if (empty($this->rjNo)) {
             return;
         }
-        $data = $this->findDataRJ($this->rjNo);
+        $data = $this->findDataUGD($this->rjNo);
         if (empty($data)) {
             return;
         }
@@ -112,25 +112,25 @@ new class extends Component {
     }
 
     /** Pembungkus rantai "Kirim Semua" — wajib melapor apa pun hasilnya. */
-    #[On('ss-telaah-resep-rj.kirim')]
+    #[On('ss-telaah-resep-ugd.kirim')]
     public function kirim(string $rjNo): void
     {
         $this->kirimInti($rjNo);
-        $this->dispatch('rj-satu-sehat.langkah-selesai', langkah: 'telaah-resep');
+        $this->dispatch('ugd-satu-sehat.langkah-selesai', langkah: 'telaah-resep');
     }
 
     public function kirimInti(string $rjNo): void
     {
         try {
             $this->initializeSatuSehat();
-            $dataRJ = $this->findDataRJ($rjNo);
-            if (empty($dataRJ)) { $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.'); return; }
+            $dataUGD = $this->findDataUGD($rjNo);
+            if (empty($dataUGD)) { $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.'); return; }
 
-            $satuSehat = $dataRJ['satusehat'] ?? [];
+            $satuSehat = $dataUGD['satusehat'] ?? [];
             if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
             if (!empty($satuSehat['telaahResepQuestionnaireId'])) { $this->dispatch('toast', type: 'info', message: 'Telaah resep sudah pernah dikirim.'); return; }
 
-            $telaah = $dataRJ['telaahResep'] ?? [];
+            $telaah = $dataUGD['telaahResep'] ?? [];
             if ($telaah === [] || !collect($telaah)->keys()->contains(fn($k) => $k !== 'penanggungJawab')) {
                 $this->dispatch('toast', type: 'error', message: 'Telaah resep belum diisi.');
                 return;
@@ -152,7 +152,7 @@ new class extends Component {
                 return;
             }
 
-            $patientId = (string) (DB::table('rsmst_pasiens')->where('reg_no', $dataRJ['regNo'] ?? '')->value('patient_uuid') ?? '');
+            $patientId = (string) (DB::table('rsmst_pasiens')->where('reg_no', $dataUGD['regNo'] ?? '')->value('patient_uuid') ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
 
             // Penulis = apoteker yang menandatangani telaah. Kalau IHS-nya tak ketemu,
@@ -169,11 +169,11 @@ new class extends Component {
             $respons = $this->createQuestionnaireResponse([
                 'questionnaire' => TelaahResepQ0007::CANONICAL,
                 'patientId'     => $patientId,
-                'patientName'   => (string) ($dataRJ['regName'] ?? ''),
+                'patientName'   => (string) ($dataUGD['regName'] ?? ''),
                 'encounterId'   => $satuSehat['encounterId'],
                 'authorId'      => $authorId,
                 'authorName'    => (string) ($telaah['penanggungJawab']['userLog'] ?? ''),
-                'authored'      => $this->waktuTelaah($telaah, $dataRJ)->toIso8601String(),
+                'authored'      => $this->waktuTelaah($telaah, $dataUGD)->toIso8601String(),
                 'item'          => TelaahResepQ0007::item($telaah, $medicationRequestId ?: null),
             ]);
 
@@ -184,18 +184,18 @@ new class extends Component {
 
             $catatanResep = $medicationRequestId === '' ? ' Resep belum terkirim, jadi butir "resep yang dikaji" dilewati.' : '';
             $this->dispatch('toast', type: $catatanResep === '' ? 'success' : 'warning', message: 'Telaah resep terkirim.' . $catatanResep);
-            $this->dispatch('rj-satu-sehat.refresh', rjNo: $rjNo);
+            $this->dispatch('ugd-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: 'Telaah resep gagal: ' . $e->getMessage());
         }
     }
 
     /** Waktu telaah = saat apoteker TTD; belum TTD → jatuh ke waktu kunjungan. */
-    private function waktuTelaah(array $telaah, array $dataRJ): Carbon
+    private function waktuTelaah(array $telaah, array $dataUGD): Carbon
     {
         $teks = trim((string) ($telaah['penanggungJawab']['userLogDate'] ?? ''));
         if ($teks === '') {
-            $teks = trim((string) ($dataRJ['rjDate'] ?? ''));
+            $teks = trim((string) ($dataUGD['rjDate'] ?? ''));
         }
         if ($teks === '') {
             return Carbon::now();
@@ -208,10 +208,10 @@ new class extends Component {
     private function saveResult(string $rjNo, array $satuSehat): void
     {
         DB::transaction(function () use ($rjNo, $satuSehat) {
-            $this->lockRJRow($rjNo);
-            $data = $this->findDataRJ($rjNo);
+            $this->lockUGDRow($rjNo);
+            $data = $this->findDataUGD($rjNo);
             $data['satusehat'] = $satuSehat;
-            $this->updateJsonRJ($rjNo, $data);
+            $this->updateJsonUGD((int) $rjNo, $data);
         });
     }
 };
@@ -265,5 +265,5 @@ new class extends Component {
 
     <x-satu-sehat.pratinjau :terbuka="$pratinjauTerbuka"
         :baris="$pratinjauTerbuka ? $this->pratinjau : []"
-        kosong="Telaah resep belum diisi di Antrian Apotek RJ — Kirim akan ditolak." />
+        kosong="Telaah resep belum diisi di Antrian Apotek UGD — Kirim akan ditolak." />
 </div>
