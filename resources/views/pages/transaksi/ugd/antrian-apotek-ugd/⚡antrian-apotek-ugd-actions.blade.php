@@ -229,6 +229,34 @@ new class extends Component {
         $this->resetForm();
     }
 
+    /**
+     * Butir telaah resep, dipetakan ke kuesioner baku SATUSEHAT Q0007
+     * (https://fhir.kemkes.go.id/Questionnaire/Q0007). DISAMAKAN dengan RJ
+     * (antrian-apotek-rj-actions) — formulir telaah resep itu satu instrumen
+     * farmasi yang sama, hanya jalurnya berbeda; membedakan butirnya akan
+     * membuat hasil telaah pasien UGD dan RJ tidak bisa dibandingkan.
+     *
+     *   1.1 identitas pasien        <- bbPasienAnak (sebagian)
+     *   1.2 identitas & paraf dokter<- identitasDokter
+     *   1.3 tanggal resep           <- tanggalResep
+     *   1.4 ruangan/unit asal       <- ruanganAsalResep
+     *   2.1 nama/bentuk/kekuatan    <- tepatObat
+     *   2.2 dosis & jumlah          <- tepatDosis
+     *   2.3 stabilitas obat         <- stabilitasObat
+     *   2.4 aturan & cara pakai     <- tepatRute + tepatWaktu
+     *   3.1 ketepatan indikasi      <- ketepatanIndikasi
+     *   3.2 duplikasi               <- duplikasi
+     *   3.3 alergi                  <- alergi
+     *   3.4 kontraindikasi          <- kontraIndikasiLain
+     *   3.5 interaksi obat          <- interaksiObat
+     *
+     * kejelasanTulisanResep tidak punya padanan di Q0007 — dipertahankan karena
+     * dipakai apoteker kita, hanya tidak ikut terkirim.
+     *
+     * Lima butir terakhir DITAMBAHKAN 21/08/2026. Sengaja di ekor: record lama
+     * mendapat key baru lewat `??=` yang juga menempel di ekor, jadi urutan kartu
+     * tetap sama antara record lama dan baru.
+     */
     private function defaultTelaahResep(): array
     {
         return [
@@ -242,6 +270,11 @@ new class extends Component {
             'interaksiObat' => ['interaksiObat' => 'Tidak', 'desc' => ''],
             'bbPasienAnak' => ['bbPasienAnak' => 'Ya', 'desc' => ''],
             'kontraIndikasiLain' => ['kontraIndikasiLain' => 'Tidak', 'desc' => ''],
+            'identitasDokter' => ['identitasDokter' => 'Ya', 'desc' => ''],
+            'tanggalResep' => ['tanggalResep' => 'Ya', 'desc' => ''],
+            'ruanganAsalResep' => ['ruanganAsalResep' => 'Ya', 'desc' => ''],
+            'stabilitasObat' => ['stabilitasObat' => 'Ya', 'desc' => ''],
+            'ketepatanIndikasi' => ['ketepatanIndikasi' => 'Ya', 'desc' => ''],
         ];
     }
 
@@ -386,6 +419,11 @@ new class extends Component {
                                     'interaksiObat' => 'Interaksi Obat',
                                     'bbPasienAnak' => 'BB Pasien Anak',
                                     'kontraIndikasiLain' => 'Kontra Indikasi Lain',
+                                    'identitasDokter' => 'Identitas & Paraf Dokter',
+                                    'tanggalResep' => 'Tanggal Resep',
+                                    'ruanganAsalResep' => 'Ruangan/Unit Asal Resep',
+                                    'stabilitasObat' => 'Stabilitas Obat',
+                                    'ketepatanIndikasi' => 'Ketepatan Indikasi & Waktu Penggunaan',
                                 ];
                             @endphp
 
