@@ -181,6 +181,9 @@ new class extends Component {
                     'locationId' => $locationId,
                     'class_code' => 'AMB',
                     'startDate' => $rjDate->toIso8601String(),
+                    // Terisi hanya untuk pasien rujukan masuk — lihat catatan di
+                    // EncounterTrait::buildBaseEncounterPayload().
+                    'serviceRequestId' => $dataRJ['rujukanMasuk']['serviceRequestId'] ?? '',
                 ]);
                 $satuSehat['encounterId'] = $respons['id'] ?? null;
             }

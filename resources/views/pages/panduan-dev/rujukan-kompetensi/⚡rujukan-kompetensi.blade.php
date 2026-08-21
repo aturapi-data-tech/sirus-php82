@@ -1280,19 +1280,23 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
                                         <tr><td class="ds-td-meta">Found duplicate: Task (20002)</td><td class="ds-body-sm">Task.identifier di-reuse</td><td class="ds-body-sm">UUID baru tiap POST (panel sudah otomatis)</td></tr>
                                         <tr><td class="ds-td-meta">429 Rate limit quota violation</td><td class="ds-body-sm">Kuota API staging habis</td><td class="ds-body-sm">Hemat panggilan; lapor minta perpanjang</td></tr>
                                         <tr><td class="ds-td-meta">Error IDENTIK di ≥2 endpoint berbeda</td><td class="ds-body-sm"><strong>Hampir pasti gangguan jaringan SATUSEHAT</strong></td><td class="ds-body-sm">JANGAN debug payload — tunggu, lalu retry (state tersimpan)</td></tr>
-                                        <tr><td class="ds-td-meta">No consent available for CarePlan/... (HTTP 200)</td><td class="ds-body-sm"><strong>Cacat platform SATUSEHAT</strong> — consent bertipe CarePlan tidak pernah terbit untuk rujukan yang masuk ke kita</td><td class="ds-body-sm">Bukan bug kita &amp; tak ada workaround klien — lihat kotak di bawah</td></tr>
+                                        <tr><td class="ds-td-meta">No consent available for CarePlan/... (HTTP 200)</td><td class="ds-body-sm"><strong>NORMAL</strong> — detail klinis baru terbuka setelah permintaan DISETUJUI (dikonfirmasi 21/08/2026)</td><td class="ds-body-sm">Tandai "belum terbuka", jangan sebut cacat platform — lihat kotak di bawah</td></tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
 
                         <div class="ds-card-outline mb-6" style="padding:20px">
-                            <div class="ds-caption-up mb-3" style="color:var(--muted)">Kotak masuk buta karena consent — sudah dibuktikan, bukan dugaan</div>
+                            <div class="ds-caption-up mb-3" style="color:var(--muted)">Detail klinis baru terbuka setelah disetujui — bukan cacat platform</div>
                             <p class="ds-body-md mb-3" style="max-width:66ch">
-                                Rujukan masuk sering datang tanpa data klinis: <span class="ds-code">_include=Task:based-on</span>
-                                membalas OperationOutcome <span class="ds-code">No consent available for CarePlan/&lt;id&gt;</span>,
-                                HTTP tetap 200. Karena nama pasien, layanan, jalur, dan keterangan klinis
-                                <strong>hanya ada di CarePlan</strong> — tidak pernah di Task — kolom-kolom itu kosong berjamaah.
+                                Selama permintaan <strong>belum dijawab</strong>, rujukan masuk datang tanpa data klinis:
+                                <span class="ds-code">_include=Task:based-on</span> membalas OperationOutcome
+                                <span class="ds-code">No consent available for CarePlan/&lt;id&gt;</span>, HTTP tetap 200.
+                                Karena layanan, jalur, dan keterangan klinis <strong>hanya ada di CarePlan</strong> —
+                                tidak pernah di Task — kolom-kolom itu kosong berjamaah.
+                                <strong>Begitu permintaan disetujui, CarePlan terbaca penuh</strong> (probe 21/08/2026:
+                                Task <span class="ds-code">completed</span> terbaca, <span class="ds-code">cancelled</span> tidak).
+                                Jadi ini perilaku by design, bukan gangguan — dan bukan berarti perujuk tidak mengisi.
                             </p>
                             <ul class="ds-body-md space-y-1 mb-3" style="max-width:66ch; list-style:disc; padding-left:20px">
                                 <li><strong>Tidak bisa diakali dari sumber lain.</strong> <span class="ds-code">Patient/&lt;ihs&gt;</span>
@@ -1307,9 +1311,11 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
                                     <span class="ds-code">link.next</span>.</li>
                             </ul>
                             <p class="ds-body-md" style="max-width:66ch">
-                                <strong>Yang dilakukan layar kotak masuk:</strong> CarePlan tersensor → baris tetap tampil,
-                                ditandai "tersembunyi — consent belum ada" plus peringatan bahwa keputusan diambil tanpa data
-                                klinis. Task tersensor <strong>tidak menyisakan baris sama sekali</strong>, jadi jumlahnya
+                                <strong>Yang dilakukan layar kotak masuk:</strong> CarePlan belum terbaca → baris tetap tampil,
+                                ditandai "belum terbuka — menunggu persetujuan" (atau "(dibatalkan perujuk)" bila Task
+                                <span class="ds-code">cancelled</span>) plus peringatan bahwa keputusan memang diambil tanpa
+                                data klinis. Nama pasien tetap kosong bahkan sesudah disetujui:
+                                <span class="ds-code">CarePlan.subject</span> hanya berisi reference tanpa display. Task tersensor <strong>tidak menyisakan baris sama sekali</strong>, jadi jumlahnya
                                 dimunculkan sebagai spanduk — tanpa itu, permintaan yang hilang tak akan diketahui siapa pun
                                 padahal perujuk menunggu. Kalimatnya sengaja dibedakan dari "perujuk tidak mengisi", karena
                                 tindak lanjutnya beda.

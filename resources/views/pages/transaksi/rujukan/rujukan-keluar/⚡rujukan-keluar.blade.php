@@ -550,7 +550,7 @@ new class extends Component {
                                                 {{ $baris['pasienNama'] !== ''
                                                     ? $baris['pasienNama']
                                                     : ($barisDiblokir
-                                                        ? '(tersembunyi — consent belum ada)'
+                                                        ? '(detail tidak terbaca)'
                                                         : '(nama tidak terbaca)') }}
                                             </div>
                                             <div class="text-sm text-muted dark:text-gray-400">
@@ -580,7 +580,7 @@ new class extends Component {
                                             @elseif ($baris['jalur'] === 'igd')
                                                 <x-badge variant="danger">Gawat Darurat</x-badge>
                                             @elseif ($barisDiblokir)
-                                                <x-badge variant="warning">Jalur tersembunyi</x-badge>
+                                                <x-badge variant="warning">Jalur tidak terbaca</x-badge>
                                             @else
                                                 <x-badge variant="gray">Layanan tidak dikenali</x-badge>
                                             @endif
@@ -588,7 +588,7 @@ new class extends Component {
                                                 {{ $baris['layananNama'] !== ''
                                                     ? $baris['layananNama']
                                                     : ($barisDiblokir
-                                                        ? 'Detail diblokir SATUSEHAT (consent)'
+                                                        ? 'Detail tidak terbaca (consent)'
                                                         : '-') }}
                                                 @if ($baris['layananKode'] !== '')
                                                     <span class="text-muted-soft">({{ $baris['layananKode'] }})</span>
