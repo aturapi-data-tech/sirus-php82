@@ -1524,22 +1524,26 @@ PROMPT;
                         <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">Scan</span>.
                         Sistem mengambil semua transaksi RJ beserta cek readiness (Patient IHS, Dokter IHS, Poli UUID).
                         <br><span class="text-xs italic">Item yang belum lengkap setup-nya ditandai &ldquo;Perlu setup&rdquo; dan bisa di-skip.</span></li>
-                    <li><span class="font-semibold">Run AI (5)</span> &mdash; klik
-                        <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">Run AI (5)</span>
-                        untuk memproses 5 item pending yang belum punya diagnosa.
+                    <li><span class="font-semibold">Run AI</span> &mdash; klik
+                        <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">Run AI</span>
+                        untuk memproses semua item pending yang belum punya diagnosa.
                         AI membaca data SOAP dari EMR dan menyarankan kode ICD-10 (diagnosa) dan ICD-9-CM (prosedur).
-                        Klik berulang sampai semua terproses.</li>
+                        Proses berjalan otomatis per 5 item sampai selesai &mdash; klik
+                        <span class="font-mono text-xs bg-red-100 dark:bg-red-900/40 px-1 rounded">Stop AI</span>
+                        untuk menghentikan.</li>
                     <li><span class="font-semibold">Review &amp; Approve</span> &mdash; klik
                         <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">Review</span>
                         untuk buka detail. Periksa diagnosa hasil AI &amp; readiness. Jika sesuai, klik
                         <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">Approve</span>.
                         Jika tidak,
                         <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">Reject</span>.</li>
-                    <li><span class="font-semibold">Kirim (5)</span> &mdash; klik
-                        <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">Kirim (5)</span>
-                        untuk mengirim 5 item approved ke SATUSEHAT.
-                        Proses: Encounter &rarr; Condition &rarr; Observation &rarr; Procedure &rarr; dll (14 langkah otomatis).
-                        Yang sudah terkirim tidak diulang.</li>
+                    <li><span class="font-semibold">Kirim All</span> &mdash; klik
+                        <span class="font-mono text-xs bg-blue-100 dark:bg-blue-900/40 px-1 rounded">Kirim All</span>
+                        untuk mengirim semua item approved ke SATUSEHAT secara otomatis.
+                        Proses: Encounter &rarr; Condition &rarr; Observation &rarr; Procedure &rarr; dll (14 langkah otomatis per record).
+                        Berjalan terus per 5 record sampai selesai &mdash; klik
+                        <span class="font-mono text-xs bg-red-100 dark:bg-red-900/40 px-1 rounded">Stop Kirim</span>
+                        untuk menghentikan. Yang sudah terkirim tidak diulang.</li>
                 </ol>
             </div>
 

@@ -137,13 +137,16 @@
                             </p>
                         </div>
 
-                        {{-- Batch vs selection --}}
-                        <h2 class="ds-title-md mb-3" style="color:var(--ink)">Batch vs Selection</h2>
+                        {{-- Continuous mode --}}
+                        <h2 class="ds-title-md mb-3" style="color:var(--ink)">Continuous Mode</h2>
                         <div class="ds-card-outline mb-6" style="padding:20px">
                             <ul class="ds-body-sm space-y-1.5" style="color:var(--body-strong)">
-                                <li>• <strong>Ada selectedIds</strong> → proses semua yang dipilih (tanpa limit)</li>
-                                <li>• <strong>Tidak ada seleksi</strong> → batch 5 item pending per klik</li>
+                                <li>• Klik <strong>Run AI</strong> → proses otomatis per 5 item, lanjut terus sampai semua selesai</li>
+                                <li>• Klik <strong>Stop AI</strong> untuk menghentikan kapan saja</li>
+                                <li>• Async per batch via <span class="ds-code">$this->js('setTimeout(() => $wire.aiProcessNextBatch(), 300)')</span></li>
+                                <li>• <strong>Ada selectedIds</strong> → hanya proses yang dipilih</li>
                                 <li>• Filter: <span class="ds-code">status = 'pending' AND ai_model IS NULL</span></li>
+                                <li>• Item yang SOAP-nya terlalu pendek atau AI gagal ditandai <span class="ds-code">ai_model = 'skipped'</span> agar tidak loop</li>
                             </ul>
                         </div>
 

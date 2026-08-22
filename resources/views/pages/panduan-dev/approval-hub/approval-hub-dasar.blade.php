@@ -34,7 +34,7 @@
 
                         {{-- Tab list --}}
                         <div class="ds-card-outline mb-6" style="padding:20px">
-                            <div class="ds-caption-up mb-3" style="color:var(--muted)">Tab aktif (5 modul)</div>
+                            <div class="ds-caption-up mb-3" style="color:var(--muted)">Tab aktif (6 modul)</div>
                             <div class="overflow-x-auto">
                                 <table class="ds-table">
                                     <thead>
@@ -44,8 +44,9 @@
                                         <tr><td><span class="ds-code">Casemix RJ</span></td><td>casemix / RJ</td><td>AI suggest ICD + auto bridging E-Klaim 14 step</td><td style="color:var(--green)">Ya</td></tr>
                                         <tr><td><span class="ds-code">Casemix UGD</span></td><td>casemix / UGD</td><td>Sama dengan RJ, tabel <span class="ds-code">rstxn_ugdhdrs</span></td><td style="color:var(--green)">Ya</td></tr>
                                         <tr><td><span class="ds-code">Casemix RI</span></td><td>casemix / RI</td><td>AI suggest ICD, bridging manual via modal iDRG</td><td style="color:var(--muted)">Manual</td></tr>
-                                        <tr><td><span class="ds-code">Bundling Klaim</span></td><td>bundling</td><td>Bundling klaim BPJS</td><td>—</td></tr>
-                                        <tr><td><span class="ds-code">SATUSEHAT RJ</span></td><td>satusehat</td><td>Integrasi FHIR SATUSEHAT</td><td>—</td></tr>
+                                        <tr><td><span class="ds-code">Bundling RJ</span></td><td>bundling / RJ</td><td>Bundling berkas klaim BPJS rawat jalan</td><td>—</td></tr>
+                                        <tr><td><span class="ds-code">Bundling RI</span></td><td>bundling / RI</td><td>Bundling berkas klaim BPJS rawat inap</td><td>—</td></tr>
+                                        <tr><td><span class="ds-code">SATUSEHAT RJ</span></td><td>satusehat</td><td>AI suggest ICD + kirim FHIR ke SATUSEHAT (continuous)</td><td>—</td></tr>
                                     </tbody>
                                 </table>
                             </div>
