@@ -150,7 +150,16 @@
         @endunless
     </div>
 
-    <div x-show="open && filtered.length > 0"
+    {{--
+        wire:ignore WAJIB di sini. Isi dropdown 100% dibangun Alpine dari `allOptions`
+        (sudah dibekukan ke x-data saat render) — server tidak pernah perlu memperbaruinya.
+        Tanpa ini, morph Livewire ikut mengaduk <template x-for>; kalau <li>-nya sampai
+        tercabut ke DOM hidup, `opt` kehilangan scope x-for dan Alpine melempar
+        "opt is not defined" DI TENGAH flushHandlers — sisa directive pada batch initTree
+        yang sama (mis. x-bind:class tab lain di halaman) ikut batal dijalankan.
+    --}}
+    <div wire:ignore
+         x-show="open && filtered.length > 0"
          x-transition.opacity.duration.100ms
          class="absolute z-50 w-full mt-2 overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
         <ul class="overflow-y-auto divide-y divide-gray-100 max-h-72 dark:divide-gray-800">
