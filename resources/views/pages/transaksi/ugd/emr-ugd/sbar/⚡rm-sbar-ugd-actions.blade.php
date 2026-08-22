@@ -1,0 +1,896 @@
+<?php
+// resources/views/pages/transaksi/ugd/emr-ugd/sbar/rm-sbar-ugd-actions.blade.php
+// Format menyalin SBAR Rawat Inap (sbar-ri/rm-sbar-ri-actions). Perbedaan yang disengaja:
+//  - Sumber data: datadaftarugd_json (rjNo) via EmrUGDTrait, node root `sbar`.
+//  - DPJP = dokter kunjungan UGD (drId/drDesc), bukan leveling Pengkajian Awal RI.
+//  - Simpan pakai tombol milik komponen (Tambah/Perbarui SBAR) — footer Simpan EMR UGD
+//    hanya menyimpan SOAP, tidak tab-aware seperti EMR RI.
+
+use Livewire\Component;
+use Livewire\Attributes\On;
+use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Http\Traits\Concerns\WithValidationToastTrait;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
+
+new class extends Component {
+    use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
+
+    public bool $isFormLocked = false;
+    public ?int $rjNo = null;
+    public array $dataDaftarUGD = [];
+
+    public string $activeProfession = 'Semua';
+    public array $professionTabs = ['Semua', 'Dokter', 'Perawat', 'Apoteker', 'Gizi', 'Penunjang'];
+
+    public array $formEntrySBAR = [
+        'tglSBAR' => '',
+        'petugasSBAR' => '',
+        'petugasSBARCode' => '',
+        'profession' => '',
+        'sbar' => ['situation' => '', 'background' => '', 'assessment' => '', 'recommendation' => ''],
+    ];
+
+    public ?string $editingSbarId = null;
+
+    public array $renderVersions = [];
+    protected array $renderAreas = ['modal-sbar-ugd'];
+
+    public function mount(): void
+    {
+        $this->registerAreas(['modal-sbar-ugd']);
+    }
+
+    #[On('open-rm-sbar-ugd')]
+    public function open(int $rjNo): void
+    {
+        if (empty($rjNo)) {
+            return;
+        }
+
+        $this->rjNo = $rjNo;
+        $this->resetForm();
+        $this->resetValidation();
+
+        $data = $this->findDataUGD($rjNo);
+        if (!$data) {
+            $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.');
+            return;
+        }
+
+        $this->dataDaftarUGD = $data;
+        $this->dataDaftarUGD['sbar'] ??= [];
+
+        $role = $this->profesiSaya();
+        $this->activeProfession = in_array($role, ['Dokter', 'Perawat', 'Apoteker', 'Gizi'], true) ? $role : 'Semua';
+
+        $this->isFormLocked = $this->checkEmrUGDStatus($rjNo);
+
+        $this->incrementVersion('modal-sbar-ugd');
+    }
+
+    /* ── Simpan SOAP mem-morph parent EMR → komponen pasif ikut ter-wipe.
+       Muat ulang HANYA bila memang ter-wipe (regNo hilang) agar entri berjalan tak reset. ── */
+    #[On('refresh-after-ugd.saved')]
+    public function reloadAfterUgdSaved(): void
+    {
+        if (empty($this->rjNo) || !empty($this->dataDaftarUGD['regNo'])) {
+            return;
+        }
+
+        $this->open((int) $this->rjNo);
+    }
+
+    public function setTglSBAR(): void
+    {
+        $this->formEntrySBAR['tglSBAR'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+        $this->incrementVersion('modal-sbar-ugd');
+    }
+
+    #[On('save-rm-sbar-ugd')]
+    public function addSBAR(): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'EMR terkunci — data tidak dapat diubah.');
+            return;
+        }
+
+        // Mode edit → alihkan ke update (identitas petugas tetap milik penulis asli).
+        if ($this->editingSbarId !== null) {
+            $this->updateSBAR();
+            return;
+        }
+
+        $this->formEntrySBAR['petugasSBAR'] = auth()->user()->myuser_name;
+        $this->formEntrySBAR['petugasSBARCode'] = auth()->user()->myuser_code;
+        $this->formEntrySBAR['profession'] = $this->profesiSaya();
+
+        $this->validateWithToast($this->aturanSBAR(), $this->pesanSBAR());
+
+        $fingerprint = md5(json_encode([$this->formEntrySBAR['tglSBAR'], $this->formEntrySBAR['sbar']], JSON_UNESCAPED_UNICODE));
+
+        try {
+            $inserted = false;
+
+            DB::transaction(function () use ($fingerprint, &$inserted) {
+                $this->lockUGDRow($this->rjNo);
+
+                $fresh = $this->findDataUGD($this->rjNo) ?? [];
+                if (empty($fresh)) {
+                    throw new \RuntimeException('Data UGD tidak ditemukan, simpan dibatalkan.');
+                }
+                $fresh['sbar'] ??= [];
+
+                if (collect($fresh['sbar'])->first(fn($r) => ($r['fingerprint'] ?? null) === $fingerprint)) {
+                    $this->dispatch('toast', type: 'info', message: 'SBAR yang sama sudah tersimpan.');
+                    return;
+                }
+
+                $fresh['sbar'][] = array_merge($this->formEntrySBAR, [
+                    'sbarId' => (string) Str::uuid(),
+                    'fingerprint' => $fingerprint,
+                ]);
+
+                $this->updateJsonUGD((int) $this->rjNo, $fresh);
+                $this->dataDaftarUGD = $fresh;
+                $inserted = true;
+
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Tambah SBAR UGD — entri ' . $this->formEntrySBAR['tglSBAR'] . ' (' . ($this->formEntrySBAR['profession'] ?: '-') . ')', 'MR');
+            });
+
+            if ($inserted) {
+                $this->reset(['formEntrySBAR']);
+                $this->afterSave('SBAR berhasil ditambahkan.');
+            }
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
+        }
+    }
+
+    /* ── Mulai edit: muat entri ke form ── */
+    public function editSBAR(string $sbarId): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'EMR terkunci — data tidak dapat diubah.');
+            return;
+        }
+
+        $sbar = collect($this->dataDaftarUGD['sbar'] ?? [])->first(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
+        if (!$sbar) {
+            $this->dispatch('toast', type: 'error', message: 'SBAR tidak ditemukan.');
+            return;
+        }
+
+        if (!$this->canEditSbar($sbar)) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya pemilik entri atau Admin yang dapat mengedit SBAR.');
+            return;
+        }
+
+        $this->editingSbarId = $sbarId;
+        $this->formEntrySBAR = array_merge($this->formEntrySBAR, [
+            'tglSBAR' => $sbar['tglSBAR'] ?? '',
+            'petugasSBAR' => $sbar['petugasSBAR'] ?? '',
+            'petugasSBARCode' => $sbar['petugasSBARCode'] ?? '',
+            'profession' => $sbar['profession'] ?? '',
+            'sbar' => $sbar['sbar'] ?? ['situation' => '', 'background' => '', 'assessment' => '', 'recommendation' => ''],
+        ]);
+
+        $this->resetValidation();
+        $this->incrementVersion('modal-sbar-ugd');
+        $this->dispatch('toast', type: 'info', message: 'Mode edit SBAR — ubah lalu klik Perbarui SBAR.');
+    }
+
+    /* ── Pemilik entri (petugasSBARCode === myuser_code) atau Admin ── */
+    private function canEditSbar(array $sbar): bool
+    {
+        if (auth()->user()->hasRole('Admin')) {
+            return true;
+        }
+        $ownerCode = (string) ($sbar['petugasSBARCode'] ?? '');
+        return $ownerCode !== '' && $ownerCode === auth()->user()->myuser_code;
+    }
+
+    public function cancelEditSBAR(): void
+    {
+        $this->editingSbarId = null;
+        $this->reset(['formEntrySBAR']);
+        $this->resetValidation();
+        $this->incrementVersion('modal-sbar-ugd');
+    }
+
+    private function updateSBAR(): void
+    {
+        $this->validateWithToast($this->aturanSBAR(), $this->pesanSBAR());
+
+        try {
+            $updated = false;
+
+            DB::transaction(function () use (&$updated) {
+                $this->lockUGDRow($this->rjNo);
+
+                $fresh = $this->findDataUGD($this->rjNo) ?? [];
+                $list = collect($fresh['sbar'] ?? []);
+                $idx = $list->search(fn($r) => ($r['sbarId'] ?? null) === $this->editingSbarId);
+                if ($idx === false) {
+                    throw new \RuntimeException('SBAR tidak ditemukan.');
+                }
+
+                $row = $list->get($idx);
+
+                // Guard ulang terhadap data segar (hindari bypass via state lama).
+                if (!$this->canEditSbar($row)) {
+                    throw new \RuntimeException('Hanya pemilik entri atau Admin yang dapat mengedit SBAR.');
+                }
+
+                // Perbarui konten saja; identitas petugas tetap milik penulis asli.
+                $row['tglSBAR'] = $this->formEntrySBAR['tglSBAR'];
+                $row['sbar'] = $this->formEntrySBAR['sbar'];
+                $row['fingerprint'] = md5(json_encode([$row['tglSBAR'], $row['sbar']], JSON_UNESCAPED_UNICODE));
+                // Konten berubah → review/TTD DPJP sebelumnya tidak lagi valid.
+                unset($row['reviewDpjp']);
+
+                $list->put($idx, $row);
+                $fresh['sbar'] = $list->values()->all();
+
+                $this->updateJsonUGD((int) $this->rjNo, $fresh);
+                $this->dataDaftarUGD = $fresh;
+                $updated = true;
+
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Edit SBAR UGD — entri ' . ($row['tglSBAR'] ?? '-') . ' (' . ($row['profession'] ?: '-') . ')', 'MR');
+            });
+
+            if ($updated) {
+                $this->editingSbarId = null;
+                $this->reset(['formEntrySBAR']);
+                $this->afterSave('SBAR berhasil diperbarui.');
+            }
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
+        }
+    }
+
+    public function removeSBAR(string $sbarId): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'EMR terkunci — data tidak dapat diubah.');
+            return;
+        }
+
+        // Hapus SBAR: hanya level Supervisor (2) ke atas — fungsional (Dokter/Perawat dll)
+        // tidak bisa walau pemilik entri.
+        if (!auth()->user()->hasAnyRole(['Admin', 'Manager Umum', 'Manager Medis', 'Supervisor Penunjang', 'Supervisor Tu', 'Mr', 'Casemix'])) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya Supervisor ke atas yang dapat menghapus SBAR.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($sbarId) {
+                $this->lockUGDRow($this->rjNo);
+
+                $fresh = $this->findDataUGD($this->rjNo) ?? [];
+                $list = collect($fresh['sbar'] ?? []);
+                $idx = $list->search(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
+
+                if ($idx === false) {
+                    throw new \RuntimeException('SBAR tidak ditemukan.');
+                }
+
+                $row = $list->get($idx);
+                $list->forget($idx);
+                $fresh['sbar'] = $list->values()->all();
+
+                $this->updateJsonUGD((int) $this->rjNo, $fresh);
+                $this->dataDaftarUGD = $fresh;
+
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus SBAR UGD — entri ' . ($row['tglSBAR'] ?? '-') . ' oleh ' . ($row['petugasSBAR'] ?? '-'), 'MR');
+            });
+
+            $this->afterSave('SBAR berhasil dihapus.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
+        }
+    }
+
+    /* ── DPJP UGD = dokter kunjungan (rsview_ugdkasir.dr_id). drId === User.myuser_code ── */
+    private function dpjpUgdId(): string
+    {
+        return (string) ($this->dataDaftarUGD['drId'] ?? '');
+    }
+
+    /* ── Review/TTD SBAR — HANYA DPJP (dokter UGD) / Admin ── */
+    public function reviewSbarDpjp(string $sbarId): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'EMR terkunci — data tidak dapat diubah.');
+            return;
+        }
+
+        $dpjpId = $this->dpjpUgdId();
+        $dpjpName = (string) ($this->dataDaftarUGD['drDesc'] ?? '');
+        $isAdmin = auth()->user()->hasRole('Admin');
+
+        if ($dpjpId === '') {
+            $this->dispatch('toast', type: 'error', message: 'Dokter UGD belum ditentukan pada kunjungan ini.');
+            return;
+        }
+        if (!$isAdmin && $dpjpId !== auth()->user()->myuser_code) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya DPJP UGD / Admin yang dapat me-review SBAR.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($sbarId, $dpjpId, $dpjpName) {
+                $this->lockUGDRow($this->rjNo);
+
+                $fresh = $this->findDataUGD($this->rjNo) ?? [];
+                $list = collect($fresh['sbar'] ?? []);
+                $idx = $list->search(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
+                if ($idx === false) {
+                    throw new \RuntimeException('SBAR tidak ditemukan.');
+                }
+
+                $row = $list->get($idx);
+                $row['reviewDpjp'] = [
+                    'drId' => $dpjpId,
+                    'drName' => $dpjpName ?: auth()->user()->myuser_name,
+                    'tglReview' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
+                ];
+                $list->put($idx, $row);
+                $fresh['sbar'] = $list->values()->all();
+
+                $this->updateJsonUGD((int) $this->rjNo, $fresh);
+                $this->dataDaftarUGD = $fresh;
+
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Review SBAR UGD — entri ' . ($row['tglSBAR'] ?? '-') . ' oleh DPJP ' . ($dpjpName ?: '-'), 'MR');
+            });
+
+            $this->afterSave('SBAR sudah direview DPJP.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
+        }
+    }
+
+    /* ── Batal review — HANYA DPJP (dokter UGD) / Admin ── */
+    public function batalReviewSbarDpjp(string $sbarId): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'EMR terkunci — data tidak dapat diubah.');
+            return;
+        }
+
+        $dpjpId = $this->dpjpUgdId();
+        $isAdmin = auth()->user()->hasRole('Admin');
+        if (!$isAdmin && ($dpjpId === '' || $dpjpId !== auth()->user()->myuser_code)) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya DPJP UGD / Admin yang dapat membatalkan review.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($sbarId) {
+                $this->lockUGDRow($this->rjNo);
+
+                $fresh = $this->findDataUGD($this->rjNo) ?? [];
+                $list = collect($fresh['sbar'] ?? []);
+                $idx = $list->search(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
+                if ($idx === false) {
+                    throw new \RuntimeException('SBAR tidak ditemukan.');
+                }
+
+                $row = $list->get($idx);
+                unset($row['reviewDpjp']);
+                $list->put($idx, $row);
+                $fresh['sbar'] = $list->values()->all();
+
+                $this->updateJsonUGD((int) $this->rjNo, $fresh);
+                $this->dataDaftarUGD = $fresh;
+
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Batal review SBAR UGD — entri ' . ($row['tglSBAR'] ?? '-'), 'MR');
+            });
+
+            $this->afterSave('Review DPJP dibatalkan.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal: ' . $e->getMessage());
+        }
+    }
+
+    /* ── Cetak PDF satu entri SBAR ── */
+    public function printSbar(string $sbarId): mixed
+    {
+        $sbar = collect($this->dataDaftarUGD['sbar'] ?? [])->first(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
+        if (empty($sbar)) {
+            $this->dispatch('toast', type: 'error', message: 'SBAR tidak ditemukan.');
+            return null;
+        }
+
+        $regNo = (string) ($this->dataDaftarUGD['regNo'] ?? '');
+        $pasienData = $regNo !== '' ? $this->findDataMasterPasien($regNo) : [];
+        if (empty($pasienData)) {
+            $this->dispatch('toast', type: 'error', message: 'Data pasien tidak ditemukan.');
+            return null;
+        }
+
+        $pdf = Pdf::loadView('pages.components.rekam-medis.ugd.cetak-sbar.cetak-sbar-ugd-print', [
+            'sbar' => $sbar,
+            'dataPasien' => $pasienData,
+            'dataDaftarUGD' => $this->dataDaftarUGD,
+        ])->setPaper('A4');
+
+        $filename = 'sbar-ugd-' . ($regNo !== '' ? $regNo : $this->rjNo) . '-' . substr($sbarId, 0, 8) . '.pdf';
+
+        return response()->streamDownload(fn() => print $pdf->output(), $filename);
+    }
+
+    public function copySBAR(string $sbarId): void
+    {
+        $sbar = collect($this->dataDaftarUGD['sbar'] ?? [])->first(fn($r) => ($r['sbarId'] ?? null) === $sbarId);
+
+        if (!$sbar) {
+            $this->dispatch('toast', type: 'error', message: 'SBAR tidak ditemukan.');
+            return;
+        }
+
+        // Copy hanya bisa dilakukan oleh profesi yang sama, kecuali Admin.
+        if (!auth()->user()->hasRole('Admin')) {
+            if ($this->profesiSaya() !== ($sbar['profession'] ?? '')) {
+                $this->dispatch('toast', type: 'error', message: 'Hanya bisa copy SBAR dari profesi yang sama.');
+                return;
+            }
+        }
+
+        // Copy = entri baru → keluar dari mode edit bila sedang aktif.
+        $this->editingSbarId = null;
+
+        $this->formEntrySBAR = array_merge($this->formEntrySBAR, [
+            'tglSBAR' => '',
+            'petugasSBAR' => '',
+            'petugasSBARCode' => '',
+            'profession' => '',
+            'sbar' => $sbar['sbar'] ?? ['situation' => '', 'background' => '', 'assessment' => '', 'recommendation' => ''],
+        ]);
+
+        $this->incrementVersion('modal-sbar-ugd');
+        $this->dispatch('toast', type: 'success', message: 'SBAR dicopy ke form.');
+    }
+
+    public function getSbarCount(string $profession): int
+    {
+        $list = $this->dataDaftarUGD['sbar'] ?? [];
+        if ($profession === 'Semua') {
+            return count($list);
+        }
+        return collect($list)->where('profession', $profession)->count();
+    }
+
+    /* ── Nama role bisa punya spasi ekor (data legacy) → selalu trim ── */
+    private function profesiSaya(): string
+    {
+        return trim((string) auth()->user()->profesiKlinis());
+    }
+
+    private function aturanSBAR(): array
+    {
+        return [
+            'formEntrySBAR.tglSBAR' => 'required|date_format:d/m/Y H:i:s',
+            'formEntrySBAR.sbar.situation' => 'required|string|max:2000',
+            'formEntrySBAR.sbar.background' => 'required|string|max:2000',
+            'formEntrySBAR.sbar.assessment' => 'required|string|max:2000',
+            'formEntrySBAR.sbar.recommendation' => 'required|string|max:2000',
+        ];
+    }
+
+    private function pesanSBAR(): array
+    {
+        return [
+            'formEntrySBAR.tglSBAR.required' => 'Tanggal SBAR wajib diisi.',
+            'formEntrySBAR.tglSBAR.date_format' => 'Tanggal SBAR harus format dd/mm/yyyy HH:ii:ss.',
+            'formEntrySBAR.sbar.situation.required' => 'Situation (S) wajib diisi.',
+            'formEntrySBAR.sbar.background.required' => 'Background (B) wajib diisi.',
+            'formEntrySBAR.sbar.assessment.required' => 'Assessment (A) wajib diisi.',
+            'formEntrySBAR.sbar.recommendation.required' => 'Recommendation (R) wajib diisi.',
+        ];
+    }
+
+    private function afterSave(string $msg): void
+    {
+        $this->incrementVersion('modal-sbar-ugd');
+        $this->dispatch('toast', type: 'success', message: $msg);
+    }
+
+    protected function resetForm(): void
+    {
+        $this->resetVersion();
+        $this->isFormLocked = false;
+        $this->activeProfession = 'Semua';
+        $this->editingSbarId = null;
+        $this->reset(['formEntrySBAR']);
+    }
+};
+?>
+
+<div class="space-y-4" wire:key="{{ $this->renderKey('modal-sbar-ugd', [$rjNo ?? 'new']) }}">
+
+    @if ($isFormLocked)
+        <div
+            class="flex items-center gap-2 px-4 py-2.5 mb-2 rounded-lg
+                    bg-amber-50 border border-amber-200 text-amber-800
+                    dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300 text-sm">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+            EMR terkunci — form dalam mode <strong>read-only</strong>.
+        </div>
+    @endif
+
+    {{-- ── SBAR CONTENT ── --}}
+    <div class="space-y-4">
+
+        {{-- FORM ENTRY --}}
+        @if (!$isFormLocked)
+            <div class="space-y-3">
+
+                @if ($editingSbarId)
+                    <div class="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg
+                            bg-indigo-50 border border-indigo-200 text-indigo-800
+                            dark:bg-indigo-900/20 dark:border-indigo-700 dark:text-indigo-300 text-sm">
+                        <span class="inline-flex items-center gap-2">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Mengedit SBAR milik <strong>{{ $formEntrySBAR['petugasSBAR'] ?: '-' }}</strong> — ubah lalu klik <strong>Perbarui SBAR</strong>.
+                        </span>
+                        <x-secondary-button type="button" wire:click="cancelEditSBAR" wire:loading.attr="disabled"
+                            class="shrink-0">
+                            Batal
+                        </x-secondary-button>
+                    </div>
+                @endif
+
+                <div class="flex items-end gap-3">
+                    <div class="flex-1">
+                        <x-input-label value="Tanggal SBAR *" />
+                        <x-text-input wire:model="formEntrySBAR.tglSBAR" class="w-full mt-1 font-mono"
+                            placeholder="dd/mm/yyyy hh:mm:ss" :error="$errors->has('formEntrySBAR.tglSBAR')" />
+                        <x-input-error :messages="$errors->get('formEntrySBAR.tglSBAR')" class="mt-1" />
+                    </div>
+                    <x-now-button wire:click="setTglSBAR" />
+                </div>
+
+                <div class="grid grid-cols-4 gap-2">
+                    @foreach ([
+                        ['situation', 'S — Situation *', "Pasien & masalah utama + TTV. Cth: 'Tn ... keluhan ..., TD .../..., SpO2 ...%'"],
+                        ['background', 'B — Background *', "Diagnosis/alasan masuk, riwayat, alergi. Cth: 'Diagnosis ..., riwayat ..., alergi ...'"],
+                        ['assessment', 'A — Assessment *', "Penilaian klinis & keparahan. Cth: 'Khawatir terjadi ...'"],
+                        ['recommendation', 'R — Recommendation *', "Tindakan diminta + batas waktu. Cth: 'Mohon visit/order ... cito'"],
+                    ] as [$key, $label, $hint])
+                        <div>
+                            <x-input-label value="{{ $label }}" />
+                            <x-textarea wire:model="formEntrySBAR.sbar.{{ $key }}" class="w-full mt-1" rows="4"
+                                :error="$errors->has('formEntrySBAR.sbar.' . $key)" placeholder="{{ $hint }}" />
+                            <x-input-error :messages="$errors->get('formEntrySBAR.sbar.' . $key)" class="mt-1" />
+                        </div>
+                    @endforeach
+                </div>
+
+                {{-- Tombol simpan milik komponen (footer EMR UGD hanya menyimpan SOAP) --}}
+                <div class="flex justify-end">
+                    <x-primary-button type="button" wire:click.prevent="addSBAR" wire:loading.attr="disabled"
+                        wire:target="addSBAR" class="gap-2">
+                        <span wire:loading.remove wire:target="addSBAR" class="flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4" />
+                            </svg>
+                            {{ $editingSbarId ? 'Perbarui SBAR' : 'Tambah SBAR' }}
+                        </span>
+                        <span wire:loading wire:target="addSBAR" class="flex items-center gap-1">
+                            <x-loading class="w-4 h-4" /> Menyimpan...
+                        </span>
+                    </x-primary-button>
+                </div>
+
+            </div>
+        @endif
+
+        {{-- RIWAYAT SBAR --}}
+        <x-border-form title="Riwayat SBAR" align="start" bgcolor="bg-surface-soft">
+            <div class="mt-2">
+
+                {{-- Tab Profesi (sticky atas agar mudah ganti tab saat data banyak) --}}
+                <div
+                    class="sticky top-0 z-20 -mx-4 -mt-2 px-4 pt-2 bg-surface-soft dark:bg-gray-900 border-b border-hairline dark:border-gray-700 mb-3">
+                    <ul class="flex flex-wrap -mb-px text-sm font-medium">
+                        @foreach ($professionTabs as $prof)
+                            @php
+                                $count = $this->getSbarCount($prof);
+                                $isActive = $activeProfession === $prof;
+                                // Warna per profesi (selaras badge kartu). Class ditulis literal agar tidak ke-purge Tailwind.
+                                $tab = match ($prof) {
+                                    'Dokter' => [
+                                        'active' => 'text-blue-700 border-blue-500 bg-blue-50 dark:text-blue-300 dark:border-blue-400 dark:bg-blue-900/20',
+                                        'inactive' => 'text-blue-500/80 border-transparent hover:text-blue-700 hover:bg-blue-50/60 hover:border-blue-300 dark:text-blue-400/70',
+                                        'badgeOn' => 'bg-blue-600 text-white',
+                                        'badgeOff' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+                                    ],
+                                    'Perawat' => [
+                                        'active' => 'text-green-700 border-green-500 bg-green-50 dark:text-green-300 dark:border-green-400 dark:bg-green-900/20',
+                                        'inactive' => 'text-green-600/80 border-transparent hover:text-green-700 hover:bg-green-50/60 hover:border-green-300 dark:text-green-400/70',
+                                        'badgeOn' => 'bg-green-600 text-white',
+                                        'badgeOff' => 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+                                    ],
+                                    'Apoteker' => [
+                                        'active' => 'text-error border-rose-500 bg-rose-50 dark:text-rose-300 dark:border-rose-400 dark:bg-rose-900/20',
+                                        'inactive' => 'text-error/80 border-transparent hover:text-error hover:bg-rose-50/60 hover:border-rose-300 dark:text-rose-400/70',
+                                        'badgeOn' => 'bg-rose-600 text-white',
+                                        'badgeOff' => 'bg-rose-100 text-error dark:bg-rose-900/40 dark:text-rose-300',
+                                    ],
+                                    'Gizi' => [
+                                        'active' => 'text-orange-700 border-orange-500 bg-orange-50 dark:text-orange-300 dark:border-orange-400 dark:bg-orange-900/20',
+                                        'inactive' => 'text-orange-500/80 border-transparent hover:text-orange-700 hover:bg-orange-50/60 hover:border-orange-300 dark:text-orange-400/70',
+                                        'badgeOn' => 'bg-orange-600 text-white',
+                                        'badgeOff' => 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+                                    ],
+                                    'Penunjang' => [
+                                        'active' => 'text-cyan-700 border-cyan-500 bg-cyan-50 dark:text-cyan-300 dark:border-cyan-400 dark:bg-cyan-900/20',
+                                        'inactive' => 'text-cyan-600/80 border-transparent hover:text-cyan-700 hover:bg-cyan-50/60 hover:border-cyan-300 dark:text-cyan-400/70',
+                                        'badgeOn' => 'bg-cyan-600 text-white',
+                                        'badgeOff' => 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300',
+                                    ],
+                                    default => [
+                                        'active' => 'text-slate-700 border-slate-500 bg-slate-100 dark:text-slate-200 dark:border-slate-400 dark:bg-slate-700/40',
+                                        'inactive' => 'text-slate-500 border-transparent hover:text-slate-700 hover:bg-surface-soft hover:border-slate-300 dark:text-slate-400',
+                                        'badgeOn' => 'bg-slate-600 text-white',
+                                        'badgeOff' => 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
+                                    ],
+                                };
+                            @endphp
+                            <li class="mr-0.5">
+                                <button type="button" wire:click="$set('activeProfession', '{{ $prof }}')"
+                                    class="inline-flex items-center gap-1.5 px-4 py-3 border-b-2 rounded-t-lg transition-colors
+                                        {{ $isActive ? $tab['active'] : $tab['inactive'] }}">
+                                    {{ $prof }}
+                                    @if ($count > 0)
+                                        <span
+                                            class="inline-flex items-center justify-center w-4 h-4 text-sm font-bold rounded-full
+                                            {{ $isActive ? $tab['badgeOn'] : $tab['badgeOff'] }}">
+                                            {{ $count }}
+                                        </span>
+                                    @endif
+                                </button>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+
+                {{-- List SBAR --}}
+                <div class="space-y-3">
+                    @php
+                        // Urut tanggal SBAR desc (terbaru di atas) untuk semua tab profesi.
+                        $allSbar = collect($dataDaftarUGD['sbar'] ?? [])
+                            ->sortByDesc(fn($c) => Carbon::createFromFormat('d/m/Y H:i:s', ($c['tglSBAR'] ?? '') ?: '01/01/2000 00:00:00')->timestamp)
+                            ->values()
+                            ->all();
+                        $filtered =
+                            $activeProfession === 'Semua'
+                                ? $allSbar
+                                : array_values(
+                                    array_filter($allSbar, fn($c) => ($c['profession'] ?? '') === $activeProfession),
+                                );
+
+                        // DPJP UGD = dokter kunjungan. Hanya dia (atau Admin) yang boleh review/TTD SBAR.
+                        $dpjpUgdId = (string) ($dataDaftarUGD['drId'] ?? '');
+                        $isDpjpUgd = $dpjpUgdId !== '' && $dpjpUgdId === auth()->user()->myuser_code;
+                        $canReviewDpjp = $dpjpUgdId !== '' && ($isDpjpUgd || auth()->user()->hasRole('Admin'));
+                    @endphp
+
+                    @forelse ($filtered as $idx => $sbar)
+                        <div wire:key="sbar-ugd-{{ $sbar['sbarId'] ?? $idx }}-{{ $this->renderKey('modal-sbar-ugd') }}"
+                            class="border border-hairline dark:border-gray-700 rounded-lg overflow-hidden bg-canvas dark:bg-gray-800">
+
+                            <div
+                                class="flex items-center justify-between px-4 py-2.5
+                    bg-surface-soft dark:bg-gray-700/60 border-b border-hairline-soft dark:border-gray-700">
+                                <div class="flex items-center gap-2 text-sm">
+                                    @php
+                                        $profColor = match ($sbar['profession'] ?? '') {
+                                            'Dokter' => 'bg-blue-100 text-blue-700',
+                                            'Perawat' => 'bg-green-100 text-green-700',
+                                            'Apoteker' => 'bg-rose-100 text-error',
+                                            'Gizi' => 'bg-orange-100 text-orange-700',
+                                            default => 'bg-surface-soft text-muted',
+                                        };
+                                    @endphp
+                                    <span class="px-2 py-0.5 rounded-full text-sm font-bold {{ $profColor }}">
+                                        {{ $sbar['profession'] ?? '-' }}
+                                    </span>
+                                    <span class="font-semibold text-body dark:text-gray-200">
+                                        {{ $sbar['petugasSBAR'] ?? '-' }}
+                                    </span>
+                                    <span class="font-mono text-muted dark:text-gray-300">{{ $sbar['tglSBAR'] ?? '-' }}</span>
+                                </div>
+
+                                <div class="flex items-center gap-2">
+                                    @if (!empty($sbar['reviewDpjp']['drName']))
+                                        <div class="flex flex-col items-end leading-tight">
+                                            <span
+                                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                                                title="Direview DPJP: {{ $sbar['reviewDpjp']['drName'] }} — {{ $sbar['reviewDpjp']['tglReview'] ?? '' }}">
+                                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                Sudah direview oleh {{ $sbar['reviewDpjp']['drName'] }}
+                                            </span>
+                                            @if (!empty($sbar['reviewDpjp']['tglReview']))
+                                                <span
+                                                    class="text-sm font-mono text-muted-soft dark:text-gray-500 mt-0.5">{{ $sbar['reviewDpjp']['tglReview'] }}</span>
+                                            @endif
+                                        </div>
+                                    @endif
+
+                                    @unless (auth()->user()->hasRole('Dokter'))
+                                        <x-outline-button type="button" wire:click="printSbar('{{ $sbar['sbarId'] }}')"
+                                            wire:loading.attr="disabled"
+                                            class="!text-amber-600 !bg-amber-50 !border-amber-200 hover:!bg-amber-100 hover:!text-amber-700 hover:!border-amber-300 dark:!text-amber-400 dark:!bg-amber-900/20 dark:!border-amber-800/30 dark:hover:!bg-amber-900/30 dark:hover:!text-amber-300"
+                                            title="Cetak SBAR">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                            </svg>
+                                        </x-outline-button>
+                                    @endunless
+
+                                    @if (!$isFormLocked)
+                                        @php
+                                            $isAdmin = auth()->user()->hasRole('Admin');
+                                            $myRole = trim((string) auth()->user()->profesiKlinis());
+                                            $sbarRole = $sbar['profession'] ?? '';
+                                            // Hapus SBAR: hanya level Supervisor (2) ke atas — fungsional (Dokter/Perawat dll)
+                                            // tidak bisa, walau pemilik entri.
+                                            $canDelete = auth()->user()->hasAnyRole(['Admin', 'Manager Umum', 'Manager Medis', 'Supervisor Penunjang', 'Supervisor Tu', 'Mr', 'Casemix']);
+                                            $canCopy = $isAdmin || $myRole === $sbarRole;
+                                            // Edit: pemilik entri (petugasSBARCode) atau Admin
+                                            $ownerCode = (string) ($sbar['petugasSBARCode'] ?? '');
+                                            $canEdit = $isAdmin || ($ownerCode !== '' && $ownerCode === auth()->user()->myuser_code);
+                                        @endphp
+                                        <div class="flex gap-1.5">
+                                            @if ($canReviewDpjp)
+                                                @if (empty($sbar['reviewDpjp']['drName']))
+                                                    <x-outline-button type="button"
+                                                        wire:click="reviewSbarDpjp('{{ $sbar['sbarId'] }}')"
+                                                        wire:confirm="Review & TTD SBAR ini sebagai DPJP?"
+                                                        wire:loading.attr="disabled"
+                                                        class="!text-emerald-600 !bg-emerald-50 !border-emerald-200 hover:!bg-emerald-100 hover:!text-emerald-700 hover:!border-emerald-300 dark:!text-emerald-400 dark:!bg-emerald-900/20 dark:!border-emerald-800/30 dark:hover:!bg-emerald-900/30 dark:hover:!text-emerald-300"
+                                                        title="Review / TTD DPJP">
+                                                        <span class="inline-flex items-center gap-1">
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                            <span class="text-sm font-semibold">Review DPJP</span>
+                                                        </span>
+                                                    </x-outline-button>
+                                                @else
+                                                    <x-outline-button type="button"
+                                                        wire:click="batalReviewSbarDpjp('{{ $sbar['sbarId'] }}')"
+                                                        wire:confirm="Batalkan review DPJP pada SBAR ini?"
+                                                        wire:loading.attr="disabled"
+                                                        class="!text-muted !bg-surface-soft !border-hairline hover:!bg-surface-soft hover:!text-body hover:!border-gray-300 dark:!text-muted-soft dark:!bg-gray-800/40 dark:!border-gray-700 dark:hover:!bg-gray-800/60"
+                                                        title="Batal review DPJP">
+                                                        <span class="inline-flex items-center gap-1">
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                            </svg>
+                                                            <span class="text-sm font-semibold">Batal Review</span>
+                                                        </span>
+                                                    </x-outline-button>
+                                                @endif
+                                            @endif
+                                            @if ($canEdit)
+                                                <x-outline-button type="button"
+                                                    wire:click="editSBAR('{{ $sbar['sbarId'] }}')"
+                                                    wire:loading.attr="disabled"
+                                                    class="!text-indigo-600 !bg-indigo-50 !border-indigo-200 hover:!bg-indigo-100 hover:!text-indigo-700 hover:!border-indigo-300 dark:!text-indigo-400 dark:!bg-indigo-900/20 dark:!border-indigo-800/30 dark:hover:!bg-indigo-900/30 dark:hover:!text-indigo-300"
+                                                    title="Edit SBAR">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                </x-outline-button>
+                                            @endif
+                                            @if ($canCopy)
+                                                <x-outline-button type="button"
+                                                    wire:click="copySBAR('{{ $sbar['sbarId'] }}')"
+                                                    wire:loading.attr="disabled"
+                                                    class="!text-blue-600 !bg-blue-50 !border-blue-200 hover:!bg-blue-100 hover:!text-blue-700 hover:!border-blue-300 dark:!text-blue-400 dark:!bg-blue-900/20 dark:!border-blue-800/30 dark:hover:!bg-blue-900/30 dark:hover:!text-blue-300"
+                                                    title="Copy ke form">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                    </svg>
+                                                </x-outline-button>
+                                            @endif
+                                            @if ($canDelete)
+                                                <x-outline-button type="button"
+                                                    wire:click="removeSBAR('{{ $sbar['sbarId'] }}')"
+                                                    wire:confirm="Yakin hapus SBAR ini?" wire:loading.attr="disabled"
+                                                    class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300"
+                                                    title="Hapus">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </x-outline-button>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="px-4 py-3 space-y-2 text-sm">
+                                <div class="grid grid-cols-2 gap-3">
+                                    @php
+                                        $sbarStyles = [
+                                            'situation'      => ['lbl' => 'S', 'name' => 'Situation',      'wrap' => 'border-l-4 border-blue-500 bg-blue-50/40 dark:bg-blue-900/10', 'text' => 'text-blue-700 dark:text-blue-400'],
+                                            'background'     => ['lbl' => 'B', 'name' => 'Background',     'wrap' => 'border-l-4 border-emerald-500 bg-emerald-50/40 dark:bg-emerald-900/10', 'text' => 'text-success dark:text-success'],
+                                            'assessment'     => ['lbl' => 'A', 'name' => 'Assessment',     'wrap' => 'border-l-4 border-amber-500 bg-amber-50/40 dark:bg-amber-900/10', 'text' => 'text-amber-700 dark:text-amber-400'],
+                                            'recommendation' => ['lbl' => 'R', 'name' => 'Recommendation', 'wrap' => 'border-l-4 border-rose-500 bg-rose-50/40 dark:bg-rose-900/10', 'text' => 'text-error dark:text-rose-400'],
+                                        ];
+                                    @endphp
+                                    @foreach ($sbarStyles as $k => $s)
+                                        <div class="{{ $s['wrap'] }} pl-3 py-1 rounded-r-md">
+                                            <span class="font-bold {{ $s['text'] }}">{{ $s['lbl'] }}</span>
+                                            <span class="text-muted"> — {{ $s['name'] }}</span>
+                                            <p class="mt-0.5 text-body dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                                {{ trim($sbar['sbar'][$k] ?? '') ?: '-' }}</p>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+
+                        </div>
+                    @empty
+                        <p wire:key="sbar-ugd-empty-{{ $activeProfession }}-{{ $this->renderKey('modal-sbar-ugd') }}"
+                            class="text-sm text-center text-muted-soft py-6">
+                            @if ($activeProfession === 'Semua')
+                                Belum ada SBAR.
+                            @else
+                                Belum ada SBAR dari <strong>{{ $activeProfession }}</strong>.
+                            @endif
+                        </p>
+                    @endforelse
+
+                </div>
+
+            </div>
+        </x-border-form>
+
+    </div>{{-- end sbar content --}}
+
+</div>

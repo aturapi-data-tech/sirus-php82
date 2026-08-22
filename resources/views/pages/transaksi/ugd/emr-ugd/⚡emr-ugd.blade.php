@@ -117,6 +117,7 @@ new class extends Component {
         $this->dispatch('open-rm-perencanaan-ugd', $rjNo);
         $this->dispatch('open-rm-observasi-ugd', $rjNo);
         $this->dispatch('open-rm-obat-dan-cairan-ugd', $rjNo);
+        $this->dispatch('open-rm-sbar-ugd', $rjNo);
     }
 
     /* ===============================
@@ -340,6 +341,12 @@ new class extends Component {
                                         class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-teal-100 text-teal-700 text-sm font-bold dark:bg-teal-900/40 dark:text-teal-300">T</span>
                                     Pemberian Obat &amp; Cairan
                                 </x-tab>
+                                <x-tab variant="underline" active-expr="activeTab === 'sbar'"
+                                    x-on:click="activeTab = 'sbar'" class="inline-flex items-center gap-2">
+                                    <span
+                                        class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold dark:bg-indigo-900/40 dark:text-indigo-300">S</span>
+                                    SBAR
+                                </x-tab>
                             </div>
                         </div>
 
@@ -359,6 +366,11 @@ new class extends Component {
                             <div x-show="activeTab === 'terapi'" x-transition.opacity.duration.200ms>
                                 <livewire:pages::transaksi.ugd.emr-ugd.obat-dan-cairan.rm-obat-dan-cairan-ugd-actions
                                     :rjNo="$rjNo" wire:key="obat-dan-cairan-ugd-{{ $rjNo }}" />
+                            </div>
+
+                            <div x-show="activeTab === 'sbar'" x-transition.opacity.duration.200ms>
+                                <livewire:pages::transaksi.ugd.emr-ugd.sbar.rm-sbar-ugd-actions :rjNo="$rjNo"
+                                    wire:key="sbar-ugd-{{ $rjNo }}" />
                             </div>
                         </div>
                     </div>

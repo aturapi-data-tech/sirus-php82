@@ -100,3 +100,24 @@ x-on:open-modal.window="cpptEditing = false; sbarEditing = false"
 4. Kalau ada Edit → tambah flag `<dok>Editing` + listener `<dok>-edit-mode` di footer Simpan.
 5. Buat blade cetak + entri di menu tab EMR.
 6. Verifikasi Volt: **`?>` tepat 1**, tak ada `?>` dalam string (skill `blade-safe-edit`).
+
+---
+
+## Varian jalur UGD (SBAR UGD)
+
+`resources/views/pages/transaksi/ugd/emr-ugd/sbar/⚡rm-sbar-ugd-actions.blade.php` — hasil port SBAR RI ke UGD.
+Struktur data, enam aksi, guard hak, tab per-profesi, dan cetak per-entri **sama persis**. Yang berbeda hanya
+karena jalur UGD memang lain:
+
+| Aspek | RI | UGD |
+| --- | --- | --- |
+| Sumber data | `datadaftar_ri_json` (`riHdrNo`), `EmrRITrait` | `datadaftarugd_json` (`rjNo`), `EmrUGDTrait` |
+| Node JSON | root `sbar[]` | root `sbar[]` (sama) |
+| Event | `open-rm-sbar-ri` / `save-rm-sbar-ri` | `open-rm-sbar-ugd` / `save-rm-sbar-ugd` |
+| DPJP (yang boleh review/TTD) | DPJP **Utama** dari leveling Pengkajian Awal | **dokter kunjungan UGD** (`dataDaftarUGD['drId']`) |
+| Tombol Simpan | footer host `emr-ri.blade.php` (tab-aware + label "Perbarui SBAR") | **tombol milik komponen** (Tambah/Perbarui SBAR) — footer EMR UGD hanya menyimpan SOAP, tidak tab-aware |
+| Dirty tracking | `refresh-after-ri.saved` ber-`tab:` (per-section) | dirty global modal; komponen **tidak** memancarkan `refresh-after-ugd.saved` (biar draft tab lain tak ikut ter-reset), hanya mendengarnya untuk memuat ulang bila state ter-wipe |
+| Cetak | `pages.components.rekam-medis.ri.cetak-sbar.cetak-sbar-ri-print` (Ruang/Kelas) | `pages.components.rekam-medis.ugd.cetak-sbar.cetak-sbar-ugd-print` (Unit UGD/IGD + dokter, Tgl. Masuk UGD) |
+
+Kalau mem-port dokumen multi-entri lain ke UGD/RJ, ikuti tabel ini: yang wajib diganti cuma trait + event +
+sumber DPJP + mekanisme tombol simpan.
