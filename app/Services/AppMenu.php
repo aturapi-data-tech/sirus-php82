@@ -193,8 +193,8 @@ class AppMenu
             $entry(['group' => 'Keuangan', 'groupOrder' => 12, 'order' => 13, 'route' => 'keuangan.analisa-perputaran-obat', 'title' => 'Analisa Perputaran Obat', 'desc' => 'Fast / slow / dead moving per lokasi — sorot modal stok yang mengendap', 'roles' => ['admin', 'manager umum', 'supervisor tu', 'tu'], 'badge' => 'STOK']),
 
             // ── Operasi ────────────────────────────────────────────────
-            $entry(['group' => 'Operasi', 'groupOrder' => 13, 'order' => 1, 'route' => 'operasi.jadwal-operasi', 'title' => 'Jadwal Operasi', 'desc' => 'Booking & manajemen jadwal operasi pasien', 'roles' => ['admin', 'manager medis', 'perawat'], 'badge' => 'JDW']),
-            $entry(['group' => 'Operasi', 'groupOrder' => 13, 'order' => 2, 'route' => 'penunjang.kamar-operasi', 'title' => 'Transaksi Kamar Operasi', 'desc' => 'Tindakan operasi, tarif, & transfer biaya ke rawat inap', 'roles' => ['admin', 'manager umum', 'supervisor penunjang', 'perawat'], 'badge' => 'OK']),
+            $entry(['group' => 'Operasi', 'groupOrder' => 13, 'order' => 1, 'route' => 'operasi.jadwal-operasi', 'title' => 'Jadwal Operasi', 'desc' => 'Booking & manajemen jadwal operasi pasien', 'roles' => ['admin', 'manager medis', 'dokter', 'perawat'], 'badge' => 'JDW']),
+            $entry(['group' => 'Operasi', 'groupOrder' => 13, 'order' => 2, 'route' => 'penunjang.kamar-operasi', 'title' => 'Transaksi Kamar Operasi', 'desc' => 'Tindakan operasi, tarif, & transfer biaya ke rawat inap', 'roles' => ['admin', 'manager umum', 'supervisor penunjang', 'dokter', 'perawat'], 'badge' => 'OK']),
 
             // ── Down Time ─────────────────────────────────────────────
             // Terbuka untuk SEMUA role: saat SIMRS bermasalah, siapa pun yang masih
