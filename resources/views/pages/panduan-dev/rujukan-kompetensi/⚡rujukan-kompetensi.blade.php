@@ -153,6 +153,17 @@ new class extends Component {
                                 </table>
                             </div>
                         </div>
+
+                        <div class="ds-callout ds-callout-info mb-6">
+                            <p class="ds-body-sm"><strong>Aturan penamaan (diseragamkan 24/08/26).</strong>
+                            Berkas ber-<span class="ds-code">-fhir-</span> = jalur SATUSEHAT langsung (tujuan IGD/Ranap,
+                            node <span class="ds-code">rujukanKompetensiFhir</span>); tanpa <span class="ds-code">-fhir-</span>
+                            = jalur BPJS SISRUTE (tujuan poli, node <span class="ds-code">rujukanKompetensi</span>).
+                            Berlaku sama di RJ, UGD, dan RI.
+                            Sebelumnya terbalik-balik: <span class="ds-code">rujukan-kompetensi-ugd</span> dulu berarti FHIR
+                            sedangkan <span class="ds-code">rujukan-kompetensi-rj</span> berarti SISRUTE, dan kunci JSON
+                            <span class="ds-code">rujukanKompetensi</span> berarti dua hal berbeda tergantung modul.</p>
+                        </div>
                         <p class="ds-body-sm" style="color:var(--muted)">
                             Perpindahan pasien <strong>di dalam RS sendiri</strong> (RJ→UGD, UGD→RI) BUKAN objek
                             SRBK — tetap alur internal biasa (SEP, transfer, Encounter baru). Lihat seksi
@@ -1197,10 +1208,12 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
                                 <table class="ds-table">
                                     <thead><tr><th>Panel</th><th>Muncul di</th><th>Node JSON</th><th>Komponen</th></tr></thead>
                                     <tbody>
-                                        <tr><td class="ds-td-strong">RJ → poli RS lain (vclaim)</td><td class="ds-body-sm">EMR RJ → Perencanaan → Tindak Lanjut = <strong>Rujuk</strong></td><td class="ds-td-meta">rujukanKompetensi</td><td class="ds-td-meta">rm-rujukan-kompetensi-rj-actions</td></tr>
-                                        <tr><td class="ds-td-strong">RJ → IGD/Ranap RS lain (FHIR)</td><td class="ds-body-sm">EMR RJ → Tindak Lanjut = Rujuk (di bawah panel vclaim)</td><td class="ds-td-meta">rujukanKompetensiFhir</td><td class="ds-td-meta">rm-rujukan-kompetensi-fhir-rj-actions</td></tr>
-                                        <tr><td class="ds-td-strong">UGD → IGD/Ranap RS lain</td><td class="ds-body-sm">EMR UGD → Tindak Lanjut = <strong>Rujuk</strong> (bersanding form Rujukan Antar RS lama) — selector tujuan IGD|Ranap</td><td class="ds-td-meta">rujukanKompetensi</td><td class="ds-td-meta">rm-rujukan-kompetensi-ugd-actions</td></tr>
-                                        <tr><td class="ds-td-strong">RI → Ranap RS lain</td><td class="ds-body-sm">EMR RI → Perencanaan → Tindak Lanjut = <strong>Pulang Pindah / Rujuk</strong></td><td class="ds-td-meta">rujukanKompetensi</td><td class="ds-td-meta">rm-rujukan-kompetensi-ri-actions</td></tr>
+                                        <tr><td class="ds-td-strong">RJ → poli RS lain (SISRUTE)</td><td class="ds-body-sm">EMR RJ → Perencanaan → Tindak Lanjut = <strong>Rujuk</strong></td><td class="ds-td-meta">rujukanKompetensi</td><td class="ds-td-meta">rm-rujukan-kompetensi-rj-actions</td></tr>
+                                        <tr><td class="ds-td-strong">RJ → IGD/Ranap RS lain (FHIR)</td><td class="ds-body-sm">EMR RJ → Tindak Lanjut = Rujuk (di bawah panel SISRUTE)</td><td class="ds-td-meta">rujukanKompetensiFhir</td><td class="ds-td-meta">rm-rujukan-kompetensi-fhir-rj-actions</td></tr>
+                                        <tr><td class="ds-td-strong">UGD → poli RS lain (SISRUTE)</td><td class="ds-body-sm">EMR UGD → Tindak Lanjut = <strong>Rujuk</strong>. Menggantikan panel <em>Rujukan Antar RS</em> (VClaim biasa) yang sudah DIHAPUS 24/08/26</td><td class="ds-td-meta">rujukanKompetensi</td><td class="ds-td-meta">rm-rujukan-kompetensi-ugd-actions</td></tr>
+                                        <tr><td class="ds-td-strong">UGD → IGD/Ranap RS lain (FHIR)</td><td class="ds-body-sm">EMR UGD → Tindak Lanjut = Rujuk — selector tujuan IGD|Ranap</td><td class="ds-td-meta">rujukanKompetensiFhir</td><td class="ds-td-meta">rm-rujukan-kompetensi-fhir-ugd-actions</td></tr>
+                                        <tr><td class="ds-td-strong">RI → poli RS lain (SISRUTE)</td><td class="ds-body-sm">EMR RI → Perencanaan → Tindak Lanjut = <strong>Pulang Pindah / Rujuk</strong>. Pasien pulang ranap bisa dirujuk untuk rawat jalan</td><td class="ds-td-meta">rujukanKompetensi</td><td class="ds-td-meta">rm-rujukan-kompetensi-ri-actions</td></tr>
+                                        <tr><td class="ds-td-strong">RI → IGD/Ranap RS lain (FHIR)</td><td class="ds-body-sm">EMR RI → Tindak Lanjut = Pulang Pindah / Rujuk — selector tujuan IGD|Ranap</td><td class="ds-td-meta">rujukanKompetensiFhir</td><td class="ds-td-meta">rm-rujukan-kompetensi-fhir-ri-actions</td></tr>
                                         <tr><td class="ds-td-strong">Rujukan MASUK (kita jadi tujuan)</td><td class="ds-body-sm">Menu <strong>Rujukan → Persetujuan Rujukan Masuk</strong> (<span class="ds-code">/rujukan/masuk</span>) — layar tersendiri, bukan di EMR</td><td class="ds-td-meta">— (murni API, tanpa tabel/node lokal)</td><td class="ds-td-meta">rujukan-masuk + rujukan-masuk-actions</td></tr>
                                         <tr><td class="ds-td-strong">Rujukan KELUAR (pemantauan jawaban)</td><td class="ds-body-sm">Menu <strong>Rujukan → Pemantauan Rujukan Keluar</strong> (<span class="ds-code">/rujukan/keluar</span>) — 2 tab, layar tersendiri</td><td class="ds-td-meta">tab Ranap/IGD: — (API). tab RJ: rujukanKompetensi.hasil</td><td class="ds-td-meta">rujukan-keluar + rujukan-keluar-actions</td></tr>
                                     </tbody>
