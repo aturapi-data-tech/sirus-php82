@@ -22,6 +22,7 @@ use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Support\NomorRadiologi;
+use App\Support\OrderRadiologiGanda;
 
 new class extends Component {
     use WithPagination, WithValidationToastTrait;
@@ -39,6 +40,11 @@ new class extends Component {
     // Keranjang pemeriksaan (keyed by rad_id → [rad_id, rad_desc, price])
     public string $searchItem = '';
     public array $selectedItems = [];
+
+    // Pemeriksaan yang sudah pernah diorder untuk kunjungan terpilih. Terisi =
+    // petugas SUDAH diperingatkan, jadi klik Tambah berikutnya diteruskan.
+    // Direset tiap kali pilihan/pasien/sumber berubah supaya tidak basi.
+    public array $peringatanGanda = [];
 
     public ?string $drId = null; // dr_id terpilih; nama di-lookup saat insert ke dr_pengirim
     public ?string $klinisDesc = null;
@@ -63,7 +69,7 @@ new class extends Component {
 
     private function resetState(): void
     {
-        $this->reset(['patientSearch', 'filterBangsal', 'selectedRefNo', 'selectedPatient', 'searchItem', 'selectedItems', 'drId', 'klinisDesc', 'cito']);
+        $this->reset(['patientSearch', 'filterBangsal', 'selectedRefNo', 'selectedPatient', 'searchItem', 'selectedItems', 'drId', 'klinisDesc', 'cito', 'peringatanGanda']);
         $this->resetValidation();
         $this->resetPage();
     }
@@ -74,7 +80,7 @@ new class extends Component {
             return;
         }
         $this->source = $source;
-        $this->reset(['patientSearch', 'filterBangsal', 'selectedRefNo', 'selectedPatient', 'searchItem', 'selectedItems', 'drId', 'klinisDesc', 'cito']);
+        $this->reset(['patientSearch', 'filterBangsal', 'selectedRefNo', 'selectedPatient', 'searchItem', 'selectedItems', 'drId', 'klinisDesc', 'cito', 'peringatanGanda']);
         unset($this->activePatients);
         $this->resetPage();
     }
@@ -184,6 +190,7 @@ new class extends Component {
     public function selectPatient(int $refNo, array $patient): void
     {
         $this->selectedRefNo = $refNo;
+        $this->peringatanGanda = [];
         // leveling_dokter_list (DPJP) sudah dibawa dari baris (identity) — tak perlu baca ulang.
         $this->selectedPatient = $patient;
 
@@ -195,7 +202,7 @@ new class extends Component {
 
     public function changePatient(): void
     {
-        $this->reset(['selectedRefNo', 'selectedPatient', 'drId', 'klinisDesc', 'cito']);
+        $this->reset(['selectedRefNo', 'selectedPatient', 'drId', 'klinisDesc', 'cito', 'peringatanGanda']);
         unset($this->relatedDoctors);
     }
 
@@ -308,6 +315,8 @@ new class extends Component {
 
     public function toggleItem(string $id, string $desc, ?float $price): void
     {
+        $this->peringatanGanda = [];
+
         if (isset($this->selectedItems[$id])) {
             unset($this->selectedItems[$id]);
         } else {
@@ -326,6 +335,8 @@ new class extends Component {
 
     public function removeSelected(string $id): void
     {
+        $this->peringatanGanda = [];
+
         unset($this->selectedItems[$id]);
     }
 
@@ -372,6 +383,19 @@ new class extends Component {
             }
         }
 
+        // Guard order ganda — PERINGATAN, bukan larangan: foto ulang & kontrol
+        // memang sah. Semantiknya ikut sumber: RJ/UGD sepanjang kunjungan,
+        // RI dibatasi hari ini (satu rihdr_no berjalan berhari-hari).
+        $sudahDiperingatkan = !empty($this->peringatanGanda);
+        if (!$sudahDiperingatkan) {
+            $ganda = OrderRadiologiGanda::cari($this->source, $this->selectedRefNo, array_keys($this->selectedItems));
+            if (!empty($ganda)) {
+                $this->peringatanGanda = OrderRadiologiGanda::kelompokkan($ganda);
+                $this->dispatch('toast', type: 'warning', message: OrderRadiologiGanda::ringkas($ganda) . ' Klik "Tetap Tambah" bila memang foto ulang.');
+                return;
+            }
+        }
+
         // dr_pengirim disimpan sebagai NAMA dokter (selaras pola kirim radiologi).
         $drPengirim = null;
         if (!empty($this->drId)) {
@@ -381,7 +405,17 @@ new class extends Component {
         $klinis = trim((string) $this->klinisDesc) ?: null;
 
         try {
-            DB::transaction(function () use ($drPengirim, $klinis) {
+            DB::transaction(function () use ($drPengirim, $klinis, $sudahDiperingatkan) {
+                // Lapis kedua: cek ulang DI DALAM transaksi. Cek di atas berjalan di
+                // request terpisah, jadi dua klik/tab yang beradu masih bisa lolos.
+                // Dilewati kalau petugas memang sudah memilih meneruskan.
+                if (!$sudahDiperingatkan) {
+                    $gandaKunci = OrderRadiologiGanda::cari($this->source, $this->selectedRefNo, array_keys($this->selectedItems));
+                    if (!empty($gandaKunci)) {
+                        throw new \RuntimeException('Order Radiologi Ganda — ' . OrderRadiologiGanda::ringkas($gandaKunci));
+                    }
+                }
+
                 if ($this->source === 'RJ') {
                     $this->lockHeader('rstxn_rjhdrs', 'rj_no');
                     foreach ($this->selectedItems as $sel) {
@@ -436,7 +470,7 @@ new class extends Component {
 
                 // Audit log terpadu (tab "Log Aktivitas") — dari sisi radiologi.
                 $namaItem = collect($this->selectedItems)->pluck('rad_desc')->implode(', ');
-                $this->appendLog('Tambah Order Radiologi (dari radiologi)' . ($this->cito === '1' ? ' [CITO]' : '') . ' - ' . $namaItem);
+                $this->appendLog('Tambah Order Radiologi (dari radiologi)' . ($this->cito === '1' ? ' [CITO]' : '') . ($sudahDiperingatkan ? ' [ULANG]' : '') . ' - ' . $namaItem);
             });
 
             $count = count($this->selectedItems);
@@ -783,6 +817,42 @@ new class extends Component {
             </div>
 
             {{-- FOOTER --}}
+                {{-- Peringatan order ganda — muncul setelah klik Kirim pertama.
+                     Bukan larangan: tombolnya berubah jadi "Tetap Kirim". --}}
+                @if (!empty($peringatanGanda))
+                    <div
+                        class="p-3 mb-3 bg-amber-50 border border-amber-200 rounded-xl dark:bg-amber-900/20 dark:border-amber-600">
+                        <div class="flex items-start gap-2">
+                            <svg class="w-4 h-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0l-7.1 12.25A2 2 0 004.99 19z" />
+                            </svg>
+                            <div class="text-sm text-amber-800 dark:text-amber-200">
+                                <div class="font-semibold">Sudah pernah diorder di kunjungan ini</div>
+                                <ul class="mt-1 space-y-0.5">
+                                    @foreach ($peringatanGanda as $ganda)
+                                        <li>
+                                            &bull; {{ $ganda['rad_desc'] }}
+                                            @if ($ganda['jumlah'] > 1)
+                                                <span class="font-semibold">({{ $ganda['jumlah'] }}&times;)</span>
+                                            @endif
+                                            @if ($ganda['waktu'] !== '')
+                                                <span class="text-amber-700 dark:text-amber-300">—
+                                                    {{ $ganda['waktu'] }}</span>
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                                <div class="mt-1.5 text-amber-700 dark:text-amber-300">
+                                    Kalau ini memang foto ulang atau kontrol, lanjutkan dengan
+                                    <span class="font-semibold">Tetap Kirim</span>. Kalau tidak, batalkan pilihannya.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
             <div class="sticky bottom-0 z-10 flex items-center justify-end gap-2 px-6 py-3 border-t border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700 shrink-0">
                 <x-secondary-button type="button" wire:click="closeTambahModal">Tutup</x-secondary-button>
                 <x-primary-button type="button" wire:click="insertRad" wire:loading.attr="disabled"
@@ -791,7 +861,7 @@ new class extends Component {
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
-                        Tambah Order
+                        {{ !empty($peringatanGanda) ? 'Tetap Tambah' : 'Tambah Order' }}
                     </span>
                     <span wire:loading wire:target="insertRad"><x-loading class="w-4 h-4" /></span>
                 </x-primary-button>

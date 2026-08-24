@@ -10,6 +10,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Support\NomorRadiologi;
+use App\Support\OrderRadiologiGanda;
 
 new class extends Component {
     use WithPagination, WithRenderVersioningTrait, WithValidationToastTrait, EmrRJTrait;
@@ -30,6 +31,11 @@ new class extends Component {
     public array $selectedItems = []; // [ rad_id => [...item] ]
     public string $klinisDesc = ''; // Diagnosis/Keterangan Klinis — wajib diisi
     public string $cito = '0'; // '1' = CITO (didahulukan petugas radiologi), '0' = rutin
+
+    // Pemeriksaan yang sudah pernah diorder di kunjungan ini. Terisi = petugas
+    // SUDAH diperingatkan, jadi klik Kirim berikutnya diteruskan dengan sadar.
+    // Direset tiap kali pilihan berubah supaya peringatannya tidak basi.
+    public array $peringatanGanda = [];
 
     protected function rules(): array
     {
@@ -68,6 +74,7 @@ new class extends Component {
         $this->searchItem = '';
         $this->klinisDesc = '';
         $this->cito = '0';
+        $this->peringatanGanda = [];
         $this->resetValidation();
         $this->resetPage();
         $this->incrementVersion('radiologi-order-modal');
@@ -78,7 +85,7 @@ new class extends Component {
     public function closeModal(): void
     {
         $this->dispatch('close-modal', name: "radiologi-order-rj-{$this->rjNo}");
-        $this->reset(['selectedItems', 'searchItem', 'klinisDesc', 'cito']);
+        $this->reset(['selectedItems', 'searchItem', 'klinisDesc', 'cito', 'peringatanGanda']);
     }
 
     /* ===============================
@@ -97,6 +104,8 @@ new class extends Component {
      =============================== */
     public function toggleItem(string $id, string $desc, ?float $price): void
     {
+        $this->peringatanGanda = [];
+
         if (isset($this->selectedItems[$id])) {
             unset($this->selectedItems[$id]);
         } else {
@@ -115,6 +124,7 @@ new class extends Component {
 
     public function removeSelected(string $id): void
     {
+        $this->peringatanGanda = [];
         unset($this->selectedItems[$id]);
     }
 
@@ -146,12 +156,35 @@ new class extends Component {
             return;
         }
 
+        // 5. Guard order ganda — PERINGATAN, bukan larangan: foto ulang & kontrol
+        //    memang sah. Klik pertama menahan dan menampilkan apa yang sudah ada,
+        //    klik kedua (peringatanGanda sudah terisi) diteruskan.
+        $sudahDiperingatkan = !empty($this->peringatanGanda);
+        if (!$sudahDiperingatkan) {
+            $ganda = OrderRadiologiGanda::cari('RJ', $this->rjNo, array_keys($this->selectedItems));
+            if (!empty($ganda)) {
+                $this->peringatanGanda = OrderRadiologiGanda::kelompokkan($ganda);
+                $this->dispatch('toast', type: 'warning', message: OrderRadiologiGanda::ringkas($ganda) . ' Klik "Tetap Kirim" bila memang foto ulang.');
+                return;
+            }
+        }
+
         // Resolve nama dokter pengirim dari dr_id kunjungan RJ (dokter poli)
         $drPengirimName = DB::table('rsmst_doctors')->where('dr_id', $rjData->dr_id)->value('dr_name');
 
         try {
-            DB::transaction(function () use ($drPengirimName) {
+            DB::transaction(function () use ($drPengirimName, $sudahDiperingatkan) {
                 $now = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+
+                // Lapis kedua: cek ulang DI DALAM transaksi. Cek di atas berjalan di
+                // request terpisah, jadi dua klik/tab yang beradu masih bisa lolos.
+                // Dilewati kalau petugas memang sudah memilih meneruskan.
+                if (!$sudahDiperingatkan) {
+                    $gandaKunci = OrderRadiologiGanda::cari('RJ', $this->rjNo, array_keys($this->selectedItems));
+                    if (!empty($gandaKunci)) {
+                        throw new \RuntimeException('Order Radiologi Ganda — ' . OrderRadiologiGanda::ringkas($gandaKunci));
+                    }
+                }
 
                 foreach ($this->selectedItems as $item) {
                     $radDtlNo = DB::scalar('SELECT NVL(MAX(TO_NUMBER(rad_dtl)) + 1, 1) FROM rstxn_rjrads');
@@ -170,7 +203,7 @@ new class extends Component {
                     ]);
                 }
 
-                $this->appendAdminLogRJ((int) $this->rjNo, 'Order Radiologi' . ($this->cito === '1' ? ' [CITO]' : '') . ' — ' . collect($this->selectedItems)->pluck('rad_desc')->implode(', '), 'MR');
+                $this->appendAdminLogRJ((int) $this->rjNo, 'Order Radiologi' . ($this->cito === '1' ? ' [CITO]' : '') . ($sudahDiperingatkan ? ' [ULANG]' : '') . ' — ' . collect($this->selectedItems)->pluck('rad_desc')->implode(', '), 'MR');
             });
 
             $this->dispatch('radiologi-order-terkirim');
@@ -421,6 +454,42 @@ new class extends Component {
             {{-- Modal Footer --}}
             <div
                 class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
+                {{-- Peringatan order ganda — muncul setelah klik Kirim pertama.
+                     Bukan larangan: tombolnya berubah jadi "Tetap Kirim". --}}
+                @if (!empty($peringatanGanda))
+                    <div
+                        class="p-3 mb-3 bg-amber-50 border border-amber-200 rounded-xl dark:bg-amber-900/20 dark:border-amber-600">
+                        <div class="flex items-start gap-2">
+                            <svg class="w-4 h-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0l-7.1 12.25A2 2 0 004.99 19z" />
+                            </svg>
+                            <div class="text-sm text-amber-800 dark:text-amber-200">
+                                <div class="font-semibold">Sudah pernah diorder di kunjungan ini</div>
+                                <ul class="mt-1 space-y-0.5">
+                                    @foreach ($peringatanGanda as $ganda)
+                                        <li>
+                                            &bull; {{ $ganda['rad_desc'] }}
+                                            @if ($ganda['jumlah'] > 1)
+                                                <span class="font-semibold">({{ $ganda['jumlah'] }}&times;)</span>
+                                            @endif
+                                            @if ($ganda['waktu'] !== '')
+                                                <span class="text-amber-700 dark:text-amber-300">—
+                                                    {{ $ganda['waktu'] }}</span>
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                                <div class="mt-1.5 text-amber-700 dark:text-amber-300">
+                                    Kalau ini memang foto ulang atau kontrol, lanjutkan dengan
+                                    <span class="font-semibold">Tetap Kirim</span>. Kalau tidak, batalkan pilihannya.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
                 <div class="flex items-center justify-between gap-3">
 
                     {{-- Kiri: info --}}
@@ -464,7 +533,7 @@ new class extends Component {
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                                     </svg>
-                                    Kirim Order
+                                    {{ !empty($peringatanGanda) ? 'Tetap Kirim' : 'Kirim Order' }}
                                 </span>
                                 <span wire:loading wire:target="kirimRadiologi" class="flex items-center gap-1.5">
                                     <x-loading /> Mengirim...
