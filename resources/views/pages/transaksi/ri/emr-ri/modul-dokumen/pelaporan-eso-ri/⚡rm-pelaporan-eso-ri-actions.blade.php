@@ -311,15 +311,15 @@ new class extends Component {
     }
 
     /** Toggle keanggotaan kondisi menyertai (multi-pilih). */
-    public function toggleKondisiMenyertai(string $kunci): void
+    public function toggleKondisiMenyertai(string $opt): void
     {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
         }
         $terpilih = (array) data_get($this->form, 'penderita.kondisiMenyertai', []);
-        $terpilih = in_array($kunci, $terpilih, true)
-            ? array_values(array_filter($terpilih, fn($nilai) => $nilai !== $kunci))
-            : array_merge($terpilih, [$kunci]);
+        $terpilih = in_array($opt, $terpilih, true)
+            ? array_values(array_filter($terpilih, fn($nilai) => $nilai !== $opt))
+            : array_merge($terpilih, [$opt]);
         data_set($this->form, 'penderita.kondisiMenyertai', $terpilih);
     }
 
