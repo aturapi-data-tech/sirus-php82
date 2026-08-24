@@ -173,17 +173,17 @@ new class extends Component {
     {
         $pasien = $this->findDataMasterPasien($this->regNo ?? '')['pasien'] ?? [];
 
-        $rekam = fn(string $path, ?string $nilai) => data_set($this->form, $path, trim((string) $nilai));
+        $potret = fn(string $path, ?string $nilai) => data_set($this->form, $path, trim((string) $nilai));
 
-        $rekam('penderita.namaSingkatan', data_get($pasien, 'namaPanggilan') ?: data_get($pasien, 'regName', ''));
-        $rekam('penderita.suku', data_get($pasien, 'suku', ''));
-        $rekam('penderita.pekerjaan', data_get($pasien, 'pekerjaan.pekerjaanDesc', ''));
+        $potret('penderita.namaSingkatan', data_get($pasien, 'namaPanggilan') ?: data_get($pasien, 'regName', ''));
+        $potret('penderita.suku', data_get($pasien, 'suku', ''));
+        $potret('penderita.pekerjaan', data_get($pasien, 'pekerjaan.pekerjaanDesc', ''));
 
-        $rekam('penderita.alamat', collect([data_get($pasien, 'identitas.alamat'), data_get($pasien, 'identitas.desaName'), data_get($pasien, 'identitas.kecamatanName'), data_get($pasien, 'identitas.kotaName')])
+        $potret('penderita.alamat', collect([data_get($pasien, 'identitas.alamat'), data_get($pasien, 'identitas.desaName'), data_get($pasien, 'identitas.kecamatanName'), data_get($pasien, 'identitas.kotaName')])
             ->filter(fn($bagian) => filled($bagian))
             ->implode(', '));
 
-        $rekam('penderita.umur', trim(implode(' ', array_filter([
+        $potret('penderita.umur', trim(implode(' ', array_filter([
             filled(data_get($pasien, 'thn')) ? data_get($pasien, 'thn') . ' Thn' : null,
             filled(data_get($pasien, 'bln')) ? data_get($pasien, 'bln') . ' Bln' : null,
         ]))));
@@ -193,12 +193,12 @@ new class extends Component {
         // menebak di sini berarti melaporkan jenis kelamin yang tidak diketahui.
         $jenisKelaminId = (string) data_get($pasien, 'jenisKelamin.jenisKelaminId', '');
         if ($jenisKelaminId === '1') {
-            $rekam('penderita.kelamin', 'Pria');
+            $potret('penderita.kelamin', 'Pria');
         } elseif ($jenisKelaminId === '2') {
-            $rekam('penderita.kelamin', 'Wanita');
+            $potret('penderita.kelamin', 'Wanita');
         }
 
-        $rekam('penderita.tglMrs', data_get($this->dataDaftarUGD, 'rjDate', ''));
+        $potret('penderita.tglMrs', data_get($this->dataDaftarUGD, 'rjDate', ''));
     }
 
     /**
