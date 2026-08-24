@@ -64,6 +64,54 @@ new class extends Component {
      * Panel ini dulu tampil inline memenuhi tab; kini kartu ringkas + modal,
      * menyamai panel Rujukan Berbasis Kompetensi di tab yang sama.
      */
+    /**
+     * Keadaan tiap langkah — dihitung dari isian, bukan disimpan. Empat langkah:
+     * rujukan VClaim tidak punya pencarian kandidat maupun persetujuan faskes,
+     * jadi jangan disamakan dengan lima langkah rujukan kompetensi.
+     */
+    public function langkahRujukan(): array
+    {
+        $rujukan = $this->dataDaftarUGD['rujukanAntarRS'] ?? [];
+        $terisi = fn(string $kunci) => trim((string) ($rujukan[$kunci] ?? '')) !== '';
+
+        $dasarSiap = $terisi('noSep') && $terisi('tglRujukan') && $terisi('tglRencanaKunjungan');
+        // Poli hanya wajib untuk tipe Penuh/Partial; Balik PRB memang tanpa poli.
+        $poliWajib = in_array($rujukan['tipeRujukan'] ?? '0', ['0', '1'], true);
+        $tujuanSiap = $terisi('ppkDirujuk') && $terisi('jnsPelayanan') && $terisi('tipeRujukan')
+            && (!$poliWajib || $terisi('poliRujukan'));
+        $diagnosisSiap = $terisi('diagRujukan');
+        $sudahKirim = $terisi('noRujukan');
+
+        $keadaanLangkah = fn(bool $selesai, bool $aktif) => $selesai ? 'done' : ($aktif ? 'current' : 'todo');
+
+        return [
+            [
+                'n' => 1,
+                'title' => 'Dasar Rujukan',
+                'hint' => $terisi('noSep') ? null : 'SEP belum terbit',
+                'state' => $keadaanLangkah($dasarSiap, true),
+            ],
+            [
+                'n' => 2,
+                'title' => 'Tujuan Rujukan',
+                'hint' => $terisi('ppkDirujukNama') ? $rujukan['ppkDirujukNama'] : ($poliWajib ? 'PPK, jenis, tipe & poli' : 'PPK, jenis & tipe'),
+                'state' => $keadaanLangkah($tujuanSiap, $dasarSiap),
+            ],
+            [
+                'n' => 3,
+                'title' => 'Diagnosis & Catatan',
+                'hint' => $diagnosisSiap ? ($rujukan['diagRujukan'] ?? null) : 'diagnosis wajib',
+                'state' => $keadaanLangkah($diagnosisSiap, $tujuanSiap),
+            ],
+            [
+                'n' => 4,
+                'title' => 'Kirim ke BPJS',
+                'hint' => $sudahKirim ? 'No. ' . $rujukan['noRujukan'] : 'terbit nomor rujukan',
+                'state' => $keadaanLangkah($sudahKirim, $diagnosisSiap),
+            ],
+        ];
+    }
+
     public function openModal(): void
     {
         if (empty($this->rjNo)) {
@@ -511,177 +559,185 @@ new class extends Component {
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">
                 <div class="max-w-full mx-auto space-y-4">
                     <div class="w-full">
-                    <div class="grid grid-cols-1 gap-2">
+                    {{-- Penanda langkah: menandai urutan isian sampai terkirim. --}}
+                    <div class="p-3 overflow-x-auto bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
+                        <x-stepper :steps="$this->langkahRujukan()" />
+                    </div>
 
-                        {{-- KOLOM KIRI --}}
-                        <div class="space-y-4">
+                    {{-- Tiga kelompok isian, disandingkan di layar lebar. Dulu semua
+                         field berderet lurus ke bawah dalam satu kolom sehingga petugas
+                         harus menggulir jauh untuk tahu apa saja yang harus diisi. --}}
+                    <div class="grid items-start grid-cols-1 gap-3 xl:grid-cols-3">
 
-                            {{-- No SEP (readonly) --}}
-                            <div>
-                                <x-input-label value="No. SEP" class="mb-1" />
-                                <x-text-input wire:model="dataDaftarUGD.rujukanAntarRS.noSep" :disabled="true"
-                                    class="w-full" />
-                                @if (empty($dataDaftarUGD['rujukanAntarRS']['noSep']))
-                                    <p class="mt-1 text-sm text-amber-500">SEP belum terbit.</p>
-                                @endif
-                            </div>
-
-                            {{-- No Rujukan BPJS (readonly) --}}
-                            <div>
-                                <x-input-label value="No. Rujukan BPJS" class="mb-1" />
-                                <x-text-input wire:model="dataDaftarUGD.rujukanAntarRS.noRujukan"
-                                    placeholder="Terisi setelah kirim ke BPJS" :disabled="true" class="w-full" />
-                            </div>
-
-                            {{-- Tanggal Rujukan --}}
-                            <div>
-                                <x-input-label value="Tanggal Rujukan *" class="mb-1" />
-                                <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.tglRujukan"
-                                    placeholder="dd/mm/yyyy" :disabled="$isFormLocked" :error="$errors->has('dataDaftarUGD.rujukanAntarRS.tglRujukan')" class="w-full" />
-                                <x-input-error :messages="$errors->get('dataDaftarUGD.rujukanAntarRS.tglRujukan')" class="mt-1" />
-                            </div>
-
-                            {{-- Tanggal Rencana Kunjungan --}}
-                            <div>
-                                <x-input-label value="Tanggal Rencana Kunjungan *" class="mb-1" />
-                                <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.tglRencanaKunjungan"
-                                    placeholder="dd/mm/yyyy" :disabled="$isFormLocked" :error="$errors->has('dataDaftarUGD.rujukanAntarRS.tglRencanaKunjungan')" class="w-full" />
-                                <x-input-error :messages="$errors->get('dataDaftarUGD.rujukanAntarRS.tglRencanaKunjungan')" class="mt-1" />
-                            </div>
-
-                        </div>
-
-                        {{-- KOLOM KANAN --}}
-                        <div class="space-y-4">
-
-                            {{-- PPK Tujuan --}}
-                            <div>
-                                <x-input-label value="PPK Tujuan Rujukan *" class="mb-1" />
-                                <div class="flex gap-2">
-                                    <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.ppkDirujuk"
-                                        class="w-40" :disabled="true" placeholder="Kode PPK"
-                                        :error="$errors->has('dataDaftarUGD.rujukanAntarRS.ppkDirujuk')" />
-                                    <x-text-input wire:model="dataDaftarUGD.rujukanAntarRS.ppkDirujukNama"
-                                        class="flex-1" :disabled="true" placeholder="Pilih faskes via tombol Cari" />
-                                </div>
-                                <x-input-error :messages="$errors->get('dataDaftarUGD.rujukanAntarRS.ppkDirujuk')" class="mt-1" />
-
-                                {{-- Cari Faskes BPJS --}}
-                                @if (!$isFormLocked)
-                                    <div class="flex gap-2 mt-2">
-                                        <x-text-input wire:model="searchFaskes" class="flex-1"
-                                            placeholder="Ketik nama RS tujuan (min 3 huruf)..."
-                                            x-on:keyup.enter="$wire.cariFaskes()" />
-                                        <x-secondary-button type="button" wire:click="cariFaskes"
-                                            wire:loading.attr="disabled" class="shrink-0">
-                                            <span wire:loading.remove wire:target="cariFaskes">Cari Faskes</span>
-                                            <span wire:loading wire:target="cariFaskes"><x-loading /></span>
-                                        </x-secondary-button>
-                                    </div>
-
-                                    {{-- List Faskes --}}
-                                    @if ($showFaskesLov && !empty($listFaskes))
-                                        <div class="mt-2 overflow-y-auto border border-hairline rounded-lg max-h-48 dark:border-gray-700">
-                                            <table class="w-full text-sm">
-                                                <thead class="sticky top-0 bg-surface-soft dark:bg-gray-800">
-                                                    <tr>
-                                                        <th class="px-2 py-1 text-left">Kode</th>
-                                                        <th class="px-2 py-1 text-left">Nama Faskes</th>
-                                                        <th class="px-2 py-1"></th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach ($listFaskes as $idx => $faskes)
-                                                        <tr class="border-t border-hairline-soft cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:border-gray-700"
-                                                            wire:click="pilihFaskes({{ $idx }})">
-                                                            <td class="px-2 py-1 font-mono">{{ $faskes['kode'] ?? '' }}</td>
-                                                            <td class="px-2 py-1">{{ $faskes['nama'] ?? '' }}</td>
-                                                            <td class="px-2 py-1 text-blue-500">Pilih</td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    @endif
-                                @endif
-                            </div>
-
-                            {{-- Jenis Pelayanan --}}
-                            <div>
-                                <x-input-label value="Jenis Pelayanan *" class="mb-1" />
-                                <x-select-input wire:model="dataDaftarUGD.rujukanAntarRS.jnsPelayanan" class="w-full"
-                                    :disabled="$isFormLocked">
-                                    <option value="1">1 - Rawat Inap</option>
-                                    <option value="2">2 - Rawat Jalan</option>
-                                </x-select-input>
-                            </div>
-
-                            {{-- Tipe Rujukan --}}
-                            <div>
-                                <x-input-label value="Tipe Rujukan *" class="mb-1" />
-                                <x-select-input wire:model.live="dataDaftarUGD.rujukanAntarRS.tipeRujukan"
-                                    class="w-full" :disabled="$isFormLocked">
-                                    <option value="0">0 - Penuh</option>
-                                    <option value="1">1 - Partial</option>
-                                    <option value="2">2 - Balik PRB</option>
-                                </x-select-input>
-                            </div>
-
-                            {{-- Diagnosis Rujukan --}}
-                            <div>
-                                <x-input-label value="Diagnosis Rujukan *" class="mb-1" />
-                                <div class="flex gap-2">
-                                    <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.diagRujukan"
-                                        class="w-32" :disabled="$isFormLocked" placeholder="Kode ICD" :error="$errors->has('dataDaftarUGD.rujukanAntarRS.diagRujukan')" />
-                                    <x-text-input wire:model="dataDaftarUGD.rujukanAntarRS.diagRujukanNama"
-                                        class="flex-1" :disabled="true" placeholder="Nama diagnosa" />
-                                </div>
-                                <x-input-error :messages="$errors->get('dataDaftarUGD.rujukanAntarRS.diagRujukan')" class="mt-1" />
-                            </div>
-
-                            {{-- Poli Rujukan (wajib tipe 0/1, kosong tipe 2) --}}
-                            @if (in_array($dataDaftarUGD['rujukanAntarRS']['tipeRujukan'] ?? '0', ['0', '1']))
+                    <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
+                        <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Langkah 1 · Dasar Rujukan</p>
+                                {{-- No SEP (readonly) --}}
                                 <div>
-                                    <x-input-label value="Poli Rujukan *" class="mb-1" />
-                                    @if (!empty($listSpesialistik))
-                                        <x-select-input wire:model="dataDaftarUGD.rujukanAntarRS.poliRujukan"
-                                            class="w-full" :disabled="$isFormLocked">
-                                            <option value="">-- Pilih Poli --</option>
-                                            @foreach ($listSpesialistik as $poli)
-                                                <option value="{{ $poli['kode'] ?? '' }}">
-                                                    {{ ($poli['kode'] ?? '') . ' - ' . ($poli['nama'] ?? '') }}
-                                                </option>
-                                            @endforeach
-                                        </x-select-input>
-                                    @else
-                                        <div class="flex gap-2">
-                                            <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.poliRujukan"
-                                                class="w-32" :disabled="$isFormLocked" placeholder="Kode poli"
-                                                :error="$errors->has('dataDaftarUGD.rujukanAntarRS.poliRujukan')" />
-                                            <x-text-input wire:model="dataDaftarUGD.rujukanAntarRS.poliRujukanNama"
-                                                class="flex-1" :disabled="true" placeholder="Nama poli" />
-                                        </div>
+                                    <x-input-label value="No. SEP" class="mb-1" />
+                                    <x-text-input wire:model="dataDaftarUGD.rujukanAntarRS.noSep" :disabled="true"
+                                        class="w-full" />
+                                    @if (empty($dataDaftarUGD['rujukanAntarRS']['noSep']))
+                                        <p class="mt-1 text-sm text-amber-500">SEP belum terbit.</p>
                                     @endif
-                                    @if (!$isFormLocked && !empty($dataDaftarUGD['rujukanAntarRS']['ppkDirujuk']))
-                                        <x-secondary-button type="button" wire:click="fetchListSpesialistik"
-                                            wire:loading.attr="disabled" class="mt-1 text-sm">
-                                            <span wire:loading.remove wire:target="fetchListSpesialistik">Muat Poli
-                                                dari BPJS</span>
-                                            <span wire:loading wire:target="fetchListSpesialistik"><x-loading /></span>
-                                        </x-secondary-button>
-                                    @endif
-                                    <x-input-error :messages="$errors->get('dataDaftarUGD.rujukanAntarRS.poliRujukan')" class="mt-1" />
                                 </div>
-                            @endif
 
-                            {{-- Catatan --}}
-                            <div>
-                                <x-input-label value="Catatan" class="mb-1" />
-                                <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.catatan" class="w-full"
-                                    :disabled="$isFormLocked" placeholder="Catatan rujukan" />
-                            </div>
+                                {{-- No Rujukan BPJS (readonly) --}}
+                                <div>
+                                    <x-input-label value="No. Rujukan BPJS" class="mb-1" />
+                                    <x-text-input wire:model="dataDaftarUGD.rujukanAntarRS.noRujukan"
+                                        placeholder="Terisi setelah kirim ke BPJS" :disabled="true" class="w-full" />
+                                </div>
 
-                        </div>
+                                {{-- Tanggal Rujukan --}}
+                                <div>
+                                    <x-input-label value="Tanggal Rujukan *" class="mb-1" />
+                                    <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.tglRujukan"
+                                        placeholder="dd/mm/yyyy" :disabled="$isFormLocked" :error="$errors->has('dataDaftarUGD.rujukanAntarRS.tglRujukan')" class="w-full" />
+                                    <x-input-error :messages="$errors->get('dataDaftarUGD.rujukanAntarRS.tglRujukan')" class="mt-1" />
+                                </div>
+
+                                {{-- Tanggal Rencana Kunjungan --}}
+                                <div>
+                                    <x-input-label value="Tanggal Rencana Kunjungan *" class="mb-1" />
+                                    <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.tglRencanaKunjungan"
+                                        placeholder="dd/mm/yyyy" :disabled="$isFormLocked" :error="$errors->has('dataDaftarUGD.rujukanAntarRS.tglRencanaKunjungan')" class="w-full" />
+                                    <x-input-error :messages="$errors->get('dataDaftarUGD.rujukanAntarRS.tglRencanaKunjungan')" class="mt-1" />
+                                </div>
+                    </div>
+
+                    <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
+                        <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Langkah 2 · Tujuan Rujukan</p>
+                                {{-- PPK Tujuan --}}
+                                <div>
+                                    <x-input-label value="PPK Tujuan Rujukan *" class="mb-1" />
+                                    <div class="flex gap-2">
+                                        <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.ppkDirujuk"
+                                            class="w-40" :disabled="true" placeholder="Kode PPK"
+                                            :error="$errors->has('dataDaftarUGD.rujukanAntarRS.ppkDirujuk')" />
+                                        <x-text-input wire:model="dataDaftarUGD.rujukanAntarRS.ppkDirujukNama"
+                                            class="flex-1" :disabled="true" placeholder="Pilih faskes via tombol Cari" />
+                                    </div>
+                                    <x-input-error :messages="$errors->get('dataDaftarUGD.rujukanAntarRS.ppkDirujuk')" class="mt-1" />
+
+                                    {{-- Cari Faskes BPJS --}}
+                                    @if (!$isFormLocked)
+                                        <div class="flex gap-2 mt-2">
+                                            <x-text-input wire:model="searchFaskes" class="flex-1"
+                                                placeholder="Ketik nama RS tujuan (min 3 huruf)..."
+                                                x-on:keyup.enter="$wire.cariFaskes()" />
+                                            <x-secondary-button type="button" wire:click="cariFaskes"
+                                                wire:loading.attr="disabled" class="shrink-0">
+                                                <span wire:loading.remove wire:target="cariFaskes">Cari Faskes</span>
+                                                <span wire:loading wire:target="cariFaskes"><x-loading /></span>
+                                            </x-secondary-button>
+                                        </div>
+
+                                        {{-- List Faskes --}}
+                                        @if ($showFaskesLov && !empty($listFaskes))
+                                            <div class="mt-2 overflow-y-auto border border-hairline rounded-lg max-h-48 dark:border-gray-700">
+                                                <table class="w-full text-sm">
+                                                    <thead class="sticky top-0 bg-surface-soft dark:bg-gray-800">
+                                                        <tr>
+                                                            <th class="px-2 py-1 text-left">Kode</th>
+                                                            <th class="px-2 py-1 text-left">Nama Faskes</th>
+                                                            <th class="px-2 py-1"></th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach ($listFaskes as $idx => $faskes)
+                                                            <tr class="border-t border-hairline-soft cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:border-gray-700"
+                                                                wire:click="pilihFaskes({{ $idx }})">
+                                                                <td class="px-2 py-1 font-mono">{{ $faskes['kode'] ?? '' }}</td>
+                                                                <td class="px-2 py-1">{{ $faskes['nama'] ?? '' }}</td>
+                                                                <td class="px-2 py-1 text-blue-500">Pilih</td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        @endif
+                                    @endif
+                                </div>
+
+                                {{-- Jenis Pelayanan --}}
+                                <div>
+                                    <x-input-label value="Jenis Pelayanan *" class="mb-1" />
+                                    <x-select-input wire:model="dataDaftarUGD.rujukanAntarRS.jnsPelayanan" class="w-full"
+                                        :disabled="$isFormLocked">
+                                        <option value="1">1 - Rawat Inap</option>
+                                        <option value="2">2 - Rawat Jalan</option>
+                                    </x-select-input>
+                                </div>
+
+                                {{-- Tipe Rujukan --}}
+                                <div>
+                                    <x-input-label value="Tipe Rujukan *" class="mb-1" />
+                                    <x-select-input wire:model.live="dataDaftarUGD.rujukanAntarRS.tipeRujukan"
+                                        class="w-full" :disabled="$isFormLocked">
+                                        <option value="0">0 - Penuh</option>
+                                        <option value="1">1 - Partial</option>
+                                        <option value="2">2 - Balik PRB</option>
+                                    </x-select-input>
+                                </div>
+
+                                {{-- Poli Rujukan (wajib tipe 0/1, kosong tipe 2) --}}
+                                @if (in_array($dataDaftarUGD['rujukanAntarRS']['tipeRujukan'] ?? '0', ['0', '1']))
+                                    <div>
+                                        <x-input-label value="Poli Rujukan *" class="mb-1" />
+                                        @if (!empty($listSpesialistik))
+                                            <x-select-input wire:model="dataDaftarUGD.rujukanAntarRS.poliRujukan"
+                                                class="w-full" :disabled="$isFormLocked">
+                                                <option value="">-- Pilih Poli --</option>
+                                                @foreach ($listSpesialistik as $poli)
+                                                    <option value="{{ $poli['kode'] ?? '' }}">
+                                                        {{ ($poli['kode'] ?? '') . ' - ' . ($poli['nama'] ?? '') }}
+                                                    </option>
+                                                @endforeach
+                                            </x-select-input>
+                                        @else
+                                            <div class="flex gap-2">
+                                                <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.poliRujukan"
+                                                    class="w-32" :disabled="$isFormLocked" placeholder="Kode poli"
+                                                    :error="$errors->has('dataDaftarUGD.rujukanAntarRS.poliRujukan')" />
+                                                <x-text-input wire:model="dataDaftarUGD.rujukanAntarRS.poliRujukanNama"
+                                                    class="flex-1" :disabled="true" placeholder="Nama poli" />
+                                            </div>
+                                        @endif
+                                        @if (!$isFormLocked && !empty($dataDaftarUGD['rujukanAntarRS']['ppkDirujuk']))
+                                            <x-secondary-button type="button" wire:click="fetchListSpesialistik"
+                                                wire:loading.attr="disabled" class="mt-1 text-sm">
+                                                <span wire:loading.remove wire:target="fetchListSpesialistik">Muat Poli
+                                                    dari BPJS</span>
+                                                <span wire:loading wire:target="fetchListSpesialistik"><x-loading /></span>
+                                            </x-secondary-button>
+                                        @endif
+                                        <x-input-error :messages="$errors->get('dataDaftarUGD.rujukanAntarRS.poliRujukan')" class="mt-1" />
+                                    </div>
+                                @endif
+                    </div>
+
+                    <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
+                        <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Langkah 3 · Diagnosis & Catatan</p>
+                                {{-- Diagnosis Rujukan --}}
+                                <div>
+                                    <x-input-label value="Diagnosis Rujukan *" class="mb-1" />
+                                    <div class="flex gap-2">
+                                        <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.diagRujukan"
+                                            class="w-32" :disabled="$isFormLocked" placeholder="Kode ICD" :error="$errors->has('dataDaftarUGD.rujukanAntarRS.diagRujukan')" />
+                                        <x-text-input wire:model="dataDaftarUGD.rujukanAntarRS.diagRujukanNama"
+                                            class="flex-1" :disabled="true" placeholder="Nama diagnosa" />
+                                    </div>
+                                    <x-input-error :messages="$errors->get('dataDaftarUGD.rujukanAntarRS.diagRujukan')" class="mt-1" />
+                                </div>
+
+                                {{-- Catatan --}}
+                                <div>
+                                    <x-input-label value="Catatan" class="mb-1" />
+                                    <x-text-input wire:model.live="dataDaftarUGD.rujukanAntarRS.catatan" class="w-full"
+                                        :disabled="$isFormLocked" placeholder="Catatan rujukan" />
+                                </div>
+                    </div>
+
                     </div>
                 </div>
                 </div>
@@ -713,21 +769,17 @@ new class extends Component {
                                         </x-danger-button>
                                     @endif
 
-                                    <x-success-button type="button" wire:click="kirimBPJS" wire:loading.attr="disabled">
+                                    <x-primary-button type="button" wire:click="kirimBPJS" wire:loading.attr="disabled" wire:target="kirimBPJS">
                                         <span wire:loading.remove wire:target="kirimBPJS"
                                             class="inline-flex items-center gap-2">
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                                stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                                            </svg>
+                                            <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full bg-white/25 text-white">4</span>
                                             {{ !empty($dataDaftarUGD['rujukanAntarRS']['noRujukan']) ? 'Update Rujukan BPJS' : 'Kirim Rujukan ke BPJS' }}
                                         </span>
                                         <span wire:loading wire:target="kirimBPJS" class="inline-flex items-center gap-2">
                                             <x-loading />
                                             {{ !empty($dataDaftarUGD['rujukanAntarRS']['noRujukan']) ? 'Mengupdate...' : 'Mengirim...' }}
                                         </span>
-                                    </x-success-button>
+                                    </x-primary-button>
                                 </div>
                             @endif
                         @endif
