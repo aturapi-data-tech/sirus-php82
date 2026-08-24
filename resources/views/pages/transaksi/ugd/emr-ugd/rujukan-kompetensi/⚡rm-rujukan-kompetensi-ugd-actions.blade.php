@@ -6,6 +6,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\SATUSEHAT\SatuSehatRujukanTrait;
+use App\Support\Options\RujukanOptions;
 
 new class extends Component {
     use EmrUGDTrait, SatuSehatRujukanTrait;
@@ -110,11 +111,19 @@ new class extends Component {
             // clinical-speciality — IGD default L03 Pelayanan Gawat Darurat
             'specialityCode' => 'L03',
             'specialityDisplay' => 'Pelayanan Gawat Darurat',
+            // Kelompok Layanan & Jenis Tenaga Kesehatan Pelaksana — variabel
+            // playbook v6.0; keduanya OPSIONAL, lihat App\Support\Options\RujukanOptions.
+            'kelompokLayananKode' => '',
+            'performerTypeKode' => '',
+            // Rencana kunjungan di faskes tujuan → ServiceRequest.occurrenceDateTime
+            'tglRencanaKunjungan' => now(config('app.timezone'))->format('d/m/Y'),
             'taskKandidatId' => '',
             'kandidatList' => [],
             'kandidatIdx' => null,
             'carePlanId' => '',
             'taskApprovalId' => '',
+            // '' = belum dijawab | accepted | rejected
+            'statusApproval' => '',
             'hasil' => [],
         ];
     }
@@ -128,6 +137,73 @@ new class extends Component {
             '000004' => 'Adanya gangguan hemodinamik',
             '000005' => 'Memerlukan tindakan segera',
         ];
+    }
+
+
+    /**
+     * Wilayah jejaring rujukan dipilih lewat LOV kabupaten (pola master pasien):
+     * satu kali pilih mengisi kabupaten SEKALIGUS propinsinya, jadi pasangan kode
+     * tidak mungkin lagi tidak sinkron gara-gara diketik terpisah. Kode di
+     * rsmst_kabupatens memang sudah tanpa titik ('3504'/'35'), persis bentuk yang
+     * diminta Q101 — tidak perlu dibersihkan lagi.
+     */
+    #[On('lov.selected.rujukanWilayahUGD')]
+    public function onLovWilayahSelected(string $target, array $payload): void
+    {
+        if ($this->isFormLocked) {
+            return;
+        }
+
+        $kodeKabupaten = trim((string) ($payload['kab_id'] ?? ''));
+        $kodePropinsi = trim((string) ($payload['prop_id'] ?? ''));
+        if ($kodeKabupaten === '' || $kodePropinsi === '') {
+            $this->dispatch('toast', type: 'error', message: 'Data wilayah tidak lengkap.');
+            return;
+        }
+
+        $this->formRujukan['kodeKabupaten'] = $kodeKabupaten;
+        $this->formRujukan['namaKabupaten'] = trim((string) ($payload['kab_name'] ?? ''));
+        $this->formRujukan['kodePropinsi'] = $kodePropinsi;
+        $this->formRujukan['namaPropinsi'] = trim((string) ($payload['prop_name'] ?? ''));
+
+        // Wilayah ganti = kandidat lama dihitung dari wilayah lama. Membiarkannya
+        // tampil justru menyesatkan (pola sama seperti ganti diagnosa/kriteria).
+        $this->formRujukan['kandidatList'] = [];
+        $this->formRujukan['kandidatIdx'] = null;
+        $this->infoKandidat = '';
+    }
+
+    /**
+     * Pintasan kode layanan. Mengisi kode DAN namanya sekaligus supaya keduanya
+     * tidak pernah berpasangan salah; '' = petugas mau mengetik manual.
+     */
+    public function pilihSpeciality(string $kode): void
+    {
+        if ($this->isFormLocked || $kode === '') {
+            return;
+        }
+        $this->formRujukan['specialityCode'] = $kode;
+        $this->formRujukan['specialityDisplay'] = $this->specialityOptions()[$kode] ?? '';
+    }
+
+    public function specialityOptions(): array
+    {
+        return RujukanOptions::CLINICAL_SPECIALITY;
+    }
+
+    /**
+     * Opsi terminologi dibaca lewat method komponen, BUKAN RujukanOptions:: langsung
+     * di template — blok <?php SFC dan template Volt dikompilasi terpisah, jadi
+     * `use` di atas tidak menjangkau zona template (skill naming-conventions §2).
+     */
+    public function kelompokLayananOptions(): array
+    {
+        return RujukanOptions::KELOMPOK_LAYANAN;
+    }
+
+    public function performerTypeOptions(): array
+    {
+        return RujukanOptions::PERFORMER_TYPE;
     }
 
     /* ═══════════════════════════════════════
@@ -279,6 +355,7 @@ new class extends Component {
         }
 
         $kandidat = $this->rujukanTaskPencarianKandidat([
+            'kelompokLayananKode' => $this->formRujukan['kelompokLayananKode'],
             'jalur' => $keRanap ? 'ranap' : 'igd',
             'identifier' => (string) Str::uuid(),
             'encounterId' => $this->encounterUuid(),
@@ -386,6 +463,7 @@ new class extends Component {
 
         $this->formRujukan['carePlanId'] = $this->rujukanIdDariBundleResponse($respon['body'], 'CarePlan');
         $this->formRujukan['taskApprovalId'] = $this->rujukanIdDariBundleResponse($respon['body'], 'Task');
+        $this->formRujukan['statusApproval'] = '';
         $this->simpanDraft('Kirim tugas rujukan ' . $labelJalur . ' → ' . $kandidat['nama']);
         $this->dispatch('toast', type: 'success', message: 'Tugas rujukan terkirim ke ' . $kandidat['nama'] . ' — lanjut Kirim Rujukan (staging boleh tanpa menunggu approval).');
     }
@@ -393,6 +471,62 @@ new class extends Component {
     /* ═══════════════════════════════════════
      | LANGKAH 3 — KIRIM RUJUKAN (ServiceRequest)
     ═══════════════════════════════════════ */
+    /* ═══════════════════════════════════════
+     | STATUS PERSETUJUAN FASKES TUJUAN
+     |
+     | Tugas rujukan (langkah 1) hanya MENANYAKAN kesediaan; jawabannya tercatat di
+     | Task.output faskes tujuan. Nilainya dibaca ULANG dari server, bukan dari state
+     | lokal — jawaban datang dari sistem RS lain, jadi state kita selalu bisa basi.
+    ═══════════════════════════════════════ */
+    private function ambilStatusApproval(): array
+    {
+        $taskId = trim((string) ($this->formRujukan['taskApprovalId'] ?? ''));
+        if ($taskId === '') {
+            return ['status' => '', 'terverifikasi' => false];
+        }
+
+        try {
+            $respon = $this->rujukanGetTask($taskId);
+            if ($respon['code'] < 200 || $respon['code'] >= 300) {
+                return ['status' => (string) ($this->formRujukan['statusApproval'] ?? ''), 'terverifikasi' => false];
+            }
+
+            $task = $this->rujukanTaskDariResponse($respon['body']);
+            if (!$task) {
+                return ['status' => (string) ($this->formRujukan['statusApproval'] ?? ''), 'terverifikasi' => false];
+            }
+
+            return ['status' => $this->rujukanKeputusanDariTask($task), 'terverifikasi' => true];
+        } catch (\Throwable) {
+            // Gangguan jaringan JANGAN menghapus keputusan yang sudah diketahui —
+            // pakai catatan terakhir, tapi tandai belum terverifikasi.
+            return ['status' => (string) ($this->formRujukan['statusApproval'] ?? ''), 'terverifikasi' => false];
+        }
+    }
+
+    public function cekStatusApproval(): void
+    {
+        if (trim((string) ($this->formRujukan['taskApprovalId'] ?? '')) === '') {
+            $this->dispatch('toast', type: 'error', message: 'Kirim Tugas Rujukan dulu — belum ada tugas yang bisa dicek.');
+            return;
+        }
+
+        $hasil = $this->ambilStatusApproval();
+        if (!$hasil['terverifikasi']) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membaca status dari SATUSEHAT (gangguan/kuota). Coba lagi nanti.');
+            return;
+        }
+
+        $this->formRujukan['statusApproval'] = $hasil['status'];
+        $this->simpanDraft('Cek status persetujuan rujukan: ' . ($hasil['status'] ?: 'belum dijawab'));
+
+        $this->dispatch('toast', type: $hasil['status'] === 'rejected' ? 'error' : 'success', message: match ($hasil['status']) {
+            'accepted' => 'Faskes tujuan MENERIMA rujukan — silakan lanjut Kirim Rujukan.',
+            'rejected' => 'Faskes tujuan MENOLAK rujukan. Pilih kandidat lain, jangan diteruskan.',
+            default => 'Faskes tujuan belum menjawab.',
+        });
+    }
+
     public function kirimRujukan(): void
     {
         if ($this->isFormLocked) {
@@ -405,8 +539,27 @@ new class extends Component {
             return;
         }
 
+        // Penjagaan persetujuan: menolak = final, tidak boleh diterbitkan rujukannya.
+        // Belum dijawab TIDAK diblokir — di staging jawaban sering tak pernah datang
+        // dan itu akan mematikan uji coba; cukup diperingatkan supaya petugas sadar.
+        $statusApproval = $this->ambilStatusApproval();
+        $this->formRujukan['statusApproval'] = $statusApproval['status'];
+        if ($statusApproval['status'] === 'rejected') {
+            $this->dispatch('toast', type: 'error', message: 'Faskes tujuan MENOLAK tugas rujukan ini — rujukan tidak boleh diterbitkan. Pilih kandidat lain lalu kirim tugas rujukan ulang.');
+            return;
+        }
+        if ($statusApproval['status'] !== 'accepted') {
+            $this->dispatch('toast', type: 'warning', message: $statusApproval['terverifikasi']
+                ? 'Perhatian: faskes tujuan BELUM menjawab tugas rujukan — rujukan tetap diterbitkan.'
+                : 'Perhatian: status persetujuan tidak terverifikasi (gangguan koneksi) — rujukan tetap diterbitkan.');
+        }
+
         $keRanap = $this->formRujukan['jalur'] === 'ranap';
         $respon = $this->rujukanServiceRequest([
+            'occurrenceDateTime' => $this->rujukanTanggalRencanaIso($this->formRujukan['tglRencanaKunjungan']) ?: null,
+            'performerTypeKode' => $this->formRujukan['performerTypeKode'],
+            'conditionIds' => $this->dataDaftarUGD['satusehat']['conditionIds'] ?? [],
+
             'identifier' => (string) Str::uuid(),
             'carePlanId' => $this->formRujukan['carePlanId'],
             'jalur' => $keRanap ? 'ranap' : 'igd',
@@ -676,23 +829,34 @@ new class extends Component {
                 </div>
             @endif
 
-            <div class="grid grid-cols-1 gap-3">
-                <div>
-                    <x-input-label value="Kode Propinsi (tanpa titik)" class="mb-1" />
-                    <x-text-input wire:model.blur="formRujukan.kodePropinsi" :disabled="$isFormLocked" class="w-full" />
-                </div>
-                <div>
-                    <x-input-label value="Nama Propinsi" class="mb-1" />
-                    <x-text-input wire:model.blur="formRujukan.namaPropinsi" :disabled="$isFormLocked" class="w-full" />
-                </div>
-                <div>
-                    <x-input-label value="Kode Kabupaten/Kota (tanpa titik)" class="mb-1" />
-                    <x-text-input wire:model.blur="formRujukan.kodeKabupaten" :disabled="$isFormLocked" class="w-full" />
-                </div>
-                <div>
-                    <x-input-label value="Nama Kabupaten/Kota" class="mb-1" />
-                    <x-text-input wire:model.blur="formRujukan.namaKabupaten" :disabled="$isFormLocked" class="w-full" />
-                </div>
+            {{-- Kelompok Layanan — menyaring kandidat ke faskes yang melayani
+                 kelompok ini. Opsional: kosong = tidak dikirim, biar tidak
+                 menyaring kandidat diam-diam dengan kelompok yang keliru. --}}
+            <div>
+                <x-input-label value="Kelompok Layanan (opsional)" class="mb-1" />
+                <x-select-input wire:model.live="formRujukan.kelompokLayananKode" :disabled="$isFormLocked" class="w-full">
+                    <option value="">— tidak dikirim —</option>
+                    @foreach ($this->kelompokLayananOptions() as $kodeKelompok => $namaKelompok)
+                        <option value="{{ $kodeKelompok }}">{{ $namaKelompok }}</option>
+                    @endforeach
+                </x-select-input>
+            </div>
+
+            {{-- Wilayah dipilih sekali lewat LOV kabupaten — propinsinya ikut
+                 terisi, jadi pasangan kode tak bisa lagi tidak sinkron. --}}
+            <div>
+                <livewire:lov.kabupaten.lov-kabupaten label="Jejaring Wilayah Rujukan (Kab/Kota)"
+                    target="rujukanWilayahUGD" :initialKabId="$formRujukan['kodeKabupaten'] ?: null"
+                    :readonly="$isFormLocked"
+                    wire:key="lov-wilayah-rujukan-ugd-{{ $rjNo }}" />
+                <p class="mt-1 text-xs text-muted-soft">
+                    Terpilih:
+                    <strong>{{ $formRujukan['namaKabupaten'] ?: '-' }}</strong>
+                    ({{ $formRujukan['kodeKabupaten'] ?: '-' }})
+                    &middot; Prov. <strong>{{ $formRujukan['namaPropinsi'] ?: '-' }}</strong>
+                    ({{ $formRujukan['kodePropinsi'] ?: '-' }})
+                </p>
+            </div>
             </div>
 
             <div class="flex flex-col items-start gap-2">
@@ -760,6 +924,21 @@ new class extends Component {
 
             <div class="grid grid-cols-1 gap-3">
                 <div>
+                    <x-input-label value="Pilih Layanan (pintasan)" class="mb-1" />
+                    <x-select-input wire:change="pilihSpeciality($event.target.value)" :disabled="$isFormLocked" class="w-full">
+                        <option value="">— ketik manual di bawah —</option>
+                        @foreach ($this->specialityOptions() as $kodeLayanan => $namaLayanan)
+                            <option value="{{ $kodeLayanan }}" @selected(($formRujukan['specialityCode'] ?? '') === $kodeLayanan)>
+                                {{ $kodeLayanan }} — {{ $namaLayanan }}
+                            </option>
+                        @endforeach
+                    </x-select-input>
+                    <p class="mt-1 text-xs text-muted-soft">
+                        Katalog clinical-speciality resmi belum dibagikan Kemkes; daftar ini hanya
+                        kode yang sudah terbukti dipakai. Kode lain tetap boleh diketik manual.
+                    </p>
+                </div>
+                <div>
                     <x-input-label value="Kode Layanan (clinical-speciality)" class="mb-1" />
                     <x-text-input wire:model.blur="formRujukan.specialityCode"
                         placeholder="{{ ($formRujukan['jalur'] ?? 'igd') === 'igd' ? 'L03 (default IGD)' : 'mis. LY133' }}"
@@ -772,6 +951,21 @@ new class extends Component {
                         :disabled="$isFormLocked" class="w-full" />
                 </div>
                 <div>
+                    <x-input-label value="Tgl. Rencana Kunjungan di RS Tujuan" class="mb-1" />
+                    <x-text-input wire:model.blur="formRujukan.tglRencanaKunjungan" placeholder="dd/mm/yyyy"
+                        :disabled="$isFormLocked" class="w-full" />
+                    <p class="mt-1 text-xs text-muted-soft">Dikirim sebagai occurrenceDateTime — kapan pasien direncanakan dilayani, bukan jam pengiriman.</p>
+                </div>
+                <div>
+                    <x-input-label value="Jenis Tenaga Kesehatan Pelaksana (opsional)" class="mb-1" />
+                    <x-select-input wire:model.live="formRujukan.performerTypeKode" :disabled="$isFormLocked" class="w-full">
+                        <option value="">— tidak dikirim —</option>
+                        @foreach ($this->performerTypeOptions() as $kodePelaksana => $namaPelaksana)
+                            <option value="{{ $kodePelaksana }}">{{ $namaPelaksana }}</option>
+                        @endforeach
+                    </x-select-input>
+                </div>
+                <div>
                     <x-input-label value="Deskripsi Rencana Rujukan" class="mb-1" />
                     <x-text-input wire:model.blur="formRujukan.deskripsi" placeholder="Alasan & kebutuhan penanganan di RS tujuan"
                         :disabled="$isFormLocked" class="w-full" />
@@ -780,6 +974,32 @@ new class extends Component {
 
             @if (!empty($formRujukan['taskApprovalId']))
                 <p class="text-sm text-green-700 dark:text-green-300">✓ Tugas rujukan terkirim (Task {{ $formRujukan['taskApprovalId'] }}, CarePlan {{ $formRujukan['carePlanId'] }})</p>
+
+                @php $statusApproval = $formRujukan['statusApproval'] ?? ''; @endphp
+                <div class="flex flex-wrap items-center gap-2 mt-1">
+                    <span class="text-sm text-muted dark:text-gray-400">Jawaban faskes tujuan:</span>
+                    @if ($statusApproval === 'accepted')
+                        <x-badge variant="success">Diterima</x-badge>
+                    @elseif ($statusApproval === 'rejected')
+                        <x-badge variant="danger">Ditolak</x-badge>
+                    @else
+                        <x-badge variant="warning">Belum dijawab</x-badge>
+                    @endif
+                    <x-secondary-button type="button" wire:click="cekStatusApproval" wire:loading.attr="disabled" wire:target="cekStatusApproval" class="text-xs">
+                        <span wire:loading.remove wire:target="cekStatusApproval">🔄 Cek Status</span>
+                        <span wire:loading wire:target="cekStatusApproval" class="inline-flex items-center gap-1"><x-loading /> Mengecek...</span>
+                    </x-secondary-button>
+                </div>
+                @if ($statusApproval === 'rejected')
+                    <p class="mt-1 text-sm text-rose-700 dark:text-rose-300">
+                        Rujukan tidak bisa diterbitkan ke faskes ini. Pilih kandidat lain lalu kirim tugas rujukan ulang.
+                    </p>
+                @elseif ($statusApproval !== 'accepted')
+                    <p class="mt-1 text-xs text-muted-soft">
+                        Rujukan tetap bisa diterbitkan tanpa menunggu jawaban (dibutuhkan saat uji coba), tapi di
+                        pelayanan nyata sebaiknya tunggu <strong>Diterima</strong> dulu.
+                    </p>
+                @endif
             @endif
 
             @if (!$isFormLocked)
