@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Support\Options\RujukanOptions;
 
 /**
  * SATUSEHAT Rujukan (SRBK) — jalur FHIR LANGSUNG untuk Rawat Inap & Rawat Darurat.
@@ -122,6 +123,42 @@ trait SatuSehatRujukanTrait
     private function rujukanNowIso(): string
     {
         return Carbon::now('UTC')->format('Y-m-d\TH:i:sP');
+    }
+
+    /**
+     * Tanggal rencana kunjungan (dd/mm/yyyy dari form) → ISO 8601 zona WIB,
+     * dipakai ServiceRequest.occurrenceDateTime.
+     *
+     * Jamnya sengaja 00:00 waktu setempat mengikuti contoh resmi: yang dijanjikan
+     * ke faskes tujuan adalah TANGGAL layanan, bukan jam persis. Tanggal tak
+     * terbaca → kembalikan string kosong supaya pemanggil jatuh ke now(), bukan
+     * diam-diam mengirim epoch 1970.
+     */
+    protected function rujukanTanggalRencanaIso(?string $tanggal): string
+    {
+        $tanggal = trim((string) $tanggal);
+        if ($tanggal === '') {
+            return '';
+        }
+
+        // checkdate() DULU, jangan bersandar pada Carbon::createFromFormat: mode
+        // lenient-nya menggulung tanggal mustahil tanpa melempar — '31/02/2026'
+        // berubah diam-diam jadi 3 Maret, dan rujukan terkirim dengan tanggal
+        // rencana yang tidak pernah diketik petugas.
+        if (!preg_match('#^(\d{1,2})/(\d{1,2})/(\d{4})$#', $tanggal, $bagian)) {
+            return '';
+        }
+        [, $hari, $bulan, $tahun] = $bagian;
+        if (!checkdate((int) $bulan, (int) $hari, (int) $tahun)) {
+            return '';
+        }
+
+        try {
+            return Carbon::create((int) $tahun, (int) $bulan, (int) $hari, 0, 0, 0, config('app.timezone'))
+                ->format('Y-m-d\TH:i:sP');
+        } catch (\Throwable) {
+            return '';
+        }
     }
 
     /* ═══════════════════════════════════════
@@ -299,6 +336,25 @@ trait SatuSehatRujukanTrait
                     'system' => 'http://hl7.org/fhir/sid/icd-10',
                     'code' => $konteks['diagnosaSekunderKode'],
                     'display' => $konteks['diagnosaSekunderDesc'] ?? '',
+                ],
+            ];
+        }
+
+        // Kelompok Layanan — variabel playbook v6.0 (Lampiran 4). Mempersempit
+        // kandidat ke faskes yang melayani kelompok itu. Opsional: kalau petugas
+        // tidak memilih, jangan kirim — kelompok yang salah menyaring kandidat
+        // secara diam-diam, dan itu lebih buruk daripada tidak menyaring.
+        if (!empty($konteks['kelompokLayananKode'])) {
+            $input[] = [
+                'type' => ['coding' => [[
+                    'system' => 'http://terminology.kemkes.go.id',
+                    'code' => 'TK000562',
+                    'display' => 'Kelompok Layanan',
+                ]]],
+                'valueCoding' => [
+                    'system' => 'http://terminology.kemkes.go.id',
+                    'code' => $konteks['kelompokLayananKode'],
+                    'display' => RujukanOptions::kelompokLayananDisplay($konteks['kelompokLayananKode']),
                 ],
             ];
         }
@@ -614,7 +670,12 @@ trait SatuSehatRujukanTrait
             ],
             'subject' => ['reference' => 'Patient/' . $konteks['patientUuid']],
             'encounter' => ['reference' => 'Encounter/' . $konteks['encounterId']],
-            'occurrenceDateTime' => $this->rujukanNowIso(),
+            // occurrenceDateTime = KAPAN PASIEN DIRENCANAKAN DILAYANI di faskes
+            // tujuan, bukan jam kita menekan kirim. Contoh resmi memakai tanggal
+            // sesudah authoredOn Task/CarePlan-nya, jadi mengisinya dengan now()
+            // membuat rujukan terbaca "dilayani saat ini juga" untuk pasien yang
+            // dijadwalkan besok. Fallback ke now() hanya kalau pemanggil lupa.
+            'occurrenceDateTime' => $konteks['occurrenceDateTime'] ?? $this->rujukanNowIso(),
             'requester' => [
                 'reference' => 'Organization/' . $this->rujukanOrgId(),
                 'display' => (string) env('SATUSEHAT_ORGANIZATION_NAME'),
@@ -630,6 +691,30 @@ trait SatuSehatRujukanTrait
             ]]]],
             'patientInstruction' => 'Rujukan ke ' . $konteks['orgTujuanNama'],
         ];
+
+        // Jenis Tenaga Kesehatan Pelaksana Rujukan (playbook v6.0). Opsional —
+        // lihat RujukanOptions::PERFORMER_TYPE kenapa daftarnya belum lengkap.
+        if (!empty($konteks['performerTypeKode'])) {
+            $serviceRequest['performerType'] = ['coding' => [[
+                'system' => 'http://snomed.info/sct',
+                'code' => $konteks['performerTypeKode'],
+                'display' => RujukanOptions::PERFORMER_TYPE[$konteks['performerTypeKode']] ?? '',
+            ]]];
+        }
+
+        // Diagnosis Rujukan = ServiceRequest.reasonReference → resource Condition.
+        // Dipungut dari Condition yang SUDAH terkirim di kunjungan ini; kalau modul
+        // SATUSEHAT Condition belum dijalankan, daftarnya kosong dan field ini
+        // tidak dikirim — jangan mengarang reference ke resource yang tak ada,
+        // itu ditolak validator sebagai reference_not_found.
+        $conditionIds = array_values(array_filter((array) ($konteks['conditionIds'] ?? [])));
+        if ($conditionIds !== []) {
+            $serviceRequest['reasonReference'] = array_map(
+                fn($conditionId) => ['reference' => 'Condition/' . $conditionId],
+                $conditionIds
+            );
+        }
+
         if (!empty($konteks['taskApprovalId'])) {
             $serviceRequest['supportingInfo'] = [[
                 'display' => 'Task Respon Kandidat Faskes Rujukan',
