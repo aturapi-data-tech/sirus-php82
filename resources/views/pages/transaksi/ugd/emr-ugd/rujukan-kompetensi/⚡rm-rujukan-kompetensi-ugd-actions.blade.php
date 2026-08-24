@@ -651,12 +651,8 @@ new class extends Component {
                 <div class="space-y-2">
                     <p class="text-xs text-muted-soft">Kriteria gawat darurat (centang yang sesuai, minimal satu):</p>
                     @foreach ($this->pertanyaanIgd() as $linkId => $teks)
-                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                            <input type="checkbox" wire:model.live="formRujukan.kriteriaIgd.{{ $linkId }}"
-                                @disabled($isFormLocked)
-                                class="rounded text-rose-600 border-hairline focus:ring-rose-500">
-                            <span>{{ $teks }}</span>
-                        </label>
+                        <x-toggle wire:model.live="formRujukan.kriteriaIgd.{{ $linkId }}" :trueValue="true"
+                            :falseValue="false" :disabled="$isFormLocked" onColor="bg-rose-600" label="{{ $teks }}" />
                     @endforeach
                 </div>
             @else
