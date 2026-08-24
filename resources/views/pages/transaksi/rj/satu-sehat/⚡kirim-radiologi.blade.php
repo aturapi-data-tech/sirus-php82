@@ -143,7 +143,7 @@ new class extends Component {
             $orders = DB::table('rstxn_rjrads as a')
                 ->leftJoin('rsmst_radiologis as m', 'a.rad_id', '=', 'm.rad_id')
                 ->where('a.rj_no', $rjNo)
-                ->select('a.rad_dtl', 'a.rad_id', 'm.rad_desc', 'a.radnum_no', 'a.rad_upload_pdf_foto', 'a.study_uid')
+                ->select('a.rad_dtl', 'a.rad_id', 'm.rad_desc', 'm.loinc_code', 'm.loinc_display', 'a.radnum_no', 'a.rad_upload_pdf_foto', 'a.study_uid')
                 ->get();
 
             $regNo   = $dataRJ['regNo'] ?? '';
@@ -171,6 +171,13 @@ new class extends Component {
                 $deskripsi   = trim((string) ($order->rad_desc ?? 'Pemeriksaan Radiologi'));
                 $key         = "{$rjNo}-{$nomorDetail}";
                 $kunciOrder  = "rad-{$key}";
+
+                $loincCode    = trim((string) ($order->loinc_code ?? ''));
+                $loincDisplay = trim((string) ($order->loinc_display ?? ''));
+                if ($loincCode === '') {
+                    $loincCode = '18748-4';
+                    $loincDisplay = $deskripsi;
+                }
 
                 // ImagingStudy hanya relevan kalau fotonya memang sudah ada.
                 $fileFoto = $order->rad_upload_pdf_foto ?? '';
@@ -207,7 +214,7 @@ new class extends Component {
                         'identifier' => ['system' => $sistemSr, 'value' => $kunciOrder],
                         'status' => 'active', 'intent' => 'original-order', 'priority' => 'routine',
                         'category' => ['system' => 'http://snomed.info/sct', 'code' => '363679005', 'display' => 'Imaging'],
-                        'code' => ['system' => 'http://loinc.org', 'code' => '18748-4', 'display' => $deskripsi],
+                        'code' => ['system' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi],
                         'subject' => "Patient/{$patientId}", 'encounter' => "Encounter/{$encounterId}",
                         'occurrenceDateTime' => $waktu, 'authoredOn' => $waktu,
                         'requester' => "Practitioner/{$practitionerId}", 'requesterDisplay' => $drDesc,
@@ -227,7 +234,7 @@ new class extends Component {
                         'patientId' => $patientId, 'encounterId' => $encounterId, 'performerId' => $practitionerId,
                         'effectiveDate' => $waktu,
                         'category' => [['coding' => [['system' => 'http://terminology.hl7.org/CodeSystem/observation-category', 'code' => 'imaging', 'display' => 'Imaging']]]],
-                        'code' => ['system' => 'http://loinc.org', 'code' => '18748-4', 'display' => $deskripsi],
+                        'code' => ['system' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi],
                         'valueString' => 'Lihat hasil pada lampiran radiologi',
                     ]);
                     $obsId = $observation['id'] ?? null;
@@ -242,7 +249,7 @@ new class extends Component {
                     $drPayload = [
                         'identifier' => [['system' => $sistemDr, 'use' => 'official', 'value' => $kunciOrder]],
                         'status' => 'final', 'categoryCode' => 'RAD', 'categoryDisplay' => 'Radiology',
-                        'codeSystem' => 'http://loinc.org', 'code' => '18748-4', 'display' => $deskripsi,
+                        'codeSystem' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi,
                         'patientId' => $patientId, 'encounterId' => $encounterId,
                         'effectiveDate' => $waktu, 'issued' => $waktu,
                         'performer' => ["Practitioner/{$practitionerId}"], 'basedOn' => [$serviceRequestId],
@@ -280,7 +287,7 @@ new class extends Component {
                         'started'          => $waktu,
                         'modalityCode'     => $modalitas['code'],
                         'modalityDisplay'  => $modalitas['display'],
-                        'procedureCode'    => '18748-4',
+                        'procedureCode'    => $loincCode,
                         'procedureDisplay' => $deskripsi,
                         'referrerId'       => $practitionerId,
                         'basedOn'          => $serviceRequestId,
