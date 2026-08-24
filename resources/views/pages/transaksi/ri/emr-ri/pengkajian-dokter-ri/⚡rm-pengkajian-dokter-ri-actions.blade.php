@@ -79,7 +79,7 @@ new class extends Component {
         $this->dataDaftarRi['pengkajianDokter']['anamnesa'] ??= [];
         $this->dataDaftarRi['pengkajianDokter']['anamnesa']['riwayatPenyakit'] ??= ['sekarang' => '', 'dahulu' => '', 'keluarga' => ''];
 
-        $pd = &$this->dataDaftarRi['pengkajianDokter'];
+        $pengkajianDokter = &$this->dataDaftarRi['pengkajianDokter'];
 
         $copied = 0;
         $skipped = 0;
@@ -98,58 +98,58 @@ new class extends Component {
         };
 
         // 1) Keluhan Utama
-        $pd['anamnesa']['keluhanUtama'] ??= '';
-        $fill($pd['anamnesa']['keluhanUtama'], (string) data_get($ugd, 'anamnesa.keluhanUtama.keluhanUtama', ''));
+        $pengkajianDokter['anamnesa']['keluhanUtama'] ??= '';
+        $fill($pengkajianDokter['anamnesa']['keluhanUtama'], (string) data_get($ugd, 'anamnesa.keluhanUtama.keluhanUtama', ''));
 
         // 2) Riwayat Penyakit Sekarang
-        $pd['anamnesa']['riwayatPenyakit']['sekarang'] ??= '';
-        $fill($pd['anamnesa']['riwayatPenyakit']['sekarang'], (string) data_get($ugd, 'anamnesa.riwayatPenyakitSekarangUmum.riwayatPenyakitSekarangUmum', ''));
+        $pengkajianDokter['anamnesa']['riwayatPenyakit']['sekarang'] ??= '';
+        $fill($pengkajianDokter['anamnesa']['riwayatPenyakit']['sekarang'], (string) data_get($ugd, 'anamnesa.riwayatPenyakitSekarangUmum.riwayatPenyakitSekarangUmum', ''));
 
         // 3) Riwayat Penyakit Dahulu
-        $pd['anamnesa']['riwayatPenyakit']['dahulu'] ??= '';
-        $fill($pd['anamnesa']['riwayatPenyakit']['dahulu'], (string) data_get($ugd, 'anamnesa.riwayatPenyakitDahulu.riwayatPenyakitDahulu', ''));
+        $pengkajianDokter['anamnesa']['riwayatPenyakit']['dahulu'] ??= '';
+        $fill($pengkajianDokter['anamnesa']['riwayatPenyakit']['dahulu'], (string) data_get($ugd, 'anamnesa.riwayatPenyakitDahulu.riwayatPenyakitDahulu', ''));
 
         // 4) Jenis Alergi — teks + KODE SNOMED + jawaban Ya/Tidak.
         // Kode wajib ikut: sejak UGD punya default "Tidak ada alergi" (716186003), menyalin
         // teksnya saja membuat kode hilang di RI. Kode hanya ikut kalau teksnya juga ikut
         // (fill-only), supaya kode tak menempel ke alergi lain yang sudah ada di RI.
-        $pd['anamnesa']['jenisAlergi'] ??= '';
-        $alergiKosong = trim($pd['anamnesa']['jenisAlergi']) === '';
-        $fill($pd['anamnesa']['jenisAlergi'], (string) data_get($ugd, 'anamnesa.alergi.alergi', ''));
-        if ($alergiKosong && trim((string) $pd['anamnesa']['jenisAlergi']) !== '') {
-            $pd['anamnesa']['jenisAlergiSnomedCode'] = (string) data_get($ugd, 'anamnesa.alergi.snomedCode', '');
-            $pd['anamnesa']['jenisAlergiSnomedDisplayEn'] = (string) data_get($ugd, 'anamnesa.alergi.snomedDisplayEn', '');
-            $pd['anamnesa']['jenisAlergiSnomedDisplayId'] = (string) data_get($ugd, 'anamnesa.alergi.snomedDisplayId', '');
-            $pd['anamnesa']['adaAlergi'] = (string) data_get($ugd, 'anamnesa.alergi.adaAlergi', '');
+        $pengkajianDokter['anamnesa']['jenisAlergi'] ??= '';
+        $alergiKosong = trim($pengkajianDokter['anamnesa']['jenisAlergi']) === '';
+        $fill($pengkajianDokter['anamnesa']['jenisAlergi'], (string) data_get($ugd, 'anamnesa.alergi.alergi', ''));
+        if ($alergiKosong && trim((string) $pengkajianDokter['anamnesa']['jenisAlergi']) !== '') {
+            $pengkajianDokter['anamnesa']['jenisAlergiSnomedCode'] = (string) data_get($ugd, 'anamnesa.alergi.snomedCode', '');
+            $pengkajianDokter['anamnesa']['jenisAlergiSnomedDisplayEn'] = (string) data_get($ugd, 'anamnesa.alergi.snomedDisplayEn', '');
+            $pengkajianDokter['anamnesa']['jenisAlergiSnomedDisplayId'] = (string) data_get($ugd, 'anamnesa.alergi.snomedDisplayId', '');
+            $pengkajianDokter['anamnesa']['adaAlergi'] = (string) data_get($ugd, 'anamnesa.alergi.adaAlergi', '');
         }
 
         // 5) Pemeriksaan Fisik
-        $pd['fisik'] ??= '';
-        $fill($pd['fisik'], (string) data_get($ugd, 'pemeriksaan.fisik', ''));
+        $pengkajianDokter['fisik'] ??= '';
+        $fill($pengkajianDokter['fisik'], (string) data_get($ugd, 'pemeriksaan.fisik', ''));
 
         // 6) Rekonsiliasi Obat — daftar, jadi bukan fill-only per field: obat yang
         // belum ada DITAMBAHKAN, yang namanya sudah ada di RI dilewati (tak menimpa).
-        $pd['anamnesa']['rekonsiliasiObat'] ??= [];
+        $pengkajianDokter['anamnesa']['rekonsiliasiObat'] ??= [];
         // Pencatat aslinya petugas UGD — dibawa apa adanya oleh normalkanDaftar(),
         // tidak distempel ulang user RI, supaya jejaknya tetap benar.
         $obatUgd = RekonsiliasiObat::normalkanDaftar(data_get($ugd, 'anamnesa.rekonsiliasiObat', []));
 
-        $sebelum = count($pd['anamnesa']['rekonsiliasiObat']);
-        $pd['anamnesa']['rekonsiliasiObat'] = $this->gabungRekonsiliasiObat($pd['anamnesa']['rekonsiliasiObat'], $obatUgd);
-        $obatDitambah = count($pd['anamnesa']['rekonsiliasiObat']) - $sebelum;
+        $sebelum = count($pengkajianDokter['anamnesa']['rekonsiliasiObat']);
+        $pengkajianDokter['anamnesa']['rekonsiliasiObat'] = $this->gabungRekonsiliasiObat($pengkajianDokter['anamnesa']['rekonsiliasiObat'], $obatUgd);
+        $obatDitambah = count($pengkajianDokter['anamnesa']['rekonsiliasiObat']) - $sebelum;
         $copied += $obatDitambah;
         $skipped += count($obatUgd) - $obatDitambah;
 
-        unset($pd);
+        unset($pengkajianDokter);
 
         $this->incrementVersion('modal-pengkajian-dokter-ri');
 
-        $msg = "Asesmen Dokter UGD: {$copied} field disalin";
+        $pesan = "Asesmen Dokter UGD: {$copied} field disalin";
         if ($skipped > 0) {
-            $msg .= ", {$skipped} field di-skip (sudah ada nilai)";
+            $pesan .= ", {$skipped} field di-skip (sudah ada nilai)";
         }
-        $msg .= '. Klik Simpan untuk persist.';
-        $this->dispatch('toast', type: 'success', message: $msg);
+        $pesan .= '. Klik Simpan untuk persist.';
+        $this->dispatch('toast', type: 'success', message: $pesan);
     }
 
     #[On('open-rm-pengkajian-dokter-ri')]
@@ -193,7 +193,7 @@ new class extends Component {
             ],
             'fisik' => '',
             'anatomi' => collect(['kepala', 'mata', 'telinga', 'hidung', 'rambut', 'bibir', 'gigiGeligi', 'lidah', 'langitLangit', 'leher', 'tenggorokan', 'tonsil', 'dada', 'payudara', 'punggung', 'perut', 'genital', 'anus', 'lenganAtas', 'lenganBawah', 'jariTangan', 'kukuTangan', 'persendianTangan', 'tungkaiAtas', 'tungkaiBawah', 'jariKaki', 'kukuKaki', 'persendianKaki', 'faring'])
-                ->mapWithKeys(fn($p) => [$p => ['kelainan' => 'Tidak Diperiksa', 'desc' => '']])
+                ->mapWithKeys(fn($bagianAnatomi) => [$bagianAnatomi => ['kelainan' => 'Tidak Diperiksa', 'desc' => '']])
                 ->toArray(),
             'statusLokalis' => ['deskripsiGambar' => ''],
             'hasilPemeriksaanPenunjang' => ['laboratorium' => '', 'radiologi' => '', 'penunjangLain' => ''],
@@ -215,16 +215,16 @@ new class extends Component {
         // tiap kunjungan. Fill-only: yang sudah terisi di RI TIDAK ditimpa. Kode SNOMED hanya
         // ikut kalau teksnya juga ikut, supaya kode tak menempel ke alergi lain.
         $pasienData = $this->findDataMasterPasien($this->dataDaftarRi['regNo'] ?? '');
-        $pdAnamnesa = &$this->dataDaftarRi['pengkajianDokter']['anamnesa'];
-        if (trim((string) ($pdAnamnesa['jenisAlergi'] ?? '')) === '' && !empty($pasienData['pasien']['alergi'])) {
-            $pdAnamnesa['jenisAlergi'] = $pasienData['pasien']['alergi'];
+        $anamnesaPengkajianDokter = &$this->dataDaftarRi['pengkajianDokter']['anamnesa'];
+        if (trim((string) ($anamnesaPengkajianDokter['jenisAlergi'] ?? '')) === '' && !empty($pasienData['pasien']['alergi'])) {
+            $anamnesaPengkajianDokter['jenisAlergi'] = $pasienData['pasien']['alergi'];
             if (!empty($pasienData['pasien']['alergiSnomedCode'])) {
-                $pdAnamnesa['jenisAlergiSnomedCode'] = $pasienData['pasien']['alergiSnomedCode'];
-                $pdAnamnesa['jenisAlergiSnomedDisplayEn'] = $pasienData['pasien']['alergiSnomedDisplayEn'] ?? '';
-                $pdAnamnesa['jenisAlergiSnomedDisplayId'] = $pasienData['pasien']['alergiSnomedDisplayId'] ?? '';
+                $anamnesaPengkajianDokter['jenisAlergiSnomedCode'] = $pasienData['pasien']['alergiSnomedCode'];
+                $anamnesaPengkajianDokter['jenisAlergiSnomedDisplayEn'] = $pasienData['pasien']['alergiSnomedDisplayEn'] ?? '';
+                $anamnesaPengkajianDokter['jenisAlergiSnomedDisplayId'] = $pasienData['pasien']['alergiSnomedDisplayId'] ?? '';
             }
         }
-        unset($pdAnamnesa);
+        unset($anamnesaPengkajianDokter);
 
         // Seragamkan alergi + turunkan radio "Ada alergi?" (default Tidak -> SNOMED
         // 716186003), pola sama RJ/UGD. RI menyimpannya dgn key BEDA (jenisAlergi*, datar)
@@ -301,17 +301,17 @@ new class extends Component {
             return;
         }
 
-        $an = $this->dataDaftarRi['pengkajianDokter']['anamnesa'] ?? [];
-        $alergi = trim((string) ($an['jenisAlergi'] ?? ''));
+        $anamnesa = $this->dataDaftarRi['pengkajianDokter']['anamnesa'] ?? [];
+        $alergi = trim((string) ($anamnesa['jenisAlergi'] ?? ''));
         if ($alergi === '') {
             return;
         }
 
         $pasienData = $this->findDataMasterPasien($regNo);
         $pasienData['pasien']['alergi'] = $alergi;
-        $pasienData['pasien']['alergiSnomedCode'] = $an['jenisAlergiSnomedCode'] ?? '';
-        $pasienData['pasien']['alergiSnomedDisplayEn'] = $an['jenisAlergiSnomedDisplayEn'] ?? '';
-        $pasienData['pasien']['alergiSnomedDisplayId'] = $an['jenisAlergiSnomedDisplayId'] ?? '';
+        $pasienData['pasien']['alergiSnomedCode'] = $anamnesa['jenisAlergiSnomedCode'] ?? '';
+        $pasienData['pasien']['alergiSnomedDisplayEn'] = $anamnesa['jenisAlergiSnomedDisplayEn'] ?? '';
+        $pasienData['pasien']['alergiSnomedDisplayId'] = $anamnesa['jenisAlergiSnomedDisplayId'] ?? '';
         $pasienData['pasien']['regNo'] = $regNo;
         $this->updateJsonMasterPasien($regNo, $pasienData);
     }
@@ -377,11 +377,11 @@ new class extends Component {
         $this->store('Hapus riwayat pemakaian obat — ' . $namaObat);
     }
 
-    private function afterSave(string $msg): void
+    private function afterSave(string $pesan): void
     {
         $this->incrementVersion('modal-pengkajian-dokter-ri');
         $this->dispatch('refresh-after-ri.saved', tab: 'pengkajian-dokter');
-        $this->dispatch('toast', type: 'success', message: $msg);
+        $this->dispatch('toast', type: 'success', message: $pesan);
     }
 
     /* ── Buka E-Resep dari Pengkajian Dokter ── */
@@ -596,8 +596,8 @@ new class extends Component {
             <div>
                 <x-input-label value="Ada Alergi?" />
                 <div class="flex gap-4 mt-2">
-                    @foreach (['Ya', 'Tidak'] as $opt)
-                        <x-radio-button :label="$opt" :value="$opt" name="adaAlergiRi"
+                    @foreach (['Ya', 'Tidak'] as $opsi)
+                        <x-radio-button :label="$opsi" :value="$opsi" name="adaAlergiRi"
                             wire:model.live="dataDaftarRi.pengkajianDokter.anamnesa.adaAlergi" :disabled="$isFormLocked || $isReadOnlyByRole" />
                     @endforeach
                 </div>

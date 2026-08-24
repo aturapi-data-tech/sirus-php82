@@ -219,8 +219,8 @@ new class extends Component {
                 $this->updateRiwayatMedisPasien();
 
                 // 7. Audit log
-                $ket = $logKeterangan ?? (($isBaru ? 'Buat' : 'Update') . ' Anamnesa UGD — jam datang ' . ($data['anamnesa']['pengkajianPerawatan']['jamDatang'] ?? '-'));
-                $this->appendAdminLogUGD((int) $this->rjNo, $ket, 'MR');
+                $keterangan = $logKeterangan ?? (($isBaru ? 'Buat' : 'Update') . ' Anamnesa UGD — jam datang ' . ($data['anamnesa']['pengkajianPerawatan']['jamDatang'] ?? '-'));
+                $this->appendAdminLogUGD((int) $this->rjNo, $keterangan, 'MR');
             });
 
             // 7. Notify + increment version — di luar transaksi
@@ -401,8 +401,8 @@ new class extends Component {
      =============================== */
     public function calculateScreeningGizi(): void
     {
-        $sg = $this->dataDaftarUGD['anamnesa']['screeningGizi'] ?? [];
-        $total = (int) ($sg['perubahanBB3BlnScore'] ?? 0) + (int) ($sg['jmlPerubahanBBScore'] ?? 0) + (int) ($sg['intakeMakananScore'] ?? 0);
+        $screeningGizi = $this->dataDaftarUGD['anamnesa']['screeningGizi'] ?? [];
+        $total = (int) ($screeningGizi['perubahanBB3BlnScore'] ?? 0) + (int) ($screeningGizi['jmlPerubahanBBScore'] ?? 0) + (int) ($screeningGizi['intakeMakananScore'] ?? 0);
 
         $this->dataDaftarUGD['anamnesa']['screeningGizi']['scoreTotalScreeningGizi'] = (string) $total;
         $this->dataDaftarUGD['anamnesa']['screeningGizi']['tglScreeningGizi'] = now()->format('d/m/Y H:i:s');
