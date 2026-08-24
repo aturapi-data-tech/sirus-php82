@@ -1,7 +1,10 @@
 # Rujukan Berbasis Kompetensi (SRBK) — Catatan Lapangan & Aturan Implementasi
 
-Rangkuman grup WA "SATUSEHAT Rujukan X PCare X VClaim" (10 Apr – 11 Agu 2026, ±13.600 baris)
-+ sample payload/response di folder export chat (`~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim/`).
+Rangkuman grup WA "SATUSEHAT Rujukan X PCare X VClaim" (10 Apr – **24 Agu 2026**, 14.486 baris)
++ sample payload/response di folder export chat (`~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim(2)/`).
+
+**Acuan spesifikasi: Playbook SATUSEHAT versi 6.1 (21 Agustus 2026)** — lihat §7 untuk apa
+yang berubah dari v6.0 dan bagian mana yang sudah/belum kita ikuti.
 
 Narasumber kunci: Septian & Hantoro (BPJS), Bofandra & Tricha (SATUSEHAT Rujukan), Panggih DK & Haidar (Kemkes).
 
@@ -247,6 +250,11 @@ vs `sep.reqSep...noKartu`), lalu satu `GET Encounter/<id>` memastikan `subject` 
 IHS pasien ini. **Gagal memeriksa ≠ tidak cocok**: kalau SATUSEHAT sedang gangguan,
 pengiriman tetap diteruskan — menolak layanan karena pusat down bukan keputusan yang sah.
 
+### 4.3 `404 "Transaksi tidak dapat diproses. Silakan coba lagi nanti."`
+Gejala **Consumer ID expired/belum aktif**, BUKAN endpoint salah atau payload cacat — jangan
+buang waktu men-debug body. Terjadi berjamaah 24/08/26 (3 faskes, semuanya pulih setelah CID
+direaktivasi). Penanganan: koordinasi dengan **TI BPJS kantor wilayah setempat**.
+
 ## 5. Prinsip desain untuk rebuild kita
 
 1. **Outage = kondisi normal.** `timeout(8)->connectTimeout(3)` + try/catch semua call; pesan ramah + tombol retry; state form persist (pola JSON node) supaya retry tanpa isi ulang; JANGAN blokir simpan EMR.
@@ -266,3 +274,72 @@ pengiriman tetap diteruskan — menolak layanan karena pusat down bukan keputusa
 - Folder export chat lama + lampiran: `~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim/` — berisi **Postman collection V30062026**, **Playbook Rujukan Pasien (RJ/RI/IGD)**, **Skenario UAT SRBK FKTL ver 1.0**, sample payload/response JSON, Surat Himbauan.
 - Postman publik: folder "04 Pengiriman Rujukan" (satusehat-public); playbook online: satusehat.kemkes.go.id/platform/docs/id/interoperability/rujukan/
 - Terminologi: clinical-speciality & practitioner-speciality (gsheet Kemkes); Kelompok Layanan per ICD-10 (Playbook Lampiran 4).
+
+---
+
+## 7. Playbook v6.1 (21/08/26) & kepatuhan payload kita
+
+### 7.1 Yang berubah di v6.1
+Changelog resminya hanya satu baris: **`CarePlan.contributor` kini diisi Fasyankes PERUJUK**
+(v6.0: Fasyankes Rujukan/tujuan). Kode kita sudah mengisi `Organization/<org kita>` sejak awal,
+jadi **kebetulan sudah sesuai v6.1** dan justru menyimpang dari v6.0 — tidak ada yang perlu diubah.
+
+### 7.2 Variabel v6.0 yang dulu terlewat, kini dikirim
+Ketiganya **opsional**: kalau petugas tidak mengisi, field-nya tidak dikirim sama sekali
+(payload faskes lain yang berhasil 21/08 pun tanpa sebagian field ini).
+
+| Variabel | Diisi dari | Catatan |
+|---|---|---|
+| `Task.input` `TK000562` **Kelompok Layanan** | dropdown 24 kelompok (`RujukanOptions::KELOMPOK_LAYANAN`, Lampiran 4) | menyaring kandidat; salah pilih = kandidat keliru tanpa pesan error, jadi default kosong |
+| `ServiceRequest.performerType` | dropdown Jenis Tenaga Kesehatan Pelaksana | **daftar kode masih 1 entri** — lihat §7.4 |
+| `ServiceRequest.reasonReference` | `satusehat.conditionIds` kunjungan | Diagnosis Rujukan; kosong bila modul Condition belum dijalankan (jangan mengarang reference → `reference_not_found`) |
+
+### 7.3 `occurrenceDateTime` = tanggal RENCANA kunjungan, bukan `now()`
+Contoh resmi & payload faskes lain memakai tanggal **sesudah** `authoredOn` Task/CarePlan
+(mis. Task 19/09 15:00 → ServiceRequest 20/09 08:50). Sebelumnya kita mengisi `now()`, sehingga
+rujukan untuk pasien yang dijadwalkan besok terbaca "dilayani saat ini juga". Sekarang diambil
+dari field **Tgl. Rencana Kunjungan** (default hari ini) lewat `rujukanTanggalRencanaIso()`.
+Parser-nya memakai `checkdate()` — `Carbon::createFromFormat` bermode lenient dan menggulung
+tanggal mustahil tanpa melempar (`31/02/2026` → 3 Maret), yang berarti mengirim tanggal yang
+tidak pernah diketik petugas. Tanggal tak sah → jatuh ke `now()`.
+
+### 7.4 BLOKIR: sheet Occupation SNOMED belum ada
+`ServiceRequest.performerType` menunjuk sheet *"HealthcareProfessional ECL"* (Lampiran Terminologi
+Occupation SNOMED) yang **tidak ikut dibagikan di grup**. Satu-satunya kode yang terbukti diterima
+adalah `39677007 Internal medicine specialist` (dipakai 3 contoh Postman resmi + payload faskes lain
+yang berhasil). Menebak kode lain berisiko dua arah: ditolak validator (edisi SNOMED SATUSEHAT
+tertinggal) atau lolos tapi mencatat jenis tenaga kesehatan yang KELIRU. **Minta sheet-nya ke grup**,
+lalu lengkapi `RujukanOptions::PERFORMER_TYPE`.
+
+### 7.4b Penjagaan persetujuan sebelum ServiceRequest
+Alurnya dua langkah terpisah (playbook §2.3 lalu §2.4): **Tugas Rujukan** (Bundle Task+CarePlan)
+hanya MENANYAKAN kesediaan faskes tujuan; **ServiceRequest** barulah rujukan resmi yang
+menerbitkan Nomor Rujukan Nasional. Jawaban tujuan tercatat di `Task.output` (`accepted`/`rejected`).
+
+Aturan di panel kita:
+- **`rejected` = blokir keras.** Rujukan tidak boleh diterbitkan ke faskes yang menolak;
+  petugas diarahkan memilih kandidat lain lalu kirim tugas rujukan ulang (CarePlan ikut baru,
+  lihat §7.5 soal CarePlan wajib unik).
+- **Belum dijawab = peringatan, bukan blokir.** Di staging jawaban sering tak pernah datang;
+  memblokir akan mematikan uji coba.
+- Status dibaca **ulang dari server** tiap kali (`rujukanGetTask` → `rujukanKeputusanDariTask`),
+  bukan dari state lokal — jawaban datang dari sistem RS lain, jadi state kita selalu bisa basi.
+  Kalau pembacaan gagal (gangguan/kuota), pakai catatan terakhir dan tandai "tidak terverifikasi";
+  gangguan jaringan tidak boleh menghapus keputusan `rejected` yang sudah diketahui.
+- Kirim tugas rujukan ulang me-reset status ke "belum dijawab".
+
+### 7.5 Jawaban resmi 24/08/26
+- **`PUT ServiceRequest` didukung** untuk mengubah rujukan yang sudah terkirim
+  (`postman.com/satusehat/satusehat-public/request/54g80nu/servicerequest-update`). Kita belum
+  memakainya — yang ada baru PATCH Task cancel.
+- **Satu CarePlan hanya untuk satu ServiceRequest.** Memakai ulang CarePlan lama ditolak
+  (`CarePlan dengan identifier '…' sudah ada`). Kita aman: `identifierCarePlan` selalu `Str::uuid()` baru.
+
+### 7.6 Konfirmasi & isu terbuka
+- **Rawat Jalan tidak punya accept/reject** — hanya IGD & Ranap (22/08). Sesuai desain kotak masuk kita.
+- **Terbuka di sisi BPJS**: `noRujukanSatuSehat` & `serviceRequestId` **tidak muncul** di
+  `vclaim-rest/Rujukan/{noRujukanBpjs}`; tim menjawab "sedang fixing" (21/08).
+- **Skenario UAT Ranap & Darurat** hanya dibagikan sebagai tautan Google Docs — belum ada salinannya
+  di folder export (yang ada FKTL & FKTP ver 1.0).
+
+---
