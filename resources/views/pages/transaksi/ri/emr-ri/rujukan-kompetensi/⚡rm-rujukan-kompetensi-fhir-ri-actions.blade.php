@@ -9,6 +9,8 @@ use App\Http\Traits\SATUSEHAT\SatuSehatRujukanTrait;
 use App\Support\Options\RujukanOptions;
 
 new class extends Component {
+    private const SPECIALITY_MANUAL = '__manual__';
+
     use EmrRITrait, SatuSehatRujukanTrait;
 
     public bool $isFormLocked = false;
@@ -181,13 +183,43 @@ new class extends Component {
      * Pintasan kode layanan. Mengisi kode DAN namanya sekaligus supaya keduanya
      * tidak pernah berpasangan salah; '' = petugas mau mengetik manual.
      */
+    /** Penanda petugas sengaja mengetik kode di luar daftar. */
+    public bool $specialityManual = false;
+
     public function pilihSpeciality(string $kode): void
     {
-        if ($this->isFormLocked || $kode === '') {
+        if ($this->isFormLocked) {
             return;
         }
+
+        if ($kode === self::SPECIALITY_MANUAL) {
+            $this->specialityManual = true;
+            return;
+        }
+
+        $this->specialityManual = false;
+
+        if ($kode === '') {
+            $this->formRujukan['specialityCode'] = '';
+            $this->formRujukan['specialityDisplay'] = '';
+            return;
+        }
+
+        // Kode DAN namanya diisi sepasang supaya tidak pernah berpasangan salah.
         $this->formRujukan['specialityCode'] = $kode;
         $this->formRujukan['specialityDisplay'] = $this->specialityOptions()[$kode] ?? '';
+    }
+
+    /**
+     * Kotak ketik manual muncul kalau petugas memilihnya, ATAU kalau kode
+     * tersimpan memang di luar daftar — daftar kita belum lengkap, jadi record
+     * lama tidak boleh jadi tak terbaca hanya karena kodenya tak dikenal.
+     */
+    public function specialityManualAktif(): bool
+    {
+        $kode = trim((string) ($this->formRujukan['specialityCode'] ?? ''));
+
+        return $this->specialityManual || ($kode !== '' && !isset($this->specialityOptions()[$kode]));
     }
 
     public function specialityOptions(): array
@@ -1149,31 +1181,44 @@ new class extends Component {
                 <p class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200"><x-step-number :n="3" /><x-step-number :n="4" /><x-step-number :n="5" /><span class="ml-0.5">Tugas Rujukan → Persetujuan → Rujukan</span></p>
 
                 <div class="grid grid-cols-1 gap-3">
+                    {{-- Satu layanan = satu pilihan. Kotak kode & nama hanya muncul
+                         saat petugas memang memilih "ketik manual", supaya tiga field
+                         tidak berebut menjelaskan nilai yang sama. --}}
                     <div>
-                        <x-input-label value="Pilih Layanan (pintasan)" class="mb-1" />
+                        <x-input-label value="Kode Layanan (clinical-speciality)" class="mb-1" />
                         <x-select-input wire:change="pilihSpeciality($event.target.value)" :disabled="$isFormLocked" class="w-full">
-                            <option value="">— ketik manual di bawah —</option>
+                            <option value="">— belum dipilih —</option>
                             @foreach ($this->specialityOptions() as $kodeLayanan => $namaLayanan)
-                                <option value="{{ $kodeLayanan }}" @selected(($formRujukan['specialityCode'] ?? '') === $kodeLayanan)>
+                                <option value="{{ $kodeLayanan }}"
+                                    @selected(!$this->specialityManualAktif() && ($formRujukan['specialityCode'] ?? '') === $kodeLayanan)>
                                     {{ $kodeLayanan }} — {{ $namaLayanan }}
                                 </option>
                             @endforeach
+                            <option value="__manual__" @selected($this->specialityManualAktif())>Lainnya — ketik manual</option>
                         </x-select-input>
                         <p class="mt-1 text-xs text-muted-soft">
-                            Katalog clinical-speciality resmi belum dibagikan Kemkes; daftar ini hanya
-                            kode yang sudah terbukti dipakai. Kode lain tetap boleh diketik manual.
+                            @if (filled($formRujukan['specialityCode'] ?? ''))
+                                <span class="font-mono font-semibold text-ink dark:text-gray-200">Kode terkirim: {{ $formRujukan['specialityCode'] }}</span>
+                                {{ filled($formRujukan['specialityDisplay'] ?? '') ? '— ' . $formRujukan['specialityDisplay'] : '' }}
+                            @else
+                                Katalog clinical-speciality resmi belum dibagikan Kemkes; daftar ini hanya
+                                kode yang sudah terbukti dipakai.
+                            @endif
                         </p>
                     </div>
-                    <div>
-                        <x-input-label value="Kode Layanan (clinical-speciality)" class="mb-1" />
-                        <x-text-input wire:model.blur="formRujukan.specialityCode" placeholder="mis. LY133"
-                            :disabled="$isFormLocked" class="w-full" />
-                    </div>
-                    <div>
-                        <x-input-label value="Nama Layanan" class="mb-1" />
-                        <x-text-input wire:model.blur="formRujukan.specialityDisplay" placeholder="mis. Syaraf - Stroke dan Cerebro Vaskuler"
-                            :disabled="$isFormLocked" class="w-full" />
-                    </div>
+
+                    @if ($this->specialityManualAktif())
+                        <div>
+                            <x-input-label value="Kode Layanan (ketik manual)" class="mb-1" />
+                            <x-text-input wire:model.blur="formRujukan.specialityCode" placeholder="mis. LY133"
+                                :disabled="$isFormLocked" class="w-full" />
+                        </div>
+                        <div>
+                            <x-input-label value="Nama Layanan" class="mb-1" />
+                            <x-text-input wire:model.blur="formRujukan.specialityDisplay" placeholder="mis. Syaraf - Stroke dan Cerebro Vaskuler"
+                                :disabled="$isFormLocked" class="w-full" />
+                        </div>
+                    @endif
                     <div>
                         <x-input-label value="Tgl. Rencana Kunjungan di RS Tujuan" class="mb-1" />
                         <x-text-input wire:model.blur="formRujukan.tglRencanaKunjungan" placeholder="dd/mm/yyyy"
