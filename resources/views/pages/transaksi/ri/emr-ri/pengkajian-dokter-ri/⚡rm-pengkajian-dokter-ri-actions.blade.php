@@ -694,9 +694,9 @@ new class extends Component {
                 <div class="grid grid-cols-12 gap-2">
                     <div class="col-span-5">
                         <x-input-label value="Nama Obat" :required="true" class="truncate whitespace-nowrap" />
-                        <x-text-input wire:model="formEntryRekonsiliasi.namaObat"
-                            wire:keydown.enter.prevent="addRekonsiliasiObat" placeholder="Amlodipin 10 mg"
-                            :error="$errors->has('formEntryRekonsiliasi.namaObat')" class="w-full px-2 mt-1" />
+                        <x-rekonsiliasi-obat-combobox wire-model="formEntryRekonsiliasi.namaObat"
+                            enter-action="$wire.addRekonsiliasiObat()" :error="$errors->has('formEntryRekonsiliasi.namaObat')"
+                            :disabled="$isFormLocked || $isReadOnlyByRole" class="w-full px-2 mt-1" />
                         <x-input-error :messages="$errors->get('formEntryRekonsiliasi.namaObat')" class="mt-1" />
                     </div>
 
