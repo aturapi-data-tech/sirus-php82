@@ -82,7 +82,8 @@ new class extends Component {
         $this->resetPage();
     }
 
-    /* Rentang tanggal aktif — harian = 1 hari, bulanan = 1 bulan (atas waktu_entry). */
+    /* Rentang tanggal aktif — harian = 1 hari, bulanan = 1 bulan (atas waktu_entry
+       = waktu ORDER dicatat, bukan waktu upload; upload tak menyimpan waktu). */
     private function dateRange(): array
     {
         if ($this->filterMode === 'harian') {
@@ -681,7 +682,7 @@ new class extends Component {
                                     @elseif ($isLengkap) bg-canvas dark:bg-gray-900 hover:shadow-lg hover:bg-surface-soft dark:hover:bg-gray-800
                                     @else bg-amber-50 dark:bg-amber-900/10 hover:shadow-md hover:bg-amber-100 dark:hover:bg-amber-900/20 border-l-4 border-amber-400 @endif">
 
-                                    {{-- KUNJUNGAN, ENTRY & PASIEN (digabung 1 kolom) --}}
+                                    {{-- KUNJUNGAN, ORDER & PASIEN (digabung 1 kolom) --}}
                                     <td class="px-6 py-6 space-y-1 align-top">
                                         <div class="flex flex-col gap-0.5">
                                             <div class="flex items-center gap-2">
@@ -705,7 +706,7 @@ new class extends Component {
                                             </div>
                                             @if (!empty($row->waktu_entry))
                                                 <div class="flex items-center gap-2">
-                                                    <span class="text-[11px] font-medium text-muted dark:text-gray-400 w-14">Entry</span>
+                                                    <span class="text-[11px] font-medium text-muted dark:text-gray-400 w-14">Order</span>
                                                     <span class="font-mono text-sm text-muted dark:text-gray-400 whitespace-nowrap">
                                                         {{ $row->waktu_efektif ?? '-' }}
                                                     </span>
