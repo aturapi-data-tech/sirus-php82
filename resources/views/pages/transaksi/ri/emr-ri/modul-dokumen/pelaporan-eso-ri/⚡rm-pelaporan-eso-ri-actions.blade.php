@@ -266,14 +266,20 @@ new class extends Component {
                 'formEntryObat.namaObat' => ['required', 'string', 'max:200'],
                 'formEntryObat.cara' => ['required', 'string'],
                 'formEntryObat.dosisWaktu' => ['required', 'string', 'max:100'],
-                'formEntryObat.tglMula' => ['required', 'string', 'max:50'],
+                'formEntryObat.tglMula' => ['required', 'date_format:d/m/Y'],
+                'formEntryObat.tglAkhir' => ['nullable', 'date_format:d/m/Y', 'after_or_equal:formEntryObat.tglMula'],
             ],
-            [],
+            [
+                'formEntryObat.tglMula.date_format' => 'Format Tgl. Mula harus dd/mm/yyyy.',
+                'formEntryObat.tglAkhir.date_format' => 'Format Tgl. Akhir harus dd/mm/yyyy.',
+                'formEntryObat.tglAkhir.after_or_equal' => 'Tgl. Akhir tidak boleh sebelum Tgl. Mula.',
+            ],
             [
                 'formEntryObat.namaObat' => 'Nama Obat',
                 'formEntryObat.cara' => 'Cara Pemberian',
                 'formEntryObat.dosisWaktu' => 'Dosis / Waktu',
                 'formEntryObat.tglMula' => 'Tgl. Mula',
+                'formEntryObat.tglAkhir' => 'Tgl. Akhir',
             ],
         );
 
@@ -329,11 +335,13 @@ new class extends Component {
     {
         return [
             [
-                'form.tglLaporan' => ['required', 'string'],
+                'form.tglLaporan' => ['required', 'date_format:d/m/Y H:i:s'],
                 'form.penderita.namaSingkatan' => ['required', 'string', 'max:150'],
                 'form.penderita.kelamin' => ['required', 'string'],
                 'form.eso.manifestasi' => ['required', 'string', 'max:2000'],
-                'form.eso.tglMulaTerjadi' => ['required', 'string', 'max:50'],
+                'form.eso.tglMulaTerjadi' => ['required', 'date_format:d/m/Y'],
+                'form.eso.tglKesudahanEso' => ['nullable', 'date_format:d/m/Y', 'after_or_equal:form.eso.tglMulaTerjadi'],
+                'form.tglPemeriksaanLab' => ['nullable', 'date_format:d/m/Y'],
                 'form.obat' => ['required', 'array', 'min:1'],
                 'form.pengirim.nama' => ['required', 'string', 'max:150'],
             ],
@@ -342,6 +350,11 @@ new class extends Component {
                 'form.obat.min' => 'Minimal satu obat harus diisi — laporan ESO tanpa obat tidak bisa dievaluasi.',
                 'form.penderita.namaSingkatan.required' => 'Nama pasien belum ada di Master Pasien.',
                 'form.penderita.kelamin.required' => 'Jenis kelamin pasien belum diisi di Master Pasien.',
+                'form.tglLaporan.date_format' => 'Format Tanggal Laporan harus dd/mm/yyyy hh:mm:ss.',
+                'form.eso.tglMulaTerjadi.date_format' => 'Format tanggal harus dd/mm/yyyy.',
+                'form.eso.tglKesudahanEso.date_format' => 'Format tanggal harus dd/mm/yyyy.',
+                'form.eso.tglKesudahanEso.after_or_equal' => 'Tgl. Kesudahan ESO tidak boleh sebelum Tgl. Mula Terjadi.',
+                'form.tglPemeriksaanLab.date_format' => 'Format tanggal harus dd/mm/yyyy.',
             ],
             [
                 'form.tglLaporan' => 'Tanggal Laporan',
@@ -349,6 +362,8 @@ new class extends Component {
                 'form.penderita.kelamin' => 'Kelamin',
                 'form.eso.manifestasi' => 'Bentuk / Manifestasi ESO',
                 'form.eso.tglMulaTerjadi' => 'Saat / Tanggal Mula Terjadi',
+                'form.eso.tglKesudahanEso' => 'Tgl. Kesudahan ESO',
+                'form.tglPemeriksaanLab' => 'Tgl. Pemeriksaan Lab',
                 'form.pengirim.nama' => 'Nama Pengirim',
             ],
         ];
