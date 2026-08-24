@@ -7,13 +7,19 @@ use Livewire\Component;
 // snippets() hanya mengembalikan teks contoh (nowdoc), dirender apa adanya
 // ke dalam <pre> sehingga sintaks Blade di dalamnya tampil sebagai teks.
 new class extends Component {
+    // Token %TAG_KOMPONEN% disulih jadi tag komponen anonim saat runtime.
+    // Ditulis begini karena ComponentTagCompiler menyisir SELURUH isi berkas SFC —
+    // nowdoc di blok kelas ini ikut kena, jadi literalnya dikira komponen betulan
+    // dan membuat `php artisan view:cache` gagal. Jebakan yang dibahas bab ini juga.
+    private const TAG_KOMPONEN = '<' . 'x-...>';
+
     public function snippets(): array
     {
-        return [
+        $snippets = [
 
 'peta-views' => <<<'TXT'
 resources/views/
-├── components/                  # KOMPONEN BLADE ANONIM  <x-...>
+├── components/                  # KOMPONEN BLADE ANONIM  %TAG_KOMPONEN%
 │   │                            #   TANPA state, TANPA kelas Volt
 │   ├── <nama>.blade.php         #   umum lintas modul: modal, text-input, now-button
 │   └── <namespace>/             #   berkelompok: list.*, pdf.*, signature.*, lov.*
@@ -220,7 +226,7 @@ TXT,
 #    Bootstrap Laravel sampai tahap REGISTER saja (lewati BootProviders),
 #    ambil blade.compiler, compileString() tiap berkas, lalu php -l hasilnya.
 #    WAJIB pisahkan blok kelas SFC (sampai penutup blok PHP di baris sendiri)
-#    sebelum dikompilasi — kalau tidak, <x-...> yang cuma disebut di komentar //
+#    sebelum dikompilasi — kalau tidak, %TAG_KOMPONEN% yang cuma disebut di komentar //
 #    ikut disulih jadi kode komponen dan memunculkan parse error PALSU.
 #
 #    CATATAN: penutup blok PHP tidak ditulis literal di snippet ini — menulisnya
@@ -270,6 +276,8 @@ TXT,
 TXT,
 
         ];
+
+        return str_replace('%TAG_KOMPONEN%', self::TAG_KOMPONEN, $snippets);
     }
 };
 ?>
