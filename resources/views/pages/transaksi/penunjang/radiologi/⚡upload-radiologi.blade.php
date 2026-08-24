@@ -201,7 +201,7 @@ new class extends Component {
             ->join('rsmst_radiologis as m', 'r.rad_id', '=', 'm.rad_id')
             ->join('rstxn_rjhdrs as h', 'r.rj_no', '=', 'h.rj_no')
             ->leftJoin('rsmst_pasiens as p', 'h.reg_no', '=', 'p.reg_no')
-            ->select(array_merge([DB::raw("'RJ' as src"), 'r.rad_dtl as dtl_no', 'r.rj_no as ref_no'], $pasienCols, ['m.rad_desc', 'r.rad_price', 'r.dr_pengirim', 'r.dr_radiologi', 'r.klinis_desc', 'r.cito_status', 'r.rad_upload_pdf', 'r.rad_upload_pdf_foto', 'r.keterangan', DB::raw('DBMS_LOB.GETLENGTH(r.hasil_bacaan) as hasil_bacaan'), 'r.waktu_entry', DB::raw("to_char(r.tgl_bacaan,'dd/mm/yyyy hh24:mi:ss') as tgl_bacaan"), 'h.rj_status as hdr_status']));
+            ->select(array_merge([DB::raw("'RJ' as src"), 'r.rad_dtl as dtl_no', 'r.rj_no as ref_no'], $pasienCols, ['m.rad_desc', 'r.rad_price', 'r.dr_pengirim', 'r.dr_radiologi', 'r.klinis_desc', 'r.cito_status', 'r.rad_upload_pdf', 'r.rad_upload_pdf_foto', 'r.keterangan', DB::raw('DBMS_LOB.GETLENGTH(r.hasil_bacaan) as hasil_bacaan'), 'r.waktu_entry', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi') as tgl_kunjungan"), DB::raw("to_char(r.tgl_bacaan,'dd/mm/yyyy hh24:mi:ss') as tgl_bacaan"), 'h.rj_status as hdr_status']));
     }
 
     private function baseQueryUGD(array $pasienCols)
@@ -210,7 +210,7 @@ new class extends Component {
             ->join('rsmst_radiologis as m', 'r.rad_id', '=', 'm.rad_id')
             ->join('rstxn_ugdhdrs as h', 'r.rj_no', '=', 'h.rj_no')
             ->leftJoin('rsmst_pasiens as p', 'h.reg_no', '=', 'p.reg_no')
-            ->select(array_merge([DB::raw("'UGD' as src"), 'r.rad_dtl as dtl_no', 'r.rj_no as ref_no'], $pasienCols, ['m.rad_desc', 'r.rad_price', 'r.dr_pengirim', 'r.dr_radiologi', 'r.klinis_desc', 'r.cito_status', 'r.rad_upload_pdf', 'r.rad_upload_pdf_foto', 'r.keterangan', DB::raw('DBMS_LOB.GETLENGTH(r.hasil_bacaan) as hasil_bacaan'), 'r.waktu_entry', DB::raw("to_char(r.tgl_bacaan,'dd/mm/yyyy hh24:mi:ss') as tgl_bacaan"), 'h.rj_status as hdr_status']));
+            ->select(array_merge([DB::raw("'UGD' as src"), 'r.rad_dtl as dtl_no', 'r.rj_no as ref_no'], $pasienCols, ['m.rad_desc', 'r.rad_price', 'r.dr_pengirim', 'r.dr_radiologi', 'r.klinis_desc', 'r.cito_status', 'r.rad_upload_pdf', 'r.rad_upload_pdf_foto', 'r.keterangan', DB::raw('DBMS_LOB.GETLENGTH(r.hasil_bacaan) as hasil_bacaan'), 'r.waktu_entry', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi') as tgl_kunjungan"), DB::raw("to_char(r.tgl_bacaan,'dd/mm/yyyy hh24:mi:ss') as tgl_bacaan"), 'h.rj_status as hdr_status']));
     }
 
     private function baseQueryRI(array $pasienCols)
@@ -219,7 +219,7 @@ new class extends Component {
             ->join('rsmst_radiologis as m', 'r.rad_id', '=', 'm.rad_id')
             ->join('rstxn_rihdrs as h', 'r.rihdr_no', '=', 'h.rihdr_no')
             ->leftJoin('rsmst_pasiens as p', 'h.reg_no', '=', 'p.reg_no')
-            ->select(array_merge([DB::raw("'RI' as src"), 'r.rirad_no as dtl_no', 'r.rihdr_no as ref_no'], $pasienCols, ['m.rad_desc', 'r.rirad_price as rad_price', 'r.dr_pengirim', 'r.dr_radiologi', 'r.klinis_desc', 'r.cito_status', 'r.rad_upload_pdf', 'r.rad_upload_pdf_foto', 'r.keterangan', DB::raw('DBMS_LOB.GETLENGTH(r.hasil_bacaan) as hasil_bacaan'), 'r.waktu_entry', DB::raw("to_char(r.tgl_bacaan,'dd/mm/yyyy hh24:mi:ss') as tgl_bacaan"), 'h.ri_status as hdr_status']));
+            ->select(array_merge([DB::raw("'RI' as src"), 'r.rirad_no as dtl_no', 'r.rihdr_no as ref_no'], $pasienCols, ['m.rad_desc', 'r.rirad_price as rad_price', 'r.dr_pengirim', 'r.dr_radiologi', 'r.klinis_desc', 'r.cito_status', 'r.rad_upload_pdf', 'r.rad_upload_pdf_foto', 'r.keterangan', DB::raw('DBMS_LOB.GETLENGTH(r.hasil_bacaan) as hasil_bacaan'), 'r.waktu_entry', DB::raw("to_char(h.entry_date,'dd/mm/yyyy hh24:mi') as tgl_kunjungan"), DB::raw("to_char(r.tgl_bacaan,'dd/mm/yyyy hh24:mi:ss') as tgl_bacaan"), 'h.ri_status as hdr_status']));
     }
 
     /* ===============================
@@ -615,7 +615,7 @@ new class extends Component {
                         <thead class="sticky top-0 z-10 [&_th]:bg-surface-card dark:[&_th]:bg-gray-800">
                             <tr
                                 class="text-sm font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                                <th class="px-6 py-3 whitespace-nowrap">Tgl Order &amp; Pasien</th>
+                                <th class="px-6 py-3 whitespace-nowrap">Kunjungan &amp; Pasien</th>
                                 <th class="px-6 py-3">Pemeriksaan</th>
                                 <th class="px-6 py-3">Permintaan</th>
                                 <th class="px-6 py-3">Foto &amp; Hasil Bacaan</th>
@@ -681,24 +681,35 @@ new class extends Component {
                                     @elseif ($isLengkap) bg-canvas dark:bg-gray-900 hover:shadow-lg hover:bg-surface-soft dark:hover:bg-gray-800
                                     @else bg-amber-50 dark:bg-amber-900/10 hover:shadow-md hover:bg-amber-100 dark:hover:bg-amber-900/20 border-l-4 border-amber-400 @endif">
 
-                                    {{-- TGL ORDER & PASIEN (digabung 1 kolom) --}}
+                                    {{-- KUNJUNGAN, ENTRY & PASIEN (digabung 1 kolom) --}}
                                     <td class="px-6 py-6 space-y-1 align-top">
-                                        <div class="flex items-center gap-2">
-                                            <span class="font-mono text-sm text-body dark:text-gray-300 whitespace-nowrap">
-                                                {{ $row->waktu_efektif ?? '-' }}
-                                            </span>
-                                            <x-badge :variant="['RJ' => 'info', 'UGD' => 'danger', 'RI' => 'purple'][$row->src] ?? 'alternative'">{{ ['RJ' => 'Rawat Jalan', 'UGD' => 'UGD', 'RI' => 'Rawat Inap'][$row->src] ?? $row->src }}</x-badge>
-                                            @if ($isCito)
-                                                <span
-                                                    class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-red-700 bg-red-100 border border-red-300 rounded-full dark:bg-red-900/30 dark:border-red-500 dark:text-red-200"
-                                                    title="Order CITO — dahulukan pemeriksaan ini">
-                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor"
-                                                        viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                                    </svg>
-                                                    CITO
+                                        <div class="flex flex-col gap-0.5">
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-[11px] font-medium text-muted dark:text-gray-400 w-14">Kunjungan</span>
+                                                <span class="font-mono text-sm text-body dark:text-gray-300 whitespace-nowrap">
+                                                    {{ $row->tgl_kunjungan ?? '-' }}
                                                 </span>
+                                                <x-badge :variant="['RJ' => 'info', 'UGD' => 'danger', 'RI' => 'purple'][$row->src] ?? 'alternative'">{{ ['RJ' => 'Rawat Jalan', 'UGD' => 'UGD', 'RI' => 'Rawat Inap'][$row->src] ?? $row->src }}</x-badge>
+                                                @if ($isCito)
+                                                    <span
+                                                        class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-red-700 bg-red-100 border border-red-300 rounded-full dark:bg-red-900/30 dark:border-red-500 dark:text-red-200"
+                                                        title="Order CITO — dahulukan pemeriksaan ini">
+                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                        </svg>
+                                                        CITO
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            @if (!empty($row->waktu_entry))
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-[11px] font-medium text-muted dark:text-gray-400 w-14">Entry</span>
+                                                    <span class="font-mono text-sm text-muted dark:text-gray-400 whitespace-nowrap">
+                                                        {{ $row->waktu_efektif ?? '-' }}
+                                                    </span>
+                                                </div>
                                             @endif
                                         </div>
                                         <x-list.identitas-pasien class="pt-1" :regNo="$row->reg_no" :nama="$row->reg_name" :sex="$row->sex" :tglLahir="$row->birth_date" :alamat="$row->address" :collapseUmur="false" />
