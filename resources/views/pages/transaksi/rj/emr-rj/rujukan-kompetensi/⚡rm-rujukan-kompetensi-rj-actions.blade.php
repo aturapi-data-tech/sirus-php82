@@ -1034,7 +1034,7 @@ new class extends Component {
 
         {{-- LANGKAH 1 — DIAGNOSA & KRITERIA --}}
         <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
-            <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">1. Diagnosa & Kriteria Rujukan</p>
+            <p class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200"><x-step-number :n="1" /><span class="ml-0.5">Diagnosa &amp; Kriteria Rujukan</span></p>
 
             {{-- Pilih diagnosa dari EMR --}}
             <div class="flex flex-wrap gap-2">
@@ -1160,7 +1160,7 @@ new class extends Component {
         {{-- LANGKAH 2 — KANDIDAT FASKES --}}
         <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
             <div class="flex flex-col items-start gap-2">
-                <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">2. Kandidat Faskes Tujuan</p>
+                <p class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200"><x-step-number :n="2" /><span class="ml-0.5">Kandidat Faskes Tujuan</span></p>
                 <x-secondary-button type="button" wire:click="cariFaskes" wire:loading.attr="disabled"
                     wire:target="cariFaskes" :disabled="$isFormLocked">
                     <span wire:loading.remove wire:target="cariFaskes">🔍 Cari Faskes</span>
@@ -1237,7 +1237,7 @@ new class extends Component {
 
         {{-- LANGKAH 3 — KIRIM --}}
         <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
-            <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">3. Kirim Rujukan</p>
+            <p class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200"><x-step-number :n="3" /><span class="ml-0.5">Kirim Rujukan</span></p>
             <div class="grid grid-cols-1 gap-3">
                 <div>
                     <livewire:lov.poli.lov-poli label="Poli Rujukan (kode BPJS 3 huruf)"
