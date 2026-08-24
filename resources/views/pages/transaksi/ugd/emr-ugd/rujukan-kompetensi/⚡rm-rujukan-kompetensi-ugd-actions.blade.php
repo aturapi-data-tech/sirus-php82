@@ -1282,7 +1282,6 @@ new class extends Component {
                                 wire:loading.attr="disabled" wire:target="kirimRujukan"
                                 title="Langkah 3 — kirim ke BPJS, diteruskan ke SATUSEHAT">
                                 <span wire:loading.remove wire:target="kirimRujukan" class="inline-flex items-center gap-2">
-                                    <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full bg-white/25 text-white">3</span>
                                     Kirim Rujukan
                                 </span>
                                 <span wire:loading wire:target="kirimRujukan" class="inline-flex items-center gap-1"><x-loading /> Mengirim rujukan...</span>
