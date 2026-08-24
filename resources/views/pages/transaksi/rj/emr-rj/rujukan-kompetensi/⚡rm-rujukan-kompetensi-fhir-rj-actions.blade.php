@@ -79,6 +79,12 @@ new class extends Component {
 
         $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo);
 
+        // Jawaban faskes tujuan datang dari sistem RS LAIN — tidak ada pemberitahuan
+        // yang mendorong ke kita, jadi status tersimpan bisa basi. Disegarkan sekali
+        // saat modal dibuka, HANYA bila memang ada tugas yang masih menggantung:
+        // yang sudah accepted/rejected itu final, dan memanggil ulang cuma buang kuota.
+        $this->segarkanStatusApprovalBilaMenggantung();
+
         $this->dispatch('open-modal', name: 'rujukan-kompetensi-fhir-rj-' . $this->rjNo);
     }
 
@@ -486,10 +492,24 @@ new class extends Component {
     // Kirim INDEKS, bukan string (aman dari double-escape argumen)
     public function pilihKandidat(int $index): void
     {
+        if ($this->isFormLocked) {
+            return;
+        }
+
         $kandidat = $this->formRujukan['kandidatList'][$index] ?? null;
         if (!$kandidat) {
             return;
         }
+
+        // Menekan baris yang SUDAH terpilih = membatalkan pilihan. Tanpa ini
+        // togglenya cuma bisa menyala dan tak pernah padam — kontrol yang
+        // bentuknya menjanjikan dua arah tapi jalannya satu arah.
+        if ($this->formRujukan['kandidatIdx'] === $index) {
+            $this->formRujukan['kandidatIdx'] = null;
+            $this->infoKandidat = '';
+            return;
+        }
+
         $this->formRujukan['kandidatIdx'] = $index;
         $this->infoKandidat = "Tujuan: {$kandidat['nama']} (Org {$kandidat['orgId']})";
     }
@@ -598,6 +618,29 @@ new class extends Component {
             // pakai catatan terakhir, tapi tandai belum terverifikasi.
             return ['status' => (string) ($this->formRujukan['statusApproval'] ?? ''), 'terverifikasi' => false];
         }
+    }
+
+    /**
+     * Segarkan jawaban faskes tujuan bila tugas rujukan masih menggantung.
+     * Sengaja diam: dipanggil saat membuka modal, jadi kegagalan koneksi tidak
+     * boleh menyembur jadi toast — status lama tetap dipakai apa adanya.
+     */
+    private function segarkanStatusApprovalBilaMenggantung(): void
+    {
+        if (trim((string) ($this->formRujukan['taskApprovalId'] ?? '')) === '') {
+            return;
+        }
+        if (in_array($this->formRujukan['statusApproval'] ?? '', ['accepted', 'rejected'], true)) {
+            return;
+        }
+
+        $statusTerbaca = $this->ambilStatusApproval();
+        if (!$statusTerbaca['terverifikasi'] || $statusTerbaca['status'] === '') {
+            return;
+        }
+
+        $this->formRujukan['statusApproval'] = $statusTerbaca['status'];
+        $this->simpanDraft('Jawaban faskes tujuan: ' . $statusTerbaca['status']);
     }
 
     public function cekStatusApproval(): void
@@ -923,282 +966,282 @@ new class extends Component {
         <x-stepper :steps="$this->langkahRujukan()" />
     </div>
 
-        {{-- LANGKAH 1 — DIAGNOSA, KRITERIA IGD, WILAYAH → CARI KANDIDAT --}}
-        <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
-            <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Langkah 1–2 · Diagnosa, Kriteria &amp; Kandidat</p>
+            {{-- Dua kelompok langkah disandingkan: layar modal cukup lebar, dan
+         petugas perlu melihat kandidat terpilih (kiri) sambil mengisi
+         tugas rujukan (kanan). Menumpuk ke bawah di layar sempit. --}}
+    <div class="grid grid-cols-1 gap-3 lg:grid-cols-2 items-start">
+    {{-- LANGKAH 1 — DIAGNOSA, KRITERIA IGD, WILAYAH → CARI KANDIDAT --}}
+            <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
+                <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Langkah 1–2 · Diagnosa, Kriteria &amp; Kandidat</p>
 
-            {{-- Tujuan layanan di RS lain — menentukan use case FHIR --}}
-            <div class="space-y-1">
-                <p class="text-xs text-muted-soft">Kebutuhan pasien di RS tujuan:</p>
-                <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
-                    <x-radio-button label="IGD (gawat darurat)" value="igd" name="jalurRujukanRjFhir-{{ $rjNo }}"
-                        wire:model.live="formRujukan.jalur" :disabled="$isFormLocked" />
-                    <x-radio-button label="Rawat Inap" value="ranap" name="jalurRujukanRjFhir-{{ $rjNo }}"
-                        wire:model.live="formRujukan.jalur" :disabled="$isFormLocked" />
-                </div>
-            </div>
-
-            <div class="flex flex-wrap gap-2">
-                @forelse ($dataDaftarPoliRJ['diagnosis'] ?? [] as $indexDiagnosa => $diagnosa)
-                    @php $kodeIni = $diagnosa['icdX'] ?? ($diagnosa['diagId'] ?? ''); @endphp
-                    <button type="button" wire:click="pilihDiagnosa({{ $indexDiagnosa }})" @disabled($isFormLocked)
-                        class="px-2 py-1 text-xs rounded-lg border {{ $formRujukan['kodeDiagnosa'] === $kodeIni ? 'bg-rose-600 text-white border-transparent' : 'bg-canvas text-gray-700 border-hairline dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600' }}">
-                        {{ $kodeIni }} {{ \Illuminate\Support\Str::limit($diagnosa['diagDesc'] ?? '', 28) }}
-                    </button>
-                @empty
-                    <p class="text-sm text-muted-soft">Belum ada diagnosa EMR.</p>
-                @endforelse
-            </div>
-
-            <div class="max-w-md">
-                <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosa Rujukan (ICD-10)"
-                    target="rujukanKompetensiDiagnosaRJFhir" :disabled="$isFormLocked"
-                    wire:key="lov-diagnosa-rujukan-kompetensi-rj-fhir-{{ $rjNo }}" />
-            </div>
-
-            <div>
-                <x-input-label value="Kode Diagnosa" class="mb-1" />
-                <x-text-input wire:model.live="formRujukan.kodeDiagnosa" :disabled="true" class="w-full" />
-            </div>
-
-            @if (($formRujukan['jalur'] ?? 'igd') === 'igd')
-                <div class="space-y-2">
-                    <p class="text-xs text-muted-soft">Kriteria gawat darurat (centang yang sesuai, minimal satu):</p>
-                    @foreach ($this->pertanyaanIgd() as $linkId => $teks)
-                        <x-toggle wire:model.live="formRujukan.kriteriaIgd.{{ $linkId }}" :trueValue="true"
-                            :falseValue="false" :disabled="$isFormLocked" onColor="bg-rose-600" label="{{ $teks }}" />
-                    @endforeach
-                </div>
-            @else
-                <div class="space-y-2">
-                    <p class="text-xs text-muted-soft">Kriteria rujukan ranap — pilih <b>tepat satu</b>:</p>
-                    <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
-                        <x-radio-button label="Terapi/Pengobatan" value="terapi" name="kriteriaRanapRjFhir-{{ $rjNo }}"
-                            wire:model.live="formRujukan.kriteriaPilih" :disabled="$isFormLocked" />
-                        <x-radio-button label="Tindakan Medis (ICD-9-CM)" value="tindakan" name="kriteriaRanapRjFhir-{{ $rjNo }}"
-                            wire:model.live="formRujukan.kriteriaPilih" :disabled="$isFormLocked" />
-                        <x-radio-button label="Upaya Diagnosis" value="upaya" name="kriteriaRanapRjFhir-{{ $rjNo }}"
-                            wire:model.live="formRujukan.kriteriaPilih" :disabled="$isFormLocked" />
+                {{-- Tujuan layanan di RS lain — menentukan use case FHIR --}}
+                <div class="space-y-1">
+                    <p class="text-xs text-muted-soft">Kebutuhan pasien di RS tujuan:</p>
+                    <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+                        <x-radio-button label="IGD (gawat darurat)" value="igd" name="jalurRujukanRjFhir-{{ $rjNo }}"
+                            wire:model.live="formRujukan.jalur" :disabled="$isFormLocked" />
+                        <x-radio-button label="Rawat Inap" value="ranap" name="jalurRujukanRjFhir-{{ $rjNo }}"
+                            wire:model.live="formRujukan.jalur" :disabled="$isFormLocked" />
                     </div>
-                    @if (($formRujukan['kriteriaPilih'] ?? '') === 'tindakan')
-                        <div class="max-w-xs">
-                            <x-input-label value="Kode Tindakan ICD-9-CM" class="mb-1" />
-                            <x-text-input wire:model.blur="formRujukan.kriteriaIcd9" placeholder="mis. 01.24"
-                                :disabled="$isFormLocked" class="w-full" />
-                        </div>
-                    @endif
                 </div>
-            @endif
 
-            {{-- Kelompok Layanan — menyaring kandidat ke faskes yang melayani
-                 kelompok ini. Opsional: kosong = tidak dikirim, biar tidak
-                 menyaring kandidat diam-diam dengan kelompok yang keliru. --}}
-            <div>
-                <x-input-label value="Kelompok Layanan (opsional)" class="mb-1" />
-                <x-select-input wire:model.live="formRujukan.kelompokLayananKode" :disabled="$isFormLocked" class="w-full">
-                    <option value="">— tidak dikirim —</option>
-                    @foreach ($this->kelompokLayananOptions() as $kodeKelompok => $namaKelompok)
-                        <option value="{{ $kodeKelompok }}">{{ $namaKelompok }}</option>
-                    @endforeach
-                </x-select-input>
-            </div>
-
-            {{-- Wilayah dipilih sekali lewat LOV kabupaten — propinsinya ikut
-                 terisi, jadi pasangan kode tak bisa lagi tidak sinkron. --}}
-            <div>
-                <livewire:lov.kabupaten.lov-kabupaten label="Jejaring Wilayah Rujukan (Kab/Kota)"
-                    target="rujukanWilayahRJFhir" :initialKabId="$formRujukan['kodeKabupaten'] ?: null"
-                    :readonly="$isFormLocked"
-                    wire:key="lov-wilayah-rujukan-rjfhir-{{ $rjNo }}" />
-                <p class="mt-1 text-xs text-muted-soft">
-                    Terpilih:
-                    <strong>{{ $formRujukan['namaKabupaten'] ?: '-' }}</strong>
-                    ({{ $formRujukan['kodeKabupaten'] ?: '-' }})
-                    &middot; Prov. <strong>{{ $formRujukan['namaPropinsi'] ?: '-' }}</strong>
-                    ({{ $formRujukan['kodePropinsi'] ?: '-' }})
-                </p>
-            </div>
-            </div>
-
-            <div class="flex flex-col items-start gap-2">
-                <x-secondary-button type="button" wire:click="cariKandidat" wire:loading.attr="disabled"
-                    wire:target="cariKandidat" :disabled="$isFormLocked">
-                    <span wire:loading.remove wire:target="cariKandidat">🔍 Cari Kandidat Faskes</span>
-                    <span wire:loading wire:target="cariKandidat" class="inline-flex items-center gap-1"><x-loading /> Mengirim permintaan...</span>
-                </x-secondary-button>
-                @if (!empty($formRujukan['taskKandidatId']))
-                    <x-secondary-button type="button" wire:click="cekKandidat" wire:loading.attr="disabled"
-                        wire:target="cekKandidat">
-                        <span wire:loading.remove wire:target="cekKandidat">🔄 Cek Hasil Kandidat</span>
-                        <span wire:loading wire:target="cekKandidat" class="inline-flex items-center gap-1"><x-loading /> Mengecek...</span>
-                    </x-secondary-button>
-                @endif
-            </div>
-            @if ($infoKandidat !== '')
-                <p class="text-sm {{ str_starts_with($infoKandidat, '✓') || str_starts_with($infoKandidat, 'Tujuan:') ? 'text-green-700 dark:text-green-300' : 'text-muted-soft' }}">{{ $infoKandidat }}</p>
-            @endif
-
-            @if (!empty($formRujukan['kandidatList']))
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
-                        <thead class="bg-surface-soft dark:bg-gray-800">
-                            <tr class="text-left text-muted dark:text-gray-300">
-                                <th class="px-3 py-2 border-b">Faskes</th>
-                                <th class="px-3 py-2 border-b">Strata</th>
-                                <th class="px-3 py-2 text-right border-b">Jarak</th>
-                                <th class="px-3 py-2 text-right border-b">Waktu</th>
-                                <th class="px-3 py-2 text-center border-b">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($formRujukan['kandidatList'] as $indexKandidat => $kandidat)
-                                @php $terpilih = $formRujukan['kandidatIdx'] === $indexKandidat; @endphp
-                                <tr class="border-b border-hairline dark:border-gray-700 {{ $terpilih ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : '' }}">
-                                    <td class="px-3 py-2">
-                                        <span class="font-medium text-ink dark:text-gray-200">{{ ($kandidat['nama'] ?? '') ?: '-' }}</span>
-                                        <span class="block text-xs text-muted dark:text-gray-400">Organization/{{ $kandidat['orgId'] }}</span>
-                                    </td>
-                                    <td class="px-3 py-2">{{ ($kandidat['strata'] ?? '') ?: '-' }}</td>
-                                    <td class="px-3 py-2 text-right tabular-nums">{{ ($kandidat['distance'] ?? '') ?: '-' }}</td>
-                                    <td class="px-3 py-2 text-right tabular-nums">{{ ($kandidat['estimatedTime'] ?? '') ?: '-' }}</td>
-                                    <td class="px-3 py-2 text-center">
-                                        @if ($terpilih)
-                                            <x-badge variant="success">&#10003; Dipilih</x-badge>
-                                        @else
-                                            <x-secondary-button type="button" wire:click="pilihKandidat({{ $indexKandidat }})"
-                                                :disabled="$isFormLocked" title="Jadikan faskes tujuan rujukan">
-                                                Pilih
-                                            </x-secondary-button>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                <div class="flex flex-wrap gap-2">
+                    @forelse ($dataDaftarPoliRJ['diagnosis'] ?? [] as $indexDiagnosa => $diagnosa)
+                        @php $kodeIni = $diagnosa['icdX'] ?? ($diagnosa['diagId'] ?? ''); @endphp
+                        <button type="button" wire:click="pilihDiagnosa({{ $indexDiagnosa }})" @disabled($isFormLocked)
+                            class="px-2 py-1 text-xs rounded-lg border {{ $formRujukan['kodeDiagnosa'] === $kodeIni ? 'bg-rose-600 text-white border-transparent' : 'bg-canvas text-gray-700 border-hairline dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600' }}">
+                            {{ $kodeIni }} {{ \Illuminate\Support\Str::limit($diagnosa['diagDesc'] ?? '', 28) }}
+                        </button>
+                    @empty
+                        <p class="text-sm text-muted-soft">Belum ada diagnosa EMR.</p>
+                    @endforelse
                 </div>
-            @endif
-        </div>
 
-        {{-- LANGKAH 2 & 3 — TUGAS RUJUKAN + SERVICEREQUEST --}}
-        <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
-            <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Langkah 3–5 · Tugas Rujukan → Persetujuan → Rujukan</p>
+                <div class="max-w-md">
+                    <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosa Rujukan (ICD-10)"
+                        target="rujukanKompetensiDiagnosaRJFhir" :disabled="$isFormLocked"
+                        wire:key="lov-diagnosa-rujukan-kompetensi-rj-fhir-{{ $rjNo }}" />
+                </div>
 
-            <div class="grid grid-cols-1 gap-3">
                 <div>
-                    <x-input-label value="Pilih Layanan (pintasan)" class="mb-1" />
-                    <x-select-input wire:change="pilihSpeciality($event.target.value)" :disabled="$isFormLocked" class="w-full">
-                        <option value="">— ketik manual di bawah —</option>
-                        @foreach ($this->specialityOptions() as $kodeLayanan => $namaLayanan)
-                            <option value="{{ $kodeLayanan }}" @selected(($formRujukan['specialityCode'] ?? '') === $kodeLayanan)>
-                                {{ $kodeLayanan }} — {{ $namaLayanan }}
-                            </option>
+                    <x-input-label value="Kode Diagnosa" class="mb-1" />
+                    <x-text-input wire:model.live="formRujukan.kodeDiagnosa" :disabled="true" class="w-full" />
+                </div>
+
+                @if (($formRujukan['jalur'] ?? 'igd') === 'igd')
+                    <div class="space-y-2">
+                        <p class="text-xs text-muted-soft">Kriteria gawat darurat (centang yang sesuai, minimal satu):</p>
+                        @foreach ($this->pertanyaanIgd() as $linkId => $teks)
+                            <x-toggle wire:model.live="formRujukan.kriteriaIgd.{{ $linkId }}" :trueValue="true"
+                                :falseValue="false" :disabled="$isFormLocked" onColor="bg-rose-600" label="{{ $teks }}" />
                         @endforeach
-                    </x-select-input>
-                    <p class="mt-1 text-xs text-muted-soft">
-                        Katalog clinical-speciality resmi belum dibagikan Kemkes; daftar ini hanya
-                        kode yang sudah terbukti dipakai. Kode lain tetap boleh diketik manual.
-                    </p>
-                </div>
+                    </div>
+                @else
+                    <div class="space-y-2">
+                        <p class="text-xs text-muted-soft">Kriteria rujukan ranap — pilih <b>tepat satu</b>:</p>
+                        <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
+                            <x-radio-button label="Terapi/Pengobatan" value="terapi" name="kriteriaRanapRjFhir-{{ $rjNo }}"
+                                wire:model.live="formRujukan.kriteriaPilih" :disabled="$isFormLocked" />
+                            <x-radio-button label="Tindakan Medis (ICD-9-CM)" value="tindakan" name="kriteriaRanapRjFhir-{{ $rjNo }}"
+                                wire:model.live="formRujukan.kriteriaPilih" :disabled="$isFormLocked" />
+                            <x-radio-button label="Upaya Diagnosis" value="upaya" name="kriteriaRanapRjFhir-{{ $rjNo }}"
+                                wire:model.live="formRujukan.kriteriaPilih" :disabled="$isFormLocked" />
+                        </div>
+                        @if (($formRujukan['kriteriaPilih'] ?? '') === 'tindakan')
+                            <div class="max-w-xs">
+                                <x-input-label value="Kode Tindakan ICD-9-CM" class="mb-1" />
+                                <x-text-input wire:model.blur="formRujukan.kriteriaIcd9" placeholder="mis. 01.24"
+                                    :disabled="$isFormLocked" class="w-full" />
+                            </div>
+                        @endif
+                    </div>
+                @endif
+
+                {{-- Kelompok Layanan — menyaring kandidat ke faskes yang melayani
+                     kelompok ini. Opsional: kosong = tidak dikirim, biar tidak
+                     menyaring kandidat diam-diam dengan kelompok yang keliru. --}}
                 <div>
-                    <x-input-label value="Kode Layanan (clinical-speciality)" class="mb-1" />
-                    <x-text-input wire:model.blur="formRujukan.specialityCode"
-                        placeholder="{{ ($formRujukan['jalur'] ?? 'igd') === 'igd' ? 'L03 (default IGD)' : 'mis. LY133' }}"
-                        :disabled="$isFormLocked" class="w-full" />
-                </div>
-                <div>
-                    <x-input-label value="Nama Layanan" class="mb-1" />
-                    <x-text-input wire:model.blur="formRujukan.specialityDisplay"
-                        placeholder="{{ ($formRujukan['jalur'] ?? 'igd') === 'igd' ? 'Pelayanan Gawat Darurat' : 'mis. Syaraf - Stroke dan Cerebro Vaskuler' }}"
-                        :disabled="$isFormLocked" class="w-full" />
-                </div>
-                <div>
-                    <x-input-label value="Tgl. Rencana Kunjungan di RS Tujuan" class="mb-1" />
-                    <x-text-input wire:model.blur="formRujukan.tglRencanaKunjungan" placeholder="dd/mm/yyyy"
-                        :disabled="$isFormLocked" class="w-full" />
-                    <p class="mt-1 text-xs text-muted-soft">Dikirim sebagai occurrenceDateTime — kapan pasien direncanakan dilayani, bukan jam pengiriman.</p>
-                </div>
-                <div>
-                    <x-input-label value="Jenis Tenaga Kesehatan Pelaksana (opsional)" class="mb-1" />
-                    <x-select-input wire:model.live="formRujukan.performerTypeKode" :disabled="$isFormLocked" class="w-full">
+                    <x-input-label value="Kelompok Layanan (opsional)" class="mb-1" />
+                    <x-select-input wire:model.live="formRujukan.kelompokLayananKode" :disabled="$isFormLocked" class="w-full">
                         <option value="">— tidak dikirim —</option>
-                        @foreach ($this->performerTypeOptions() as $kodePelaksana => $namaPelaksana)
-                            <option value="{{ $kodePelaksana }}">{{ $namaPelaksana }}</option>
+                        @foreach ($this->kelompokLayananOptions() as $kodeKelompok => $namaKelompok)
+                            <option value="{{ $kodeKelompok }}">{{ $namaKelompok }}</option>
                         @endforeach
                     </x-select-input>
                 </div>
+
+                {{-- Wilayah dipilih sekali lewat LOV kabupaten — propinsinya ikut
+                     terisi, jadi pasangan kode tak bisa lagi tidak sinkron. --}}
                 <div>
-                    <x-input-label value="Deskripsi Rencana Rujukan" class="mb-1" />
-                    <x-text-input wire:model.blur="formRujukan.deskripsi" placeholder="Alasan & kebutuhan penanganan di RS tujuan"
-                        :disabled="$isFormLocked" class="w-full" />
+                    <livewire:lov.kabupaten.lov-kabupaten label="Jejaring Wilayah Rujukan (Kab/Kota)"
+                        target="rujukanWilayahRJFhir" :initialKabId="$formRujukan['kodeKabupaten'] ?: null"
+                        :readonly="$isFormLocked"
+                        wire:key="lov-wilayah-rujukan-rjfhir-{{ $rjNo }}" />
+                    <p class="mt-1 text-xs text-muted-soft">
+                        Terpilih:
+                        <strong>{{ $formRujukan['namaKabupaten'] ?: '-' }}</strong>
+                        ({{ $formRujukan['kodeKabupaten'] ?: '-' }})
+                        &middot; Prov. <strong>{{ $formRujukan['namaPropinsi'] ?: '-' }}</strong>
+                        ({{ $formRujukan['kodePropinsi'] ?: '-' }})
+                    </p>
                 </div>
+
+                <div class="flex flex-col items-start gap-2">
+                    <x-secondary-button type="button" wire:click="cariKandidat" wire:loading.attr="disabled"
+                        wire:target="cariKandidat" :disabled="$isFormLocked">
+                        <span wire:loading.remove wire:target="cariKandidat">🔍 Cari Kandidat Faskes</span>
+                        <span wire:loading wire:target="cariKandidat" class="inline-flex items-center gap-1"><x-loading /> Mengirim permintaan...</span>
+                    </x-secondary-button>
+                    @if (!empty($formRujukan['taskKandidatId']))
+                        <x-secondary-button type="button" wire:click="cekKandidat" wire:loading.attr="disabled"
+                            wire:target="cekKandidat">
+                            <span wire:loading.remove wire:target="cekKandidat">🔄 Cek Hasil Kandidat</span>
+                            <span wire:loading wire:target="cekKandidat" class="inline-flex items-center gap-1"><x-loading /> Mengecek...</span>
+                        </x-secondary-button>
+                    @endif
+                </div>
+                @if ($infoKandidat !== '')
+                    <p class="text-sm {{ str_starts_with($infoKandidat, '✓') || str_starts_with($infoKandidat, 'Tujuan:') ? 'text-green-700 dark:text-green-300' : 'text-muted-soft' }}">{{ $infoKandidat }}</p>
+                @endif
+
+                @if (!empty($formRujukan['kandidatList']))
+                    <div class="mt-2 overflow-x-auto border bg-canvas rounded-2xl border-hairline dark:border-gray-700">
+                        <table class="ds-table">
+                            <thead>
+                                <tr>
+                                    <th class="ds-c w-10">No</th>
+                                    <th>Faskes Tujuan</th>
+                                    <th class="w-32">Kode BPJS</th>
+                                    <th class="ds-c w-28">Jarak</th>
+                                    <th class="ds-c w-32">Estimasi</th>
+                                    <th class="ds-c w-32">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($formRujukan['kandidatList'] as $indexKandidat => $kandidat)
+                                    @php $terpilih = $formRujukan['kandidatIdx'] === $indexKandidat; @endphp
+                                    <tr class="{{ $terpilih ? 'bg-brand-green/5 dark:bg-brand-lime/5' : '' }}">
+                                        <td class="ds-c ds-td-meta">{{ $indexKandidat + 1 }}</td>
+                                        <td>
+                                            <span class="ds-td-strong">{{ ($kandidat['nama'] ?? '') ?: '-' }}</span>
+                                            <span class="block ds-td-meta">{{ $kandidat['orgId'] ?? '-' }}</span>
+                                        </td>
+                                        {{-- Strata SENGAJA tidak ditampilkan: SATUSEHAT mengirim kunci
+                                             'strata' tanpa nilai untuk semua kandidat, jadi kolomnya
+                                             selalu '-'. Kode BPJS lebih berguna — dipakai memastikan
+                                             pasangan faskes BPJS<->SATUSEHAT saat rujukan pasien JKN. --}}
+                                        <td class="ds-td-token">{{ ($kandidat['bpjsCode'] ?? '') ?: '—' }}</td>
+                                        <td class="ds-c tabular-nums">{{ $this->rujukanJarakTampil($kandidat['distance'] ?? null) }}</td>
+                                        <td class="ds-c tabular-nums">{{ $this->rujukanWaktuTampil($kandidat['estimatedTime'] ?? null) }}</td>
+                                        {{-- Mode 2 x-toggle (current + wireClick). Argumen wireClick
+                                             dikirim sebagai INDEKS angka, bukan nama faskes — nama
+                                             ber-& akan ter-escape ganda dan aksinya diam-diam gagal. --}}
+                                        <td class="ds-c">
+                                            <x-toggle :current="$terpilih ? 'Ya' : 'Tidak'" trueValue="Ya" falseValue="Tidak"
+                                                :disabled="$isFormLocked"
+                                                wireClick="pilihKandidat({{ $indexKandidat }})"
+                                                :label="$terpilih ? 'Dipilih' : 'Pilih'" />
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
             </div>
 
-            @if (!empty($formRujukan['taskApprovalId']))
-                <p class="text-sm text-green-700 dark:text-green-300">✓ Tugas rujukan terkirim (Task {{ $formRujukan['taskApprovalId'] }}, CarePlan {{ $formRujukan['carePlanId'] }})</p>
+            {{-- LANGKAH 2 & 3 — TUGAS RUJUKAN + SERVICEREQUEST --}}
+            <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
+                <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Langkah 3–5 · Tugas Rujukan → Persetujuan → Rujukan</p>
 
-                @php $statusApproval = $formRujukan['statusApproval'] ?? ''; @endphp
-                <div class="flex flex-wrap items-center gap-2 mt-1">
-                    <span class="text-sm text-muted dark:text-gray-400">Jawaban faskes tujuan:</span>
-                    @if ($statusApproval === 'accepted')
-                        <x-badge variant="success">Diterima</x-badge>
-                    @elseif ($statusApproval === 'rejected')
-                        <x-badge variant="danger">Ditolak</x-badge>
-                    @else
-                        <x-badge variant="warning">Belum dijawab</x-badge>
-                    @endif
-                    <x-secondary-button type="button" wire:click="cekStatusApproval" wire:loading.attr="disabled" wire:target="cekStatusApproval" class="text-xs">
-                        <span wire:loading.remove wire:target="cekStatusApproval">🔄 Cek Status</span>
-                        <span wire:loading wire:target="cekStatusApproval" class="inline-flex items-center gap-1"><x-loading /> Mengecek...</span>
-                    </x-secondary-button>
+                <div class="grid grid-cols-1 gap-3">
+                    <div>
+                        <x-input-label value="Pilih Layanan (pintasan)" class="mb-1" />
+                        <x-select-input wire:change="pilihSpeciality($event.target.value)" :disabled="$isFormLocked" class="w-full">
+                            <option value="">— ketik manual di bawah —</option>
+                            @foreach ($this->specialityOptions() as $kodeLayanan => $namaLayanan)
+                                <option value="{{ $kodeLayanan }}" @selected(($formRujukan['specialityCode'] ?? '') === $kodeLayanan)>
+                                    {{ $kodeLayanan }} — {{ $namaLayanan }}
+                                </option>
+                            @endforeach
+                        </x-select-input>
+                        <p class="mt-1 text-xs text-muted-soft">
+                            Katalog clinical-speciality resmi belum dibagikan Kemkes; daftar ini hanya
+                            kode yang sudah terbukti dipakai. Kode lain tetap boleh diketik manual.
+                        </p>
+                    </div>
+                    <div>
+                        <x-input-label value="Kode Layanan (clinical-speciality)" class="mb-1" />
+                        <x-text-input wire:model.blur="formRujukan.specialityCode"
+                            placeholder="{{ ($formRujukan['jalur'] ?? 'igd') === 'igd' ? 'L03 (default IGD)' : 'mis. LY133' }}"
+                            :disabled="$isFormLocked" class="w-full" />
+                    </div>
+                    <div>
+                        <x-input-label value="Nama Layanan" class="mb-1" />
+                        <x-text-input wire:model.blur="formRujukan.specialityDisplay"
+                            placeholder="{{ ($formRujukan['jalur'] ?? 'igd') === 'igd' ? 'Pelayanan Gawat Darurat' : 'mis. Syaraf - Stroke dan Cerebro Vaskuler' }}"
+                            :disabled="$isFormLocked" class="w-full" />
+                    </div>
+                    <div>
+                        <x-input-label value="Tgl. Rencana Kunjungan di RS Tujuan" class="mb-1" />
+                        <x-text-input wire:model.blur="formRujukan.tglRencanaKunjungan" placeholder="dd/mm/yyyy"
+                            :disabled="$isFormLocked" class="w-full" />
+                        <p class="mt-1 text-xs text-muted-soft">Dikirim sebagai occurrenceDateTime — kapan pasien direncanakan dilayani, bukan jam pengiriman.</p>
+                    </div>
+                    <div>
+                        <x-input-label value="Jenis Tenaga Kesehatan Pelaksana (opsional)" class="mb-1" />
+                        <x-select-input wire:model.live="formRujukan.performerTypeKode" :disabled="$isFormLocked" class="w-full">
+                            <option value="">— tidak dikirim —</option>
+                            @foreach ($this->performerTypeOptions() as $kodePelaksana => $namaPelaksana)
+                                <option value="{{ $kodePelaksana }}">{{ $namaPelaksana }}</option>
+                            @endforeach
+                        </x-select-input>
+                    </div>
+                    <div>
+                        <x-input-label value="Deskripsi Rencana Rujukan" class="mb-1" />
+                        <x-text-input wire:model.blur="formRujukan.deskripsi" placeholder="Alasan & kebutuhan penanganan di RS tujuan"
+                            :disabled="$isFormLocked" class="w-full" />
+                    </div>
                 </div>
-                @if ($statusApproval === 'rejected')
-                    <p class="mt-1 text-sm text-rose-700 dark:text-rose-300">
-                        Rujukan tidak bisa diterbitkan ke faskes ini. Pilih kandidat lain lalu kirim tugas rujukan ulang.
-                    </p>
-                @elseif ($statusApproval !== 'accepted')
-                    <p class="mt-1 text-xs text-muted-soft">
-                        Rujukan tetap bisa diterbitkan tanpa menunggu jawaban (dibutuhkan saat uji coba), tapi di
-                        pelayanan nyata sebaiknya tunggu <strong>Diterima</strong> dulu.
-                    </p>
+
+                @if (!empty($formRujukan['taskApprovalId']))
+                    <p class="text-sm text-green-700 dark:text-green-300">✓ Tugas rujukan terkirim (Task {{ $formRujukan['taskApprovalId'] }}, CarePlan {{ $formRujukan['carePlanId'] }})</p>
+
+                    @php $statusApproval = $formRujukan['statusApproval'] ?? ''; @endphp
+                    <div class="flex flex-wrap items-center gap-2 mt-1">
+                        <span class="text-sm text-muted dark:text-gray-400">Jawaban faskes tujuan:</span>
+                        @if ($statusApproval === 'accepted')
+                            <x-badge variant="success">Diterima</x-badge>
+                        @elseif ($statusApproval === 'rejected')
+                            <x-badge variant="danger">Ditolak</x-badge>
+                        @else
+                            <x-badge variant="warning">Belum dijawab</x-badge>
+                        @endif
+                        <x-secondary-button type="button" wire:click="cekStatusApproval" wire:loading.attr="disabled" wire:target="cekStatusApproval" class="text-xs">
+                            <span wire:loading.remove wire:target="cekStatusApproval">🔄 Cek Status</span>
+                            <span wire:loading wire:target="cekStatusApproval" class="inline-flex items-center gap-1"><x-loading /> Mengecek...</span>
+                        </x-secondary-button>
+                    </div>
+                    @if ($statusApproval === 'rejected')
+                        <p class="mt-1 text-sm text-rose-700 dark:text-rose-300">
+                            Rujukan tidak bisa diterbitkan ke faskes ini. Pilih kandidat lain lalu kirim tugas rujukan ulang.
+                        </p>
+                    @elseif ($statusApproval !== 'accepted')
+                        <p class="mt-1 text-xs text-muted-soft">
+                            Rujukan tetap bisa diterbitkan tanpa menunggu jawaban (dibutuhkan saat uji coba), tapi di
+                            pelayanan nyata sebaiknya tunggu <strong>Diterima</strong> dulu.
+                        </p>
+                    @endif
                 @endif
-            @endif
 
-            @if (!$isFormLocked)
-                <div class="flex flex-col items-start gap-2">
-                    <x-secondary-button type="button" wire:click="kirimTugasRujukan" wire:loading.attr="disabled" wire:target="kirimTugasRujukan">
-                        <span wire:loading.remove wire:target="kirimTugasRujukan">📨 Kirim Tugas Rujukan (Approval)</span>
-                        <span wire:loading wire:target="kirimTugasRujukan" class="inline-flex items-center gap-1"><x-loading /> Mengirim tugas...</span>
-                    </x-secondary-button>
-                    {{-- Muncul hanya kalau tugas rujukan sudah terkirim tapi id-nya
-                         belum terpegang — mengirim ulang akan menumpuk duplikat. --}}
-                    @if (!empty($formRujukan['identifierTask']) && empty($formRujukan['carePlanId']))
-                        <div class="w-full p-3 border rounded-lg border-amber-500 bg-warning-tint dark:bg-amber-900/20 dark:border-amber-700">
-                            <p class="text-sm font-semibold text-warning-deep dark:text-amber-200">Tugas rujukan sudah terkirim, tapi id-nya belum terbaca</p>
-                            <p class="mt-1 text-sm text-body dark:text-gray-300">
-                                Jangan kirim ulang — tugasnya sudah ada di faskes tujuan. Ambil id-nya dari SATUSEHAT:
-                            </p>
-                            <x-secondary-button type="button" class="mt-2" wire:click="pulihkanTugasRujukan"
-                                wire:loading.attr="disabled" wire:target="pulihkanTugasRujukan">
-                                <span wire:loading.remove wire:target="pulihkanTugasRujukan">🔁 Pulihkan ID Tugas Rujukan</span>
-                                <span wire:loading wire:target="pulihkanTugasRujukan" class="inline-flex items-center gap-1"><x-loading /> Mencari...</span>
-                            </x-secondary-button>
-                        </div>
-                    @endif
-
-                    <x-success-button type="button" wire:click="kirimRujukan" wire:loading.attr="disabled" wire:target="kirimRujukan">
-                        <span wire:loading.remove wire:target="kirimRujukan">🚀 Kirim Rujukan (ServiceRequest)</span>
-                        <span wire:loading wire:target="kirimRujukan" class="inline-flex items-center gap-1"><x-loading /> Mengirim rujukan...</span>
-                    </x-success-button>
-                    @if (!empty($formRujukan['taskApprovalId']))
-                        <x-danger-button type="button" wire:click="batalkanTugas" wire:confirm="Batalkan tugas rujukan ini?"
-                            wire:loading.attr="disabled" wire:target="batalkanTugas">
-                            <span wire:loading.remove wire:target="batalkanTugas">Batalkan Tugas Rujukan</span>
-                            <span wire:loading wire:target="batalkanTugas" class="inline-flex items-center gap-1"><x-loading /> Membatalkan...</span>
-                        </x-danger-button>
-                    @endif
-                </div>
-            @endif
-        </div>
+                @if (!$isFormLocked)
+                    <div class="flex flex-col items-start gap-2">
+                        {{-- Muncul hanya kalau tugas rujukan sudah terkirim tapi id-nya
+                             belum terpegang — mengirim ulang akan menumpuk duplikat. --}}
+                        @if (!empty($formRujukan['identifierTask']) && empty($formRujukan['carePlanId']))
+                            <div class="w-full p-3 border rounded-lg border-amber-500 bg-warning-tint dark:bg-amber-900/20 dark:border-amber-700">
+                                <p class="text-sm font-semibold text-warning-deep dark:text-amber-200">Tugas rujukan sudah terkirim, tapi id-nya belum terbaca</p>
+                                <p class="mt-1 text-sm text-body dark:text-gray-300">
+                                    Jangan kirim ulang — tugasnya sudah ada di faskes tujuan. Ambil id-nya dari SATUSEHAT:
+                                </p>
+                                <x-secondary-button type="button" class="mt-2" wire:click="pulihkanTugasRujukan"
+                                    wire:loading.attr="disabled" wire:target="pulihkanTugasRujukan">
+                                    <span wire:loading.remove wire:target="pulihkanTugasRujukan">🔁 Pulihkan ID Tugas Rujukan</span>
+                                    <span wire:loading wire:target="pulihkanTugasRujukan" class="inline-flex items-center gap-1"><x-loading /> Mencari...</span>
+                                </x-secondary-button>
+                            </div>
+                        @endif
+                        @if (!empty($formRujukan['taskApprovalId']))
+                            <x-danger-button type="button" wire:click="batalkanTugas" wire:confirm="Batalkan tugas rujukan ini?"
+                                wire:loading.attr="disabled" wire:target="batalkanTugas">
+                                <span wire:loading.remove wire:target="batalkanTugas">Batalkan Tugas Rujukan</span>
+                                <span wire:loading wire:target="batalkanTugas" class="inline-flex items-center gap-1"><x-loading /> Membatalkan...</span>
+                            </x-danger-button>
+                        @endif
+                    </div>
+                @endif
+            </div>
+    </div>
     @endif
                 </div>
             </div>
@@ -1209,7 +1252,40 @@ new class extends Component {
                     <p class="text-sm text-muted dark:text-gray-400">
                         Perubahan tersimpan otomatis ke kunjungan ini — aman ditutup lalu dilanjutkan nanti.
                     </p>
-                    <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+
+                    {{-- Dua tombol kirim dipindah ke footer yang selalu menempel: dulu
+                         terkubur di kolom kanan dan harus digulir. Angkanya MENGIKUTI
+                         penanda langkah di atas (3 lalu 5), bukan 1-2 — dua sistem
+                         penomoran di satu layar justru membingungkan. --}}
+                    <div class="flex flex-wrap items-center gap-2">
+                        @if (empty($formRujukan['hasil']['noRujukanSatuSehat']) && !$isFormLocked)
+                            <x-outline-button type="button" wire:click="kirimTugasRujukan"
+                                wire:loading.attr="disabled" wire:target="kirimTugasRujukan"
+                                title="Langkah 3 — menanyakan kesediaan faskes tujuan">
+                                <span wire:loading.remove wire:target="kirimTugasRujukan" class="inline-flex items-center gap-2">
+                                    <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full bg-brand-green/15 text-brand-green dark:bg-brand-lime/20 dark:text-brand-lime">3</span>
+                                    Kirim Tugas Rujukan
+                                </span>
+                                <span wire:loading wire:target="kirimTugasRujukan" class="inline-flex items-center gap-1"><x-loading /> Mengirim tugas...</span>
+                            </x-outline-button>
+
+                            <svg class="w-4 h-4 text-muted-soft shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+
+                            <x-primary-button type="button" wire:click="kirimRujukan"
+                                wire:loading.attr="disabled" wire:target="kirimRujukan"
+                                title="Langkah 5 — menerbitkan rujukan resmi & nomor rujukan nasional">
+                                <span wire:loading.remove wire:target="kirimRujukan" class="inline-flex items-center gap-2">
+                                    <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full bg-white/25 text-white">5</span>
+                                    Kirim Rujukan
+                                </span>
+                                <span wire:loading wire:target="kirimRujukan" class="inline-flex items-center gap-1"><x-loading /> Mengirim rujukan...</span>
+                            </x-primary-button>
+                        @endif
+
+                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                    </div>
                 </div>
             </div>
 
