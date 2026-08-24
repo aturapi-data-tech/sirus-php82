@@ -65,7 +65,8 @@
                             <span class="ds-spike" style="vertical-align:middle"></span>
                             <span class="ds-body-sm" style="color:var(--body-strong)">
                                 <strong>ID yang disimpan</strong> (<span class="ds-code">satusehat.labServiceRequestIds / labSpecimenIds / labObservationIds / labDiagnosticReportIds</span>)
-                                = <strong>UUID balikan SATUSEHAT</strong> dari respons POST tiap resource — bukan dari DB. Dipakai untuk badge hijau &amp; guard "sudah pernah dikirim".
+                                = <strong>UUID balikan SATUSEHAT</strong> dari respons POST tiap resource — bukan dari DB. Dipakai untuk badge hijau.
+                                <br><strong>Penanda "sudah pernah dikirim" BUKAN array datar itu</strong>, melainkan indeks per-paket <span class="ds-code">satusehat.labKirim</span> — array datar tak menyimpan keterangan paket mana punya id yang mana, jadi tak bisa dipakai menentukan yang bolong. Lihat bab <strong>Indeks per-order</strong>.
                                 <br><strong>⚠️ Asumsi MVP (perlu validasi sandbox):</strong> panel SR/DR pakai LOINC generik <span class="ds-code">26436-6</span> &amp; Specimen default <strong>darah/venipuncture</strong> untuk semua paket — belum tepat untuk lab non-darah (urin/feses).
                             </span>
                         </div>
@@ -100,8 +101,10 @@
                         <div class="ds-card-outline mt-4" style="padding:16px 20px">
                             <span class="ds-spike" style="vertical-align:middle"></span>
                             <span class="ds-body-sm" style="color:var(--body-strong)">
-                                <strong>ID disimpan</strong> (<span class="ds-code">satusehat.radServiceRequestIds / radDiagnosticReportIds</span>) = UUID balikan SATUSEHAT (guard "sudah pernah dikirim").
-                                <br><strong>⚠️ GAP (perlu perbaikan):</strong> alur kirim masih pakai kode generik <span class="ds-code">18748-4</span> untuk semua order. Master <span class="ds-code">rsmst_radiologis</span> kini sudah punya kolom <span class="ds-code">loinc_code</span>/<span class="ds-code">loinc_display</span> (isi via <span class="ds-code">/master/radiologis</span>) — tinggal dipakai menggantikan kode generik. Hasil bacaan/PDF (<span class="ds-code">rsview_rads.rad_upload_pdf</span>) &amp; nilai terstruktur <strong>belum dikirim</strong>; DR masih laporan kosong.
+                                <strong>ID disimpan</strong> (<span class="ds-code">satusehat.radServiceRequestIds / radObservationIds / radDiagnosticReportIds / radImagingStudyIds</span>) = UUID balikan SATUSEHAT.
+                                <br><strong>Penanda "sudah pernah dikirim" BUKAN array datar itu</strong>, melainkan indeks per-order <span class="ds-code">satusehat.radKirim</span>. Lihat bab <strong>Indeks per-order</strong>.
+                                <br><strong>Sudah diperbaiki:</strong> LOINC kini diambil dari <span class="ds-code">rsmst_radiologis.loinc_code</span>/<span class="ds-code">loinc_display</span>, generik <span class="ds-code">18748-4</span> hanya bila master kosong. DR juga sudah merujuk satu Observation ringkas (<span class="ds-code">RuleNumber 10385</span>).
+                                <br><strong>⚠️ Yang MASIH jadi gap:</strong> nilai terstruktur belum dikirim — hasil bacaan tetap berupa PDF/foto terlampir (<span class="ds-code">rsview_rads.rad_upload_pdf</span>), dan Observation-nya cuma penunjuk <span class="ds-code">valueString</span>, bukan angka hasil.
                             </span>
                         </div>
 

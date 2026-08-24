@@ -6,10 +6,18 @@ Lokasi utama: `resources/views/pages/transaksi/penunjang/radiologi/`. Semua Volt
 > status `P→C→H→F` dengan "Proses Administrasi" yang mem-post biaya. **Radiologi TIDAK begitu.**
 > Biaya di-post **langsung saat order dibuat** (di EMR atau via tombol Tambah). Modul penunjang
 > radiologi (`upload-radiologi`) fungsinya **Upload Hasil** (foto + PDF bacaan). "Status" di radiologi =
-> **kelengkapan upload**, bukan status pemeriksaan. Tidak ada batal, tidak ada Mindray/PACS, tidak ada etiket.
+> **kelengkapan upload**, bukan status pemeriksaan. Tidak ada batal, tidak ada Mindray, tidak ada etiket.
 >
-> **PACS sedang direncanakan** (Orthanc) supaya `ImagingStudy` SATUSEHAT punya UID DICOM asli —
-> lihat `docs/pacs-orthanc.md`. Selama belum berdiri, modul ini tetap berbasis unggah PDF.
+> **PACS sudah berdiri** (Orthanc, PR #33): saat kirim SATUSEHAT, foto yang sudah diupload diangkat
+> ke Orthanc lebih dulu supaya `ImagingStudy` punya StudyInstanceUID asli — lihat `docs/pacs-orthanc.md`
+> (jalankan `docs/ddl-pacs-study-uid.sql` dulu di tiap environment). Sumber hasil tetap berkas unggahan,
+> bukan modality DICOM langsung.
+>
+> **Tanggal di layar Upload.** Kolom "Order" = `waktu_entry`, yaitu **waktu ordernya dicatat**
+> (dari EMR RJ/UGD/RI atau tombol Tambah Pemeriksaan) — **bukan** waktu upload hasil; waktu upload
+> tidak disimpan di mana pun, unggahan hanya menulis nama berkas. Filter harian/bulanan memakai
+> `NVL(waktu_entry, tgl_header)`; fallback ke tgl kunjungan itu untuk order legacy Oracle Dev 6i
+> yang `waktu_entry`-nya NULL — tanpa itu `BETWEEN` membuangnya dan order lama tak pernah muncul.
 
 ## Struktur file
 

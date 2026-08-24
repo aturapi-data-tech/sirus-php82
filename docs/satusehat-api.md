@@ -117,12 +117,12 @@ Urutan kanonik (dari orkestrator `KirimRawatJalanTrait::kirimRawatJalan()`, `:74
 | MedicationAdministration (RI) | MedicationAdministrationTrait + `App\Support\ObservasiLanjutanMap` | `MedicationAdministration` / completed + contained `Medication` | **KFA**; route **SNOMED** (`route-codes`) | `observasi.obatDanCairan.pemberianObatDanCairan[]` — obat/cairan yang benar-benar **diberikan** |
 | Observation (oksigen & cairan, RI) | ObservationTrait + `App\Support\ObservasiLanjutanMap` | `Observation` / final | **LOINC** — alat oksigen `107117-4`, laju `3151-8` (**valueRange**), urine output `9187-6` | `observasi.pemakaianOksigen.pemakaianOksigenData[]`, `observasi.pengeluaranCairan.pengeluaranCairan[]` |
 | Procedure | ProcedureTrait | `Procedure` / completed | **ICD-9-CM** `http://hl7.org/fhir/sid/icd-9-cm` (category SNOMED `71388002`) | `procedure[]` { `procedureId` = ICD-9, `procedureDesc` } — ditulis rm-diagnosa-*-actions; key lama `tindakanList`/`kodeIcd9` tidak pernah ditulis (bug "tidak ada data tindakan" RJ/UGD 2026-08-05) |
-| AllergyIntolerance | AllergyIntoleranceTrait | `AllergyIntolerance` / active·confirmed | **SNOMED** | (belum di-wire UI) |
+| AllergyIntolerance | AllergyIntoleranceTrait + `App\Support\AlergiSnomed` | `AllergyIntolerance` / active·confirmed | **SNOMED** — `category` WAJIB selalu ada (RuleNumber 10075) | `kirim-allergy` RJ/UGD/RI. Kode `716186003` ("no known allergy") DITOLAK sebagai substance-code |
 | MedicationRequest | MedicationRequestTrait | `MedicationRequest` + contained `Medication` | **KFA** `http://sys-ids.kemkes.go.id/kfa` | `eresep`/`resepObat`; KFA dari master obat `product_id_satusehat` |
-| MedicationDispense | MedicationDispenseTrait | `MedicationDispense` (encounter via `context`) | **KFA** | idem MedicationRequest (belum di-wire UI) |
-| ServiceRequest | ServiceRequestTrait | `ServiceRequest` / active·original-order | generik (dimaksudkan LOINC) | (belum di-wire UI) |
-| Specimen | SpecimenTrait | `Specimen` / available | generik | (belum di-wire UI) |
-| DiagnosticReport | DiagnosticReportTrait | `DiagnosticReport` / final | **LOINC** (category default `MB`/Microbiology) | (belum di-wire UI) |
+| MedicationDispense | MedicationDispenseTrait + `App\Support\MedicationRequestItem` | `MedicationDispense` (encounter via `context`) | **KFA**; `quantity.system` = `…/v3-orderableDrugForm` (RuleNumber 10050) | `kirim-medication-dispense` RJ/UGD/RI. `authorizingPrescription` dari peta eksplisit, bukan urutan — §11.5 |
+| ServiceRequest | ServiceRequestTrait | `ServiceRequest` / active·original-order | **LOINC** — lab panel `26436-6`; radiologi dari `rsmst_radiologis.loinc_code`, generik `18748-4` bila master kosong | order lab (`lbtxn_checkuphdrs`) & radiologi (`rstxn_*rads`) — dipakai sender Lab & Radiologi RJ/UGD/RI |
+| Specimen | SpecimenTrait | `Specimen` / available | **SNOMED** — `119297000` Blood specimen, metode `129300006` | satu per paket checkup — dipakai sender Lab RJ/UGD/RI |
+| DiagnosticReport | DiagnosticReportTrait | `DiagnosticReport` / final, category `LAB` / `RAD` | **LOINC** | dipakai sender Lab & Radiologi RJ/UGD/RI. **`identifier.system` bercabang**: `…/diagnostic/{org}/lab` atau `/rad` (RuleNumber 10432) — record yang terkirim SEBELUM aturan itu memakai bentuk lama tanpa akhiran, lihat §12 |
 
 **Kode LOINC vital di-hardcode di blade** (`kirim-observation.blade.php:86-99`): TD panel `85354-9` (komponen `8480-6` sistole / `8462-4` diastole), Nadi `8867-4`, Suhu `8310-5`, RR `9279-1`. `LoincTrait`/`SnomedTrait` (lookup live ke `tx.fhir.org`) **tidak dipakai** di alur RJ.
 
@@ -146,7 +146,7 @@ Kolom di dashboard platform SATUSEHAT (jumlah resource per bulan) vs kondisi di 
 > - **UGD (12 kartu):** sama seperti RJ (urutan beda; Encounter class **EMER**, Location IGD hardcode)
 > - **RI (12 aktif + 2 digating):** Encounter (**IMP**) · **EpisodeOfCare** · Condition · Procedure · Observation · MedicationRequest · MedicationDispense · Lab · Radiologi · ClinicalImpression (CPPT) · **NutritionOrder** · **Penilaian** — ChiefComplaint & Allergy masih `@if(false)` (SNOMED)
 >
-> Jadi baris "❌ / ⚠️ trait saja" untuk MedicationDispense, ServiceRequest, Specimen, DiagnosticReport, Allergy, ClinicalImpression, EpisodeOfCare, NutritionOrder **sudah tidak berlaku**. Yang benar-benar belum ada: **Composition** (ringkasan pulang), **Immunization** (belum ada modul). **ImagingStudy** sudah ada trait + lolos staging — tinggal wire ke UI (lihat §9.5).
+> Jadi baris "❌ / ⚠️ trait saja" untuk MedicationDispense, ServiceRequest, Specimen, DiagnosticReport, Allergy, ClinicalImpression, EpisodeOfCare, NutritionOrder **sudah tidak berlaku**. Yang benar-benar belum ada: **Composition** (ringkasan pulang), **Immunization** (belum ada modul). **ImagingStudy** sudah di-wire ke UI (PR #33): dikirim dari sender Radiologi RJ/UGD/RI bila fotonya sudah diupload — berkasnya diangkat ke Orthanc lebih dulu supaya StudyInstanceUID-nya asli (lihat §9.5 & `docs/pacs-orthanc.md`).
 >
 > **Badge kartu = urutan tampil di modul itu** (tidak disamakan lintas modul; set resource memang beda). Dirapikan 2026-07-15.
 
@@ -169,7 +169,7 @@ Kolom di dashboard platform SATUSEHAT (jumlah resource per bulan) vs kondisi di 
 | Jumlah Episode Perawatan (**EpisodeOfCare**) | ❌ | ❌ | — |
 | Jumlah Instruksi Gizi (**NutritionOrder**) | ❌ | ❌ | — |
 
-**Ringkas coverage:** 5 resource sudah terkirim penuh (Encounter, Condition, Observation, Procedure, MedicationRequest). 5 resource sudah ada trait tapi perlu di-wire ke UI (MedicationDispense, ServiceRequest, Specimen, DiagnosticReport, AllergyIntolerance). 5 resource belum dibuat sama sekali (Composition/Diet, ClinicalImpression, Immunization, EpisodeOfCare, NutritionOrder). 1 resource trait sudah ada tapi belum di-wire (ImagingStudy — §9.5) — **payload lengkap & metode kirim di §9**.
+**Ringkas coverage:** 5 resource sudah terkirim penuh (Encounter, Condition, Observation, Procedure, MedicationRequest). ServiceRequest, Specimen & DiagnosticReport sudah di-wire lewat sender Lab & Radiologi; sisa yang perlu di-wire: MedicationDispense, AllergyIntolerance. 5 resource belum dibuat sama sekali (Composition/Diet, ClinicalImpression, Immunization, EpisodeOfCare, NutritionOrder). ImagingStudy kini juga sudah di-wire (§9.5) — **payload lengkap & metode kirim di §9**.
 
 ---
 
@@ -518,7 +518,7 @@ mengurus perbedaan ini; jalur yang playbook-nya belum dibaca (mis. `ri`) sengaja
 
 ### 9.5 ImagingStudy — Radiologi
 
-**Status: ✅ Trait sudah ada + sudah lolos uji staging.**
+**Status: ✅ Sudah di-wire ke UI** (sender Radiologi RJ/UGD/RI, PR #33) — sebelumnya trait saja.
 
 Implementasi ada di dua trait:
 
@@ -692,6 +692,8 @@ errornya seragam: `OperationOutcome` dengan `expression` menunjuk elemen yang sa
 | `every statusHistory period start and end must be filled (Rule 10122)` — `Encounter.statusHistory` | entri dari `createNewEncounter()`/`startRoomEncounter()` hanya punya `start` | `EncounterTrait::siapkanFinishEncounter()` mengisi `end` tiap entri dari `start` entri berikutnya |
 | `Element not found: Encounter.diagnosis (RuleNumber 10457)` | finish dikirim tanpa diagnosis | `Encounter.diagnosis` diisi dari `conditionIds` (`use` = `DD`, `rank` berurutan); tombol Finish menolak lebih dulu bila diagnosa belum dikirim |
 | `Code not found: '1306548008' in system: http://snomed.info/sct (RuleNumber 10003)` — `Condition.code[0].code` (Chief Complaint, 2026-08-04) | edisi SNOMED server SATUSEHAT lebih tua dari tx.fhir.org — LOV keluhan bisa memilih konsep baru (contoh ini effective 2024-04-01) yang belum dikenal Kemkes | pin edisi via `config/txfhir.php` `snomed_version` (default International Edition `20240201`): `SnomedTrait` kirim `system-version` di `$expand` & `version` di `$lookup`; cache lama dibersihkan `php artisan snomed:bersihkan-cache` (`--dry-run` dulu); EMR yang terlanjur menyimpan kode baru → pilih ulang kode induk yang mapan (kasus ini `254837009` Malignant neoplasm of breast) |
+| `RuleNumber 10432` — `DiagnosticReport.identifier[0].system` (2026-08-24) | `…/diagnostic/{org}` tanpa akhiran layanan ditolak | pecah per layanan: `…/diagnostic/{org}/lab` dan `…/diagnostic/{org}/rad`. **Record yang sudah terkirim memakai bentuk lama** — pemulihan indeks wajib mencari dengan KEDUA bentuk (§12), kalau tidak DR lama tak ketemu dan dibuatkan DR kedua |
+| `RuleNumber 10385` — `DiagnosticReport.result` (2026-08-24) | `result` jadi wajib; sender radiologi dulu mengirim DR tanpa Observation sama sekali | tiap order radiologi kini membuat satu Observation ringkas (`category` `imaging`, `valueString` "Lihat hasil pada lampiran radiologi") lalu dirujuk dari `DiagnosticReport.result`. Hasil bacaan sesungguhnya tetap PDF/foto terlampir, bukan nilai terstruktur |
 
 ### 11.2 Uji payload TANPA mengirim
 
@@ -740,3 +742,81 @@ mencatat peta eksplisit `satusehat.medicationRequestItems` (`id`, `jenis`, `kunc
 `display`, `qty`), dan `App\Support\MedicationRequestItem::ambil()` menyusun ulang peta itu
 untuk kunjungan lama — **ditolak bila jumlahnya tak cocok**, bukan menebak.
 
+
+## 12. Indeks kiriman penunjang per-order (`radKirim` / `labKirim`)
+
+Ditambahkan 2026-08-24. Berlaku untuk **enam sender**: lab & radiologi × RJ/UGD/RI.
+Kode bersamanya di `app/Http/Traits/SATUSEHAT/PenunjangKirimTrait.php`.
+
+### 12.1 Masalah yang diperbaiki
+
+Sender penunjang menyimpan hasil kiriman sebagai **array datar** — `radServiceRequestIds`,
+`labDiagnosticReportIds`, dan seterusnya: daftar UUID tanpa keterangan order mana punya siapa.
+Begitu satu order gagal di tengah (ServiceRequest terbentuk, DiagnosticReport belum), tak ada
+cara tahu order mana yang bolong. Guard cuma bisa dua sikap, dua-duanya salah:
+
+- **lolos** → SR di-POST ulang dengan identifier yang sama → ditolak duplikat
+  (`RuleNumber 20002`) dan macet selamanya;
+- **tolak semua** → DR tak pernah tersusul, data di SATUSEHAT tinggal separuh.
+
+### 12.2 Bentuk node
+
+Tiap order sudah punya identifier stabil yang dipakai saat POST. Identifier itu jadi kuncinya:
+
+```jsonc
+satusehat: {
+  // TETAP ADA — jangan diubah bentuknya
+  "radServiceRequestIds":   ["…"],
+  "radDiagnosticReportIds": ["…"],
+  "radObservationIds":      ["…"],
+  "radImagingStudyIds":     ["…"],
+
+  // penanda kelengkapan yang sesungguhnya
+  "radKirim": { "rad-673349-11408": { "sr": "…", "obs": "…", "dr": "…", "is": "…" } },
+  "labKirim": { "673349-9912":      { "sr": "…", "sp": "…", "obs": ["…"], "dr": "…" } }
+}
+```
+
+Awalan kunci mengikuti identifier yang dipakai sender: radiologi `rad-` (RJ), `ugd-rad-`,
+`ri-rad-`; lab tanpa awalan (RJ), `ugd-`, `ri-`.
+
+> **Array datar wajib dipertahankan.** `App\Support\SatuSehatMonitor` mencocokkan **string
+> mentah** `"radServiceRequestIds":["` ke CLOB, dan indikator status di `daftar-rj`/`daftar-ugd`
+> serta `kirim-resume-medis` juga membacanya. Mengubah bentuknya memutus mereka diam-diam.
+
+### 12.3 Aturan
+
+1. Guard bukan lagi "ada isinya → tolak", melainkan **"kumpulkan bagian yang belum ada, kirim
+   itu saja"**. Order yang semua bagian wajibnya sudah punya id dilewati tanpa memanggil API.
+2. **Record lama** belum punya indeks; id-nya dipulihkan sekali lewat pencarian identifier
+   (`cariIdLewatIdentifier()`), lalu indeksnya disimpan. **Gagal atau tak ketemu = order
+   DILEWATI, bukan dikirim ulang** — array datar sudah membuktikan ia pernah terkirim, jadi
+   POST ulang hanya akan kena 20002 lagi. Sikap ini sama dengan guard lama, jadi record lama
+   tak pernah lebih buruk dari sebelumnya.
+3. **DiagnosticReport punya dua bentuk `identifier.system`** sejak RuleNumber 10432 (§11.1).
+   Pemulihan wajib mencoba yang baru dulu (`…/diagnostic/{org}/rad|lab`) lalu jatuh ke yang
+   lama (tanpa akhiran). Kalau tidak, DR lama tak ketemu dan dibuatkan **DR kedua** untuk
+   order yang sama — SATUSEHAT tak menolaknya karena system-nya memang beda.
+4. **Observation bukan penanda kelengkapan.** Ia tak punya identifier: tak bisa dipulihkan,
+   dan tak akan ditolak duplikat. Di radiologi, Observation dibuat **di dalam** cabang
+   pembuatan DR — kalau di luar, laporan yang sudah ada ditinggali observasi yatim tiap
+   tombol kirim ditekan. Karena itu `obs` **tidak** masuk daftar bagian wajib.
+5. **Batas di lab:** paket lama yang DR-nya bolong sengaja **dilewati**, bukan dikirim ulang —
+   daftar Observation-nya tak bisa dipulihkan, dan mengirim ulang berarti menggandakan hasil
+   lab di SATUSEHAT. Jumlah yang dilewati disebut di toast, tidak hilang diam-diam.
+
+### 12.4 Efek sampingan yang menguntungkan
+
+Foto radiologi yang diupload **sesudah** SATUSEHAT dikirim kini bisa disusulkan
+ImagingStudy-nya — order itu jadi "belum lengkap" di sisi `is`. Sebelumnya tak pernah bisa,
+karena guard lama memblokir seluruh kiriman begitu DR-nya ada.
+
+### 12.5 Menambah resource baru ke sender penunjang
+
+Tambahkan bagiannya ke daftar bagian wajib dan ke `catatKirim()`. **Jangan** membuat array
+datar baru sebagai penanda "sudah dikirim" — itu justru masalah yang bab ini perbaiki.
+Kalau resource-nya tak punya identifier (seperti Observation), perlakukan seperti aturan 4.
+
+> **Belum diuji kirim live.** Yang khususnya belum terbukti: apakah SATUSEHAT menerima
+> `?identifier=` yang ter-`rawurlencode` penuh (seluruh `system|value`). Kalau ditolak,
+> efeknya hanya pemulihan record lama gagal → order dilewati (aman), bukan kiriman ganda.

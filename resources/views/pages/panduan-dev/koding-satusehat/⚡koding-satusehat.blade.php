@@ -370,6 +370,33 @@ public function createComposition(array $data): array
 // Sumber SIRUS: narasi EMR (ringkasan/rencana). Catatan: label "Diet" dari Kemkes.
 TXT,
 
+'indeks-kirim' => <<<'TXT'
+satusehat: {
+
+  // ---- TETAP ADA, jangan diubah bentuknya --------------------------------
+  // Dibaca SatuSehatMonitor (cocok string mentah ke CLOB), indikator status
+  // di daftar RJ/UGD, dan kirim-resume-medis.
+  "radServiceRequestIds":   ["..."],
+  "radObservationIds":      ["..."],
+  "radDiagnosticReportIds": ["..."],
+  "radImagingStudyIds":     ["..."],
+
+  // ---- penanda kelengkapan yang SESUNGGUHNYA -----------------------------
+  // Kunci = identifier yang dipakai saat POST, jadi tiap bagian bisa dilacak
+  // sampai ke ordernya. Inilah yang menentukan mana yang masih bolong.
+  "radKirim": {
+    "rad-673349-11408": { "sr": "uuid", "obs": "uuid", "dr": "uuid", "is": "uuid" }
+  },
+  "labKirim": {
+    "673349-9912": { "sr": "uuid", "sp": "uuid", "obs": ["uuid", "uuid"], "dr": "uuid" }
+  }
+}
+
+# Awalan kunci mengikuti identifier tiap sender:
+#   radiologi : rad-        (RJ)  |  ugd-rad-  |  ri-rad-
+#   lab       : (tanpa awalan, RJ)|  ugd-      |  ri-
+TXT,
+
         ];
     }
 };
@@ -396,6 +423,7 @@ TXT,
                 'urutan'    => 'Model & Urutan Kirim',
                 'checklist' => 'Checklist & Langkah Kirim',
                 'standar'   => 'Standarisasi per Resource',
+                'indeks-kirim' => 'Indeks Per-Order Penunjang',
                 'ri-ugd'    => 'Status per Modul (RJ/UGD/RI)',
             ],
             'Adopsi' => [
@@ -488,6 +516,8 @@ TXT,
                     @include('pages.panduan-dev.koding-satusehat.koding-satusehat-checklist')
 
                     @include('pages.panduan-dev.koding-satusehat.koding-satusehat-standar')
+
+                    @include('pages.panduan-dev.koding-satusehat.koding-satusehat-indeks-kirim')
 
                     @include('pages.panduan-dev.koding-satusehat.koding-satusehat-ri-ugd')
 

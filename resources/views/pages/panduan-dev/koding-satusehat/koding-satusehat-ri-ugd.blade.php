@@ -6,7 +6,7 @@
                             Alur kirim SATUSEHAT sudah tersedia di <strong>tiga modul</strong>. Tiap resource = 1 komponen
                             <span class="ds-code">kirim-*.blade.php</span> di <span class="ds-code">transaksi/{modul}/satu-sehat/</span>,
                             digabung di 1 modal <span class="ds-code">satu-sehat-{modul}-actions</span>, dipanggil dari Daftar {modul}.
-                            ID balikan SATUSEHAT disimpan di JSON record (<span class="ds-code">satusehat.*</span>) sebagai guard "sudah pernah dikirim".
+                            ID balikan SATUSEHAT disimpan di JSON record (<span class="ds-code">satusehat.*</span>) sebagai guard "sudah pernah dikirim" — khusus lab &amp; radiologi guard-nya <strong>per-order</strong> (<span class="ds-code">radKirim</span>/<span class="ds-code">labKirim</span>), bukan array datar.
                         </p>
 
                         <div class="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-3">

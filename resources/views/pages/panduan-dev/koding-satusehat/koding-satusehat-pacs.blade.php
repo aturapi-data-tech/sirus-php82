@@ -136,7 +136,10 @@
                                     <span class="ds-code" style="display:inline-block; margin:4px 0">&nbsp;② DiagnosticReport</span> — laporan (basedOn SR, kategori RAD)<br>
                                     <span class="ds-code" style="display:inline-block; margin:4px 0">&nbsp;③ ImagingStudy</span> — metadata studi pencitraan (UID DICOM + modality) &mdash; <strong>aktif RJ + UGD + RI, auto upload foto ke Orthanc</strong><br><br>
                                     ID hasil kirim disimpan ke JSON <span class="ds-code">satusehat</span> di record kunjungan
-                                    (<span class="ds-code">radServiceRequestIds</span>, <span class="ds-code">radDiagnosticReportIds</span>).
+                                    (<span class="ds-code">radServiceRequestIds</span>, <span class="ds-code">radDiagnosticReportIds</span>, <span class="ds-code">radImagingStudyIds</span>),
+                                    dan yang menentukan sebuah order sudah lengkap atau belum adalah indeks per-order
+                                    <span class="ds-code">radKirim</span> — termasuk yang membuat foto yang diupload
+                                    <strong>sesudah</strong> kiriman pertama masih bisa disusulkan ImagingStudy-nya.
                                 </div>
                             </div>
                         </div>
