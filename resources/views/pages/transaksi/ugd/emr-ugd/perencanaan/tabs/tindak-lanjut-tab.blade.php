@@ -37,16 +37,16 @@
              tidak menerbitkan nomor SATUSEHAT. --}}
         @if (($dataDaftarUGD['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '') === 'Rujuk')
             <div class="pt-2 border-t border-hairline-soft dark:border-gray-700">
-                <livewire:pages::transaksi.ugd.emr-ugd.rujukan-rajal.rm-rujukan-rajal-ugd-actions :rjNo="$rjNo"
-                    wire:key="rm-rujukan-rajal-ugd-{{ $rjNo }}" />
+                <livewire:pages::transaksi.ugd.emr-ugd.rujukan-kompetensi.rm-rujukan-kompetensi-ugd-actions :rjNo="$rjNo"
+                    wire:key="rm-rujukan-kompetensi-ugd-{{ $rjNo }}" />
             </div>
         @endif
 
         {{-- Rujukan Berbasis Kompetensi IGD (SATUSEHAT FHIR langsung) — Tindak Lanjut = Rujuk --}}
         @if (($dataDaftarUGD['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '') === 'Rujuk')
             <div class="pt-2 border-t border-hairline-soft dark:border-gray-700">
-                <livewire:pages::transaksi.ugd.emr-ugd.rujukan-kompetensi.rm-rujukan-kompetensi-ugd-actions
-                    :rjNo="$rjNo" wire:key="rm-rujukan-kompetensi-ugd-{{ $rjNo }}" />
+                <livewire:pages::transaksi.ugd.emr-ugd.rujukan-kompetensi.rm-rujukan-kompetensi-fhir-ugd-actions
+                    :rjNo="$rjNo" wire:key="rm-rujukan-kompetensi-fhir-ugd-{{ $rjNo }}" />
             </div>
         @endif
 
