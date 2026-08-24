@@ -1,7 +1,8 @@
 <?php
 // resources/views/pages/transaksi/ugd/satu-sehat/kirim-radiologi.blade.php
 // Step 8: Kirim Penunjang Radiologi UGD — ServiceRequest + DiagnosticReport (kode generik).
-// BEDA RJ: order dari rstxn_ugdrads. ImagingStudy DILEWATI (master tanpa kode, no DICOM).
+// BEDA RJ: order dari rstxn_ugdrads. LOINC dari master; ImagingStudy dikirim bila
+//   fotonya sudah diupload (diangkat ke Orthanc dulu supaya StudyInstanceUID-nya asli).
 
 use Livewire\Component;
 use Livewire\Attributes\On;
@@ -172,6 +173,9 @@ new class extends Component {
                 $key         = "{$rjNo}-{$nomorDetail}";
                 $kunciOrder  = "ugd-rad-{$key}";
 
+                // LOINC spesifik dari master; generik 18748-4 hanya bila kosong.
+                // Master SUDAH terisi 144/155 baris — memaku 18748-4 membuat semua
+                // pemeriksaan terkirim sebagai "Diagnostic imaging study" tanpa beda.
                 $loincCode    = trim((string) ($order->loinc_code ?? ''));
                 $loincDisplay = trim((string) ($order->loinc_display ?? ''));
                 if ($loincCode === '') {
