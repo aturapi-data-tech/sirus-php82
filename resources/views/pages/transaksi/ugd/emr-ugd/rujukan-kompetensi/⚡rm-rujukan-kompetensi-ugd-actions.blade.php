@@ -1276,7 +1276,7 @@ new class extends Component {
 
                     {{-- Tombol kirim dipindah ke footer yang selalu menempel, seperti
                          panel UGD/Ranap. Angkanya mengikuti penanda langkah di atas. --}}
-                    <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex flex-wrap items-center justify-end gap-2 ml-auto">
                         @if (empty($formRujukan['hasil']['noRujukanSatuSehat']) && !$isFormLocked)
                             <x-primary-button type="button" wire:click="kirimRujukan"
                                 wire:loading.attr="disabled" wire:target="kirimRujukan"

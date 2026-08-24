@@ -1338,7 +1338,7 @@ new class extends Component {
 
                     {{-- Dua tombol kirim ditaruh di footer yang selalu menempel: dulu
                          terkubur di kolom kanan dan harus digulir. --}}
-                    <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex flex-wrap items-center justify-end gap-2 ml-auto">
                         @if (empty($formRujukan['hasil']['noRujukanSatuSehat']) && !$isFormLocked)
                             <x-outline-button type="button" wire:click="kirimTugasRujukan"
                                 wire:loading.attr="disabled" wire:target="kirimTugasRujukan"
