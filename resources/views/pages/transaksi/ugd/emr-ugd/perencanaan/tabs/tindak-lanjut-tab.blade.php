@@ -23,11 +23,13 @@
             <x-input-error :messages="$errors->get('dataDaftarUGD.perencanaan.tindakLanjut.keteranganTindakLanjut')" class="mt-1" />
         </div>
 
-        {{-- Rujukan Antar RS — tampil hanya jika Tindak Lanjut = Rujuk --}}
+        {{-- Rujukan poli RS lain (SISRUTE) — menggantikan panel "Rujukan Antar RS"
+             model lama (VClaim biasa): tujuan diketik sendiri, tanpa kriteria, dan
+             tidak menerbitkan nomor SATUSEHAT. --}}
         @if (($dataDaftarUGD['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '') === 'Rujuk')
             <div class="pt-2 border-t border-hairline-soft dark:border-gray-700">
-                <livewire:pages::transaksi.ugd.emr-ugd.rujukan-antar-rs.rm-rujukan-ugd-actions :rjNo="$rjNo"
-                    wire:key="rm-rujukan-ugd-{{ $rjNo }}" />
+                <livewire:pages::transaksi.ugd.emr-ugd.rujukan-rajal.rm-rujukan-rajal-ugd-actions :rjNo="$rjNo"
+                    wire:key="rm-rujukan-rajal-ugd-{{ $rjNo }}" />
             </div>
         @endif
 
