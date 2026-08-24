@@ -219,26 +219,26 @@ new class extends Component {
             : collect($this->formRujukan['kriteriaIgd'] ?? [])->contains(true);
         $dasarTerisi = trim((string) $this->formRujukan['kodeDiagnosa']) !== '' && $kriteriaTerisi;
 
-        $status = fn(bool $selesai, bool $aktif) => $selesai ? 'done' : ($aktif ? 'current' : 'todo');
+        $keadaanLangkah = fn(bool $selesai, bool $aktif) => $selesai ? 'done' : ($aktif ? 'current' : 'todo');
 
         return [
             [
                 'n' => 1,
                 'title' => 'Diagnosa & Kriteria',
                 'hint' => $dasarTerisi ? null : 'wajib diisi',
-                'state' => $status($dasarTerisi, true),
+                'state' => $keadaanLangkah($dasarTerisi, true),
             ],
             [
                 'n' => 2,
                 'title' => 'Pilih Kandidat',
                 'hint' => $adaKandidat ? ($this->formRujukan['kandidatList'][$this->formRujukan['kandidatIdx']]['nama'] ?? null) : null,
-                'state' => $status($adaKandidat, $dasarTerisi),
+                'state' => $keadaanLangkah($adaKandidat, $dasarTerisi),
             ],
             [
                 'n' => 3,
                 'title' => 'Kirim Tugas Rujukan',
                 'hint' => $adaTugas ? 'terkirim' : 'minta kesediaan faskes',
-                'state' => $status($adaTugas, $adaKandidat),
+                'state' => $keadaanLangkah($adaTugas, $adaKandidat),
             ],
             [
                 'n' => 4,
@@ -250,7 +250,7 @@ new class extends Component {
                 },
                 'state' => $statusApproval === 'rejected'
                     ? 'error'
-                    : $status($statusApproval === 'accepted', $adaTugas),
+                    : $keadaanLangkah($statusApproval === 'accepted', $adaTugas),
             ],
             [
                 'n' => 5,
@@ -259,7 +259,7 @@ new class extends Component {
                 // Aktif hanya setelah faskes menerima — supaya tidak ada dua langkah
                 // menyala bersamaan. Menerbitkan rujukan tanpa menunggu jawaban TETAP
                 // diizinkan (lihat kirimRujukan), stepper cuma menunjukkan alur idealnya.
-                'state' => $status($sudahKirim, $statusApproval === 'accepted'),
+                'state' => $keadaanLangkah($sudahKirim, $statusApproval === 'accepted'),
             ],
         ];
     }
@@ -605,16 +605,16 @@ new class extends Component {
             return;
         }
 
-        $hasil = $this->ambilStatusApproval();
-        if (!$hasil['terverifikasi']) {
+        $statusTerbaca = $this->ambilStatusApproval();
+        if (!$statusTerbaca['terverifikasi']) {
             $this->dispatch('toast', type: 'error', message: 'Gagal membaca status dari SATUSEHAT (gangguan/kuota). Coba lagi nanti.');
             return;
         }
 
-        $this->formRujukan['statusApproval'] = $hasil['status'];
-        $this->simpanDraft('Cek status persetujuan rujukan: ' . ($hasil['status'] ?: 'belum dijawab'));
+        $this->formRujukan['statusApproval'] = $statusTerbaca['status'];
+        $this->simpanDraft('Cek status persetujuan rujukan: ' . ($statusTerbaca['status'] ?: 'belum dijawab'));
 
-        $this->dispatch('toast', type: $hasil['status'] === 'rejected' ? 'error' : 'success', message: match ($hasil['status']) {
+        $this->dispatch('toast', type: $statusTerbaca['status'] === 'rejected' ? 'error' : 'success', message: match ($statusTerbaca['status']) {
             'accepted' => 'Faskes tujuan MENERIMA rujukan — silakan lanjut Kirim Rujukan.',
             'rejected' => 'Faskes tujuan MENOLAK rujukan. Pilih kandidat lain, jangan diteruskan.',
             default => 'Faskes tujuan belum menjawab.',
@@ -636,22 +636,22 @@ new class extends Component {
             return;
         }
 
-        $hasil = $this->rujukanPulihkanTugasTerakhir($this->encounterUuid());
-        if (!$hasil['ditemukan']) {
+        $tugasDitemukan = $this->rujukanPulihkanTugasTerakhir($this->encounterUuid());
+        if (!$tugasDitemukan['ditemukan']) {
             $this->dispatch('toast', type: 'error', message: 'Tugas rujukan tidak ditemukan di SATUSEHAT (bisa jadi gangguan koneksi). Coba lagi nanti — jangan kirim ulang dulu.');
             return;
         }
-        if ($hasil['carePlanId'] === '' || $hasil['taskId'] === '') {
-            $this->dispatch('toast', type: 'error', message: 'Task ditemukan tapi CarePlan-nya tidak terbaca — laporkan Task ' . $hasil['taskId'] . ' ke tim SATUSEHAT.');
+        if ($tugasDitemukan['carePlanId'] === '' || $tugasDitemukan['taskId'] === '') {
+            $this->dispatch('toast', type: 'error', message: 'Task ditemukan tapi CarePlan-nya tidak terbaca — laporkan Task ' . $tugasDitemukan['taskId'] . ' ke tim SATUSEHAT.');
             return;
         }
 
-        $this->formRujukan['taskApprovalId'] = $hasil['taskId'];
-        $this->formRujukan['carePlanId'] = $hasil['carePlanId'];
-        if ($hasil['ownerOrgId'] !== '') {
-            $this->formRujukan['approvalOrgId'] = $hasil['ownerOrgId'];
+        $this->formRujukan['taskApprovalId'] = $tugasDitemukan['taskId'];
+        $this->formRujukan['carePlanId'] = $tugasDitemukan['carePlanId'];
+        if ($tugasDitemukan['ownerOrgId'] !== '') {
+            $this->formRujukan['approvalOrgId'] = $tugasDitemukan['ownerOrgId'];
         }
-        $this->simpanDraft('Pulihkan id tugas rujukan (Task ' . $hasil['taskId'] . ')');
+        $this->simpanDraft('Pulihkan id tugas rujukan (Task ' . $tugasDitemukan['taskId'] . ')');
         $this->dispatch('toast', type: 'success', message: 'Id tugas rujukan dipulihkan — silakan lanjut Kirim Rujukan.');
     }
 
@@ -687,14 +687,14 @@ new class extends Component {
         // Penjagaan persetujuan: menolak = final, tidak boleh diterbitkan rujukannya.
         // Belum dijawab TIDAK diblokir — di staging jawaban sering tak pernah datang
         // dan itu akan mematikan uji coba; cukup diperingatkan supaya petugas sadar.
-        $statusApproval = $this->ambilStatusApproval();
-        $this->formRujukan['statusApproval'] = $statusApproval['status'];
-        if ($statusApproval['status'] === 'rejected') {
+        $persetujuan = $this->ambilStatusApproval();
+        $this->formRujukan['statusApproval'] = $persetujuan['status'];
+        if ($persetujuan['status'] === 'rejected') {
             $this->dispatch('toast', type: 'error', message: 'Faskes tujuan MENOLAK tugas rujukan ini — rujukan tidak boleh diterbitkan. Pilih kandidat lain lalu kirim tugas rujukan ulang.');
             return;
         }
-        if ($statusApproval['status'] !== 'accepted') {
-            $this->dispatch('toast', type: 'warning', message: $statusApproval['terverifikasi']
+        if ($persetujuan['status'] !== 'accepted') {
+            $this->dispatch('toast', type: 'warning', message: $persetujuan['terverifikasi']
                 ? 'Perhatian: faskes tujuan BELUM menjawab tugas rujukan — rujukan tetap diterbitkan.'
                 : 'Perhatian: status persetujuan tidak terverifikasi (gangguan koneksi) — rujukan tetap diterbitkan.');
         }
