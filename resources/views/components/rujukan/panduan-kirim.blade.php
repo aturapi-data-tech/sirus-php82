@@ -8,11 +8,18 @@
     salah satu panel, nanti tiga versi berbeda saat aturannya berubah.
 
     Prop:
-      :jalurGanda  true  = panel bisa memilih tujuan IGD atau Ranap (UGD, RJ)
+      :jalurGanda  true  = panel bisa memilih tujuan IGD atau Ranap (UGD, RJ-FHIR)
                    false = hanya Ranap (RI)
+      :jalur       'fhir'    = langsung ke SATUSEHAT (Ranap/IGD), ada tahap
+                               persetujuan faskes tujuan
+                   'sisrute' = Rawat Jalan lewat BPJS (SISRUTE), TANPA tahap
+                               persetujuan — konfirmasi resmi 22/08/26: accept/
+                               reject hanya berlaku untuk IGD & Ranap
 --}}
 
-@props(['jalurGanda' => true])
+@props(['jalurGanda' => true, 'jalur' => 'fhir'])
+
+@php $lewatBpjs = $jalur === 'sisrute'; @endphp
 
 <div x-data="{ buka: false }"
     class="overflow-hidden border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
@@ -36,23 +43,61 @@
         {{-- 1. SEBELUM MULAI --}}
         <div>
             <div class="font-semibold">Sebelum mulai</div>
-            <p class="mt-1">
-                Rujukan ini berjalan di atas kunjungan yang sudah terdaftar di SATUSEHAT. Kalau salah satu
-                di bawah belum ada, tombol <span class="font-semibold">Cari Kandidat</span> akan menolak dan
-                daftarnya muncul di kotak peringatan atas.
-            </p>
-            <ul class="mt-1 ml-4 space-y-0.5 list-disc">
-                <li><span class="font-semibold">Encounter SATUSEHAT sudah dikirim</span> &mdash; lewat menu
-                    Satu Sehat &rarr; Encounter pada pasien yang sama.</li>
-                <li><span class="font-semibold">IHS pasien</span> terisi di Master Pasien.</li>
-                <li><span class="font-semibold">IHS dokter</span> terisi di Master Dokter.</li>
-            </ul>
+            @if ($lewatBpjs)
+                <p class="mt-1">
+                    Rujukan Rawat Jalan dikirim lewat <span class="font-semibold">BPJS</span>, yang meneruskannya
+                    ke SATUSEHAT. Kalau ada prasyarat yang kurang, daftarnya muncul di kotak peringatan atas.
+                </p>
+                <ul class="mt-1 ml-4 space-y-0.5 list-disc">
+                    <li><span class="font-semibold">Pasien punya SEP / nomor kartu BPJS</span> &mdash; rujukan ini
+                        khusus peserta JKN.</li>
+                    <li><span class="font-semibold">Diagnosa rujukan sudah dipilih</span> (ICD-10 kode rinci).</li>
+                    <li><span class="font-semibold">IHS pasien &amp; dokter</span> terisi di master.</li>
+                </ul>
+            @else
+                <p class="mt-1">
+                    Rujukan ini berjalan di atas kunjungan yang sudah terdaftar di SATUSEHAT. Kalau salah satu
+                    di bawah belum ada, tombol <span class="font-semibold">Cari Kandidat</span> akan menolak dan
+                    daftarnya muncul di kotak peringatan atas.
+                </p>
+                <ul class="mt-1 ml-4 space-y-0.5 list-disc">
+                    <li><span class="font-semibold">Encounter SATUSEHAT sudah dikirim</span> &mdash; lewat menu
+                        Satu Sehat &rarr; Encounter pada pasien yang sama.</li>
+                    <li><span class="font-semibold">IHS pasien</span> terisi di Master Pasien.</li>
+                    <li><span class="font-semibold">IHS dokter</span> terisi di Master Dokter.</li>
+                </ul>
+            @endif
         </div>
 
         {{-- 2. URUTAN LANGKAH --}}
         <div class="pt-3 border-t border-blue-200 dark:border-blue-800">
             <div class="font-semibold">Urutan langkah</div>
             <p class="mt-1">Nomor di bawah sama dengan nomor pada penanda langkah di atas form.</p>
+            @if ($lewatBpjs)
+                <ol class="mt-1 ml-4 space-y-1 list-decimal">
+                    <li>
+                        <span class="font-semibold">Diagnosa &amp; Kriteria.</span> Pilih diagnosa (ICD-10),
+                        tekan <span class="font-semibold">Ambil Kriteria</span> untuk menarik daftar pertanyaan
+                        dari server, lalu centang <span class="font-semibold">tepat satu</span> kriteria.
+                        Kriteria "Tindakan Medis" wajib disertai kode ICD-9-CM.
+                    </li>
+                    <li>
+                        <span class="font-semibold">Cari &amp; Pilih Kandidat.</span> Tekan
+                        <span class="font-semibold">Cari Faskes</span>, lalu pilih satu RS dari daftar.
+                        RS bertanda <span class="font-semibold">non-BPJS</span> tidak bisa dipilih untuk
+                        rujukan JKN.
+                    </li>
+                    <li>
+                        <span class="font-semibold">Kirim Rujukan.</span> Isi poli tujuan (boleh dikosongkan
+                        = ikut kode spesialis) dan catatan, lalu kirim. Yang terbit
+                        <span class="font-semibold">dua nomor</span>: No. Rujukan BPJS dan No. Rujukan SATUSEHAT.
+                    </li>
+                </ol>
+                <p class="mt-2">
+                    <span class="font-semibold">Tidak ada tahap persetujuan.</span> Rawat Jalan langsung jadi
+                    begitu terkirim &mdash; accept/reject hanya berlaku untuk rujukan IGD &amp; Rawat Inap.
+                </p>
+            @else
             <ol class="mt-1 ml-4 space-y-1 list-decimal">
                 <li>
                     <span class="font-semibold">Diagnosa &amp; Kriteria.</span>
@@ -85,11 +130,43 @@
                     otomatis dan tampil di panel hasil.
                 </li>
             </ol>
+            @endif
         </div>
 
         {{-- 3. YANG DIISI PETUGAS --}}
         <div class="pt-3 border-t border-blue-200 dark:border-blue-800">
             <div class="font-semibold">Yang perlu diketik petugas</div>
+            @if ($lewatBpjs)
+                <p class="mt-1">
+                    Hanya <span class="font-semibold">diagnosa, kriteria, wilayah, poli tujuan, dan catatan</span>.
+                    Nomor kartu, SEP, dokter, dan kode faskes kita diambil sendiri dari data kunjungan.
+                </p>
+                <div class="mt-1 overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <tbody class="align-top">
+                            <tr>
+                                <td class="py-0.5 pr-3 font-semibold whitespace-nowrap">Kriteria</td>
+                                <td class="py-0.5">Harus <span class="font-semibold">tepat satu</span> yang terisi &mdash;
+                                    lebih dari satu ditolak server.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-0.5 pr-3 font-semibold whitespace-nowrap">ICD-9-CM</td>
+                                <td class="py-0.5">Wajib bila kriterianya Tindakan Medis. Kodenya ikut menentukan
+                                    kandidat, jadi salah kode = daftar RS keliru tanpa pesan error.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-0.5 pr-3 font-semibold whitespace-nowrap">Poli Rujukan</td>
+                                <td class="py-0.5">Boleh dikosongkan &mdash; otomatis memakai kode spesialis dari Langkah 1.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-0.5 pr-3 font-semibold whitespace-nowrap">Wilayah</td>
+                                <td class="py-0.5">Menentukan jejaring RS yang dicari.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            @else
+
             <p class="mt-1">
                 Hanya <span class="font-semibold">diagnosa, kriteria, wilayah, kode layanan, dan deskripsi</span>.
                 Identitas pasien, dokter, dan kunjungan diambil sendiri dari master &mdash; tidak perlu diketik ulang.
@@ -119,6 +196,7 @@
                     </tbody>
                 </table>
             </div>
+            @endif
         </div>
 
         {{-- 4. KALAU TERSENDAT --}}
