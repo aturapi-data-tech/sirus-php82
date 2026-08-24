@@ -95,8 +95,19 @@ new class extends Component {
     private function defaultFormRujukan(): array
     {
         return [
+            // Tujuan layanan di RS lain: 'ranap' | 'igd'. Pasien ranap bisa perlu
+            // dirujuk gawat darurat, bukan hanya pindah rawat inap.
+            'jalur' => $this->formRujukan['jalur'] ?? 'ranap',
             'kodeDiagnosa' => '',
             'diagnosaDesc' => '',
+            // 5 pertanyaan GAWAT DARURAT Q100 (IGD tanpa validasi ICD-9/10)
+            'kriteriaIgd' => [
+                '000001' => false,
+                '000002' => false,
+                '000003' => false,
+                '000004' => false,
+                '000005' => false,
+            ],
             // Kriteria ranap: tepat satu — 'terapi' | 'tindakan' | 'upaya'
             'kriteriaPilih' => '',
             'kriteriaIcd9' => '',
@@ -192,6 +203,41 @@ new class extends Component {
      * Dipakai x-stepper supaya hubungan Tugas Rujukan -> Persetujuan -> Rujukan
      * terbaca: dua tombol kirim itu langkah BERBEDA, bukan pilihan.
      */
+    public function pertanyaanIgd(): array
+    {
+        return [
+            '000001' => 'Mengancam nyawa, membahayakan diri dan orang lain/lingkungan',
+            '000002' => 'Adanya gangguan pada jalan nafas, pernafasan, dan sirkulasi',
+            '000003' => 'Adanya penurunan kesadaran',
+            '000004' => 'Adanya gangguan hemodinamik',
+            '000005' => 'Memerlukan tindakan segera',
+        ];
+    }
+
+    /** Ganti tujuan = kriteria & kandidat lama tidak berlaku lagi. */
+    public function updatedFormRujukanJalur(): void
+    {
+        $this->formRujukan['taskKandidatId'] = '';
+        $this->formRujukan['kandidatList'] = [];
+        $this->formRujukan['kandidatIdx'] = null;
+        $this->infoKandidat = '';
+        if ($this->formRujukan['jalur'] === 'igd') {
+            $this->formRujukan['specialityCode'] = 'L03';
+            $this->formRujukan['specialityDisplay'] = 'Pelayanan Gawat Darurat';
+        } else {
+            $this->formRujukan['specialityCode'] = '';
+            $this->formRujukan['specialityDisplay'] = '';
+        }
+    }
+
+    public function toggleKriteriaIgd(string $linkId): void
+    {
+        if ($this->isFormLocked) {
+            return;
+        }
+        $this->formRujukan['kriteriaIgd'][$linkId] = !($this->formRujukan['kriteriaIgd'][$linkId] ?? false);
+    }
+
     public function langkahRujukan(): array
     {
         $sudahKirim = !empty($this->formRujukan['hasil']['noRujukanSatuSehat']);
@@ -199,8 +245,11 @@ new class extends Component {
         $adaKandidat = ($this->formRujukan['kandidatIdx'] ?? null) !== null;
         $statusApproval = (string) ($this->formRujukan['statusApproval'] ?? '');
 
-        $kriteriaTerisi = $this->formRujukan['kriteriaPilih'] !== ''
-            && ($this->formRujukan['kriteriaPilih'] !== 'tindakan' || trim((string) $this->formRujukan['kriteriaIcd9']) !== '');
+        $keRanap = ($this->formRujukan['jalur'] ?? 'ranap') === 'ranap';
+        $kriteriaTerisi = $keRanap
+            ? ($this->formRujukan['kriteriaPilih'] !== ''
+                && ($this->formRujukan['kriteriaPilih'] !== 'tindakan' || trim((string) $this->formRujukan['kriteriaIcd9']) !== ''))
+            : collect($this->formRujukan['kriteriaIgd'] ?? [])->contains(true);
         $dasarTerisi = trim((string) $this->formRujukan['kodeDiagnosa']) !== '' && $kriteriaTerisi;
 
         $keadaanLangkah = fn(bool $selesai, bool $aktif) => $selesai ? 'done' : ($aktif ? 'current' : 'todo');
@@ -361,16 +410,22 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data belum siap: ' . implode('; ', $kurang) . '.');
             return;
         }
-        if (!preg_match('/^[A-Z][0-9]{2}\.[0-9]{1,2}$/', $this->formRujukan['kodeDiagnosa'] ?? '')) {
-            $this->dispatch('toast', type: 'error', message: 'Kode diagnosa harus ICD-10 rinci ber-titik (contoh I61.9).');
-            return;
-        }
-        if (!in_array($this->formRujukan['kriteriaPilih'], ['terapi', 'tindakan', 'upaya'], true)) {
-            $this->dispatch('toast', type: 'error', message: 'Pilih TEPAT SATU kriteria rujukan dulu.');
-            return;
-        }
-        if ($this->formRujukan['kriteriaPilih'] === 'tindakan' && trim($this->formRujukan['kriteriaIcd9']) === '') {
-            $this->dispatch('toast', type: 'error', message: 'Kriteria Tindakan Medis butuh kode ICD-9-CM (menentukan kandidat RS).');
+        $keRanap = ($this->formRujukan['jalur'] ?? 'ranap') === 'ranap';
+        if ($keRanap) {
+            if (!preg_match('/^[A-Z][0-9]{2}\.[0-9]{1,2}$/', $this->formRujukan['kodeDiagnosa'] ?? '')) {
+                $this->dispatch('toast', type: 'error', message: 'Tujuan ranap: kode diagnosa harus ICD-10 rinci ber-titik (contoh I61.9).');
+                return;
+            }
+            if (!in_array($this->formRujukan['kriteriaPilih'], ['terapi', 'tindakan', 'upaya'], true)) {
+                $this->dispatch('toast', type: 'error', message: 'Tujuan ranap: pilih TEPAT SATU kriteria rujukan dulu.');
+                return;
+            }
+            if ($this->formRujukan['kriteriaPilih'] === 'tindakan' && trim($this->formRujukan['kriteriaIcd9']) === '') {
+                $this->dispatch('toast', type: 'error', message: 'Kriteria Tindakan Medis butuh kode ICD-9-CM (menentukan kandidat RS).');
+                return;
+            }
+        } elseif (!collect($this->formRujukan['kriteriaIgd'])->contains(true)) {
+            $this->dispatch('toast', type: 'error', message: 'Centang minimal satu kriteria gawat darurat.');
             return;
         }
 
@@ -388,7 +443,7 @@ new class extends Component {
 
         $kandidat = $this->rujukanTaskPencarianKandidat([
             'kelompokLayananKode' => $this->formRujukan['kelompokLayananKode'],
-            'jalur' => 'ranap',
+            'jalur' => $this->formRujukan['jalur'] ?? 'ranap',
             'identifier' => (string) Str::uuid(),
             'encounterId' => $this->encounterUuid(),
             'patientUuid' => $this->patientUuid(),
@@ -400,11 +455,13 @@ new class extends Component {
                 'kodeKabupaten' => $this->formRujukan['kodeKabupaten'],
                 'namaKabupaten' => $this->formRujukan['namaKabupaten'],
             ],
-            'kriteria' => [
-                'terapi' => $this->formRujukan['kriteriaPilih'] === 'terapi',
-                'tindakanIcd9' => $this->formRujukan['kriteriaPilih'] === 'tindakan' ? trim($this->formRujukan['kriteriaIcd9']) : '',
-                'upayaDiagnosis' => $this->formRujukan['kriteriaPilih'] === 'upaya',
-            ],
+            'kriteria' => $keRanap
+                ? [
+                    'terapi' => $this->formRujukan['kriteriaPilih'] === 'terapi',
+                    'tindakanIcd9' => $this->formRujukan['kriteriaPilih'] === 'tindakan' ? trim($this->formRujukan['kriteriaIcd9']) : '',
+                    'upayaDiagnosis' => $this->formRujukan['kriteriaPilih'] === 'upaya',
+                ]
+                : $this->formRujukan['kriteriaIgd'],
         ]);
         if ($kandidat['code'] < 200 || $kandidat['code'] >= 300) {
             $this->dispatch('toast', type: 'error', message: 'Pencarian kandidat gagal [' . $kandidat['code'] . '] ' . $this->ringkasError($kandidat['body']));
@@ -495,7 +552,7 @@ new class extends Component {
             'practitionerName' => $this->dokterNama(),
             'orgTujuanId' => $kandidat['orgId'],
             'orgTujuanNama' => $kandidat['nama'],
-            'jalur' => 'ranap',
+            'jalur' => $this->formRujukan['jalur'] ?? 'ranap',
             'deskripsi' => trim($this->formRujukan['deskripsi']) !== '' ? trim($this->formRujukan['deskripsi']) : 'Rujukan rawat inap — ' . $this->formRujukan['kodeDiagnosa'] . ' ' . $this->formRujukan['diagnosaDesc'],
             'specialityCode' => trim($this->formRujukan['specialityCode']),
             'specialityDisplay' => trim($this->formRujukan['specialityDisplay']) !== '' ? trim($this->formRujukan['specialityDisplay']) : trim($this->formRujukan['specialityCode']),
@@ -697,7 +754,7 @@ new class extends Component {
 
             'identifier' => (string) Str::uuid(),
             'carePlanId' => $this->formRujukan['carePlanId'],
-            'jalur' => 'ranap',
+            'jalur' => $this->formRujukan['jalur'] ?? 'ranap',
             'deskripsi' => trim($this->formRujukan['deskripsi']) !== '' ? trim($this->formRujukan['deskripsi']) : 'Rujukan rawat inap — ' . $this->formRujukan['kodeDiagnosa'],
             'patientUuid' => $this->patientUuid(),
             'encounterId' => $this->encounterUuid(),
@@ -808,7 +865,7 @@ new class extends Component {
                         <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
                     </svg>
                     <h3 class="text-base font-semibold text-ink dark:text-gray-200">
-                        Rujukan Berbasis Kompetensi — Ranap RS Lain (SATUSEHAT FHIR)
+                        Rujukan Berbasis Kompetensi — IGD/Ranap RS Lain (SATUSEHAT FHIR)
                     </h3>
                     @if ($sudahTerkirim)
                         <x-badge variant="success">Terkirim</x-badge>
@@ -902,7 +959,7 @@ new class extends Component {
 
     {{-- Panduan pemakaian — komponen bersama 3 panel. --}}
     <div class="mb-3">
-        <x-rujukan.panduan-kirim :jalurGanda="false" />
+        <x-rujukan.panduan-kirim :jalurGanda="true" />
     </div>
 
     {{-- Stepper: menegaskan Tugas Rujukan (3) dan Kirim Rujukan (5) adalah
@@ -918,6 +975,18 @@ new class extends Component {
     {{-- LANGKAH 1 — DIAGNOSA, KRITERIA, WILAYAH → CARI KANDIDAT --}}
             <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
                 <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Langkah 1–2 · Diagnosa, Kriteria &amp; Kandidat</p>
+
+                {{-- Tujuan layanan di RS lain — menentukan pertanyaan kriteria DAN
+                     kategori rencana yang dikirim, jadi harus dipilih paling awal. --}}
+                <div>
+                    <x-input-label value="Tujuan Layanan di RS Lain" class="mb-1" />
+                    <div class="flex flex-wrap gap-3">
+                        <x-radio-button label="Rawat Inap" value="ranap" name="jalurRujukanRi-{{ $riHdrNo }}"
+                            wire:model.live="formRujukan.jalur" :disabled="$isFormLocked" />
+                        <x-radio-button label="IGD (gawat darurat)" value="igd" name="jalurRujukanRi-{{ $riHdrNo }}"
+                            wire:model.live="formRujukan.jalur" :disabled="$isFormLocked" />
+                    </div>
+                </div>
 
                 <div class="flex flex-wrap gap-2">
                     @forelse ($dataDaftarRi['diagnosis'] ?? [] as $indexDiagnosa => $diagnosa)
@@ -942,6 +1011,16 @@ new class extends Component {
                     <x-text-input wire:model.live="formRujukan.kodeDiagnosa" :disabled="true" class="w-full" />
                 </div>
 
+                @if (($formRujukan['jalur'] ?? 'ranap') === 'igd')
+                    <div class="space-y-2">
+                        <p class="text-xs text-muted-soft">Kriteria gawat darurat (centang yang sesuai, minimal satu):</p>
+                        @foreach ($this->pertanyaanIgd() as $linkId => $teks)
+                            <x-toggle :current="($formRujukan['kriteriaIgd'][$linkId] ?? false) ? 'Ya' : 'Tidak'"
+                                trueValue="Ya" falseValue="Tidak" :disabled="$isFormLocked"
+                                onColor="bg-rose-600" wireClick="toggleKriteriaIgd('{{ $linkId }}')" label="{{ $teks }}" />
+                        @endforeach
+                    </div>
+                @else
                 <div class="space-y-2">
                     <p class="text-xs text-muted-soft">Pilih <b>tepat satu</b> kriteria:</p>
                     <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
@@ -961,6 +1040,7 @@ new class extends Component {
                         </div>
                     @endif
                 </div>
+                @endif
 
                 {{-- Kelompok Layanan — menyaring kandidat ke faskes yang melayani
                      kelompok ini. Opsional: kosong = tidak dikirim, biar tidak
