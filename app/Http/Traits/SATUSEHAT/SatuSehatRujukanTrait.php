@@ -630,12 +630,41 @@ trait SatuSehatRujukanTrait
             if (($resource['resourceType'] ?? '') === $resourceType && !empty($resource['id'])) {
                 return (string) $resource['id'];
             }
-            $location = (string) ($entry['response']['location'] ?? '');
-            if (str_starts_with($location, $resourceType . '/')) {
-                return explode('/', $location)[1] ?? '';
+
+            // location bisa datang tiga bentuk: relatif ('CarePlan/<id>'), relatif
+            // ber-riwayat ('CarePlan/<id>/_history/1'), atau URL absolut
+            // ('https://…/fhir-r4/v1/CarePlan/<id>/_history/1'). Pencocokan lama
+            // hanya menangani bentuk pertama, sehingga id-nya hilang diam-diam
+            // padahal Bundle-nya sukses.
+            $id = $this->rujukanIdDariLokasi((string) ($entry['response']['location'] ?? ''), $resourceType)
+                ?: $this->rujukanIdDariLokasi((string) ($entry['fullUrl'] ?? ''), $resourceType);
+            if ($id !== '') {
+                return $id;
             }
         }
+
         return '';
+    }
+
+    /** Pungut '<id>' dari referensi '<Tipe>/<id>[/_history/n]', relatif maupun URL penuh. */
+    private function rujukanIdDariLokasi(string $lokasi, string $resourceType): string
+    {
+        $lokasi = trim($lokasi);
+        if ($lokasi === '') {
+            return '';
+        }
+
+        // urn:uuid: dipakai untuk referensi INTERNAL bundle (belum id server) —
+        // memungutnya akan menghasilkan id palsu yang tidak pernah ada di SATUSEHAT.
+        if (str_starts_with($lokasi, 'urn:uuid:')) {
+            return '';
+        }
+
+        if (!preg_match('#(?:^|/)' . preg_quote($resourceType, '#') . '/([A-Za-z0-9._-]+)#', $lokasi, $bagian)) {
+            return '';
+        }
+
+        return $bagian[1] === '_history' ? '' : $bagian[1];
     }
 
     /* ═══════════════════════════════════════
@@ -792,6 +821,50 @@ trait SatuSehatRujukanTrait
         }
 
         return $this->rujukanRequest('GET', $endpoint);
+    }
+
+    /**
+     * Temukan kembali tugas rujukan yang SUDAH terkirim untuk satu kunjungan.
+     *
+     * Dipakai memulihkan keadaan ketika Bundle diterima SATUSEHAT tapi id-nya
+     * gagal dibaca dari response: Task & CarePlan-nya sudah ada di sana, jadi
+     * mengirim ulang hanya akan menumpuk duplikat di faskes tujuan.
+     *
+     * @return array{taskId:string,carePlanId:string,ownerOrgId:string,ditemukan:bool}
+     */
+    protected function rujukanPulihkanTugasTerakhir(string $encounterId): array
+    {
+        $kosong = ['taskId' => '', 'carePlanId' => '', 'ownerOrgId' => '', 'ditemukan' => false];
+        if ($encounterId === '') {
+            return $kosong;
+        }
+
+        $respon = $this->rujukanTaskByRequester($encounterId);
+        if ($respon['code'] < 200 || $respon['code'] >= 300) {
+            return $kosong;
+        }
+
+        $kandidatTask = [];
+        foreach (($respon['body']['entry'] ?? []) as $entry) {
+            $resource = $entry['resource'] ?? [];
+            if (($resource['resourceType'] ?? '') === 'Task' && !empty($resource['id'])) {
+                $kandidatTask[] = $resource;
+            }
+        }
+        if ($kandidatTask === []) {
+            return $kosong;
+        }
+
+        // Satu kunjungan bisa punya beberapa percobaan; ambil yang PALING BARU.
+        usort($kandidatTask, fn($a, $b) => strcmp((string) ($b['authoredOn'] ?? ''), (string) ($a['authoredOn'] ?? '')));
+        $task = $kandidatTask[0];
+
+        return [
+            'taskId' => (string) $task['id'],
+            'carePlanId' => str_replace('CarePlan/', '', (string) ($task['basedOn'][0]['reference'] ?? '')),
+            'ownerOrgId' => str_replace('Organization/', '', (string) ($task['owner']['reference'] ?? '')),
+            'ditemukan' => true,
+        ];
     }
 
     /**

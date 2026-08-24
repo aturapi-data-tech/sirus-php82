@@ -129,6 +129,9 @@ new class extends Component {
             // faskes yang DIKIRIMI tugas rujukan — pembanding saat menerbitkan ServiceRequest
             'approvalOrgId' => '',
             'approvalOrgNama' => '',
+            // identifier yang kita kirim — pegangan menelusuri kalau id server tak terbaca
+            'identifierTask' => '',
+            'identifierCarePlan' => '',
             'hasil' => [],
         ];
     }
@@ -513,9 +516,12 @@ new class extends Component {
         }
         $labelJalur = $keRanap ? 'rawat inap' : 'gawat darurat';
 
+        $identifierTask = (string) Str::uuid();
+        $identifierCarePlan = (string) Str::uuid();
+
         $respon = $this->rujukanBundleApproval([
-            'identifierTask' => (string) Str::uuid(),
-            'identifierCarePlan' => (string) Str::uuid(),
+            'identifierTask' => $identifierTask,
+            'identifierCarePlan' => $identifierCarePlan,
             'encounterId' => $this->encounterUuid(),
             'patientUuid' => $this->patientUuid(),
             'patientName' => (string) ($this->dataDaftarPoliRJ['regName'] ?? ''),
@@ -533,12 +539,28 @@ new class extends Component {
             return;
         }
 
-        $this->formRujukan['carePlanId'] = $this->rujukanIdDariBundleResponse($respon['body'], 'CarePlan');
-        $this->formRujukan['taskApprovalId'] = $this->rujukanIdDariBundleResponse($respon['body'], 'Task');
+        $carePlanId = $this->rujukanIdDariBundleResponse($respon['body'], 'CarePlan');
+        $taskId = $this->rujukanIdDariBundleResponse($respon['body'], 'Task');
+
+        $this->formRujukan['carePlanId'] = $carePlanId;
+        $this->formRujukan['taskApprovalId'] = $taskId;
         $this->formRujukan['statusApproval'] = '';
         $this->formRujukan['approvalOrgId'] = (string) $kandidat['orgId'];
         $this->formRujukan['approvalOrgNama'] = (string) $kandidat['nama'];
+        // Identifier yang KITA kirim disimpan sebagai jejak: kalau id server gagal
+        // terbaca, inilah satu-satunya pegangan untuk menelusuri resource-nya.
+        $this->formRujukan['identifierTask'] = $identifierTask;
+        $this->formRujukan['identifierCarePlan'] = $identifierCarePlan;
         $this->simpanDraft('Kirim tugas rujukan ' . $labelJalur . ' → ' . $kandidat['nama']);
+
+        // Bundle diterima TAPI id-nya tak terbaca: tugas rujukan SUDAH ada di
+        // faskes tujuan, jadi jangan bilang sukses (petugas akan lanjut lalu
+        // mentok) dan jangan pula suruh kirim ulang (menumpuk duplikat di sana).
+        if ($carePlanId === '' || $taskId === '') {
+            $this->dispatch('toast', type: 'error', message: 'Tugas rujukan TERKIRIM ke ' . $kandidat['nama'] . ', tapi id CarePlan/Task tidak terbaca dari balasan SATUSEHAT. JANGAN kirim ulang — tekan "Pulihkan ID Tugas Rujukan" untuk mengambilnya kembali.');
+            return;
+        }
+
         $this->dispatch('toast', type: 'success', message: 'Tugas rujukan terkirim ke ' . $kandidat['nama'] . ' — lanjut Kirim Rujukan (staging boleh tanpa menunggu approval).');
     }
 
@@ -599,6 +621,40 @@ new class extends Component {
             'rejected' => 'Faskes tujuan MENOLAK rujukan. Pilih kandidat lain, jangan diteruskan.',
             default => 'Faskes tujuan belum menjawab.',
         });
+    }
+
+    /**
+     * Ambil kembali id Task/CarePlan tugas rujukan yang sudah telanjur terkirim.
+     * Alternatif dari mengirim ulang, yang akan menumpuk duplikat di faskes tujuan.
+     */
+    public function pulihkanTugasRujukan(): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+        if (!empty($this->formRujukan['carePlanId']) && !empty($this->formRujukan['taskApprovalId'])) {
+            $this->dispatch('toast', type: 'success', message: 'Id tugas rujukan sudah lengkap, tidak perlu dipulihkan.');
+            return;
+        }
+
+        $hasil = $this->rujukanPulihkanTugasTerakhir($this->encounterUuid());
+        if (!$hasil['ditemukan']) {
+            $this->dispatch('toast', type: 'error', message: 'Tugas rujukan tidak ditemukan di SATUSEHAT (bisa jadi gangguan koneksi). Coba lagi nanti — jangan kirim ulang dulu.');
+            return;
+        }
+        if ($hasil['carePlanId'] === '' || $hasil['taskId'] === '') {
+            $this->dispatch('toast', type: 'error', message: 'Task ditemukan tapi CarePlan-nya tidak terbaca — laporkan Task ' . $hasil['taskId'] . ' ke tim SATUSEHAT.');
+            return;
+        }
+
+        $this->formRujukan['taskApprovalId'] = $hasil['taskId'];
+        $this->formRujukan['carePlanId'] = $hasil['carePlanId'];
+        if ($hasil['ownerOrgId'] !== '') {
+            $this->formRujukan['approvalOrgId'] = $hasil['ownerOrgId'];
+        }
+        $this->simpanDraft('Pulihkan id tugas rujukan (Task ' . $hasil['taskId'] . ')');
+        $this->dispatch('toast', type: 'success', message: 'Id tugas rujukan dipulihkan — silakan lanjut Kirim Rujukan.');
     }
 
     public function kirimRujukan(): void
@@ -1108,6 +1164,22 @@ new class extends Component {
                         <span wire:loading.remove wire:target="kirimTugasRujukan">📨 Kirim Tugas Rujukan (Approval)</span>
                         <span wire:loading wire:target="kirimTugasRujukan" class="inline-flex items-center gap-1"><x-loading /> Mengirim tugas...</span>
                     </x-secondary-button>
+                    {{-- Muncul hanya kalau tugas rujukan sudah terkirim tapi id-nya
+                         belum terpegang — mengirim ulang akan menumpuk duplikat. --}}
+                    @if (!empty($formRujukan['identifierTask']) && empty($formRujukan['carePlanId']))
+                        <div class="w-full p-3 border rounded-lg border-amber-500 bg-warning-tint dark:bg-amber-900/20 dark:border-amber-700">
+                            <p class="text-sm font-semibold text-warning-deep dark:text-amber-200">Tugas rujukan sudah terkirim, tapi id-nya belum terbaca</p>
+                            <p class="mt-1 text-sm text-body dark:text-gray-300">
+                                Jangan kirim ulang — tugasnya sudah ada di faskes tujuan. Ambil id-nya dari SATUSEHAT:
+                            </p>
+                            <x-secondary-button type="button" class="mt-2" wire:click="pulihkanTugasRujukan"
+                                wire:loading.attr="disabled" wire:target="pulihkanTugasRujukan">
+                                <span wire:loading.remove wire:target="pulihkanTugasRujukan">🔁 Pulihkan ID Tugas Rujukan</span>
+                                <span wire:loading wire:target="pulihkanTugasRujukan" class="inline-flex items-center gap-1"><x-loading /> Mencari...</span>
+                            </x-secondary-button>
+                        </div>
+                    @endif
+
                     <x-success-button type="button" wire:click="kirimRujukan" wire:loading.attr="disabled" wire:target="kirimRujukan">
                         <span wire:loading.remove wire:target="kirimRujukan">🚀 Kirim Rujukan (ServiceRequest)</span>
                         <span wire:loading wire:target="kirimRujukan" class="inline-flex items-center gap-1"><x-loading /> Mengirim rujukan...</span>
