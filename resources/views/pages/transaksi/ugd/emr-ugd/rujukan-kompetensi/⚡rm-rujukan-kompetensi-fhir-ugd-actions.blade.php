@@ -1014,7 +1014,7 @@ new class extends Component {
     <div class="grid grid-cols-1 gap-3 lg:grid-cols-2 items-start">
     {{-- LANGKAH 1 — DIAGNOSA, KRITERIA IGD, WILAYAH → CARI KANDIDAT --}}
             <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
-                <p class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200"><x-step-number :n="1" /><x-step-number :n="2" /><span class="ml-0.5">Diagnosa, Kriteria &amp; Kandidat</span></p>
+                <p class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200"><x-step-number :n="1" /><span>Diagnosa &amp; Kriteria</span><span class="text-muted-soft">→</span><x-step-number :n="2" /><span>Pilih Kandidat</span></p>
 
                 {{-- Tujuan layanan di RS lain — menentukan use case FHIR --}}
                 <div class="space-y-1">
@@ -1171,7 +1171,7 @@ new class extends Component {
 
             {{-- LANGKAH 2 & 3 — TUGAS RUJUKAN + SERVICEREQUEST --}}
             <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
-                <p class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200"><x-step-number :n="3" /><x-step-number :n="4" /><x-step-number :n="5" /><span class="ml-0.5">Tugas Rujukan → Persetujuan → Rujukan</span></p>
+                <p class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200"><x-step-number :n="3" /><span>Kirim Tugas Rujukan</span><span class="text-muted-soft">→</span><x-step-number :n="4" /><span>Persetujuan Faskes</span><span class="text-muted-soft">→</span><x-step-number :n="5" /><span>Kirim Rujukan</span></p>
 
                 <div class="grid grid-cols-1 gap-3">
                     {{-- Satu layanan = satu pilihan. Kotak kode & nama hanya muncul
