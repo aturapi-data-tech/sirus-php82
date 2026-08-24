@@ -93,6 +93,58 @@ final class RekonsiliasiObat
         return array_values($daftarTujuan);
     }
 
+    /**
+     * Merge TIGA ARAH untuk daftar rekonsiliasi obat.
+     *
+     * Node ini punya lebih dari satu pintu tulis (EMR + modal Farmasi), dan form
+     * EMR bisa terbuka belasan menit. Tanpa ini, siapa pun yang menekan Simpan
+     * BELAKANGAN akan menimpa daftar dengan salinan yang sudah basi — baris yang
+     * ditambahkan pintu lain hilang tanpa peringatan apa pun.
+     *
+     * @param array $basis      daftar saat form DIBUKA (titik cabang)
+     * @param array $versiKita  daftar di layar sekarang (hasil tambah/hapus user ini)
+     * @param array $versiDb    daftar TERBARU di database (mungkin sudah diubah pintu lain)
+     *
+     * Niat user ini dihitung sebagai SELISIH terhadap basis, lalu diterapkan ke
+     * versiDb — bukan versiKita yang dipakai apa adanya. Jadi:
+     *   - baris yang user ini hapus  -> tetap hilang
+     *   - baris yang user ini tambah -> tetap masuk
+     *   - baris yang pintu lain tambah selagi form terbuka -> IKUT SELAMAT
+     *
+     * Dicocokkan lewat namaObat (case-insensitive) — sama dengan aturan dedupe
+     * saat menambah, jadi tidak ada baris yang dianggap beda hanya karena kapital.
+     */
+    public static function gabungTigaArah(array $basis, array $versiKita, array $versiDb): array
+    {
+        $kunci = fn(array $obat) => strtolower(trim((string) ($obat['namaObat'] ?? '')));
+
+        $namaDiKita = array_map($kunci, $versiKita);
+        $dihapusUserIni = collect($basis)
+            ->reject(fn($obat) => in_array($kunci($obat), $namaDiKita, true))
+            ->map($kunci)
+            ->all();
+
+        // Mulai dari versiDb (paling baru), buang yang memang dihapus user ini.
+        $hasil = collect($versiDb)
+            ->reject(fn($obat) => in_array($kunci($obat), $dihapusUserIni, true))
+            ->values()
+            ->all();
+
+        // Lalu masukkan baris yang BENAR-BENAR ditambahkan user ini — yaitu yang ada
+        // di versiKita tapi TIDAK ada di basis. Tanpa syarat "tidak ada di basis",
+        // baris yang dihapus pintu lain akan hidup lagi hanya karena masih nongkrong
+        // di layar user ini.
+        foreach ($versiKita as $obat) {
+            $namaObat = (string) ($obat['namaObat'] ?? '');
+            if (self::sudahAda($basis, $namaObat) || self::sudahAda($hasil, $namaObat)) {
+                continue;
+            }
+            $hasil[] = $obat;
+        }
+
+        return array_values($hasil);
+    }
+
     private static function yaAtauTidak(?string $nilai): string
     {
         return $nilai === 'Ya' ? 'Ya' : 'Tidak';

@@ -34,6 +34,13 @@ new class extends Component {
         'lanjutPulang' => 'Tidak',
     ];
 
+    /**
+     * Daftar rekonsiliasi obat SAAT FORM DIBUKA — titik cabang untuk merge tiga arah.
+     * WAJIB public: properti protected tidak di-dehydrate Livewire, jadi akan reset
+     * tiap request dan basisnya hilang sebelum Simpan ditekan.
+     */
+    public array $rekonsiliasiObatSaatDibuka = [];
+
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-pengkajian-dokter-ri'];
 
@@ -176,7 +183,14 @@ new class extends Component {
         $belumPernahIsiRekonsiliasi = !array_key_exists('rekonsiliasiObat', (array) data_get($data, 'pengkajianDokter.anamnesa', []));
 
         $this->dataDaftarRi = $data;
-        $this->dataDaftarRi['pengkajianDokter'] ??= [
+
+        // JANGAN `??=`. Modal Rekonsiliasi Obat (titik-3 Daftar RI) bisa menulis
+        // duluan lewat data_set(), yang membuat node pengkajianDokter ADA tapi
+        // PARSIAL — cuma anamnesa.rekonsiliasiObat. Dengan `??=`, kerangka default
+        // di bawah tidak pernah terpasang: keluhanUtama, 29 bagian anatomi, dan
+        // tandaTanganDokter hilang semua. array_replace_recursive memasang yang
+        // kurang saja; nilai yang sudah ada TIDAK ditimpa.
+        $strukturDefaultPengkajianDokter = [
             'anamnesa' => [
                 'keluhanUtama' => '',
                 'keluhanUtamaSnomedCode' => '',
@@ -202,6 +216,8 @@ new class extends Component {
             'ringkasanPasienPulang' => ['kondisiPulang' => '', 'instruksiPulang' => '', 'kontrolKe' => ''],
             'tandaTanganDokter' => ['dokterPengkaji' => '', 'dokterPengkajiCode' => '', 'jamDokterPengkaji' => ''],
         ];
+
+        $this->dataDaftarRi['pengkajianDokter'] = array_replace_recursive($strukturDefaultPengkajianDokter, (array) ($this->dataDaftarRi['pengkajianDokter'] ?? []));
 
         // Prefill rekonsiliasi obat dari kunjungan UGD asal transfer (pola fill-only,
         // sama semangatnya dgn prefill alergi di bawah). Tersimpan permanen ke JSON RI
@@ -231,6 +247,9 @@ new class extends Component {
         // sehingga dipakai normalisasiRi(); logikanya tetap satu sumber. Record lama tak
         // punya adaAlergi -> diturunkan dari teksnya, jadi tak perlu migrasi data.
         $this->dataDaftarRi['pengkajianDokter']['anamnesa'] = AlergiSnomed::normalisasiRi($this->dataDaftarRi['pengkajianDokter']['anamnesa'] ?? []);
+
+        // Basis merge tiga arah — direkam SETELAH prefill, sebelum dokter menyentuh apa pun.
+        $this->rekonsiliasiObatSaatDibuka = (array) data_get($this->dataDaftarRi, 'pengkajianDokter.anamnesa.rekonsiliasiObat', []);
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
 
@@ -270,9 +289,21 @@ new class extends Component {
 
                 $fresh = $this->findDataRI($this->riHdrNo) ?? [];
                 $isBaru = empty($fresh['pengkajianDokter']);
+
+                // Daftar obat versi DB DIAMBIL DULU sebelum node ditimpa: modal Farmasi
+                // (titik-3 Daftar RI) bisa menambah baris selagi form ini terbuka, dan
+                // form ini menimpa SELURUH node pengkajianDokter dgn salinan di layar.
+                $daftarRekonsiliasiObatDb = (array) data_get($fresh, 'pengkajianDokter.anamnesa.rekonsiliasiObat', []);
+
                 $fresh['pengkajianDokter'] = $this->dataDaftarRi['pengkajianDokter'] ?? [];
+                $fresh['pengkajianDokter']['anamnesa']['rekonsiliasiObat'] = RekonsiliasiObat::gabungTigaArah($this->rekonsiliasiObatSaatDibuka, (array) data_get($this->dataDaftarRi, 'pengkajianDokter.anamnesa.rekonsiliasiObat', []), $daftarRekonsiliasiObatDb);
+
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->dataDaftarRi = $fresh;
+
+                // Basis digeser ke hasil tersimpan — Simpan berikutnya tidak boleh
+                // memakai titik cabang yang sudah usang.
+                $this->rekonsiliasiObatSaatDibuka = $fresh['pengkajianDokter']['anamnesa']['rekonsiliasiObat'];
 
                 // Side effect: sync alergi + kode SNOMED ke master pasien (pola sama RJ/UGD)
                 // supaya kunjungan berikutnya — di modul mana pun — sudah terisi.
@@ -364,15 +395,15 @@ new class extends Component {
 
     public function removeRekonsiliasiObat(int $index): void
     {
-        $daftarObat = $this->dataDaftarRi['pengkajianDokter']['anamnesa']['rekonsiliasiObat'] ?? [];
+        $daftarRekonsiliasiObat = $this->dataDaftarRi['pengkajianDokter']['anamnesa']['rekonsiliasiObat'] ?? [];
 
-        if (!isset($daftarObat[$index])) {
+        if (!isset($daftarRekonsiliasiObat[$index])) {
             return;
         }
 
-        $namaObat = $daftarObat[$index]['namaObat'] ?? '-';
-        unset($daftarObat[$index]);
-        $this->dataDaftarRi['pengkajianDokter']['anamnesa']['rekonsiliasiObat'] = array_values($daftarObat);
+        $namaObat = $daftarRekonsiliasiObat[$index]['namaObat'] ?? '-';
+        unset($daftarRekonsiliasiObat[$index]);
+        $this->dataDaftarRi['pengkajianDokter']['anamnesa']['rekonsiliasiObat'] = array_values($daftarRekonsiliasiObat);
 
         $this->store('Hapus riwayat pemakaian obat — ' . $namaObat);
     }

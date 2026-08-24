@@ -22,8 +22,15 @@ new class extends Component {
     use EmrRITrait, EmrUGDTrait, RekonsiliasiObatRITrait, WithValidationToastTrait;
 
     public ?string $riHdrNo = null;
-    public array $daftarObat = [];
+    public array $daftarRekonsiliasiObat = [];
     public bool $isFormLocked = false;
+
+    /**
+     * Daftar rekonsiliasi obat SAAT DIBUKA — titik cabang untuk merge tiga arah.
+     * WAJIB public: properti protected tidak di-dehydrate Livewire, jadi akan reset
+     * tiap request dan basisnya hilang sebelum Simpan ditekan.
+     */
+    public array $rekonsiliasiObatSaatDibuka = [];
 
     /** LOV Rute dari sumber tunggal — disiapkan di kelas supaya markup tidak
      *  perlu menyebut nama class (aturan naming-conventions §2). */
@@ -62,7 +69,8 @@ new class extends Component {
         $belumPernahIsi = !array_key_exists('rekonsiliasiObat', (array) data_get($data, 'pengkajianDokter.anamnesa', []));
         $tersimpan = RekonsiliasiObat::normalkanDaftar(data_get($data, 'pengkajianDokter.anamnesa.rekonsiliasiObat', []));
 
-        $this->daftarObat = $belumPernahIsi && empty($tersimpan) ? $this->rekonsiliasiObatDariUgd($riHdrNo) : $tersimpan;
+        $this->daftarRekonsiliasiObat = $belumPernahIsi && empty($tersimpan) ? $this->rekonsiliasiObatDariUgd($riHdrNo) : $tersimpan;
+        $this->rekonsiliasiObatSaatDibuka = $this->daftarRekonsiliasiObat;
 
         $this->dispatch('open-modal', name: 'rekonsiliasi-obat-ri');
     }
@@ -89,12 +97,12 @@ new class extends Component {
             return;
         }
 
-        if (RekonsiliasiObat::sudahAda($this->daftarObat, $this->formEntryRekonsiliasi['namaObat'])) {
+        if (RekonsiliasiObat::sudahAda($this->daftarRekonsiliasiObat, $this->formEntryRekonsiliasi['namaObat'])) {
             $this->dispatch('toast', type: 'error', message: 'Obat sudah ada dalam daftar.');
             return;
         }
 
-        $this->daftarObat[] = RekonsiliasiObat::barisBaru($this->formEntryRekonsiliasi['namaObat'], $this->formEntryRekonsiliasi['dosis'], $this->formEntryRekonsiliasi['rute'], $this->formEntryRekonsiliasi['dibawaRanap'], $this->formEntryRekonsiliasi['lanjutPulang']);
+        $this->daftarRekonsiliasiObat[] = RekonsiliasiObat::barisBaru($this->formEntryRekonsiliasi['namaObat'], $this->formEntryRekonsiliasi['dosis'], $this->formEntryRekonsiliasi['rute'], $this->formEntryRekonsiliasi['dibawaRanap'], $this->formEntryRekonsiliasi['lanjutPulang']);
 
         $namaObat = $this->formEntryRekonsiliasi['namaObat'];
         $this->resetFormEntry();
@@ -103,13 +111,13 @@ new class extends Component {
 
     public function removeRekonsiliasiObat(int $index): void
     {
-        if (!$this->siapDiubah() || !isset($this->daftarObat[$index])) {
+        if (!$this->siapDiubah() || !isset($this->daftarRekonsiliasiObat[$index])) {
             return;
         }
 
-        $namaObat = $this->daftarObat[$index]['namaObat'] ?? '-';
-        unset($this->daftarObat[$index]);
-        $this->daftarObat = array_values($this->daftarObat);
+        $namaObat = $this->daftarRekonsiliasiObat[$index]['namaObat'] ?? '-';
+        unset($this->daftarRekonsiliasiObat[$index]);
+        $this->daftarRekonsiliasiObat = array_values($this->daftarRekonsiliasiObat);
 
         $this->simpan('Hapus Rekonsiliasi Obat RI (Farmasi) — ' . $namaObat);
     }
@@ -117,7 +125,7 @@ new class extends Component {
     public function closeModal(): void
     {
         $this->riHdrNo = null;
-        $this->daftarObat = [];
+        $this->daftarRekonsiliasiObat = [];
         $this->isFormLocked = false;
         $this->resetFormEntry();
         $this->resetValidation();
@@ -136,8 +144,17 @@ new class extends Component {
                 $this->lockRIRow($this->riHdrNo);
 
                 $fresh = $this->findDataRI($this->riHdrNo) ?? [];
-                data_set($fresh, 'pengkajianDokter.anamnesa.rekonsiliasiObat', $this->daftarObat);
+
+                // Merge tiga arah: dokter bisa menambah baris lewat Pengkajian Dokter
+                // selagi modal ini terbuka. Menulis $this->daftarRekonsiliasiObat apa adanya akan
+                // menghapus baris itu tanpa peringatan.
+                $daftarRekonsiliasiObatGabungan = RekonsiliasiObat::gabungTigaArah($this->rekonsiliasiObatSaatDibuka, $this->daftarRekonsiliasiObat, (array) data_get($fresh, 'pengkajianDokter.anamnesa.rekonsiliasiObat', []));
+
+                data_set($fresh, 'pengkajianDokter.anamnesa.rekonsiliasiObat', $daftarRekonsiliasiObatGabungan);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
+
+                $this->daftarRekonsiliasiObat = $daftarRekonsiliasiObatGabungan;
+                $this->rekonsiliasiObatSaatDibuka = $daftarRekonsiliasiObatGabungan;
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, $logKeterangan, 'MR');
             });
@@ -326,7 +343,7 @@ new class extends Component {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @forelse ($daftarObat as $index => $obat)
+                                            @forelse ($daftarRekonsiliasiObat as $index => $obat)
                                                 <tr wire:key="rekonsiliasi-obat-ri-{{ $riHdrNo ?? 'new' }}-{{ $index }}">
                                                     @php
                                                         $dosisRute = collect([$obat['dosis'] ?? null, $obat['rute'] ?? null])

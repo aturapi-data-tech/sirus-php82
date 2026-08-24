@@ -18,6 +18,13 @@ new class extends Component {
     public ?int $rjNo = null;
     public array $dataDaftarUGD = [];
 
+    /**
+     * Daftar rekonsiliasi obat SAAT FORM DIBUKA — titik cabang untuk merge tiga arah.
+     * WAJIB public: properti protected tidak di-dehydrate Livewire, jadi akan reset
+     * tiap request dan basisnya hilang sebelum Simpan ditekan.
+     */
+    public array $rekonsiliasiObatSaatDibuka = [];
+
     public string $tingkatKegawatan = '';
     public string $caraMasukIgd = '';
     public string $saranaTransportasiId = '4';
@@ -125,6 +132,9 @@ new class extends Component {
             $this->dataDaftarUGD['anamnesa']['alergi'] ?? [],
         );
 
+        // Basis merge tiga arah — direkam sebelum user menyentuh apa pun.
+        $this->rekonsiliasiObatSaatDibuka = (array) data_get($this->dataDaftarUGD, 'anamnesa.rekonsiliasiObat', []);
+
         $this->isFormLocked = $this->checkEmrUGDStatus($rjNo);
         $this->incrementVersion('modal-anamnesa-ugd');
     }
@@ -196,8 +206,14 @@ new class extends Component {
                 // Tangkap status sebelum overwrite (untuk verb log Buat/Update)
                 $isBaru = empty($data['anamnesa']);
 
-                // 3. Patch key anamnesa
+                // 3. Patch key anamnesa.
+                // Daftar rekonsiliasi obat DIAMBIL DULU sebelum node ditimpa: modal
+                // Farmasi (titik-3 Pelayanan UGD) bisa menambah baris selagi form ini
+                // terbuka, dan baris ini menimpa SELURUH node anamnesa dgn salinan layar.
+                $daftarRekonsiliasiObatDb = (array) data_get($data, 'anamnesa.rekonsiliasiObat', []);
+
                 $data['anamnesa'] = $this->dataDaftarUGD['anamnesa'] ?? [];
+                $data['anamnesa']['rekonsiliasiObat'] = RekonsiliasiObat::gabungTigaArah($this->rekonsiliasiObatSaatDibuka, (array) data_get($this->dataDaftarUGD, 'anamnesa.rekonsiliasiObat', []), $daftarRekonsiliasiObatDb);
 
                 // 4. Update waktu_pasien_datang + waktu_pasien_dilayani
                 $now = Carbon::now()->format('d/m/Y H:i:s');
@@ -214,6 +230,10 @@ new class extends Component {
                 // 5. Simpan JSON
                 $this->updateJsonUGD($this->rjNo, $data);
                 $this->dataDaftarUGD = $data;
+
+                // Basis digeser ke hasil tersimpan — Simpan berikutnya tidak boleh
+                // memakai titik cabang yang sudah usang.
+                $this->rekonsiliasiObatSaatDibuka = $data['anamnesa']['rekonsiliasiObat'];
 
                 // 6. Update riwayat medis master pasien (masih dalam transaksi yang sama)
                 $this->updateRiwayatMedisPasien();

@@ -20,8 +20,15 @@ new class extends Component {
     use EmrUGDTrait, WithValidationToastTrait;
 
     public ?int $rjNo = null;
-    public array $daftarObat = [];
+    public array $daftarRekonsiliasiObat = [];
     public bool $isFormLocked = false;
+
+    /**
+     * Daftar rekonsiliasi obat SAAT DIBUKA — titik cabang untuk merge tiga arah.
+     * WAJIB public: properti protected tidak di-dehydrate Livewire, jadi akan reset
+     * tiap request dan basisnya hilang sebelum Simpan ditekan.
+     */
+    public array $rekonsiliasiObatSaatDibuka = [];
 
     /** LOV Rute dari sumber tunggal — disiapkan di kelas supaya markup tidak
      *  perlu menyebut nama class (aturan naming-conventions §2). */
@@ -54,7 +61,8 @@ new class extends Component {
         }
 
         $this->isFormLocked = $this->checkEmrUGDStatus($rjNo);
-        $this->daftarObat = RekonsiliasiObat::normalkanDaftar(data_get($data, 'anamnesa.rekonsiliasiObat', []));
+        $this->daftarRekonsiliasiObat = RekonsiliasiObat::normalkanDaftar(data_get($data, 'anamnesa.rekonsiliasiObat', []));
+        $this->rekonsiliasiObatSaatDibuka = $this->daftarRekonsiliasiObat;
 
         $this->dispatch('open-modal', name: 'rekonsiliasi-obat-ugd');
     }
@@ -81,12 +89,12 @@ new class extends Component {
             return;
         }
 
-        if (RekonsiliasiObat::sudahAda($this->daftarObat, $this->formEntryRekonsiliasi['namaObat'])) {
+        if (RekonsiliasiObat::sudahAda($this->daftarRekonsiliasiObat, $this->formEntryRekonsiliasi['namaObat'])) {
             $this->dispatch('toast', type: 'error', message: 'Obat sudah ada dalam daftar.');
             return;
         }
 
-        $this->daftarObat[] = RekonsiliasiObat::barisBaru($this->formEntryRekonsiliasi['namaObat'], $this->formEntryRekonsiliasi['dosis'], $this->formEntryRekonsiliasi['rute'], $this->formEntryRekonsiliasi['dibawaRanap'], $this->formEntryRekonsiliasi['lanjutPulang']);
+        $this->daftarRekonsiliasiObat[] = RekonsiliasiObat::barisBaru($this->formEntryRekonsiliasi['namaObat'], $this->formEntryRekonsiliasi['dosis'], $this->formEntryRekonsiliasi['rute'], $this->formEntryRekonsiliasi['dibawaRanap'], $this->formEntryRekonsiliasi['lanjutPulang']);
 
         $namaObat = $this->formEntryRekonsiliasi['namaObat'];
         $this->resetFormEntry();
@@ -95,13 +103,13 @@ new class extends Component {
 
     public function removeRekonsiliasiObat(int $index): void
     {
-        if (!$this->siapDiubah() || !isset($this->daftarObat[$index])) {
+        if (!$this->siapDiubah() || !isset($this->daftarRekonsiliasiObat[$index])) {
             return;
         }
 
-        $namaObat = $this->daftarObat[$index]['namaObat'] ?? '-';
-        unset($this->daftarObat[$index]);
-        $this->daftarObat = array_values($this->daftarObat);
+        $namaObat = $this->daftarRekonsiliasiObat[$index]['namaObat'] ?? '-';
+        unset($this->daftarRekonsiliasiObat[$index]);
+        $this->daftarRekonsiliasiObat = array_values($this->daftarRekonsiliasiObat);
 
         $this->simpan('Hapus Rekonsiliasi Obat UGD (Farmasi) — ' . $namaObat);
     }
@@ -109,7 +117,7 @@ new class extends Component {
     public function closeModal(): void
     {
         $this->rjNo = null;
-        $this->daftarObat = [];
+        $this->daftarRekonsiliasiObat = [];
         $this->isFormLocked = false;
         $this->resetFormEntry();
         $this->resetValidation();
@@ -132,8 +140,16 @@ new class extends Component {
                     throw new \RuntimeException('Data UGD tidak ditemukan, simpan dibatalkan.');
                 }
 
-                data_set($fresh, 'anamnesa.rekonsiliasiObat', $this->daftarObat);
+                // Merge tiga arah: perawat bisa menambah baris lewat tab Anamnesa EMR
+                // selagi modal ini terbuka. Menulis $this->daftarRekonsiliasiObat apa adanya akan
+                // menghapus baris itu tanpa peringatan.
+                $daftarRekonsiliasiObatGabungan = RekonsiliasiObat::gabungTigaArah($this->rekonsiliasiObatSaatDibuka, $this->daftarRekonsiliasiObat, (array) data_get($fresh, 'anamnesa.rekonsiliasiObat', []));
+
+                data_set($fresh, 'anamnesa.rekonsiliasiObat', $daftarRekonsiliasiObatGabungan);
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
+
+                $this->daftarRekonsiliasiObat = $daftarRekonsiliasiObatGabungan;
+                $this->rekonsiliasiObatSaatDibuka = $daftarRekonsiliasiObatGabungan;
 
                 $this->appendAdminLogUGD((int) $this->rjNo, $logKeterangan, 'MR');
             });
@@ -324,7 +340,7 @@ new class extends Component {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @forelse ($daftarObat as $index => $obat)
+                                            @forelse ($daftarRekonsiliasiObat as $index => $obat)
                                                 <tr wire:key="rekonsiliasi-obat-ugd-{{ $rjNo ?? 'new' }}-{{ $index }}">
                                                     @php
                                                         $dosisRute = collect([$obat['dosis'] ?? null, $obat['rute'] ?? null])

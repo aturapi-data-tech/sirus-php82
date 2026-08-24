@@ -1,7 +1,7 @@
 {{-- pages/transaksi/ugd/emr-ugd/anamnesa/tabs/rekonsiliasi-obat-tab.blade.php --}}
 {{-- @use wajib: partial TIDAK mewarisi import dari berkas induknya. --}}
 @use('App\Support\RekonsiliasiObat')
-@php $daftarObat = $dataDaftarUGD['anamnesa']['rekonsiliasiObat'] ?? []; @endphp
+@php $daftarRekonsiliasiObat = $dataDaftarUGD['anamnesa']['rekonsiliasiObat'] ?? []; @endphp
 
 <x-border-form :title="__('Rekonsiliasi Obat')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
     <div class="space-y-4">
@@ -129,7 +129,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($daftarObat as $index => $obat)
+                    @forelse ($daftarRekonsiliasiObat as $index => $obat)
                         <tr wire:key="rekon-obat-ugd-{{ $rjNo ?? 'new' }}-{{ $index }}">
                             @php
                                 $dosisRute = collect([$obat['dosis'] ?? null, $obat['rute'] ?? null])
