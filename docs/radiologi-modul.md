@@ -7,6 +7,9 @@ Lokasi utama: `resources/views/pages/transaksi/penunjang/radiologi/`. Semua Volt
 > Biaya di-post **langsung saat order dibuat** (di EMR atau via tombol Tambah). Modul penunjang
 > radiologi (`upload-radiologi`) fungsinya **Upload Hasil** (foto + PDF bacaan). "Status" di radiologi =
 > **kelengkapan upload**, bukan status pemeriksaan. Tidak ada batal, tidak ada Mindray/PACS, tidak ada etiket.
+>
+> **PACS sedang direncanakan** (Orthanc) supaya `ImagingStudy` SATUSEHAT punya UID DICOM asli —
+> lihat `docs/pacs-orthanc.md`. Selama belum berdiri, modul ini tetap berbasis unggah PDF.
 
 ## Struktur file
 
