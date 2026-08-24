@@ -1014,13 +1014,10 @@ new class extends Component {
 
                 <div class="max-w-md">
                     <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosa Rujukan (ICD-10)"
-                        target="rujukanKompetensiDiagnosaRI" :disabled="$isFormLocked"
+                        target="rujukanKompetensiDiagnosaRI"
+                        :initialDiagnosaId="$formRujukan['kodeDiagnosa'] ?: null" :disabled="$isFormLocked"
                         wire:key="lov-diagnosa-rujukan-kompetensi-fhir-ri-{{ $riHdrNo }}" />
-                </div>
-
-                <div>
-                    <x-input-label value="Kode Diagnosa (ICD-10 rinci)" class="mb-1" />
-                    <x-text-input wire:model.live="formRujukan.kodeDiagnosa" :disabled="true" class="w-full" />
+                    <p class="mt-1 text-xs text-muted-soft">Dipakai mencari kandidat RS. @if (filled($formRujukan['kodeDiagnosa'] ?? ''))<span class="font-mono font-semibold text-ink dark:text-gray-200">Kode terkirim: {{ $formRujukan['kodeDiagnosa'] }}</span>@endif</p>
                 </div>
 
                 @if (($formRujukan['jalur'] ?? 'ranap') === 'igd')
