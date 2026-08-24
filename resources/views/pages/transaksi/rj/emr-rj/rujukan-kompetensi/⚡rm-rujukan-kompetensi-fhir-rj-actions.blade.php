@@ -984,7 +984,7 @@ new class extends Component {
     <div class="grid grid-cols-1 gap-3 lg:grid-cols-2 items-start">
     {{-- LANGKAH 1 — DIAGNOSA, KRITERIA IGD, WILAYAH → CARI KANDIDAT --}}
             <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
-                <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Langkah 1–2 · Diagnosa, Kriteria &amp; Kandidat</p>
+                <p class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200"><x-step-number :n="1" /><x-step-number :n="2" /><span class="ml-0.5">Diagnosa, Kriteria &amp; Kandidat</span></p>
 
                 {{-- Tujuan layanan di RS lain — menentukan use case FHIR --}}
                 <div class="space-y-1">
@@ -1144,7 +1144,7 @@ new class extends Component {
 
             {{-- LANGKAH 2 & 3 — TUGAS RUJUKAN + SERVICEREQUEST --}}
             <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
-                <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Langkah 3–5 · Tugas Rujukan → Persetujuan → Rujukan</p>
+                <p class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200"><x-step-number :n="3" /><x-step-number :n="4" /><x-step-number :n="5" /><span class="ml-0.5">Tugas Rujukan → Persetujuan → Rujukan</span></p>
 
                 <div class="grid grid-cols-1 gap-3">
                     <div>
