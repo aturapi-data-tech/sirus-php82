@@ -207,7 +207,7 @@ new class extends Component {
      */
     private function prefillDariEmr(): void
     {
-        $isi = function (string $path, string $nilai): void {
+        $isiJikaKosong = function (string $path, string $nilai): void {
             if (trim((string) data_get($this->form, $path, '')) === '' && trim($nilai) !== '') {
                 data_set($this->form, $path, trim($nilai));
             }
@@ -217,15 +217,15 @@ new class extends Component {
         // utama adalah diagnosisFreeText (diagnosis ketikan dokter UGD); kalau kosong
         // dipakai keluhan utama. Berat badan SENGAJA tidak di-prefill: tandaVital UGD
         // tidak menyimpan berat badan sama sekali, jadi tetap diisi manual.
-        $isi('penderita.penyakitUtama', (string) (data_get($this->dataDaftarUGD, 'diagnosisFreeText') ?: data_get($this->dataDaftarUGD, 'anamnesa.keluhanUtama.keluhanUtama', '')));
+        $isiJikaKosong('penderita.penyakitUtama', (string) (data_get($this->dataDaftarUGD, 'diagnosisFreeText') ?: data_get($this->dataDaftarUGD, 'anamnesa.keluhanUtama.keluhanUtama', '')));
 
         // Pengirim = petugas yang membuat laporan + identitas RS
         $identitasRs = DB::table('rsmst_identitases')->select('int_name', 'int_address', 'int_city', 'int_phone1')->first();
-        $isi('pengirim.nama', (string) (auth()->user()->myuser_name ?? ''));
-        $isi('pengirim.keahlian', (string) (auth()->user()->myuser_profesi ?? ''));
-        $isi('pengirim.instansi', (string) ($identitasRs->int_name ?? ''));
-        $isi('pengirim.alamat', trim(($identitasRs->int_address ?? '') . ' ' . ($identitasRs->int_city ?? '')));
-        $isi('pengirim.telepon', (string) ($identitasRs->int_phone1 ?? ''));
+        $isiJikaKosong('pengirim.nama', (string) (auth()->user()->myuser_name ?? ''));
+        $isiJikaKosong('pengirim.keahlian', (string) (auth()->user()->myuser_profesi ?? ''));
+        $isiJikaKosong('pengirim.instansi', (string) ($identitasRs->int_name ?? ''));
+        $isiJikaKosong('pengirim.alamat', trim(($identitasRs->int_address ?? '') . ' ' . ($identitasRs->int_city ?? '')));
+        $isiJikaKosong('pengirim.telepon', (string) ($identitasRs->int_phone1 ?? ''));
 
         if (empty($this->form['tglLaporan'])) {
             $this->form['tglLaporan'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
@@ -315,15 +315,15 @@ new class extends Component {
     }
 
     /** Toggle keanggotaan kondisi menyertai (multi-pilih). */
-    public function toggleKondisiMenyertai(string $opt): void
+    public function toggleKondisiMenyertai(string $kodeKondisi): void
     {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
         }
         $terpilih = (array) data_get($this->form, 'penderita.kondisiMenyertai', []);
-        $terpilih = in_array($opt, $terpilih, true)
-            ? array_values(array_filter($terpilih, fn($nilai) => $nilai !== $opt))
-            : array_merge($terpilih, [$opt]);
+        $terpilih = in_array($kodeKondisi, $terpilih, true)
+            ? array_values(array_filter($terpilih, fn($nilai) => $nilai !== $kodeKondisi))
+            : array_merge($terpilih, [$kodeKondisi]);
         data_set($this->form, 'penderita.kondisiMenyertai', $terpilih);
     }
 
@@ -644,9 +644,9 @@ new class extends Component {
             $ttdPetugasPath = null;
             $petugasCode = data_get($entry, 'form.ttd.petugasCode') ?: data_get($entry, 'created_by.code');
             if ($petugasCode) {
-                $ttdPath = DB::table('users')->where('myuser_code', $petugasCode)->value('myuser_ttd_image');
-                if (!empty($ttdPath) && file_exists(public_path('storage/' . $ttdPath))) {
-                    $ttdPetugasPath = public_path('storage/' . $ttdPath);
+                $ttdRelativePath = DB::table('users')->where('myuser_code', $petugasCode)->value('myuser_ttd_image');
+                if (!empty($ttdRelativePath) && file_exists(public_path('storage/' . $ttdRelativePath))) {
+                    $ttdPetugasPath = public_path('storage/' . $ttdRelativePath);
                 }
             }
 
