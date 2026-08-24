@@ -1,8 +1,11 @@
 <?php
 // resources/views/pages/transaksi/ugd/satu-sehat/kirim-encounter.blade.php
 // Step 1: Kirim Kunjungan UGD (Encounter, class EMER).
-// BEDA dari RJ: class EMER; UGD tanpa poli (insert poli_id=null) → lokasi dari
-//   rstxn_ugdhdrs.poli_id bila ada, jika tidak dari env SATUSEHAT_IGD_LOCATION_ID.
+// BEDA dari RJ: class EMER; rstxn_ugdhdrs.poli_id TIDAK dipakai untuk lokasi —
+//   kolomnya kosong 85% baris dan yang terisi menunjuk macam-macam poli asal
+//   pasien, bukan "pasien sedang di UGD". Lokasi selalu poli UGD di rsmst_polis
+//   (satu baris tetap, poli_desc = 'UGD'), env SATUSEHAT_IGD_LOCATION_ID boleh
+//   override untuk sandbox.
 
 use Livewire\Component;
 use Livewire\Attributes\On;
@@ -132,8 +135,8 @@ new class extends Component {
             $practitionerId = $drId ? (string) (DB::table('rsmst_doctors')->where('dr_id', $drId)->value('dr_uuid') ?? '') : '';
             if (empty($practitionerId)) { $this->dispatch('toast', type: 'error', message: 'Dokter IHS (dr_uuid) kosong.'); return; }
 
-            // Lokasi UGD: coba poli_id dari header (kadang null) → poli_uuid; fallback env IGD.
-            $locationId = $this->resolveUgdLocation($rjNo);
+            // Lokasi UGD: selalu poli UGD di rsmst_polis; env boleh override.
+            $locationId = $this->resolveUgdLocation();
             if (empty($locationId)) { $this->dispatch('toast', type: 'error', message: 'Location IHS IGD kosong. Set env SATUSEHAT_IGD_LOCATION_ID atau poli_uuid IGD.'); return; }
 
             // Tanggal masuk kosong = parseDate() diam-diam memakai now(), sehingga
@@ -231,12 +234,11 @@ new class extends Component {
         }
     }
 
-    // Location IGD (UGD tak punya poli) — di-HARDCODE. Env boleh override utk sandbox.
-    private const UGD_LOCATION_UUID = '7cfc8905-ed98-4077-afcd-e2c48890b765';
-
-    private function resolveUgdLocation(string $rjNo): string
+    private function resolveUgdLocation(): string
     {
-        return (string) (env('SATUSEHAT_IGD_LOCATION_ID') ?: self::UGD_LOCATION_UUID);
+        $poliUuid = (string) (DB::table('rsmst_polis')->whereRaw('UPPER(poli_desc) = ?', ['UGD'])->value('poli_uuid') ?? '');
+
+        return (string) (env('SATUSEHAT_IGD_LOCATION_ID') ?: $poliUuid);
     }
 
     private function saveResult(string $rjNo, array $satuSehat): void
