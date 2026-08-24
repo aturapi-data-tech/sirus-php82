@@ -103,6 +103,34 @@ Hanya **Rawat Jalan**: Kriteria → Faskes → Post → Delete. Jalur FHIR IGD/R
 **TC01 tertahan** sampai BPJS memetakan PPK `0184R006` ↔ SATUSEHAT `100027469` di dev;
 TC02–TC05 semuanya bergantung padanya. Detail: `docs/rujukan-kompetensi.md` §4.2.
 
+## 2c. Jalur FHIR Ranap/IGD — aturan Playbook v6.1 (21 Agu 2026)
+
+Acuan: `docs/rujukan-kompetensi.md` §7. Sumber tunggal terminologi: `App\Support\Options\RujukanOptions`.
+
+1. **`CarePlan.contributor` = Fasyankes PERUJUK** (kita), bukan tujuan. Ini perubahan v6.1;
+   v6.0 dulu menyebut Fasyankes Rujukan. Kode kita sudah benar — jangan "diperbaiki" balik.
+2. **Satu CarePlan hanya untuk SATU ServiceRequest.** Reuse ditolak
+   (`CarePlan dengan identifier '…' sudah ada`). Karena itu `identifierCarePlan` WAJIB
+   `Str::uuid()` baru tiap kirim — sekelas aturan Task.identifier unik.
+3. **`occurrenceDateTime` = tanggal RENCANA kunjungan di faskes tujuan, bukan `now()`.**
+   Pakai `rujukanTanggalRencanaIso()`; parser wajib `checkdate()` karena
+   `Carbon::createFromFormat` menggulung tanggal mustahil (`31/02` → 3 Maret) tanpa melempar.
+4. Tiga variabel **opsional** — kosong = JANGAN dikirim, bukan dikirim kosong:
+   `Task.input` TK000562 **Kelompok Layanan** (Lampiran 4; salah pilih = kandidat tersaring
+   keliru tanpa pesan error), `ServiceRequest.performerType`, `ServiceRequest.reasonReference`
+   (→ `Condition` yang SUDAH terkirim; mengarang reference = `reference_not_found`).
+5. **`performerType` belum bisa dipetakan penuh** — sheet "HealthcareProfessional ECL" belum
+   dibagikan; satu-satunya kode terbukti diterima `39677007 Internal medicine specialist`.
+   JANGAN menebak kode SNOMED occupation lain (edisi SATUSEHAT tertinggal + risiko salah
+   catat tenaga kesehatan). Lengkapi `RujukanOptions::PERFORMER_TYPE` setelah sheet didapat.
+6. **Rawat Jalan TIDAK punya accept/reject** — hanya IGD & Ranap (konfirmasi grup 22/08/26).
+7. `PUT ServiceRequest` didukung untuk revisi rujukan terkirim (belum dipakai di repo).
+8. **Tugas Rujukan ≠ Rujukan.** Bundle Task+CarePlan hanya MENANYAKAN kesediaan; ServiceRequest
+   barulah rujukan resmi (terbit Nomor Rujukan Nasional). Sebelum ServiceRequest, baca ulang
+   `Task.output` dari server: `rejected` → **blokir**, belum dijawab → **peringatkan saja**
+   (memblokir akan mematikan uji coba staging). Gagal baca → pakai catatan terakhir, jangan
+   menghapus `rejected` yang sudah diketahui.
+
 ## 3. FAQ / katalog error tersering
 
 | Gejala | Penyebab sebenarnya | Aksi |
@@ -119,8 +147,10 @@ TC02–TC05 semuanya bergantung padanya. Detail: `docs/rujukan-kompetensi.md` §
 | `Found duplicate: Task (20002)` | identifier di-reuse | UUID baru tiap POST |
 | 429 `Rate limit quota violation` | Kuota staging habis | Hemat panggilan; lapor |
 | **Error identik di ≥2 endpoint** | Hampir pasti gangguan jaringan SATUSEHAT | Tampilkan hint "gangguan pusat"; JANGAN debug payload |
+| `404 Transaksi tidak dapat diproses. Silakan coba lagi nanti.` | **Consumer ID expired/belum aktif** — bukan endpoint/payload salah | Koordinasi TI BPJS kantor wilayah; jangan debug body |
 | `dokter tidak valid` saat `postKunjungan` | Bukan `kdDokterSatuSehat` — **kode dokter BPJS** di faskes itu belum ada | Lengkapi pemetaan dokter BPJS, bukan IHS-nya |
 
-Sumber lampiran (Postman V30062026, Playbook, Skenario UAT, sample JSON):
-`~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim/`
-— export terbaru (s/d 14/08/26) ada di folder bersuffix `(1)`.
+Sumber lampiran (Postman V30062026, **Playbook v6.1**, Skenario UAT FKTL/FKTP ver 1.0, sample JSON):
+`~/Downloads/Chat WhatsApp dengan SATUSEHAT Rujukan X PCare X VClaim(2)/` — export terbaru
+s/d **24/08/26** (14.486 baris). Skenario UAT **Ranap & Darurat** hanya berupa tautan Google Docs
+di grup, belum ada salinannya di folder.
