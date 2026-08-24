@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
+use App\Support\NomorRadiologi;
 
 new class extends Component {
     use WithPagination, WithRenderVersioningTrait, WithValidationToastTrait, EmrRJTrait;
@@ -165,6 +166,7 @@ new class extends Component {
                         'klinis_desc' => trim($this->klinisDesc),
                         'cito_status' => $this->cito === '1' ? '1' : '0',
                         'waktu_entry' => DB::raw("TO_DATE('{$now}','dd/mm/yyyy hh24:mi:ss')"),
+                        'radnum_no' => NomorRadiologi::generate(),
                     ]);
                 }
 

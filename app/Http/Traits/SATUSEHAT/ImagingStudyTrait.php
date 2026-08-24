@@ -68,7 +68,7 @@ trait ImagingStudyTrait
      */
     public function postImagingStudy(array $data): array
     {
-        $studyUid  = $this->uidStudi($data['kunci']);
+        $studyUid  = !empty($data['studyUid']) ? $data['studyUid'] : $this->uidStudi($data['kunci']);
         $seriesUid = $this->uidStudi($data['kunci'] . '-series-1');
         $sopUid    = $this->uidStudi($data['kunci'] . '-instance-1');
 

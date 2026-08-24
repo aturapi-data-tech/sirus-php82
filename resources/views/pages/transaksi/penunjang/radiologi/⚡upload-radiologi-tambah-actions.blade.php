@@ -21,6 +21,7 @@ use App\Http\Traits\Concerns\WithValidationToastTrait;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
+use App\Support\NomorRadiologi;
 
 new class extends Component {
     use WithPagination, WithValidationToastTrait;
@@ -394,6 +395,7 @@ new class extends Component {
                             'klinis_desc' => $klinis,
                             'cito_status' => $this->cito === '1' ? '1' : '0',
                             'waktu_entry' => DB::raw('sysdate'),
+                            'radnum_no' => NomorRadiologi::generate(),
                         ]);
                     }
                 } elseif ($this->source === 'UGD') {
@@ -409,6 +411,7 @@ new class extends Component {
                             'klinis_desc' => $klinis,
                             'cito_status' => $this->cito === '1' ? '1' : '0',
                             'waktu_entry' => DB::raw('sysdate'),
+                            'radnum_no' => NomorRadiologi::generate(),
                         ]);
                     }
                 } else {
@@ -426,6 +429,7 @@ new class extends Component {
                             'cito_status' => $this->cito === '1' ? '1' : '0',
                             'waktu_entry' => DB::raw('sysdate'),
                             'rirad_date' => DB::raw('sysdate'),
+                            'radnum_no' => NomorRadiologi::generate(),
                         ]);
                     }
                 }
