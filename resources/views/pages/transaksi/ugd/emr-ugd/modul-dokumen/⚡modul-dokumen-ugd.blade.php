@@ -265,6 +265,21 @@ new class extends Component {
                                         @endif
                                     </x-tab>
 
+                                    {{-- Pelaporan Efek Samping Obat (RM 37) --}}
+                                    <x-tab variant="underline" active-expr="activeTab === 'pelaporan-eso'"
+                                        x-on:click="activeTab = 'pelaporan-eso'"
+                                        class="inline-flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                                        </svg>
+                                        Pelaporan ESO
+                                        @if (!empty($dataDaftarUGD['pelaporanEsoUGD']) && count($dataDaftarUGD['pelaporanEsoUGD']) > 0)
+                                            <x-badge variant="success"
+                                                class="text-[10px] px-1.5 py-0">{{ count($dataDaftarUGD['pelaporanEsoUGD']) }}</x-badge>
+                                        @endif
+                                    </x-tab>
+
                                     {{-- Pengkajian Akhir Hayat --}}
                                     <x-tab variant="underline" active-expr="activeTab === 'akhir-hayat'"
                                         x-on:click="activeTab = 'akhir-hayat'"
@@ -363,6 +378,12 @@ new class extends Component {
                             </div>
 
                             {{-- Panel: Pengkajian Akhir Hayat --}}
+                            <div x-show="activeTab === 'pelaporan-eso'" x-transition.opacity.duration.300ms>
+                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.pelaporan-eso-ugd.rm-pelaporan-eso-ugd-actions
+                                    :rjNo="$rjNo" :disabled="$isFormLocked"
+                                    wire:key="pelaporan-eso-ugd-{{ $rjNo ?? 'init' }}" />
+                            </div>
+
                             <div x-show="activeTab === 'akhir-hayat'" x-transition.opacity.duration.300ms>
                                 <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.akhir-hayat-ugd.rm-akhir-hayat-ugd-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"

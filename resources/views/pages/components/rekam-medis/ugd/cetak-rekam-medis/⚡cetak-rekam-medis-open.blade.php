@@ -799,6 +799,10 @@ new class extends Component {
                             :surat="$dataDaftarTxn['suratKematianUGD'] ?? []" wire:key="rm-view-sk-ugd-{{ $rjNo }}" />
                     @endif
 
+                    {{-- ── Pelaporan Efek Samping Obat (RM 37) — viewer (Lihat + Cetak dalam modal) ── --}}
+                    <livewire:pages::components.rekam-medis.ugd.dokumen-view.pelaporan-eso-view-ugd :rjNo="$rjNo"
+                        :entries="$dataDaftarTxn['pelaporanEsoUGD'] ?? []" wire:key="rm-view-pelaporan-eso-ugd-{{ $rjNo }}" />
+
                     {{-- ── Pengkajian Akhir Hayat — viewer (Lihat + Cetak dalam modal) ── --}}
                     <livewire:pages::components.rekam-medis.ugd.dokumen-view.akhir-hayat-view-ugd :rjNo="$rjNo"
                         :entries="$dataDaftarTxn['pengkajianAkhirHayatUGD'] ?? []" wire:key="rm-view-akhir-hayat-ugd-{{ $rjNo }}" />

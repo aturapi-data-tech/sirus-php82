@@ -192,6 +192,18 @@ new class extends Component {
                             @endif
                         </x-tab>
 
+                        <x-tab variant="underline" active-expr="activeTab === 'pelaporanEso'"
+                            x-on:click="activeTab = 'pelaporanEso'" class="inline-flex items-center gap-2">
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                            </svg>
+                            Pelaporan ESO
+                            @if (count($dataDaftarRi['pelaporanEsoRI'] ?? []) > 0)
+                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ count($dataDaftarRi['pelaporanEsoRI']) }}</x-badge>
+                            @endif
+                        </x-tab>
+
                         <x-tab variant="underline" active-expr="activeTab === 'permintaanDarah'"
                             x-on:click="activeTab = 'permintaanDarah'" class="inline-flex items-center gap-2">
                             <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -361,6 +373,13 @@ new class extends Component {
                     <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.akhir-hayat-ri.rm-akhir-hayat-ri-actions
                         :riHdrNo="$riHdrNo" :disabled="$isFormLocked"
                         wire:key="akhir-hayat-ri-{{ $riHdrNo ?? 'init' }}" />
+                </div>
+
+                {{-- TAB: PELAPORAN EFEK SAMPING OBAT (RM 37) --}}
+                <div x-show="activeTab === 'pelaporanEso'" x-transition.opacity.duration.200ms style="display:none">
+                    <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.pelaporan-eso-ri.rm-pelaporan-eso-ri-actions
+                        :riHdrNo="$riHdrNo" :disabled="$isFormLocked"
+                        wire:key="pelaporan-eso-ri-{{ $riHdrNo ?? 'init' }}" />
                 </div>
 
                 {{-- TAB: PERMINTAAN KEROHANIAN --}}
