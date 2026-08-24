@@ -9,6 +9,7 @@ use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
 use App\Support\Terminologi\AlergiSnomed;
+use App\Support\RekonsiliasiObat;
 
 new class extends Component {
     use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -29,11 +30,15 @@ new class extends Component {
     public string $anamnesaActiveTab = 'pengkajian';
 
     /* ---- Rekonsiliasi Obat ---- */
-    public string $rekonNamaObat = '';
-    public string $rekonDosis = '';
-    public string $rekonRute = '';
-    public string $rekonDibawaRanap = 'Tidak';
-    public string $rekonLanjutPulang = 'Tidak';
+    // Entri form Rekonsiliasi Obat — bentuk $formEntry* seperti penilaian
+    // (formEntryNyeri, formEntryResikoJatuh, dst).
+    public array $formEntryRekonsiliasi = [
+        'namaObat' => '',
+        'dosis' => '',
+        'rute' => '',
+        'dibawaRanap' => 'Tidak',
+        'lanjutPulang' => 'Tidak',
+    ];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-anamnesa-ugd'];
@@ -346,15 +351,15 @@ new class extends Component {
         // (guard/early-return sebelum validate bikin border error tak muncul).
         $this->validateWithToast(
             [
-                'rekonNamaObat' => ['required', 'string', 'max:200'],
-                'rekonDosis' => ['required', 'string', 'max:100'],
-                'rekonRute' => ['required', 'string'],
+                'formEntryRekonsiliasi.namaObat' => ['required', 'string', 'max:200'],
+                'formEntryRekonsiliasi.dosis' => ['required', 'string', 'max:100'],
+                'formEntryRekonsiliasi.rute' => ['required', 'string'],
             ],
             [],
             [
-                'rekonNamaObat' => 'Nama Obat',
-                'rekonDosis' => 'Dosis',
-                'rekonRute' => 'Rute',
+                'formEntryRekonsiliasi.namaObat' => 'Nama Obat',
+                'formEntryRekonsiliasi.dosis' => 'Dosis',
+                'formEntryRekonsiliasi.rute' => 'Rute',
             ],
         );
 
@@ -364,25 +369,15 @@ new class extends Component {
             return;
         }
 
-        $sudahAda = collect($this->dataDaftarUGD['anamnesa']['rekonsiliasiObat'] ?? [])
-            ->where('namaObat', $this->rekonNamaObat)
-            ->count();
-
-        if ($sudahAda > 0) {
+        if (RekonsiliasiObat::sudahAda($this->dataDaftarUGD['anamnesa']['rekonsiliasiObat'] ?? [], $this->formEntryRekonsiliasi['namaObat'])) {
             $this->dispatch('toast', type: 'error', message: 'Obat sudah ada dalam daftar.');
             return;
         }
 
-        $this->dataDaftarUGD['anamnesa']['rekonsiliasiObat'][] = [
-            'namaObat' => $this->rekonNamaObat,
-            'dosis' => $this->rekonDosis,
-            'rute' => $this->rekonRute,
-            'dibawaRanap' => $this->rekonDibawaRanap,
-            'lanjutPulang' => $this->rekonLanjutPulang,
-        ];
+        $this->dataDaftarUGD['anamnesa']['rekonsiliasiObat'][] = RekonsiliasiObat::barisBaru($this->formEntryRekonsiliasi['namaObat'], $this->formEntryRekonsiliasi['dosis'], $this->formEntryRekonsiliasi['rute'], $this->formEntryRekonsiliasi['dibawaRanap'], $this->formEntryRekonsiliasi['lanjutPulang']);
 
-        $namaObat = $this->rekonNamaObat;
-        $this->reset(['rekonNamaObat', 'rekonDosis', 'rekonRute', 'rekonDibawaRanap', 'rekonLanjutPulang']);
+        $namaObat = $this->formEntryRekonsiliasi['namaObat'];
+        $this->reset(['formEntryRekonsiliasi']);
         $this->save('Tambah Rekonsiliasi Obat UGD — ' . $namaObat);
     }
 
@@ -558,11 +553,7 @@ new class extends Component {
         $this->isFormLocked = false;
         $this->dataDaftarUGD = [];
         $this->anamnesaActiveTab = 'pengkajian';
-        $this->rekonNamaObat = '';
-        $this->rekonDosis = '';
-        $this->rekonRute = '';
-        $this->rekonDibawaRanap = 'Tidak';
-        $this->rekonLanjutPulang = 'Tidak';
+        $this->reset(['formEntryRekonsiliasi']);
         $this->tingkatKegawatan = '';
         $this->caraMasukIgd = '';
         $this->saranaTransportasiId = '4';

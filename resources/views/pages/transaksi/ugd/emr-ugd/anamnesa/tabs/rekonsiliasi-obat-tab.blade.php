@@ -1,4 +1,6 @@
 {{-- pages/transaksi/ugd/emr-ugd/anamnesa/tabs/rekonsiliasi-obat-tab.blade.php --}}
+{{-- @use wajib: partial TIDAK mewarisi import dari berkas induknya. --}}
+@use('App\Support\RekonsiliasiObat')
 @php $daftarObat = $dataDaftarUGD['anamnesa']['rekonsiliasiObat'] ?? []; @endphp
 
 <x-border-form :title="__('Rekonsiliasi Obat')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
@@ -56,30 +58,30 @@
                 <div class="grid grid-cols-12 gap-2">
                     <div class="col-span-5">
                         <x-input-label value="Nama Obat" :required="true" class="truncate whitespace-nowrap" />
-                        <x-text-input wire:model="rekonNamaObat" wire:keydown.enter.prevent="addRekonsiliasiObat"
-                            placeholder="Amlodipin 10 mg" :error="$errors->has('rekonNamaObat')" :disabled="$isFormLocked"
+                        <x-text-input wire:model="formEntryRekonsiliasi.namaObat" wire:keydown.enter.prevent="addRekonsiliasiObat"
+                            placeholder="Amlodipin 10 mg" :error="$errors->has('formEntryRekonsiliasi.namaObat')" :disabled="$isFormLocked"
                             class="w-full px-2 mt-1" />
-                        <x-input-error :messages="$errors->get('rekonNamaObat')" class="mt-1" />
+                        <x-input-error :messages="$errors->get('formEntryRekonsiliasi.namaObat')" class="mt-1" />
                     </div>
 
                     <div class="col-span-3">
                         <x-input-label value="Dosis" :required="true" class="truncate whitespace-nowrap" />
-                        <x-text-input wire:model="rekonDosis" wire:keydown.enter.prevent="addRekonsiliasiObat"
-                            placeholder="1x1 tab" :error="$errors->has('rekonDosis')" :disabled="$isFormLocked"
+                        <x-text-input wire:model="formEntryRekonsiliasi.dosis" wire:keydown.enter.prevent="addRekonsiliasiObat"
+                            placeholder="1x1 tab" :error="$errors->has('formEntryRekonsiliasi.dosis')" :disabled="$isFormLocked"
                             class="w-full px-2 mt-1" />
-                        <x-input-error :messages="$errors->get('rekonDosis')" class="mt-1" />
+                        <x-input-error :messages="$errors->get('formEntryRekonsiliasi.dosis')" class="mt-1" />
                     </div>
 
                     <div class="col-span-4">
                         <x-input-label value="Rute" :required="true" class="truncate whitespace-nowrap" />
-                        <x-select-input wire:model="rekonRute" :error="$errors->has('rekonRute')" :disabled="$isFormLocked"
+                        <x-select-input wire:model="formEntryRekonsiliasi.rute" :error="$errors->has('formEntryRekonsiliasi.rute')" :disabled="$isFormLocked"
                             class="w-full px-2 mt-1">
                             <option value="">—</option>
-                            @foreach (['Oral', 'Sublingual', 'IV', 'IM', 'SC', 'Inhalasi', 'Topikal', 'Rektal', 'Tetes Mata', 'Tetes Telinga', 'Lainnya'] as $rute)
+                            @foreach (RekonsiliasiObat::RUTE as $rute)
                                 <option value="{{ $rute }}">{{ $rute }}</option>
                             @endforeach
                         </x-select-input>
-                        <x-input-error :messages="$errors->get('rekonRute')" class="mt-1" />
+                        <x-input-error :messages="$errors->get('formEntryRekonsiliasi.rute')" class="mt-1" />
                     </div>
                 </div>
 
@@ -87,14 +89,14 @@
                 <div class="pt-1 space-y-2 border-t border-hairline dark:border-gray-700">
                     <div class="flex items-center justify-between gap-3">
                         <x-input-label value="Dibawa Saat Ranap" :required="false" />
-                        <x-toggle wire:model.live="rekonDibawaRanap" trueValue="Ya" falseValue="Tidak"
-                            :label="$rekonDibawaRanap === 'Ya' ? 'Ya' : 'Tidak'" :disabled="$isFormLocked" />
+                        <x-toggle wire:model.live="formEntryRekonsiliasi.dibawaRanap" trueValue="Ya" falseValue="Tidak"
+                            :label="$formEntryRekonsiliasi['dibawaRanap'] === 'Ya' ? 'Ya' : 'Tidak'" :disabled="$isFormLocked" />
                     </div>
 
                     <div class="flex items-center justify-between gap-3">
                         <x-input-label value="Lanjut Saat Pulang" :required="false" />
-                        <x-toggle wire:model.live="rekonLanjutPulang" trueValue="Ya" falseValue="Tidak"
-                            :label="$rekonLanjutPulang === 'Ya' ? 'Ya' : 'Tidak'" :disabled="$isFormLocked" />
+                        <x-toggle wire:model.live="formEntryRekonsiliasi.lanjutPulang" trueValue="Ya" falseValue="Tidak"
+                            :label="$formEntryRekonsiliasi['lanjutPulang'] === 'Ya' ? 'Ya' : 'Tidak'" :disabled="$isFormLocked" />
                     </div>
                 </div>
 
@@ -122,6 +124,7 @@
                         <th class="ds-c w-10">No</th>
                         <th>Obat (Dosis &middot; Rute)</th>
                         <th>Keterangan</th>
+                        <th class="w-44">Petugas</th>
                         <th class="ds-c w-14">Aksi</th>
                     </tr>
                 </thead>
@@ -156,6 +159,18 @@
                                 </div>
                             </td>
 
+                            {{-- Pencatat entri. Baris lama (sebelum field ini ada) tampil '-'. --}}
+                            <td>
+                                @if (filled($obat['petugasRekonsiliasi'] ?? null))
+                                    <div class="ds-td-strong">{{ $obat['petugasRekonsiliasi'] }}</div>
+                                    @if (filled($obat['tglRekonsiliasi'] ?? null))
+                                        <div class="text-muted dark:text-gray-400">{{ $obat['tglRekonsiliasi'] }}</div>
+                                    @endif
+                                @else
+                                    <span class="text-muted-soft">-</span>
+                                @endif
+                            </td>
+
                             <td class="ds-c">
                                 @if (!$isFormLocked)
                                     <x-confirm-button variant="danger-soft" :action="'removeRekonsiliasiObat(' . $index . ')'"
@@ -173,7 +188,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="ds-c italic text-muted-soft">
+                            <td colspan="5" class="ds-c italic text-muted-soft">
                                 Belum ada riwayat pemakaian obat.
                             </td>
                         </tr>

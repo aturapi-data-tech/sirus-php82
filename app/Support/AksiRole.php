@@ -52,6 +52,20 @@ class AksiRole
     /** Cetak e-resep dari layar EMR. */
     public const EMR_CETAK_ERESEP = ['Perawat', 'Dokter', 'Casemix', 'Manager Medis', 'Manager Umum', 'Admin'];
 
+    /**
+     * Mengisi Rekonsiliasi Obat lewat titik-3 Daftar RI / Pelayanan UGD.
+     *
+     * Pintu ini milik FARMASI: apoteker mendata obat yang dibawa pasien tanpa
+     * harus membuka EMR (Anamnesa UGD / Pengkajian Dokter RI) yang bukan
+     * wewenangnya. Karena itu daftarnya SENGAJA tidak sama dengan daftar akses
+     * EMR — Perawat & Dokter tetap mengisi lewat form EMR-nya masing-masing,
+     * bukan lewat pintu ini.
+     *
+     * Manager Umum & Manager Medis ikut, mengikuti pola klaster lain di berkas
+     * ini (DOKUMEN_HAPUS, EMR_LOG_AKTIVITAS) — manager punya akses lintas unit.
+     */
+    public const REKONSILIASI_OBAT = ['Admin', 'Apoteker', 'Manager Umum', 'Manager Medis'];
+
     /* ───────────────────────── BRIDGING EKSTERNAL ───────────────────────── */
 
     /** Membuka panel kirim iDRG / INA-CBG (casemix). */

@@ -83,6 +83,12 @@ new class extends Component {
         $this->dispatch('emr-ugd.administrasi.open', rjNo: $rjNo);
     }
 
+    // Rekonsiliasi Obat (Farmasi) — modal sibling, node sama dgn tab Anamnesa UGD
+    public function openRekonsiliasiObat(int $rjNo): void
+    {
+        $this->dispatch('rekonsiliasi-obat-ugd.open', rjNo: $rjNo);
+    }
+
     // Cek status peserta BPJS via VClaim — petugas UGD verifikasi keaktifan
     // kartu saat pelayanan (input No Kartu 13 digit atau NIK 16 digit).
     public function openCekPesertaBpjs(): void
@@ -839,6 +845,28 @@ new class extends Component {
                                                                 </x-dropdown-link>
                                                             @endhasanyrole
 
+                                                            {{-- Rekonsiliasi Obat — pintu FARMASI (Apoteker/Admin/Manager).
+                                                                 Menulis node yang sama dgn EMR UGD → Anamnesa → tab
+                                                                 Rekonsiliasi Obat, tanpa membuka form Anamnesa. --}}
+                                                            @can('rekonsiliasi.obat')
+                                                                <x-dropdown-link href="#"
+                                                                    wire:click.prevent="openRekonsiliasiObat('{{ $row->rj_no }}')"
+                                                                    class="px-3 py-2 text-sm rounded-lg bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/20">
+                                                                    <div class="flex items-start gap-2">
+                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor"
+                                                                            viewBox="0 0 24 24" stroke-width="2">
+                                                                            <path stroke-linecap="round"
+                                                                                stroke-linejoin="round"
+                                                                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                                                        </svg>
+                                                                        <span>Rekonsiliasi Obat<br>
+                                                                            <span class="font-semibold">Obat Bawaan
+                                                                                Pasien</span>
+                                                                        </span>
+                                                                    </div>
+                                                                </x-dropdown-link>
+                                                            @endcan
+
                                                             {{-- Transfer ke RI — aktif HANYA saat status Antrian (rj_status='A'), selain itu disabled --}}
                                                             @hasanyrole('Admin|Tu|Perawat|Manager Umum|Supervisor Tu')
                                                                 @if ($row->rj_status === 'A')
@@ -916,6 +944,9 @@ new class extends Component {
             <livewire:pages::transaksi.ugd.administrasi-ugd.administrasi-ugd wire:key="administrasi-ugd-actions" />
             <livewire:pages::transaksi.ugd.administrasi-ugd.transfer-ugd-ke-ri-actions wire:key="transfer-ugd-ke-ri-actions" />
             <livewire:pages::transaksi.ugd.pelayanan-ugd.cek-peserta-bpjs-ugd-actions wire:key="cek-peserta-bpjs-ugd-actions" />
+
+            {{-- Modal Rekonsiliasi Obat (Farmasi) — listen ke event rekonsiliasi-obat-ugd.open --}}
+            <livewire:pages::transaksi.ugd.rekonsiliasi-obat-ugd.rekonsiliasi-obat-ugd wire:key="rekonsiliasi-obat-ugd" />
             <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.modul-dokumen-ugd wire:key="modul-dokumen-ugd" />
             <livewire:pages::transaksi.ugd.emr-ugd.log-aktivitas.log-aktivitas-ugd wire:key="log-aktivitas-ugd" />
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-ugd" />

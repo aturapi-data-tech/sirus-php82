@@ -144,6 +144,7 @@
                                         <th class="ds-c w-10">No</th>
                                         <th>Obat (Dosis &middot; Rute)</th>
                                         <th>Keterangan</th>
+                                        <th class="w-44">Petugas</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -164,6 +165,18 @@
                                             <td>
                                                 Dibawa saat ranap: {{ ($obat['dibawaRanap'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak' }}<br>
                                                 Lanjut saat pulang: {{ ($obat['lanjutPulang'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak' }}
+                                            </td>
+                                            {{-- Pencatat entri; baris hasil prefill = petugas UGD.
+                                                 Baris lama (sebelum field ini ada) tampil '-'. --}}
+                                            <td>
+                                                @if (filled($obat['petugasRekonsiliasi'] ?? null))
+                                                    <div class="ds-td-strong">{{ $obat['petugasRekonsiliasi'] }}</div>
+                                                    @if (filled($obat['tglRekonsiliasi'] ?? null))
+                                                        <div class="text-muted dark:text-gray-400">{{ $obat['tglRekonsiliasi'] }}</div>
+                                                    @endif
+                                                @else
+                                                    <span class="text-muted-soft">-</span>
+                                                @endif
                                             </td>
                                         </tr>
                                     @endforeach

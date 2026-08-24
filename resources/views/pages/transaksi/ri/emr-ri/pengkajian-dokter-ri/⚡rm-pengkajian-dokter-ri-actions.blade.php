@@ -3,6 +3,7 @@
 
 use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
+use App\Http\Traits\Txn\Ri\RekonsiliasiObatRITrait;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
@@ -11,18 +12,21 @@ use Carbon\Carbon;
 use Livewire\Attributes\On;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Support\Terminologi\AlergiSnomed;
+use App\Support\RekonsiliasiObat;
 
 new class extends Component {
-    use EmrRITrait, EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
+    use EmrRITrait, EmrUGDTrait, RekonsiliasiObatRITrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
 
     public bool $isFormLocked = false;
     public bool $isReadOnlyByRole = false; // true jika user bukan Dokter/Admin — perawat boleh lihat tapi tidak edit/simpan
     public ?string $riHdrNo = null;
     public array $dataDaftarRi = [];
 
-    // Model disamakan dgn Rekonsiliasi Obat UGD (anamnesa.rekonsiliasiObat):
-    // nama/dosis/rute wajib + dua keputusan Dibawa Saat Ranap & Lanjut Saat Pulang.
-    public array $rekonsiliasiObat = [
+    // Entri form Rekonsiliasi Obat — bentuk $formEntry* seperti penilaian
+    // (formEntryNyeri, formEntryResikoJatuh, dst). Namanya sengaja BUKAN
+    // $rekonsiliasiObat: key JSON bernama sama justru menyimpan DAFTAR-nya.
+    // Isi disamakan dgn Rekonsiliasi Obat UGD (anamnesa.rekonsiliasiObat).
+    public array $formEntryRekonsiliasi = [
         'namaObat' => '',
         'dosis' => '',
         'rute' => '',
@@ -126,19 +130,9 @@ new class extends Component {
         // 6) Rekonsiliasi Obat — daftar, jadi bukan fill-only per field: obat yang
         // belum ada DITAMBAHKAN, yang namanya sudah ada di RI dilewati (tak menimpa).
         $pd['anamnesa']['rekonsiliasiObat'] ??= [];
-        $obatUgd = collect(data_get($ugd, 'anamnesa.rekonsiliasiObat', []) ?? [])
-            ->filter(fn($obat) => filled($obat['namaObat'] ?? null))
-            ->map(
-                fn($obat) => [
-                    'namaObat' => $obat['namaObat'] ?? '',
-                    'dosis' => $obat['dosis'] ?? '',
-                    'rute' => $obat['rute'] ?? '',
-                    'dibawaRanap' => ($obat['dibawaRanap'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak',
-                    'lanjutPulang' => ($obat['lanjutPulang'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak',
-                ],
-            )
-            ->values()
-            ->toArray();
+        // Pencatat aslinya petugas UGD — dibawa apa adanya oleh normalkanDaftar(),
+        // tidak distempel ulang user RI, supaya jejaknya tetap benar.
+        $obatUgd = RekonsiliasiObat::normalkanDaftar(data_get($ugd, 'anamnesa.rekonsiliasiObat', []));
 
         $sebelum = count($pd['anamnesa']['rekonsiliasiObat']);
         $pd['anamnesa']['rekonsiliasiObat'] = $this->gabungRekonsiliasiObat($pd['anamnesa']['rekonsiliasiObat'], $obatUgd);
@@ -156,56 +150,6 @@ new class extends Component {
         }
         $msg .= '. Klik Simpan untuk persist.';
         $this->dispatch('toast', type: 'success', message: $msg);
-    }
-
-    /**
-     * Rekonsiliasi obat dari kunjungan UGD yang MENTRANSFER pasien ini ke ranap.
-     *
-     * Relasi UGD→RI disimpan permanen saat transfer di rstxn_ribiayaselamadugds
-     * (rj_no = UGD, ugd_no_rsri = rihdr_no RI), jadi asalnya pasti — tidak menebak
-     * lewat reg_no/tanggal. Bentuk entri di UGD & RI sudah identik, jadi disalin
-     * apa adanya; record UGD lama yang belum punya dua field keputusan dinormalkan
-     * ke 'Tidak' supaya tampilan/cetak RI tidak kosong.
-     */
-    protected function rekonsiliasiObatDariUgd(string $riHdrNo): array
-    {
-        $rjNoUgd = DB::table('rstxn_ribiayaselamadugds')->where('ugd_no_rsri', $riHdrNo)->orderByDesc('rj_no')->value('rj_no');
-
-        if (empty($rjNoUgd)) {
-            return [];
-        }
-
-        $ugd = $this->findDataUGD((int) $rjNoUgd);
-
-        return collect(data_get($ugd, 'anamnesa.rekonsiliasiObat', []) ?? [])
-            ->filter(fn($obat) => filled($obat['namaObat'] ?? null))
-            ->map(
-                fn($obat) => [
-                    'namaObat' => $obat['namaObat'] ?? '',
-                    'dosis' => $obat['dosis'] ?? '',
-                    'rute' => $obat['rute'] ?? '',
-                    'dibawaRanap' => ($obat['dibawaRanap'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak',
-                    'lanjutPulang' => ($obat['lanjutPulang'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak',
-                ],
-            )
-            ->values()
-            ->toArray();
-    }
-
-    /** Gabung daftar obat UGD ke daftar RI — hanya yang belum ada (dedupe nama obat). */
-    protected function gabungRekonsiliasiObat(array $daftarRi, array $daftarUgd): array
-    {
-        $namaSudahAda = collect($daftarRi)->pluck('namaObat')->map(fn($n) => strtolower(trim((string) $n)))->all();
-
-        foreach ($daftarUgd as $obat) {
-            if (in_array(strtolower(trim($obat['namaObat'])), $namaSudahAda, true)) {
-                continue;
-            }
-            $daftarRi[] = $obat;
-            $namaSudahAda[] = strtolower(trim($obat['namaObat']));
-        }
-
-        return array_values($daftarRi);
     }
 
     #[On('open-rm-pengkajian-dokter-ri')]
@@ -394,37 +338,27 @@ new class extends Component {
         // (guard/early-return sebelum validate bikin border error tak muncul).
         $this->validateWithToast(
             [
-                'rekonsiliasiObat.namaObat' => ['required', 'string', 'max:200'],
-                'rekonsiliasiObat.dosis' => ['required', 'string', 'max:100'],
-                'rekonsiliasiObat.rute' => ['required', 'string'],
+                'formEntryRekonsiliasi.namaObat' => ['required', 'string', 'max:200'],
+                'formEntryRekonsiliasi.dosis' => ['required', 'string', 'max:100'],
+                'formEntryRekonsiliasi.rute' => ['required', 'string'],
             ],
             [],
             [
-                'rekonsiliasiObat.namaObat' => 'Nama Obat',
-                'rekonsiliasiObat.dosis' => 'Dosis',
-                'rekonsiliasiObat.rute' => 'Rute',
+                'formEntryRekonsiliasi.namaObat' => 'Nama Obat',
+                'formEntryRekonsiliasi.dosis' => 'Dosis',
+                'formEntryRekonsiliasi.rute' => 'Rute',
             ],
         );
 
-        $sudahAda = collect($this->dataDaftarRi['pengkajianDokter']['anamnesa']['rekonsiliasiObat'] ?? [])
-            ->where('namaObat', $this->rekonsiliasiObat['namaObat'])
-            ->count();
-
-        if ($sudahAda > 0) {
+        if (RekonsiliasiObat::sudahAda($this->dataDaftarRi['pengkajianDokter']['anamnesa']['rekonsiliasiObat'] ?? [], $this->formEntryRekonsiliasi['namaObat'])) {
             $this->dispatch('toast', type: 'error', message: 'Obat sudah ada dalam daftar.');
             return;
         }
 
-        $this->dataDaftarRi['pengkajianDokter']['anamnesa']['rekonsiliasiObat'][] = [
-            'namaObat' => $this->rekonsiliasiObat['namaObat'],
-            'dosis' => $this->rekonsiliasiObat['dosis'],
-            'rute' => $this->rekonsiliasiObat['rute'],
-            'dibawaRanap' => $this->rekonsiliasiObat['dibawaRanap'] ?? 'Tidak',
-            'lanjutPulang' => $this->rekonsiliasiObat['lanjutPulang'] ?? 'Tidak',
-        ];
+        $this->dataDaftarRi['pengkajianDokter']['anamnesa']['rekonsiliasiObat'][] = RekonsiliasiObat::barisBaru($this->formEntryRekonsiliasi['namaObat'], $this->formEntryRekonsiliasi['dosis'], $this->formEntryRekonsiliasi['rute'], $this->formEntryRekonsiliasi['dibawaRanap'] ?? 'Tidak', $this->formEntryRekonsiliasi['lanjutPulang'] ?? 'Tidak');
 
-        $namaObat = $this->rekonsiliasiObat['namaObat'];
-        $this->reset(['rekonsiliasiObat']);
+        $namaObat = $this->formEntryRekonsiliasi['namaObat'];
+        $this->reset(['formEntryRekonsiliasi']);
         $this->store('Tambah riwayat pemakaian obat — ' . $namaObat);
     }
 
@@ -502,7 +436,7 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->reset(['rekonsiliasiObat']);
+        $this->reset(['formEntryRekonsiliasi']);
     }
 
     /* ===============================
@@ -760,30 +694,30 @@ new class extends Component {
                 <div class="grid grid-cols-12 gap-2">
                     <div class="col-span-5">
                         <x-input-label value="Nama Obat" :required="true" class="truncate whitespace-nowrap" />
-                        <x-text-input wire:model="rekonsiliasiObat.namaObat"
+                        <x-text-input wire:model="formEntryRekonsiliasi.namaObat"
                             wire:keydown.enter.prevent="addRekonsiliasiObat" placeholder="Amlodipin 10 mg"
-                            :error="$errors->has('rekonsiliasiObat.namaObat')" class="w-full px-2 mt-1" />
-                        <x-input-error :messages="$errors->get('rekonsiliasiObat.namaObat')" class="mt-1" />
+                            :error="$errors->has('formEntryRekonsiliasi.namaObat')" class="w-full px-2 mt-1" />
+                        <x-input-error :messages="$errors->get('formEntryRekonsiliasi.namaObat')" class="mt-1" />
                     </div>
 
                     <div class="col-span-3">
                         <x-input-label value="Dosis" :required="true" class="truncate whitespace-nowrap" />
-                        <x-text-input wire:model="rekonsiliasiObat.dosis"
-                            wire:keydown.enter.prevent="addRekonsiliasiObat" placeholder="1x1 tab" :error="$errors->has('rekonsiliasiObat.dosis')"
+                        <x-text-input wire:model="formEntryRekonsiliasi.dosis"
+                            wire:keydown.enter.prevent="addRekonsiliasiObat" placeholder="1x1 tab" :error="$errors->has('formEntryRekonsiliasi.dosis')"
                             class="w-full px-2 mt-1" />
-                        <x-input-error :messages="$errors->get('rekonsiliasiObat.dosis')" class="mt-1" />
+                        <x-input-error :messages="$errors->get('formEntryRekonsiliasi.dosis')" class="mt-1" />
                     </div>
 
                     <div class="col-span-4">
                         <x-input-label value="Rute" :required="true" class="truncate whitespace-nowrap" />
-                        <x-select-input wire:model="rekonsiliasiObat.rute" :error="$errors->has('rekonsiliasiObat.rute')"
+                        <x-select-input wire:model="formEntryRekonsiliasi.rute" :error="$errors->has('formEntryRekonsiliasi.rute')"
                             class="w-full px-2 mt-1">
                             <option value="">—</option>
-                            @foreach (['Oral', 'Sublingual', 'IV', 'IM', 'SC', 'Inhalasi', 'Topikal', 'Rektal', 'Tetes Mata', 'Tetes Telinga', 'Lainnya'] as $rute)
+                            @foreach (\App\Support\RekonsiliasiObat::RUTE as $rute)
                                 <option value="{{ $rute }}">{{ $rute }}</option>
                             @endforeach
                         </x-select-input>
-                        <x-input-error :messages="$errors->get('rekonsiliasiObat.rute')" class="mt-1" />
+                        <x-input-error :messages="$errors->get('formEntryRekonsiliasi.rute')" class="mt-1" />
                     </div>
                 </div>
 
@@ -791,14 +725,14 @@ new class extends Component {
                 <div class="pt-1 space-y-2 border-t border-hairline dark:border-gray-700">
                     <div class="flex items-center justify-between gap-3">
                         <x-input-label value="Dibawa Saat Ranap" :required="false" />
-                        <x-toggle wire:model.live="rekonsiliasiObat.dibawaRanap" trueValue="Ya" falseValue="Tidak"
-                            :label="($rekonsiliasiObat['dibawaRanap'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak'" />
+                        <x-toggle wire:model.live="formEntryRekonsiliasi.dibawaRanap" trueValue="Ya" falseValue="Tidak"
+                            :label="($formEntryRekonsiliasi['dibawaRanap'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak'" />
                     </div>
 
                     <div class="flex items-center justify-between gap-3">
                         <x-input-label value="Lanjut Saat Pulang" :required="false" />
-                        <x-toggle wire:model.live="rekonsiliasiObat.lanjutPulang" trueValue="Ya" falseValue="Tidak"
-                            :label="($rekonsiliasiObat['lanjutPulang'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak'" />
+                        <x-toggle wire:model.live="formEntryRekonsiliasi.lanjutPulang" trueValue="Ya" falseValue="Tidak"
+                            :label="($formEntryRekonsiliasi['lanjutPulang'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak'" />
                     </div>
                 </div>
 
@@ -825,6 +759,7 @@ new class extends Component {
                             <th class="ds-c w-10">No</th>
                             <th>Obat (Dosis &middot; Rute)</th>
                             <th>Keterangan</th>
+                            <th class="w-44">Petugas</th>
                             <th class="ds-c w-14">Aksi</th>
                         </tr>
                     </thead>
@@ -861,6 +796,20 @@ new class extends Component {
                                     </div>
                                 </td>
 
+                                {{-- Pencatat entri; untuk baris hasil prefill = petugas UGD.
+                                     Baris lama (sebelum field ini ada) tampil '-'. --}}
+                                <td>
+                                    @if (filled($obat['petugasRekonsiliasi'] ?? null))
+                                        <div class="ds-td-strong">{{ $obat['petugasRekonsiliasi'] }}</div>
+                                        @if (filled($obat['tglRekonsiliasi'] ?? null))
+                                            <div class="text-muted dark:text-gray-400">
+                                                {{ $obat['tglRekonsiliasi'] }}</div>
+                                        @endif
+                                    @else
+                                        <span class="text-muted-soft">-</span>
+                                    @endif
+                                </td>
+
                                 <td class="ds-c">
                                     @if (!$isFormLocked && !$isReadOnlyByRole)
                                         <x-confirm-button variant="danger-soft" :action="'removeRekonsiliasiObat(' . $index . ')'" title="Hapus Obat"
@@ -881,7 +830,7 @@ new class extends Component {
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="ds-c italic text-muted-soft">
+                                <td colspan="5" class="ds-c italic text-muted-soft">
                                     Belum ada riwayat pemakaian obat.
                                 </td>
                             </tr>

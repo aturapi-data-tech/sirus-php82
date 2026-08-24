@@ -87,6 +87,10 @@ new class extends Component {
     {
         $this->dispatch('emr-ri.pindah-kamar.open', riHdrNo: $riHdrNo);
     }
+    public function openRekonsiliasiObat(string $riHdrNo): void
+    {
+        $this->dispatch('rekonsiliasi-obat-ri.open', riHdrNo: $riHdrNo);
+    }
     public function requestDelete(string $riHdrNo): void
     {
         $this->dispatch('toast', type: 'warning', message: 'Modul RI - Fitur Hapus dalam Pengembangan');
@@ -801,6 +805,28 @@ new class extends Component {
                                                                 </x-dropdown-link>
                                                             @endhasanyrole
 
+                                                            {{-- Rekonsiliasi Obat — pintu FARMASI (Apoteker/Admin/Manager).
+                                                                 Menulis node yang sama dgn EMR RI → Pengkajian Dokter,
+                                                                 tanpa membuka form dokternya. --}}
+                                                            @can('rekonsiliasi.obat')
+                                                                <x-dropdown-link href="#"
+                                                                    wire:click.prevent="openRekonsiliasiObat('{{ $row->rihdr_no }}')"
+                                                                    class="px-3 py-2 text-sm rounded-lg bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/20">
+                                                                    <div class="flex items-start gap-2">
+                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor"
+                                                                            viewBox="0 0 24 24" stroke-width="2">
+                                                                            <path stroke-linecap="round"
+                                                                                stroke-linejoin="round"
+                                                                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                                                        </svg>
+                                                                        <span>Rekonsiliasi Obat<br>
+                                                                            <span class="font-semibold">Obat Bawaan
+                                                                                Pasien</span>
+                                                                        </span>
+                                                                    </div>
+                                                                </x-dropdown-link>
+                                                            @endcan
+
                                                             @can('ri.pindahKamar')
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="openPindahKamar('{{ $row->rihdr_no }}')"
@@ -952,6 +978,9 @@ new class extends Component {
             <livewire:pages::transaksi.ri.emr-ri.emr-ri wire:key="emr-ri-actions" />
             <livewire:pages::transaksi.ri.administrasi-ri.administrasi-ri wire:key="administrasi-ri-actions" />
             <livewire:pages::transaksi.ri.administrasi-ri.pindah-kamar-ri wire:key="pindah-kamar-ri" />
+
+            {{-- Modal Rekonsiliasi Obat (Farmasi) — listen ke event rekonsiliasi-obat-ri.open --}}
+            <livewire:pages::transaksi.ri.rekonsiliasi-obat-ri.rekonsiliasi-obat-ri wire:key="rekonsiliasi-obat-ri" />
 
             {{-- iDRG/INACBG Modal (sibling, listen ke event daftar-ri.idrg.open) --}}
             <livewire:pages::transaksi.ri.daftar-ri.idrg-ri-actions wire:key="idrg-ri-actions" />

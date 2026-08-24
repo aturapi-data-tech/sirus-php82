@@ -170,11 +170,12 @@
                 <table class="w-full border-collapse mt-0.5 text-[10px]">
                     <thead>
                         <tr class="bg-gray-100">
-                            <th class="border border-gray-500 px-1 py-0.5 text-left" style="width:40%">Nama Obat</th>
-                            <th class="border border-gray-500 px-1 py-0.5 text-left" style="width:14%">Dosis</th>
-                            <th class="border border-gray-500 px-1 py-0.5 text-left" style="width:12%">Rute</th>
+                            <th class="border border-gray-500 px-1 py-0.5 text-left" style="width:30%">Nama Obat</th>
+                            <th class="border border-gray-500 px-1 py-0.5 text-left" style="width:12%">Dosis</th>
+                            <th class="border border-gray-500 px-1 py-0.5 text-left" style="width:10%">Rute</th>
                             {{-- Dua keputusan digabung satu kolom (label atas-bawah) supaya nama obat lebih lega --}}
-                            <th class="border border-gray-500 px-1 py-0.5 text-left" style="width:34%">Keterangan</th>
+                            <th class="border border-gray-500 px-1 py-0.5 text-left" style="width:28%">Keterangan</th>
+                            <th class="border border-gray-500 px-1 py-0.5 text-left" style="width:20%">Petugas</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -182,6 +183,8 @@
                             @php
                                 $dibawaRanap = filled($obat['dibawaRanap'] ?? null) ? $obat['dibawaRanap'] : '-';
                                 $lanjutPulang = filled($obat['lanjutPulang'] ?? null) ? $obat['lanjutPulang'] : '-';
+                                $petugasRekon = filled($obat['petugasRekonsiliasi'] ?? null) ? $obat['petugasRekonsiliasi'] : '-';
+                                $tglRekon = filled($obat['tglRekonsiliasi'] ?? null) ? $obat['tglRekonsiliasi'] : '';
                             @endphp
                             <tr>
                                 <td class="border border-gray-500 px-1 py-0.5">{{ $obat['namaObat'] ?? '-' }}</td>
@@ -191,9 +194,14 @@
                                     Dibawa saat ranap : {{ $dibawaRanap }}<br>
                                     Lanjut saat pulang : {{ $lanjutPulang }}
                                 </td>
+                                {{-- Pencatat entri; baris lama (sebelum field ini ada) tercetak '-'. --}}
+                                <td class="border border-gray-500 px-1 py-0.5">
+                                    {{ $petugasRekon }}@if ($tglRekon)<br>{{ $tglRekon }}@endif
+                                </td>
                             </tr>
                         @empty
                             <tr>
+                                <td class="border border-gray-500 px-1 py-0.5">&nbsp;</td>
                                 <td class="border border-gray-500 px-1 py-0.5">&nbsp;</td>
                                 <td class="border border-gray-500 px-1 py-0.5">&nbsp;</td>
                                 <td class="border border-gray-500 px-1 py-0.5">&nbsp;</td>

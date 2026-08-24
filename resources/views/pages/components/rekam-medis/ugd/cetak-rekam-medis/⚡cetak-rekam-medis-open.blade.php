@@ -431,6 +431,9 @@ new class extends Component {
                                             <th
                                                 class="px-2.5 py-1.5 text-left text-sm font-medium text-muted border border-hairline dark:border-gray-700">
                                                 Keterangan</th>
+                                            <th
+                                                class="px-2.5 py-1.5 text-left text-sm font-medium text-muted border border-hairline dark:border-gray-700">
+                                                Petugas</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -452,10 +455,18 @@ new class extends Component {
                                                     Lanjut saat pulang :
                                                     {{ filled($obat['lanjutPulang'] ?? null) ? $obat['lanjutPulang'] : '-' }}
                                                 </td>
+                                                {{-- Pencatat entri; baris lama (sebelum field ini ada) tampil '-'. --}}
+                                                <td
+                                                    class="px-2.5 py-1.5 text-body dark:text-gray-300 border border-hairline dark:border-gray-700">
+                                                    {{ filled($obat['petugasRekonsiliasi'] ?? null) ? $obat['petugasRekonsiliasi'] : '-' }}
+                                                    @if (filled($obat['tglRekonsiliasi'] ?? null))
+                                                        <br><span class="text-muted-soft">{{ $obat['tglRekonsiliasi'] }}</span>
+                                                    @endif
+                                                </td>
                                             </tr>
                                         @empty
                                             <tr>
-                                                <td colspan="4"
+                                                <td colspan="5"
                                                     class="px-2.5 py-1.5 text-center text-muted-soft border border-hairline dark:border-gray-700">
                                                     Tidak ada data</td>
                                             </tr>
