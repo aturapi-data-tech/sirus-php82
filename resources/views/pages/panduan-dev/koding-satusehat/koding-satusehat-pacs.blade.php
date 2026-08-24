@@ -30,7 +30,6 @@
                                 <div class="ds-title-sm mb-2" style="color:var(--warning)">Belum</div>
                                 <ul class="ds-body-sm space-y-1" style="list-style:disc; padding-left:18px">
                                     <li>Konfirmasi alat DICOM</li>
-                                    <li>Wire UGD + RI (RJ sudah)</li>
                                 </ul>
                             </div>
                         </div>
@@ -127,7 +126,7 @@
                                     </div>
                                     <div class="ds-title-sm">Kirim ke SATUSEHAT (Kartu 10)</div>
                                     <span class="ds-caption px-2 py-0.5 rounded" style="background:var(--success-soft); color:var(--success)">SR+DR aktif</span>
-                                    <span class="ds-caption px-2 py-0.5 rounded" style="background:var(--success-soft); color:var(--success)">ImagingStudy RJ aktif</span>
+                                    <span class="ds-caption px-2 py-0.5 rounded" style="background:var(--success-soft); color:var(--success)">ImagingStudy RJ+UGD+RI aktif</span>
                                 </div>
                                 <div class="ds-body-sm" style="padding-left:40px">
                                     Petugas buka halaman SATUSEHAT pasien &rarr; klik Kirim di kartu Radiologi.<br>
@@ -135,7 +134,7 @@
                                     Loop tiap order radiologi:<br>
                                     <span class="ds-code" style="display:inline-block; margin:4px 0">&nbsp;① ServiceRequest</span> — order radiologi (LOINC 18748-4 atau spesifik dari master)<br>
                                     <span class="ds-code" style="display:inline-block; margin:4px 0">&nbsp;② DiagnosticReport</span> — laporan (basedOn SR, kategori RAD)<br>
-                                    <span class="ds-code" style="display:inline-block; margin:4px 0">&nbsp;③ ImagingStudy</span> — metadata studi pencitraan (UID DICOM + modality) &mdash; <strong>aktif untuk RJ, auto upload foto ke Orthanc</strong><br><br>
+                                    <span class="ds-code" style="display:inline-block; margin:4px 0">&nbsp;③ ImagingStudy</span> — metadata studi pencitraan (UID DICOM + modality) &mdash; <strong>aktif RJ + UGD + RI, auto upload foto ke Orthanc</strong><br><br>
                                     ID hasil kirim disimpan ke JSON <span class="ds-code">satusehat</span> di record kunjungan
                                     (<span class="ds-code">radServiceRequestIds</span>, <span class="ds-code">radDiagnosticReportIds</span>).
                                 </div>
@@ -338,7 +337,7 @@ DB::table('rstxn_rjrads')->insert([
                             <span class="ds-spike" style="vertical-align:middle"></span>
                             <span class="ds-body-sm" style="color:var(--body-strong)">
                                 <strong>1. <s>Generate RADNUM_NO</s></strong> <strong class="text-emerald-600">&check; Done</strong> &mdash; otomatis via <span class="ds-code">NomorRadiologi::generate()</span> di semua insert order.
-                                <br><strong>2. <s>Wire ImagingStudy ke UI</s></strong> <strong class="text-emerald-600">&check; RJ Done</strong> &mdash; auto upload foto ke Orthanc + kirim ImagingStudy, UGD &amp; RI menyusul.
+                                <br><strong>2. <s>Wire ImagingStudy ke UI</s></strong> <strong class="text-emerald-600">&check; RJ + UGD + RI Done</strong> &mdash; auto upload foto ke Orthanc + kirim ImagingStudy.
                                 <br><strong>3. Konfirmasi alat DICOM</strong> — tanya vendor apakah X-ray &amp; USG punya DICOM Store SCU + Modality Worklist SCU.
                                 <br><strong>4. Production</strong> — pindah Orthanc ke VM Proxmox dedicated, disk terpisah &ge; 500 GB.
                             </span>
