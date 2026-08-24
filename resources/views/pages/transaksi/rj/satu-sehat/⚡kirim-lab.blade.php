@@ -173,7 +173,11 @@ new class extends Component {
             // Indeks per-paket — penentu paket mana yang masih bolong. Lihat PenunjangKirimTrait.
             $sistemSr = "http://sys-ids.kemkes.go.id/servicerequest/{$orgId}";
             $sistemSp = "http://sys-ids.kemkes.go.id/specimen/{$orgId}";
-            $sistemDr = "http://sys-ids.kemkes.go.id/diagnostic/{$orgId}";
+            $sistemDr = "http://sys-ids.kemkes.go.id/diagnostic/{$orgId}/lab";
+            // Sebelum RuleNumber 10432 identifier DiagnosticReport TANPA akhiran. Record yang
+            // sudah terkirim memakai system lama itu, jadi pemulihan harus mencoba keduanya —
+            // kalau tidak, DR lama tak ketemu lalu dibuatkan DR KEDUA di SATUSEHAT.
+            $sistemDrLama = "http://sys-ids.kemkes.go.id/diagnostic/{$orgId}";
             $indeks   = $this->indeksKirim($satuSehat, 'labKirim');
             $pulihkan = $this->perluPulihIndeks($satuSehat, 'labKirim', ['labServiceRequestIds', 'labDiagnosticReportIds']);
 
@@ -209,7 +213,9 @@ new class extends Component {
                 if ($pulihkan) {
                     $this->catatKirim($indeks, $kunciOrder, 'sr', $this->cariIdLewatIdentifier('ServiceRequest', $sistemSr, $kunciOrder));
                     $this->catatKirim($indeks, $kunciOrder, 'sp', $this->cariIdLewatIdentifier('Specimen', $sistemSp, $kunciOrder));
-                    $this->catatKirim($indeks, $kunciOrder, 'dr', $this->cariIdLewatIdentifier('DiagnosticReport', $sistemDr, $kunciOrder));
+                    $this->catatKirim($indeks, $kunciOrder, 'dr',
+                        $this->cariIdLewatIdentifier('DiagnosticReport', $sistemDr, $kunciOrder)
+                        ?? $this->cariIdLewatIdentifier('DiagnosticReport', $sistemDrLama, $kunciOrder));
                 }
 
                 if ($this->orderTuntas($indeks, $kunciOrder, ['sr', 'dr'])) { $tuntas++; continue; }

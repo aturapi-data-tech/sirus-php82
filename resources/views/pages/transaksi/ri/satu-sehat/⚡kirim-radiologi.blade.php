@@ -14,12 +14,13 @@ use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\SATUSEHAT\ServiceRequestTrait;
 use App\Support\PenanggungJawabPenunjang;
 use App\Http\Traits\SATUSEHAT\DiagnosticReportTrait;
+use App\Http\Traits\SATUSEHAT\ObservationTrait;
 use App\Http\Traits\SATUSEHAT\ImagingStudyTrait;
 use App\Http\Traits\SATUSEHAT\OrthancTrait;
 use App\Http\Traits\SATUSEHAT\PenunjangKirimTrait;
 
 new class extends Component {
-    use EmrRITrait, ServiceRequestTrait, DiagnosticReportTrait, ImagingStudyTrait, OrthancTrait, PenunjangKirimTrait;
+    use EmrRITrait, ServiceRequestTrait, DiagnosticReportTrait, ObservationTrait, ImagingStudyTrait, OrthancTrait, PenunjangKirimTrait;
 
     public ?string $riHdrNo = null;
     public bool $hasEncounter = false;
@@ -148,11 +149,16 @@ new class extends Component {
             if ($orders->isEmpty()) { $this->dispatch('toast', type: 'error', message: 'Tidak ada order radiologi RI untuk dikirim.'); return; }
 
             $satuSehat['radServiceRequestIds']   = $satuSehat['radServiceRequestIds']   ?? [];
+            $satuSehat['radObservationIds']      = $satuSehat['radObservationIds']      ?? [];
             $satuSehat['radDiagnosticReportIds'] = $satuSehat['radDiagnosticReportIds'] ?? [];
 
             // Indeks per-order — penentu order mana yang masih bolong. Lihat PenunjangKirimTrait.
             $sistemSr = "http://sys-ids.kemkes.go.id/servicerequest/{$orgId}";
-            $sistemDr = "http://sys-ids.kemkes.go.id/diagnostic/{$orgId}";
+            $sistemDr = "http://sys-ids.kemkes.go.id/diagnostic/{$orgId}/rad";
+            // Sebelum RuleNumber 10432 identifier DiagnosticReport TANPA akhiran. Record yang
+            // sudah terkirim memakai system lama itu, jadi pemulihan harus mencoba keduanya —
+            // kalau tidak, DR lama tak ketemu lalu dibuatkan DR KEDUA di SATUSEHAT.
+            $sistemDrLama = "http://sys-ids.kemkes.go.id/diagnostic/{$orgId}";
             $indeks   = $this->indeksKirim($satuSehat, 'radKirim');
             $pulihkan = $this->perluPulihIndeks($satuSehat, 'radKirim', ['radServiceRequestIds', 'radDiagnosticReportIds']);
 
@@ -187,7 +193,9 @@ new class extends Component {
                 // lewat identifier, supaya yang tersisa saja yang dikirim ulang.
                 if ($pulihkan) {
                     $this->catatKirim($indeks, $kunciOrder, 'sr', $this->cariIdLewatIdentifier('ServiceRequest', $sistemSr, $kunciOrder));
-                    $this->catatKirim($indeks, $kunciOrder, 'dr', $this->cariIdLewatIdentifier('DiagnosticReport', $sistemDr, $kunciOrder));
+                    $this->catatKirim($indeks, $kunciOrder, 'dr',
+                        $this->cariIdLewatIdentifier('DiagnosticReport', $sistemDr, $kunciOrder)
+                        ?? $this->cariIdLewatIdentifier('DiagnosticReport', $sistemDrLama, $kunciOrder));
                     if ($adaFoto) {
                         $uidTersimpan = trim((string) ($order->study_uid ?? '')) ?: $this->uidStudi($kunciOrder);
                         $this->catatKirim($indeks, $kunciOrder, 'is', $this->cariIdLewatIdentifier('ImagingStudy', 'urn:dicom:uid', 'urn:oid:' . $uidTersimpan));
@@ -226,14 +234,36 @@ new class extends Component {
 
                 // 2) DiagnosticReport — pelaporan (generik; hasil = PDF terlampir).
                 if (empty($this->idKirim($indeks, $kunciOrder, 'dr'))) {
-                    $dokter = $this->createDiagnosticReport([
+                    // Observation dibuat DI DALAM cabang ini, bukan di luar: DiagnosticReport.result
+                    // wajib (RuleNumber 10385), tapi Observation tak punya identifier sehingga tak
+                    // bisa dipulihkan maupun ditolak duplikat. Kalau dibuat di luar, laporan yang
+                    // SUDAH ada akan ditinggali observasi yatim tiap kali tombol kirim ditekan.
+                    $obsId = $this->idKirim($indeks, $kunciOrder, 'obs');
+                    if (empty($obsId)) {
+                        $observation = $this->createObservation([
+                            'patientId' => $patientId, 'encounterId' => $encounterId, 'performerId' => $practitionerId,
+                            'effectiveDate' => $waktu,
+                            'category' => [['coding' => [['system' => 'http://terminology.hl7.org/CodeSystem/observation-category', 'code' => 'imaging', 'display' => 'Imaging']]]],
+                            'code' => ['system' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi],
+                            'valueString' => 'Lihat hasil pada lampiran radiologi',
+                        ]);
+                        $obsId = $observation['id'] ?? null;
+                        if (!empty($obsId)) {
+                            $satuSehat['radObservationIds'][] = $obsId;
+                            $this->catatKirim($indeks, $kunciOrder, 'obs', $obsId);
+                        }
+                    }
+
+                    $drPayload = [
                         'identifier' => [['system' => $sistemDr, 'use' => 'official', 'value' => $kunciOrder]],
                         'status' => 'final', 'categoryCode' => 'RAD', 'categoryDisplay' => 'Radiology',
                         'codeSystem' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi,
                         'patientId' => $patientId, 'encounterId' => $encounterId,
                         'effectiveDate' => $waktu, 'issued' => $waktu,
                         'performer' => ["Practitioner/{$practitionerId}"], 'basedOn' => [$serviceRequestId],
-                    ]);
+                    ];
+                    if (!empty($obsId)) { $drPayload['observationIds'] = [$obsId]; }
+                    $dokter = $this->createDiagnosticReport($drPayload);
                     if (!empty($dokter['id'])) {
                         $satuSehat['radDiagnosticReportIds'][] = $dokter['id'];
                         $this->catatKirim($indeks, $kunciOrder, 'dr', $dokter['id']);
