@@ -1319,7 +1319,10 @@ new class extends Component {
                             <li>
                                 <span class="font-semibold text-ink dark:text-gray-200">Kirim Tugas Rujukan</span> —
                                 menanyakan kesediaan RS tujuan. Belum merujuk, belum ada nomor rujukan.
-                                Jawabannya: <span class="font-semibold text-success-deep dark:text-green-300">Diterima</span> →
+                                Jawabannya dilihat di <span class="font-semibold text-ink dark:text-gray-200">Persetujuan Faskes</span>
+                                (badge di kelompok kanan; tekan <span class="font-semibold">Cek Status</span> untuk menanyakan ulang —
+                                SATUSEHAT tidak memberi tahu sendiri):
+                                <span class="font-semibold text-success-deep dark:text-green-300">Diterima</span> →
                                 lanjut Kirim Rujukan;
                                 <span class="font-semibold text-error-deep dark:text-red-300">Ditolak</span> →
                                 pilih kandidat lain lalu kirim tugas rujukan ulang;
