@@ -1320,7 +1320,6 @@ new class extends Component {
                                 wire:loading.attr="disabled" wire:target="kirimTugasRujukan"
                                 title="Langkah 3 — menanyakan kesediaan faskes tujuan">
                                 <span wire:loading.remove wire:target="kirimTugasRujukan" class="inline-flex items-center gap-2">
-                                    <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full bg-brand-green/15 text-brand-green dark:bg-brand-lime/20 dark:text-brand-lime">3</span>
                                     Kirim Tugas Rujukan
                                 </span>
                                 <span wire:loading wire:target="kirimTugasRujukan" class="inline-flex items-center gap-1"><x-loading /> Mengirim tugas...</span>
@@ -1334,7 +1333,6 @@ new class extends Component {
                                 wire:loading.attr="disabled" wire:target="kirimRujukan"
                                 title="Langkah 5 — menerbitkan rujukan resmi & nomor rujukan nasional">
                                 <span wire:loading.remove wire:target="kirimRujukan" class="inline-flex items-center gap-2">
-                                    <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full bg-white/25 text-white">5</span>
                                     Kirim Rujukan
                                 </span>
                                 <span wire:loading wire:target="kirimRujukan" class="inline-flex items-center gap-1"><x-loading /> Mengirim rujukan...</span>
