@@ -16,9 +16,10 @@ use App\Support\PenanggungJawabPenunjang;
 use App\Http\Traits\SATUSEHAT\DiagnosticReportTrait;
 use App\Http\Traits\SATUSEHAT\ImagingStudyTrait;
 use App\Http\Traits\SATUSEHAT\OrthancTrait;
+use App\Http\Traits\SATUSEHAT\PenunjangKirimTrait;
 
 new class extends Component {
-    use EmrRITrait, ServiceRequestTrait, DiagnosticReportTrait, ImagingStudyTrait, OrthancTrait;
+    use EmrRITrait, ServiceRequestTrait, DiagnosticReportTrait, ImagingStudyTrait, OrthancTrait, PenunjangKirimTrait;
 
     public ?string $riHdrNo = null;
     public bool $hasEncounter = false;
@@ -119,7 +120,6 @@ new class extends Component {
 
             $satuSehat = $dataRI['satusehat'] ?? [];
             if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($satuSehat['radDiagnosticReportIds']) || !empty($satuSehat['radServiceRequestIds'])) { $this->dispatch('toast', type: 'info', message: 'Radiologi sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataRI['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -150,10 +150,23 @@ new class extends Component {
             $satuSehat['radServiceRequestIds']   = $satuSehat['radServiceRequestIds']   ?? [];
             $satuSehat['radDiagnosticReportIds'] = $satuSehat['radDiagnosticReportIds'] ?? [];
 
+            // Indeks per-order — penentu order mana yang masih bolong. Lihat PenunjangKirimTrait.
+            $sistemSr = "http://sys-ids.kemkes.go.id/servicerequest/{$orgId}";
+            $sistemDr = "http://sys-ids.kemkes.go.id/diagnostic/{$orgId}";
+            $indeks   = $this->indeksKirim($satuSehat, 'radKirim');
+            $pulihkan = $this->perluPulihIndeks($satuSehat, 'radKirim', ['radServiceRequestIds', 'radDiagnosticReportIds']);
+
+            $orderBaru = 0;   // order yang benar-benar dikirim putaran ini
+            $disusul   = 0;   // order lama yang bagian bolongnya baru dilengkapi sekarang
+            $tuntas    = 0;   // order yang memang sudah lengkap — dilewati tanpa memanggil API
+            $gagalSr   = 0;   // ServiceRequest tak terbentuk → order ini tak bisa dilanjut
+            $takTerpetakan = 0;   // record lama yang id-nya tak ketemu saat dipulihkan
+
             foreach ($orders as $order) {
-                $nomorDetail  = trim((string) ($order->rirad_no ?? ''));
-                $deskripsi = trim((string) ($order->rad_desc ?? 'Pemeriksaan Radiologi'));
-                $key  = "{$riHdrNo}-{$nomorDetail}";
+                $nomorDetail = trim((string) ($order->rirad_no ?? ''));
+                $deskripsi   = trim((string) ($order->rad_desc ?? 'Pemeriksaan Radiologi'));
+                $key         = "{$riHdrNo}-{$nomorDetail}";
+                $kunciOrder  = "ri-rad-{$key}";
 
                 // LOINC spesifik bila master terisi, else generik 18748-4.
                 $loincCode    = trim((string) ($order->loinc_code ?? ''));
@@ -163,35 +176,72 @@ new class extends Component {
                     $loincDisplay = $deskripsi;
                 }
 
-                $serviceRequest = $this->postServiceRequest([
-                    'identifier' => ['system' => "http://sys-ids.kemkes.go.id/servicerequest/{$orgId}", 'value' => "ri-rad-{$key}"],
-                    'status' => 'active', 'intent' => 'original-order', 'priority' => 'routine',
-                    'category' => ['system' => 'http://snomed.info/sct', 'code' => '363679005', 'display' => 'Imaging'],
-                    'code' => ['system' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi],
-                    'subject' => "Patient/{$patientId}", 'encounter' => "Encounter/{$encounterId}",
-                    'occurrenceDateTime' => $waktu, 'authoredOn' => $waktu,
-                    'requester' => "Practitioner/{$practitionerId}", 'requesterDisplay' => $drDesc,
-                    'performer' => $pjPenunjang['reference'] ?? null,
-                    'performerDisplay' => $pjPenunjang['display'] ?? null,
-                ]);
-                $serviceRequestId = $serviceRequest['id'] ?? null;
-                if (empty($serviceRequestId)) { continue; }
-                $satuSehat['radServiceRequestIds'][] = $serviceRequestId;
-
-                $dokter = $this->createDiagnosticReport([
-                    'identifier' => [['system' => "http://sys-ids.kemkes.go.id/diagnostic/{$orgId}", 'use' => 'official', 'value' => "ri-rad-{$key}"]],
-                    'status' => 'final', 'categoryCode' => 'RAD', 'categoryDisplay' => 'Radiology',
-                    'codeSystem' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi,
-                    'patientId' => $patientId, 'encounterId' => $encounterId,
-                    'effectiveDate' => $waktu, 'issued' => $waktu,
-                    'performer' => ["Practitioner/{$practitionerId}"], 'basedOn' => [$serviceRequestId],
-                ]);
-                if (!empty($dokter['id'])) { $satuSehat['radDiagnosticReportIds'][] = $dokter['id']; }
-
-                // 3) ImagingStudy — kirim kalau ada file foto/PDF yang sudah diupload.
+                // ImagingStudy hanya relevan kalau fotonya memang sudah ada.
                 $fileFoto = $order->rad_upload_pdf_foto ?? '';
                 $radnumNo = $order->radnum_no ?? '';
-                if (!empty($fileFoto) && !empty($radnumNo)) {
+                $adaFoto  = filled($fileFoto) && filled($radnumNo);
+
+                $bagianWajib = $adaFoto ? ['sr', 'dr', 'is'] : ['sr', 'dr'];
+
+                // Record lama belum punya indeks — pulihkan id yang SUDAH ada di SATUSEHAT
+                // lewat identifier, supaya yang tersisa saja yang dikirim ulang.
+                if ($pulihkan) {
+                    $this->catatKirim($indeks, $kunciOrder, 'sr', $this->cariIdLewatIdentifier('ServiceRequest', $sistemSr, $kunciOrder));
+                    $this->catatKirim($indeks, $kunciOrder, 'dr', $this->cariIdLewatIdentifier('DiagnosticReport', $sistemDr, $kunciOrder));
+                    if ($adaFoto) {
+                        $uidTersimpan = trim((string) ($order->study_uid ?? '')) ?: $this->uidStudi($kunciOrder);
+                        $this->catatKirim($indeks, $kunciOrder, 'is', $this->cariIdLewatIdentifier('ImagingStudy', 'urn:dicom:uid', 'urn:oid:' . $uidTersimpan));
+                    }
+                }
+
+                if ($this->orderTuntas($indeks, $kunciOrder, $bagianWajib)) { $tuntas++; continue; }
+
+                // Record lama yang id-nya TAK berhasil dipetakan — jangan dikirim ulang.
+                // Array datar sudah membuktikan order ini pernah terkirim; POST ulang cuma
+                // akan ditolak duplikat (20002), persis kemacetan yang sedang diperbaiki.
+                // Sikap ini sama dengan guard lama, jadi record lama tak pernah lebih buruk.
+                if ($pulihkan && blank($this->idKirim($indeks, $kunciOrder, 'sr'))) { $takTerpetakan++; continue; }
+
+                $sudahAdaSebagian = filled($this->idKirim($indeks, $kunciOrder, 'sr'));
+
+                // 1) ServiceRequest — order radiologi (kode generik imaging).
+                $serviceRequestId = $this->idKirim($indeks, $kunciOrder, 'sr');
+                if (empty($serviceRequestId)) {
+                    $serviceRequest = $this->postServiceRequest([
+                        'identifier' => ['system' => $sistemSr, 'value' => $kunciOrder],
+                        'status' => 'active', 'intent' => 'original-order', 'priority' => 'routine',
+                        'category' => ['system' => 'http://snomed.info/sct', 'code' => '363679005', 'display' => 'Imaging'],
+                        'code' => ['system' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi],
+                        'subject' => "Patient/{$patientId}", 'encounter' => "Encounter/{$encounterId}",
+                        'occurrenceDateTime' => $waktu, 'authoredOn' => $waktu,
+                        'requester' => "Practitioner/{$practitionerId}", 'requesterDisplay' => $drDesc,
+                        'performer' => $pjPenunjang['reference'] ?? null,
+                        'performerDisplay' => $pjPenunjang['display'] ?? null,
+                    ]);
+                    $serviceRequestId = $serviceRequest['id'] ?? null;
+                    if (empty($serviceRequestId)) { $gagalSr++; continue; }
+                    $satuSehat['radServiceRequestIds'][] = $serviceRequestId;
+                    $this->catatKirim($indeks, $kunciOrder, 'sr', $serviceRequestId);
+                }
+
+                // 2) DiagnosticReport — pelaporan (generik; hasil = PDF terlampir).
+                if (empty($this->idKirim($indeks, $kunciOrder, 'dr'))) {
+                    $dokter = $this->createDiagnosticReport([
+                        'identifier' => [['system' => $sistemDr, 'use' => 'official', 'value' => $kunciOrder]],
+                        'status' => 'final', 'categoryCode' => 'RAD', 'categoryDisplay' => 'Radiology',
+                        'codeSystem' => 'http://loinc.org', 'code' => $loincCode, 'display' => $loincDisplay ?: $deskripsi,
+                        'patientId' => $patientId, 'encounterId' => $encounterId,
+                        'effectiveDate' => $waktu, 'issued' => $waktu,
+                        'performer' => ["Practitioner/{$practitionerId}"], 'basedOn' => [$serviceRequestId],
+                    ]);
+                    if (!empty($dokter['id'])) {
+                        $satuSehat['radDiagnosticReportIds'][] = $dokter['id'];
+                        $this->catatKirim($indeks, $kunciOrder, 'dr', $dokter['id']);
+                    }
+                }
+
+                // 3) ImagingStudy — kirim kalau ada file foto/PDF yang sudah diupload.
+                if ($adaFoto && empty($this->idKirim($indeks, $kunciOrder, 'is'))) {
                     $modalitas = $this->modalitasDariDeskripsi($deskripsi);
 
                     $studyUid = $this->prosesOrthanc(
@@ -208,7 +258,7 @@ new class extends Component {
                     );
 
                     $imagingStudy = $this->postImagingStudy([
-                        'kunci'            => "ri-rad-{$key}",
+                        'kunci'            => $kunciOrder,
                         'studyUid'         => $studyUid,
                         'patientId'        => $patientId,
                         'encounterId'      => $encounterId,
@@ -224,8 +274,21 @@ new class extends Component {
                     if (!empty($imagingStudy['id'])) {
                         $satuSehat['radImagingStudyIds']   = $satuSehat['radImagingStudyIds'] ?? [];
                         $satuSehat['radImagingStudyIds'][] = $imagingStudy['id'];
+                        $this->catatKirim($indeks, $kunciOrder, 'is', $imagingStudy['id']);
                     }
                 }
+
+                $sudahAdaSebagian ? $disusul++ : $orderBaru++;
+            }
+
+            $satuSehat['radKirim'] = $indeks;
+
+            // Tak ada yang dikerjakan DAN tak ada yang gagal → memang semuanya sudah pernah
+            // dikirim. Indeks tetap disimpan supaya record lama tak perlu dipulihkan lagi.
+            if ($orderBaru === 0 && $disusul === 0 && $gagalSr === 0) {
+                $this->saveResult($riHdrNo, $satuSehat);
+                $this->dispatch('toast', type: 'info', message: 'Radiologi sudah pernah dikirim.');
+                return;
             }
 
             if (empty($satuSehat['radServiceRequestIds'])) { $this->dispatch('toast', type: 'error', message: 'Tidak ada order radiologi yang bisa dikirim.'); return; }
@@ -235,15 +298,29 @@ new class extends Component {
             $drCount = count($satuSehat['radDiagnosticReportIds']);
             $isCount = count($satuSehat['radImagingStudyIds'] ?? []);
             $isInfo  = $isCount > 0 ? ", {$isCount} ImagingStudy" : ' (ImagingStudy dilewati — belum ada foto)';
-            $this->dispatch('toast', type: 'success', message: "Radiologi terkirim: {$srCount} order, {$drCount} laporan{$isInfo}.");
+            $lanjutan = $disusul > 0 ? " — {$disusul} order lama dilengkapi" : '';
+            $lewat    = $tuntas > 0 ? ", {$tuntas} sudah lengkap dilewati" : '';
+            $gagal    = $gagalSr > 0 ? ", {$gagalSr} order GAGAL (ServiceRequest tak terbentuk)" : '';
+            $takPeta  = $takTerpetakan > 0 ? ", {$takTerpetakan} order lama tak terpetakan (dilewati)" : '';
+            $this->dispatch(
+                'toast',
+                type: $gagalSr > 0 ? 'warning' : 'success',
+                message: "Radiologi terkirim: {$srCount} order, {$drCount} laporan{$isInfo}{$lanjutan}{$lewat}{$gagal}{$takPeta}.",
+            );
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
         } catch (\Throwable $e) {
             // Simpan dulu yang sudah TERLANJUR terbentuk di SATUSEHAT sebelum melapor
             // gagal. Tanpa ini id-nya hangus padahal resource-nya SUDAH ada di sana,
             // lalu percobaan berikutnya menumpuk resource yatim — persis penyebab
-            // diagnosa macet permanen dulu (lihat sender Condition). Dibungkus try
-            // sendiri supaya kegagalan menyimpan tidak menutupi error aslinya.
-            try { if (isset($satuSehat)) { $this->saveResult($riHdrNo, $satuSehat); } } catch (\Throwable) {}
+            // diagnosa macet permanen dulu (lihat sender Condition). Indeks per-order
+            // ikut disimpan supaya percobaan berikutnya tahu persis mana yang bolong.
+            // Dibungkus try sendiri supaya kegagalan menyimpan tidak menutupi error aslinya.
+            try {
+                if (isset($satuSehat)) {
+                    if (isset($indeks)) { $satuSehat['radKirim'] = $indeks; }
+                    $this->saveResult($riHdrNo, $satuSehat);
+                }
+            } catch (\Throwable) {}
             $this->dispatch('toast', type: 'error', message: 'Radiologi gagal: ' . $e->getMessage());
         }
     }

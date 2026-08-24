@@ -13,11 +13,12 @@ use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\SATUSEHAT\ServiceRequestTrait;
 use App\Support\PenanggungJawabPenunjang;
 use App\Http\Traits\SATUSEHAT\SpecimenTrait;
+use App\Http\Traits\SATUSEHAT\PenunjangKirimTrait;
 use App\Http\Traits\SATUSEHAT\ObservationTrait;
 use App\Http\Traits\SATUSEHAT\DiagnosticReportTrait;
 
 new class extends Component {
-    use EmrRITrait, ServiceRequestTrait, SpecimenTrait, ObservationTrait, DiagnosticReportTrait;
+    use EmrRITrait, ServiceRequestTrait, SpecimenTrait, ObservationTrait, DiagnosticReportTrait, PenunjangKirimTrait;
 
     public ?string $riHdrNo = null;
     public bool $hasEncounter = false;
@@ -134,7 +135,6 @@ new class extends Component {
 
             $satuSehat = $dataRI['satusehat'] ?? [];
             if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($satuSehat['labDiagnosticReportIds'])) { $this->dispatch('toast', type: 'info', message: 'Lab sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataRI['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
@@ -164,8 +164,20 @@ new class extends Component {
             $satuSehat['labObservationIds']      = $satuSehat['labObservationIds']      ?? [];
             $satuSehat['labDiagnosticReportIds'] = $satuSehat['labDiagnosticReportIds'] ?? [];
 
+            // Indeks per-paket — penentu paket mana yang masih bolong. Lihat PenunjangKirimTrait.
+            $sistemSr = "http://sys-ids.kemkes.go.id/servicerequest/{$orgId}";
+            $sistemSp = "http://sys-ids.kemkes.go.id/specimen/{$orgId}";
+            $sistemDr = "http://sys-ids.kemkes.go.id/diagnostic/{$orgId}";
+            $indeks   = $this->indeksKirim($satuSehat, 'labKirim');
+            $pulihkan = $this->perluPulihIndeks($satuSehat, 'labKirim', ['labServiceRequestIds', 'labDiagnosticReportIds']);
+
             $skippedNoLoinc = 0;
             $totalObs = 0;
+            $paketBaru     = 0;   // paket yang benar-benar dikirim putaran ini
+            $disusul       = 0;   // paket lama yang bagian bolongnya baru dilengkapi sekarang
+            $tuntas        = 0;   // paket yang memang sudah lengkap — dilewati tanpa memanggil API
+            $gagalSr       = 0;   // ServiceRequest tak terbentuk → paket ini tak bisa dilanjut
+            $takTerpetakan = 0;   // paket lama yang daftar Observation-nya tak diketahui
 
             foreach ($checkups as $checkup) {
                 $checkupNo = trim((string) $checkup->checkup_no);
@@ -183,67 +195,123 @@ new class extends Component {
                 $skippedNoLoinc += $itemList->count() - $itemsWithLoinc->count();
                 if ($itemsWithLoinc->isEmpty()) { continue; }
 
-                $serviceRequest = $this->postServiceRequest([
-                    'identifier' => ['system' => "http://sys-ids.kemkes.go.id/servicerequest/{$orgId}", 'value' => "ri-{$riHdrNo}-{$checkupNo}"],
-                    'status' => 'active', 'intent' => 'original-order', 'priority' => 'routine',
-                    'category' => ['system' => 'http://snomed.info/sct', 'code' => '108252007', 'display' => 'Laboratory procedure'],
-                    'code' => ['system' => 'http://loinc.org', 'code' => '26436-6', 'display' => 'Laboratory studies'],
-                    'subject' => "Patient/{$patientId}", 'encounter' => "Encounter/{$encounterId}",
-                    'occurrenceDateTime' => $waktu, 'authoredOn' => $waktu,
-                    'requester' => "Practitioner/{$practitionerId}", 'requesterDisplay' => $drDesc,
-                    'performer' => $pjPenunjang['reference'] ?? null,
-                    'performerDisplay' => $pjPenunjang['display'] ?? null,
-                ]);
-                $serviceRequestId = $serviceRequest['id'] ?? null;
-                if (empty($serviceRequestId)) { continue; }
-                $satuSehat['labServiceRequestIds'][] = $serviceRequestId;
+                $kunciOrder = "ri-{$riHdrNo}-{$checkupNo}";
 
-                $specimen = $this->postSpecimen([
-                    'identifier' => ['system' => "http://sys-ids.kemkes.go.id/specimen/{$orgId}", 'value' => "ri-{$riHdrNo}-{$checkupNo}", 'assigner' => "Organization/{$orgId}"],
-                    'status' => 'available', 'subject' => "Patient/{$patientId}",
-                    'type' => ['system' => 'http://snomed.info/sct', 'code' => '119297000', 'display' => 'Blood specimen'],
-                    'collection' => ['collectedDateTime' => $waktu, 'method' => ['system' => 'http://snomed.info/sct', 'code' => '129300006', 'display' => 'Puncture - action']],
-                    'receivedTime' => $waktu, 'request' => ["ServiceRequest/{$serviceRequestId}"],
-                ]);
-                $specimenId = $specimen['id'] ?? null;
-                if (!empty($specimenId)) { $satuSehat['labSpecimenIds'][] = $specimenId; }
+                // Record lama belum punya indeks — pulihkan id yang SUDAH ada di SATUSEHAT
+                // lewat identifier, supaya yang tersisa saja yang dikirim ulang.
+                if ($pulihkan) {
+                    $this->catatKirim($indeks, $kunciOrder, 'sr', $this->cariIdLewatIdentifier('ServiceRequest', $sistemSr, $kunciOrder));
+                    $this->catatKirim($indeks, $kunciOrder, 'sp', $this->cariIdLewatIdentifier('Specimen', $sistemSp, $kunciOrder));
+                    $this->catatKirim($indeks, $kunciOrder, 'dr', $this->cariIdLewatIdentifier('DiagnosticReport', $sistemDr, $kunciOrder));
+                }
 
-                $obsIdsThisPaket = [];
-                foreach ($itemsWithLoinc as $item) {
-                    $loinc = trim((string) $item->loinc_code);
-                    $result = trim((string) ($item->lab_result ?? ''));
-                    if ($result === '') { continue; }
+                if ($this->orderTuntas($indeks, $kunciOrder, ['sr', 'dr'])) { $tuntas++; continue; }
 
-                    $obsData = [
-                        'patientId' => $patientId, 'encounterId' => $encounterId, 'performerId' => $practitionerId,
-                        'effectiveDate' => $waktu,
-                        'category' => [['coding' => [['system' => 'http://terminology.hl7.org/CodeSystem/observation-category', 'code' => 'laboratory', 'display' => 'Laboratory']]]],
-                        'code' => ['system' => 'http://loinc.org', 'code' => $loinc, 'display' => $item->loinc_display ?: $item->clabitem_desc],
-                    ];
-                    if (is_numeric(str_replace(',', '.', $result))) {
-                        $unit = trim((string) ($item->unit_desc ?? '')) ?: '1';
-                        $obsData['valueQuantity'] = ['value' => (float) str_replace(',', '.', $result), 'unit' => $unit, 'system' => 'http://unitsofmeasure.org', 'code' => $unit];
-                    } else {
-                        $obsData['valueString'] = $result;
+                $srTersimpan  = $this->idKirim($indeks, $kunciOrder, 'sr');
+                $obsTersimpan = $this->daftarIdKirim($indeks, $kunciOrder, 'obs');
+
+                // Paket yang ServiceRequest-nya sudah ada tapi daftar Observation-nya TAK
+                // diketahui tak bisa dilanjutkan dengan aman: Observation tak punya identifier,
+                // jadi mengirim ulang menggandakan hasil lab di SATUSEHAT — lebih merusak
+                // daripada menunda. Record lama selalu masuk kategori ini, dan sikapnya sama
+                // dengan guard lama, jadi tak pernah lebih buruk dari sebelumnya.
+                if (filled($srTersimpan) && empty($obsTersimpan)) { $takTerpetakan++; continue; }
+
+                $sudahAdaSebagian = filled($srTersimpan);
+
+                $serviceRequestId = $srTersimpan;
+                if (empty($serviceRequestId)) {
+                    $serviceRequest = $this->postServiceRequest([
+                        'identifier' => ['system' => $sistemSr, 'value' => $kunciOrder],
+                        'status' => 'active', 'intent' => 'original-order', 'priority' => 'routine',
+                        'category' => ['system' => 'http://snomed.info/sct', 'code' => '108252007', 'display' => 'Laboratory procedure'],
+                        'code' => ['system' => 'http://loinc.org', 'code' => '26436-6', 'display' => 'Laboratory studies'],
+                        'subject' => "Patient/{$patientId}", 'encounter' => "Encounter/{$encounterId}",
+                        'occurrenceDateTime' => $waktu, 'authoredOn' => $waktu,
+                        'requester' => "Practitioner/{$practitionerId}", 'requesterDisplay' => $drDesc,
+                        'performer' => $pjPenunjang['reference'] ?? null,
+                        'performerDisplay' => $pjPenunjang['display'] ?? null,
+                    ]);
+                    $serviceRequestId = $serviceRequest['id'] ?? null;
+                    if (empty($serviceRequestId)) { $gagalSr++; continue; }
+                    $satuSehat['labServiceRequestIds'][] = $serviceRequestId;
+                    $this->catatKirim($indeks, $kunciOrder, 'sr', $serviceRequestId);
+                }
+
+                $specimenId = $this->idKirim($indeks, $kunciOrder, 'sp');
+                if (empty($specimenId)) {
+                    $specimen = $this->postSpecimen([
+                        'identifier' => ['system' => $sistemSp, 'value' => $kunciOrder, 'assigner' => "Organization/{$orgId}"],
+                        'status' => 'available', 'subject' => "Patient/{$patientId}",
+                        'type' => ['system' => 'http://snomed.info/sct', 'code' => '119297000', 'display' => 'Blood specimen'],
+                        'collection' => ['collectedDateTime' => $waktu, 'method' => ['system' => 'http://snomed.info/sct', 'code' => '129300006', 'display' => 'Puncture - action']],
+                        'receivedTime' => $waktu, 'request' => ["ServiceRequest/{$serviceRequestId}"],
+                    ]);
+                    $specimenId = $specimen['id'] ?? null;
+                    if (!empty($specimenId)) {
+                        $satuSehat['labSpecimenIds'][] = $specimenId;
+                        $this->catatKirim($indeks, $kunciOrder, 'sp', $specimenId);
                     }
+                }
 
-                    $observation = $this->createObservation($obsData);
-                    if (!empty($observation['id'])) { $obsIdsThisPaket[] = $observation['id']; $satuSehat['labObservationIds'][] = $observation['id']; $totalObs++; }
+                // Sudah pernah terbentuk → pakai id yang itu, jangan buat ulang (tak ada
+                // identifier yang bisa dipakai SATUSEHAT untuk menolak duplikat).
+                $obsIdsThisPaket = $obsTersimpan;
+                if (empty($obsIdsThisPaket)) {
+                    foreach ($itemsWithLoinc as $item) {
+                        $loinc = trim((string) $item->loinc_code);
+                        $result = trim((string) ($item->lab_result ?? ''));
+                        if ($result === '') { continue; }
+
+                        $obsData = [
+                            'patientId' => $patientId, 'encounterId' => $encounterId, 'performerId' => $practitionerId,
+                            'effectiveDate' => $waktu,
+                            'category' => [['coding' => [['system' => 'http://terminology.hl7.org/CodeSystem/observation-category', 'code' => 'laboratory', 'display' => 'Laboratory']]]],
+                            'code' => ['system' => 'http://loinc.org', 'code' => $loinc, 'display' => $item->loinc_display ?: $item->clabitem_desc],
+                        ];
+                        if (is_numeric(str_replace(',', '.', $result))) {
+                            $unit = trim((string) ($item->unit_desc ?? '')) ?: '1';
+                            $obsData['valueQuantity'] = ['value' => (float) str_replace(',', '.', $result), 'unit' => $unit, 'system' => 'http://unitsofmeasure.org', 'code' => $unit];
+                        } else {
+                            $obsData['valueString'] = $result;
+                        }
+
+                        $observation = $this->createObservation($obsData);
+                        if (!empty($observation['id'])) { $obsIdsThisPaket[] = $observation['id']; $satuSehat['labObservationIds'][] = $observation['id']; $totalObs++; }
+                    }
                 }
 
                 if (empty($obsIdsThisPaket)) { continue; }
+                $this->catatKirim($indeks, $kunciOrder, 'obs', $obsIdsThisPaket);
 
-                $dokter = $this->createDiagnosticReport([
-                    'identifier' => [['system' => "http://sys-ids.kemkes.go.id/diagnostic/{$orgId}", 'use' => 'official', 'value' => "ri-{$riHdrNo}-{$checkupNo}"]],
-                    'status' => 'final', 'categoryCode' => 'LAB', 'categoryDisplay' => 'Laboratory',
-                    'codeSystem' => 'http://loinc.org', 'code' => '26436-6', 'display' => 'Laboratory studies',
-                    'patientId' => $patientId, 'encounterId' => $encounterId,
-                    'effectiveDate' => $waktu, 'issued' => $waktu,
-                    'performer' => ["Practitioner/{$practitionerId}"],
-                    'specimen' => $specimenId ? ["Specimen/{$specimenId}"] : [],
-                    'observationIds' => $obsIdsThisPaket, 'basedOn' => [$serviceRequestId],
-                ]);
-                if (!empty($dokter['id'])) { $satuSehat['labDiagnosticReportIds'][] = $dokter['id']; }
+                if (empty($this->idKirim($indeks, $kunciOrder, 'dr'))) {
+                    $dokter = $this->createDiagnosticReport([
+                        'identifier' => [['system' => $sistemDr, 'use' => 'official', 'value' => $kunciOrder]],
+                        'status' => 'final', 'categoryCode' => 'LAB', 'categoryDisplay' => 'Laboratory',
+                        'codeSystem' => 'http://loinc.org', 'code' => '26436-6', 'display' => 'Laboratory studies',
+                        'patientId' => $patientId, 'encounterId' => $encounterId,
+                        'effectiveDate' => $waktu, 'issued' => $waktu,
+                        'performer' => ["Practitioner/{$practitionerId}"],
+                        'specimen' => $specimenId ? ["Specimen/{$specimenId}"] : [],
+                        'observationIds' => $obsIdsThisPaket, 'basedOn' => [$serviceRequestId],
+                    ]);
+                    if (!empty($dokter['id'])) {
+                        $satuSehat['labDiagnosticReportIds'][] = $dokter['id'];
+                        $this->catatKirim($indeks, $kunciOrder, 'dr', $dokter['id']);
+                    }
+                }
+
+                $sudahAdaSebagian ? $disusul++ : $paketBaru++;
+            }
+
+            $satuSehat['labKirim'] = $indeks;
+
+            // Tak ada yang dikerjakan DAN tak ada yang gagal → memang semuanya sudah pernah
+            // dikirim. Indeks tetap disimpan supaya record lama tak perlu dipulihkan lagi.
+            if ($paketBaru === 0 && $disusul === 0 && $gagalSr === 0) {
+                $this->saveResult($riHdrNo, $satuSehat);
+                $this->dispatch('toast', type: 'info', message: 'Lab sudah pernah dikirim.');
+                return;
             }
 
             if (empty($satuSehat['labDiagnosticReportIds'])) {
@@ -257,7 +325,15 @@ new class extends Component {
             $this->saveResult($riHdrNo, $satuSehat);
             $drCount = count($satuSehat['labDiagnosticReportIds']);
             $note = $skippedNoLoinc > 0 ? " ({$skippedNoLoinc} item tanpa LOINC dilewati)" : '';
-            $this->dispatch('toast', type: 'success', message: "Lab terkirim: {$drCount} laporan, {$totalObs} observasi{$note}.");
+            $lanjutan = $disusul > 0 ? " — {$disusul} paket lama dilengkapi" : '';
+            $lewat    = $tuntas > 0 ? ", {$tuntas} sudah lengkap dilewati" : '';
+            $gagal    = $gagalSr > 0 ? ", {$gagalSr} paket GAGAL (ServiceRequest tak terbentuk)" : '';
+            $takPeta  = $takTerpetakan > 0 ? ", {$takTerpetakan} paket dilewati (daftar observasi tak diketahui)" : '';
+            $this->dispatch(
+                'toast',
+                type: $gagalSr > 0 ? 'warning' : 'success',
+                message: "Lab terkirim: {$drCount} laporan, {$totalObs} observasi{$note}{$lanjutan}{$lewat}{$gagal}{$takPeta}.",
+            );
             $this->dispatch('ri-satu-sehat.refresh', riHdrNo: $riHdrNo);
         } catch (\Throwable $e) {
             // Simpan dulu yang sudah TERLANJUR terbentuk di SATUSEHAT sebelum melapor
@@ -265,7 +341,12 @@ new class extends Component {
             // lalu percobaan berikutnya menumpuk resource yatim — persis penyebab
             // diagnosa macet permanen dulu (lihat sender Condition). Dibungkus try
             // sendiri supaya kegagalan menyimpan tidak menutupi error aslinya.
-            try { if (isset($satuSehat)) { $this->saveResult($riHdrNo, $satuSehat); } } catch (\Throwable) {}
+            try {
+                if (isset($satuSehat)) {
+                    if (isset($indeks)) { $satuSehat['labKirim'] = $indeks; }
+                    $this->saveResult($riHdrNo, $satuSehat);
+                }
+            } catch (\Throwable) {}
             $this->dispatch('toast', type: 'error', message: 'Lab gagal: ' . $e->getMessage());
         }
     }
