@@ -2,10 +2,12 @@
 // resources/views/pages/transaksi/rj/satu-sehat/kirim-radiologi.blade.php
 // Step 10: Kirim Penunjang Radiologi — ServiceRequest (order) + DiagnosticReport (pelaporan).
 //
-// GAP: master radiologi (rsmst_radiologis) TAK punya kode LOINC/ICD-9, hasil = PDF upload
-//   (rsview_rads.rad_upload_pdf), dan tak ada DICOM → ImagingStudy DILEWATI.
-// MVP: pakai kode generik "Diagnostic imaging study" (LOINC 18748-4) utk SR & DR;
-//   DR minimal (basedOn SR, tanpa Observation) — perlu validasi sandbox.
+// LOINC: rsmst_radiologis.loinc_code/loinc_display (terisi 144/155 baris) — generik
+//   18748-4 "Diagnostic imaging study" hanya dipakai bila master kosong.
+// ImagingStudy: dikirim bila fotonya sudah diupload — file diangkat ke Orthanc lebih
+//   dulu supaya StudyInstanceUID-nya asli; tanpa foto, langkah itu dilewati.
+// DR merujuk satu Observation ringkas (RuleNumber 10385); hasil bacaan sesungguhnya
+//   tetap berupa PDF/foto terlampir, bukan nilai terstruktur.
 
 use Livewire\Component;
 use Livewire\Attributes\On;
@@ -176,6 +178,9 @@ new class extends Component {
                 $key         = "{$rjNo}-{$nomorDetail}";
                 $kunciOrder  = "rad-{$key}";
 
+                // LOINC spesifik dari master; generik 18748-4 hanya bila kosong.
+                // Master SUDAH terisi 144/155 baris — memaku 18748-4 membuat semua
+                // pemeriksaan terkirim sebagai "Diagnostic imaging study" tanpa beda.
                 $loincCode    = trim((string) ($order->loinc_code ?? ''));
                 $loincDisplay = trim((string) ($order->loinc_display ?? ''));
                 if ($loincCode === '') {
