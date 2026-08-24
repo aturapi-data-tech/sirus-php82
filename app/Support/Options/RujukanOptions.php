@@ -47,11 +47,11 @@ final class RujukanOptions
     ];
 
     /** Label lengkap seperti tertulis di playbook (dipakai sebagai display FHIR). */
-    public static function kelompokLayananDisplay(string $kode): string
+    public static function kelompokLayananDisplay(string $kodeKelompok): string
     {
-        $nama = self::KELOMPOK_LAYANAN[$kode] ?? '';
+        $namaKelompok = self::KELOMPOK_LAYANAN[$kodeKelompok] ?? '';
 
-        return $nama === '' ? '' : 'Kelompok Layanan ' . $nama;
+        return $namaKelompok === '' ? '' : 'Kelompok Layanan ' . $namaKelompok;
     }
 
     /**

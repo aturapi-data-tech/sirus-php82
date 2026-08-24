@@ -636,10 +636,10 @@ trait SatuSehatRujukanTrait
             // ('https://…/fhir-r4/v1/CarePlan/<id>/_history/1'). Pencocokan lama
             // hanya menangani bentuk pertama, sehingga id-nya hilang diam-diam
             // padahal Bundle-nya sukses.
-            $id = $this->rujukanIdDariLokasi((string) ($entry['response']['location'] ?? ''), $resourceType)
+            $idResource = $this->rujukanIdDariLokasi((string) ($entry['response']['location'] ?? ''), $resourceType)
                 ?: $this->rujukanIdDariLokasi((string) ($entry['fullUrl'] ?? ''), $resourceType);
-            if ($id !== '') {
-                return $id;
+            if ($idResource !== '') {
+                return $idResource;
             }
         }
 
@@ -834,14 +834,14 @@ trait SatuSehatRujukanTrait
      */
     protected function rujukanPulihkanTugasTerakhir(string $encounterId): array
     {
-        $kosong = ['taskId' => '', 'carePlanId' => '', 'ownerOrgId' => '', 'ditemukan' => false];
+        $tidakDitemukan = ['taskId' => '', 'carePlanId' => '', 'ownerOrgId' => '', 'ditemukan' => false];
         if ($encounterId === '') {
-            return $kosong;
+            return $tidakDitemukan;
         }
 
         $respon = $this->rujukanTaskByRequester($encounterId);
         if ($respon['code'] < 200 || $respon['code'] >= 300) {
-            return $kosong;
+            return $tidakDitemukan;
         }
 
         $kandidatTask = [];
@@ -852,11 +852,11 @@ trait SatuSehatRujukanTrait
             }
         }
         if ($kandidatTask === []) {
-            return $kosong;
+            return $tidakDitemukan;
         }
 
         // Satu kunjungan bisa punya beberapa percobaan; ambil yang PALING BARU.
-        usort($kandidatTask, fn($a, $b) => strcmp((string) ($b['authoredOn'] ?? ''), (string) ($a['authoredOn'] ?? '')));
+        usort($kandidatTask, fn($tugasPertama, $tugasKedua) => strcmp((string) ($tugasKedua['authoredOn'] ?? ''), (string) ($tugasPertama['authoredOn'] ?? '')));
         $task = $kandidatTask[0];
 
         return [
@@ -973,7 +973,7 @@ trait SatuSehatRujukanTrait
             ];
         }
 
-        usort($baris, fn($a, $b) => strcmp($b['waktu'], $a['waktu']));
+        usort($baris, fn($barisPertama, $barisKedua) => strcmp($barisKedua['waktu'], $barisPertama['waktu']));
 
         return $baris;
     }
