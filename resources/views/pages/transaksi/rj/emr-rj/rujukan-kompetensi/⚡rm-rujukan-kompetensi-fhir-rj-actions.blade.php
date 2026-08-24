@@ -1301,14 +1301,35 @@ new class extends Component {
             {{-- FOOTER --}}
             <div class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex flex-wrap items-center justify-between gap-3">
-                    <p class="text-sm text-muted dark:text-gray-400">
-                        Perubahan tersimpan otomatis ke kunjungan ini — aman ditutup lalu dilanjutkan nanti.
-                    </p>
+                    {{-- Keterangan singkat DI DEKAT tombolnya: dua tombol ini paling
+                         sering tertukar — yang satu menanyakan kesediaan, yang satu
+                         menerbitkan rujukan resmi. --}}
+                    <div class="min-w-0 text-sm text-muted dark:text-gray-400">
+                        <p>Perubahan tersimpan otomatis ke kunjungan ini — aman ditutup lalu dilanjutkan nanti.</p>
+                        {{-- Syaratnya SAMA dengan tombolnya: begitu rujukan terbit,
+                             tombolnya hilang, jadi penjelasannya ikut hilang — kalau
+                             tidak, layar menjelaskan tombol yang sudah tak ada. --}}
+                        @if (empty($formRujukan['hasil']['noRujukanSatuSehat']) && !$isFormLocked)
+                        <ul class="mt-1 space-y-0.5 text-xs">
+                            <li>
+                                <span class="font-semibold text-ink dark:text-gray-200">Kirim Tugas Rujukan</span> —
+                                menanyakan kesediaan RS tujuan. Belum merujuk, belum ada nomor rujukan.
+                                Jawabannya: <span class="font-semibold text-success-deep dark:text-green-300">Diterima</span> →
+                                lanjut Kirim Rujukan;
+                                <span class="font-semibold text-error-deep dark:text-red-300">Ditolak</span> →
+                                pilih kandidat lain lalu kirim tugas rujukan ulang;
+                                <span class="font-semibold">belum dijawab</span> → boleh lanjut, muncul peringatan.
+                            </li>
+                            <li>
+                                <span class="font-semibold text-ink dark:text-gray-200">Kirim Rujukan</span> —
+                                menerbitkan rujukan resmi &amp; Nomor Rujukan Nasional. Diblokir bila RS tujuan menolak.
+                            </li>
+                        </ul>
+                        @endif
+                    </div>
 
-                    {{-- Dua tombol kirim dipindah ke footer yang selalu menempel: dulu
-                         terkubur di kolom kanan dan harus digulir. Angkanya MENGIKUTI
-                         penanda langkah di atas (3 lalu 5), bukan 1-2 — dua sistem
-                         penomoran di satu layar justru membingungkan. --}}
+                    {{-- Dua tombol kirim ditaruh di footer yang selalu menempel: dulu
+                         terkubur di kolom kanan dan harus digulir. --}}
                     <div class="flex flex-wrap items-center gap-2">
                         @if (empty($formRujukan['hasil']['noRujukanSatuSehat']) && !$isFormLocked)
                             <x-outline-button type="button" wire:click="kirimTugasRujukan"
