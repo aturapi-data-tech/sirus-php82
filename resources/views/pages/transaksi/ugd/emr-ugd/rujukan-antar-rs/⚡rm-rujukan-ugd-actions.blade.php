@@ -60,10 +60,28 @@ new class extends Component {
     /* ===============================
      | CLOSE MODAL
      =============================== */
+    /**
+     * Panel ini dulu tampil inline memenuhi tab; kini kartu ringkas + modal,
+     * menyamai panel Rujukan Berbasis Kompetensi di tab yang sama.
+     */
+    public function openModal(): void
+    {
+        if (empty($this->rjNo)) {
+            return;
+        }
+
+        // Baca ulang saat dibuka: SEP bisa terbit setelah panel pertama dirender.
+        $this->openRujukan($this->rjNo);
+
+        $this->dispatch('open-modal', name: 'rujukan-antar-rs-ugd-' . $this->rjNo);
+    }
+
     public function closeModal(): void
     {
+        // resetForm() sengaja TIDAK dipanggil: menutup modal bukan membatalkan
+        // isian — petugas harus bisa menutup lalu melanjutkan nanti.
         $this->resetValidation();
-        $this->resetForm();
+        $this->dispatch('close-modal', name: 'rujukan-antar-rs-ugd-' . $this->rjNo);
     }
 
     /* ===============================
@@ -406,25 +424,93 @@ new class extends Component {
 ?>
 
 <div>
-    {{-- CONTAINER — inline, mirip form perencanaan/kontrol --}}
-    <div class="flex flex-col w-full" wire:key="{{ $this->renderKey('modal-rujukan-rs', [$rjNo ?? 'new']) }}">
-        <div class="w-full mx-auto">
-            <div
-                class="w-full p-4 space-y-6 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+    {{-- ══ KARTU RINGKAS (inline di tab Tindak Lanjut) ══ --}}
+    @php
+        $rujukanAntarRS = $dataDaftarUGD['rujukanAntarRS'] ?? [];
+        $sudahKirimBpjs = !empty($rujukanAntarRS['noRujukan']);
+    @endphp
 
-                <div class="w-full">
+    <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+        <div class="flex flex-col gap-3">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-2 min-w-0">
+                    <svg class="w-5 h-5 text-indigo-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+                    </svg>
+                    <h3 class="text-base font-semibold text-ink dark:text-gray-200">
+                        Rujukan Antar RS (BPJS VClaim)
+                    </h3>
+                    @if ($sudahKirimBpjs)
+                        <x-badge variant="success">Terkirim</x-badge>
+                    @else
+                        <x-badge variant="warning">Belum dikirim ke BPJS</x-badge>
+                    @endif
+                </div>
 
-                    {{-- Header --}}
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-base font-semibold text-body dark:text-gray-300">Rujukan Antar RS</h3>
-                        @if (!empty($dataDaftarUGD['rujukanAntarRS']['noRujukan']))
-                            <x-badge variant="success">BPJS:
-                                {{ $dataDaftarUGD['rujukanAntarRS']['noRujukan'] }}</x-badge>
-                        @else
-                            <x-badge variant="warning">Belum dikirim ke BPJS</x-badge>
-                        @endif
+                <div class="flex shrink-0">
+                    <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
+                        wire:target="openModal" :disabled="!$rjNo" class="gap-2">
+                        <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                            {{ $sudahKirimBpjs ? 'Lihat Rujukan' : 'Buat Rujukan' }}
+                        </span>
+                        <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
+                            <x-loading class="w-4 h-4" /> Memuat...
+                        </span>
+                    </x-primary-button>
+                </div>
+            </div>
+
+            <p class="text-base text-muted dark:text-gray-400">
+                Rujukan biasa ke RS lain lewat BPJS (VClaim), memakai SEP kunjungan ini.
+                Berbeda dari Rujukan Berbasis Kompetensi &mdash; di sini tujuannya ditentukan sendiri,
+                bukan dari rekomendasi SATUSEHAT.
+            </p>
+
+            @if ($sudahKirimBpjs)
+                <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted dark:text-gray-400">
+                    <span>No. Rujukan BPJS: <strong class="text-ink dark:text-gray-200">{{ $rujukanAntarRS['noRujukan'] }}</strong></span>
+                    <span>Tujuan: <strong class="text-ink dark:text-gray-200">{{ ($rujukanAntarRS['ppkDirujukNama'] ?? '') ?: (($rujukanAntarRS['ppkDirujuk'] ?? '') ?: '-') }}</strong></span>
+                    <span>Tgl. Rujukan: <strong class="text-ink dark:text-gray-200">{{ ($rujukanAntarRS['tglRujukan'] ?? '') ?: '-' }}</strong></span>
+                </div>
+            @endif
+        </div>
+    </div>
+
+    {{-- ══ MODAL FORMULIR ══ --}}
+    <x-modal name="rujukan-antar-rs-ugd-{{ $rjNo }}" size="full" height="full" focusable>
+        <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal-rujukan-rs', [$rjNo ?? 'new']) }}">
+
+            {{-- HEADER --}}
+            <div class="px-6 py-5 border-b border-hairline dark:border-gray-700">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-500/10">
+                            <svg class="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-semibold text-ink dark:text-gray-100">Rujukan Antar RS</h2>
+                            <p class="mt-0.5 text-base text-muted dark:text-gray-400">
+                                UGD &rarr; RS lain &middot; lewat BPJS (VClaim), memakai SEP kunjungan ini
+                            </p>
+                        </div>
                     </div>
+                    @if ($sudahKirimBpjs)
+                        <x-badge variant="success">BPJS: {{ $rujukanAntarRS['noRujukan'] }}</x-badge>
+                    @else
+                        <x-badge variant="warning">Belum dikirim ke BPJS</x-badge>
+                    @endif
+                </div>
+            </div>
 
+            {{-- BODY --}}
+            <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">
+                <div class="max-w-full mx-auto space-y-4">
+                    <div class="w-full">
                     <div class="grid grid-cols-1 gap-2">
 
                         {{-- KOLOM KIRI --}}
@@ -598,45 +684,69 @@ new class extends Component {
                         </div>
                     </div>
                 </div>
-
-                {{-- Tombol Kirim ke BPJS / Hapus --}}
-                @if (!$isFormLocked)
-                    @php
-                        $klaimStatus = $dataDaftarUGD['klaimStatus'] ?? '';
-                        $klaimId = $dataDaftarUGD['klaimId'] ?? '';
-                        $isBPJS = $klaimStatus === 'BPJS' || $klaimId === 'JM';
-                    @endphp
-
-                    @if ($isBPJS)
-                        <div class="flex items-center justify-end gap-2 pt-2">
-                            @if (!empty($dataDaftarUGD['rujukanAntarRS']['noRujukan']))
-                                <x-danger-button type="button" wire:click="hapusRujukan" wire:loading.attr="disabled"
-                                    wire:confirm="Yakin hapus rujukan {{ $dataDaftarUGD['rujukanAntarRS']['noRujukan'] }} dari BPJS?">
-                                    <span wire:loading.remove wire:target="hapusRujukan">Hapus Rujukan BPJS</span>
-                                    <span wire:loading wire:target="hapusRujukan"><x-loading /> Menghapus...</span>
-                                </x-danger-button>
-                            @endif
-
-                            <x-success-button type="button" wire:click="kirimBPJS" wire:loading.attr="disabled">
-                                <span wire:loading.remove wire:target="kirimBPJS"
-                                    class="inline-flex items-center gap-2">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                        stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                                    </svg>
-                                    {{ !empty($dataDaftarUGD['rujukanAntarRS']['noRujukan']) ? 'Update Rujukan BPJS' : 'Kirim Rujukan ke BPJS' }}
-                                </span>
-                                <span wire:loading wire:target="kirimBPJS" class="inline-flex items-center gap-2">
-                                    <x-loading />
-                                    {{ !empty($dataDaftarUGD['rujukanAntarRS']['noRujukan']) ? 'Mengupdate...' : 'Mengirim...' }}
-                                </span>
-                            </x-success-button>
-                        </div>
-                    @endif
-                @endif
-
+                </div>
             </div>
+
+            {{-- FOOTER --}}
+            <div class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <p class="text-sm text-muted dark:text-gray-400">
+                        Simpan menyimpan isian ke kunjungan ini; Kirim ke BPJS menerbitkan nomor rujukannya.
+                    </p>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                {{-- Aksi: dipindah dari badan ke footer yang selalu menempel. --}}
+                        @if (!$isFormLocked)
+                            @php
+                                $klaimStatus = $dataDaftarUGD['klaimStatus'] ?? '';
+                                $klaimId = $dataDaftarUGD['klaimId'] ?? '';
+                                $isBPJS = $klaimStatus === 'BPJS' || $klaimId === 'JM';
+                            @endphp
+
+                            @if ($isBPJS)
+                                <div class="flex items-center justify-end gap-2 pt-2">
+                                    @if (!empty($dataDaftarUGD['rujukanAntarRS']['noRujukan']))
+                                        <x-danger-button type="button" wire:click="hapusRujukan" wire:loading.attr="disabled"
+                                            wire:confirm="Yakin hapus rujukan {{ $dataDaftarUGD['rujukanAntarRS']['noRujukan'] }} dari BPJS?">
+                                            <span wire:loading.remove wire:target="hapusRujukan">Hapus Rujukan BPJS</span>
+                                            <span wire:loading wire:target="hapusRujukan"><x-loading /> Menghapus...</span>
+                                        </x-danger-button>
+                                    @endif
+
+                                    <x-success-button type="button" wire:click="kirimBPJS" wire:loading.attr="disabled">
+                                        <span wire:loading.remove wire:target="kirimBPJS"
+                                            class="inline-flex items-center gap-2">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                                            </svg>
+                                            {{ !empty($dataDaftarUGD['rujukanAntarRS']['noRujukan']) ? 'Update Rujukan BPJS' : 'Kirim Rujukan ke BPJS' }}
+                                        </span>
+                                        <span wire:loading wire:target="kirimBPJS" class="inline-flex items-center gap-2">
+                                            <x-loading />
+                                            {{ !empty($dataDaftarUGD['rujukanAntarRS']['noRujukan']) ? 'Mengupdate...' : 'Mengirim...' }}
+                                        </span>
+                                    </x-success-button>
+                                </div>
+                            @endif
+                        @endif
+
+                        {{-- save() sudah lengkap (lock + patch node + audit log) tapi selama
+                             panel ini inline tak pernah punya tombol. Setelah jadi modal,
+                             menyimpan tanpa mengirim ke BPJS jadi kebutuhan nyata. --}}
+                        @if (!$isFormLocked)
+                            <x-outline-button type="button" wire:click="save" wire:loading.attr="disabled" wire:target="save">
+                                <span wire:loading.remove wire:target="save">Simpan</span>
+                                <span wire:loading wire:target="save" class="inline-flex items-center gap-1"><x-loading /> Menyimpan...</span>
+                            </x-outline-button>
+                        @endif
+
+                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                    </div>
+                </div>
+            </div>
+
         </div>
-    </div>
+    </x-modal>
 </div>
