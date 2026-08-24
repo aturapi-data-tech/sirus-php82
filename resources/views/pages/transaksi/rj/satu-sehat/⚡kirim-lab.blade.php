@@ -173,7 +173,7 @@ new class extends Component {
             // Indeks per-paket — penentu paket mana yang masih bolong. Lihat PenunjangKirimTrait.
             $sistemSr = "http://sys-ids.kemkes.go.id/servicerequest/{$orgId}";
             $sistemSp = "http://sys-ids.kemkes.go.id/specimen/{$orgId}";
-            $sistemDr = "http://sys-ids.kemkes.go.id/diagnostic/{$orgId}";
+            $sistemDr = "http://sys-ids.kemkes.go.id/diagnostic/{$orgId}/lab";
             $indeks   = $this->indeksKirim($satuSehat, 'labKirim');
             $pulihkan = $this->perluPulihIndeks($satuSehat, 'labKirim', ['labServiceRequestIds', 'labDiagnosticReportIds']);
 
