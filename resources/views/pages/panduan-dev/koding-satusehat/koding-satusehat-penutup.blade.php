@@ -132,7 +132,7 @@
                             </div>
                             <div class="ds-card-outline" style="padding:20px">
                                 <div class="ds-title-sm mb-2">B · Trait belum ada</div>
-                                <div class="ds-body-sm">Composition · ClinicalImpression · ImagingStudy · Immunization · EpisodeOfCare · NutritionOrder → <strong>buat trait dulu</strong>.</div>
+                                <div class="ds-body-sm">Composition · Immunization → <strong>buat trait dulu</strong>. ImagingStudy → trait siap, <button type="button" class="hover:underline font-semibold" style="color:var(--primary)" x-on:click="go('pacs')">wire ke UI (§PACS)</button>.</div>
                             </div>
                         </div>
 

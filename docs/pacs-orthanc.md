@@ -254,12 +254,78 @@ Alurnya:
    **StudyInstanceUID nyata**
 5. UID itu menggantikan UID karangan di `ImagingStudy` → kiriman SATUSEHAT bisa ditelusuri
 
-**DDL yang dibutuhkan** untuk langkah 4–5: kolom `STUDY_UID VARCHAR2(64)` di ketiga tabel.
-Belum dibuat — DDL produksi wilayah pengelola basis data.
+**DDL** untuk langkah 4–5 → `docs/ddl-pacs-study-uid.sql` (**sudah dijalankan**):
+
+```sql
+ALTER TABLE RSTXN_RJRADS ADD (STUDY_UID VARCHAR2(64));
+ALTER TABLE RSTXN_UGDRADS ADD (STUDY_UID VARCHAR2(64));
+ALTER TABLE RSTXN_RIRADIOLOGS ADD (STUDY_UID VARCHAR2(64));
+```
 
 Sesudah PACS berdiri, `uidStudi()` di `ImagingStudyTrait` **tidak dihapus** melainkan jadi
 cadangan: dipakai hanya bila `STUDY_UID` kosong, dan idealnya kiriman semacam itu ditahan
 saja daripada mengirim UID yang tak bisa ditelusuri.
+
+---
+
+## 5b. OrthancTrait — koneksi SIRUS → Orthanc
+
+**File:** `app/Http/Traits/SATUSEHAT/OrthancTrait.php`
+
+Trait ini menyambungkan SIRUS ke Orthanc via REST API. Konfigurasi di `.env`:
+
+```env
+ORTHANC_URL=http://localhost:8042
+ORTHANC_USER=sirus
+ORTHANC_PASSWORD=<password>
+```
+
+### Method yang tersedia
+
+| Method | Fungsi |
+|---|---|
+| `cariStudyUid($accessionNumber)` | Query `/tools/find` by AccessionNumber → return `StudyInstanceUID` atau `null` |
+| `sinkronStudyUid($tabel, $where, $radnumNo)` | Cari UID + simpan ke kolom `STUDY_UID` per row |
+| `sinkronStudyUidBatch($tabel, $pkRef, $pkDtl, $limit)` | Batch: semua row yang punya `RADNUM_NO` tapi `STUDY_UID` kosong |
+
+### Cara pakai di Livewire / class
+
+```php
+use App\Http\Traits\SATUSEHAT\OrthancTrait;
+
+// Cari UID satu order:
+$uid = $this->cariStudyUid('R00123');
+
+// Sinkron satu row RJ:
+$this->sinkronStudyUid('rstxn_rjrads', ['rj_no' => $rjNo, 'rad_dtl' => $dtl], $radnumNo);
+
+// Batch sinkron semua RJ yang belum ada STUDY_UID:
+$count = $this->sinkronStudyUidBatch('rstxn_rjrads', 'rj_no', 'rad_dtl');
+```
+
+### Alur kirim ImagingStudy ke SATUSEHAT (end-to-end)
+
+```
+┌─────────────┐     ┌──────────┐     ┌─────────────────┐     ┌───────────┐
+│ Order Rad   │────▶│ Orthanc  │────▶│ SIRUS           │────▶│ SATUSEHAT │
+│ (RADNUM_NO) │     │ /find    │     │ ImagingStudy    │     │ POST      │
+│             │     │          │     │ Trait            │     │           │
+│ AccessionNo │     │ StudyUID │     │ UID asli/turunan│     │ FHIR R4   │
+└─────────────┘     └──────────┘     └─────────────────┘     └───────────┘
+```
+
+1. Petugas membuat order radiologi di EMR → `RADNUM_NO` terisi (= AccessionNumber DICOM)
+2. Alat radiologi memotret, mengirim gambar ke Orthanc via C-STORE
+3. SIRUS memanggil `cariStudyUid($radnumNo)` → dapat `StudyInstanceUID` asli
+4. UID disimpan ke `STUDY_UID` di tabel order
+5. `ImagingStudyTrait::postImagingStudy()` memakai UID asli dari `STUDY_UID`
+6. Kalau `STUDY_UID` kosong (PACS belum berdiri / alat belum DICOM), fallback ke `uidStudi()` — UID turunan arc `2.25`
+
+### Catatan penting
+
+- **RADNUM_NO harus terisi** sebelum alur ini jalan — saat ini 0 dari 11.404 row RJ yang punya `RADNUM_NO`
+- Perlu mekanisme generate `RADNUM_NO` otomatis saat order dibuat
+- `STUDY_UID` hanya terisi kalau gambar sudah masuk Orthanc (alat sudah DICOM)
 
 ---
 

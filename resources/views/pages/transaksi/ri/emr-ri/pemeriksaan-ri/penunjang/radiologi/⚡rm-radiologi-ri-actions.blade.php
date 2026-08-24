@@ -11,6 +11,7 @@ use App\Support\OracleLob;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
+use App\Support\NomorRadiologi;
 
 new class extends Component {
     use WithPagination, WithRenderVersioningTrait, WithValidationToastTrait, EmrRITrait;
@@ -234,6 +235,7 @@ new class extends Component {
                         'cito_status' => $this->cito === '1' ? '1' : '0',
                         'waktu_entry' => DB::raw("TO_DATE('{$now}','dd/mm/yyyy hh24:mi:ss')"),
                         'rirad_date'  => DB::raw("TO_DATE('{$now}','dd/mm/yyyy hh24:mi:ss')"),
+                        'radnum_no'   => NomorRadiologi::generate(),
                     ]);
                 }
 

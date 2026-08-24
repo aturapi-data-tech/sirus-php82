@@ -164,8 +164,8 @@ TXT,
 //    2. render di satu-sehat-rj-actions.blade.php (deret tombol per-resource, ~baris 105-114)
 //    3. gate :disabled="!$hasEncounter" + simpan id hasil ke node JSON 'satusehat'
 
-// B) BELUM ada trait (Composition/Diet · ClinicalImpression · ImagingStudy ·
-//                      Immunization · EpisodeOfCare · NutritionOrder):
+// B) BELUM ada trait (Composition/Diet · Immunization):
+//    ImagingStudy SUDAH ada trait (§PACS) — tinggal wire ke UI.
 //    1. buat App\Http\Traits\SATUSEHAT\<Resource>Trait meniru ProcedureTrait
 //    2. bangun payload FHIR R4 + POST /<Resource> via makeRequest()
 //    3. WAJIB referensi Encounter/{id} + subject Patient/{id}
@@ -176,45 +176,33 @@ TXT,
 
 'ss-imaging' => <<<'TXT'
 // ImagingStudy — Radiologi.  POST /ImagingStudy
-// GAP: butuh DICOM UID (study/series/SOP). Modul radiologi kita upload-based,
-//      UID DICOM TIDAK tersimpan -> generate OID sendiri atau kirim minimal.
-public function createImagingStudy(array $data): array
-{
-    $payload = [
-        'resourceType' => 'ImagingStudy',
-        'identifier'   => [[
-            'system' => 'urn:dicom:uid',
-            'value'  => 'urn:oid:' . $data['studyUid'],
-        ]],
-        'status'    => 'available',
-        'subject'   => ['reference' => 'Patient/'   . $data['patientId']],
-        'encounter' => ['reference' => 'Encounter/' . $data['encounterId']],
-        'started'   => $data['started'] ?? now()->toIso8601String(),
-        'numberOfSeries'    => count($data['series']),
-        'numberOfInstances' => $data['numberOfInstances'] ?? 1,
-        'referrer'      => ['reference' => 'Practitioner/' . $data['referrerId']],
-        'procedureCode' => [[
-            'coding' => [[
-                'system'  => 'http://hl7.org/fhir/sid/icd-9-cm',   // atau LOINC
-                'code'    => $data['procedureCode'],
-                'display' => $data['procedureDisplay'],
-            ]],
-        ]],
-        'series' => array_map(fn ($s) => [
-            'uid'      => $s['seriesUid'],
-            'number'   => $s['number'] ?? 1,
-            'modality' => [
-                'system'  => 'http://dicom.nema.org/resources/ontology/DCM',
-                'code'    => $s['modality'],           // CR, CT, US, MR, ...
-                'display' => $s['modalityDisplay'],
-            ],
-            'numberOfInstances' => count($s['instances'] ?? [1]),
-            'started'  => $s['started'] ?? now()->toIso8601String(),
-        ], $data['series']),
-    ];
-    return $this->makeRequest('post', '/ImagingStudy', $payload);
-}
-// Sumber SIRUS: modul Radiologi (rstxn_*rads / rsview_rads). UID DICOM = gap.
+// ✅ Trait: ImagingStudyTrait::postImagingStudy() — lolos uji staging.
+// ✅ OrthancTrait: koneksi SIRUS → Orthanc (REST /tools/find → StudyInstanceUID).
+// ⚠️ Belum di-wire ke UI kirim radiologi.
+//
+// UID DICOM: STUDY_UID (kolom baru) dari Orthanc, fallback uidStudi() arc 2.25.
+// AccessionNumber = RADNUM_NO (pengikat order → gambar di PACS).
+
+// 1) Cari UID asli dari Orthanc (OrthancTrait):
+$uid = $this->cariStudyUid($radnumNo);  // null kalau belum ada di PACS
+
+// 2) Kirim ke SATUSEHAT (ImagingStudyTrait):
+$response = $this->postImagingStudy([
+    'kunci'            => "rad-{$rjNo}-{$radDtl}",
+    'patientId'        => $ihsPatient,
+    'encounterId'      => $ihsEncounter,
+    'started'          => $waktuIso,
+    'modalityCode'     => 'DX',              // dari modalitasDariDeskripsi($radDesc)
+    'modalityDisplay'  => 'Digital Radiography',
+    'procedureCode'    => '36643-5',         // LOINC
+    'procedureDisplay' => 'THORAX PA/AP',
+    'referrerId'       => $ihsDokter,        // opsional
+]);
+
+// Trait menurunkan UID stabil dari kunci (deterministik, bukan random).
+// SOP class Secondary Capture (1.2.840.10008.5.1.4.1.1.7) — jujur untuk upload.
+// modalitasDariDeskripsi() konservatif: tak dikenali → OT (Other).
+// Detail lengkap → panduan PACS (sidebar "PACS Orthanc & ImagingStudy").
 TXT,
 
 'ss-immunization' => <<<'TXT'
@@ -412,6 +400,7 @@ TXT,
             ],
             'Adopsi' => [
                 'dashboard'  => 'Peta Dashboard SATUSEHAT',
+                'pacs'       => 'PACS Orthanc & ImagingStudy',
                 'belum-ada'  => 'Resource Belum Ada — Kirim',
                 'uji-kirim'  => 'Pelajaran Uji Kirim',
                 'backlog'    => 'Backlog & Gotcha',
@@ -503,6 +492,8 @@ TXT,
                     @include('pages.panduan-dev.koding-satusehat.koding-satusehat-ri-ugd')
 
                     @include('pages.panduan-dev.koding-satusehat.koding-satusehat-dashboard')
+
+                    @include('pages.panduan-dev.koding-satusehat.koding-satusehat-pacs')
 
                     @include('pages.panduan-dev.koding-satusehat.koding-satusehat-penutup')
 

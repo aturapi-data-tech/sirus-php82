@@ -146,7 +146,7 @@ Kolom di dashboard platform SATUSEHAT (jumlah resource per bulan) vs kondisi di 
 > - **UGD (12 kartu):** sama seperti RJ (urutan beda; Encounter class **EMER**, Location IGD hardcode)
 > - **RI (12 aktif + 2 digating):** Encounter (**IMP**) · **EpisodeOfCare** · Condition · Procedure · Observation · MedicationRequest · MedicationDispense · Lab · Radiologi · ClinicalImpression (CPPT) · **NutritionOrder** · **Penilaian** — ChiefComplaint & Allergy masih `@if(false)` (SNOMED)
 >
-> Jadi baris "❌ / ⚠️ trait saja" untuk MedicationDispense, ServiceRequest, Specimen, DiagnosticReport, Allergy, ClinicalImpression, EpisodeOfCare, NutritionOrder **sudah tidak berlaku**. Yang benar-benar belum ada: **Composition** (ringkasan pulang), **ImagingStudy** (gap DICOM), **Immunization** (belum ada modul).
+> Jadi baris "❌ / ⚠️ trait saja" untuk MedicationDispense, ServiceRequest, Specimen, DiagnosticReport, Allergy, ClinicalImpression, EpisodeOfCare, NutritionOrder **sudah tidak berlaku**. Yang benar-benar belum ada: **Composition** (ringkasan pulang), **Immunization** (belum ada modul). **ImagingStudy** sudah ada trait + lolos staging — tinggal wire ke UI (lihat §9.5).
 >
 > **Badge kartu = urutan tampil di modul itu** (tidak disamakan lintas modul; set resource memang beda). Dirapikan 2026-07-15.
 
@@ -164,12 +164,12 @@ Kolom di dashboard platform SATUSEHAT (jumlah resource per bulan) vs kondisi di 
 | Jumlah Intoleransi Alergi (**AllergyIntolerance**) | ✅ | ⚠️ trait saja | SNOMED |
 | Jumlah Diet (**Composition**) | ⚠️ dibangun, belum diuji live | ❌ | LOINC 88645-7 — label dashboard "Diet" menyesatkan, resource-nya Resume Medis (§9.4) |
 | Jumlah Impresi Klinik (**ClinicalImpression**) | ❌ | ❌ | — |
-| Jumlah Radiologi (**ImagingStudy**) | ❌ | ❌ | — |
+| Jumlah Radiologi (**ImagingStudy**) | ✅ | ⚠️ trait saja | LOINC + DICOM UID (via Orthanc) |
 | Jumlah Imunisasi (**Immunization**) | ❌ | ❌ | — |
 | Jumlah Episode Perawatan (**EpisodeOfCare**) | ❌ | ❌ | — |
 | Jumlah Instruksi Gizi (**NutritionOrder**) | ❌ | ❌ | — |
 
-**Ringkas coverage:** 5 resource sudah terkirim penuh (Encounter, Condition, Observation, Procedure, MedicationRequest). 5 resource sudah ada trait tapi perlu di-wire ke UI (MedicationDispense, ServiceRequest, Specimen, DiagnosticReport, AllergyIntolerance). 6 resource belum dibuat sama sekali (Composition/Diet, ClinicalImpression, ImagingStudy, Immunization, EpisodeOfCare, NutritionOrder) — **payload lengkap & metode kirim di §9**.
+**Ringkas coverage:** 5 resource sudah terkirim penuh (Encounter, Condition, Observation, Procedure, MedicationRequest). 5 resource sudah ada trait tapi perlu di-wire ke UI (MedicationDispense, ServiceRequest, Specimen, DiagnosticReport, AllergyIntolerance). 5 resource belum dibuat sama sekali (Composition/Diet, ClinicalImpression, Immunization, EpisodeOfCare, NutritionOrder). 1 resource trait sudah ada tapi belum di-wire (ImagingStudy — §9.5) — **payload lengkap & metode kirim di §9**.
 
 ---
 
@@ -518,76 +518,81 @@ mengurus perbedaan ini; jalur yang playbook-nya belum dibaca (mis. `ri`) sengaja
 
 ### 9.5 ImagingStudy — Radiologi
 
-Modul radiologi kita **upload-based** (tanpa PACS/DICOM), jadi UID DICOM
-(`studyUid`/`seriesUid`/`sopUid`) tidak tersimpan.
+**Status: ✅ Trait sudah ada + sudah lolos uji staging.**
 
-**Payload FHIR R4 (minimal, tanpa instance):**
+Implementasi ada di dua trait:
 
-```json
-{
-  "resourceType": "ImagingStudy",
-  "identifier": [{ "system": "urn:dicom:uid", "value": "urn:oid:{studyUid}" }],
-  "status": "available",
-  "subject": { "reference": "Patient/{ihsPatient}" },
-  "encounter": { "reference": "Encounter/{ihsEncounter}" },
-  "started": "2026-07-14T11:00:00+07:00",
-  "numberOfSeries": 1,
-  "numberOfInstances": 1,
-  "referrer": { "reference": "Practitioner/{ihsDpjp}" },
-  "procedureCode": [{
-    "coding": [{ "system": "http://hl7.org/fhir/sid/icd-9-cm", "code": "87.44", "display": "Routine chest x-ray" }]
-  }],
-  "series": [{
-    "uid": "{seriesUid}",
-    "number": 1,
-    "modality": { "system": "http://dicom.nema.org/resources/ontology/DCM", "code": "CR", "display": "Computed Radiography" },
-    "numberOfInstances": 1,
-    "started": "2026-07-14T11:00:00+07:00"
-  }]
-}
+| Trait | Fungsi |
+|---|---|
+| `ImagingStudyTrait` | Rakit payload FHIR R4 + `POST /ImagingStudy` ke SATUSEHAT |
+| `OrthancTrait` | Koneksi ke PACS Orthanc — ambil `StudyInstanceUID` asli via REST |
+
+**Sumber UID:**
+
+| Kondisi | Sumber UID | Keterangan |
+|---|---|---|
+| `STUDY_UID` terisi di tabel order | UID asli dari PACS Orthanc | Bisa ditelusuri ke gambar DICOM |
+| `STUDY_UID` kosong | `uidStudi()` — UID turunan arc `2.25` | Sah bentuknya, tidak bisa ditelusuri |
+
+**Alur end-to-end:**
+
+```
+Order Rad (RADNUM_NO)
+  → Orthanc /tools/find (AccessionNumber = RADNUM_NO)
+    → StudyInstanceUID asli → simpan ke STUDY_UID
+      → ImagingStudyTrait::postImagingStudy() → SATUSEHAT
 ```
 
-**Metode:**
+Detail alur, DDL, dan setup Orthanc → lihat **`docs/pacs-orthanc.md`** §5 & §5b.
+
+**Trait `ImagingStudyTrait::postImagingStudy()`:**
 
 ```php
-public function createImagingStudy(array $data): array
-{
-    $payload = [
-        'resourceType' => 'ImagingStudy',
-        'identifier'   => [['system' => 'urn:dicom:uid', 'value' => 'urn:oid:' . $data['studyUid']]],
-        'status'    => 'available',
-        'subject'   => ['reference' => 'Patient/'   . $data['patientId']],
-        'encounter' => ['reference' => 'Encounter/' . $data['encounterId']],
-        'started'   => $data['started'] ?? now()->toIso8601String(),
-        'numberOfSeries'    => count($data['series']),
-        'numberOfInstances' => $data['numberOfInstances'] ?? 1,
-        'referrer'      => ['reference' => 'Practitioner/' . $data['referrerId']],
-        'procedureCode' => [['coding' => [[
-            'system'  => 'http://hl7.org/fhir/sid/icd-9-cm',   // atau LOINC
-            'code'    => $data['procedureCode'],
-            'display' => $data['procedureDisplay'],
-        ]]]],
-        'series' => array_map(fn ($s) => [
-            'uid'      => $s['seriesUid'],
-            'number'   => $s['number'] ?? 1,
-            'modality' => [
-                'system'  => 'http://dicom.nema.org/resources/ontology/DCM',
-                'code'    => $s['modality'],           // CR, CT, US, MR, ...
-                'display' => $s['modalityDisplay'],
-            ],
-            'numberOfInstances' => count($s['instances'] ?? [1]),
-            'started'  => $s['started'] ?? now()->toIso8601String(),
-        ], $data['series']),
-    ];
-    return $this->makeRequest('post', '/ImagingStudy', $payload);
-}
+$data = [
+    'kunci'            => "rad-{$rjNo}-{$radDtl}",
+    'patientId'        => $ihsPatient,
+    'encounterId'      => $ihsEncounter,
+    'started'          => $waktuIso,
+    'modalityCode'     => 'DX',              // dari modalitasDariDeskripsi()
+    'modalityDisplay'  => 'Digital Radiography',
+    'procedureCode'    => '36643-5',         // LOINC
+    'procedureDisplay' => 'THORAX PA/AP',
+    'referrerId'       => $ihsDokter,        // opsional
+];
+$response = $this->postImagingStudy($data);
 ```
 
-- **Pemetaan SIRUS:** sumber `rstxn_*rads` / `rsview_rads`; `procedureCode` dari master
-  pemeriksaan radiologi (ICD-9-CM); `modality` per jenis alat (CR/CT/US/MR).
-- **Gap yang harus ditutup:** UID DICOM tak ada. Opsi: (a) **generate OID sendiri** yang stabil
-  per pemeriksaan (mis. prefix OID RS + id pemeriksaan) dan kirim minimal (tanpa `instance[]`);
-  (b) integrasi PACS bila tersedia. Tanpa UID valid, server menolak.
+**Trait `OrthancTrait` — koneksi SIRUS → PACS:**
+
+```php
+use App\Http\Traits\SATUSEHAT\OrthancTrait;
+
+// Cari UID dari Orthanc:
+$uid = $this->cariStudyUid($radnumNo);
+
+// Sinkron satu row:
+$this->sinkronStudyUid('rstxn_rjrads', ['rj_no' => $rjNo, 'rad_dtl' => $dtl], $radnumNo);
+
+// Batch sinkron semua yang belum:
+$count = $this->sinkronStudyUidBatch('rstxn_rjrads', 'rj_no', 'rad_dtl');
+```
+
+**Env config (`.env`):**
+
+```env
+ORTHANC_URL=http://localhost:8042
+ORTHANC_USER=sirus
+ORTHANC_PASSWORD=<password>
+```
+
+**Uji staging:** `ImagingStudy/16744a38-6141-43cc-ad1a-4c0280625374` — diterima
+(Encounter UGD 203859, pasien `P02478375538`, THORAX PA/AP LOINC `36643-5`, modalitas DX).
+
+**Yang masih perlu:**
+
+1. Generate `RADNUM_NO` otomatis saat order radiologi dibuat (saat ini kosong semua)
+2. Wire `ImagingStudyTrait` ke komponen kirim radiologi SATUSEHAT (saat ini kirim SR + DR saja, ImagingStudy dilewati)
+3. Pastikan alat radiologi support DICOM supaya Orthanc terisi gambar asli
 
 ---
 
