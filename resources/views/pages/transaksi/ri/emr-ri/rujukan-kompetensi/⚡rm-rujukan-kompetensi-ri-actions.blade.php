@@ -176,6 +176,70 @@ new class extends Component {
     }
 
     /**
+     * Keadaan tiap langkah alur rujukan — DIHITUNG dari data, bukan disimpan.
+     * Menyimpan "langkah aktif" sebagai state tersendiri membuat stepper bisa
+     * berbohong saat data berubah dari jalur lain (mis. kandidat ter-reset).
+     *
+     * Dipakai x-stepper supaya hubungan Tugas Rujukan -> Persetujuan -> Rujukan
+     * terbaca: dua tombol kirim itu langkah BERBEDA, bukan pilihan.
+     */
+    public function langkahRujukan(): array
+    {
+        $sudahKirim = !empty($this->formRujukan['hasil']['noRujukanSatuSehat']);
+        $adaTugas = !empty($this->formRujukan['carePlanId']);
+        $adaKandidat = ($this->formRujukan['kandidatIdx'] ?? null) !== null;
+        $statusApproval = (string) ($this->formRujukan['statusApproval'] ?? '');
+
+        $kriteriaTerisi = $this->formRujukan['kriteriaPilih'] !== ''
+            && ($this->formRujukan['kriteriaPilih'] !== 'tindakan' || trim((string) $this->formRujukan['kriteriaIcd9']) !== '');
+        $dasarTerisi = trim((string) $this->formRujukan['kodeDiagnosa']) !== '' && $kriteriaTerisi;
+
+        $status = fn(bool $selesai, bool $aktif) => $selesai ? 'done' : ($aktif ? 'current' : 'todo');
+
+        return [
+            [
+                'n' => 1,
+                'title' => 'Diagnosa & Kriteria',
+                'hint' => $dasarTerisi ? null : 'wajib diisi',
+                'state' => $status($dasarTerisi, true),
+            ],
+            [
+                'n' => 2,
+                'title' => 'Pilih Kandidat',
+                'hint' => $adaKandidat ? ($this->formRujukan['kandidatList'][$this->formRujukan['kandidatIdx']]['nama'] ?? null) : null,
+                'state' => $status($adaKandidat, $dasarTerisi),
+            ],
+            [
+                'n' => 3,
+                'title' => 'Kirim Tugas Rujukan',
+                'hint' => $adaTugas ? 'terkirim' : 'minta kesediaan faskes',
+                'state' => $status($adaTugas, $adaKandidat),
+            ],
+            [
+                'n' => 4,
+                'title' => 'Persetujuan Faskes',
+                'hint' => match ($statusApproval) {
+                    'accepted' => 'diterima',
+                    'rejected' => 'ditolak — pilih faskes lain',
+                    default => $adaTugas ? 'belum dijawab' : null,
+                },
+                'state' => $statusApproval === 'rejected'
+                    ? 'error'
+                    : $status($statusApproval === 'accepted', $adaTugas),
+            ],
+            [
+                'n' => 5,
+                'title' => 'Kirim Rujukan',
+                'hint' => $sudahKirim ? 'No. ' . $this->formRujukan['hasil']['noRujukanSatuSehat'] : 'terbit nomor rujukan',
+                // Aktif hanya setelah faskes menerima — supaya tidak ada dua langkah
+                // menyala bersamaan. Menerbitkan rujukan tanpa menunggu jawaban TETAP
+                // diizinkan (lihat kirimRujukan), stepper cuma menunjukkan alur idealnya.
+                'state' => $status($sudahKirim, $statusApproval === 'accepted'),
+            ],
+        ];
+    }
+
+    /**
      * Opsi terminologi dibaca lewat method komponen, BUKAN RujukanOptions:: langsung
      * di template — blok <?php SFC dan template Volt dikompilasi terpisah, jadi
      * `use` di atas tidak menjangkau zona template (skill naming-conventions §2).
@@ -737,9 +801,15 @@ new class extends Component {
         </div>
     @else
 
+    {{-- Stepper: menegaskan Tugas Rujukan (3) dan Kirim Rujukan (5) adalah
+         langkah BERBEDA, dengan persetujuan faskes (4) di antaranya. --}}
+    <div class="p-3 mb-3 overflow-x-auto bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
+        <x-stepper :steps="$this->langkahRujukan()" />
+    </div>
+
         {{-- LANGKAH 1 — DIAGNOSA, KRITERIA, WILAYAH → CARI KANDIDAT --}}
         <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
-            <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">1. Diagnosa, Kriteria & Kandidat</p>
+            <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Langkah 1–2 · Diagnosa, Kriteria &amp; Kandidat</p>
 
             <div class="flex flex-wrap gap-2">
                 @forelse ($dataDaftarRi['diagnosis'] ?? [] as $indexDiagnosa => $diagnosa)
@@ -877,7 +947,7 @@ new class extends Component {
 
         {{-- LANGKAH 2 & 3 — TUGAS RUJUKAN + SERVICEREQUEST --}}
         <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
-            <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">2. Kirim Tugas Rujukan & Rujukan</p>
+            <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Langkah 3–5 · Tugas Rujukan → Persetujuan → Rujukan</p>
 
             <div class="grid grid-cols-1 gap-3">
                 <div>
