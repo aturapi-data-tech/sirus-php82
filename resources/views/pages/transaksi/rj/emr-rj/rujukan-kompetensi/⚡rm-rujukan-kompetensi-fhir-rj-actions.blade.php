@@ -126,6 +126,9 @@ new class extends Component {
             'taskApprovalId' => '',
             // '' = belum dijawab | accepted | rejected
             'statusApproval' => '',
+            // faskes yang DIKIRIMI tugas rujukan — pembanding saat menerbitkan ServiceRequest
+            'approvalOrgId' => '',
+            'approvalOrgNama' => '',
             'hasil' => [],
         ];
     }
@@ -466,6 +469,8 @@ new class extends Component {
         $this->formRujukan['carePlanId'] = $this->rujukanIdDariBundleResponse($respon['body'], 'CarePlan');
         $this->formRujukan['taskApprovalId'] = $this->rujukanIdDariBundleResponse($respon['body'], 'Task');
         $this->formRujukan['statusApproval'] = '';
+        $this->formRujukan['approvalOrgId'] = (string) $kandidat['orgId'];
+        $this->formRujukan['approvalOrgNama'] = (string) $kandidat['nama'];
         $this->simpanDraft('Kirim tugas rujukan ' . $labelJalur . ' → ' . $kandidat['nama']);
         $this->dispatch('toast', type: 'success', message: 'Tugas rujukan terkirim ke ' . $kandidat['nama'] . ' — lanjut Kirim Rujukan (staging boleh tanpa menunggu approval).');
     }
@@ -535,9 +540,26 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Form read-only.');
             return;
         }
+        // Dua sebab yang dulu digabung jadi satu pesan "Kirim Tugas Rujukan dulu",
+        // padahal obatnya beda: kandidat belum dipilih vs tugas rujukan belum dikirim.
+        // Petugas jadi bolak-balik ditolak dua tombol yang saling menunjuk.
         $kandidat = $this->formRujukan['kandidatList'][$this->formRujukan['kandidatIdx'] ?? -1] ?? null;
-        if (!$kandidat || empty($this->formRujukan['carePlanId'])) {
+        if (!$kandidat) {
+            $this->dispatch('toast', type: 'error', message: 'Pilih kandidat faskes tujuan dulu (cari kandidat di Langkah 1).');
+            return;
+        }
+        if (empty($this->formRujukan['carePlanId'])) {
             $this->dispatch('toast', type: 'error', message: 'Kirim Tugas Rujukan dulu (butuh CarePlan sebagai basedOn).');
+            return;
+        }
+
+        // Tugas rujukan terkirim ke SATU faskes (Task.owner). Menerbitkan
+        // ServiceRequest dengan performer faskes LAIN membuat rujukan menggantung:
+        // yang diminta persetujuan A, yang dirujuk B. Bisa terjadi kalau kandidat
+        // dicari ulang (mis. setelah ganti wilayah) lalu dipilih faskes berbeda.
+        $orgTugas = trim((string) ($this->formRujukan['approvalOrgId'] ?? ''));
+        if ($orgTugas !== '' && $orgTugas !== trim((string) $kandidat['orgId'])) {
+            $this->dispatch('toast', type: 'error', message: 'Tugas rujukan tadi dikirim ke ' . ($this->formRujukan['approvalOrgNama'] ?: $orgTugas) . ', tapi kandidat yang dipilih sekarang ' . $kandidat['nama'] . '. Kirim Tugas Rujukan ulang ke faskes yang dipilih.');
             return;
         }
 
@@ -611,6 +633,9 @@ new class extends Component {
         $taskLama = $this->formRujukan['taskApprovalId'];
         $this->formRujukan['taskApprovalId'] = '';
         $this->formRujukan['carePlanId'] = '';
+        $this->formRujukan['statusApproval'] = '';
+        $this->formRujukan['approvalOrgId'] = '';
+        $this->formRujukan['approvalOrgNama'] = '';
         $this->formRujukan['hasil'] = [];
         $this->simpanDraft('Batalkan tugas rujukan IGD (Task ' . $taskLama . ')');
         $this->dispatch('toast', type: 'success', message: 'Tugas rujukan dibatalkan.');
