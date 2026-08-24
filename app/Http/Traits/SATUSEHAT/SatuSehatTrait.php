@@ -19,6 +19,7 @@ trait SatuSehatTrait
     protected $clientSecret;
     protected $baseUrl;
     protected $organizationId;
+    protected $organizationName;
 
 
     public function initializeSatuSehat()
