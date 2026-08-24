@@ -12,9 +12,11 @@ use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\SATUSEHAT\ServiceRequestTrait;
 use App\Support\PenanggungJawabPenunjang;
 use App\Http\Traits\SATUSEHAT\DiagnosticReportTrait;
+use App\Http\Traits\SATUSEHAT\ImagingStudyTrait;
+use App\Http\Traits\SATUSEHAT\OrthancTrait;
 
 new class extends Component {
-    use EmrUGDTrait, ServiceRequestTrait, DiagnosticReportTrait;
+    use EmrUGDTrait, ServiceRequestTrait, DiagnosticReportTrait, ImagingStudyTrait, OrthancTrait;
 
     public ?string $rjNo = null;
     public bool $hasEncounter = false;
@@ -136,8 +138,11 @@ new class extends Component {
             $orders = DB::table('rstxn_ugdrads as a')
                 ->leftJoin('rsmst_radiologis as m', 'a.rad_id', '=', 'm.rad_id')
                 ->where('a.rj_no', $rjNo)
-                ->select('a.rad_dtl', 'a.rad_id', 'm.rad_desc')
+                ->select('a.rad_dtl', 'a.rad_id', 'm.rad_desc', 'a.radnum_no', 'a.rad_upload_pdf_foto', 'a.study_uid')
                 ->get();
+
+            $regNo   = $dataUGD['regNo'] ?? '';
+            $regName = $dataUGD['regName'] ?? '';
             if ($orders->isEmpty()) { $this->dispatch('toast', type: 'error', message: 'Tidak ada order radiologi UGD untuk dikirim.'); return; }
 
             $satuSehat['radServiceRequestIds']   = $satuSehat['radServiceRequestIds']   ?? [];
@@ -172,6 +177,45 @@ new class extends Component {
                     'performer' => ["Practitioner/{$practitionerId}"], 'basedOn' => [$serviceRequestId],
                 ]);
                 if (!empty($dokter['id'])) { $satuSehat['radDiagnosticReportIds'][] = $dokter['id']; }
+
+                // 3) ImagingStudy — kirim kalau ada file foto/PDF yang sudah diupload.
+                $fileFoto = $order->rad_upload_pdf_foto ?? '';
+                $radnumNo = $order->radnum_no ?? '';
+                if (!empty($fileFoto) && !empty($radnumNo)) {
+                    $modalitas = $this->modalitasDariDeskripsi($deskripsi);
+
+                    $studyUid = $this->prosesOrthanc(
+                        'rstxn_ugdrads',
+                        ['rj_no' => $rjNo, 'rad_dtl' => $nomorDetail],
+                        [
+                            'radnum_no'          => $radnumNo,
+                            'rad_upload_pdf_foto' => $fileFoto,
+                            'rad_desc'           => $deskripsi,
+                            'reg_no'             => $regNo,
+                            'reg_name'           => $regName,
+                            'modality'           => $modalitas['code'],
+                        ]
+                    );
+
+                    $imagingStudy = $this->postImagingStudy([
+                        'kunci'            => "ugd-rad-{$key}",
+                        'studyUid'         => $studyUid,
+                        'patientId'        => $patientId,
+                        'encounterId'      => $encounterId,
+                        'started'          => $waktu,
+                        'modalityCode'     => $modalitas['code'],
+                        'modalityDisplay'  => $modalitas['display'],
+                        'procedureCode'    => '18748-4',
+                        'procedureDisplay' => $deskripsi,
+                        'referrerId'       => $practitionerId,
+                        'basedOn'          => $serviceRequestId,
+                        'description'      => $deskripsi,
+                    ]);
+                    if (!empty($imagingStudy['id'])) {
+                        $satuSehat['radImagingStudyIds']   = $satuSehat['radImagingStudyIds'] ?? [];
+                        $satuSehat['radImagingStudyIds'][] = $imagingStudy['id'];
+                    }
+                }
             }
 
             if (empty($satuSehat['radServiceRequestIds'])) { $this->dispatch('toast', type: 'error', message: 'Tidak ada order radiologi yang bisa dikirim.'); return; }
@@ -179,7 +223,9 @@ new class extends Component {
             $this->saveResult($rjNo, $satuSehat);
             $srCount = count($satuSehat['radServiceRequestIds']);
             $drCount = count($satuSehat['radDiagnosticReportIds']);
-            $this->dispatch('toast', type: 'success', message: "Radiologi terkirim: {$srCount} order, {$drCount} laporan (ImagingStudy dilewati — no DICOM).");
+            $isCount = count($satuSehat['radImagingStudyIds'] ?? []);
+            $isInfo  = $isCount > 0 ? ", {$isCount} ImagingStudy" : ' (ImagingStudy dilewati — belum ada foto)';
+            $this->dispatch('toast', type: 'success', message: "Radiologi terkirim: {$srCount} order, {$drCount} laporan{$isInfo}.");
             $this->dispatch('ugd-satu-sehat.refresh', rjNo: $rjNo);
         } catch (\Throwable $e) {
             // Simpan dulu yang sudah TERLANJUR terbentuk di SATUSEHAT sebelum melapor
@@ -227,7 +273,7 @@ new class extends Component {
             </div>
             <div>
                 <div class="font-semibold text-ink dark:text-gray-100">Penunjang Radiologi</div>
-                <div class="text-xs text-muted dark:text-gray-400">ServiceRequest + DiagnosticReport (ImagingStudy dilewati — no DICOM).</div>
+                <div class="text-xs text-muted dark:text-gray-400">ServiceRequest + DiagnosticReport + ImagingStudy (kalau ada foto).</div>
                 @if ($count > 0)
                     <div class="mt-1 font-mono text-xs text-success dark:text-success">
                         {{ $count }} laporan terkirim
