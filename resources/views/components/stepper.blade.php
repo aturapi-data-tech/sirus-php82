@@ -34,19 +34,19 @@
 <ol {{ $attributes->merge(['class' => 'flex flex-wrap items-start gap-x-2 gap-y-3']) }}>
     @foreach ($steps as $indexLangkah => $langkah)
         @php
-            $state = $langkah['state'] ?? 'todo';
-            $lingkaran = $tokenLingkaran[$state] ?? $tokenLingkaran['todo'];
-            $judul = $tokenJudul[$state] ?? $tokenJudul['todo'];
+            $keadaan = $langkah['state'] ?? 'todo';
+            $lingkaran = $tokenLingkaran[$keadaan] ?? $tokenLingkaran['todo'];
+            $judul = $tokenJudul[$keadaan] ?? $tokenJudul['todo'];
         @endphp
 
         <li class="flex items-start gap-2 min-w-0">
             <span
                 class="flex items-center justify-center border rounded-full shrink-0 w-7 h-7 text-sm font-bold {{ $lingkaran }}"
-                @if ($state === 'done') aria-label="selesai" @endif>
-                @if ($state === 'done')
+                @if ($keadaan === 'done') aria-label="selesai" @endif>
+                @if ($keadaan === 'done')
                     {{-- centang: karakter asli, bukan entity — entity tampil literal di prop komponen --}}
                     ✓
-                @elseif ($state === 'error')
+                @elseif ($keadaan === 'error')
                     !
                 @else
                     {{ $langkah['n'] ?? $indexLangkah + 1 }}
