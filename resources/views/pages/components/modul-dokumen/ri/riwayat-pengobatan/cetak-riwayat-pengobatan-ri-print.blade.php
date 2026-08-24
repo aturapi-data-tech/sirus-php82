@@ -2,6 +2,7 @@
 
 @php
     use Carbon\Carbon;
+    use App\Support\RekonsiliasiObat;
 
     /* ========= 1) Sumber data dasar ========= */
     $pasien = data_get($dataPasien, 'pasien', []);
@@ -68,6 +69,11 @@
         "\n" .
         'Riwayat Penyakit Keluarga: ' .
         (string) data_get($ri, 'pengkajianDokter.anamnesa.riwayatPenyakit.keluarga', '-');
+
+    /* ========= 3b) Rekonsiliasi Obat (obat yang dipakai pasien sebelum masuk RS) ========= */
+    $daftarRekonsiliasiObat = RekonsiliasiObat::normalkanDaftar(
+        data_get($ri, 'pengkajianDokter.anamnesa.rekonsiliasiObat', []),
+    );
 
     /* ========= 4) Pemeriksaan Fisik Awal ========= */
     $tandaVital = (array) data_get($ri, 'pengkajianAwalPasienRawatInap.bagian4PemeriksaanFisik.tandaVital', []);
@@ -266,6 +272,40 @@
             <th class="px-2 py-1 text-left align-top border border-black">Riwayat penyakit</th>
             <td class="px-2 py-1 whitespace-pre-line border border-black" colspan="5">{{ $riwayatPenyakit }}</td>
         </tr>
+    </table>
+
+    {{-- ======================= REKONSILIASI OBAT ======================= --}}
+    {{-- Sumbernya node yang sama dgn tab EMR & viewer RM: pengkajianDokter.anamnesa
+         .rekonsiliasiObat. Baris lama (sebelum kolom petugas ada) tercetak '-'. --}}
+    <table class="w-full mt-2 border border-collapse border-black table-auto">
+        <tr class="font-semibold bg-gray-100">
+            <th colspan="5" class="px-2 py-1 text-left">REKONSILIASI OBAT</th>
+        </tr>
+        <tr class="bg-gray-50">
+            <th class="px-2 py-1 text-left border border-black" style="width:30%">Nama Obat</th>
+            <th class="px-2 py-1 text-left border border-black" style="width:12%">Dosis</th>
+            <th class="px-2 py-1 text-left border border-black" style="width:10%">Rute</th>
+            <th class="px-2 py-1 text-left border border-black" style="width:28%">Keterangan</th>
+            <th class="px-2 py-1 text-left border border-black" style="width:20%">Petugas</th>
+        </tr>
+        @forelse ($daftarRekonsiliasiObat as $obatRekonsiliasi)
+            <tr>
+                <td class="px-2 py-1 border border-black">{{ $obatRekonsiliasi['namaObat'] ?: '-' }}</td>
+                <td class="px-2 py-1 border border-black">{{ $obatRekonsiliasi['dosis'] ?: '-' }}</td>
+                <td class="px-2 py-1 border border-black">{{ $obatRekonsiliasi['rute'] ?: '-' }}</td>
+                <td class="px-2 py-1 border border-black">
+                    Dibawa saat ranap : {{ $obatRekonsiliasi['dibawaRanap'] }}<br>
+                    Lanjut saat pulang : {{ $obatRekonsiliasi['lanjutPulang'] }}
+                </td>
+                <td class="px-2 py-1 border border-black">
+                    {{ $obatRekonsiliasi['petugasRekonsiliasi'] ?: '-' }}@if ($obatRekonsiliasi['tglRekonsiliasi'])<br>{{ $obatRekonsiliasi['tglRekonsiliasi'] }}@endif
+                </td>
+            </tr>
+        @empty
+            <tr>
+                <td class="px-2 py-1 border border-black" colspan="5">Tidak ada riwayat pemakaian obat.</td>
+            </tr>
+        @endforelse
     </table>
 
     {{-- ======================= PEMERIKSAAN FISIK ======================= --}}
