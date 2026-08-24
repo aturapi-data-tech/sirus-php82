@@ -949,14 +949,14 @@ new class extends Component {
             <div class="px-6 py-5 border-b border-hairline dark:border-gray-700">
                 <div class="flex items-start justify-between gap-4">
                     <div class="flex items-center gap-3">
-                        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-500/10">
-                            <svg class="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-500/10">
+                            <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
                             </svg>
                         </div>
                         <div>
-                            <h2 class="text-2xl font-semibold text-ink dark:text-gray-100">Rujukan Berbasis Kompetensi</h2>
-                            <p class="mt-0.5 text-base text-muted dark:text-gray-400">
+                            <h2 class="text-lg font-semibold text-ink dark:text-gray-100">Rujukan Berbasis Kompetensi</h2>
+                            <p class="mt-0.5 text-xs text-muted dark:text-gray-400">
                                 UGD → poli RS lain · lewat BPJS (SISRUTE) yang meneruskan ke SATUSEHAT
                             </p>
                         </div>
@@ -982,6 +982,11 @@ new class extends Component {
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">
                 <div class="max-w-full mx-auto space-y-4">
+                    {{-- Siapa pasiennya — rujukan terbit atas nama orang, dan
+                         modal ini penuh isian teknis yang tak menyebut nama sama sekali. --}}
+                    <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                        wire:key="rujukan-kompetensi-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
+
     {{-- PRASYARAT --}}
     @php $prasyaratKurang = $this->prasyaratKurang(); @endphp
     @if (!empty($prasyaratKurang) && empty($formRujukan['hasil']['noRujukanSatuSehat']))
