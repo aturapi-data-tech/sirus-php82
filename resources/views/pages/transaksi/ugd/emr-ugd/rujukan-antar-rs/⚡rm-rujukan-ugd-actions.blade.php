@@ -553,8 +553,8 @@ new class extends Component {
                         @else
                             <x-badge variant="warning">Belum dikirim ke BPJS</x-badge>
                         @endif
-                        {-- Tombol tutup di pojok kanan header, pola x-icon-button
-                             yang dipakai modal modul-dokumen. --}
+                        {{-- Tombol tutup di pojok kanan header, pola x-icon-button
+                             yang dipakai modal modul-dokumen. --}}
                         <x-icon-button color="gray" type="button" wire:click="closeModal" title="Tutup">
                             <span class="sr-only">Tutup</span>
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
