@@ -121,7 +121,7 @@ new class extends Component {
 
             $satuSehat = $dataRJ['satusehat'] ?? [];
             if (empty($satuSehat['encounterId'])) { $this->dispatch('toast', type: 'error', message: 'Kirim Encounter terlebih dahulu.'); return; }
-            if (!empty($satuSehat['radDiagnosticReportIds'])) { $this->dispatch('toast', type: 'info', message: 'Radiologi sudah pernah dikirim.'); return; }
+            if (!empty($satuSehat['radDiagnosticReportIds']) || !empty($satuSehat['radServiceRequestIds'])) { $this->dispatch('toast', type: 'info', message: 'Radiologi sudah pernah dikirim.'); return; }
 
             $patientId = $this->getPatientIHS($dataRJ['regNo'] ?? '');
             if (empty($patientId)) { $this->dispatch('toast', type: 'error', message: 'Patient IHS Number kosong.'); return; }
