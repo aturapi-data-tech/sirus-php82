@@ -912,6 +912,11 @@ new class extends Component {
         </div>
     @else
 
+    {{-- Panduan pemakaian — komponen bersama 3 panel. --}}
+    <div class="mb-3">
+        <x-rujukan.panduan-kirim :jalurGanda="true" />
+    </div>
+
     {{-- Stepper: menegaskan Tugas Rujukan (3) dan Kirim Rujukan (5) adalah
          langkah BERBEDA, dengan persetujuan faskes (4) di antaranya. --}}
     <div class="p-3 mb-3 overflow-x-auto bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
