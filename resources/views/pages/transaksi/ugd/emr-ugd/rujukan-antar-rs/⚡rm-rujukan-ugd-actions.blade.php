@@ -582,7 +582,7 @@ new class extends Component {
                     <div class="grid items-start grid-cols-1 gap-3 xl:grid-cols-3">
 
                     <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
-                        <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Langkah 1 · Dasar Rujukan</p>
+                        <p class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200"><x-step-number :n="1" /><span class="ml-0.5">Dasar Rujukan</span></p>
                                 {{-- No SEP (readonly) --}}
                                 <div>
                                     <x-input-label value="No. SEP" class="mb-1" />
@@ -618,7 +618,7 @@ new class extends Component {
                     </div>
 
                     <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
-                        <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Langkah 2 · Tujuan Rujukan</p>
+                        <p class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200"><x-step-number :n="2" /><span class="ml-0.5">Tujuan Rujukan</span></p>
                                 {{-- PPK Tujuan --}}
                                 <div>
                                     <x-input-label value="PPK Tujuan Rujukan *" class="mb-1" />
@@ -729,7 +729,7 @@ new class extends Component {
                     </div>
 
                     <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
-                        <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Langkah 3 · Diagnosis & Catatan</p>
+                        <p class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200"><x-step-number :n="3" /><span class="ml-0.5">Diagnosis &amp; Catatan</span></p>
                                 {{-- Diagnosis Rujukan --}}
                                 <div>
                                     <x-input-label value="Diagnosis Rujukan *" class="mb-1" />
