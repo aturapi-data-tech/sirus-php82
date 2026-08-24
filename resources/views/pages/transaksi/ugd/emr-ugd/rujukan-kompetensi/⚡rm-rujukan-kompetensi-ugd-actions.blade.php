@@ -1054,16 +1054,13 @@ new class extends Component {
             {{-- LOV diagnosa — pencarian bebas; kode kategori 3-karakter terblokir otomatis --}}
             <div class="max-w-md">
                 <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosa Rujukan (ICD-10)"
-                    target="rujukanRajalDiagnosaUGD" :disabled="$isFormLocked"
+                    target="rujukanRajalDiagnosaUGD"
+                        :initialDiagnosaId="$formRujukan['kodeDiagnosa'] ?: null" :disabled="$isFormLocked"
                     wire:key="lov-diagnosa-rujukan-kompetensi-{{ $rjNo }}" />
-            </div>
-
-            <div class="grid grid-cols-1 gap-3">
-                <div>
-                    <x-input-label value="Kode Diagnosa (ICD-10 rinci)" class="mb-1" />
-                    <x-text-input wire:model.live="formRujukan.kodeDiagnosa" :disabled="true" class="w-full" />
-                    <p class="mt-1 text-xs text-muted-soft">Wajib ber-titik (A02.0) — kode induk ditolak SATUSEHAT.</p>
+                    <p class="mt-1 text-xs text-muted-soft">Wajib ber-titik (A02.0) — kode induk ditolak SATUSEHAT. @if (filled($formRujukan['kodeDiagnosa'] ?? ''))<span class="font-mono font-semibold text-ink dark:text-gray-200">Kode terkirim: {{ $formRujukan['kodeDiagnosa'] }}</span>@endif</p>
                 </div>
+
+                <div class="grid grid-cols-1 gap-3">
                 <div>
                     <livewire:lov.poli.lov-poli label="Kode Spesialis (poli BPJS)"
                         target="rujukanRajalSpesialisUGD"
