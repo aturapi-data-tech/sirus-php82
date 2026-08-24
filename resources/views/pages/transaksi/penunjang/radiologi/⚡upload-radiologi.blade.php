@@ -681,36 +681,35 @@ new class extends Component {
                                     @elseif ($isLengkap) bg-canvas dark:bg-gray-900 hover:shadow-lg hover:bg-surface-soft dark:hover:bg-gray-800
                                     @else bg-amber-50 dark:bg-amber-900/10 hover:shadow-md hover:bg-amber-100 dark:hover:bg-amber-900/20 border-l-4 border-amber-400 @endif">
 
-                                    {{-- TGL ORDER & PASIEN (digabung 1 kolom) --}}
+                                    {{-- KUNJUNGAN, ENTRY & PASIEN (digabung 1 kolom) --}}
                                     <td class="px-6 py-6 space-y-1 align-top">
                                         <div class="flex flex-col gap-0.5">
                                             <div class="flex items-center gap-2">
-                                                <span class="text-[11px] font-medium text-muted dark:text-gray-500 w-14">Kunjungan</span>
+                                                <span class="text-[11px] font-medium text-muted dark:text-gray-400 w-14">Kunjungan</span>
                                                 <span class="font-mono text-sm text-body dark:text-gray-300 whitespace-nowrap">
                                                     {{ $row->tgl_kunjungan ?? '-' }}
                                                 </span>
                                                 <x-badge :variant="['RJ' => 'info', 'UGD' => 'danger', 'RI' => 'purple'][$row->src] ?? 'alternative'">{{ ['RJ' => 'Rawat Jalan', 'UGD' => 'UGD', 'RI' => 'Rawat Inap'][$row->src] ?? $row->src }}</x-badge>
+                                                @if ($isCito)
+                                                    <span
+                                                        class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-red-700 bg-red-100 border border-red-300 rounded-full dark:bg-red-900/30 dark:border-red-500 dark:text-red-200"
+                                                        title="Order CITO — dahulukan pemeriksaan ini">
+                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                        </svg>
+                                                        CITO
+                                                    </span>
+                                                @endif
                                             </div>
                                             @if (!empty($row->waktu_entry))
                                                 <div class="flex items-center gap-2">
-                                                    <span class="text-[11px] font-medium text-muted dark:text-gray-500 w-14">Entry</span>
+                                                    <span class="text-[11px] font-medium text-muted dark:text-gray-400 w-14">Entry</span>
                                                     <span class="font-mono text-sm text-muted dark:text-gray-400 whitespace-nowrap">
                                                         {{ $row->waktu_efektif ?? '-' }}
                                                     </span>
                                                 </div>
-                                            @endif
-                                        </div>
-                                            @if ($isCito)
-                                                <span
-                                                    class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-red-700 bg-red-100 border border-red-300 rounded-full dark:bg-red-900/30 dark:border-red-500 dark:text-red-200"
-                                                    title="Order CITO — dahulukan pemeriksaan ini">
-                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor"
-                                                        viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                                    </svg>
-                                                    CITO
-                                                </span>
                                             @endif
                                         </div>
                                         <x-list.identitas-pasien class="pt-1" :regNo="$row->reg_no" :nama="$row->reg_name" :sex="$row->sex" :tglLahir="$row->birth_date" :alamat="$row->address" :collapseUmur="false" />
