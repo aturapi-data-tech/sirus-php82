@@ -179,30 +179,6 @@ new class extends Component {
     /* ===============================
      | LOV ROOM TUJUAN — listener
      =============================== */
-    #[On('lov.selected.pindahRiKeRuang')]
-    public function onRoomSelected(string $target, array $payload): void
-    {
-        if ($this->isFormLocked) {
-            return;
-        }
-
-        $this->newPindah['keRoomId'] = $payload['room_id'] ?? '';
-        $this->newPindah['keRoomDesc'] = $payload['room_name'] ?? '';
-        $this->newPindah['keBedNo'] = $payload['bed_no'] ?? '';
-    }
-
-    #[On('lov.cleared.pindahRiKeRuang')]
-    public function onRoomCleared(string $target): void
-    {
-        if ($this->isFormLocked) {
-            return;
-        }
-
-        $this->newPindah['keRoomId'] = '';
-        $this->newPindah['keRoomDesc'] = '';
-        $this->newPindah['keBedNo'] = '';
-    }
-
     /* ===============================
      | VALIDATION
      | Stage 1 (pengirim): tglPindah, ke ruang, alasan wajib
@@ -838,11 +814,15 @@ new class extends Component {
                                 </div>
 
                                 <div>
-                                    <x-input-label value="Ke Ruangan / Bed *" class="mb-1" />
+                                    <x-input-label value="Ke Ruangan *" class="mb-1" />
                                     @if (!$uiLocked)
-                                        <livewire:lov.room.lov-room target="pindahRiKeRuang" label=""
-                                            :initialRoomId="$newPindah['keRoomId'] ?? null"
-                                            wire:key="lov-room-pindah-ri-{{ $riHdrNo ?? 'init' }}-{{ $editingTglPindah ?? 'new' }}-{{ $renderVersions['modal-form-pindah-ri'] ?? 0 }}" />
+                                        {{-- Ruangan asal disembunyikan: pindah ke ruangan yang sama tak punya arti. --}}
+                                        <x-ruangan-combobox wire-model="newPindah.keRoomId"
+                                            wire-model-nama="newPindah.keRoomDesc"
+                                            :nilai="$newPindah['keRoomId'] ?? null"
+                                            :kecuali="$newPindah['dariRoomId'] ?? null"
+                                            :error="$errors->has('newPindah.keRoomId') || $errors->has('newPindah.keRoomDesc')"
+                                            placeholder="Ketik nama ruangan tujuan…" />
                                     @elseif (!empty($newPindah['keRoomDesc']))
                                         <div
                                             class="px-3 py-2 text-sm border border-hairline bg-surface-soft rounded-md dark:bg-gray-800 dark:border-gray-700">
