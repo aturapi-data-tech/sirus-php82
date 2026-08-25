@@ -84,20 +84,6 @@ new class extends Component {
     /* ===============================
      | LOV ROOM SELECTED
      =============================== */
-    #[On('lov.selected.room-trf-ugd-ri')]
-    public function onRoomSelected(string $target, array $payload): void
-    {
-        if ($this->isFormLocked) {
-            $this->dispatch('toast', type: 'error', message: 'Form dalam mode read-only.');
-            return;
-        }
-
-        $this->dataDaftarUGD['trfUgd']['pindahKeRuangan'] = $payload['room_name'] ?? '';
-        $this->dataDaftarUGD['trfUgd']['pindahKeRoomId'] = $payload['room_id'] ?? '';
-        $this->dataDaftarUGD['trfUgd']['pindahKeBedNo'] = $payload['bed_no'] ?? '';
-        $this->incrementVersion('modal-trf-ugd-ri');
-    }
-
     /* ===============================
      | OPEN
      =============================== */
@@ -1007,9 +993,15 @@ new class extends Component {
                             <div>
                                 <x-input-label value="Pindah ke Ruangan *" class="mb-1" />
                                 @if (!$isFormLocked)
-                                    <livewire:lov.room.lov-room target="room-trf-ugd-ri" label=""
-                                        placeholder="Ketik nama ruangan / bed..." :initialRoomId="$dataDaftarUGD['trfUgd']['pindahKeRoomId'] ?? null"
-                                        wire:key="lov-room-trf-ugd-ri-{{ $rjNo }}-{{ $renderVersions['modal-trf-ugd-ri'] ?? 0 }}" />
+                                    {{-- sumber='ruangan': form ini khusus UGD -> Rawat Inap. Untuk mengantar
+                                         pasien ke unit penunjang (radiologi/lab/OK), komponennya sudah siap —
+                                         pakai sumber="poli" + hanya="<id unit>" di form tujuannya sendiri,
+                                         jangan melebarkan daftar form transfer ini. --}}
+                                    <x-ruangan-combobox wire-model="dataDaftarUGD.trfUgd.pindahKeRoomId"
+                                        wire-model-nama="dataDaftarUGD.trfUgd.pindahKeRuangan"
+                                        :nilai="$dataDaftarUGD['trfUgd']['pindahKeRoomId'] ?? null"
+                                        :error="$errors->has('dataDaftarUGD.trfUgd.pindahKeRoomId')"
+                                        placeholder="Ketik nama ruangan tujuan…" />
                                 @else
                                     <x-text-input :value="($dataDaftarUGD['trfUgd']['pindahKeRuangan'] ?? '') .
                                         (!empty($dataDaftarUGD['trfUgd']['pindahKeBedNo'])
