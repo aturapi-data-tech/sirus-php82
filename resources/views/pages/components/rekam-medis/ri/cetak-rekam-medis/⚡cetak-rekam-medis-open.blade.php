@@ -680,6 +680,9 @@ new class extends Component {
                     <livewire:pages::components.rekam-medis.ri.dokumen-view.penolakan-obat-view-ri :riHdrNo="(string) $riHdrNo"
                         :entries="$ri['penolakanObatRI'] ?? []" wire:key="rm-view-penolakan-obat-{{ $riHdrNo }}" />
 
+                    <livewire:pages::components.rekam-medis.ri.dokumen-view.pulang-aps-view-ri :riHdrNo="(string) $riHdrNo"
+                        :entries="$ri['pulangApsRI'] ?? []" wire:key="rm-view-pulang-aps-{{ $riHdrNo }}" />
+
                     <livewire:pages::components.rekam-medis.ri.dokumen-view.second-opinion-view-ri :riHdrNo="(string) $riHdrNo"
                         :entries="$ri['secondOpinionRI'] ?? []" wire:key="rm-view-second-opinion-{{ $riHdrNo }}" />
 
