@@ -1163,38 +1163,39 @@ new class extends Component {
                             </x-border-form>
                             --}}
 
-                            {{-- KETERANGAN SISTEM --}}
-                            <section class="px-4 py-3 space-y-2 text-sm border rounded-2xl bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-900/10 dark:border-amber-800 dark:text-amber-200">
-                                <div class="text-xs font-semibold tracking-wide uppercase">Keterangan Sistem</div>
-                                <p>
-                                    Usia pengkajian = selisih <strong>Tanggal hari ini</strong> dan
-                                    <strong>Tgl pengkajian sebelumnya</strong>. Keduanya bisa diedit, jadi
-                                    usianya mengikuti tanggal yang tertulis di bagian 2 &mdash; bukan selalu
-                                    tanggal hari ini.
-                                </p>
-                                <p>
-                                    Dari usia itu sistem menetapkan keputusan: &le; 30 hari &rarr;
-                                    review/verifikasi, &gt; 30 hari &rarr; wajib pengkajian ulang.
-                                    Keputusannya tak bisa dipilih petugas.
-                                </p>
-                                <p>
-                                    Centang di bagian 4 <strong>diprasetel</strong> mengikuti keputusan itu,
-                                    tapi tetap boleh diubah &mdash; yang tersimpan adalah centang yang terlihat.
-                                </p>
-                                <p>
-                                    Tanggal hari ini tak boleh lebih awal dari tanggal pengkajian, dan tanggal
-                                    pengkajian tak boleh di masa depan.
-                                </p>
-                                <p>
-                                    Nomor kunjungan sumber dicocokkan otomatis dari jenis + tanggal pengkajian.
-                                    Bila tak ada kunjungan yang cocok, sumbernya tersimpan tanpa nomor dan
-                                    tombol <strong>Isi Pengkajian</strong> tak muncul di riwayat.
-                                </p>
-                                <p>
-                                    Tanda tangan dokter mengunci review. Buka kunci mencabut tanda tangannya,
-                                    tapi barisnya tetap tersimpan sebagai jejak.
-                                </p>
-                            </section>
+                            {{-- PANDUAN PERHITUNGAN — gaya biru-info standar, default TERTUTUP.
+                                 Lihat memory project_panduan_panel_blue_info_standard; acuan gaji-dokter. --}}
+                            <div x-data="{ buka: false }"
+                                class="overflow-hidden border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
+                                <button type="button" x-on:click="buka = !buka"
+                                    class="flex items-center justify-between w-full px-4 py-2.5 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/30">
+                                    <span class="flex items-center min-w-0 gap-2">
+                                        <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span class="truncate">Panduan: cara usia &amp; keputusan dihitung</span>
+                                    </span>
+                                    <svg class="w-4 h-4 ml-2 text-blue-600 transition-transform shrink-0" x-bind:class="buka && 'rotate-180'"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+
+                                <div x-show="buka" x-cloak class="px-4 pb-4 space-y-2 text-sm text-blue-900 dark:text-blue-100">
+                                    <p>
+                                        Usia pengkajian = selisih <strong>Tanggal hari ini</strong> dan
+                                        <strong>Tgl pengkajian sebelumnya</strong>. Keduanya bisa diedit, jadi
+                                        usianya mengikuti tanggal yang tertulis di bagian 2 &mdash; bukan selalu
+                                        tanggal hari ini.
+                                    </p>
+                                    <p>
+                                        Dari usia itu sistem menetapkan keputusan: &le; 30 hari &rarr;
+                                        review/verifikasi, &gt; 30 hari &rarr; wajib pengkajian ulang.
+                                        Keputusannya tak bisa dipilih petugas.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 @endif
