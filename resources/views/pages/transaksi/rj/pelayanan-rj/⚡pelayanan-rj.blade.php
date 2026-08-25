@@ -1004,6 +1004,26 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
 
+                                                                {{-- PRMRJ — Profil Ringkas Medis Rawat Jalan (RM.06) --}}
+                                                                @hasanyrole('Perawat|Dokter|Admin|Mr')
+                                                                    <x-dropdown-link href="#"
+                                                                        x-on:click.prevent="$dispatch('pelayanan-rj.prmrj.open', { rjNo: {{ $row->rj_no }} })"
+                                                                        class="px-3 py-2 text-sm rounded-lg bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 dark:hover:bg-sky-900/40">
+                                                                        <div class="flex items-start gap-2">
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-sky-700"
+                                                                                fill="none" stroke="currentColor"
+                                                                                viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                            </svg>
+                                                                            <span>
+                                                                                Profil Ringkas Medis <br>
+                                                                                <span class="font-semibold">PRMRJ</span>
+                                                                            </span>
+                                                                        </div>
+                                                                    </x-dropdown-link>
+                                                                @endhasanyrole
+
                                                                 {{-- Modul Dokumen — Admin, Perawat, Dokter, Casemix, Mr --}}
                                                                 @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr')
                                                                     <x-dropdown-link href="#"
@@ -1125,6 +1145,7 @@ new class extends Component {
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket-auto wire:key="cetak-etiket-auto-pasien" />
             <livewire:pages::transaksi.rj.daftar-rj.info-kelengkapan-emr wire:key="info-kelengkapan-emr-rj" />
             <livewire:pages::transaksi.rj.pelayanan-rj.pengkajian-medis-rj-actions wire:key="pengkajian-medis-rj-actions" />
+            <livewire:pages::transaksi.rj.pelayanan-rj.prmrj-rj-actions wire:key="prmrj-rj-actions" />
 
             {{-- Viewer rekam medis, dipanggil tombol "Rekam Medis" di panel Riwayat
                  Pengkajian. Dipasang DI SINI karena panel rekam-medis-display yang
