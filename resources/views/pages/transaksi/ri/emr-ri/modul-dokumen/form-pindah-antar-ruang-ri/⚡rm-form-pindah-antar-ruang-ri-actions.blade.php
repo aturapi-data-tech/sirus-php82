@@ -109,7 +109,6 @@ new class extends Component {
         // Auto-fill "Dari ruang" dari kamar pasien saat ini
         $this->newPindah['dariRoomId'] = $data['roomId'] ?? '';
         $this->newPindah['dariRoomDesc'] = $data['roomDesc'] ?? '';
-        $this->newPindah['dariBedNo'] = $data['bedNo'] ?? '';
 
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
         $this->incrementVersion('modal-form-pindah-ri');
@@ -165,7 +164,6 @@ new class extends Component {
         $this->resetNewPindah();
         $this->newPindah['dariRoomId'] = $this->dataDaftarRi['roomId'] ?? '';
         $this->newPindah['dariRoomDesc'] = $this->dataDaftarRi['roomDesc'] ?? '';
-        $this->newPindah['dariBedNo'] = $this->dataDaftarRi['bedNo'] ?? '';
         $this->resetValidation();
         $this->incrementVersion('modal-form-pindah-ri');
     }
@@ -408,7 +406,6 @@ new class extends Component {
                 $this->resetNewPindah();
                 $this->newPindah['dariRoomId'] = $this->dataDaftarRi['roomId'] ?? '';
                 $this->newPindah['dariRoomDesc'] = $this->dataDaftarRi['roomDesc'] ?? '';
-                $this->newPindah['dariBedNo'] = $this->dataDaftarRi['bedNo'] ?? '';
             }
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
@@ -478,7 +475,7 @@ new class extends Component {
             'tglTerima' => '',
             'dariRoomId' => $this->dataDaftarRi['roomId'] ?? '',
             'dariRoomDesc' => $this->dataDaftarRi['roomDesc'] ?? '',
-            'dariBedNo' => $this->dataDaftarRi['bedNo'] ?? '',
+            'dariBedNo' => '',
             'keRoomId' => '',
             'keRoomDesc' => '',
             'keBedNo' => '',
@@ -801,16 +798,25 @@ new class extends Component {
 
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div>
-                                    <x-input-label value="Dari Ruangan / Bed (saat ini)" class="mb-1" />
-                                    <div
-                                        class="px-3 py-2 text-sm border border-hairline bg-surface-soft rounded-md dark:bg-gray-800 dark:border-gray-700">
-                                        <span class="font-semibold text-ink dark:text-gray-200">
-                                            {{ $newPindah['dariRoomDesc'] ?? '-' }}
-                                        </span>
-                                        @if (!empty($newPindah['dariBedNo']))
-                                            <span class="text-muted">/ Bed {{ $newPindah['dariBedNo'] }}</span>
-                                        @endif
-                                    </div>
+                                    <x-input-label value="Dari Ruangan" class="mb-1" />
+                                    @if (!$uiLocked)
+                                        {{-- Terisi otomatis dari ruangan pasien saat ini, TAPI tetap bisa diubah:
+                                             pasien bisa saja sedang dititipkan di ruangan lain, atau data kamarnya
+                                             belum sempat diperbarui saat form ini diisi. --}}
+                                        <x-ruangan-combobox wire-model="newPindah.dariRoomId"
+                                            wire-model-nama="newPindah.dariRoomDesc"
+                                            :nilai="$newPindah['dariRoomId'] ?? null"
+                                            :error="$errors->has('newPindah.dariRoomId') || $errors->has('newPindah.dariRoomDesc')"
+                                            placeholder="Ketik nama ruangan asal…" />
+                                    @else
+                                        <div
+                                            class="px-3 py-2 text-sm border border-hairline bg-surface-soft rounded-md dark:bg-gray-800 dark:border-gray-700">
+                                            <span class="font-semibold text-ink dark:text-gray-200">
+                                                {{ $newPindah['dariRoomDesc'] ?: '-' }}
+                                            </span>
+                                        </div>
+                                    @endif
+                                    <x-input-error :messages="$errors->get('newPindah.dariRoomId')" class="mt-1" />
                                 </div>
 
                                 <div>

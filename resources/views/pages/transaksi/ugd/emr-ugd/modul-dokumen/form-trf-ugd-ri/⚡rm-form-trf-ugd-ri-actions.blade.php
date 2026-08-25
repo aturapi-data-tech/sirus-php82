@@ -107,8 +107,13 @@ new class extends Component {
         $this->dataDaftarUGD = $data;
         $this->dataDaftarUGD['trfUgd'] ??= $this->getDefaultTrfUgd($data);
 
-        // pindahDariRuangan selalu UGD
-        $this->dataDaftarUGD['trfUgd']['pindahDariRuangan'] = 'UGD';
+        // Ruangan asal defaultnya UGD, TAPI hanya diisikan bila masih kosong. Dulu baris
+        // ini menimpa tanpa syarat, sehingga ruangan asal yang sudah diperbaiki petugas
+        // (IGD punya lebih dari satu ruangan: Gawat Darurat, Isolasi IGD) kembali jadi
+        // 'UGD' tiap kali form dibuka ulang.
+        if (blank($this->dataDaftarUGD['trfUgd']['pindahDariRuangan'] ?? null)) {
+            $this->dataDaftarUGD['trfUgd']['pindahDariRuangan'] = 'UGD';
+        }
 
         // Sync top-level variables dari nested data
         $this->kondisiKlinis = (int) ($this->dataDaftarUGD['trfUgd']['kondisiKlinis'] ?? 0);
@@ -615,6 +620,7 @@ new class extends Component {
             'terapiUgd' => $terapiUgd,
             'levelingDokter' => $data['trfUgd']['levelingDokter'] ?? [],
             'pindahDariRuangan' => 'UGD',
+            'pindahDariRoomId' => '',
             'pindahKeRuangan' => '',
             'pindahKeRoomId' => '',
             'pindahKeBedNo' => '',
@@ -988,7 +994,20 @@ new class extends Component {
                         <div class="space-y-3">
                             <div>
                                 <x-input-label value="Pindah dari Ruangan" class="mb-1" />
-                                <x-text-input value="UGD" disabled class="w-full bg-surface-soft dark:bg-gray-800" />
+                                @if (!$isFormLocked)
+                                    {{-- Default 'UGD', tapi bisa diubah: IGD punya lebih dari satu ruangan
+                                         (Gawat Darurat, Isolasi IGD). Record lama hanya menyimpan teks 'UGD'
+                                         tanpa id — itulah gunanya nama-awal, supaya nilainya tetap terbaca
+                                         sampai petugas memilih ruangan sungguhan. --}}
+                                    <x-ruangan-combobox wire-model="dataDaftarUGD.trfUgd.pindahDariRoomId"
+                                        wire-model-nama="dataDaftarUGD.trfUgd.pindahDariRuangan"
+                                        :nilai="$dataDaftarUGD['trfUgd']['pindahDariRoomId'] ?? null"
+                                        :nama-awal="$dataDaftarUGD['trfUgd']['pindahDariRuangan'] ?? null"
+                                        placeholder="Ketik nama ruangan asal…" />
+                                @else
+                                    <x-text-input :value="$dataDaftarUGD['trfUgd']['pindahDariRuangan'] ?? 'UGD'" disabled
+                                        class="w-full bg-surface-soft dark:bg-gray-800" />
+                                @endif
                             </div>
                             <div>
                                 <x-input-label value="Pindah ke Ruangan *" class="mb-1" />

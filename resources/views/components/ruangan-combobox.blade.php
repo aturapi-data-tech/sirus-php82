@@ -6,6 +6,7 @@
     'wireModelNama' => null,           // opsional: path nama tujuan, biar induk tak perlu lookup ulang
     'wireModelJenis' => null,           // opsional: path jenis ('ruangan'|'poli') — WAJIB dipakai bila sumber='semua'
     'nilai' => null,                   // id yang sedang tersimpan — untuk isi awal kotak
+    'namaAwal' => null,                // teks lama yang belum punya id (record pra-combobox)
     'sumber' => 'ruangan',             // 'ruangan' (rsmst_rooms) | 'poli' (rsmst_polis) | 'semua'
     'hanya' => null,                   // daftar id yang BOLEH tampil (array/CSV) — mis. unit penunjang saja
     'kecuali' => null,                 // id yang disembunyikan (mis. ruangan pasien saat ini)
@@ -105,14 +106,20 @@
         $ruanganOptions = array_values(array_filter($ruanganOptions, fn($opt) => !in_array($opt['id'], $idKecuali, true)));
     }
 
-    // Isi awal kotak: nama ruangan yang id-nya sedang tersimpan.
+    // Isi awal kotak: nama tujuan yang id-nya sedang tersimpan. Kalau id kosong,
+    // pakai `namaAwal` — record yang dibuat SEBELUM combobox ini hanya menyimpan teks
+    // (mis. 'UGD'), dan teks itu tak boleh hilang dari layar cuma karena tak ada
+    // padanannya di master. Ia tetap ditampilkan sampai petugas memilih ruangan sungguhan.
     $idTerpilih = filled($nilai) ? (string) $nilai : '';
-    $namaAwal = '';
+    $teksAwal = '';
     foreach ($ruanganOptions as $opt) {
         if ($opt['id'] === $idTerpilih) {
-            $namaAwal = $opt['nama'];
+            $teksAwal = $opt['nama'];
             break;
         }
+    }
+    if ($teksAwal === '' && filled($namaAwal)) {
+        $teksAwal = (string) $namaAwal;
     }
 
     // Border DIPISAH dari baseClass: kalau border-gray ikut baseClass lalu border-red
@@ -132,7 +139,7 @@
         idModel: @js($wireModel),
         namaModel: @js($wireModelNama),
         jenisModel: @js($wireModelJenis),
-        namaTerpilih: @js($namaAwal),
+        namaTerpilih: @js($teksAwal),
 
         init() { this.filter(this.$refs.cbInput ? this.$refs.cbInput.value : ''); },
 
@@ -234,7 +241,7 @@
             type="text"
             autocomplete="off"
             @disabled($disabled)
-            value="{{ $namaAwal }}"
+            value="{{ $teksAwal }}"
             placeholder="{{ $placeholder }}"
             @if($inputId) id="{{ $inputId }}" @endif
             x-ref="cbInput"
