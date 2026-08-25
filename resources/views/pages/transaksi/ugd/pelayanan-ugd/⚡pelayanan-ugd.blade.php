@@ -782,8 +782,16 @@ new class extends Component {
                                                     <div class="p-2 space-y-2">
                                                         <div class="grid grid-cols-2 gap-1">
 
-                                                            {{-- Rekam Medis — Perawat, Dokter, Admin, Casemix, Mr (view) --}}
-                                                            @hasanyrole('Perawat|Dokter|Admin|Casemix|Mr')
+                                                            {{-- Rekam Medis — Perawat, Dokter, Admin, Casemix, Mr (view),
+                                                                 + Apoteker & Laboratorium (meniru daftar-ri: Apoteker untuk
+                                                                 konteks resep/rekonsiliasi, Laboratorium untuk konteks klinis
+                                                                 order lab).
+
+                                                                 ⚠️ BEDA DARI RI: di EMR RI edit/simpan masih dijaga gate
+                                                                 per-komponen (7 gate), sedangkan EMR UGD baru punya 3. Jadi
+                                                                 dua role ini SEMENTARA masuk dengan hak TULIS, bukan
+                                                                 view-only. Gate per-tab EMR UGD masih pekerjaan terbuka. --}}
+                                                            @hasanyrole('Perawat|Dokter|Admin|Casemix|Mr|Apoteker|Laboratorium')
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="openRekamMedis('{{ $row->rj_no }}')"
                                                                     class="px-3 py-2 text-sm rounded-lg bg-green-50 hover:bg-green-100 dark:bg-green-900/20">
