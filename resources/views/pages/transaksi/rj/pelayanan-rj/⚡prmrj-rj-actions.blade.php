@@ -513,22 +513,24 @@ new class extends Component {
             {{-- ══ HEADER ══ --}}
             <div class="px-6 py-4 border-b border-hairline dark:border-gray-700">
                 <div class="flex items-start justify-between gap-3">
+                    {{-- Urutan baku: DISPLAY PASIEN dulu, judul dokumen di bawahnya.
+                         Yang pertama dicari petugas saat modal terbuka adalah "ini pasien
+                         siapa", bukan nama formulirnya. --}}
                     <div class="min-w-0">
-                        <h2 class="text-base font-semibold text-ink dark:text-gray-100">
+                        @if (filled($rjNo))
+                            {{-- Display pasien RJ — komponen yang sama dipakai EMR RJ, log
+                                 aktivitas, dan viewer rekam medis. Ia memuat sendiri dari rjNo,
+                                 jadi komponen ini tak perlu merakit identitas apa pun. --}}
+                            <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="(string) $rjNo"
+                                wire:key="prmrj-display-pasien-rj-{{ $rjNo }}" />
+                        @endif
+
+                        <h2 class="mt-3 text-base font-semibold text-ink dark:text-gray-100">
                             Profil Ringkas Medis Rawat Jalan (PRMRJ)
                         </h2>
                         <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
                             Diidentifikasi dan dilengkapi DPJP Utama.
                         </p>
-                        @if (filled($rjNo))
-                            {{-- Display pasien RJ — komponen yang sama dipakai EMR RJ, log
-                                 aktivitas, dan viewer rekam medis. Ia memuat sendiri dari rjNo,
-                                 jadi komponen ini tak perlu merakit identitas apa pun. --}}
-                            <div class="mt-2">
-                                <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="(string) $rjNo"
-                                    wire:key="prmrj-display-pasien-rj-{{ $rjNo }}" />
-                            </div>
-                        @endif
                     </div>
                     <x-icon-button color="gray" type="button"
                         x-on:click="$dispatch('close-modal', { name: 'prmrj-rj' })" class="shrink-0">

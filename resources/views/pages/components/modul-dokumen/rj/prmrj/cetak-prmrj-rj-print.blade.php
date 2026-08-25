@@ -67,6 +67,18 @@
                         <div>{{ $baris['ttdNama'] ?: '-' }}</div>
                     </td>
                 </tr>
+                {{-- Kriteria menempel di bawah barisnya sendiri, bukan jadi catatan
+                     kaki bernomor di bawah tabel — pembaca tak perlu bolak-balik
+                     mencocokkan nomor. Kolom resmi formulir tetap 12. --}}
+                <tr>
+                    <td colspan="12" class="px-1 py-1 align-top border border-black">
+                        <span class="font-bold">Kriteria:</span>
+                        {{ !empty($baris['kriteria']) ? implode(' | ', $baris['kriteria']) : 'tidak dicatat' }}
+                        @if (!empty($baris['kriteriaCatatan']))
+                            &mdash; {{ $baris['kriteriaCatatan'] }}
+                        @endif
+                    </td>
+                </tr>
             @empty
                 <tr>
                     <td colspan="12" class="px-1 py-4 text-center border border-black">Belum ada baris PRMRJ.</td>
@@ -78,20 +90,5 @@
     <p class="mt-2 italic" style="font-size: 8px;">
         *PRMRJ di Identifikasi dan di isi lengkap oleh DPJP Utama*
     </p>
-
-    {{-- Kriteria yang dicentang, di luar tabel: kolomnya tak muat lagi dan ini
-         keterangan kelayakan, bukan isi kunjungan. --}}
-    <div class="mt-3" style="font-size: 8px;">
-        <p class="font-bold">Kriteria PRMRJ per kunjungan</p>
-        @foreach ($barisList as $urut => $baris)
-            <p>
-                {{ $urut + 1 }}.
-                {{ !empty($baris['kriteria']) ? implode(' | ', $baris['kriteria']) : 'tidak dicatat' }}
-                @if (!empty($baris['kriteriaCatatan']))
-                    &mdash; {{ $baris['kriteriaCatatan'] }}
-                @endif
-            </p>
-        @endforeach
-    </div>
 
 </x-pdf.layout-a4-with-out-background>
