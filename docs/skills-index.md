@@ -8,7 +8,7 @@ File tiap skill: `.claude/skills/<nama>/SKILL.md`. Panggil dengan `/<nama>`.
 > pembungkus "baca-dulu-sebelum-X" yang sering **menunjuk** ke docs terkait. Banyak skill = docs +
 > aturan keras + kapan-wajib-dibaca.
 
-Total: **14 skill**.
+Total: **15 skill**.
 
 ---
 
@@ -38,6 +38,7 @@ Total: **14 skill**.
 |---|---|---|
 | **modul-dokumen** | Membuat/mem-port modul dokumen bertanda tangan (consent, surat keterangan, laporan, Akhir Hayat): kartu+tombol→modal, Draft→TTD→Kunci→Lihat/Cetak, role Gate terpusat, penanda tab, viewer Rekam Medis, porting RI⇄UGD⇄RJ. | Membuat form dokumen baru, memasang di jalur lain, atau viewer rekam-medisnya. |
 | **emr-multi-entry-document** | Dokumen multi-entri EMR RI (CPPT & SBAR): banyak entri per pasien, tab per-profesi, Edit=pemilik/Hapus=supervisor/Review=DPJP, copy-ke-form, cetak per-entri. | Membuat dokumen EMR RI mirip CPPT/SBAR atau fitur Edit/Review/Copy-nya. |
+| **dokumen-clob-per-kunjungan** | Dokumen ber-tabel sendiri (3 kolom: PK, REG_NO, CLOB JSON), SATU BARIS PER KUNJUNGAN, formulir multi-baris dirakit saat tampil/cetak. Snapshot isi EMR, kriteria toggle, kartu riwayat, cetak. Dipakai Pengkajian Medis PP 1.2 & PRMRJ RM.06. | Membuat modul dokumen yang isinya lintas-kunjungan, perlu tabel sendiri, atau memuat snapshot EMR. |
 | **clause-versioning** | Versioning teks klausul dokumen legal agar cetak ulang record lama tetap memakai redaksi SAAT DITANDATANGANI walau kebijakan berubah. | Sebelum mengubah teks klausul consent/pernyataan atau menambah versi klausul. |
 
 ## 5. EMR — domain data & modul

@@ -38,6 +38,7 @@ new class extends Component {
                 'items' => [
                     ['modul-dokumen', 'Membuat/mem-port modul dokumen bertanda tangan (consent, suket, laporan, Akhir Hayat): kartu→modal, Draft→TTD→Kunci→Lihat/Cetak, role Gate terpusat, penanda tab, viewer Rekam Medis, porting RI⇄UGD⇄RJ.', 'Membuat form dokumen baru, memasang di jalur lain, atau viewer rekam-medisnya.'],
                     ['emr-multi-entry-document', 'Dokumen multi-entri EMR RI (CPPT & SBAR): banyak entri per pasien, tab per-profesi, Edit=pemilik/Hapus=supervisor/Review=DPJP, copy-ke-form, cetak per-entri.', 'Membuat dokumen EMR RI mirip CPPT/SBAR atau fitur Edit/Review/Copy-nya.'],
+                    ['dokumen-clob-per-kunjungan', 'Dokumen ber-tabel sendiri: 3 kolom (PK, REG_NO, CLOB JSON), SATU BARIS PER KUNJUNGAN, formulir multi-baris dirakit saat tampil/cetak. Snapshot isi EMR, kriteria toggle, kartu riwayat. Dipakai Pengkajian Medis PP 1.2 & PRMRJ RM.06.', 'Membuat modul dokumen yang isinya lintas-kunjungan atau perlu tabel sendiri.'],
                     ['clause-versioning', 'Versioning teks klausul dokumen legal agar cetak ulang record lama tetap memakai redaksi SAAT DITANDATANGANI walau kebijakan berubah.', 'Sebelum mengubah teks klausul consent/pernyataan atau menambah versi klausul.'],
                 ],
             ],

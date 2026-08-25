@@ -14,6 +14,10 @@ Contoh kanonik: **Inform Consent RI** (paling lengkap) & **Pengkajian Akhir Haya
 sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-entry-document`
 (CPPT/SBAR: banyak PPA + review DPJP) — di sini entri **di-TTD pasien/keluarga/saksi/petugas → terkunci → dicetak**.
 
+> **Bukan pola ini** bila isi dokumen menyangkut BANYAK kunjungan atau perlu tabel
+> sendiri (mis. Pengkajian Medis PP 1.2, PRMRJ RM.06) — itu skill
+> `dokumen-clob-per-kunjungan`: tabel 3 kolom + CLOB JSON, satu baris per kunjungan.
+
 ## Titik sentuh saat menambah SATU dokumen di SATU jalur
 
 1. `…/modul-dokumen/<dok>/rm-<dok>-actions.blade.php` — komponen Volt (form + siklus + cetak).

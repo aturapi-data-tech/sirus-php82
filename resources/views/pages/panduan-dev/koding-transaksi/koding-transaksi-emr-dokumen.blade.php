@@ -126,6 +126,35 @@
                             @endforeach
                         </div>
 
+                        {{-- TIGA VARIAN PENYIMPANAN — paling sering salah pilih di awal --}}
+                        <div class="ds-frame mt-2 mb-6">
+                            <div class="ds-frame-label">Di mana datanya disimpan? Tiga varian</div>
+                            <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+                                @foreach ([
+                                    ['Menumpang JSON kunjungan', 'datadaftar*_json milik SATU kunjungan. Mayoritas form dokumen ada di sini.', 'consent, suket, laporan operasi', 'modul-dokumen'],
+                                    ['Multi-entri dalam JSON', 'Banyak entri per pasien di JSON kunjungan, tab per-profesi, review DPJP.', 'CPPT, SBAR', 'emr-multi-entry-document'],
+                                    ['Tabel sendiri per kunjungan', 'Tabel 3 kolom: PK, REG_NO, CLOB JSON. SATU BARIS PER KUNJUNGAN; formulir multi-baris dirakit saat tampil/cetak.', 'Pengkajian Medis PP 1.2, PRMRJ RM.06', 'dokumen-clob-per-kunjungan'],
+                                ] as $i => [$judul, $ket, $contoh, $skill])
+                                    <div class="ds-card-outline" style="padding:12px 14px; {{ $i === 2 ? 'border-color:var(--primary)' : '' }}">
+                                        <span class="block text-sm font-semibold" style="color:var(--ink)">{{ $judul }}</span>
+                                        <span class="block mt-1 text-xs" style="color:var(--muted)">{{ $ket }}</span>
+                                        <span class="block mt-2 text-xs" style="color:var(--muted-soft)">Contoh: {{ $contoh }}</span>
+                                        <span class="ds-code mt-2" style="display:inline-block">/{{ $skill }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                            <p class="ds-body-sm mt-3" style="max-width:70ch; color:var(--muted)">
+                                Varian ketiga dipakai saat isi dokumen menyangkut <strong>banyak kunjungan</strong>
+                                atau perlu dicari lintas pasien &mdash; JSON satu kunjungan tak cukup.
+                                Tetap <strong>satu baris per kunjungan</strong>, bukan per pasien: kalau satu pasien
+                                satu CLOB, dua poli yang membuka pasien sama harus saling menunggu lock dan satu
+                                kesalahan tulis merusak seluruh riwayat pasien. Hanya <span class="ds-code">REG_NO</span>
+                                yang jadi kolom datar &mdash; Oracle di sini tak mendukung
+                                <span class="ds-code">JSON_VALUE</span>, jadi isi CLOB tak bisa dipakai memfilter
+                                maupun mengurutkan.
+                            </p>
+                        </div>
+
                         @php
                             $dokBadge = 'display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:9999px;background:var(--primary);color:#fff;font-size:11px;font-weight:700;line-height:1;flex:none';
                         @endphp
