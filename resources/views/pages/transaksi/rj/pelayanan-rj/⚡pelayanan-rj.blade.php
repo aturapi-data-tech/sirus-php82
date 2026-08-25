@@ -984,6 +984,26 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
 
+                                                                {{-- Pengkajian Medis — pakai-ulang & review (Akreditasi PP 1.2 poin e) --}}
+                                                                @hasanyrole('Perawat|Dokter|Admin|Mr')
+                                                                    <x-dropdown-link href="#"
+                                                                        x-on:click.prevent="$dispatch('pelayanan-rj.pengkajian-medis.open', { rjNo: {{ $row->rj_no }} })"
+                                                                        class="px-3 py-2 text-sm rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/40">
+                                                                        <div class="flex items-start gap-2">
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-emerald-700"
+                                                                                fill="none" stroke="currentColor"
+                                                                                viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                            </svg>
+                                                                            <span>
+                                                                                Pengkajian Medis <br>
+                                                                                <span class="font-semibold">Review &amp; Pakai Ulang</span>
+                                                                            </span>
+                                                                        </div>
+                                                                    </x-dropdown-link>
+                                                                @endhasanyrole
+
                                                                 {{-- Modul Dokumen — Admin, Perawat, Dokter, Casemix, Mr --}}
                                                                 @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr')
                                                                     <x-dropdown-link href="#"
@@ -1104,6 +1124,16 @@ new class extends Component {
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-pasien" />
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket-auto wire:key="cetak-etiket-auto-pasien" />
             <livewire:pages::transaksi.rj.daftar-rj.info-kelengkapan-emr wire:key="info-kelengkapan-emr-rj" />
+            <livewire:pages::transaksi.rj.pelayanan-rj.pengkajian-medis-rj-actions wire:key="pengkajian-medis-rj-actions" />
+
+            {{-- Viewer rekam medis, dipanggil tombol "Rekam Medis" di panel Riwayat
+                 Pengkajian. Dipasang DI SINI karena panel rekam-medis-display yang
+                 dulu memasangnya sedang dikomentari; kalau panel itu dihidupkan lagi,
+                 mount ini WAJIB dibuang supaya tak ada dua pendengar untuk event yang
+                 sama. Ditaruh sesudah komponen di atas: kedua modal ber-z-50, yang
+                 lebih belakang di DOM yang tampil di depan. --}}
+            <livewire:pages::components.rekam-medis.rj.cetak-rekam-medis.cetak-rekam-medis-open
+                wire:key="pengkajian-medis-rj-lihat-rekam-medis" />
 
             {{-- Host aksi Task ID poli (berisi fungsi) — mount 1×. Tombol tiap baris
                  dispatch 'task-id-poli-proses' ke sini via wire:click. --}}
