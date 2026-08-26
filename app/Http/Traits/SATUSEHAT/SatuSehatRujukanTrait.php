@@ -922,6 +922,129 @@ trait SatuSehatRujukanTrait
     }
 
     /**
+     * Rujukan resmi (ServiceRequest) atas permintaan yang SUDAH kita setujui.
+     *
+     * KENAPA HARUS DICARI, bukan diterima. Saat kita menekan Setujui, rujukan
+     * resminya BELUM ADA: perujuk baru menerbitkan ServiceRequest sesudah melihat
+     * jawaban kita. Jadi nomornya mustahil ikut di permintaan, dan satu-satunya
+     * cara mendapatkannya adalah menariknya belakangan — persis saat kita butuh,
+     * yaitu ketika membuat Encounter untuk pasien itu (`Encounter.basedOn` wajib
+     * menunjuk ServiceRequest rujukan sejak aturan 19/08/26).
+     *
+     * DUA JALAN CARI, KEDUANYA BELUM PERNAH DIUJI KE SATUSEHAT. Parameter
+     * pencarian ServiceRequest tidak ada di Postman V30062026 (di sana rujukan
+     * cuma dibuat, tak pernah dicari), jadi keduanya dicoba berurutan dan
+     * kegagalan salah satunya bukan error:
+     *   1. `based-on=CarePlan/<rencanaId>` — paling tepat: satu permintaan rujukan
+     *      punya tepat satu CarePlan, dan ServiceRequest-nya menunjuk balik ke situ.
+     *   2. `subject=Patient/<ihs>` lalu disaring di sini — dipakai kalau (1) ditolak.
+     *
+     * TIDAK PERNAH MENEBAK. Yang diterima hanya ServiceRequest yang menunjuk
+     * CarePlan atau Task permintaan ini; kecocokan lemah (pasien + faskes tujuan
+     * sama) SENGAJA ditolak, karena satu pasien bisa punya lebih dari satu rujukan
+     * dan salah tempel berarti kunjungan kita tersambung ke rujukan orang lain —
+     * kesalahan yang tak terlihat di layar mana pun.
+     *
+     * @param  array{rencanaId?: string, taskId?: string, pasienIhs?: string}  $petunjuk
+     * @return array{ditemukan: bool, serviceRequestId: string, noRujukan: string, pesan: string}
+     */
+    protected function rujukanCariServiceRequestMasuk(array $petunjuk): array
+    {
+        $rencanaId = trim((string) ($petunjuk['rencanaId'] ?? ''));
+        $taskId = trim((string) ($petunjuk['taskId'] ?? ''));
+        $pasienIhs = trim((string) ($petunjuk['pasienIhs'] ?? ''));
+
+        $kosong = ['ditemukan' => false, 'serviceRequestId' => '', 'noRujukan' => '', 'pesan' => ''];
+
+        if ($rencanaId === '' && $taskId === '') {
+            return array_merge($kosong, ['pesan' => 'Permintaan rujukan tidak menyimpan id CarePlan maupun Task.']);
+        }
+
+        $pencarian = [];
+        if ($rencanaId !== '') {
+            $pencarian[] = 'ServiceRequest?based-on=' . urlencode('CarePlan/' . $rencanaId);
+        }
+        if ($pasienIhs !== '') {
+            $pencarian[] = 'ServiceRequest?subject=' . urlencode('Patient/' . $pasienIhs);
+        }
+
+        if ($pencarian === []) {
+            // Punya taskId tapi tak punya satu pun kunci yang bisa dicari: Task
+            // bukan parameter pencarian ServiceRequest, ia cuma penyaring hasil.
+            return array_merge($kosong, ['pesan' => 'Janji rujukan tidak menyimpan id CarePlan maupun IHS pasien, jadi tak ada yang bisa dicari.']);
+        }
+
+        $pesanTerakhir = 'Rujukan resmi belum terbit di SATUSEHAT.';
+
+        foreach ($pencarian as $endpoint) {
+            $respon = $this->rujukanRequest('GET', $endpoint);
+
+            if ($respon['code'] < 200 || $respon['code'] >= 300) {
+                // Parameter ditolak / gangguan pusat: coba jalan berikutnya.
+                $pesanTerakhir = 'Pencarian rujukan resmi ditolak [' . $respon['code'] . '].';
+                continue;
+            }
+
+            $cocok = $this->rujukanServiceRequestCocok($respon['body'], $rencanaId, $taskId);
+
+            if ($cocok !== null) {
+                return [
+                    'ditemukan' => true,
+                    'serviceRequestId' => (string) ($cocok['id'] ?? ''),
+                    'noRujukan' => $this->rujukanNomorDariServiceRequest($cocok),
+                    'pesan' => '',
+                ];
+            }
+
+            $pesanTerakhir = 'Rujukan resmi belum terbit di SATUSEHAT.';
+        }
+
+        return array_merge($kosong, ['pesan' => $pesanTerakhir]);
+    }
+
+    /**
+     * ServiceRequest dalam Bundle yang benar-benar milik permintaan ini.
+     *
+     * Kecocokan diukur pada tautan yang dibuat perujuk sendiri saat mengirim
+     * rujukan: `basedOn` → CarePlan permintaan, `supportingInfo` → Task
+     * persetujuan. Selain itu tidak dianggap cocok.
+     */
+    private function rujukanServiceRequestCocok($body, string $rencanaId, string $taskId): ?array
+    {
+        if (! is_array($body)) {
+            return null;
+        }
+
+        // Bundle hasil pencarian, atau resource tunggal.
+        $daftar = isset($body['entry'])
+            ? array_map(fn($entry) => $entry['resource'] ?? [], (array) $body['entry'])
+            : [$body];
+
+        foreach ($daftar as $resource) {
+            if (($resource['resourceType'] ?? '') !== 'ServiceRequest') {
+                continue;
+            }
+
+            $referensi = [];
+            foreach ((array) ($resource['basedOn'] ?? []) as $satu) {
+                $referensi[] = (string) ($satu['reference'] ?? '');
+            }
+            foreach ((array) ($resource['supportingInfo'] ?? []) as $satu) {
+                $referensi[] = (string) ($satu['reference'] ?? '');
+            }
+
+            $cocokRencana = $rencanaId !== '' && in_array('CarePlan/' . $rencanaId, $referensi, true);
+            $cocokTugas = $taskId !== '' && in_array('Task/' . $taskId, $referensi, true);
+
+            if ($cocokRencana || $cocokTugas) {
+                return $resource;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Bundle searchset (Task + CarePlan hasil _include) → baris siap tampil.
      * Dipakai DUA layar: kotak masuk `Task?owner=<kita>` dan pemantauan rujukan
      * keluar `Task?requester=<kita>`. Bentuk bundle-nya identik, yang berbeda hanya

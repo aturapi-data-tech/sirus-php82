@@ -6,8 +6,10 @@
 // API di sini hanya keputusan: PATCH Task (status completed + output
 // accepted/rejected), persis pola Postman V30062026.
 //
-// Setelah disetujui, perujuk masih harus mengirim ServiceRequest; pendaftaran
-// kunjungan pasien rujukan di sisi kita adalah langkah terpisah (belum dibangun).
+// Setelah disetujui, perujuk masih harus mengirim ServiceRequest. Di sisi kita,
+// persetujuan menyimpan JANJI rujukan (RujukanMasukTrait) — pendaftaran kunjungannya
+// langkah terpisah, dikerjakan saat pasiennya tiba lewat daftar tunggu "Rujukan Masuk
+// Disetujui" di layar Pendaftaran UGD.
 
 use Livewire\Component;
 use Livewire\Attributes\On;
