@@ -481,7 +481,7 @@ new class extends Component {
                 @endif
                 @if ($siapDipakai && $downtimeNo > 0)
                     <x-outline-button type="button" wire:click="cetak" wire:loading.attr="disabled" wire:target="cetak"
-                        class="!text-amber-600 !bg-amber-50 !border-amber-200 hover:!bg-amber-100 hover:!text-amber-700 hover:!border-amber-300 dark:!text-amber-400 dark:!bg-amber-900/20 dark:!border-amber-800/30 dark:hover:!bg-amber-900/30 dark:hover:!text-amber-300"
+                       
                         title="Cetak laporan ini">
                         <span wire:loading.remove wire:target="cetak">Cetak Laporan</span>
                         <span wire:loading wire:target="cetak" class="flex items-center gap-1"><x-loading class="w-4 h-4" /> Mencetak...</span>

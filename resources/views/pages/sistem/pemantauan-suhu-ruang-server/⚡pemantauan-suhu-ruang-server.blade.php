@@ -233,7 +233,7 @@ new class extends Component {
                         </x-primary-button>
                         @if ($siapDipakai && $this->catatanList !== [])
                             <x-outline-button type="button" wire:click="cetak" wire:loading.attr="disabled" wire:target="cetak"
-                                class="!text-amber-600 !bg-amber-50 !border-amber-200 hover:!bg-amber-100 hover:!text-amber-700 hover:!border-amber-300 dark:!text-amber-400 dark:!bg-amber-900/20 dark:!border-amber-800/30 dark:hover:!bg-amber-900/30 dark:hover:!text-amber-300"
+                               
                                 title="Cetak formulir bulan ini">
                                 <span wire:loading.remove wire:target="cetak">Cetak Bulan Ini</span>
                                 <span wire:loading wire:target="cetak" class="flex items-center gap-1"><x-loading class="w-4 h-4" /> Mencetak...</span>
