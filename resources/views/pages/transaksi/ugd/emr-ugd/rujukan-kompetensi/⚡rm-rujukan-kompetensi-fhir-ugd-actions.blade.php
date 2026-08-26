@@ -573,9 +573,43 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Form read-only.');
             return;
         }
+
+        // PENJAGA 1 — state lokal. Tiap tekan melahirkan Task+CarePlan BARU di
+        // faskes tujuan; tak ada yang menyatukannya di sana. Kotak masuk RS tujuan
+        // pernah terisi 10 permintaan kembar untuk satu pasien (4 di antaranya
+        // dalam menit yang sama) karena tombol ini ditekan berulang saat balasan
+        // lambat. Diperiksa SEBELUM kandidat: kalau tugasnya sudah ada, yang perlu
+        // dilakukan petugas bukan memilih kandidat.
+        if (!empty($this->formRujukan['taskApprovalId'])) {
+            $this->dispatch('toast', type: 'error', message: 'Tugas rujukan untuk kunjungan ini sudah ada. Pakai "Kirim Ulang Tugas" kalau mau menggantinya — tugas lama dibatalkan dulu supaya tak menumpuk di faskes tujuan.');
+            return;
+        }
+        if (!empty($this->formRujukan['identifierTask'])) {
+            $this->dispatch('toast', type: 'error', message: 'Tugas rujukan sudah terkirim tapi id-nya belum terbaca. Tekan "Pulihkan ID Tugas Rujukan" — JANGAN kirim ulang, tugasnya sudah ada di sana.');
+            return;
+        }
+
         $kandidat = $this->formRujukan['kandidatList'][$this->formRujukan['kandidatIdx'] ?? -1] ?? null;
         if (!$kandidat) {
             $this->dispatch('toast', type: 'error', message: 'Pilih kandidat faskes tujuan dulu.');
+            return;
+        }
+
+        // PENJAGA 2 — tanya server. State lokal bisa kosong padahal tugasnya sudah
+        // ada di sana: draft gagal tersimpan, atau dikirim dari perangkat/petugas
+        // lain. Kalau ketemu yang masih hidup, ADOPSI id-nya — jangan buat yang
+        // kedua. Ini sekaligus menutup sebab duplikat yang paling sering: id yang
+        // gagal terbaca dari balasan bundle kini ditemukan sendiri, tanpa menunggu
+        // petugas menekan "Pulihkan ID".
+        $tugasLama = $this->rujukanPulihkanTugasTerakhir($this->encounterUuid());
+        if (!empty($tugasLama['ditemukan']) && !empty($tugasLama['aktif'])) {
+            $this->formRujukan['taskApprovalId'] = $tugasLama['taskId'];
+            $this->formRujukan['carePlanId'] = $tugasLama['carePlanId'];
+            if ($tugasLama['ownerOrgId'] !== '') {
+                $this->formRujukan['approvalOrgId'] = $tugasLama['ownerOrgId'];
+            }
+            $this->simpanDraft('Adopsi tugas rujukan yang sudah ada (Task ' . $tugasLama['taskId'] . ')');
+            $this->dispatch('toast', type: 'warning', message: 'Kunjungan ini SUDAH punya tugas rujukan di SATUSEHAT (Task ' . $tugasLama['taskId'] . ') — id-nya diambil, tidak dibuat yang baru. Tekan Cek Status untuk melihat jawabannya.');
             return;
         }
 
@@ -750,6 +784,36 @@ new class extends Component {
         $this->dispatch('toast', type: 'success', message: 'Id tugas rujukan dipulihkan — silakan lanjut Kirim Rujukan.');
     }
 
+    /**
+     * Kirim ULANG tugas rujukan: batalkan yang sekarang dulu, baru kirim baru.
+     *
+     * Menggantikan penekanan berulang tombol Kirim Tugas Rujukan, yang dulu
+     * menumpuk tugas kembar di kotak masuk faskes tujuan. Kalau pembatalan gagal,
+     * pengiriman TIDAK dilanjutkan — lebih baik petugas mencoba lagi daripada
+     * meninggalkan dua tugas hidup untuk satu kunjungan.
+     */
+    public function kirimUlangTugasRujukan(): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+        if (empty($this->formRujukan['taskApprovalId'])) {
+            $this->kirimTugasRujukan();
+            return;
+        }
+
+        $this->batalkanTugas();
+
+        // batalkanTugas() mengosongkan taskApprovalId hanya bila server menerima
+        // pembatalannya; masih terisi = gagal, dan toast-nya sudah keluar dari sana.
+        if (!empty($this->formRujukan['taskApprovalId'])) {
+            return;
+        }
+
+        $this->kirimTugasRujukan();
+    }
+
     public function kirimRujukan(): void
     {
         if ($this->isFormLocked) {
@@ -849,6 +913,13 @@ new class extends Component {
         $taskLama = $this->formRujukan['taskApprovalId'];
         $this->formRujukan['taskApprovalId'] = '';
         $this->formRujukan['carePlanId'] = '';
+        // Identifier yang kita kirim ikut dibersihkan: ia jejak untuk memulihkan
+        // id tugas yang MASIH hidup. Tugas ini baru saja dibatalkan, jadi
+        // membiarkannya membuat kotak peringatan "Pulihkan ID" muncul untuk
+        // tugas yang sudah mati — dan penjaga di kirimTugasRujukan() ikut
+        // menghalangi pengiriman berikutnya.
+        $this->formRujukan['identifierTask'] = '';
+        $this->formRujukan['identifierCarePlan'] = '';
         $this->formRujukan['statusApproval'] = '';
         $this->formRujukan['approvalOrgId'] = '';
         $this->formRujukan['approvalOrgNama'] = '';
@@ -1179,9 +1250,7 @@ new class extends Component {
                                 <tr>
                                     <th class="ds-c w-10">No</th>
                                     <th>Faskes Tujuan</th>
-                                    <th class="w-32">Kode BPJS</th>
-                                    <th class="ds-c w-28">Jarak</th>
-                                    <th class="ds-c w-32">Estimasi</th>
+                                    <th class="ds-c w-32">Jarak / Estimasi</th>
                                     <th class="ds-c w-32">Aksi</th>
                                 </tr>
                             </thead>
@@ -1190,17 +1259,39 @@ new class extends Component {
                                     @php $terpilih = $formRujukan['kandidatIdx'] === $indexKandidat; @endphp
                                     <tr class="{{ $terpilih ? 'bg-brand-green/5 dark:bg-brand-lime/5' : '' }}">
                                         <td class="ds-c ds-td-meta">{{ $indexKandidat + 1 }}</td>
+                                        {{-- Dua kode dari DUA SISTEM berbeda. Dulu yang satu jadi
+                                             sub-baris tanpa label dan yang satu berkolom sendiri, jadi
+                                             tak terbaca mana yang mana. Sekarang menyatu di satu sel
+                                             dan masing-masing disebut namanya, memakai sebutan yang SAMA
+                                             dengan layar /rujukan/masuk & /rujukan/keluar ("Org ID") —
+                                             satu angka tak boleh punya dua nama di aplikasi yang sama.
+                                             Keduanya dipakai
+                                             mencocokkan pasangan faskes BPJS <-> SATUSEHAT untuk
+                                             pasien JKN, dan tertukar berarti rujukan nyasar.
+
+                                             Strata SENGAJA tidak ditampilkan: SATUSEHAT mengirim kunci
+                                             'strata' tanpa nilai untuk semua kandidat. --}}
                                         <td>
                                             <span class="ds-td-strong">{{ ($kandidat['nama'] ?? '') ?: '-' }}</span>
-                                            <span class="block ds-td-meta">{{ $kandidat['orgId'] ?? '-' }}</span>
+                                            <span class="flex flex-wrap items-center mt-1 gap-x-2 gap-y-1 text-xs text-muted dark:text-gray-400">
+                                                <span title="Kode faskes di SATUSEHAT (Organization ID) — dipakai memasangkan faskes BPJS dengan SATUSEHAT">Org ID
+                                                    <span class="font-mono text-ink dark:text-gray-200">{{ ($kandidat['orgId'] ?? '') ?: '—' }}</span>
+                                                </span>
+                                                <span>·</span>
+                                                <span>Kode BPJS
+                                                    <span class="font-mono text-ink dark:text-gray-200">{{ ($kandidat['bpjsCode'] ?? '') ?: '—' }}</span>
+                                                </span>
+                                            </span>
                                         </td>
-                                        {{-- Strata SENGAJA tidak ditampilkan: SATUSEHAT mengirim kunci
-                                             'strata' tanpa nilai untuk semua kandidat, jadi kolomnya
-                                             selalu '-'. Kode BPJS lebih berguna — dipakai memastikan
-                                             pasangan faskes BPJS<->SATUSEHAT saat rujukan pasien JKN. --}}
-                                        <td class="ds-td-token">{{ ($kandidat['bpjsCode'] ?? '') ?: '—' }}</td>
-                                        <td class="ds-c tabular-nums">{{ $this->rujukanJarakTampil($kandidat['distance'] ?? null) }}</td>
-                                        <td class="ds-c tabular-nums">{{ $this->rujukanWaktuTampil($kandidat['estimatedTime'] ?? null) }}</td>
+                                        {{-- Dua angka yang selalu dibaca berpasangan ("seberapa jauh
+                                             dan berapa lama") — dijadikan satu sel bertumpuk supaya modal
+                                             tak menggulung ke samping. Jarak di atas karena itu yang
+                                             dipakai memilih; estimasi jadi keterangannya.
+                                             tabular-nums menjaga digitnya sejajar antar baris. --}}
+                                        <td class="ds-c">
+                                            <span class="block tabular-nums">{{ $this->rujukanJarakTampil($kandidat['distance'] ?? null) }}</span>
+                                            <span class="block ds-td-meta tabular-nums">{{ $this->rujukanWaktuTampil($kandidat['estimatedTime'] ?? null) }}</span>
+                                        </td>
                                         {{-- Mode 2 x-toggle (current + wireClick). Argumen wireClick
                                              dikirim sebagai INDEKS angka, bukan nama faskes — nama
                                              ber-& akan ter-escape ganda dan aksinya diam-diam gagal. --}}
@@ -1383,14 +1474,36 @@ new class extends Component {
                          terkubur di kolom kanan dan harus digulir. --}}
                     <div class="flex flex-wrap items-center justify-end gap-2 ml-auto">
                         @if (empty($formRujukan['hasil']['noRujukanSatuSehat']) && !$isFormLocked)
-                            <x-outline-button type="button" wire:click="kirimTugasRujukan"
-                                wire:loading.attr="disabled" wire:target="kirimTugasRujukan"
-                                title="Langkah 3 — menanyakan kesediaan faskes tujuan">
-                                <span wire:loading.remove wire:target="kirimTugasRujukan" class="inline-flex items-center gap-2">
-                                    Kirim Tugas Rujukan
-                                </span>
-                                <span wire:loading wire:target="kirimTugasRujukan" class="inline-flex items-center gap-1"><x-loading /> Mengirim tugas...</span>
-                            </x-outline-button>
+                            @if (empty($formRujukan['taskApprovalId']))
+                                <x-outline-button type="button" wire:click="kirimTugasRujukan"
+                                    wire:loading.attr="disabled" wire:target="kirimTugasRujukan"
+                                    title="Langkah 3 — menanyakan kesediaan faskes tujuan">
+                                    <span wire:loading.remove wire:target="kirimTugasRujukan" class="inline-flex items-center gap-2">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0 1 21.485 12 59.77 59.77 0 0 1 3.27 20.876L5.999 12Zm0 0h7.5" />
+                                    </svg>
+                                        Kirim Tugas Rujukan
+                                    </span>
+                                    <span wire:loading wire:target="kirimTugasRujukan" class="inline-flex items-center gap-1"><x-loading /> Mengirim tugas...</span>
+                                </x-outline-button>
+                            @else
+                                {{-- Tugasnya sudah ada. Tombol yang SAMA tak boleh dipakai lagi:
+                                     tiap tekan melahirkan tugas kembar di kotak masuk faskes
+                                     tujuan. Jadi ia berganti nama & pekerjaan — membatalkan
+                                     yang lama dulu, baru mengirim yang baru. --}}
+                                <x-outline-button type="button" wire:click="kirimUlangTugasRujukan"
+                                    wire:confirm="Kirim ulang tugas rujukan? Tugas yang sekarang DIBATALKAN dulu supaya tidak menumpuk di faskes tujuan."
+                                    wire:loading.attr="disabled" wire:target="kirimUlangTugasRujukan"
+                                    title="Batalkan tugas yang ada, lalu kirim tugas baru ke kandidat terpilih">
+                                    <span wire:loading.remove wire:target="kirimUlangTugasRujukan" class="inline-flex items-center gap-2">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992V4.356m0 4.992-3.181-3.183a8.25 8.25 0 0 0-13.803 3.7M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7" />
+                                    </svg>
+                                        Kirim Ulang Tugas
+                                    </span>
+                                    <span wire:loading wire:target="kirimUlangTugasRujukan" class="inline-flex items-center gap-1"><x-loading /> Membatalkan & mengirim...</span>
+                                </x-outline-button>
+                            @endif
                         @endif
 
                         {{-- Dua tombol yang bekerja pada TUGAS yang barusan dikirim, jadi
@@ -1401,7 +1514,12 @@ new class extends Component {
                             <x-secondary-button type="button" wire:click="cekStatusApproval"
                                 wire:loading.attr="disabled" wire:target="cekStatusApproval"
                                 title="Tanyakan ulang jawaban faskes tujuan — SATUSEHAT tidak memberi tahu sendiri">
-                                <span wire:loading.remove wire:target="cekStatusApproval">🔄 Cek Status</span>
+                                <span wire:loading.remove wire:target="cekStatusApproval" class="inline-flex items-center gap-2">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                                    </svg>
+                                    Cek Status
+                                </span>
                                 <span wire:loading wire:target="cekStatusApproval" class="inline-flex items-center gap-1"><x-loading /> Mengecek...</span>
                             </x-secondary-button>
 
@@ -1414,7 +1532,12 @@ new class extends Component {
                                     wire:loading.attr="disabled" wire:target="batalkanTugas"
                                     class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30"
                                     title="Tarik kembali tugas rujukan yang sudah dikirim">
-                                    <span wire:loading.remove wire:target="batalkanTugas">Batalkan Tugas</span>
+                                    <span wire:loading.remove wire:target="batalkanTugas" class="inline-flex items-center gap-2">
+                                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                        </svg>
+                                        Batalkan Tugas
+                                    </span>
                                     <span wire:loading wire:target="batalkanTugas" class="inline-flex items-center gap-1"><x-loading /> Membatalkan...</span>
                                 </x-outline-button>
                             @endif
@@ -1429,6 +1552,9 @@ new class extends Component {
                                 wire:loading.attr="disabled" wire:target="kirimRujukan"
                                 title="Langkah 5 — menerbitkan rujukan resmi & nomor rujukan nasional">
                                 <span wire:loading.remove wire:target="kirimRujukan" class="inline-flex items-center gap-2">
+                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                </svg>
                                     Kirim Rujukan
                                 </span>
                                 <span wire:loading wire:target="kirimRujukan" class="inline-flex items-center gap-1"><x-loading /> Mengirim rujukan...</span>

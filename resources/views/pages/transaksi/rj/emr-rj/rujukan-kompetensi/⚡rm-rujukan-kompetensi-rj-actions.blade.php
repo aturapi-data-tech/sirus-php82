@@ -1031,7 +1031,12 @@ new class extends Component {
                 <div class="pt-2">
                     <x-danger-button type="button" wire:click="hapusRujukan" wire:confirm="Batalkan/hapus rujukan ini di BPJS & SATUSEHAT?"
                         wire:loading.attr="disabled" wire:target="hapusRujukan">
-                        <span wire:loading.remove wire:target="hapusRujukan">Batalkan Rujukan</span>
+                        <span wire:loading.remove wire:target="hapusRujukan" class="inline-flex items-center gap-2">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            </svg>
+                            Batalkan Rujukan
+                        </span>
                         <span wire:loading wire:target="hapusRujukan" class="inline-flex items-center gap-1"><x-loading /> Membatalkan...</span>
                     </x-danger-button>
                 </div>
@@ -1270,10 +1275,21 @@ new class extends Component {
                                             <span class="block ds-td-meta">{{ $alamatKota }}</span>
                                         @endif
                                         <span class="flex flex-wrap items-center mt-1 gap-x-2 gap-y-1 text-xs text-muted dark:text-gray-400">
+                                            {{-- Dua kode dari DUA SISTEM. Keduanya dikirim bersama
+                                                 (ppkDirujuk & kdppkSatuSehatTujuanRujukan) dan WAJIB
+                                                 milik RS yang sama, jadi masing-masing disebut namanya
+                                                 — "PPK" saja terlalu jargon untuk dicocokkan mata. --}}
                                             @if ($tanpaPpk)
                                                 <x-badge variant="gray">non-BPJS</x-badge>
                                             @else
-                                                <span class="font-mono">PPK {{ $kandidat['kdppk'] }}</span>
+                                                <span>Kode BPJS
+                                                    <span class="font-mono text-ink dark:text-gray-200">{{ $kandidat['kdppk'] }}</span>
+                                                </span>
+                                            @endif
+                                            @if (filled($kandidat['kodeFaskesSatuSehat'] ?? ''))
+                                                <span title="Kode faskes di SATUSEHAT (Organization ID) — dipakai memasangkan faskes BPJS dengan SATUSEHAT">· Org ID
+                                                    <span class="font-mono text-ink dark:text-gray-200">{{ $kandidat['kodeFaskesSatuSehat'] }}</span>
+                                                </span>
                                             @endif
                                             @if (filled($kandidat['kelas'] ?? ''))
                                                 <span>· Kelas {{ $kandidat['kelas'] }}</span>
@@ -1350,6 +1366,9 @@ new class extends Component {
                                 wire:loading.attr="disabled" wire:target="kirimRujukan"
                                 title="Langkah 3 — kirim ke BPJS, diteruskan ke SATUSEHAT">
                                 <span wire:loading.remove wire:target="kirimRujukan" class="inline-flex items-center gap-2">
+                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                </svg>
                                     Kirim Rujukan
                                 </span>
                                 <span wire:loading wire:target="kirimRujukan" class="inline-flex items-center gap-1"><x-loading /> Mengirim rujukan...</span>
