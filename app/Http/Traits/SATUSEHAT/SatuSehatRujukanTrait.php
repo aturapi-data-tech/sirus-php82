@@ -871,10 +871,18 @@ trait SatuSehatRujukanTrait
         usort($kandidatTask, fn($tugasPertama, $tugasKedua) => strcmp((string) ($tugasKedua['authoredOn'] ?? ''), (string) ($tugasPertama['authoredOn'] ?? '')));
         $task = $kandidatTask[0];
 
+        $status = (string) ($task['status'] ?? '');
+
         return [
             'taskId' => (string) $task['id'],
             'carePlanId' => str_replace('CarePlan/', '', (string) ($task['basedOn'][0]['reference'] ?? '')),
             'ownerOrgId' => str_replace('Organization/', '', (string) ($task['owner']['reference'] ?? '')),
+            'status' => $status,
+            // 'aktif' = tugas ini masih mewakili kunjungan tsb, jadi TIDAK boleh
+            // ditimpa tugas baru. 'completed' ikut aktif: sudah dijawab faskes
+            // tujuan, dan mengirim tugas kedua justru menganulir jawabannya.
+            // Yang mati cuma yang memang sudah ditutup/rusak.
+            'aktif' => !in_array($status, ['cancelled', 'entered-in-error', 'failed', 'rejected'], true),
             'ditemukan' => true,
         ];
     }
