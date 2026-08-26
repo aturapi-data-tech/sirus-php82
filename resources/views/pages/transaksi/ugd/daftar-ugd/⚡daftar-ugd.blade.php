@@ -9,9 +9,10 @@ use App\Support\OracleLob;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Txn\Ugd\EmrCompletenessUGDTrait;
+use App\Http\Traits\Txn\RujukanMasuk\RujukanMasukTrait;
 
 new class extends Component {
-    use WithPagination, WithRenderVersioningTrait, EmrCompletenessUGDTrait;
+    use WithPagination, WithRenderVersioningTrait, EmrCompletenessUGDTrait, RujukanMasukTrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['daftar-ugd-toolbar'];
@@ -66,6 +67,32 @@ new class extends Component {
     }
 
     /* -------------------------
+     | Rujukan masuk yang ditunggu
+     * ------------------------- */
+    /**
+     * Lencana tombol Rujukan Masuk. Angkanya di-cache di trait (menghitungnya
+     * menyapu CLOB seluruh tabel), dan dibuang lagi tiap ada pendaftaran baru
+     * lewat refreshAfterSaved().
+     */
+    #[Computed]
+    public function rujukanMasukDitunggu(): int
+    {
+        return $this->jumlahRujukanMasukDitunggu();
+    }
+
+    /** Tabel janji rujukan belum dipasang (DDL belum jalan) → tombol disembunyikan. */
+    #[Computed]
+    public function tabelRujukanMasukSiap(): bool
+    {
+        return $this->checkTabelRujukanMasuk();
+    }
+
+    public function openRujukanMasuk(): void
+    {
+        $this->dispatch('rujukan-masuk-disetujui.open');
+    }
+
+    /* -------------------------
      | Child modal triggers
      * ------------------------- */
     public function openCreate(): void
@@ -97,6 +124,9 @@ new class extends Component {
     {
         $this->incrementVersion('daftar-ugd-toolbar');
         $this->resetPage();
+
+        // Pendaftaran barusan mungkin memakai satu janji rujukan.
+        unset($this->rujukanMasukDitunggu);
     }
 
     /* -------------------------
@@ -433,6 +463,26 @@ new class extends Component {
 
                         {{-- Pendaftaran UGD — Mr, Admin, Supervisor Tu --}}
                         @hasanyrole(['Mr', 'Admin', 'Supervisor Tu'])
+                            {{-- Pasien rujukan yang sudah kita setujui dan ditunggu kedatangannya.
+                                 Sengaja bersebelahan dengan Pendaftaran UGD: keduanya sama-sama
+                                 pintu masuk pendaftaran, bedanya cuma yang satu datang sendiri
+                                 dan yang satu sudah dijanjikan RS lain. --}}
+                            @if ($this->tabelRujukanMasukSiap)
+                                <x-outline-button type="button" wire:click="openRujukanMasuk"
+                                    class="whitespace-nowrap">
+                                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                        stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    Rujukan Masuk
+                                    @if ($this->rujukanMasukDitunggu > 0)
+                                        <span
+                                            class="inline-flex items-center justify-center w-6 h-6 ml-2 text-xs font-bold text-white rounded-full bg-brand-green dark:bg-brand-lime dark:text-gray-900">{{ $this->rujukanMasukDitunggu }}</span>
+                                    @endif
+                                </x-outline-button>
+                            @endif
+
                             <x-primary-button type="button" wire:click="openCreate" class="whitespace-nowrap">
                                 <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -915,6 +965,14 @@ new class extends Component {
 
             {{-- Kirim Satu Sehat UGD — modal 9 kartu (listen: daftar-ugd.satu-sehat.open) --}}
             <livewire:pages::transaksi.ugd.daftar-ugd.satu-sehat-ugd-actions wire:key="satu-sehat-ugd-actions" />
+
+            {{-- Daftar tunggu rujukan masuk yang sudah disetujui (listen:
+                 rujukan-masuk-disetujui.open). SENGAJA di sini, bukan menempel pada
+                 tombolnya di toolbar: toolbar itu sticky ber-z-index, jadi ia membuat
+                 konteks tumpukan sendiri dan modal di dalamnya akan tertimbun navbar
+                 layout yang z-50. --}}
+            <livewire:pages::transaksi.rujukan.rujukan-masuk.rujukan-masuk-disetujui
+                wire:key="rujukan-masuk-disetujui-ugd" />
 
         </div>
     </div>

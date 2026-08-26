@@ -14,9 +14,11 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\SATUSEHAT\EncounterTrait;
+use App\Http\Traits\SATUSEHAT\SatuSehatRujukanTrait;
+use App\Http\Traits\Txn\RujukanMasuk\RujukanMasukTrait;
 
 new class extends Component {
-    use EmrUGDTrait, EncounterTrait;
+    use EmrUGDTrait, EncounterTrait, SatuSehatRujukanTrait, RujukanMasukTrait;
 
     public ?string $rjNo = null;
 
@@ -161,7 +163,7 @@ new class extends Component {
                     'locationId' => $locationId,
                     'class_code' => 'EMER',
                     'startDate' => $ugdDate->toIso8601String(),
-                    'serviceRequestId' => $dataUGD['rujukanMasuk']['serviceRequestId'] ?? '',
+                    'serviceRequestId' => $this->serviceRequestRujukan($rjNo, $dataUGD),
                 ]);
                 $satuSehat['encounterId'] = $respons['id'] ?? null;
             }
@@ -239,6 +241,79 @@ new class extends Component {
         $poliUuid = (string) (DB::table('rsmst_polis')->whereRaw('UPPER(poli_desc) = ?', ['UGD'])->value('poli_uuid') ?? '');
 
         return (string) (env('SATUSEHAT_IGD_LOCATION_ID') ?: $poliUuid);
+    }
+
+    /**
+     * Nomor ServiceRequest rujukan untuk `Encounter.basedOn` — dipungut di sini,
+     * bukan diterima saat pendaftaran.
+     *
+     * Pasien rujukan masuk WAJIB punya `basedOn` yang menunjuk rujukan resminya
+     * (aturan Kemkes 19/08/26), tapi rujukan itu baru diterbitkan perujuk SESUDAH
+     * kita menyetujui permintaannya — bisa jadi setelah pasiennya sudah didaftarkan.
+     * Karena itu pencariannya ditunda sampai detik Encounter dibuat: itu saat
+     * paling akhir yang masih berguna, sekaligus paling besar peluang rujukannya
+     * sudah terbit.
+     *
+     * KUNJUNGAN BIASA TIDAK TERSENTUH: tanpa node `rujukanMasuk` (pasien datang
+     * sendiri) fungsi ini langsung mengembalikan string kosong tanpa satu pun
+     * panggilan API.
+     *
+     * Kalau rujukan resminya belum terbit, Encounter TETAP dikirim tanpa basedOn —
+     * menahan kunjungan karena dokumen di sistem RS lain belum ada akan menghentikan
+     * pelayanan pasien yang sudah ada di depan mata. Konsekuensinya disebut apa
+     * adanya lewat toast: basedOn tak bisa ditambal belakangan tanpa PUT Encounter,
+     * dan itu belum dibangun.
+     */
+    private function serviceRequestRujukan(string $rjNo, array $dataUGD): string
+    {
+        $rujukanMasuk = (array) ($dataUGD['rujukanMasuk'] ?? []);
+
+        if ($rujukanMasuk === []) {
+            return '';
+        }
+
+        $tersimpan = trim((string) ($rujukanMasuk['serviceRequestId'] ?? ''));
+
+        if ($tersimpan !== '') {
+            return $tersimpan;
+        }
+
+        $hasil = $this->rujukanCariServiceRequestMasuk([
+            'rencanaId' => (string) ($rujukanMasuk['rencanaId'] ?? ''),
+            'taskId' => (string) ($rujukanMasuk['taskId'] ?? ''),
+            'pasienIhs' => (string) ($rujukanMasuk['pasienIhs'] ?? ''),
+        ]);
+
+        if (! $hasil['ditemukan']) {
+            $this->dispatch('toast', type: 'warning', message: 'Rujukan resmi belum bisa dipungut: ' . $hasil['pesan'] . ' Encounter dikirim TANPA basedOn — hubungi RS perujuk bila rujukannya memang belum diterbitkan.', duration: 10000);
+
+            return '';
+        }
+
+        // Dua tempat, dua kegunaan: di kunjungan supaya pengiriman berikutnya tak
+        // mencari lagi, di janji rujukan supaya jejaknya tetap ada walau kunjungannya
+        // kelak dihapus.
+        try {
+            DB::transaction(function () use ($rjNo, $hasil): void {
+                $this->lockUGDRow($rjNo);
+                $data = $this->findDataUGD($rjNo);
+                $data['rujukanMasuk']['serviceRequestId'] = $hasil['serviceRequestId'];
+                $data['rujukanMasuk']['noRujukan'] = $hasil['noRujukan'];
+                $this->updateJsonUGD((int) $rjNo, $data);
+            });
+        } catch (\Throwable $e) {
+            // Gagal menyimpan bukan alasan membatalkan basedOn yang sudah di tangan:
+            // nomornya benar, cuma tak tercatat — pencarian berikutnya mengulang.
+            $this->dispatch('toast', type: 'warning', message: 'Rujukan resmi ditemukan tapi gagal dicatat di kunjungan: ' . $e->getMessage());
+        }
+
+        $nomorJanji = (int) ($rujukanMasuk['rujukanMasukNo'] ?? 0);
+
+        if ($nomorJanji > 0) {
+            $this->simpanRujukanResmiJanji($nomorJanji, $hasil['serviceRequestId'], $hasil['noRujukan']);
+        }
+
+        return $hasil['serviceRequestId'];
     }
 
     private function saveResult(string $rjNo, array $satuSehat): void

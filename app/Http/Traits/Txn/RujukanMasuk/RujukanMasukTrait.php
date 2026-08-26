@@ -57,6 +57,11 @@ trait RujukanMasukTrait
                 'pasienIhs' => (string) ($permintaan['pasienId'] ?? ''),
                 'pasienNama' => (string) ($permintaan['pasienNama'] ?? ''),
                 'perujukOrgId' => (string) ($permintaan['perujukOrgId'] ?? ''),
+                // Nama RS perujuk TIDAK ada di Task — kotak masuk mengambilnya lewat
+                // GET Organization. Disalin ke sini supaya daftar tunggu tak perlu
+                // memanggil SATUSEHAT lagi cuma untuk menampilkan nama; kalau nanti
+                // kosong, layar jatuh ke Org ID.
+                'perujukNama' => (string) ($permintaan['perujukNama'] ?? ''),
                 'dokterPerujuk' => (string) ($permintaan['dokterPerujuk'] ?? ''),
                 'encounterPerujukId' => (string) ($permintaan['encounterId'] ?? ''),
                 'diagnosaId' => (string) ($permintaan['diagnosaId'] ?? ''),
@@ -92,6 +97,8 @@ trait RujukanMasukTrait
         } catch (\Throwable $exception) {
             return ['tersimpan' => false, 'sudahAda' => false, 'pesan' => $exception->getMessage()];
         }
+
+        $this->lupakanJumlahRujukanMasukDitunggu();
 
         return ['tersimpan' => true, 'sudahAda' => false, 'pesan' => ''];
     }
@@ -157,6 +164,222 @@ trait RujukanMasukTrait
             ?: $kanan['rujukanMasukNo'] <=> $kiri['rujukanMasukNo']);
 
         return $daftar;
+    }
+
+    /**
+     * Tandai satu janji rujukan sudah dipakai mendaftarkan pasien.
+     *
+     * Baris tidak dihapus dan tidak dipindah — yang berubah cuma node
+     * 'pendaftaran'-nya, karena janji yang sudah terpakai tetap perlu terbaca
+     * (dari nomor kunjungan inilah nanti Encounter.basedOn menunjuk balik ke
+     * rujukan yang kita terima).
+     *
+     * READ-MODIFY-WRITE DI DALAM LOCK. Dua petugas bisa membuka daftar tunggu
+     * yang sama lalu sama-sama menekan Daftarkan; yang kedua harus melihat
+     * kunjungan yang sudah dibuat rekannya, bukan menimpanya. Karena itu
+     * 'sudahAda' membawa nomor kunjungan yang menang supaya bisa disebut di
+     * layar.
+     *
+     * @param  array{regNo: string, jenis: string, noKunjungan: int|string|null}  $pendaftaran
+     * @return array{tersimpan: bool, sudahAda: bool, noKunjungan: int|string|null, pesan: string}
+     */
+    protected function tandaiRujukanMasukDidaftarkan(int $rujukanMasukNo, array $pendaftaran): array
+    {
+        $pengguna = auth()->user();
+
+        try {
+            $hasil = DB::transaction(function () use ($rujukanMasukNo, $pendaftaran, $pengguna): array {
+                $baris = DB::table('rstxn_rujukanmasuks')
+                    ->where('rujukanmasuk_no', $rujukanMasukNo)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $baris) {
+                    return ['tersimpan' => false, 'sudahAda' => false, 'noKunjungan' => null, 'pesan' => 'Janji rujukan tidak ditemukan.'];
+                }
+
+                $isi = $this->readJsonRujukanMasuk($baris);
+
+                if ($isi === []) {
+                    return ['tersimpan' => false, 'sudahAda' => false, 'noKunjungan' => null, 'pesan' => 'Isi janji rujukan tidak terbaca.'];
+                }
+
+                if (filled($isi['pendaftaran']['regNo'] ?? '')) {
+                    return [
+                        'tersimpan' => false,
+                        'sudahAda' => true,
+                        'noKunjungan' => $isi['pendaftaran']['noKunjungan'] ?? null,
+                        'pesan' => 'Janji rujukan ini sudah dipakai mendaftarkan pasien.',
+                    ];
+                }
+
+                $isi['pendaftaran'] = [
+                    'regNo' => (string) ($pendaftaran['regNo'] ?? ''),
+                    'jenis' => (string) ($pendaftaran['jenis'] ?? ''),
+                    'noKunjungan' => $pendaftaran['noKunjungan'] ?? null,
+                    'waktu' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
+                    'oleh' => $pengguna->myuser_name ?? $pengguna->name ?? '',
+                ];
+
+                DB::table('rstxn_rujukanmasuks')
+                    ->where('rujukanmasuk_no', $rujukanMasukNo)
+                    ->update(['rujukanmasuk_json' => json_encode($isi, self::JSON_FLAGS_RUJUKAN_MASUK)]);
+
+                return ['tersimpan' => true, 'sudahAda' => false, 'noKunjungan' => $pendaftaran['noKunjungan'] ?? null, 'pesan' => ''];
+            });
+        } catch (\Throwable $exception) {
+            return ['tersimpan' => false, 'sudahAda' => false, 'noKunjungan' => null, 'pesan' => $exception->getMessage()];
+        }
+
+        $this->lupakanJumlahRujukanMasukDitunggu();
+
+        return $hasil;
+    }
+
+    /**
+     * Simpan rujukan resmi (ServiceRequest) yang baru dipungut ke janji.
+     *
+     * Ditulis sebagai node SENDIRI, bukan disusupkan ke `permintaan`: isi
+     * `permintaan` adalah salinan apa adanya dari SATUSEHAT SAAT DISETUJUI, dan
+     * mencampur data yang datang belakangan ke sana membuat salinan itu tak lagi
+     * bisa dipercaya sebagai potret keputusan.
+     *
+     * @return array{tersimpan: bool, pesan: string}
+     */
+    protected function simpanRujukanResmiJanji(int $rujukanMasukNo, string $serviceRequestId, string $noRujukan): array
+    {
+        if (trim($serviceRequestId) === '') {
+            return ['tersimpan' => false, 'pesan' => 'Id ServiceRequest kosong.'];
+        }
+
+        try {
+            DB::transaction(function () use ($rujukanMasukNo, $serviceRequestId, $noRujukan): void {
+                $baris = DB::table('rstxn_rujukanmasuks')
+                    ->where('rujukanmasuk_no', $rujukanMasukNo)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $baris) {
+                    throw new \RuntimeException('Janji rujukan tidak ditemukan.');
+                }
+
+                $isi = $this->readJsonRujukanMasuk($baris);
+
+                if ($isi === []) {
+                    throw new \RuntimeException('Isi janji rujukan tidak terbaca.');
+                }
+
+                $isi['rujukanResmi'] = [
+                    'serviceRequestId' => trim($serviceRequestId),
+                    'noRujukan' => trim($noRujukan),
+                    'waktu' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
+                ];
+
+                DB::table('rstxn_rujukanmasuks')
+                    ->where('rujukanmasuk_no', $rujukanMasukNo)
+                    ->update(['rujukanmasuk_json' => json_encode($isi, self::JSON_FLAGS_RUJUKAN_MASUK)]);
+            });
+        } catch (\Throwable $exception) {
+            return ['tersimpan' => false, 'pesan' => $exception->getMessage()];
+        }
+
+        return ['tersimpan' => true, 'pesan' => ''];
+    }
+
+    /**
+     * Tulis balik IHS ke pasien lokal yang baru saja dicocokkan manual.
+     *
+     * Inilah yang membuat cakupan PATIENT_UUID menambal sendiri: tiap rujukan
+     * masuk yang pasiennya dicari manual menambah satu pemetaan, sehingga
+     * rujukan berikutnya untuk pasien itu langsung ketemu.
+     *
+     * TIDAK PERNAH MENIMPA. Kolom yang sudah terisi nilai lain, atau IHS yang
+     * sudah dipegang nomor RM lain, adalah tanda salah satu dari dua data itu
+     * keliru — dan menimpanya diam-diam akan menyatukan dua orang berbeda.
+     * Keduanya dikembalikan sebagai 'bentrok' supaya pemanggil bisa
+     * memperingatkan petugas, bukan diam.
+     *
+     * @return array{tersimpan: bool, bentrok: bool, pesan: string}
+     */
+    protected function simpanPatientUuidPasien(string $regNo, string $ihs): array
+    {
+        $regNo = trim($regNo);
+        $ihs = trim($ihs);
+
+        if ($regNo === '' || $ihs === '') {
+            return ['tersimpan' => false, 'bentrok' => false, 'pesan' => ''];
+        }
+
+        try {
+            $pasien = DB::table('rsmst_pasiens')
+                ->where('reg_no', $regNo)
+                ->select('reg_no', 'reg_name', 'patient_uuid')
+                ->first();
+
+            if (! $pasien) {
+                return ['tersimpan' => false, 'bentrok' => false, 'pesan' => 'Pasien tidak ditemukan.'];
+            }
+
+            $terpasang = trim((string) ($pasien->patient_uuid ?? ''));
+
+            if ($terpasang === $ihs) {
+                return ['tersimpan' => false, 'bentrok' => false, 'pesan' => ''];
+            }
+
+            if ($terpasang !== '') {
+                return [
+                    'tersimpan' => false,
+                    'bentrok' => true,
+                    'pesan' => "No. RM {$regNo} sudah terpetakan ke IHS lain ({$terpasang}).",
+                ];
+            }
+
+            $pemilikLain = DB::table('rsmst_pasiens')
+                ->where('patient_uuid', $ihs)
+                ->where('reg_no', '!=', $regNo)
+                ->value('reg_no');
+
+            if ($pemilikLain) {
+                return [
+                    'tersimpan' => false,
+                    'bentrok' => true,
+                    'pesan' => "IHS {$ihs} sudah dipakai No. RM {$pemilikLain}.",
+                ];
+            }
+
+            DB::table('rsmst_pasiens')->where('reg_no', $regNo)->update(['patient_uuid' => $ihs]);
+        } catch (\Throwable $exception) {
+            return ['tersimpan' => false, 'bentrok' => false, 'pesan' => $exception->getMessage()];
+        }
+
+        return ['tersimpan' => true, 'bentrok' => false, 'pesan' => ''];
+    }
+
+    /**
+     * Berapa pasien yang sudah disetujui tapi belum tiba.
+     *
+     * Dipakai lencana tombol di layar pendaftaran, yang ikut ter-render tiap
+     * kali daftar disaring/diganti halaman. Menghitungnya berarti menyapu CLOB
+     * seluruh tabel, jadi angkanya di-cache; pencatatan persetujuan baru dan
+     * pendaftaran yang selesai membuang cache-nya sendiri, sehingga jeda satu
+     * menit hanya terjadi bila janji dicatat dari sesi lain.
+     */
+    protected function jumlahRujukanMasukDitunggu(): int
+    {
+        if (! $this->checkTabelRujukanMasuk()) {
+            return 0;
+        }
+
+        return Cache::remember(
+            'rujukanmasuk.ditunggu.jumlah',
+            60,
+            fn (): int => count($this->findRujukanMasukDisetujui(true)),
+        );
+    }
+
+    protected function lupakanJumlahRujukanMasukDitunggu(): void
+    {
+        Cache::forget('rujukanmasuk.ditunggu.jumlah');
     }
 
     /**

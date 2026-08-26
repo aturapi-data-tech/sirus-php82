@@ -14,12 +14,13 @@ use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Support\OracleLob;
 use App\Http\Traits\BPJS\VclaimTrait; // FIX #1: import tetap ada untuk use trait
+use App\Http\Traits\Txn\RujukanMasuk\RujukanMasukTrait;
 
 new class extends Component {
     // CATATAN: VclaimTrait tidak di-use di sini untuk menghindari potensi method conflict
     // dengan trait lain (sendResponse, sendError, signature, dll bisa bentrok).
     // Gunakan VclaimTrait::method() static call langsung.
-    use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait;
+    use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, RujukanMasukTrait;
 
     public string $formMode = 'create';
     public bool $isFormLocked = false;
@@ -41,6 +42,16 @@ new class extends Component {
 
     /* ---- Status Lanjutan ---- */
     public string $statusLanjutan = 'BS';
+
+    /**
+     * Janji rujukan masuk yang sedang dipakai mendaftarkan pasien ini.
+     *
+     * Kosong = pendaftaran biasa (pasien datang sendiri). Terisi hanya lewat
+     * daftar tunggu "Rujukan Masuk Disetujui", dan baru berakibat apa-apa
+     * SETELAH kunjungannya tersimpan: janjinya ditandai terpakai dan IHS-nya
+     * ditulis balik ke master pasien.
+     */
+    public array $rujukanMasuk = [];
 
     /* ===============================
      | MOUNT
@@ -67,8 +78,12 @@ new class extends Component {
     /* ===============================
      | OPEN CREATE
      =============================== */
+    /**
+     * @param  array  $rujukanMasuk  bahan dari daftar tunggu rujukan masuk;
+     *                               kosong untuk pendaftaran biasa.
+     */
     #[On('daftar-ugd.create.open')]
-    public function openCreate(): void
+    public function openCreate(array $rujukanMasuk = []): void
     {
         $this->resetForm();
         $this->formMode = 'create';
@@ -79,12 +94,59 @@ new class extends Component {
         $now = Carbon::now();
         $this->dataDaftarUGD['rjDate'] = $now->format('d/m/Y H:i:s');
         $this->dataDaftarUGD['shift'] = $this->resolveShiftByTime($now->format('H:i:s'));
+
+        // Sebelum entryId dipindah ke dataDaftarUGD: rujukan mengubah Cara Masuk.
+        $this->terapkanRujukanMasuk($rujukanMasuk);
+
         $this->dataDaftarUGD['entryId'] = $this->entryId;
         $this->dataDaftarUGD['entryDesc'] = collect($this->entryOptions)->firstWhere('entryId', $this->entryId)['entryDesc'] ?? '';
 
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'ugd-actions');
-        $this->dispatch('focus-cari-pasien-ugd');
+
+        // Pasien rujukan yang IHS-nya sudah terpetakan tak perlu dicari lagi —
+        // kursor langsung ke isian berikutnya yang memang masih kosong.
+        $this->dispatch(($this->dataDaftarUGD['regNo'] ?? '') !== '' ? 'focus-cari-dokter-ugd' : 'focus-cari-pasien-ugd');
+    }
+
+    /**
+     * Isi form dari janji rujukan masuk yang pasiennya baru tiba.
+     *
+     * Yang diisi hanya yang memang berasal dari rujukan: identitas pasien dan
+     * Cara Masuk. Dokter, klaim, dan waktu tetap diisi petugas — RS perujuk
+     * tidak menentukan siapa yang menangani di sini.
+     *
+     * Pasien yang IHS-nya belum terpetakan (mayoritas) sengaja dibiarkan
+     * kosong, bukan ditebak dari nama: nama dari SATUSEHAT hampir selalu tidak
+     * ada, dan menebak berarti mendaftarkan orang yang salah.
+     */
+    private function terapkanRujukanMasuk(array $rujukanMasuk): void
+    {
+        if ($rujukanMasuk === []) {
+            return;
+        }
+
+        $this->rujukanMasuk = $rujukanMasuk;
+
+        // Cara Masuk "rujukan" dibaca dari master lewat rujukan_status, bukan
+        // dipatok angka: id-nya bisa berbeda antar environment.
+        $caraMasukRujukan = collect($this->entryOptions)
+            ->first(fn(array $pilihan): bool => strtoupper(trim((string) ($pilihan['rujukanStatus'] ?? ''))) === 'Y');
+
+        if ($caraMasukRujukan) {
+            $this->entryId = (string) $caraMasukRujukan['entryId'];
+        }
+
+        $regNo = trim((string) ($rujukanMasuk['regNo'] ?? ''));
+
+        if ($regNo === '') {
+            return;
+        }
+
+        $this->dataDaftarUGD['regNo'] = $regNo;
+        $this->dataDaftarUGD['regName'] = (string) ($rujukanMasuk['regName'] ?? '');
+        $this->dataPasien = $this->findDataMasterPasien($regNo);
+        $this->incrementVersion('pasien');
     }
 
     /* ===============================
@@ -208,6 +270,14 @@ new class extends Component {
                         }
                         throw $e;
                     }
+                }
+
+                // Janji rujukan ditandai terpakai SESUDAH kunjungannya benar-benar
+                // tersimpan, dan DI LUAR transaksi: pendaftaran ini sudah sah walau
+                // penandaannya gagal, jadi kegagalan dilaporkan terpisah alih-alih
+                // menggagalkan pendaftaran yang sebenarnya sudah benar.
+                if ($this->rujukanMasuk !== []) {
+                    $this->tautkanJanjiRujukan($rjNo);
                 }
             } else {
                 DB::transaction(function () use ($rjNo, &$message) {
@@ -394,6 +464,23 @@ new class extends Component {
         }
 
         $data['taskIdPelayanan'] ??= [];
+
+        // Jejak rujukan di JSON kunjungan. Inilah node yang dibaca pengirim
+        // Encounter untuk mengisi basedOn — serviceRequestId sengaja kosong:
+        // rujukan resminya baru diterbitkan perujuk SESUDAH kita setuju, jadi
+        // nomornya dipungut belakangan, bukan saat pendaftaran.
+        if ($this->rujukanMasuk !== []) {
+            $data['rujukanMasuk'] = [
+                'rujukanMasukNo' => (int) ($this->rujukanMasuk['rujukanMasukNo'] ?? 0),
+                'taskId' => (string) ($this->rujukanMasuk['taskId'] ?? ''),
+                'rencanaId' => (string) ($this->rujukanMasuk['rencanaId'] ?? ''),
+                'noPermintaan' => (string) ($this->rujukanMasuk['noPermintaan'] ?? ''),
+                'perujukOrgId' => (string) ($this->rujukanMasuk['perujukOrgId'] ?? ''),
+                'perujukNama' => (string) ($this->rujukanMasuk['perujukNama'] ?? ''),
+                'pasienIhs' => (string) ($this->rujukanMasuk['pasienIhs'] ?? ''),
+                'serviceRequestId' => '',
+            ];
+        }
     }
 
     /* ===============================
@@ -447,10 +534,17 @@ new class extends Component {
         if ($this->formMode === 'create') {
             $this->updateJsonUGD((int) $rjNo, $this->dataDaftarUGD);
 
+            $asalRujukan = '';
+            if ($this->rujukanMasuk !== []) {
+                $asalRujukan = ' - dari rujukan masuk '
+                    . (($this->rujukanMasuk['noPermintaan'] ?? '') ?: ($this->rujukanMasuk['taskId'] ?? '-'))
+                    . ' RS ' . (($this->rujukanMasuk['perujukNama'] ?? '') ?: ($this->rujukanMasuk['perujukOrgId'] ?? '-'));
+            }
+
             $this->appendAdminLogUGD((int) $rjNo, 'Pendaftaran UGD - '
                 . ($this->dataDaftarUGD['drDesc'] ?? '-') . ', klaim '
                 . ($this->dataDaftarUGD['klaimId'] ?? '-') . ', cara masuk '
-                . ($this->dataDaftarUGD['entryDesc'] ?? '-'));
+                . ($this->dataDaftarUGD['entryDesc'] ?? '-') . $asalRujukan);
 
             return;
         }
@@ -511,6 +605,60 @@ new class extends Component {
 
         $this->dispatch('toast', type: 'success', message: $message . $sepInfo);
         $this->dispatch('refresh-after-ugd.saved');
+    }
+
+    /* ===============================
+     | TAUTKAN JANJI RUJUKAN MASUK
+     =============================== */
+    /**
+     * Tutup lingkaran janji rujukan → kunjungan nyata.
+     *
+     * Dua tulisan, dua akibat berbeda kalau gagal, jadi keduanya diperingatkan
+     * apa adanya dan tak satu pun boleh menjatuhkan pendaftaran yang sudah
+     * tersimpan:
+     *
+     *   1. Menandai janji terpakai — gagal berarti pasiennya tetap tampil di
+     *      daftar tunggu; petugas berikutnya bisa mendaftarkannya dua kali.
+     *   2. Menulis balik IHS ke master pasien — inilah yang membuat cakupan
+     *      PATIENT_UUID (per 26/08 baru 4,7%) menambal sendiri, sehingga rujukan
+     *      berikutnya untuk pasien ini langsung ketemu tanpa dicari manual.
+     */
+    private function tautkanJanjiRujukan(int|string $rjNo): void
+    {
+        $nomorJanji = (int) ($this->rujukanMasuk['rujukanMasukNo'] ?? 0);
+        $regNo = (string) ($this->dataDaftarUGD['regNo'] ?? '');
+
+        if ($nomorJanji <= 0 || $regNo === '') {
+            return;
+        }
+
+        $penandaan = $this->tandaiRujukanMasukDidaftarkan($nomorJanji, [
+            'regNo' => $regNo,
+            'jenis' => 'ugd',
+            'noKunjungan' => (int) $rjNo,
+        ]);
+
+        if ($penandaan['sudahAda']) {
+            // Petugas lain menang balapan: janji yang sama sudah dipakai
+            // kunjungan lain. Kunjungan yang baru saja dibuat TIDAK dihapus —
+            // menghapus kunjungan orang lain lebih berbahaya daripada dobel yang
+            // terlihat — tapi harus disebut supaya salah satunya dibatalkan.
+            $this->dispatch('toast', type: 'warning', message: 'Janji rujukan ini sudah dipakai kunjungan No. UGD ' . ($penandaan['noKunjungan'] ?? '-') . '. Pendaftaran barusan kemungkinan dobel — periksa dan batalkan salah satunya.', duration: 10000);
+        } elseif (! $penandaan['tersimpan']) {
+            $this->dispatch('toast', type: 'warning', message: 'Pendaftaran tersimpan, tapi janji rujukannya gagal ditandai: ' . $penandaan['pesan'] . ' Pasien masih akan tampil di daftar Rujukan Masuk.', duration: 10000);
+        }
+
+        $ihs = trim((string) ($this->rujukanMasuk['pasienIhs'] ?? ''));
+
+        if ($ihs === '') {
+            return;
+        }
+
+        $pemetaan = $this->simpanPatientUuidPasien($regNo, $ihs);
+
+        if ($pemetaan['bentrok']) {
+            $this->dispatch('toast', type: 'warning', message: 'IHS rujukan tidak dipetakan: ' . $pemetaan['pesan'] . ' Pastikan pasien yang dipilih memang pasien yang dirujuk.', duration: 10000);
+        }
     }
 
     /* ===============================
@@ -783,7 +931,7 @@ new class extends Component {
      =============================== */
     protected function resetForm(): void
     {
-        $this->reset(['rjNo', 'dataDaftarUGD', 'dataPasien']);
+        $this->reset(['rjNo', 'dataDaftarUGD', 'dataPasien', 'rujukanMasuk']);
         $this->resetVersion();
         $this->klaimId = 'UM';
         $this->entryId = '5';
@@ -878,6 +1026,43 @@ new class extends Component {
             <div class="flex-1 px-4 py-4 bg-surface-soft/70 dark:bg-gray-950/20" x-data
                 x-on:focus-cari-pasien-ugd.window="$nextTick(() => setTimeout(() => $refs.lovPasienUgd?.querySelector('input')?.focus(), 150))"
                 x-on:focus-cari-dokter-ugd.window="$nextTick(() => setTimeout(() => $refs.lovDokterUgd?.querySelector('input')?.focus(), 150))">
+
+                {{-- ASAL RUJUKAN — tanpa ini petugas tak tahu kenapa sebagian isian
+                     sudah terisi, dan pada kasus IHS belum terpetakan tak tahu pasien
+                     mana yang harus dicari. --}}
+                @if ($rujukanMasuk !== [])
+                    <div
+                        class="max-w-full mx-auto mb-4 px-4 py-3 border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span class="text-sm font-semibold text-info-deep dark:text-blue-200">
+                                Pendaftaran dari rujukan masuk
+                            </span>
+                            <span class="text-sm text-info-deep dark:text-blue-200">
+                                RS {{ ($rujukanMasuk['perujukNama'] ?? '') !== '' ? $rujukanMasuk['perujukNama'] : ($rujukanMasuk['perujukOrgId'] ?? '-') }}
+                                @if (($rujukanMasuk['layananNama'] ?? '') !== '')
+                                    &middot; {{ $rujukanMasuk['layananNama'] }}
+                                @endif
+                                @if (($rujukanMasuk['noPermintaan'] ?? '') !== '')
+                                    &middot; No. Permintaan {{ $rujukanMasuk['noPermintaan'] }}
+                                @endif
+                            </span>
+                        </div>
+
+                        @if (($dataDaftarUGD['regNo'] ?? '') === '')
+                            <p class="mt-2 text-sm text-warning-deep dark:text-amber-200">
+                                Pasien ini belum terpetakan ke nomor rekam medis — cari pasiennya di kolom
+                                Cari Pasien. IHS <span class="font-mono">{{ ($rujukanMasuk['pasienIhs'] ?? '') !== '' ? $rujukanMasuk['pasienIhs'] : '-' }}</span>
+                                akan disimpan ke pasien yang Anda pilih, jadi rujukan berikutnya untuk orang
+                                yang sama langsung ketemu.
+                            </p>
+                        @else
+                            <p class="mt-2 text-sm text-info-deep dark:text-blue-200">
+                                Pasien dikenali dari IHS <span class="font-mono">{{ $rujukanMasuk['pasienIhs'] ?? '-' }}</span>.
+                                Bila ternyata bukan orang yang dimaksud, ganti lewat Cari Pasien.
+                            </p>
+                        @endif
+                    </div>
+                @endif
 
                 <div class="grid grid-cols-1 gap-4 max-w-full mx-auto lg:grid-cols-2">
 
