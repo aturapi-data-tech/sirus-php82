@@ -144,6 +144,26 @@ new class extends Component {
         ];
     }
 
+    /**
+     * Tanggal Rujukan untuk DITAMPILKAN, format dd/mm/yyyy.
+     *
+     * Jalur FHIR tak punya field tglRujukan tersendiri — rujukan terbit pada saat
+     * dikirim, jadi tanggalnya diambil dari 'dikirimPada' yang sudah tersimpan
+     * (tak ada kunci baru di JSON). Sebelum terkirim: tanggal hari ini, yaitu
+     * tanggal yang AKAN menempel di rujukannya.
+     */
+    public function tanggalRujukanTampil(): string
+    {
+        $dikirim = trim((string) ($this->formRujukan['hasil']['dikirimPada'] ?? ''));
+
+        if ($dikirim === '') {
+            return now(config('app.timezone'))->format('d/m/Y');
+        }
+
+        // 'dikirimPada' berbentuk 'd/m/Y H:i:s' — cukup ambil bagian tanggalnya.
+        return explode(' ', $dikirim, 2)[0];
+    }
+
     public function pertanyaanIgd(): array
     {
         return [
@@ -988,6 +1008,7 @@ new class extends Component {
             <table class="text-gray-700 dark:text-gray-200">
                 <tr><td class="pr-3">No Rujukan SATUSEHAT</td><td class="font-mono font-semibold">{{ $formRujukan['hasil']['noRujukanSatuSehat'] }}</td></tr>
                 <tr><td class="pr-3">ServiceRequest</td><td class="font-mono">{{ $formRujukan['hasil']['serviceRequestId'] ?? '-' }}</td></tr>
+                <tr><td class="pr-3">Tanggal Rujukan</td><td class="font-semibold">{{ $this->tanggalRujukanTampil() }}</td></tr>
                 <tr><td class="pr-3">Tujuan</td><td>{{ $formRujukan['hasil']['tujuanNama'] ?? '-' }}</td></tr>
                 <tr><td class="pr-3">Dikirim</td><td>{{ $formRujukan['hasil']['dikirimPada'] ?? '-' }} oleh {{ $formRujukan['hasil']['dikirimOleh'] ?? '-' }}</td></tr>
             </table>
@@ -1248,6 +1269,18 @@ new class extends Component {
                             :disabled="$isFormLocked" class="w-full" />
                         <p class="mt-1 text-xs text-muted-soft">Dikirim sebagai occurrenceDateTime — kapan pasien direncanakan dilayani, bukan jam pengiriman.</p>
                     </div>
+                    {{-- Tanggal Rujukan tak bisa diketik — ia terisi saat Kirim Rujukan
+                         ditekan. Ditampilkan tetap sebagai label supaya petugas tahu
+                         tanggal apa yang menempel di dokumen rujukannya. --}}
+                    <div>
+                        <x-input-label value="Tanggal Rujukan" class="mb-1" />
+                        <x-text-input :value="$this->tanggalRujukanTampil()" disabled readonly class="w-full" />
+                        <p class="mt-1 text-xs text-muted-soft">
+                            {{ empty($formRujukan['hasil']['dikirimPada'])
+                                ? 'Terisi otomatis saat Kirim Rujukan ditekan.'
+                                : 'Tanggal terbitnya rujukan ini.' }}
+                        </p>
+                    </div>
                     <div>
                         <x-input-label value="Jenis Tenaga Kesehatan Pelaksana (opsional)" class="mb-1" />
                         <x-select-input wire:model.live="formRujukan.performerTypeKode" :disabled="$isFormLocked" class="w-full">
@@ -1277,10 +1310,6 @@ new class extends Component {
                         @else
                             <x-badge variant="warning">Belum dijawab</x-badge>
                         @endif
-                        <x-secondary-button type="button" wire:click="cekStatusApproval" wire:loading.attr="disabled" wire:target="cekStatusApproval" class="text-xs">
-                            <span wire:loading.remove wire:target="cekStatusApproval">🔄 Cek Status</span>
-                            <span wire:loading wire:target="cekStatusApproval" class="inline-flex items-center gap-1"><x-loading /> Mengecek...</span>
-                        </x-secondary-button>
                     </div>
                     @if ($statusApproval === 'rejected')
                         <p class="mt-1 text-sm text-rose-700 dark:text-rose-300">
@@ -1311,13 +1340,6 @@ new class extends Component {
                                 </x-secondary-button>
                             </div>
                         @endif
-                        @if (!empty($formRujukan['taskApprovalId']))
-                            <x-danger-button type="button" wire:click="batalkanTugas" wire:confirm="Batalkan tugas rujukan ini?"
-                                wire:loading.attr="disabled" wire:target="batalkanTugas">
-                                <span wire:loading.remove wire:target="batalkanTugas">Batalkan Tugas Rujukan</span>
-                                <span wire:loading wire:target="batalkanTugas" class="inline-flex items-center gap-1"><x-loading /> Membatalkan...</span>
-                            </x-danger-button>
-                        @endif
                     </div>
                 @endif
             </div>
@@ -1343,8 +1365,8 @@ new class extends Component {
                                 <span class="font-semibold text-ink dark:text-gray-200">Kirim Tugas Rujukan</span> —
                                 menanyakan kesediaan RS tujuan. Belum merujuk, belum ada nomor rujukan.
                                 Jawabannya dilihat di <span class="font-semibold text-ink dark:text-gray-200">Persetujuan Faskes</span>
-                                (badge di kelompok kanan; tekan <span class="font-semibold">Cek Status</span> untuk menanyakan ulang —
-                                SATUSEHAT tidak memberi tahu sendiri):
+                                (badge di panel kanan; tombol <span class="font-semibold">Cek Status</span> di footer ini untuk
+                                menanyakan ulang — SATUSEHAT tidak memberi tahu sendiri):
                                 <span class="font-semibold text-success-deep dark:text-green-300">Diterima</span> →
                                 lanjut Kirim Rujukan;
                                 <span class="font-semibold text-error-deep dark:text-red-300">Ditolak</span> →
@@ -1371,7 +1393,36 @@ new class extends Component {
                                 </span>
                                 <span wire:loading wire:target="kirimTugasRujukan" class="inline-flex items-center gap-1"><x-loading /> Mengirim tugas...</span>
                             </x-outline-button>
+                        @endif
 
+                        {{-- Dua tombol yang bekerja pada TUGAS yang barusan dikirim, jadi
+                             tempatnya menempel pada tombolnya — bukan terkubur di panel
+                             tengah yang harus digulir. Syaratnya tetap seperti semula:
+                             keduanya hanya ada setelah tugas rujukan punya id. --}}
+                        @if (!empty($formRujukan['taskApprovalId']))
+                            <x-secondary-button type="button" wire:click="cekStatusApproval"
+                                wire:loading.attr="disabled" wire:target="cekStatusApproval"
+                                title="Tanyakan ulang jawaban faskes tujuan — SATUSEHAT tidak memberi tahu sendiri">
+                                <span wire:loading.remove wire:target="cekStatusApproval">🔄 Cek Status</span>
+                                <span wire:loading wire:target="cekStatusApproval" class="inline-flex items-center gap-1"><x-loading /> Mengecek...</span>
+                            </x-secondary-button>
+
+                            @if (!$isFormLocked)
+                                {{-- Merah tipis, bukan tombol merah penuh: ia bersebelahan
+                                     dengan tombol kirim, jadi bobotnya sengaja diturunkan
+                                     supaya tak mudah terklik. wire:confirm tetap ada. --}}
+                                <x-outline-button type="button" wire:click="batalkanTugas"
+                                    wire:confirm="Batalkan tugas rujukan ini?"
+                                    wire:loading.attr="disabled" wire:target="batalkanTugas"
+                                    class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30"
+                                    title="Tarik kembali tugas rujukan yang sudah dikirim">
+                                    <span wire:loading.remove wire:target="batalkanTugas">Batalkan Tugas</span>
+                                    <span wire:loading wire:target="batalkanTugas" class="inline-flex items-center gap-1"><x-loading /> Membatalkan...</span>
+                                </x-outline-button>
+                            @endif
+                        @endif
+
+                        @if (empty($formRujukan['hasil']['noRujukanSatuSehat']) && !$isFormLocked)
                             <svg class="w-4 h-4 text-muted-soft shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                             </svg>
