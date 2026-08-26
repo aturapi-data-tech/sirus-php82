@@ -14,9 +14,10 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use App\Http\Traits\SATUSEHAT\SatuSehatRujukanTrait;
+use App\Http\Traits\Txn\RujukanMasuk\RujukanMasukTrait;
 
 new class extends Component {
-    use SatuSehatRujukanTrait;
+    use SatuSehatRujukanTrait, RujukanMasukTrait;
 
     public array $permintaan = [];
     public bool $sedangKirim = false;
@@ -69,6 +70,26 @@ new class extends Component {
         // kotak masuk baru disegarkan sesudah ini.
         $this->permintaan['keputusan'] = $keputusan;
         $this->permintaan['statusTask'] = 'completed';
+
+        // Yang DISETUJUI dicatat sebagai janji rujukan: petugas perlu daftar
+        // "siapa yang ditunggu kedatangannya", dan saat pasiennya tiba inilah
+        // bahan untuk mengisi pendaftaran + Encounter.basedOn. Yang ditolak tak
+        // punya kelanjutan, jadi tak perlu dicatat.
+        //
+        // URUTANNYA SENGAJA SESUDAH PATCH BERHASIL. Persetujuan sudah sampai ke
+        // SATUSEHAT dan tak bisa ditarik; kegagalan menulis ke basis data kita
+        // TIDAK boleh membuat layar bilang persetujuannya gagal — petugas akan
+        // menekan Setujui lagi, dan Task-nya sudah completed. Jadi kegagalannya
+        // dilaporkan terpisah, apa adanya.
+        if ($keputusan === 'accepted') {
+            $catatan = $this->checkTabelRujukanMasuk()
+                ? $this->catatRujukanMasukDisetujui($this->permintaan)
+                : ['tersimpan' => false, 'sudahAda' => false, 'pesan' => 'Tabel RSTXN_RUJUKANMASUKS belum dipasang — jalankan docs/ddl-rujukan-masuk-disetujui.sql.'];
+
+            if (!$catatan['tersimpan'] && !$catatan['sudahAda']) {
+                $this->dispatch('toast', type: 'warning', message: 'Persetujuan SUDAH terkirim ke SATUSEHAT, tapi gagal dicatat di sistem kita: ' . $catatan['pesan'] . ' Catat manual nomor permintaannya.');
+            }
+        }
 
         $this->dispatch('toast', type: 'success', message: $keputusan === 'accepted' ? 'Permintaan rujukan DISETUJUI dan sudah dikirim ke SATUSEHAT.' : 'Permintaan rujukan DITOLAK dan sudah dikirim ke SATUSEHAT.');
         $this->dispatch('rujukan-masuk.dijawab');
