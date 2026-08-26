@@ -35,6 +35,21 @@ jalur BPJS tidak membentuk Task). Nama berkas menyebut ARAH (`rujukan-masuk` /
 | Perujuk baca keputusan | `GET Task?code=referral-approval-request&requester=<org perujuk>` (+`&encounter=` sah sbg filter) | `rujukanTaskByRequester()` → `/rujukan/keluar` tab 1 |
 | Perujuk lihat rujukan RJ | — (tak ada endpoint BPJS "rujukan keluar saya") | DB lokal `datadaftarpolirj_json.rujukanKompetensi.hasil` → `/rujukan/keluar` tab 2 |
 
+**Sesudah disetujui, pasiennya belum tentu datang.** Persetujuan menyimpan *janji* di
+`RSTXN_RUJUKANMASUKS` (`RujukanMasukTrait`, `TASK_ID` UNIK = idempotensi ditegakkan DB),
+bukan kunjungan. Saat pasiennya tiba, tombol **Rujukan Masuk** di toolbar `/ugd/daftar`
+membuka daftar janji yang ditunggu → form Pendaftaran UGD terisi sendiri; janji ditandai
+terpakai SETELAH kunjungan tersimpan. Pencocokan pasien HANYA lewat
+`RSMST_PASIENS.PATIENT_UUID` (nama tak bisa: `Patient/<ihs>` cangkang, NIK di-mask) —
+tidak ketemu itu WAJAR (baru 4,7% terisi), petugas mencari manual dan IHS-nya ditulis
+balik. Detail & jebakannya di docs §3.2.
+
+**`Encounter.basedOn` rujukan masuk** diisi sendiri: ServiceRequest-nya dicari tepat
+sebelum Encounter dibuat (`based-on=CarePlan/<rencanaId>`, cadangan `subject=Patient/<ihs>`
+lalu disaring) — hanya kecocokan pada CarePlan/Task permintaan yang diterima, kecocokan
+lemah ditolak. Belum terbit → Encounter tetap dikirim tanpa basedOn (menambal belakangan
+butuh PUT Encounter, belum ada). Jalur UGD saja untuk sekarang.
+
 Env: `SISRUTE_URL/CONS_ID/SECRET_KEY/USER_KEY/KDPPK` (dev: CID 8334, faskes 0184R006
 MADINAH JST). Signature/header = pola VClaim persis; cons-id SISRUTE terdaftar TERPISAH
 dari cons-id vclaim biasa. Semua call wajib `timeout(8)->connectTimeout(3)` + try/catch

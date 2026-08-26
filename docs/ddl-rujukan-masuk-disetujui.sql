@@ -102,6 +102,7 @@ COMMENT ON COLUMN RSTXN_RUJUKANMASUKS.RUJUKANMASUK_JSON IS
 --       "pasienIhs": "P02478375538",
 --       "pasienNama": "",                     <- SATUSEHAT tak memberi nama, lihat catatan
 --       "perujukOrgId": "100026236",
+--       "perujukNama": "RSUD Dr. Iskak",     <- disalin dari kotak masuk, lihat catatan
 --       "dokterPerujuk": "dr. Yuniar Hisa",
 --       "encounterPerujukId": "...",          <- Encounter di faskes PERUJUK
 --       "diagnosaId": "...", "rencanaId": "...",
@@ -110,6 +111,7 @@ COMMENT ON COLUMN RSTXN_RUJUKANMASUKS.RUJUKANMASUK_JSON IS
 --       "deskripsi": "..."
 --   },
 --   "disetujui":   { "oleh": "Nama User", "kode": "ADM", "waktu": "26/08/2026 16:20:11" },
+--   "rujukanResmi": { "serviceRequestId": "", "noRujukan": "", "waktu": "" },
 --   "pendaftaran": { "regNo": "", "jenis": "", "noKunjungan": null, "waktu": "", "oleh": "" }
 -- }
 --
@@ -120,9 +122,14 @@ COMMENT ON COLUMN RSTXN_RUJUKANMASUKS.RUJUKANMASUK_JSON IS
 --     6.242 dari 132.417 pasien (4,7%) punya kolom itu terisi - sisanya perlu
 --     dicari manual oleh petugas, dan PATIENT_UUID-nya ditulis balik saat itu
 --     supaya cakupannya menambal sendiri seiring waktu.
---   - serviceRequestId TIDAK ada di sini saat disetujui: rujukan resminya baru
---     diterbitkan perujuk SESUDAH kita setuju. Ia dipungut belakangan, dan
---     itulah yang nanti mengisi Encounter.basedOn.
+--   - perujukNama disalin dari kotak masuk (yang mengambilnya lewat GET
+--     Organization) supaya daftar tunggu tak perlu memanggil SATUSEHAT lagi cuma
+--     untuk menampilkan nama RS. Kosong -> layar jatuh ke Org ID.
+--   - rujukanResmi kosong saat disetujui: rujukan resminya baru diterbitkan
+--     perujuk SESUDAH kita setuju. Ia dipungut belakangan - tepat sebelum
+--     Encounter kunjungannya dibuat - dan itulah yang mengisi Encounter.basedOn.
+--     Node terpisah, bukan disusupkan ke permintaan: permintaan adalah salinan
+--     apa adanya dari SATUSEHAT saat disetujui dan harus tetap begitu.
 --   - pendaftaran kosong = pasien masih ditunggu. Terisi saat pendaftaran
 --     RJ/UGD/RI dibuat, sekaligus menandai janji ini selesai.
 -- =============================================================
