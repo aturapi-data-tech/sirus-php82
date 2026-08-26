@@ -539,6 +539,34 @@ new class extends Component {
         ];
     }
 
+    /**
+     * Tanggal Rujukan untuk DITAMPILKAN, format dd/mm/yyyy.
+     *
+     * Nilainya tak pernah diketik petugas: sebelum terkirim ia tanggal hari ini
+     * — yaitu nilai yang AKAN dikirim sebagai `tglRujukan`; sesudah terkirim ia
+     * dibaca dari hasil supaya rujukan lama tetap menampilkan tanggal aslinya,
+     * bukan tanggal hari ini saat berkasnya dibuka lagi.
+     *
+     * Tersimpan sebagai 'Y-m-d' (bentuk yang diminta BPJS), ditampilkan
+     * 'd/m/Y' mengikuti seluruh tanggal lain di layar ini.
+     */
+    public function tanggalRujukanTampil(): string
+    {
+        $tersimpan = trim((string) ($this->formRujukan['hasil']['tglRujukan'] ?? ''));
+
+        if ($tersimpan === '') {
+            return Carbon::now(config('app.timezone'))->format('d/m/Y');
+        }
+
+        try {
+            return Carbon::createFromFormat('Y-m-d', $tersimpan)->format('d/m/Y');
+        } catch (\Throwable) {
+            // Bentuk tak terduga dicetak apa adanya — lebih baik terbaca janggal
+            // daripada hilang diam-diam dari dokumen rujukan.
+            return $tersimpan;
+        }
+    }
+
     private function tglRencanaCarbon(): ?Carbon
     {
         try {
@@ -995,6 +1023,7 @@ new class extends Component {
             <table class="text-gray-700 dark:text-gray-200">
                 <tr><td class="pr-3">No Rujukan BPJS</td><td class="font-mono font-semibold">{{ ($formRujukan['hasil']['noRujukan'] ?? '') ?: '-' }}</td></tr>
                 <tr><td class="pr-3">No Rujukan SATUSEHAT</td><td class="font-mono font-semibold">{{ $formRujukan['hasil']['noRujukanSatuSehat'] }}</td></tr>
+                <tr><td class="pr-3">Tanggal Rujukan</td><td class="font-semibold">{{ $this->tanggalRujukanTampil() }}</td></tr>
                 <tr><td class="pr-3">Tujuan</td><td>{{ $formRujukan['hasil']['tujuanNama'] ?? '-' }} (PPK {{ $formRujukan['hasil']['tujuanPpk'] ?? '-' }})</td></tr>
                 <tr><td class="pr-3">Dikirim</td><td>{{ $formRujukan['hasil']['dikirimPada'] ?? '-' }} oleh {{ $formRujukan['hasil']['dikirimOleh'] ?? '-' }}</td></tr>
             </table>
@@ -1105,6 +1134,18 @@ new class extends Component {
                     <x-text-input wire:model.blur="formRujukan.tglRencanaKunjungan" placeholder="dd/mm/yyyy"
                         :disabled="$isFormLocked" class="w-full" />
                     <p class="mt-1 text-xs text-muted-soft">Boleh hari ini.</p>
+                </div>
+                {{-- Tanggal Rujukan tak bisa diketik — ia terisi saat Kirim Rujukan
+                     ditekan. Ditampilkan tetap sebagai label supaya petugas tahu
+                     tanggal apa yang menempel di dokumen rujukannya. --}}
+                <div>
+                    <x-input-label value="Tanggal Rujukan" class="mb-1" />
+                    <x-text-input :value="$this->tanggalRujukanTampil()" disabled readonly class="w-full" />
+                    <p class="mt-1 text-xs text-muted-soft">
+                        {{ empty($formRujukan['hasil']['tglRujukan'])
+                            ? 'Terisi otomatis saat Kirim Rujukan ditekan.'
+                            : 'Tanggal terbitnya rujukan ini.' }}
+                    </p>
                 </div>
             </div>
 
