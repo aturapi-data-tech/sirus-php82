@@ -75,6 +75,11 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/downtime/daftar-tarif', 'pages::downtime.daftar-tarif.daftar-tarif')
         ->name('downtime.daftar-tarif');
 
+    // Perekaman formulir DT-01 SESUDAH layanan pulih (kebalikan dari cetakan
+    // kosong di /downtime/formulir-manual). Akreditasi MRMIK 13.1.
+    Route::livewire('/downtime/pelaporan', 'pages::downtime.pelaporan-downtime.pelaporan-downtime')
+        ->name('downtime.pelaporan');
+
     Route::livewire('/master/poli', 'pages::master.master-poli.master-poli')
         ->name('master.poli');
 
@@ -483,6 +488,15 @@ Route::middleware(['auth'])->group(function () {
     // ===========================================
     Route::livewire('/penunjang/kamar-operasi', 'pages::transaksi.penunjang.kamar-operasi.daftar-kamar-operasi')
         ->name('penunjang.kamar-operasi');
+
+    // ===========================================
+    // SISTEM - PEMANTAUAN RUANG SERVER (Akreditasi MRMIK 2.2)
+    // Dua model: suhu & kelembaban, dan akses keluar-masuk.
+    // ===========================================
+    Route::livewire('/sistem/pemantauan-suhu-ruang-server', 'pages::sistem.pemantauan-suhu-ruang-server.pemantauan-suhu-ruang-server')
+        ->name('sistem.pemantauan-suhu-ruang-server');
+    Route::livewire('/sistem/pemantauan-akses-ruang-server', 'pages::sistem.pemantauan-akses-ruang-server.pemantauan-akses-ruang-server')
+        ->name('sistem.pemantauan-akses-ruang-server');
 
     // ===========================================
     // DATABASE MONITOR - MONITORING DASHBOARD

@@ -13,6 +13,24 @@ banyak kunjungan, atau perlu dicari lintas pasien. Dua modul memakainya:
 | Pengkajian Medis PP 1.2 (review & pakai-ulang) | `RSTXN_PENGKAJIAN_REVIEWS` | 1 baris = 1 peninjauan |
 | PRMRJ / Profil Ringkas Medis RJ (RM.06) | `RSTXN_PRMRJS` | 1 baris = 1 kunjungan yang diringkas |
 
+> **Pernah dicoba di luar EMR, lalu DITARIK SEMUA.** Tiga modul akreditasi area
+> Sistem sempat memakai pola ini dengan `PERIODE` ('MM/YYYY') menggantikan
+> `REG_NO` — Pemantauan Suhu & Akses Ruang Server dan Pelaporan Down Time DT-01.
+> Ketiganya kini bertabel **DUA kolom** (PK + CLOB), satu baris = satu catatan:
+> `RSTXN_SUHUSERVERS`, `RSTXN_AKSESSERVERS`, `RSTXN_DOWNTIMES`. Trait perantaranya
+> (`LembarPeriodeTrait`, `PemantauanRuangServerTrait`) ikut dihapus.
+>
+> **Kenapa gagal cocok:** isinya catatan LEPAS, bukan dokumen berlembar. Satu
+> pengukuran / kunjungan / kejadian berdiri sendiri — tak ada isi yang dipakai
+> bersama banyak entri, jadi lock & read-modify-write cuma jadi mesin yang tak
+> dibutuhkan, dan menghapus satu catatan salah tak boleh menyentuh yang lain.
+>
+> **Uji sebelum memakai pola ini:** adakah isi yang DIPAKAI BERSAMA banyak entri —
+> kop lembar yang berubah tiap periode, TTD yang menutup seluruh lembar, status
+> terkunci? Kalau tidak ada, jangan pakai. Identitas yang tetap sepanjang waktu
+> bukan "isi bersama" — itu konstanta (`App\Support\Options\RuangServerOptions`),
+> dan tanda tangan bisa diteken di kertas lewat garis kosong di cetakan.
+
 Acuan kode: `App\Http\Traits\Txn\Pengkajian\PengkajianReviewTrait`,
 `App\Http\Traits\Txn\Prmrj\PrmrjTrait`, `docs/ddl-prmrj.sql`,
 `docs/ddl-pengkajian-medis-pp12.sql`.

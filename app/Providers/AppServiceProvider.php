@@ -55,6 +55,11 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('gudang.transferBatalMedis', fn ($user) => $user->hasAnyRole(AksiRole::GUDANG_TRANSFER_BATAL_MEDIS));
         Gate::define('gudang.transferBatalNonMedis', fn ($user) => $user->hasAnyRole(AksiRole::GUDANG_TRANSFER_BATAL_NONMEDIS));
 
+        Gate::define('downtime.pelaporanHapus', fn ($user) => $user->hasAnyRole(AksiRole::DOWNTIME_PELAPORAN_HAPUS));
+
+        Gate::define('sistem.pemantauanRuangServer.hapus', fn ($user) => $user->hasAnyRole(AksiRole::SISTEM_PEMANTAUAN_RUANG_SERVER_HAPUS));
+        Gate::define('sistem.pemantauanRuangServer.bukaKunci', fn ($user) => $user->hasAnyRole(AksiRole::SISTEM_PEMANTAUAN_RUANG_SERVER_BUKA_KUNCI));
+
         // Blade directive untuk render path TTD user.
         // - Standar baru: DB simpan filename saja (mis: 08052026081302.png)
         //   → prepend 'storage/UserTtd/'

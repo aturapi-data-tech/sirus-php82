@@ -120,6 +120,42 @@ class AksiRole
     /** Batalkan / hapus transfer stok — NON-MEDIS. */
     public const GUDANG_TRANSFER_BATAL_NONMEDIS = ['Admin', 'Manager Umum', 'Supervisor Tu', 'Gudang Non Medis', 'Tu'];
 
+    /* ─────────────────────────────── SISTEM ─────────────────────────────── */
+
+    /**
+     * Menghapus lembar Pemantauan Ruang Server (MRMIK 2.2) — KEDUA modelnya,
+     * pemantauan suhu maupun pemantauan akses keluar-masuk.
+     *
+     * Sengaja satu konstanta untuk dua model: maksudnya sama persis ("hapus bukti
+     * pemantauan ruang server"), dan tak ada skenario yang membolehkan menghapus
+     * salah satunya saja. Kalau kelak ada, pecah jadi dua di sini — pemanggilnya
+     * tak perlu ikut berubah karena mereka memanggil Gate, bukan konstanta.
+     *
+     * Lembar ini bukti akreditasi, jadi hapus dipegang Admin & Manager Umum saja
+     * — Unit IT/SIMRS yang mengisinya tidak boleh menghapus catatannya sendiri,
+     * aturan yang sama dengan "batal = eskalasi ke atasan" di Lab & Kamar Operasi.
+     */
+    public const SISTEM_PEMANTAUAN_RUANG_SERVER_HAPUS = ['Admin', 'Manager Umum'];
+
+    /**
+     * Membuka kunci lembar Pemantauan Ruang Server (mencabut TTD) — kedua model.
+     *
+     * Dipisah dari HAPUS walau daftarnya kebetulan sama: buka kunci mengembalikan
+     * lembar jadi draft, hapus melenyapkannya. Lihat aturan "satu konstanta per
+     * maksud" di kepala berkas ini.
+     */
+    public const SISTEM_PEMANTAUAN_RUANG_SERVER_BUKA_KUNCI = ['Admin', 'Manager Umum'];
+
+    /* ────────────────────────────── DOWN TIME ────────────────────────────── */
+
+    /**
+     * Menghapus laporan DT-01 Down Time SIMRS (MRMIK 13.1).
+     *
+     * Laporan waktu henti adalah bahan evaluasi ke pimpinan RS dan bukti
+     * akreditasi, jadi menghapusnya bukan wewenang unit yang menulisnya.
+     */
+    public const DOWNTIME_PELAPORAN_HAPUS = ['Admin', 'Manager Umum'];
+
     /*
      * CATATAN — Batal di LABORAT & KAMAR OPERASI sengaja TIDAK diklaster di sini.
      * Keduanya sudah punya guard sendiri yang lebih ketat dan disengaja:
