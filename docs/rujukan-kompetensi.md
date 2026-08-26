@@ -75,9 +75,11 @@ Body JSON: `kodeDiagnosa` + `kodeFaskesSatuSehat` (+ `encounter.reference` bila 
    (aturan baru 19/08/26). Tanpa itu kunjungan yang kita buat tidak pernah tersambung ke
    rujukan yang kita terima. Sudah didukung `EncounterTrait::buildBaseEncounterPayload()`
    lewat parameter opsional `serviceRequestId`; ketiga pengirim Encounter (RJ/UGD/RI)
-   membacanya dari `rujukanMasuk.serviceRequestId` di JSON kunjungan. **Penulis node itu
-   belum ada** — langkah "Pendaftaran Kunjungan Rujukan" sisi RS tujuan belum dibangun,
-   jadi untuk sekarang field ini selalu kosong dan `basedOn` tidak ikut terkirim.
+   membacanya dari `rujukanMasuk.serviceRequestId` di JSON kunjungan. Node `rujukanMasuk`
+   ditulis saat pendaftaran dibuat dari daftar tunggu rujukan, dan `serviceRequestId`-nya
+   dipungut sendiri tepat sebelum Encounter dibuat (§3.2) — nomor rujukan resminya memang
+   baru diterbitkan perujuk SESUDAH kita setuju, jadi mustahil sudah ada sejak pendaftaran.
+   **Jalur UGD saja untuk sekarang**; RJ & RI menunggu pendaftaran rujukannya dibangun.
 - **`Task.identifier.value` WAJIB UNIK SETIAP POST (termasuk retry!)** — reuse = response tanpa `contained`/`output` yang menyesatkan, atau `Found duplicate: Task`. Ini akar kasus paling sering di grup.
 - Org-id di token = org-id di resource; jangan campur token prod/staging.
 
@@ -127,7 +129,67 @@ PATCH {base}/Task/<id>          Content-Type: application/json-patch+json
   berisiko menimpa field yang tidak kita kirim.
 - Sesudah *accepted*, perujuk melanjutkan ke ServiceRequest; **pendaftaran kunjungan pasien rujukan
   di sisi RS tujuan** (Postman "04. Pengiriman Rujukan → Faskes Rujukan - Pendaftaran Kunjungan
-  Rujukan") masih langkah terpisah yang belum dibangun.
+  Rujukan") tetap langkah terpisah — lihat §3.2.
+
+### 3.2 Sisi FASKES TUJUAN — janji rujukan & pendaftaran saat pasien tiba
+
+**Menyetujui bukan berarti pasien datang.** Pasien bisa disetujui sore ini dan tiba besok,
+atau tidak datang sama sekali. Karena itu persetujuan TIDAK membuat kunjungan; ia menyimpan
+*janji* di `RSTXN_RUJUKANMASUKS` (satu baris = satu permintaan disetujui; rancangan &
+alasan kolom: `docs/ddl-rujukan-masuk-disetujui.sql`, kode: `RujukanMasukTrait`).
+Idempotensinya ditegakkan basis data lewat `TASK_ID` UNIK — ORA-00001 ditangkap sebagai
+"sudah ada", karena pemeriksaan di PHP kalah balapan bila dua petugas menyetujui bersamaan.
+
+Saat pasiennya tiba: tombol **Rujukan Masuk** di toolbar `/ugd/daftar` (berlencana jumlah
+yang ditunggu) membuka daftar janji yang belum terpakai; memilih satu baris membuka form
+Pendaftaran UGD yang sudah terisi. Janji baru ditandai terpakai SETELAH kunjungannya
+tersimpan — kalau ditandai saat form dibuka, membatalkan form menghilangkan pasien dari
+daftar tunggu padahal ia belum terdaftar di mana pun.
+
+- **Pencocokan pasien HANYA lewat `RSMST_PASIENS.PATIENT_UUID`.** Nama tak bisa dipakai:
+  `Patient/<ihs>` dari SATUSEHAT itu cangkang (`name` null, NIK di-mask `################`).
+  Per 26/08 baru 6.242 dari 132.417 pasien (4,7%) punya kolom itu terisi, jadi **"tidak
+  ketemu" adalah hasil yang wajar, bukan error** — form tetap dibuka, petugas mencari
+  pasiennya lewat LOV, dan IHS-nya **ditulis balik** ke pasien yang dipilih supaya
+  cakupannya menambal sendiri. Penulisan itu tidak pernah menimpa: kolom yang sudah terisi
+  nilai lain, atau IHS yang sudah dipegang No. RM lain, dilaporkan sebagai bentrok.
+- **Cara Masuk** diisi dari master (`rsmst_entryugds.rujukan_status = 'Y'`), bukan angka
+  yang dipatok — id-nya bisa berbeda antar environment.
+- Rujukan **Ranap pun didaftarkan lewat UGD** untuk sekarang (pasien rujukan ranap umumnya
+  masuk lewat IGD dulu). Jalur admisi RI langsung belum dibangun; janjinya menunggu di
+  daftar yang sama.
+- Kegagalan menandai janji / menulis IHS **tidak pernah menggagalkan pendaftaran** yang
+  sudah tersimpan — dilaporkan lewat toast terpisah, sama seperti pencatatan janji tidak
+  boleh menggagalkan persetujuan yang sudah sampai ke SATUSEHAT.
+
+#### Memungut rujukan resmi (`Encounter.basedOn`)
+
+Rujukan resmi (ServiceRequest) **belum ada saat kita menyetujui** — perujuk menerbitkannya
+sesudah melihat jawaban kita, kadang setelah pasiennya terdaftar. Karena itu nomornya
+dicari **tepat sebelum Encounter dibuat** (`⚡kirim-encounter` UGD →
+`serviceRequestRujukan()`): saat paling akhir yang masih berguna, sekaligus peluang
+terbesar rujukannya sudah terbit. Kunjungan tanpa node `rujukanMasuk` tidak memicu satu pun
+panggilan API.
+
+| | |
+|---|---|
+| Cari 1 | `GET ServiceRequest?based-on=CarePlan/<rencanaId>` |
+| Cari 2 (bila 1 ditolak) | `GET ServiceRequest?subject=Patient/<ihs>` lalu disaring lokal |
+| Diterima bila | `basedOn` → CarePlan permintaan **atau** `supportingInfo` → Task persetujuan |
+| **Ditolak** | kecocokan lemah (pasien sama, faskes tujuan sama) — satu pasien bisa punya lebih dari satu rujukan, salah tempel = kunjungan tersambung ke rujukan orang lain |
+
+**Kedua parameter pencarian itu belum pernah diuji ke SATUSEHAT** — Postman V30062026 tak
+punya contohnya (di sana rujukan cuma dibuat, tak pernah dicari). Keduanya dicoba
+berurutan dan penolakan salah satunya bukan error.
+
+Hasilnya disimpan dua tempat: `rujukanMasuk.serviceRequestId` di JSON kunjungan (supaya
+pengiriman berikutnya tak mencari lagi) dan node `rujukanResmi` di janji (jejaknya tetap
+ada walau kunjungannya kelak dihapus).
+
+**Batasnya:** kalau rujukan resmi belum terbit saat Encounter dibuat, Encounter tetap
+dikirim TANPA `basedOn` — menahan kunjungan karena dokumen di sistem RS lain belum ada akan
+menghentikan pelayanan pasien yang sudah di depan mata. Menambalnya belakangan butuh
+`PUT Encounter`, dan itu belum dibangun.
 
 ## 4. Katalog error → penanganan di SIMRS
 
