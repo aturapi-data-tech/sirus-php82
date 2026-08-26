@@ -45,6 +45,7 @@
 
 <div x-data="{
     show: @js($show),
+    modalName: '{{ $name }}',
     focusables() {
         let selector = 'a, button, input:not([type=\'hidden\']), textarea, select, details, [tabindex]:not([tabindex=\'-1\'])'
         return [...$el.querySelectorAll(selector)].filter(el => !el.hasAttribute('disabled'))
@@ -55,17 +56,23 @@
     prevFocusable() { return this.focusables()[this.prevFocusableIndex()] || this.lastFocusable() },
     nextFocusableIndex() { return (this.focusables().indexOf(document.activeElement) + 1) % (this.focusables().length + 1) },
     prevFocusableIndex() { return Math.max(0, this.focusables().indexOf(document.activeElement)) - 1 },
-}" x-init="$watch('show', value => {
-    if (value) {
-        document.body.classList.add('overflow-hidden');
-        {{ $attributes->has('focusable') ? 'setTimeout(() => firstFocusable()?.focus(), 100)' : '' }}
-    } else {
-        document.body.classList.remove('overflow-hidden');
-    }
-})"
+}" x-init="
+    if (!window.__modalStack) window.__modalStack = [];
+    $watch('show', value => {
+        if (value) {
+            window.__modalStack.push(modalName);
+            document.body.classList.add('overflow-hidden');
+            {{ $attributes->has('focusable') ? 'setTimeout(() => firstFocusable()?.focus(), 100)' : '' }}
+        } else {
+            window.__modalStack = window.__modalStack.filter(n => n !== modalName);
+            if (window.__modalStack.length === 0) document.body.classList.remove('overflow-hidden');
+        }
+    });
+"
     x-on:open-modal.window="$event.detail.name === '{{ $name }}' ? show = true : null"
     x-on:close-modal.window="$event.detail.name === '{{ $name }}' ? show = false : null"
-    x-on:keydown.escape.window="show = false" x-show="show" class="fixed inset-0 z-50"
+    x-on:keydown.escape.window="if (show && window.__modalStack[window.__modalStack.length - 1] === modalName) show = false"
+    x-show="show" class="fixed inset-0 z-50"
     style="display: {{ $show ? 'block' : 'none' }};">
     {{-- Overlay --}}
     <div x-show="show" x-on:click="show = false" x-transition.opacity

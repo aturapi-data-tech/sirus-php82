@@ -39,7 +39,7 @@ new class extends Component {
 
     public function mountShare(): void
     {
-        $process = new Process(['sudo', '/usr/bin/mount', '-t', 'cifs', $this->shareServer, $this->mountPoint]);
+        $process = new Process(['sudo', '/usr/local/bin/sirus-mount', 'rad']);
 
         try {
             $process->setTimeout(10);
@@ -64,7 +64,7 @@ new class extends Component {
 
     public function unmountShare(): void
     {
-        $process = new Process(['sudo', '/usr/bin/umount', $this->mountPoint]);
+        $process = new Process(['sudo', '/usr/local/bin/sirus-umount', 'rad']);
 
         try {
             $process->setTimeout(10);
@@ -90,7 +90,7 @@ new class extends Component {
     public function checkMounted(): void
     {
         try {
-            $process = new Process(['sudo', '/usr/bin/mountpoint', '-q', $this->mountPoint]);
+            $process = new Process(['/usr/bin/mountpoint', '-q', $this->mountPoint]);
 
             $process->setTimeout(2);
             $process->run();
@@ -146,7 +146,7 @@ new class extends Component {
 
     public function mountShareUpload(): void
     {
-        $process = new Process(['sudo', '/usr/bin/mount', '-t', 'cifs', $this->shareServerUpload, $this->mountPointUpload]);
+        $process = new Process(['sudo', '/usr/local/bin/sirus-mount', 'upload']);
 
         try {
             $process->setTimeout(10);
@@ -171,7 +171,7 @@ new class extends Component {
 
     public function unmountShareUpload(): void
     {
-        $process = new Process(['sudo', '/usr/bin/umount', $this->mountPointUpload]);
+        $process = new Process(['sudo', '/usr/local/bin/sirus-umount', 'upload']);
 
         try {
             $process->setTimeout(10);
@@ -197,7 +197,7 @@ new class extends Component {
     public function checkMountedUpload(): void
     {
         try {
-            $process = new Process(['sudo', '/usr/bin/mountpoint', '-q', $this->mountPointUpload]);
+            $process = new Process(['/usr/bin/mountpoint', '-q', $this->mountPointUpload]);
 
             $process->setTimeout(2);
             $process->run();
@@ -212,7 +212,7 @@ new class extends Component {
 
     public function mountShareLab(): void
     {
-        $process = new Process(['sudo', '/usr/bin/mount', '-t', 'cifs', $this->shareServerLab, $this->mountPointLab]);
+        $process = new Process(['sudo', '/usr/local/bin/sirus-mount', 'lab']);
 
         try {
             $process->setTimeout(10);
@@ -237,7 +237,7 @@ new class extends Component {
 
     public function unmountShareLab(): void
     {
-        $process = new Process(['sudo', '/usr/bin/umount', $this->mountPointLab]);
+        $process = new Process(['sudo', '/usr/local/bin/sirus-umount', 'lab']);
 
         try {
             $process->setTimeout(10);
@@ -263,7 +263,7 @@ new class extends Component {
     public function checkMountedLab(): void
     {
         try {
-            $process = new Process(['sudo', '/usr/bin/mountpoint', '-q', $this->mountPointLab]);
+            $process = new Process(['/usr/bin/mountpoint', '-q', $this->mountPointLab]);
 
             $process->setTimeout(2);
             $process->run();
@@ -278,7 +278,7 @@ new class extends Component {
 
     public function mountShareBpjs(): void
     {
-        $process = new Process(['sudo', '/usr/bin/mount', '-t', 'cifs', $this->shareServerBpjs, $this->mountPointBpjs]);
+        $process = new Process(['sudo', '/usr/local/bin/sirus-mount', 'bpjs']);
 
         try {
             $process->setTimeout(10);
@@ -303,7 +303,7 @@ new class extends Component {
 
     public function unmountShareBpjs(): void
     {
-        $process = new Process(['sudo', '/usr/bin/umount', $this->mountPointBpjs]);
+        $process = new Process(['sudo', '/usr/local/bin/sirus-umount', 'bpjs']);
 
         try {
             $process->setTimeout(10);
@@ -329,7 +329,7 @@ new class extends Component {
     public function checkMountedBpjs(): void
     {
         try {
-            $process = new Process(['sudo', '/usr/bin/mountpoint', '-q', $this->mountPointBpjs]);
+            $process = new Process(['/usr/bin/mountpoint', '-q', $this->mountPointBpjs]);
 
             $process->setTimeout(2);
             $process->run();

@@ -91,6 +91,7 @@ class AppMenu
             $entry(['group' => 'Dashboard Manajemen', 'groupOrder' => 0, 'order' => 4, 'route' => 'manajemen.monitoring-keuangan', 'title' => 'Monitoring Keuangan', 'desc' => 'Pendapatan jasa dokter, kas/bank & arus keuangan rumah sakit', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'KEU']),
             $entry(['group' => 'Dashboard Manajemen', 'groupOrder' => 0, 'order' => 5, 'route' => 'manajemen.laporan-diagnosa', 'title' => 'Laporan Diagnosa', 'desc' => '10 besar diagnosa, tindakan & mortalitas — bulanan & tahunan', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'DX']),
             $entry(['group' => 'Dashboard Manajemen', 'groupOrder' => 0, 'order' => 6, 'route' => 'manajemen.mutasi-obat', 'title' => 'Mutasi Obat', 'desc' => 'Keluar masuk obat — bulanan & tahunan, per gudang & per unit', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'OBT']),
+            $entry(['group' => 'Dashboard Manajemen', 'groupOrder' => 0, 'order' => 7, 'route' => 'manajemen.ai-chat', 'title' => 'AI Asisten Laporan', 'desc' => 'Tanya jawab data & evaluasi laporan manajemen RS secara interaktif', 'roles' => ['admin', 'manager medis', 'manager umum'], 'badge' => 'AI']),
 
             // ── Master Pelayanan ────────────────────────────────────────
             $entry(['group' => 'Master Pelayanan', 'groupOrder' => 1, 'order' => 1, 'route' => 'master.poli', 'title' => 'Master Poli', 'desc' => 'Kelola data poli & ruangan', 'roles' => $masterRoles, 'badge' => 'Pelayanan']),
@@ -148,6 +149,10 @@ class AppMenu
             $entry(['group' => 'Casemix', 'groupOrder' => 8, 'order' => 4, 'route' => 'ri.daftar-bulanan', 'title' => 'Daftar Pasien Bulanan RI', 'desc' => 'List pasien RI per bulan berdasarkan tgl pulang', 'roles' => ['admin', 'manager umum', 'casemix', 'tu'], 'badge' => 'RI-BLN']),
             $entry(['group' => 'Casemix', 'groupOrder' => 8, 'order' => 5, 'route' => 'casemix', 'params' => ['tab' => 'rekap-rj'], 'title' => 'Rekap iDRG Rawat Jalan', 'desc' => 'Rekap klaim iDRG/INA-CBG pasien rawat jalan per SEP (get_claim_data)', 'roles' => ['admin', 'manager umum', 'casemix', 'tu'], 'badge' => 'IDRG-RJ']),
             $entry(['group' => 'Casemix', 'groupOrder' => 8, 'order' => 6, 'route' => 'casemix', 'params' => ['tab' => 'rekap'], 'title' => 'Rekap iDRG Rawat Inap', 'desc' => 'Rekap klaim iDRG/INA-CBG pasien rawat inap per SEP (get_claim_data)', 'roles' => ['admin', 'manager umum', 'casemix', 'tu'], 'badge' => 'IDRG-RI']),
+
+            // ── Approval Hub ──────────────────────────────────────
+            $entry(['group' => 'Approval Hub', 'groupOrder' => 8, 'order' => 1, 'route' => 'approval-hub', 'title' => 'Approval Hub', 'desc' => 'Review & approve data AI sebelum kirim ke sistem eksternal', 'roles' => ['admin'], 'badge' => 'AI']),
+            $entry(['group' => 'Approval Hub', 'groupOrder' => 8, 'order' => 2, 'route' => 'approval-hub', 'params' => ['tab' => 'casemix'], 'title' => 'Casemix / E-Klaim', 'desc' => 'Auto upload berkas BPJS, ICD coding, bridging iDRG/INA-CBG', 'roles' => ['admin'], 'badge' => 'CSX-AI']),
 
             // ── Apotek (transaksi) ──────────────────────────────────
             $entry(['group' => 'Apotek', 'groupOrder' => 9, 'order' => 1, 'route' => 'apotek', 'title' => 'Antrian Apotek', 'desc' => 'Telaah resep & pelayanan kefarmasian — tab RJ, UGD, RI', 'roles' => ['admin', 'apoteker', 'manager medis'], 'badge' => 'APT']),
@@ -217,6 +222,7 @@ class AppMenu
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 12, 'route' => 'panduan-dev.alur-pelayanan', 'title' => 'Tutorial Alur Pelayanan', 'desc' => 'Alur pasien pendaftaran → EMR → apotek → kasir per jalur RJ/UGD/RI', 'roles' => ['admin'], 'badge' => 'DOC']),
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 13, 'route' => 'panduan-dev.koding-struktur', 'title' => 'Standar Struktur Folder', 'desc' => 'Di mana berkas ditaruh & dinamai — prefix ⚡, suffix peran/jalur, Trait vs Support, prefix URL', 'roles' => ['admin'], 'badge' => 'DOC']),
             $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 14, 'route' => 'panduan-dev.koding-skill', 'title' => 'Katalog Skill', 'desc' => 'Daftar skill repo (.claude/skills/*) + kapan dibaca', 'roles' => ['admin'], 'badge' => 'DOC']),
+            $entry(['group' => 'Sistem', 'groupOrder' => 15, 'order' => 15, 'route' => 'panduan-dev.approval-hub', 'title' => 'Dokumentasi Approval Hub', 'desc' => 'Arsitektur, alur kerja, dan referensi teknis Casemix AI / E-Klaim / SATUSEHAT', 'roles' => ['admin'], 'badge' => 'DOC']),
         ];
     }
 }

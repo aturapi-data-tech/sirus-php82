@@ -131,6 +131,8 @@ new class extends Component {
                                 class="ds-btn ds-btn-secondary">Tutorial Alur Pelayanan →</a>
                             <a href="{{ route('panduan-dev.koding-skill') }}" wire:navigate
                                 class="ds-btn ds-btn-primary">Katalog Skill →</a>
+                            <a href="{{ route('panduan-dev.approval-hub') }}" wire:navigate
+                                class="ds-btn ds-btn-secondary">Dokumentasi Approval Hub →</a>
                         </div>
                     </div>
 

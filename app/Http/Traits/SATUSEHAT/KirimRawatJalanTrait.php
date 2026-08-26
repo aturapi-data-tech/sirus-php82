@@ -80,41 +80,49 @@ trait KirimRawatJalanTrait
         // ══════════════════════════════════════
         // 2. CONDITION — Diagnosa ICD-10
         // ══════════════════════════════════════
+        usleep(1500000);
         $ss = $this->stepDiagnosa($ss, $dataRJ, $patientId, $rjDate, $results, $errors);
 
         // ══════════════════════════════════════
         // 3. OBSERVATION — Tanda Vital
         // ══════════════════════════════════════
+        usleep(1500000);
         $ss = $this->stepTandaVital($ss, $dataRJ, $patientId, $practitionerId, $rjDate, $results, $errors);
 
         // ══════════════════════════════════════
         // 4. PROCEDURE — Tindakan ICD-9
         // ══════════════════════════════════════
+        usleep(1500000);
         $ss = $this->stepTindakan($ss, $dataRJ, $patientId, $practitionerId, $rjDate, $results, $errors);
 
         // ══════════════════════════════════════
         // 5. CONDITION — Keluhan Utama
         // ══════════════════════════════════════
+        usleep(1500000);
         $ss = $this->stepKeluhanUtama($ss, $dataRJ, $patientId, $rjDate, $results, $errors);
 
         // ══════════════════════════════════════
         // 6. ALLERGY INTOLERANCE
         // ══════════════════════════════════════
+        usleep(1500000);
         $ss = $this->stepAlergi($ss, $dataRJ, $pasien, $patientId, $practitionerId, $rjDate, $results, $errors);
 
         // ══════════════════════════════════════
         // 7. MEDICATION REQUEST — Resep Obat
         // ══════════════════════════════════════
+        usleep(1500000);
         $ss = $this->stepMedicationRequest($ss, $dataRJ, $patientId, $patientName, $practitionerId, $rjDate, $results, $errors);
 
         // ══════════════════════════════════════
         // 8. MEDICATION DISPENSE — Penyerahan Obat
         // ══════════════════════════════════════
+        usleep(1500000);
         $ss = $this->stepMedicationDispense($ss, $dataRJ, $patientId, $patientName, $rjDate, $results, $errors);
 
         // ══════════════════════════════════════
         // 9-11. LAB: ServiceRequest → Observation → DiagnosticReport
         // ══════════════════════════════════════
+        usleep(1500000);
         $ss = $this->stepLab($ss, $dataRJ, $patientId, $practitionerId, $rjDate, $results, $errors);
 
         return [

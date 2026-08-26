@@ -25,6 +25,13 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
 3. Daftarkan **tab + panel** di `modul-dokumen-<jalur>.blade.php` (`<x-tab>` + `<div x-show>` berisi `<livewire:… :rjNo/riHdrNo :disabled wire:key>`). **WAJIB pasang penanda tab** (lihat aturan #7).
 4. **Viewer rekam medis** — `…/rekam-medis/<jalur>/dokumen-view/<dok>-view-<jalur>.blade.php` **dan** daftarkan di `cetak-rekam-medis-open.blade.php`. **Belum selesai tanpa langkah ini.**
 
+## Penamaan variable & field form
+
+- **Deskriptif, bukan singkatan** — `$jenisConsent` bukan `$jc`, `$kategoriPermintaan` bukan `$kp`.
+- **Singkatan umum yang boleh:** `tgl` (tanggal), `ttd` (tanda tangan), `no` (nomor), `info` (informasi), `desc` (deskripsi).
+- **Field `newForm[]`** pakai camelCase deskriptif: `tglPermintaan`, `namaPenanda`, `hubunganPasien`, `pemberiInfo`, `pemberiInfoCode`, `pemberiInfoDate`.
+- **Variable Blade lokal** (`@php`) tetap deskriptif: `$hubunganText`, `$kategoriDipilih`, `$entryIsFinal` — bukan `$ht`, `$kd`, `$ef`.
+
 ## Aturan keras (paling sering keliru)
 
 1. **TTD petugas = aksi TERAKHIR yang sekaligus MENGUNCI** (`ttdPetugas()`/`setDokterPenjelas`). JANGAN sediakan tombol "Simpan & Kunci" terpisah — footer cukup **Simpan Draft**. TTD masuk `rules()` supaya error merah di kolomnya. Varian **multi-TTD petugas** (Surgical Safety Checklist: Perawat Sirkuler+Dokter Anestesi+Operator, tanpa TTD pasien): `setTtdRole($role)` per peran + kunci OTOMATIS saat semua TTD terisi (`semuaTtdTerisi()`); buka kunci mencabut SEMUA TTD petugas.
