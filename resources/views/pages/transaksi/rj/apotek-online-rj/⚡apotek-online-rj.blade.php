@@ -24,6 +24,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Session;
 use Illuminate\Support\Facades\DB;
+use App\Support\NoSep;
 use Carbon\Carbon;
 use App\Support\EresepJson;
 
@@ -309,7 +310,12 @@ new class extends Component {
                 'statusVariant' => $status['variant'],
                 'adaEresep' => isset($data['eresep']) || isset($data['eresepRacikan']),
                 'adaRacikan' => isset($data['eresepRacikan']),
-                'noSep' => $kunjungan->vno_sep,
+                // vno_sep kolom TEKS BEBAS — nomor SEP harus diekstrak, bukan dibaca
+                // utuh. Lihat App\Support\NoSep untuk sebaran isinya.
+                'noSep' => NoSep::ekstrak($kunjungan->vno_sep),
+                'noSepAsli' => (string) $kunjungan->vno_sep,
+                'sepCatatan' => NoSep::catatan($kunjungan->vno_sep),
+                'sepSah' => NoSep::sah($kunjungan->vno_sep),
                 'statusKronis' => $kunjungan->status_kronis,
                 'statusIter' => $kunjungan->status_iter,
                 'jmlKronis' => $ringkas['kronis'],
@@ -571,7 +577,17 @@ new class extends Component {
                                         @endif
                                     </div>
 
-                                    <x-list.sep-spri :sep="$row->noSep" />
+                                    @if ($row->sepSah)
+                                        <x-list.sep-spri :sep="$row->noSep" />
+                                        @if (filled($row->sepCatatan))
+                                            {{-- Catatan yang menempel pada kolom SEP (mis. ITER) ditampilkan
+                                               | terpisah supaya jelas ia BUKAN bagian dari nomor yang dikirim. --}}
+                                            <div class="text-xs text-muted-soft">catatan: {{ $row->sepCatatan }}</div>
+                                        @endif
+                                    @else
+                                        <div><x-badge variant="danger">SEP tidak terbaca</x-badge></div>
+                                        <div class="text-xs text-muted-soft">isi kolom: {{ $row->noSepAsli ?: '(kosong)' }}</div>
+                                    @endif
 
                                     @if ($row->statusKronis === 'Y')
                                         <div><x-badge variant="warning">KRONIS</x-badge></div>
@@ -626,11 +642,19 @@ new class extends Component {
                                                         wire:click="$dispatch('apotek-online-rj.daftarkan', { rjNo: '{{ $row->rjNo }}' })">
                                                         Lihat Klaim
                                                     </x-outline-button>
-                                                @else
+                                                @elseif ($row->sepSah)
                                                     <x-primary-button type="button" class="w-full"
                                                         wire:click="$dispatch('apotek-online-rj.daftarkan', { rjNo: '{{ $row->rjNo }}' })">
                                                         Daftarkan &amp; Kirim
                                                     </x-primary-button>
+                                                @else
+                                                    {{-- Tanpa nomor SEP tak ada yang bisa dikirim: REFASALSJP wajib,
+                                                       | dan BPJS menuntut tepat 19 karakter. Ditahan di sini supaya
+                                                       | petugas tak menempuh seluruh rantai lalu ditolak di ujung. --}}
+                                                    <div class="px-3 py-2 text-xs rounded-lg bg-error/10 text-error-deep dark:text-red-300">
+                                                        Tidak bisa didaftarkan — kolom SEP tidak memuat nomor SEP.
+                                                        Betulkan lebih dulu di Pendaftaran.
+                                                    </div>
                                                 @endif
                                             </div>
                                         </x-slot>
