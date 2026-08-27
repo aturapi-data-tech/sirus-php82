@@ -571,6 +571,12 @@ new class extends Component {
         $this->dispatch('toast', type: 'info', message: 'Menampilkan entri terkunci (hanya lihat).');
     }
 
+    /** Layar formulir sedang tampil? Saat terkunci, formulir tak pernah dirender. */
+    public function diForm(): bool
+    {
+        return !$this->isFormLocked && ($this->viewOnly || $this->editingKey !== null || $this->layar === 'form');
+    }
+
     /** Buka formulir kosong untuk entri baru. */
     public function tambahEntri(): void
     {
@@ -870,7 +876,7 @@ new class extends Component {
                     @if ($jumlahEdukasiTerintegrasi > 0)
                         <x-badge variant="info">{{ $jumlahEdukasiTerintegrasi }} tersimpan</x-badge>
                     @endif
-                    @if ($layar === 'form')
+                    @if ($this->diForm())
                         <x-badge :variant="$viewOnly ? 'info' : ($editingKey ? 'warning' : 'success')">
                             {{ $viewOnly ? 'Mode: Lihat' : ($editingKey ? 'Mode: Edit' : 'Mode: Tambah') }}
                         </x-badge>
@@ -911,7 +917,7 @@ new class extends Component {
         </div>
     @endif
 
-    @if ($layar === 'form' && $viewOnly)
+    @if ($this->diForm() && $viewOnly)
         <div class="flex items-center gap-2 px-4 py-2.5 mb-2 text-sm font-medium text-sky-700 bg-sky-50 border border-sky-200 rounded-lg dark:bg-sky-900/20 dark:border-sky-600 dark:text-sky-300">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -919,7 +925,7 @@ new class extends Component {
             </svg>
             Menampilkan entri terkunci (hanya lihat) — klik <strong>Kembali ke Daftar</strong> untuk keluar.
         </div>
-    @elseif ($layar === 'form' && $editingKey && !$isFormLocked)
+    @elseif ($this->diForm() && $editingKey)
         <div class="flex items-center gap-2 px-4 py-2.5 mb-2 text-sm font-medium text-brand-green bg-brand-lime/10 border border-brand-lime/40 rounded-lg dark:text-brand-lime dark:bg-brand-lime/5">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -929,7 +935,7 @@ new class extends Component {
     @endif
 
     {{-- ═══════════════ FORM ENTRY (layar 'form' saja) ═══════════════ --}}
-    @if ($layar === 'form')
+    @if ($this->diForm())
         <x-border-form title="Formulir Edukasi Terintegrasi Pasien & Keluarga" align="start" bgcolor="bg-surface-soft">
             <fieldset @disabled($formReadOnly)>
             <div class="mt-3 space-y-5">
@@ -1351,7 +1357,7 @@ new class extends Component {
     @endif
 
     {{-- ═══════════════ LIST RIWAYAT (layar 'daftar' saja) ═══════════════ --}}
-    @if ($layar === 'daftar')
+    @unless ($this->diForm())
     <x-border-form title="Riwayat Edukasi Terintegrasi" align="start" bgcolor="bg-surface-soft">
         @php $list = $dataDaftarRi['edukasiPasienTerintegrasi'] ?? []; @endphp
         <div class="mt-3 overflow-x-auto bg-canvas border border-hairline rounded-xl dark:border-gray-700 dark:bg-gray-900">
@@ -1612,7 +1618,7 @@ new class extends Component {
             </table>
         </div>
     </x-border-form>
-    @endif
+    @endunless
 
             </div>{{-- /konten flex-1 --}}
 
@@ -1620,7 +1626,7 @@ new class extends Component {
             <div class="sticky bottom-0 z-10 px-6 py-3 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     {{-- Keterangan kiri --}}
-                    @if ($layar === 'daftar')
+                    @if (!$this->diForm())
                         <p class="flex items-center gap-1.5 text-sm text-muted dark:text-gray-400">
                             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1648,7 +1654,7 @@ new class extends Component {
 
                     {{-- Tombol kanan --}}
                     <div class="flex flex-wrap items-center justify-end gap-2">
-                        @if ($layar === 'daftar')
+                        @if (!$this->diForm())
                             {{-- Tutup HANYA di layar daftar: di layar form, jalan keluarnya lewat
                                  Kembali ke Daftar supaya isian tak hilang tanpa disadari. --}}
                             <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>

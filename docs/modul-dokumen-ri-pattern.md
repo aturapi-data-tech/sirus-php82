@@ -35,6 +35,61 @@ berisi `<livewire:… :riHdrNo="$riHdrNo" :disabled="$isFormLocked" wire:key="�
 - `array_replace_recursive(defaultForm(), $entri['form'])` saat memuat entri lama —
   record lama yang belum punya key baru tetap aman (lihat feedback normalisasi JSON legacy).
 
+## 2b. Dua layar: daftar dulu, formulir menyusul (BAKU sejak 2026-08-27)
+
+Modal modul dokumen punya **dua layar**, tidak boleh menampilkan formulir dan daftarnya
+sekaligus:
+
+| Layar | Isi | Tombol |
+|---|---|---|
+| `daftar` (dibuka duluan) | grid entri tersimpan; per baris Edit/Lihat/Cetak/Hapus | `Tutup`, `Tambah Entri` |
+| `form` | formulir entri | tombol simpan/TTD lama + `Kembali ke Daftar` (menggantikan `Tutup`) |
+
+**Kenapa.** Dulu formulir nongkrong bersama daftarnya, lalu dikosongkan diam-diam sesudah
+tersimpan. Petugas yang mengira itu masih formulir yang tadi diisi mengetik ulang di atasnya
+— dan tersimpan sebagai **draft baru**. Duplikat draft ini keluhan nyata dari pemakaian.
+
+### Potongan baku
+
+```php
+// Layar aktif di modal: 'daftar' (grid entri) atau 'form' (tambah/edit/lihat).
+public string $layar = 'daftar';
+
+/** Layar formulir sedang tampil? Saat terkunci, formulir tak pernah dirender. */
+public function diForm(): bool
+{
+    return !$this->isFormLocked && ($this->viewOnly || $this->editingKey !== null || $this->layar === 'form');
+}
+
+public function tambahEntri(): void
+{
+    if ($this->isFormLocked || $this->disabled) { /* toast + return */ }
+    $this->cancelEdit();     // kosongkan formulir (sekaligus balik ke daftar)…
+    $this->layar = 'form';   // …lalu naikkan formulirnya
+}
+
+public function kembaliKeDaftar(): void { $this->cancelEdit(); }
+```
+
+**Kunci polanya ada di reset:** method `reset*()` yang mengosongkan formulir ikut menyetel
+`$this->layar = 'daftar'`. Dengan begitu SETIAP jalur yang mengosongkan formulir — Simpan
+Draft, finalize/TTD, batal edit, hapus entri yang sedang dibuka — otomatis kembali ke daftar
+tanpa perlu diingat satu per satu. `openModal()` juga menyetelnya ke `'daftar'`.
+
+Di markup: formulir dibungkus `@if ($this->diForm())`, daftar dibungkus
+`@unless ($this->diForm())`, dan isi footer bercabang mengikuti keduanya.
+
+### Cara memverifikasi (jangan cuma lihat "tidak error")
+
+`php -l` maupun `Blade::compileString` TIDAK menangkap kerusakan berkas Volt, dan halaman
+yang tetap ter-render belum berarti layarnya berpindah. Ukur tiga hal lewat `Livewire::test`:
+
+1. render `daftar` → `tambahEntri` → `kembaliKeDaftar` tidak melempar;
+2. **isian formulir benar-benar hilang** di layar daftar — hitung `wire:model` pada HTML
+   kedua layar (harus 0 vs puluhan). Ini yang menangkap "konversi palsu" (12 berkas sempat
+   lolos render tapi tak menyembunyikan apa pun);
+3. tombol ada di layar yang benar (`saveDraft` 0 di daftar, `tambahEntri` 0 di formulir).
+
 ## 3. Siklus hidup entri (BAKU)
 
 ```

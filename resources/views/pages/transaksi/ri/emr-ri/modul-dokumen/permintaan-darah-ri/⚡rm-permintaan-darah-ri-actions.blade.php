@@ -29,6 +29,9 @@ new class extends Component {
 
     public array $form = [];
     public ?string $editingKey = null;   // id entri yang sedang diedit; null = entri baru
+
+    // Layar aktif di modal: 'daftar' (grid entri) atau 'form' (tambah/edit/lihat).
+    public string $layar = 'daftar';
     public bool $viewOnly = false;        // entri terkunci ditampilkan read-only
 
     public array $renderVersions = [];
@@ -78,6 +81,7 @@ new class extends Component {
         }
 
         $this->resetFormDarah();
+        $this->layar = 'daftar';
         $this->dispatch('open-modal', name: "rm-permintaan-darah-ri-{$this->riHdrNo}");
     }
 
@@ -497,6 +501,30 @@ new class extends Component {
         $this->prefillDariEmr();
         $this->resetValidation();
         $this->incrementVersion('modal-permintaan-darah-ri');
+        $this->layar = 'daftar';   // mengosongkan formulir = kembali ke daftar
+    }
+
+    /** Layar formulir sedang tampil? Saat terkunci, formulir tak pernah dirender. */
+    public function diForm(): bool
+    {
+        return !$this->isFormLocked && ($this->viewOnly || $this->editingKey !== null || $this->layar === 'form');
+    }
+
+    /** Buka formulir kosong untuk entri baru. */
+    public function tambahEntri(): void
+    {
+        if ($this->isFormLocked || $this->disabled) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menambah entri.');
+            return;
+        }
+        $this->resetFormDarah();
+        $this->layar = 'form';
+    }
+
+    /** Tutup formulir, kembali ke daftar entri. */
+    public function kembaliKeDaftar(): void
+    {
+        $this->resetFormDarah();
     }
 
     /** Set "Diperlukan" (tanggal + jam) baris jenis darah ke waktu sekarang. */
@@ -571,6 +599,7 @@ new class extends Component {
                 @endif
 
                 {{-- ── BAGIAN 1: DATA KLINIS ── --}}
+                @if ($this->diForm())
                 <x-border-form title="Data Klinis Pasien" align="start" bgcolor="bg-surface-soft">
                     <fieldset @disabled($formReadOnly)>
                         <div class="grid grid-cols-1 gap-3 mt-3 md:grid-cols-2 xl:grid-cols-4 items-start">
@@ -747,6 +776,8 @@ new class extends Component {
                 </x-border-form>
 
                 {{-- ── DAFTAR PERMINTAAN ── --}}
+                @endif
+                @unless ($this->diForm())
                 @php $list = $dataDaftarRi['permintaanDarahRI'] ?? []; @endphp
                 <x-border-form title="Riwayat Permintaan Darah" align="start" bgcolor="bg-surface-soft">
                     <div class="mt-2 overflow-x-auto">
@@ -863,13 +894,15 @@ new class extends Component {
                         </table>
                     </div>
                 </x-border-form>
+                @endunless
 
             </div>
 
             {{-- FOOTER --}}
             <div class="sticky bottom-0 z-10 px-6 py-4 border-t bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
+                @if ($this->diForm())
                 <div class="flex justify-end gap-3">
-                    <x-secondary-button wire:click="closeModal">Tutup</x-secondary-button>
+                    <x-secondary-button wire:click="kembaliKeDaftar">Kembali ke Daftar</x-secondary-button>
                     @if (!$formReadOnly)
                         @if ($editingKey)
                             <x-secondary-button wire:click="resetFormDarah">Batal Edit</x-secondary-button>
@@ -880,6 +913,20 @@ new class extends Component {
                         </x-primary-button>
                     @endif
                 </div>
+                @else
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                        @unless ($isFormLocked)
+                            <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
+                                wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Tambah Entri
+                            </x-primary-button>
+                        @endunless
+                    </div>
+                @endif
             </div>
 
         </div>

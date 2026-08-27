@@ -1199,7 +1199,7 @@ new class extends Component {
             <div class="sticky bottom-0 z-10 px-6 py-4 border-t shrink-0 bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
                 @if ($this->diForm())
                 <div class="flex justify-end gap-3">
-                    <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                    <x-secondary-button type="button" wire:click="kembaliKeDaftar">Kembali ke Daftar</x-secondary-button>
                     @if (!$isFormLocked && !$viewOnly)
                         @if ($editingKey)
                             <x-secondary-button type="button" wire:click="cancelEdit">Batal Edit</x-secondary-button>
