@@ -1089,7 +1089,7 @@ new class extends Component {
                                         · Petugas: {{ $entri['ttd'] ?: '-' }}
                                     </div>
                                 </div>
-                                <div class="flex flex-col items-center gap-2">
+                                <div class="flex flex-wrap items-center justify-center gap-1.5">
                                     <div class="flex items-center justify-center gap-2">
                                         @if ($rowFinal)
                                             <x-secondary-button type="button" wire:click="viewEntry('{{ $rowKey }}')" class="px-3 py-1.5 text-sm">Lihat</x-secondary-button>

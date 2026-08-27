@@ -1364,7 +1364,7 @@ new class extends Component {
                                             @endif
                                         </td>
                                         <td class="ds-c">
-                                            <div class="flex flex-col items-center gap-2">
+                                            <div class="flex flex-wrap items-center justify-center gap-1.5">
                                                 {{-- Baris atas: aksi non-destruktif --}}
                                                 <div class="flex items-center justify-center gap-2">
                                                     @if (!$isFinal && !$isFormLocked && $idEntri)
