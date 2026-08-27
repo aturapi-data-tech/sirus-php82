@@ -1596,8 +1596,8 @@ new class extends Component {
                                                 @endif
                                             </div>
                                         </td>
-                                        <td class="px-4 py-3 text-center align-middle" @click.stop>
-                                            <div class="flex flex-col items-center gap-2">
+                                        <td class="px-4 py-3 text-center align-middle whitespace-nowrap [&_button]:px-3 [&_button]:py-1.5 [&_button]:text-xs [&_button]:gap-1 [&_svg]:w-4 [&_svg]:h-4" @click.stop>
+                                            <div class="flex flex-wrap items-center justify-center gap-1.5">
                                                 {{-- Baris atas: aksi non-destruktif (Lanjut/Lihat/Cetak) --}}
                                                 <div class="flex items-center justify-center gap-2">
                                                 @if (!$isFinal && !$isFormLocked && $id)

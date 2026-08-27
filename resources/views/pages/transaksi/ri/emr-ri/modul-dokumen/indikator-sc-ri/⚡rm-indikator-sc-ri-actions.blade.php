@@ -849,8 +849,10 @@ new class extends Component {
                                                     {{ $rowKey ?: '-' }}
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
-                                                    {{ $yaCount }}/{{ count($indikatorPertanyaan) }} Ya
-                                                    <span class="block text-xs text-muted-soft">{{ \Illuminate\Support\Str::limit($indikasiRingkas, 40) ?: '-' }}</span>
+                                                    <span class="whitespace-nowrap">{{ $yaCount }}/{{ count($indikatorPertanyaan) }} Ya</span>
+                                                    {{-- Indikasi dipotong satu baris: kolom ini ringkasan, detailnya ada di baris expand. --}}
+                                                    <span class="block max-w-[220px] text-xs truncate text-muted-soft"
+                                                        title="{{ $indikasiRingkas ?: '-' }}">{{ $indikasiRingkas ?: '-' }}</span>
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
                                                     @if (!empty($entry['ttd']))
@@ -866,8 +868,8 @@ new class extends Component {
                                                         <x-badge variant="warning">Draft</x-badge>
                                                     @endif
                                                 </td>
-                                                <td class="px-4 py-3 text-center align-middle" @click.stop>
-                                                    <div class="flex flex-col items-center gap-2">
+                                                <td class="px-4 py-3 text-center align-middle whitespace-nowrap [&_button]:px-3 [&_button]:py-1.5 [&_button]:text-xs [&_button]:gap-1 [&_svg]:w-4 [&_svg]:h-4" @click.stop>
+                                                    <div class="flex flex-wrap items-center justify-center gap-1.5">
                                                         <div class="flex items-center justify-center gap-2">
                                                         @if (!$isFinal && !$isFormLocked)
                                                             <x-primary-button type="button" wire:click="editEntry('{{ $rowKey }}')" wire:loading.attr="disabled" wire:target="editEntry('{{ $rowKey }}')" class="gap-1.5" title="Lanjutkan mengisi entri ini">

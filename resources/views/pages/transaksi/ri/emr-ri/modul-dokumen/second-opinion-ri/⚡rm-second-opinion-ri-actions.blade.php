@@ -979,8 +979,8 @@ new class extends Component {
                                                         <x-badge variant="warning">Draft</x-badge>
                                                     @endif
                                                 </td>
-                                                <td class="px-4 py-3 align-middle text-center" @click.stop>
-                                                    <div class="flex flex-col items-center gap-2">
+                                                <td class="px-4 py-3 align-middle text-center whitespace-nowrap [&_button]:px-3 [&_button]:py-1.5 [&_button]:text-xs [&_button]:gap-1 [&_svg]:w-4 [&_svg]:h-4" @click.stop>
+                                                    <div class="flex flex-wrap items-center justify-center gap-1.5">
                                                         {{-- Baris atas: aksi non-destruktif --}}
                                                         <div class="flex items-center justify-center gap-2">
                                                         @if (!$isFinal && !$isFormLocked)
