@@ -780,6 +780,10 @@ new class extends Component {
 
                                                 <x-slot name="content">
                                                     <div class="p-2 space-y-2">
+                                                        {{-- Kepala menu: pasien yang dituju aksi-aksi di bawah ini --}}
+                                                        <x-list.identitas-aksi :regNo="$row->reg_no" :nama="$row->reg_name" :sex="$row->sex"
+                                                            jalur="UGD" />
+
                                                         <div class="grid grid-cols-2 gap-1">
 
                                                             {{-- Rekam Medis — Perawat, Dokter, Admin, Casemix, Mr (view),
@@ -845,9 +849,7 @@ new class extends Component {
                                                                                 stroke-linejoin="round"
                                                                                 d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
                                                                         </svg>
-                                                                        <span>Administrasi<br>
-                                                                            <span
-                                                                                class="font-semibold">{{ $row->reg_name }}</span>
+                                                                        <span>Administrasi
                                                                         </span>
                                                                     </div>
                                                                 </x-dropdown-link>

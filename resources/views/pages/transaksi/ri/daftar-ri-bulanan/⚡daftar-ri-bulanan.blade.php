@@ -536,6 +536,10 @@ new class extends Component {
                                                 <x-slot name="content">
                                                     <div class="p-2 space-y-2">
 
+                                                        {{-- Kepala menu: pasien yang dituju aksi-aksi di bawah ini --}}
+                                                        <x-list.identitas-aksi :regNo="$r->reg_no" :nama="$r->reg_name" :sex="$r->sex"
+                                                            jalur="Rawat Inap" />
+
                                                         {{-- GRID 2 KOLOM --}}
                                                         <div class="grid grid-cols-2 gap-1">
 
@@ -554,8 +558,7 @@ new class extends Component {
                                                                                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                                             </svg>
                                                                             <span>
-                                                                                Kirim iDRG / INACBG <br>
-                                                                                <span class="font-semibold">{{ $r->reg_name }}</span>
+                                                                                Kirim iDRG / INACBG
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>

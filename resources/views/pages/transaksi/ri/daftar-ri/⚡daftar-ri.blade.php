@@ -719,6 +719,10 @@ new class extends Component {
 
                                                 <x-slot name="content">
                                                     <div class="p-2 space-y-2">
+                                                        {{-- Kepala menu: pasien yang dituju aksi-aksi di bawah ini --}}
+                                                        <x-list.identitas-aksi :regNo="$row->reg_no" :nama="$row->reg_name" :sex="$row->sex"
+                                                            jalur="Rawat Inap" />
+
                                                         <div class="grid grid-cols-2 gap-1">
 
                                                             {{-- Pendaftaran Ubah — Mr, Admin, Supervisor Tu --}}
@@ -734,9 +738,7 @@ new class extends Component {
                                                                                 stroke-linejoin="round"
                                                                                 d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2.5 2.5 0 113.536 3.536L12.536 16.536a4 4 0 01-1.414.95L7 19l1.514-4.122A4 4 0 019 13z" />
                                                                         </svg>
-                                                                        <span>Pendaftaran Ubah<br>
-                                                                            <span
-                                                                                class="font-semibold">{{ $row->reg_name }}</span>
+                                                                        <span>Pendaftaran Ubah
                                                                         </span>
                                                                     </div>
                                                                 </x-dropdown-link>
@@ -755,9 +757,7 @@ new class extends Component {
                                                                                 stroke-linejoin="round"
                                                                                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                                                                         </svg>
-                                                                        <span>Rekam Medis RI<br>
-                                                                            <span
-                                                                                class="font-semibold">{{ $row->reg_name }}</span>
+                                                                        <span>Rekam Medis RI
                                                                         </span>
                                                                     </div>
                                                                 </x-dropdown-link>
@@ -797,9 +797,7 @@ new class extends Component {
                                                                                 stroke-linejoin="round"
                                                                                 d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
                                                                         </svg>
-                                                                        <span>Administrasi<br>
-                                                                            <span
-                                                                                class="font-semibold">{{ $row->reg_name }}</span>
+                                                                        <span>Administrasi
                                                                         </span>
                                                                     </div>
                                                                 </x-dropdown-link>

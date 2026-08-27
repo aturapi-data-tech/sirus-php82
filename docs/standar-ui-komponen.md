@@ -254,6 +254,34 @@ Acuan tampilan: `transaksi/rj/pelayanan-rj`. Urutan baku 4 baris:
   precedence Tailwind). Oper hanya `class="min-w-0"` bila perlu.
 - Beda dari `<x-pdf.identitas-pasien>` (cetak, berbasis `<table>`).
 
+### `<x-list.identitas-aksi>` — kepala menu aksi (tombol titik-tiga)
+
+Anak pertama isi dropdown aksi di list transaksi — **8 halaman**: Pelayanan RJ/UGD,
+Daftar RJ/UGD/RI, dan tiga list bulanan yang jadi tab pasien Casemix (Daftar RJ/UGD/RI
+Bulanan). Isinya:
+**No. RM → Nama + ikon gender → badge jalur**. Menjawab satu pertanyaan — menu ini berlaku
+untuk pasien yang mana.
+
+```blade
+<x-slot name="content">
+    <div class="p-2 space-y-2">
+        <x-list.identitas-aksi :regNo="$row->reg_no" :nama="$row->reg_name" :sex="$row->sex"
+            jalur="Rawat Jalan" />
+        …butir menu…
+```
+
+- Nama pasien disebut **SEKALI di kepala menu**, JANGAN diulang di tiap butir. Pola lama
+  `Administrasi<br><span class="font-semibold">{{ $row->reg_name }}</span>` dibuang: dulu
+  hanya 6 dari 21 butir memakainya, sehingga nama muncul-hilang tanpa pola. Butir menu
+  cukup berisi nama aksinya (subjudul statis seperti `Formulir & Consent` tetap boleh).
+- `jalur` opsional: `Rawat Jalan` | `UGD` | `Rawat Inap` — tampil sebagai badge di kanan.
+- Ringkas 2 baris karena hidup di dalam dropdown. Untuk kolom PASIEN pakai
+  `<x-list.identitas-pasien>` (4 baris + alamat), untuk cetak `<x-pdf.identitas-pasien>`.
+- Ikon gender sengaja disamakan dgn `<x-list.identitas-pasien>` (♂ biru / ♀ rose).
+- Variabel baris tidak selalu `$row` — `daftar-ri-bulanan` pakai `$r`. Sesuaikan saat menyalin.
+- BELUM baku (masih pola lama): `ri/gizi-ri` dan `penunjang/kamar-operasi`. Kasir &
+  Administrasi RJ/UGD/RI tidak punya menu titik-tiga sama sekali — aksinya tombol langsung.
+
 ### `<x-list.sep-spri>` — nomor SEP & SPRI
 
 ```blade

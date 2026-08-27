@@ -1215,6 +1215,10 @@ new class extends Component {
                                                     <x-slot name="content">
                                                         <div class="p-2 space-y-2">
 
+                                                            {{-- Kepala menu: pasien yang dituju aksi-aksi di bawah ini --}}
+                                                            <x-list.identitas-aksi :regNo="$row->reg_no" :nama="$row->reg_name" :sex="$row->sex"
+                                                                jalur="Rawat Jalan" />
+
                                                             {{-- GRID 2 KOLOM --}}
                                                             <div class="grid grid-cols-2 gap-1">
 
@@ -1232,9 +1236,7 @@ new class extends Component {
                                                                                     d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2.5 2.5 0 113.536 3.536L12.536 16.536a4 4 0 01-1.414.95L7 19l1.514-4.122A4 4 0 019 13z" />
                                                                             </svg>
                                                                             <span>
-                                                                                Pendaftaran Ubah <br>
-                                                                                <span
-                                                                                    class="font-semibold">{{ $row->reg_name }}</span>
+                                                                                Pendaftaran Ubah
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
@@ -1295,9 +1297,7 @@ new class extends Component {
                                                                                     d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                                                             </svg>
                                                                             <span>
-                                                                                Kirim Satu Sehat <br>
-                                                                                <span
-                                                                                    class="font-semibold">{{ $row->reg_name }}</span>
+                                                                                Kirim Satu Sehat
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
