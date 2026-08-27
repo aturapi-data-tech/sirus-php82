@@ -443,6 +443,67 @@ Induk **wajib** sediakan method `sign`/`clear` (default `ttdSaya`/`hapusTtd`) de
 
 ---
 
+## 8. Combobox (`<x-combobox>`)
+
+Semua combobox ketik-saring memakai **satu** basis: `resources/views/components/combobox.blade.php`.
+Pemakai tidak memanggilnya langsung, melainkan lewat pembungkus yang membawa sumber datanya:
+
+| Pembungkus | Sumber | Yang disimpan |
+|---|---|---|
+| `<x-catatan-signa-combobox>` | `rsmst_signa_catatans` (dikirim induk) | teks |
+| `<x-ppa-combobox>` | `users.myuser_name` | teks |
+| `<x-rekonsiliasi-obat-combobox>` | `immst_products` (cache 30 mnt) | teks |
+| `<x-ruangan-combobox>` | `rsmst_rooms` / `rsmst_polis` (cache 30 mnt) | teks **+ id** kalau cocok master |
+
+### Aturan pokok: yang diketik ADALAH nilainya
+
+Daftar itu bantuan ketik, **bukan pagar**. Isian di luar daftar tetap sah dan tersimpan apa
+adanya — obat bawaan pasien dari luar RS, catatan signa tak baku, ruangan yang belum
+terdaftar di master. Komponen **tidak pernah** mengubah, mengembalikan, atau menghapus
+ketikan petugas. Nilainya diikat `wire:model` langsung di input.
+
+`wire-model-id` menambah satu hal saja: selama teks di kotak **cocok persis** dengan salah
+satu baris daftar, id-nya ikut disimpan; begitu teksnya menyimpang, id dikosongkan. Jadi id
+itu bonus (tautan ke master kalau kebetulan cocok), bukan syarat, dan tak pernah ada id basi
+yang menunjuk baris lain dari yang tertulis.
+
+> **Konsekuensi untuk induk:** yang diwajibkan di `rules()` harus **teksnya**, bukan id-nya.
+> Form Pindah Antar Ruang RI dulu mewajibkan `keRoomId` — itu diam-diam melarang ruangan yang
+> belum terdaftar, jadi sekarang yang wajib `keRoomDesc`. Kalau butuh id yang **dijamin** ada
+> (mis. memesan bed), itu pekerjaan `<livewire:lov.room.lov-room>`, bukan komponen ini.
+
+### Enter
+
+Enter **tidak** memilih baris kecuali ada yang tersorot lewat panah/hover — ia menjalankan
+`enter-action`, karena yang diketik sudah jadi nilainya. Tab sama: mengambil baris yang
+tersorot (kalau ada) lalu fokus tetap lanjut ke isian berikutnya.
+
+**JANGAN menyalakan sorot-otomatis pada baris teratas.** Terdengar membantu, tapi ia MEREBUT
+Enter dari `enter-action` di 6 form (rekonsiliasi obat RI/UGD, pelaporan ESO RI/UGD,
+pengkajian dokter RI) yang memakai Enter untuk **menambah baris**.
+
+### Enter di form entri
+
+Konvensi repo: **semua isian dalam satu baris entri memakai Enter untuk aksi commit yang sama.**
+Combobox lewat `enter-action`, input biasa lewat `wire:keydown.enter.prevent`.
+
+```blade
+{{-- baris entri: Enter = tambah baris --}}
+<x-rekonsiliasi-obat-combobox wire-model="formEntryRekonsiliasi.namaObat"
+    enter-action="$wire.addRekonsiliasiObat()" :error="$errors->has('formEntryRekonsiliasi.namaObat')" />
+<x-text-input wire:model="formEntryRekonsiliasi.dosis" wire:keydown.enter.prevent="addRekonsiliasiObat" />
+
+{{-- form pindah/transfer: Enter = simpan entri; nama jadi nilai, id ikut kalau cocok --}}
+<x-ruangan-combobox wire-model="newPindah.keRoomId" wire-model-nama="newPindah.keRoomDesc"
+    enter-action="$wire.save()" :error="$errors->has('newPindah.keRoomDesc')" />
+```
+
+### Lain-lain
+
+- Dropdown wajib tetap `wire:ignore` — lihat komentar di komponennya.
+- `pick()` mengembalikan fokus ke kotak; jangan menambah pemanggilan `pick()` dari `blur`,
+  karena fokus yang ditarik balik dari `blur` bikin Tab selamanya mental ke kotak itu.
+
 ## Aturan Umum
 
 1. **Jangan pakai `!important` override** — pilih komponen yang tepat

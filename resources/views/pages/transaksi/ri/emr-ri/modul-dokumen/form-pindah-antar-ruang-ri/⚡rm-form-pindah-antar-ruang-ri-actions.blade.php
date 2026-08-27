@@ -186,7 +186,8 @@ new class extends Component {
     {
         $rules = [
             'newPindah.tglPindah' => 'required|date_format:d/m/Y H:i:s',
-            'newPindah.keRoomId' => 'required|string',
+            // Yang wajib NAMA ruangannya. keRoomId cuma tautan ke master dan sengaja
+            // tidak diwajibkan: ruangan yang belum terdaftar boleh diketik apa adanya.
             'newPindah.keRoomDesc' => 'required|string|max:200',
             'newPindah.alasanPindah' => 'required|string|max:500',
         ];
@@ -213,7 +214,6 @@ new class extends Component {
         return [
             'newPindah.tglPindah' => 'Tanggal pindah',
             'newPindah.tglTerima' => 'Tanggal terima',
-            'newPindah.keRoomId' => 'Ruang tujuan',
             'newPindah.keRoomDesc' => 'Ruang tujuan',
             'newPindah.alasanPindah' => 'Alasan pindah',
         ];
@@ -266,11 +266,9 @@ new class extends Component {
         // Validasi logistik (ruang & alasan) SEBELUM set TTD — agar TTD tak "nyangkut" tanpa tersimpan.
         // (tglPindah di-auto-set di bawah, tak perlu divalidasi di sini)
         $this->validateWithToast([
-            'newPindah.keRoomId' => 'required',
             'newPindah.keRoomDesc' => 'required',
             'newPindah.alasanPindah' => 'required',
         ], ['required' => ':attribute wajib diisi sebelum TTD Pengirim.'], [
-            'newPindah.keRoomId' => 'Ke Ruangan',
             'newPindah.keRoomDesc' => 'Ke Ruangan',
             'newPindah.alasanPindah' => 'Alasan Pindah',
         ]);
@@ -805,8 +803,8 @@ new class extends Component {
                                              belum sempat diperbarui saat form ini diisi. --}}
                                         <x-ruangan-combobox wire-model="newPindah.dariRoomId"
                                             wire-model-nama="newPindah.dariRoomDesc"
-                                            :nilai="$newPindah['dariRoomId'] ?? null"
-                                            :error="$errors->has('newPindah.dariRoomId') || $errors->has('newPindah.dariRoomDesc')"
+                                            enter-action="$wire.save()"
+                                            :error="$errors->has('newPindah.dariRoomDesc')"
                                             placeholder="Ketik nama ruangan asal…" />
                                     @else
                                         <div
@@ -816,7 +814,7 @@ new class extends Component {
                                             </span>
                                         </div>
                                     @endif
-                                    <x-input-error :messages="$errors->get('newPindah.dariRoomId')" class="mt-1" />
+                                    <x-input-error :messages="$errors->get('newPindah.dariRoomDesc')" class="mt-1" />
                                 </div>
 
                                 <div>
@@ -825,9 +823,9 @@ new class extends Component {
                                         {{-- Ruangan asal disembunyikan: pindah ke ruangan yang sama tak punya arti. --}}
                                         <x-ruangan-combobox wire-model="newPindah.keRoomId"
                                             wire-model-nama="newPindah.keRoomDesc"
-                                            :nilai="$newPindah['keRoomId'] ?? null"
+                                            enter-action="$wire.save()"
                                             :kecuali="$newPindah['dariRoomId'] ?? null"
-                                            :error="$errors->has('newPindah.keRoomId') || $errors->has('newPindah.keRoomDesc')"
+                                            :error="$errors->has('newPindah.keRoomDesc')"
                                             placeholder="Ketik nama ruangan tujuan…" />
                                     @elseif (!empty($newPindah['keRoomDesc']))
                                         <div
@@ -842,7 +840,6 @@ new class extends Component {
                                     @else
                                         <p class="text-sm italic text-muted-soft">Belum dipilih.</p>
                                     @endif
-                                    <x-input-error :messages="$errors->get('newPindah.keRoomId')" class="mt-1" />
                                     <x-input-error :messages="$errors->get('newPindah.keRoomDesc')" class="mt-1" />
                                 </div>
                             </div>
