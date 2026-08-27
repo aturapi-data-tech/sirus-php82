@@ -136,11 +136,34 @@ new class extends Component {
     {
         $this->kdJnsObat = (string) ($ao['kdJnsObat'] ?? '1');
         $this->iterasi = (string) ($ao['iterasi'] ?? '0');
-        $this->noResep = (string) ($ao['noResep'] ?? '');
+        // Klaim lama menampilkan nomor yang BENAR-BENAR dikirim, bukan hasil hitung
+        // ulang — kalau aturannya pernah berubah, jejaknya tetap jujur.
+        $this->noResep = (string) ($ao['noResep'] ?? '') ?: self::noResepDari($this->rjNo);
         $this->noSjpApotek = (string) ($ao['noSjp'] ?? '');
         $this->statusKlaim = (string) ($ao['status'] ?? ($this->noSjpApotek !== '' ? 'terkirim' : 'draft'));
         // obatList & permintaanRacikan TIDAK diisi di sini — keduanya cermin yang
         // dibaca ulang oleh segarkanDaftar() supaya cuma ada satu jalur muat.
+    }
+
+    /**
+     * No. Resep apotek = 5 digit terakhir No. RJ. TIDAK BISA DIUBAH PETUGAS.
+     *
+     * BPJS menuntut NORESEP maksimal 5 digit dan TIDAK BOLEH SAMA dalam satu bulan
+     * klaim (aturan tak tertulis di Trust Mark; checklist UAT mengujinya di butir 9.8).
+     * Menurunkannya dari rj_no membuat keunikan itu terjamin dengan sendirinya —
+     * rj_no primary key, dan tabrakan baru mungkin bila ada dua No. RJ berselisih
+     * TEPAT 100.000 dalam bulan yang sama, yang berarti ~100 ribu kunjungan sebulan
+     * (nyatanya ~2.600). Jadi tak perlu pengecekan lintas-bulan sama sekali.
+     *
+     * rj_no sendiri tak bisa dipakai utuh: 573.462 baris sudah 6 digit.
+     *
+     * Sumber lama "resepNo dari e-resep" DIBUANG — EresepJson::lembar() memang selalu
+     * mengembalikan resepNo null untuk jalur RJ (penomoran lembar hanya ada di RI),
+     * jadi cabang itu tak pernah sekali pun terpakai dan cuma menyesatkan pembaca.
+     */
+    private static function noResepDari(?string $rjNo): string
+    {
+        return substr(preg_replace('/\D/', '', (string) $rjNo), -5);
     }
 
     /** Bibit daftar obat dari obat KRONIS rjobats (dipakai bila belum ada draft). */
@@ -215,15 +238,7 @@ new class extends Component {
             ];
         }
 
-        // No. resep apotek dari e-resep bila ada; fallback 5 digit dari No. RJ
-        // (BPJS batasi 5 digit & unik per bulan — petugas boleh mengubah).
-        $lembar = EresepJson::lembar($data);
-        $noResep = (string) ($lembar[0]['resepNo'] ?? '');
-        if ($noResep === '') {
-            $noResep = substr(preg_replace('/\D/', '', (string) $this->rjNo), -5);
-        }
-
-        $this->noResep = $noResep;
+        $this->noResep = self::noResepDari($this->rjNo);
 
         if (!$obatBibit) {
             return;
@@ -565,9 +580,13 @@ new class extends Component {
                                 </x-select-input>
                             </div>
                             <div class="sm:col-span-3">
-                                <x-input-label value="No. Resep (maks 5)" />
-                                <x-text-input wire:model="noResep" maxlength="5" @disabled($statusKlaim === 'terkirim')
-                                    class="w-full mt-1" />
+                                <x-input-label value="No. Resep" />
+                                {{-- Read-only: diturunkan dari No. RJ supaya syarat BPJS "tak boleh sama
+                                   | dalam satu bulan klaim" terpenuhi dengan sendirinya. Lihat noResepDari(). --}}
+                                <x-text-input wire:model="noResep" readonly tabindex="-1"
+                                    title="Otomatis dari 5 digit terakhir No. RJ — dijamin unik, tidak bisa diubah"
+                                    class="w-full mt-1 cursor-not-allowed opacity-70" />
+                                <p class="mt-1 text-xs text-muted-soft">otomatis dari No. RJ</p>
                             </div>
                         </div>
                     </div>
