@@ -32,6 +32,7 @@
 
 use Livewire\Component;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -219,6 +220,24 @@ new class extends Component {
 
         $this->daftarRJ = $baris;
         $this->waktuMuat = Carbon::now(env('APP_TIMEZONE'))->format('d/m/Y H:i:s');
+    }
+
+    /**
+     * Modal detail baru saja mengecek ulang satu Task — segarkan baris salinannya di
+     * sini juga. Tanpa ini, menutup modal mengembalikan badge ke keadaan basi dan
+     * petugas harus Muat Ulang (yang memanggil API untuk SEMUA baris) hanya untuk
+     * melihat satu perubahan yang sudah diketahui.
+     */
+    #[On('rujukan-keluar.status-diperbarui')]
+    public function perbaruiStatusBaris(string $taskId, string $statusTask, string $keputusan): void
+    {
+        foreach ($this->daftarRujukan as $indeks => $baris) {
+            if (($baris['taskId'] ?? '') === $taskId) {
+                $this->daftarRujukan[$indeks]['statusTask'] = $statusTask;
+                $this->daftarRujukan[$indeks]['keputusan'] = $keputusan;
+                return;
+            }
+        }
     }
 
     public function bukaDetail(int $indeks): void
