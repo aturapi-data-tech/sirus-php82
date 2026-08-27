@@ -1,4 +1,4 @@
-{{-- resources/views/components/rujukan/kandidat-tabel.blade.php
+{{-- resources/views/components/rujukan-kompetensi/kandidat-tabel.blade.php
 
     Tabel kandidat faskes tujuan — SATU bentuk untuk keenam panel Rujukan
     Berbasis Kompetensi (RJ/UGD/RI, jalur BPJS-SISRUTE maupun FHIR-SATUSEHAT).

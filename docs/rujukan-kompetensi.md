@@ -367,7 +367,7 @@ direaktivasi). Penanganan: koordinasi dengan **TI BPJS kantor wilayah setempat**
 5. **LOV diagnosa memaksa ICD-10 4-karakter.**
 6. **Nomor rujukan SATUSEHAT + BPJS wajib tersimpan di DB** (syarat UAT); verifikasi keberadaan identifier sebelum menyatakan sukses.
 7. Dua format tanggal berbeda dalam satu alur (dd-mm-yyyy vs yyyy-mm-dd) — helper terpusat.
-9. **Tabel kandidat = satu komponen untuk enam panel** — `resources/views/components/rujukan/kandidat-tabel.blade.php`.
+9. **Tabel kandidat = satu komponen untuk enam panel** — `resources/views/components/rujukan-kompetensi/kandidat-tabel.blade.php`.
    Dulu jalur BPJS dan jalur FHIR punya tabelnya masing-masing: yang satu menempelkan alamat, kelas, dan beban
    ke sel nama, yang satu memberi jarak kolom sendiri dan tak menampilkan alamat sama sekali; angka yang sama pun
    bernama lain ("PPK/SATUSEHAT" vs "Org ID"). Bentuk bakunya sekarang: **No | Faskes Tujuan | Pilih**, dengan
