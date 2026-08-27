@@ -459,8 +459,9 @@ new class extends Component {
         class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div class="flex-1 space-y-3">
-                <div class="flex items-center gap-2">
-                    <h3 class="text-base font-semibold text-ink dark:text-gray-200">
+                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
+                <div class="flex items-baseline flex-1 gap-2 min-w-0">
+                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">
                         General Consent
                     </h3>
                     @if ($gcSigned)
@@ -468,11 +469,8 @@ new class extends Component {
                     @else
                         <x-badge variant="warning">Belum ditandatangani</x-badge>
                     @endif
+                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Persetujuan umum pasien terhadap pelayanan UGD, hak & tanggung jawab, serta perlindungan data.</p>
                 </div>
-
-                <p class="text-base text-muted dark:text-gray-400">
-                    Persetujuan umum pasien terhadap pelayanan UGD, hak & tanggung jawab, serta perlindungan data.
-                </p>
 
                 @if ($gcSigned)
                     <dl class="grid grid-cols-1 gap-2 text-base sm:grid-cols-3 text-muted dark:text-gray-300">
@@ -516,36 +514,35 @@ new class extends Component {
     <x-modal name="rm-general-consent-ugd-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
             wire:key="{{ $this->renderKey('modal-general-consent-ugd', [$rjNo ?? 'new']) }}">
-
-            {{-- HEADER --}}
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
+            {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
+            <div class="relative px-6 py-2.5 border-b border-hairline dark:border-gray-700">
                 <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
                     style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
                 </div>
 
-                <div class="relative flex items-start justify-between gap-4">
-                    <div>
-                        <div class="flex items-center gap-3">
+                <div class="relative flex items-center gap-3 min-w-0">
+                    <div class="flex items-center flex-1 gap-3 min-w-0">
+                        <div class="flex items-center gap-2.5 min-w-0">
                             <div
-                                class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
-                                <svg class="w-6 h-6 text-brand-green dark:text-brand-lime" fill="none"
+                                class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-brand-green/10 dark:bg-brand-lime/15">
+                                <svg class="w-4 h-4 text-brand-green dark:text-brand-lime" fill="none"
                                     stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                             </div>
 
-                            <div>
-                                <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">
+                            <div class="flex items-baseline gap-2 min-w-0">
+                                <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">
                                     General Consent
                                 </h2>
-                                <p class="mt-0.5 text-base text-muted dark:text-gray-400">
+                                <p class="truncate text-xs text-muted dark:text-gray-400">
                                     Persetujuan umum pasien UGD — tampilan ini dapat diputar ke arah pasien
                                 </p>
                             </div>
                         </div>
 
-                        <div class="flex flex-wrap gap-2 mt-3">
+                        <div class="flex items-center gap-1.5 ml-auto shrink-0">
                             <x-badge variant="danger">UGD</x-badge>
                             @if ($isFormLocked)
                                 <x-badge variant="danger">Read Only</x-badge>
@@ -553,16 +550,22 @@ new class extends Component {
                         </div>
                     </div>
 
-                    <x-icon-button color="gray" type="button" wire:click="closeModal">
-                        <span class="sr-only">Close</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20"
-                            fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
+                <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-2 shrink-0">
+                    <span class="sr-only">Close</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20"
+                        fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </x-icon-button>
                 </div>
+            </div>
+
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-2">
+                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                    wire:key="gc-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
             </div>
 
             {{-- BODY --}}
@@ -570,8 +573,6 @@ new class extends Component {
                 <div class="max-w-full mx-auto space-y-4">
 
                     {{-- Display Pasien --}}
-                    <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
-                        wire:key="gc-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
 
                     {{-- Isi Persetujuan (partial reusable) — entry pihak akses dirender via slot,
                          langsung di bawah paragraf izin akses info medis --}}

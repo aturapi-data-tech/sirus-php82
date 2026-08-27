@@ -338,8 +338,9 @@ new class extends Component {
     <div class="p-5 border shadow-sm bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-3">
             <div class="flex items-start justify-between gap-4">
-                <div class="flex items-center gap-2">
-                    <h3 class="text-base font-semibold text-ink dark:text-gray-200">
+                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
+                <div class="flex items-baseline flex-1 gap-2 min-w-0">
+                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">
                         Surat Keterangan Kematian
                     </h3>
                     @if (!$this->isPasienMeninggal())
@@ -454,30 +455,34 @@ new class extends Component {
     <x-modal name="rm-surat-kematian-ri-{{ $riHdrNo }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
             wire:key="{{ $this->renderKey('modal-surat-kematian-ri', [$riHdrNo ?? 'new']) }}">
-
-            <div class="flex items-start justify-between gap-4 px-6 py-5 border-b border-hairline dark:border-gray-700">
-                <div>
-                    <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">Surat Keterangan Kematian</h2>
-                    <p class="mt-0.5 text-base text-muted dark:text-gray-400">Rawat Inap</p>
+            {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
+            <div class="flex items-center gap-3 min-w-0 px-6 py-2.5 border-b border-hairline dark:border-gray-700">
+                <div class="flex items-baseline gap-2 min-w-0">
+                    <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">Surat Keterangan Kematian</h2>
+                    <p class="truncate text-xs text-muted dark:text-gray-400">Rawat Inap</p>
                     @if ($isFormLocked)
                         <div class="mt-2"><x-badge variant="danger">Read Only</x-badge></div>
                     @endif
-                </div>
-                <x-icon-button color="gray" type="button" wire:click="closeModal">
+                <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-2 shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd"
                             d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
                             clip-rule="evenodd" />
                     </svg>
                 </x-icon-button>
+                </div>
+            </div>
+
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-2">
+                <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
+                    wire:key="sk-ri-display-pasien-{{ $riHdrNo ?? 'init' }}" />
             </div>
 
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">
                 <div class="max-w-full mx-auto space-y-4">
 
                     {{-- Display Pasien — surat legal, identitas harus terlihat saat mengisi --}}
-                    <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
-                        wire:key="sk-ri-display-pasien-{{ $riHdrNo ?? 'init' }}" />
 
                     <div
                         class="p-6 space-y-4 border shadow-sm bg-canvas border-hairline sm:p-8 rounded-2xl dark:bg-gray-900 dark:border-gray-700">

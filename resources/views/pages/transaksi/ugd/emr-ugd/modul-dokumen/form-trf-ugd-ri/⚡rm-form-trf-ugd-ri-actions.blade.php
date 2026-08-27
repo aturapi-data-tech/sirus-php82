@@ -677,8 +677,9 @@ new class extends Component {
     <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div class="flex-1 space-y-3">
-                <div class="flex items-center gap-2">
-                    <h3 class="text-base font-semibold text-ink dark:text-gray-200">Form Transfer UGD &rarr; RI</h3>
+                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
+                <div class="flex items-baseline flex-1 gap-2 min-w-0">
+                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Form Transfer UGD &rarr; RI</h3>
                     @if ($trfKirim && $trfTerima)
                         <x-badge variant="success">Selesai</x-badge>
                     @elseif ($trfKirim)
@@ -686,10 +687,8 @@ new class extends Component {
                     @else
                         <x-badge variant="warning">Belum diisi</x-badge>
                     @endif
+                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Serah-terima pasien UGD ke ruang rawat inap — dua tahap (TTD Pengirim lalu Penerima).</p>
                 </div>
-                <p class="text-base text-muted dark:text-gray-400">
-                    Serah-terima pasien UGD ke ruang rawat inap — dua tahap (TTD Pengirim lalu Penerima).
-                </p>
                 @if ($trfKirim)
                     <dl class="grid grid-cols-1 gap-2 text-base sm:grid-cols-3 text-muted dark:text-gray-300">
                         <div>
@@ -728,16 +727,23 @@ new class extends Component {
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-form-trf-ugd-ri-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal-trf-ugd-ri', [$rjNo ?? 'new']) }}">
-            {{-- HEADER MODAL --}}
+
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-2">
+                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                    wire:key="trf-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
+            </div>
+
+            {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
             <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-hairline bg-surface-soft dark:border-gray-700">
-                <h2 class="text-xl font-semibold text-ink dark:text-gray-100">Form Transfer UGD &rarr; RI</h2>
-                <x-icon-button color="gray" type="button" wire:click="closeModal">
-                    <span class="sr-only">Close</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd"
-                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                            clip-rule="evenodd" />
-                    </svg>
+                <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Form Transfer UGD &rarr; RI</h2>
+                <x-icon-button class="ml-auto shrink-0" color="gray" type="button" wire:click="closeModal">
+                <span class="sr-only">Close</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clip-rule="evenodd" />
+                </svg>
                 </x-icon-button>
             </div>
 
@@ -745,10 +751,6 @@ new class extends Component {
             <div class="flex-1">
 
             {{-- Display Pasien (selaras General Consent) --}}
-            <div class="px-4 pt-4">
-                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
-                    wire:key="trf-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
-            </div>
         <div
             class="w-full p-4 space-y-6 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
