@@ -99,18 +99,31 @@ yang paling sering dicek petugas tidak tertutup blok judul besar:
 Judulnya sengaja kecil: modal ini sudah dibuka dari tab yang bernama sama, jadi judul besar
 cuma memakan ruang.
 
-**Tombol tutup (X) punya BARIS SENDIRI di paling atas**, di atas display pasien:
+**Judul dan tombol tutup SEBARIS di paling atas** — judul kiri, X kanan, display pasien
+menyusul di bawahnya:
 
 ```blade
-{{-- BARIS TOMBOL TUTUP — barisnya sendiri, tidak menimpa display pasien --}}
-<div class="flex justify-end px-4 pt-3">
-    <x-icon-button color="gray" type="button" wire:click="closeModal"> … </x-icon-button>
+{{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
+<div class="relative px-6 py-2.5 border-b …">
+    <div class="relative flex items-center gap-3 min-w-0">
+        <div class="flex items-center flex-1 gap-3 min-w-0">
+            [ikon w-7] <div class="flex items-baseline gap-2 min-w-0">
+                          <h2 class="truncate shrink-0 text-sm …">Judul</h2>
+                          <p class="truncate text-xs …">Subjudul</p>
+                       </div>
+            <div class="flex items-center gap-1.5 ml-auto shrink-0"> [badge…] </div>
+        </div>
+        <x-icon-button … class="ml-2 shrink-0"> X </x-icon-button>
+    </div>
 </div>
 ```
 
-**Jangan** dibuat mengambang (`absolute` di pembungkus `relative`) — sempat dicoba dan
-hasilnya menimpa kartu display pasien di pojok kanan (menutupi nomor antrian). Baris sendiri
-memberi jeda yang jelas dan tak pernah bertabrakan dengan isi.
+Aturan yang lahir dari percobaan, jangan diulang:
+- **Jangan** membuat X mengambang (`absolute` di pembungkus `relative`) — ia menimpa kartu
+  display pasien dan menutupi nomor antrian.
+- **Jangan** menaruh X di baris terpisah sendiri — barisnya nyaris kosong dan boros ruang.
+- **Jangan** menumpuk judul/subjudul/badge ke bawah; semuanya `truncate` + `min-w-0` supaya
+  memendek, bukan turun baris.
 
 ### Cara memverifikasi (jangan cuma lihat "tidak error")
 

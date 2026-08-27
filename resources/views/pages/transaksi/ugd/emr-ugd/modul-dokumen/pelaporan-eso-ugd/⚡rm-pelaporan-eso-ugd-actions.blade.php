@@ -755,25 +755,7 @@ new class extends Component {
     {{-- ══ MODAL ══ --}}
     <x-modal name="rm-pelaporan-eso-ugd-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]">
-            {{-- BARIS TOMBOL TUTUP — barisnya sendiri, tidak menimpa display pasien --}}
-            <div class="flex justify-end px-4 pt-3">
-                <x-icon-button color="gray" type="button" wire:click="closeModal">
-                    <span class="sr-only">Close</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd"
-                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                            clip-rule="evenodd" />
-                    </svg>
-                </x-icon-button>
-            </div>
-
-            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
-            <div class="px-4 pt-2">
-                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
-                    wire:key="pelaporan-eso-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
-            </div>
-
-            {{-- JUDUL SATU BARIS — judul dipotong, subjudul & badge ke kanan, tak menumpuk ke bawah --}}
+            {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
             <div
                 class="flex items-center justify-between gap-4 px-6 py-4 border-b border-hairline bg-surface-soft dark:border-gray-700">
                 <div class="flex items-center gap-2.5">
@@ -789,7 +771,21 @@ new class extends Component {
                     @if ($isFormLocked)
                         <x-badge variant="danger">Read Only</x-badge>
                     @endif
+                <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-2 shrink-0">
+                    <span class="sr-only">Close</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </x-icon-button>
                 </div>
+            </div>
+
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-2">
+                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                    wire:key="pelaporan-eso-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
             </div>
 
             <div class="flex-1 p-4 space-y-4 sm:p-6"
