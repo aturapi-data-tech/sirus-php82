@@ -178,6 +178,25 @@
 .ds-table-foot { @apply font-sans text-caption; padding:13px 24px; color:var(--muted);
     border-top:1px solid var(--hairline-soft); }
 
+/* Varian rapat — untuk tabel yang hidup di kolom sempit (panel sepertiga layar,
+   mis. kandidat faskes rujukan). Padding 24px milik .ds-table dirancang untuk
+   tabel selebar halaman; di kolom sempit padding itu saja sudah memakan ruang
+   kolom aksi. Sekaligus MELEPAS white-space:nowrap milik .ds-td-* di dalamnya:
+   alamat faskes panjang-panjang, dan nowrap membuat tabel lebih lebar dari
+   kolomnya sehingga tombol pilih terdorong ke luar layar. */
+.ds-table-rapat thead th { padding:8px 10px; }
+.ds-table-rapat tbody td { padding:10px; }
+.ds-table-rapat .ds-td-meta,
+.ds-table-rapat .ds-td-token,
+.ds-table-rapat .ds-td-class { white-space:normal; overflow-wrap:anywhere; }
+
+/* Sakelar pilih di kolom sempit: sakelar di atas, labelnya di bawah. Berjajar
+   mendatar (x-toggle default) butuh ±105px — cukup untuk mendorong kolom aksi
+   ke luar layar pada panel sepertiga lebar. */
+.ds-toggle-tumpuk > div { flex-direction:column; }
+.ds-toggle-tumpuk > div > :not(:first-child) { margin-left:0; margin-top:2px; }
+.ds-toggle-tumpuk > div > span { text-align:center; }
+
 /* Tombol pagination ber-tema (style guide) */
 .ds-page-btn { @apply font-sans font-medium text-sm; display:inline-flex; align-items:center;
     justify-content:center; min-width:38px; height:36px; padding:0 13px; color:var(--body);

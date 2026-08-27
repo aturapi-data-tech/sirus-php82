@@ -367,6 +367,16 @@ direaktivasi). Penanganan: koordinasi dengan **TI BPJS kantor wilayah setempat**
 5. **LOV diagnosa memaksa ICD-10 4-karakter.**
 6. **Nomor rujukan SATUSEHAT + BPJS wajib tersimpan di DB** (syarat UAT); verifikasi keberadaan identifier sebelum menyatakan sukses.
 7. Dua format tanggal berbeda dalam satu alur (dd-mm-yyyy vs yyyy-mm-dd) — helper terpusat.
+9. **Tabel kandidat = satu komponen untuk enam panel** — `resources/views/components/rujukan/kandidat-tabel.blade.php`.
+   Dulu jalur BPJS dan jalur FHIR punya tabelnya masing-masing: yang satu menempelkan alamat, kelas, dan beban
+   ke sel nama, yang satu memberi jarak kolom sendiri dan tak menampilkan alamat sama sekali; angka yang sama pun
+   bernama lain ("PPK/SATUSEHAT" vs "Org ID"). Bentuk bakunya sekarang: **No | Faskes Tujuan | Pilih**, dengan
+   nama, alamat·kota, lalu meta `Kode BPJS · Org ID · Kelas · jarak · estimasi · beban · bed` — keterangan yang
+   tak dipunyai suatu sumber sekadar tak tampil. Peratanya `App\Support\RujukanTampil::kandidatBaris()`
+   (menerima bentuk SISRUTE maupun FHIR) dan baris "Tujuan: …" memakai `RujukanTampil::infoTujuan()` supaya
+   sebutannya sama dengan tabelnya. Kandidat tanpa kode BPJS hanya dikunci di jalur SISRUTE (`:requireBpjs="true"`)
+   — di jalur FHIR kode BPJS boleh kosong.
+
 8. UAT: ajukan ke Kantor Cabang BPJS; hasil upload ke s.kemkes.go.id/UATRME-SSR; syarat = terimplementasi di sistem (backend+frontend), bukan cuma Postman.
 
 ## 6. Referensi
