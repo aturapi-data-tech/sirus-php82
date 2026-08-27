@@ -625,13 +625,19 @@ new class extends Component {
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
              wire:key="{{ $this->renderKey('modal-pengkajian-awal-bayi-ri', [$riHdrNo ?? 'new']) }}">
 
-            {{-- HEADER --}}
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-4">
+                <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
+                    wire:key="pengkajian-bayi-display-pasien-{{ $riHdrNo }}" />
+            </div>
+
+            {{-- JUDUL RINGKAS --}}
             <div class="px-6 py-4 border-b shrink-0 bg-surface-soft border-hairline dark:border-gray-700">
                 <div class="flex items-start justify-between gap-4">
                     @if ($this->diForm())
-                    <div class="flex items-center gap-3">
-                        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
-                            <svg class="w-6 h-6 text-brand-green dark:text-brand-lime" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <div class="flex items-center gap-2.5">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-green/10 dark:bg-brand-lime/15">
+                            <svg class="w-4 h-4 text-brand-green dark:text-brand-lime" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                         </div>
@@ -660,9 +666,6 @@ new class extends Component {
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">
                 <div class="max-w-full mx-auto space-y-4">
-
-                    <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
-                        wire:key="pengkajian-bayi-display-pasien-{{ $riHdrNo }}" />
 
                     @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 

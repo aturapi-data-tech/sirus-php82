@@ -712,17 +712,23 @@ new class extends Component {
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
             wire:key="{{ $this->renderKey('modal-penolakan-obat-ugd', [$rjNo ?? 'new']) }}">
 
-            {{-- HEADER --}}
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-4">
+                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                    wire:key="po-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
+            </div>
+
+            {{-- JUDUL RINGKAS --}}
+            <div class="relative px-6 py-3 border-b border-hairline dark:border-gray-700">
                 <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
                     style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
                 </div>
 
                 <div class="relative flex items-start justify-between gap-4">
                     <div>
-                        <div class="flex items-center gap-3">
-                            <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/10">
-                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor"
+                        <div class="flex items-center gap-2.5">
+                            <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-red-500/10">
+                                <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round"
                                         d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
@@ -730,17 +736,17 @@ new class extends Component {
                             </div>
 
                             <div>
-                                <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">
+                                <h2 class="font-semibold text-base text-ink dark:text-gray-100">
                                     Surat Pernyataan Penolakan Pengobatan / Obat Tertentu
                                 </h2>
-                                <p class="mt-0.5 text-base text-muted dark:text-gray-400">
+                                <p class="mt-0.5 text-xs text-muted dark:text-gray-400">
                                     Formulir diisi & dijelaskan kepada pasien/keluarga — tampilan dapat diputar ke arah
                                     pasien
                                 </p>
                             </div>
                         </div>
 
-                        <div class="flex flex-wrap gap-2 mt-3">
+                        <div class="flex flex-wrap gap-2 mt-2">
                             <x-badge variant="brand">UGD</x-badge>
                             @if (count($penolakanList) > 0)
                                 <x-badge variant="info">{{ count($penolakanList) }} tersimpan</x-badge>
@@ -768,8 +774,6 @@ new class extends Component {
                 <div class="max-w-full mx-auto space-y-4">
 
                     {{-- Display Pasien --}}
-                    <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
-                        wire:key="po-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
 
                     <div
                         class="p-6 space-y-6 bg-canvas border border-hairline shadow-sm sm:p-8 rounded-2xl dark:bg-gray-900 dark:border-gray-700">

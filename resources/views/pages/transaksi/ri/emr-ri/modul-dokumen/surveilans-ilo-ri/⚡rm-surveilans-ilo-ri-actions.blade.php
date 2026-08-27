@@ -730,13 +730,19 @@ new class extends Component {
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
             wire:key="{{ $this->renderKey('modal-surveilans-ilo-ri', [$riHdrNo ?? 'new', $editingKey ?? 'baru']) }}">
 
-            {{-- HEADER --}}
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-4">
+                <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
+                    wire:key="surveilans-ilo-display-pasien-{{ $riHdrNo }}" />
+            </div>
+
+            {{-- JUDUL RINGKAS --}}
             <div class="px-6 py-4 border-b shrink-0 bg-surface-soft border-hairline dark:border-gray-700">
                 <div class="flex items-start justify-between gap-4">
                     @if ($this->diForm())
-                    <div class="flex items-center gap-3">
-                        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
-                            <svg class="w-6 h-6 text-brand-green dark:text-brand-lime" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <div class="flex items-center gap-2.5">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-green/10 dark:bg-brand-lime/15">
+                            <svg class="w-4 h-4 text-brand-green dark:text-brand-lime" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                             </svg>
                         </div>
@@ -758,9 +764,6 @@ new class extends Component {
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">
                 <div class="w-full space-y-4">
 
-                    <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
-                        wire:key="surveilans-ilo-display-pasien-{{ $riHdrNo }}" />
-
                     @if ($isFormLocked)
                         <div class="px-4 py-2 text-sm border rounded-lg text-amber-800 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
                             Mode tampilan saja (read-only) — pasien sudah pulang / form terkunci.
@@ -776,7 +779,6 @@ new class extends Component {
                             <x-secondary-button type="button" wire:click="cancelEdit" class="px-3 py-1 text-sm">Batal / entri baru</x-secondary-button>
                         </div>
                     @endif
-
 
                     {{-- PANEL KRITERIA KASUS (gaya biru-info standar, default tertutup) --}}
                     <div class="overflow-hidden border border-blue-200 rounded-2xl bg-blue-50 dark:bg-blue-900/20 dark:border-blue-700"

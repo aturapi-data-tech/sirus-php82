@@ -794,18 +794,24 @@ new class extends Component {
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
             wire:key="{{ $this->renderKey('modal-inform-consent-rj', [$rjNo ?? 'new']) }}">
 
-            {{-- HEADER --}}
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-4">
+                <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
+                    wire:key="ic-rj-display-pasien-{{ $rjNo ?? 'init' }}" />
+            </div>
+
+            {{-- JUDUL RINGKAS --}}
+            <div class="relative px-6 py-3 border-b border-hairline dark:border-gray-700">
                 <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
                     style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
                 </div>
 
                 <div class="relative flex items-start justify-between gap-4">
                     <div>
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2.5">
                             <div
-                                class="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-lime/15">
-                                <svg class="w-6 h-6 text-brand-green dark:text-brand-lime" fill="none"
+                                class="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-green/10 dark:bg-brand-lime/15">
+                                <svg class="w-4 h-4 text-brand-green dark:text-brand-lime" fill="none"
                                     stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -813,14 +819,14 @@ new class extends Component {
                             </div>
 
                             <div>
-                                <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">Inform Consent</h2>
-                                <p class="mt-0.5 text-base text-muted dark:text-gray-400">
+                                <h2 class="font-semibold text-base text-ink dark:text-gray-100">Inform Consent</h2>
+                                <p class="mt-0.5 text-xs text-muted dark:text-gray-400">
                                     Persetujuan tindakan medis — tampilan ini dapat diputar ke arah pasien
                                 </p>
                             </div>
                         </div>
 
-                        <div class="flex flex-wrap gap-2 mt-3">
+                        <div class="flex flex-wrap gap-2 mt-2">
                             <x-badge variant="success">Rawat Jalan</x-badge>
                             @if ($icCount > 0)
                                 <x-badge variant="info">{{ $icCount }} tersimpan</x-badge>
@@ -848,8 +854,6 @@ new class extends Component {
                 <div class="max-w-full mx-auto space-y-4">
 
                     {{-- Display Pasien --}}
-                    <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
-                        wire:key="ic-rj-display-pasien-{{ $rjNo ?? 'init' }}" />
 
                     <div
                         class="p-4 space-y-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">

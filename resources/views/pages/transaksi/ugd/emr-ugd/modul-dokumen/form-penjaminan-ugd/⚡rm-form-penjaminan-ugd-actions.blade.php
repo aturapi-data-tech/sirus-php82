@@ -669,9 +669,15 @@ new class extends Component {
     {{-- MODAL FORM --}}
     <x-modal name="rm-form-penjaminan-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal-form-penjaminan', [$rjNo ?? 'new']) }}">
-            {{-- HEADER MODAL --}}
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-4">
+                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                    wire:key="penj-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
+            </div>
+
+            {{-- JUDUL RINGKAS --}}
             <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-hairline bg-surface-soft dark:border-gray-700">
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2.5">
                     <h2 class="text-xl font-semibold text-ink dark:text-gray-100">Form Penjaminan &amp; Orientasi Kamar</h2>
                     <x-badge variant="danger">UGD</x-badge>
                     @if ($penjaminanCount > 0)
@@ -695,10 +701,6 @@ new class extends Component {
             <div class="flex-1">
 
             {{-- Display Pasien (selaras General Consent) --}}
-            <div class="px-4 pt-4">
-                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
-                    wire:key="penj-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
-            </div>
 
             @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
@@ -917,7 +919,6 @@ new class extends Component {
             </section>
 
         </div>
-
 
         {{-- DAFTAR FORM TERSIMPAN (tabel expandable) --}}
         @endif

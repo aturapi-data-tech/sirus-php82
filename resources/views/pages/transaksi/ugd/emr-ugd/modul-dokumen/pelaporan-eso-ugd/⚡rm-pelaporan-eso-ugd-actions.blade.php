@@ -756,9 +756,16 @@ new class extends Component {
     <x-modal name="rm-pelaporan-eso-ugd-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]">
 
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-4">
+                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                    wire:key="pelaporan-eso-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
+            </div>
+
+            {{-- JUDUL RINGKAS --}}
             <div
                 class="flex items-center justify-between gap-4 px-6 py-4 border-b border-hairline bg-surface-soft dark:border-gray-700">
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2.5">
                     <h2 class="text-xl font-semibold text-ink dark:text-gray-100">
                         Formulir Pelaporan Efek Samping Obat
                         <span class="block text-sm font-normal text-muted dark:text-gray-400">
@@ -780,11 +787,6 @@ new class extends Component {
                             clip-rule="evenodd" />
                     </svg>
                 </x-icon-button>
-            </div>
-
-            <div class="px-4 pt-4">
-                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
-                    wire:key="pelaporan-eso-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
             </div>
 
             <div class="flex-1 p-4 space-y-4 sm:p-6"

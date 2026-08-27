@@ -869,9 +869,15 @@ new class extends Component {
     {{-- MODAL FORM --}}
     <x-modal name="rm-edukasi-terintegrasi-ri-{{ $riHdrNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]">
-            {{-- HEADER MODAL --}}
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-4">
+                <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
+                    wire:key="edu-ter-ri-display-pasien-{{ $riHdrNo ?? 'init' }}" />
+            </div>
+
+            {{-- JUDUL RINGKAS --}}
             <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-hairline bg-surface-soft dark:border-gray-700">
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2.5">
                     <h2 class="text-xl font-semibold text-ink dark:text-gray-100">Edukasi Terintegrasi</h2>
                     @if ($jumlahEdukasiTerintegrasi > 0)
                         <x-badge variant="info">{{ $jumlahEdukasiTerintegrasi }} tersimpan</x-badge>
@@ -896,10 +902,6 @@ new class extends Component {
             </div>
 
             {{-- Display Pasien (selaras General Consent) --}}
-            <div class="px-4 pt-4">
-                <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
-                    wire:key="edu-ter-ri-display-pasien-{{ $riHdrNo ?? 'init' }}" />
-            </div>
             <div class="flex-1 p-4 sm:p-6 space-y-4"
                 wire:key="{{ $this->renderKey('modal-edukasi-terintegrasi-ri', [$riHdrNo ?? 'new']) }}">
 

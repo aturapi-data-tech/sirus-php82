@@ -682,26 +682,32 @@ new class extends Component {
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
             wire:key="{{ $this->renderKey('modal-laporan-operasi-rj', [$rjNo ?? 'new']) }}">
 
-            {{-- HEADER --}}
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-4">
+                <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
+                    wire:key="lo-rj-display-pasien-{{ $rjNo ?? 'init' }}" />
+            </div>
+
+            {{-- JUDUL RINGKAS --}}
+            <div class="relative px-6 py-3 border-b border-hairline dark:border-gray-700">
                 <div class="relative flex items-start justify-between gap-4">
                     <div>
-                        <div class="flex items-center gap-3">
-                            <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-rose-500/10">
-                                <svg class="w-6 h-6 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        <div class="flex items-center gap-2.5">
+                            <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-rose-500/10">
+                                <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                                     stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round"
                                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                             </div>
                             <div>
-                                <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">Laporan Operasi (DPJP)</h2>
-                                <p class="mt-0.5 text-base text-muted dark:text-gray-400">
+                                <h2 class="font-semibold text-base text-ink dark:text-gray-100">Laporan Operasi (DPJP)</h2>
+                                <p class="mt-0.5 text-xs text-muted dark:text-gray-400">
                                     PAB 7.2 &amp; 7.4 — tiap entri = 1 laporan operasi; cicil Draft lalu kunci lewat TTD Operator
                                 </p>
                             </div>
                         </div>
-                        <div class="flex flex-wrap gap-2 mt-3">
+                        <div class="flex flex-wrap gap-2 mt-2">
                             <x-badge variant="brand">Rawat Inap</x-badge>
                             @if (count($laporanList) > 0)
                                 <x-badge variant="info">{{ count($laporanList) }} tersimpan</x-badge>
@@ -728,8 +734,6 @@ new class extends Component {
                 <div class="max-w-full mx-auto space-y-4">
 
                     {{-- Display Pasien --}}
-                    <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
-                        wire:key="lo-rj-display-pasien-{{ $rjNo ?? 'init' }}" />
 
                     @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 

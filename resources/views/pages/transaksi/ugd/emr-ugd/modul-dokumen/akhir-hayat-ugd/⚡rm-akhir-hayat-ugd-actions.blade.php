@@ -61,7 +61,6 @@ new class extends Component {
     // Pilihan agama/kepercayaan pasien (untuk kebutuhan spiritual).
     public array $agamaOptions = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu', 'Kepercayaan Lain'];
 
-
     public array $reaksiPasienList = [
         'menyangkalMarah' => 'Menyangkal / marah',
         'sedihMenangis' => 'Sedih / menangis',
@@ -908,8 +907,15 @@ new class extends Component {
     <x-modal name="rm-akhir-hayat-ugd-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]">
 
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-4">
+                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                    wire:key="akhir-hayat-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
+            </div>
+
+            {{-- JUDUL RINGKAS --}}
             <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-hairline bg-surface-soft dark:border-gray-700">
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2.5">
                     <h2 class="text-xl font-semibold text-ink dark:text-gray-100">
                         Pengkajian Akhir Hayat
                         <span class="block text-sm font-normal text-muted dark:text-gray-400">
@@ -931,11 +937,6 @@ new class extends Component {
                             clip-rule="evenodd" />
                     </svg>
                 </x-icon-button>
-            </div>
-
-            <div class="px-4 pt-4">
-                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
-                    wire:key="akhir-hayat-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
             </div>
 
             <div class="flex-1 p-4 sm:p-6 space-y-4"

@@ -713,19 +713,25 @@ new class extends Component {
     <x-modal name="rm-surgical-safety-checklist-ugd-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal-surgical-safety-checklist-ugd', [$rjNo ?? 'new']) }}">
 
-            <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-4">
+                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo" wire:key="ssc-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
+            </div>
+
+            {{-- JUDUL RINGKAS --}}
+            <div class="relative px-6 py-3 border-b border-hairline dark:border-gray-700">
                 <div class="relative flex items-start justify-between gap-4">
                     <div>
-                        <div class="flex items-center gap-3">
-                            <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-teal-500/10">
-                                <svg class="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <div class="flex items-center gap-2.5">
+                            <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-teal-500/10">
+                                <svg class="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             </div>
                             <div>
-                                <h2 class="font-semibold text-2xl text-ink dark:text-gray-100">Surgical Safety Checklist</h2>
-                                <p class="mt-0.5 text-base text-muted dark:text-gray-400">UGD — WHO SSC</p>
+                                <h2 class="font-semibold text-base text-ink dark:text-gray-100">Surgical Safety Checklist</h2>
+                                <p class="mt-0.5 text-xs text-muted dark:text-gray-400">UGD — WHO SSC</p>
                             </div>
                         </div>
-                        <div class="flex flex-wrap gap-2 mt-3">
+                        <div class="flex flex-wrap gap-2 mt-2">
                             <x-badge variant="brand">UGD</x-badge>
                             @if (count($surgicalSafetyChecklistList) > 0) <x-badge variant="info">{{ count($surgicalSafetyChecklistList) }} tersimpan</x-badge> @endif
                             @if ($isFormLocked) <x-badge variant="danger">Read Only</x-badge> @endif
@@ -740,7 +746,6 @@ new class extends Component {
 
             <div class="flex-1 px-4 py-4 bg-surface-soft/70 dark:bg-gray-950/20">
                 <div class="max-w-full mx-auto space-y-4">
-                    <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo" wire:key="ssc-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
 
                     <div class="p-6 space-y-6 bg-canvas border border-hairline shadow-sm sm:p-8 rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 

@@ -79,6 +79,26 @@ tanpa perlu diingat satu per satu. `openModal()` juga menyetelnya ke `'daftar'`.
 Di markup: formulir dibungkus `@if ($this->diForm())`, daftar dibungkus
 `@unless ($this->diForm())`, dan isi footer bercabang mengikuti keduanya.
 
+### Susunan atas modal (BAKU)
+
+Urutannya **display pasien dulu, baru judul** — mengikuti pola EMR, supaya identitas pasien
+yang paling sering dicek petugas tidak tertutup blok judul besar:
+
+```blade
+{{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+<div class="px-4 pt-4">
+    <livewire:pages::transaksi.<jalur>.display-pasien-<jalur>.display-pasien-<jalur> … />
+</div>
+
+{{-- JUDUL RINGKAS --}}
+<div class="relative px-6 py-3 border-b …">   {{-- py-3, bukan py-5 --}}
+    … ikon w-8 h-8 · <h2> text-base (bukan text-2xl) · subjudul text-xs · badge · tombol tutup
+</div>
+```
+
+Judulnya sengaja kecil: modal ini sudah dibuka dari tab yang bernama sama, jadi judul besar
+cuma memakan ruang. Tombol tutup (X) tetap ikut di baris judul.
+
 ### Cara memverifikasi (jangan cuma lihat "tidak error")
 
 `php -l` maupun `Blade::compileString` TIDAK menangkap kerusakan berkas Volt, dan halaman
