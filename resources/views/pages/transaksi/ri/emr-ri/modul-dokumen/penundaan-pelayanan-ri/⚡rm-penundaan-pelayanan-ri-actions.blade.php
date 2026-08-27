@@ -827,11 +827,14 @@ new class extends Component {
                         </section>
 
                         {{-- ══ CATATAN KEBIJAKAN ══ --}}
+                        @endif
+                        @unless ($this->diForm())
                         <div
                             class="px-4 py-3 text-sm border rounded-xl bg-surface-soft border-hairline text-muted dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">
                             Tidak berlaku untuk keterlambatan staf medis di RJ / IGD penuh. Onkologi &amp; transplantasi
                             mengikuti norma nasional. Dicatat di rekam medis (Lihat KE 2).
                         </div>
+                        @endunless
 
                         {{-- ══ TANDA TANGAN ══ --}}
                         <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
@@ -931,8 +934,6 @@ new class extends Component {
                         </section>
 
                         {{-- ══ DAFTAR TERSIMPAN (expandable) ══ --}}
-                        @endif
-                        @unless ($this->diForm())
                         @if (count($penundaanList) > 0)
                             <div class="mt-6 overflow-x-auto">
                                 <div class="flex items-center justify-between gap-2 pb-2 border-b border-hairline-soft dark:border-gray-800 mb-3">
@@ -1110,7 +1111,6 @@ new class extends Component {
                                 </table>
                             </div>
                         @endif
-                        @endunless
 
                     </div>
                 </div>
@@ -1119,7 +1119,7 @@ new class extends Component {
             {{-- FOOTER --}}
             <div
                 class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
-                    @if ($this->diForm())
+                @if ($this->diForm())
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     @if ($viewOnly)
                         <p class="flex items-center gap-1.5 text-sm text-sky-600 dark:text-sky-400">
@@ -1180,21 +1180,21 @@ new class extends Component {
                             </x-primary-button>
                         @endif
                     </div>
-                    @else
-                        <div class="flex flex-wrap items-center justify-end gap-2">
-                            <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
-                            @unless ($isFormLocked)
-                                <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
-                                    wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                    </svg>
-                                    Tambah Entri
-                                </x-primary-button>
-                            @endunless
-                        </div>
-                    @endif
                 </div>
+                @else
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                        @unless ($isFormLocked)
+                            <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
+                                wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Tambah Entri
+                            </x-primary-button>
+                        @endunless
+                    </div>
+                @endif
             </div>
 
         </div>
