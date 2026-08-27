@@ -40,6 +40,23 @@ new class extends Component {
     public string $filterBulan = ''; // format m/Y (mm/yyyy) — mode bulanan, samakan Casemix
 
     public string $searchKeyword = '';
+
+    /**
+     * Status pendaftaran klaim ke BPJS: '' semua | 'belum' | 'terdaftar'.
+     * Penandanya ada di node JSON (apotekOnline.noSjp), bukan kolom — jadi
+     * saringannya memakai REGEXP_LIKE, lihat baseQuery().
+     */
+    public string $filterStatus = '';
+
+    /**
+     * Jenis klaim. Beda dari Pelayanan RJ yang menyaring BPJS vs UMUM: layar ini
+     * memang HANYA berisi pasien BPJS, jadi yang berguna adalah memilah antar
+     * jenis BPJS-nya sendiri (JKN Mandiri / PBI / Kronis / JKN Mobile).
+     */
+    public string $filterKlaim = '';
+
+    public string $filterDokter = '';
+
     public int $itemsPerPage = 15;
 
     public function mount(): void
@@ -50,6 +67,97 @@ new class extends Component {
         if ($this->filterBulan === '') {
             $this->filterBulan = now()->format('m/Y');
         }
+    }
+
+    /**
+     * Daftar dokter untuk dropdown. HANYA bergantung pada rentang tanggal —
+     * filter lain (status, klaim, pencarian) sengaja tidak dipakai supaya isi
+     * dropdown stabil: petugas bisa berpindah status/klaim tanpa kehilangan
+     * dokter yang sudah dipilih, walau hasil query utama jadi kosong.
+     * Pola sama dengan dokterList() di Pelayanan RJ.
+     */
+    public function dokterList()
+    {
+        [$mulai, $selesai] = $this->dateRange();
+
+        return DB::table('rstxn_rjhdrs as h')
+            ->join('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
+            ->leftJoin('rsmst_klaimtypes as k', 'h.klaim_id', '=', 'k.klaim_id')
+            ->whereBetween('h.rj_date', [$mulai, $selesai])
+            ->whereRaw('h.vno_sep IS NOT NULL AND LENGTH(TRIM(h.vno_sep)) > 0')
+            ->where(function ($subQuery) {
+                $subQuery->where('k.klaim_status', 'BPJS')->orWhere('h.klaim_id', 'JM');
+            })
+            ->select('h.dr_id', DB::raw('MAX(d.dr_name) as dr_name'))
+            ->groupBy('h.dr_id')
+            ->orderBy('dr_name')
+            ->get();
+    }
+
+    /** Jenis klaim yang benar-benar muncul pada periode ini. Stabil seperti dokterList(). */
+    public function klaimList()
+    {
+        [$mulai, $selesai] = $this->dateRange();
+
+        return DB::table('rstxn_rjhdrs as h')
+            ->leftJoin('rsmst_klaimtypes as k', 'h.klaim_id', '=', 'k.klaim_id')
+            ->whereBetween('h.rj_date', [$mulai, $selesai])
+            ->whereRaw('h.vno_sep IS NOT NULL AND LENGTH(TRIM(h.vno_sep)) > 0')
+            ->where(function ($subQuery) {
+                $subQuery->where('k.klaim_status', 'BPJS')->orWhere('h.klaim_id', 'JM');
+            })
+            ->select('h.klaim_id', DB::raw('MAX(k.klaim_desc) as klaim_desc'))
+            ->groupBy('h.klaim_id')
+            ->orderBy('klaim_desc')
+            ->get();
+    }
+
+    /**
+     * Dipanggil tombol Reset pada x-toolbar-refresh-reset (nama method sudah
+     * dipatok komponennya). Mode harian/bulanan & tanggal SENGAJA ikut kembali
+     * ke keadaan awal supaya "reset" berarti sama seperti di Pelayanan RJ.
+     */
+    public function resetFilters(): void
+    {
+        $this->reset(['searchKeyword', 'filterStatus', 'filterKlaim', 'filterDokter']);
+        $this->mode = 'harian';
+        $this->filterTanggal = now()->format('d/m/Y');
+        $this->filterBulan = now()->format('m/Y');
+        $this->resetPage();
+    }
+
+    /**
+     * Tahapan layanan pasien, disalin dari Antrian Apotek RJ supaya istilah &
+     * warnanya sama di kedua layar. Urutannya menurun: yang paling akhir tercapai
+     * yang ditampilkan. Batal terdeteksi dari taskId99 ATAU rj_status='F'
+     * (mutasi langsung model lama yang tak menulis taskId).
+     *
+     * @return array{teks: string, variant: string}
+     */
+    private function statusLayanan(array $data, ?string $rjStatus): array
+    {
+        $tasks = $data['taskIdPelayanan'] ?? [];
+
+        if (!empty($tasks['taskId99']) || $rjStatus === 'F') {
+            return ['teks' => 'Batal', 'variant' => 'danger'];
+        }
+        if (!empty($tasks['taskId7'])) {
+            return ['teks' => 'Pasien Menerima Resep', 'variant' => 'success'];
+        }
+        if (!empty($tasks['taskId6'])) {
+            return ['teks' => 'Menunggu Resep', 'variant' => 'warning'];
+        }
+        if (!empty($tasks['taskId5'])) {
+            return ['teks' => 'Keluar Poli', 'variant' => 'brand'];
+        }
+        if (!empty($tasks['taskId4'])) {
+            return ['teks' => 'Masuk Poli', 'variant' => 'warning'];
+        }
+        if (!empty($tasks['taskId3'])) {
+            return ['teks' => 'Pendaftaran', 'variant' => 'alternative'];
+        }
+
+        return ['teks' => 'Belum Dilayani', 'variant' => 'gray'];
     }
 
     public function setMode(string $mode): void
@@ -63,6 +171,9 @@ new class extends Component {
     public function updatedSearchKeyword(): void { $this->resetPage(); }
     public function updatedFilterTanggal(): void { $this->resetPage(); }
     public function updatedFilterBulan(): void { $this->resetPage(); }
+    public function updatedFilterStatus(): void { $this->resetPage(); }
+    public function updatedFilterKlaim(): void { $this->resetPage(); }
+    public function updatedFilterDokter(): void { $this->resetPage(); }
     public function updatedItemsPerPage(): void { $this->resetPage(); }
 
     #[On('apotek-online-rj.refresh')]
@@ -116,14 +227,42 @@ new class extends Component {
             })
             ->select([
                 'h.rj_no',
-                DB::raw("to_char(h.rj_date,'dd/mm/yyyy') as rj_date_display"),
-                'h.reg_no', 'p.reg_name', 'p.sex',
+                DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"),
+                'h.reg_no', 'p.reg_name', 'p.sex', 'p.address',
                 DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"),
                 'h.dr_id', 'd.dr_name', 'po.poli_desc',
+                // Cara bayar diambil dari MODEL KLAIM seperti Pelayanan RJ: label dari
+                // klaim_desc asli, warna dari kategori klaim_status.
+                'h.klaim_id', 'k.klaim_status', 'k.klaim_desc',
+                'h.shift', 'h.rj_status',
                 'h.vno_sep', 'h.status_kronis', 'h.status_iter',
                 'h.datadaftarpolirj_json',
             ])
             ->orderByDesc('h.rj_date');
+
+        if ($this->filterDokter !== '') {
+            $query->where('h.dr_id', $this->filterDokter);
+        }
+
+        if ($this->filterKlaim !== '') {
+            $query->where('h.klaim_id', $this->filterKlaim);
+        }
+
+        // Terdaftar = node apotekOnline sudah menyimpan noSjp BERISI. Oracle tak
+        // mendukung JSON_VALUE di sini (ORA-00904), jadi pakai REGEXP_LIKE pada CLOB;
+        // polanya menuntut minimal satu karakter di antara tanda kutip supaya draft
+        // (noSjp kosong) tidak ikut terhitung sudah terkirim.
+        $polaSudahDaftar = '"noSjp"[[:space:]]*:[[:space:]]*"[^"]+"';
+        if ($this->filterStatus === 'terdaftar') {
+            $query->whereRaw("REGEXP_LIKE(h.datadaftarpolirj_json, '{$polaSudahDaftar}')");
+        }
+        if ($this->filterStatus === 'belum') {
+            // Kurung WAJIB: tanpa itu OR mengangkat dirinya ke atas rantai AND dan
+            // seluruh filter lain (tanggal, dokter, BPJS) ikut lumpuh untuk baris
+            // yang JSON-nya NULL. REGEXP_LIKE atas NULL bernilai NULL, jadi cabang
+            // IS NULL memang diperlukan — bukan sekadar jaga-jaga.
+            $query->whereRaw("(NOT REGEXP_LIKE(h.datadaftarpolirj_json, '{$polaSudahDaftar}') OR h.datadaftarpolirj_json IS NULL)");
+        }
 
         if (trim($this->searchKeyword) !== '') {
             $kw = '%' . mb_strtoupper(trim($this->searchKeyword)) . '%';
@@ -146,23 +285,33 @@ new class extends Component {
         $paginator = $this->baseQuery()->paginate($this->itemsPerPage);
 
         $paginator->setCollection(
-            $paginator->getCollection()->map(function ($r) {
-            $data = $this->decodeJson($r->datadaftarpolirj_json);
-            $ringkas = $this->ringkasKronis($r->rj_no);
+            $paginator->getCollection()->map(function ($kunjungan) {
+            $data = $this->decodeJson($kunjungan->datadaftarpolirj_json);
+            $ringkas = $this->ringkasKronis($kunjungan->rj_no);
+            $status = $this->statusLayanan($data, $kunjungan->rj_status);
             $apotek = $data['apotekOnline'] ?? [];
 
             return (object) [
-                'rjNo' => $r->rj_no,
-                'rjDate' => $r->rj_date_display,
-                'regNo' => $r->reg_no,
-                'regName' => $r->reg_name,
-                'sex' => $r->sex,
-                'birthDate' => $r->birth_date,
-                'drName' => $r->dr_name,
-                'poliDesc' => $r->poli_desc,
-                'noSep' => $r->vno_sep,
-                'statusKronis' => $r->status_kronis,
-                'statusIter' => $r->status_iter,
+                'rjNo' => $kunjungan->rj_no,
+                'rjDate' => $kunjungan->rj_date_display,
+                'regNo' => $kunjungan->reg_no,
+                'regName' => $kunjungan->reg_name,
+                'sex' => $kunjungan->sex,
+                'birthDate' => $kunjungan->birth_date,
+                'alamat' => $kunjungan->address,
+                'drName' => $kunjungan->dr_name,
+                'poliDesc' => $kunjungan->poli_desc,
+                'klaimId' => $kunjungan->klaim_id,
+                'klaimStatus' => $kunjungan->klaim_status,
+                'klaimDesc' => $kunjungan->klaim_desc,
+                'shift' => $kunjungan->shift,
+                'statusTeks' => $status['teks'],
+                'statusVariant' => $status['variant'],
+                'adaEresep' => isset($data['eresep']) || isset($data['eresepRacikan']),
+                'adaRacikan' => isset($data['eresepRacikan']),
+                'noSep' => $kunjungan->vno_sep,
+                'statusKronis' => $kunjungan->status_kronis,
+                'statusIter' => $kunjungan->status_iter,
                 'jmlKronis' => $ringkas['kronis'],
                 'jmlBerDpho' => $ringkas['berDpho'],
                 'jmlTanpaDpho' => $ringkas['tanpaDpho'],
@@ -226,7 +375,8 @@ new class extends Component {
         <div class="sticky z-30 px-4 py-3 mt-2 bg-surface-soft border-b border-hairline top-20 dark:bg-gray-900 dark:border-gray-700">
             <div class="flex flex-wrap items-end gap-3">
 
-                {{-- Mode Harian / Bulanan --}}
+                {{-- MODE Harian / Bulanan — khas layar ini, tidak ada di Pelayanan RJ.
+                   | Ditaruh paling kiri karena menentukan arti kolom tanggal di sebelahnya. --}}
                 <div class="inline-flex overflow-hidden border rounded-lg border-hairline dark:border-gray-600">
                     <button type="button" wire:click="setMode('bulanan')"
                         class="px-3 py-1.5 text-sm font-medium transition-colors {{ $mode === 'bulanan' ? 'bg-brand text-white dark:bg-brand-lime dark:text-gray-900' : 'bg-canvas text-muted hover:bg-surface-soft dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700' }}">
@@ -238,41 +388,87 @@ new class extends Component {
                     </button>
                 </div>
 
-                @php
-                    $ikonKalender = 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z';
-                @endphp
-                @if ($mode === 'harian')
-                    <div class="w-full sm:w-auto">
-                        <x-input-label value="Tanggal" />
-                        <div class="relative mt-1">
-                            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $ikonKalender }}" />
-                                </svg>
-                            </div>
-                            <x-text-input type="text" wire:model.live.debounce.500ms="filterTanggal"
-                                class="block w-full pl-10 sm:w-44" placeholder="dd/mm/yyyy" maxlength="10" />
+                {{-- SEARCH — flex-1, isi sisa ruang setelah filter lain --}}
+                <div class="w-full sm:flex-1 sm:min-w-[12rem]">
+                    <x-input-label value="Pencarian" class="sr-only" />
+                    <div class="relative mt-1">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
                         </div>
+                        <x-text-input wire:model.live.debounce.300ms="searchKeyword" class="block w-full pl-10"
+                            placeholder="Cari No RM / Nama Pasien / No. SEP..." />
                     </div>
-                @else
-                    <div class="w-full sm:w-auto">
-                        <x-input-label value="Bulan" />
-                        <div class="relative mt-1">
-                            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $ikonKalender }}" />
-                                </svg>
-                            </div>
-                            <x-text-input type="text" wire:model.live.debounce.500ms="filterBulan"
-                                class="block w-full pl-10 sm:w-40" placeholder="mm/yyyy" maxlength="7" />
-                        </div>
-                    </div>
-                @endif
+                </div>
 
-                <div class="w-full sm:w-auto sm:flex-1">
-                    <x-input-label value="Pencarian" />
-                    <x-text-input wire:model.live.debounce.300ms="searchKeyword" class="w-full mt-1"
-                        placeholder="Nama pasien / No. RM / No. SEP..." />
+                {{-- FILTER TANGGAL / BULAN — satu slot, isinya ikut mode --}}
+                <div class="w-full sm:w-auto">
+                    <x-input-label :value="$mode === 'harian' ? 'Tanggal' : 'Bulan'" />
+                    <div class="relative mt-1">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <svg class="w-4 h-4 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        @if ($mode === 'harian')
+                            <x-text-input type="text" wire:model.live.debounce.500ms="filterTanggal"
+                                class="block w-full pl-10 sm:w-40" placeholder="dd/mm/yyyy" />
+                        @else
+                            <x-text-input type="text" wire:model.live.debounce.500ms="filterBulan"
+                                class="block w-full pl-10 sm:w-40" placeholder="mm/yyyy" />
+                        @endif
+                    </div>
+                </div>
+
+                {{-- FILTER STATUS — pendaftaran klaim ke BPJS --}}
+                <div class="w-full sm:w-auto">
+                    <x-input-label value="Status" />
+                    <x-select-input wire:model.live="filterStatus" class="w-full mt-1 sm:w-44">
+                        <option value="">Semua</option>
+                        <option value="belum">Belum didaftarkan</option>
+                        <option value="terdaftar">Terdaftar</option>
+                    </x-select-input>
+                </div>
+
+                {{-- FILTER KLAIM — layar ini BPJS semua, jadi yang dipilah jenis BPJS-nya --}}
+                <div class="w-full sm:w-auto">
+                    <x-input-label value="Klaim" />
+                    <x-select-input wire:model.live="filterKlaim" class="w-full mt-1 sm:w-44">
+                        <option value="">Semua</option>
+                        @foreach ($this->klaimList() as $klaim)
+                            <option value="{{ $klaim->klaim_id }}">{{ $klaim->klaim_desc ?: $klaim->klaim_id }}</option>
+                        @endforeach
+                    </x-select-input>
+                </div>
+
+                {{-- FILTER DOKTER --}}
+                <div class="w-full sm:w-auto">
+                    <x-input-label value="Dokter" />
+                    <x-select-input wire:model.live="filterDokter" class="w-full mt-1 sm:w-56">
+                        <option value="">Semua Dokter</option>
+                        @foreach ($this->dokterList() as $dokter)
+                            <option value="{{ $dokter->dr_id }}">{{ $dokter->dr_name }}</option>
+                        @endforeach
+                    </x-select-input>
+                </div>
+
+                {{-- RIGHT ACTIONS --}}
+                <div class="flex items-center gap-2 ml-auto">
+                    <x-toolbar-refresh-reset :label="null" />
+
+                    <div class="w-20">
+                        <x-select-input wire:model.live="itemsPerPage" class="text-sm" title="Per halaman">
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="15">15</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </x-select-input>
+                    </div>
                 </div>
 
             </div>
@@ -293,63 +489,152 @@ new class extends Component {
             <div class="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-t-2xl">
                 <table class="min-w-full text-base -mt-3 border-separate border-spacing-y-3">
                     <thead class="sticky top-0 z-10 [&_th]:bg-surface-card dark:[&_th]:bg-gray-800">
-                        <tr class="text-sm font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                            <th class="px-6 py-3 min-w-[240px]">Pasien</th>
-                            <th class="px-6 py-3 min-w-[200px]">SEP / Poli</th>
-                            <th class="px-6 py-3 min-w-[180px]">Obat</th>
-                            <th class="px-6 py-3 min-w-[150px]">Status</th>
-                            <th class="w-32 px-6 py-3 text-center">Aksi</th>
+                        <tr
+                            class="text-sm font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                            <th class="px-6 py-3 w-[24%]">Pasien</th>
+                            <th class="px-6 py-3 w-[20%]">Poli</th>
+                            <th class="px-6 py-3 w-[16%]">Status Layanan</th>
+                            <th class="px-6 py-3 w-[18%]">Tindak Lanjut</th>
+                            <th class="px-6 py-3 w-[22%] text-center">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($this->rows as $row)
                             <tr class="transition bg-canvas dark:bg-gray-900 rounded-2xl shadow-sm ring-1 ring-hairline dark:ring-gray-700 hover:shadow-lg"
                                 wire:key="apotek-online-{{ $row->rjNo }}">
-                                <td class="px-6 py-3 rounded-l-2xl">
-                                    <x-list.identitas-pasien :nama="$row->regName" :reg-no="$row->regNo"
-                                        :sex="$row->sex" :tgl-lahir="$row->birthDate" />
-                                    <div class="mt-1 text-xs text-muted-soft">{{ $row->rjDate }} · dr. {{ $row->drName ?? '-' }}</div>
+                                {{-- Kolom disusun mengikuti Pelayanan RJ: identitas + alamat,
+                                   | cara bayar dari model klaim, dan aksi lewat titik-tiga.
+                                   | TANPA toggle Alpine per baris (x-data/x-show/x-collapse):
+                                   | list ini ikut di-morph tiap refresh, dan pola itu sudah
+                                   | pernah membuat Pelayanan RJ hang — konten dibuat tampil terus. --}}
+                                {{-- Kolom & lebarnya disamakan dengan Pelayanan RJ. Pemetaan isinya:
+                                   | Poli           → poli, dokter, cara bayar
+                                   | Status Layanan → SEP + penanda KRONIS/ITER + kesiapan obat
+                                   | Tindak Lanjut  → sudah didaftarkan ke BPJS atau belum
+                                   | TANPA toggle Alpine per baris (x-data/x-show/x-collapse): list ini
+                                   | ikut di-morph tiap refresh, dan pola itu sudah pernah membuat
+                                   | Pelayanan RJ hang — konten dibuat tampil terus. --}}
+                                <td class="px-6 py-6 space-y-3 align-middle rounded-l-2xl">
+                                    <x-list.identitas-pasien :regNo="$row->regNo" :nama="$row->regName"
+                                        :sex="$row->sex" :tglLahir="$row->birthDate" :alamat="$row->alamat" />
                                 </td>
-                                <td class="px-6 py-3">
+
+                                {{-- Ukuran & warna poli/dokter mengikuti kolom Poli Pelayanan RJ:
+                                   | poli tebal berwarna brand, dokter text-sm muted, jarak space-y-0.5. --}}
+                                <td class="px-6 py-6 space-y-0.5 align-middle">
+                                    {{-- Tanggal & jam kunjungan RJ berdiri paling atas di kolom ini. --}}
+                                    <div class="text-xs text-body dark:text-gray-400 leading-tight">
+                                        {{ $row->rjDate }}
+                                    </div>
+                                    <div class="font-semibold text-brand dark:text-emerald-400 leading-tight">
+                                        {{ $row->poliDesc ?? '-' }}
+                                    </div>
+                                    <div class="text-sm text-muted dark:text-gray-400 leading-tight">
+                                        dr. {{ $row->drName ?? '-' }}
+                                    </div>
+                                    <div class="mt-0.5">
+                                        <x-list.klaim-badge :status="$row->klaimStatus" :desc="$row->klaimDesc" :id="$row->klaimId" />
+                                    </div>
+                                </td>
+
+                                {{-- STATUS LAYANAN — susunannya disamakan dengan Antrian Apotek RJ:
+                                   | shift, badge tahapan layanan (dari taskIdPelayanan), lalu penanda
+                                   | E-Resep/Racikan. Baris SEP & kesiapan obat khas layar ini menyusul
+                                   | di bawahnya. --}}
+                                <td class="px-6 py-6 space-y-2 align-middle">
+                                    <div class="text-sm text-muted dark:text-gray-400 whitespace-nowrap">
+                                        Shift {{ $row->shift ?? '-' }} | {{ $row->rjDate }}
+                                    </div>
+
+                                    <x-badge :variant="$row->statusVariant">{{ $row->statusTeks }}</x-badge>
+
+                                    <div class="flex gap-1.5">
+                                        @if ($row->adaEresep)
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd"
+                                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                                        clip-rule="evenodd" />
+                                                </svg>
+                                                E-Resep
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                                                Tanpa Resep
+                                            </span>
+                                        @endif
+
+                                        @if ($row->adaRacikan)
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                                Racikan
+                                            </span>
+                                        @endif
+                                    </div>
+
                                     <x-list.sep-spri :sep="$row->noSep" />
-                                    <div class="mt-1 text-xs text-muted dark:text-gray-400">{{ $row->poliDesc ?? '-' }}</div>
+
                                     @if ($row->statusKronis === 'Y')
-                                        <span class="inline-block mt-1 text-xs"><x-badge variant="warning">KRONIS</x-badge></span>
+                                        <div><x-badge variant="warning">KRONIS</x-badge></div>
                                     @endif
+                                    @if ($row->statusIter === 'Y')
+                                        <div><x-badge variant="purple">ITER</x-badge></div>
+                                    @endif
+
                                 </td>
-                                <td class="px-6 py-3 text-sm">
+
+                                {{-- TINDAK LANJUT — kesiapan obat lebih dulu (itu yang menentukan
+                                   | ada/tidaknya tindak lanjut), baru status pendaftaran klaimnya. --}}
+                                <td class="px-6 py-6 space-y-1 align-middle">
                                     @if ($row->jmlKronis > 0)
-                                        <div class="text-body dark:text-gray-200">{{ $row->jmlKronis }} obat kronis</div>
-                                        <div class="mt-0.5 text-xs">
+                                        <div class="text-xs text-body dark:text-gray-200">{{ $row->jmlKronis }} obat kronis</div>
+                                        <div class="text-xs">
                                             <span class="text-success">{{ $row->jmlBerDpho }} siap (ber-DPHO)</span>
                                             @if ($row->jmlTanpaDpho > 0)
                                                 · <span class="text-warning-deep dark:text-amber-300">{{ $row->jmlTanpaDpho }} belum dipetakan</span>
                                             @endif
                                         </div>
                                     @else
-                                        <span class="text-xs text-muted-soft">tidak ada obat kronis</span>
+                                        <div class="text-xs text-muted-soft">tidak ada obat kronis</div>
                                     @endif
-                                </td>
-                                <td class="px-6 py-3">
+
                                     @if ($row->sudahDaftar)
                                         <x-badge variant="success">Terdaftar</x-badge>
-                                        <div class="mt-1 font-mono text-xs text-muted-soft">{{ $row->noSjpApotek }}</div>
+                                        <div class="font-mono text-xs text-muted-soft">{{ $row->noSjpApotek }}</div>
                                     @else
-                                        <x-badge variant="gray">Belum</x-badge>
+                                        <x-badge variant="gray">Belum didaftarkan</x-badge>
                                     @endif
                                 </td>
-                                <td class="px-6 py-3 text-center rounded-r-2xl">
-                                    @if ($row->sudahDaftar)
-                                        <x-outline-button type="button"
-                                            wire:click="$dispatch('apotek-online-rj.daftarkan', { rjNo: '{{ $row->rjNo }}' })">
-                                            Lihat
-                                        </x-outline-button>
-                                    @else
-                                        <x-primary-button type="button"
-                                            wire:click="$dispatch('apotek-online-rj.daftarkan', { rjNo: '{{ $row->rjNo }}' })">
-                                            Daftarkan
-                                        </x-primary-button>
-                                    @endif
+
+                                <td class="px-6 py-6 text-center align-middle rounded-r-2xl">
+                                    <x-dropdown position="left" width="w-[320px]">
+                                        <x-slot name="trigger">
+                                            <x-secondary-button type="button" class="p-2">
+                                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
+                                                </svg>
+                                            </x-secondary-button>
+                                        </x-slot>
+
+                                        <x-slot name="content">
+                                            <div class="p-2 space-y-2">
+                                                {{-- Kepala menu: menjawab "menu ini untuk pasien yang mana". --}}
+                                                <x-list.identitas-aksi :regNo="$row->regNo" :nama="$row->regName"
+                                                    :sex="$row->sex" jalur="Rawat Jalan" />
+
+                                                @if ($row->sudahDaftar)
+                                                    <x-outline-button type="button" class="w-full"
+                                                        wire:click="$dispatch('apotek-online-rj.daftarkan', { rjNo: '{{ $row->rjNo }}' })">
+                                                        Lihat Klaim
+                                                    </x-outline-button>
+                                                @else
+                                                    <x-primary-button type="button" class="w-full"
+                                                        wire:click="$dispatch('apotek-online-rj.daftarkan', { rjNo: '{{ $row->rjNo }}' })">
+                                                        Daftarkan &amp; Kirim
+                                                    </x-primary-button>
+                                                @endif
+                                            </div>
+                                        </x-slot>
+                                    </x-dropdown>
                                 </td>
                             </tr>
                         @empty
