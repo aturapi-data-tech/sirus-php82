@@ -588,11 +588,11 @@ new class extends Component {
                         Pemberitahuan Penundaan / Kelambatan Pelayanan
                     </h3>
                     @if ($ppCount > 0)
-                        <x-badge variant="success">{{ $ppCount }} catatan</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $ppCount }} catatan</x-badge>
                     @else
-                        <x-badge variant="warning">Belum ada</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Formulir pemberitahuan kepada pasien/keluarga atas penundaan atau kelambatan pelayanan beserta alasan dan alternatif yang ditawarkan. Dapat lebih dari satu catatan.</p>
+                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Formulir pemberitahuan kepada pasien/keluarga atas penundaan atau kelambatan pelayanan beserta alasan dan alternatif yang ditawarkan. Dapat lebih dari satu catatan.</p>
                 </div>
 
                 <div class="flex shrink-0">

@@ -766,11 +766,11 @@ new class extends Component {
                         Inform Consent
                     </h3>
                     @if ($informConsentCount > 0)
-                        <x-badge variant="success">{{ $informConsentCount }} tindakan</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $informConsentCount }} tindakan</x-badge>
                     @else
-                        <x-badge variant="warning">Belum ada</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Persetujuan tindakan medis per-tindakan: tujuan, risiko, alternatif, serta tanda tangan pasien/wali, dokter penjelas, dan saksi.</p>
+                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Persetujuan tindakan medis per-tindakan: tujuan, risiko, alternatif, serta tanda tangan pasien/wali, dokter penjelas, dan saksi.</p>
                 </div>
 
                 <div class="flex shrink-0">

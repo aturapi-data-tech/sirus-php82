@@ -532,16 +532,16 @@ new class extends Component {
     @php $ctnCount = count($entriList ?? []); @endphp
     <div class="p-5 border shadow-sm bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 space-y-2">
+            <div class="flex-1 min-w-0 space-y-2">
                 {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
                 <div class="flex items-baseline flex-1 gap-2 min-w-0">
                     <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Catatan Terapi &amp; Perencanaan Keperawatan Neonatal</h3>
                     @if ($ctnCount > 0)
-                        <x-badge variant="success">{{ $ctnCount }} entri</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $ctnCount }} entri</x-badge>
                     @else
-                        <x-badge variant="warning">Belum ada</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Catatan terapi dokter (penatalaksanaan &amp; ICD 9 CM) dan perencanaan &amp; tindakan keperawatan untuk pasien neonatal (RM 08.c). Diisi Dokter dan Perawat/Bidan. Tiap entri = 1 baris catatan.</p>
+                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Catatan terapi dokter (penatalaksanaan &amp; ICD 9 CM) dan perencanaan &amp; tindakan keperawatan untuk pasien neonatal (RM 08.c). Diisi Dokter dan Perawat/Bidan. Tiap entri = 1 baris catatan.</p>
                 </div>
             </div>
             <div class="flex items-center gap-2 shrink-0">

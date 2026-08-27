@@ -782,16 +782,16 @@ new class extends Component {
     @php $onCount = count($entriList ?? []); @endphp
     <div class="p-5 border shadow-sm bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 space-y-2">
+            <div class="flex-1 min-w-0 space-y-2">
                 {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
                 <div class="flex items-baseline flex-1 gap-2 min-w-0">
                     <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Observasi Nifas</h3>
                     @if ($onCount > 0)
-                        <x-badge variant="success">{{ $onCount }} lembar</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $onCount }} lembar</x-badge>
                     @else
-                        <x-badge variant="warning">Belum ada</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Lembar pemantauan masa nifas (post-partum) per titik-waktu — TD, nadi, RR, suhu, Maternal Early Warning Score, TFU, kontraksi uterus, lochia, perdarahan, luka jalan lahir, laktasi, ASI eksklusif &amp; rawat gabung. Satu entri = satu lembar berisi banyak titik-waktu.</p>
+                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Lembar pemantauan masa nifas (post-partum) per titik-waktu — TD, nadi, RR, suhu, Maternal Early Warning Score, TFU, kontraksi uterus, lochia, perdarahan, luka jalan lahir, laktasi, ASI eksklusif &amp; rawat gabung. Satu entri = satu lembar berisi banyak titik-waktu.</p>
                 </div>
             </div>
             <div class="flex items-center gap-2 shrink-0">

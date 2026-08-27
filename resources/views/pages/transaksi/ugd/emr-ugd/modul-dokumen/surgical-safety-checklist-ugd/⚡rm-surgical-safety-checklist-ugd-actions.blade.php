@@ -676,13 +676,13 @@ new class extends Component {
 
     <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 space-y-3">
+            <div class="flex-1 min-w-0 space-y-3">
                 {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
                 <div class="flex items-baseline flex-1 gap-2 min-w-0">
                     <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Surgical Safety Checklist</h3>
-                    @if ($entriCount > 0) <x-badge variant="success">{{ $entriCount }} checklist</x-badge>
-                    @else <x-badge variant="warning">Belum ada</x-badge> @endif
-                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">WHO Surgical Safety Checklist — verifikasi tiga fase: Sign In (sebelum anestesi), Time Out (sebelum insisi), dan Sign Out (sebelum meninggalkan kamar operasi).</p>
+                    @if ($entriCount > 0) <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $entriCount }} checklist</x-badge>
+                    @else <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge> @endif
+                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">WHO Surgical Safety Checklist — verifikasi tiga fase: Sign In (sebelum anestesi), Time Out (sebelum insisi), dan Sign Out (sebelum meninggalkan kamar operasi).</p>
                 </div>
                 @if ($entriCount > 0)
                     <ul class="space-y-1 text-base text-muted dark:text-gray-300 list-disc pl-5">

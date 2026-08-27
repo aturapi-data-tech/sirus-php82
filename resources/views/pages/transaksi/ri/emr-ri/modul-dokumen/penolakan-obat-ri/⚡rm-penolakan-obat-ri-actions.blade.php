@@ -638,11 +638,11 @@ new class extends Component {
                         Penolakan Pengobatan / Obat Tertentu
                     </h3>
                     @if ($poCount > 0)
-                        <x-badge variant="success">{{ $poCount }} surat</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $poCount }} surat</x-badge>
                     @else
-                        <x-badge variant="warning">Belum ada</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Surat pernyataan pasien/keluarga yang menolak pemberian pengobatan/obat tertentu setelah mendapat penjelasan dokter/petugas. Dapat lebih dari satu surat.</p>
+                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Surat pernyataan pasien/keluarga yang menolak pemberian pengobatan/obat tertentu setelah mendapat penjelasan dokter/petugas. Dapat lebih dari satu surat.</p>
                 </div>
 
                 <div class="flex shrink-0">

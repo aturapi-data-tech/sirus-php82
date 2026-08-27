@@ -557,11 +557,11 @@ new class extends Component {
                         Permintaan Pelayanan Kerohaniawan
                     </h3>
                     @if ($pkCount > 0)
-                        <x-badge variant="success">{{ $pkCount }} catatan</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $pkCount }} catatan</x-badge>
                     @else
-                        <x-badge variant="warning">Belum ada</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Formulir permintaan pendampingan pelayanan kerohanian sesuai agama/kepercayaan pasien selama Rawat Inap. Dapat lebih dari satu catatan.</p>
+                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Formulir permintaan pendampingan pelayanan kerohanian sesuai agama/kepercayaan pasien selama Rawat Inap. Dapat lebih dari satu catatan.</p>
                 </div>
 
                 <div class="flex shrink-0">

@@ -735,16 +735,16 @@ new class extends Component {
 
     <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 space-y-2">
+            <div class="flex-1 min-w-0 space-y-2">
                 {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
                 <div class="flex items-baseline flex-1 gap-2 min-w-0">
                     <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Pengkajian Pra Anestesi & Pra Sedasi</h3>
                     @if ($entriCount > 0)
-                        <x-badge variant="success">{{ $entriCount }} pengkajian</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $entriCount }} pengkajian</x-badge>
                     @else
-                        <x-badge variant="warning">Belum ada</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Asesmen pra anestesi (PAB 4 / RM 50) oleh dokter anestesi: anamnese, jalan nafas (Mallampati), status fisik ASA, rencana teknik anestesi & analgesia pasca-op. Tiap entri = 1 pengkajian.</p>
+                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Asesmen pra anestesi (PAB 4 / RM 50) oleh dokter anestesi: anamnese, jalan nafas (Mallampati), status fisik ASA, rencana teknik anestesi & analgesia pasca-op. Tiap entri = 1 pengkajian.</p>
                 </div>
             </div>
 

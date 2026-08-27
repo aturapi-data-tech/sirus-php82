@@ -556,16 +556,16 @@ new class extends Component {
     @php $paCount = count($entriList ?? []); @endphp
     <div class="p-5 border shadow-sm bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 space-y-2">
+            <div class="flex-1 min-w-0 space-y-2">
                 {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
                 <div class="flex items-baseline flex-1 gap-2 min-w-0">
                     <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Pengkajian Awal Bayi</h3>
                     @if ($paCount > 0)
-                        <x-badge variant="success">{{ $paCount }} entri</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $paCount }} entri</x-badge>
                     @else
-                        <x-badge variant="warning">Belum ada</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Pengkajian awal bayi baru lahir (RM 14 e.3) — identitas bayi, nilai APGAR (1'/5'/10'), pemeriksaan fisik, antropometri, keadaan waktu lahir, diagnosa &amp; rencana. Diisi Dokter.</p>
+                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Pengkajian awal bayi baru lahir (RM 14 e.3) — identitas bayi, nilai APGAR (1'/5'/10'), pemeriksaan fisik, antropometri, keadaan waktu lahir, diagnosa &amp; rencana. Diisi Dokter.</p>
                 </div>
             </div>
             <div class="flex shrink-0">

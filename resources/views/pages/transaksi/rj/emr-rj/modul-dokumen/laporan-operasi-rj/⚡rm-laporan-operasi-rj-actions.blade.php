@@ -619,18 +619,18 @@ new class extends Component {
 
     <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 space-y-3">
+            <div class="flex-1 min-w-0 space-y-3">
                 {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
                 <div class="flex items-baseline flex-1 gap-2 min-w-0">
                     <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">
                         Laporan Operasi
                     </h3>
                     @if ($loCount > 0)
-                        <x-badge variant="success">{{ $loCount }} laporan</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $loCount }} laporan</x-badge>
                     @else
-                        <x-badge variant="warning">Belum ada</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Laporan operasi (DPJP) memuat diagnosis pra/pasca-op, tim bedah, uraian temuan, komplikasi, spesimen PA, perdarahan &amp; registry implan. Diisi operator <span class="font-medium">segera setelah operasi</span> (PAB 7.2 &amp; 7.4). Bisa dicicil (Draft), lalu dikunci lewat TTD Operator.</p>
+                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Laporan operasi (DPJP) memuat diagnosis pra/pasca-op, tim bedah, uraian temuan, komplikasi, spesimen PA, perdarahan &amp; registry implan. Diisi operator <span class="font-medium">segera setelah operasi</span> (PAB 7.2 &amp; 7.4). Bisa dicicil (Draft), lalu dikunci lewat TTD Operator.</p>
                 </div>
 
 
