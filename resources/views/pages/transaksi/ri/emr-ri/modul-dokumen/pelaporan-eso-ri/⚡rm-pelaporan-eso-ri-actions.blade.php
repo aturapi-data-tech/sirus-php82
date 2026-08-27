@@ -1350,17 +1350,6 @@ new class extends Component {
                 {{-- ══════ DAFTAR ENTRI TERSIMPAN ══════ --}}
                 @endif
                 @unless ($this->diForm())
-                    <div class="flex flex-wrap items-center justify-end gap-2 pb-3">
-                        @unless ($isFormLocked)
-                            <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
-                                wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                                Isi Formulir Baru
-                            </x-primary-button>
-                        @endunless
-                    </div>
                 <x-border-form padding="p-0">
                     <div class="mt-3 overflow-x-auto border bg-canvas rounded-2xl border-hairline dark:border-gray-700">
                         <table class="ds-table">
@@ -1482,6 +1471,19 @@ new class extends Component {
                         </table>
                     </div>
                 </x-border-form>
+                    {{-- FOOTER LAYAR DAFTAR — Tutup + Isi Formulir Baru, seragam dengan modul lain --}}
+                    <div class="flex flex-wrap items-center justify-end gap-2 pt-3 mt-4 border-t border-hairline dark:border-gray-700">
+                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                            @unless ($isFormLocked)
+                                <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
+                                    wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Isi Formulir Baru
+                                </x-primary-button>
+                            @endunless
+                    </div>
                 @endunless
 
             </div>
