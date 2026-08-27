@@ -686,7 +686,6 @@ new class extends Component {
             <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
                 <div class="relative flex items-start justify-between gap-4">
                     <div>
-                        @if ($this->diForm())
                         <div class="flex items-center gap-3">
                             <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-rose-500/10">
                                 <svg class="w-6 h-6 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -766,6 +765,7 @@ new class extends Component {
                         class="p-6 space-y-6 bg-canvas border border-hairline shadow-sm sm:p-8 rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
                         {{-- ── FORM ENTRI (1 laporan) ── --}}
+                        @if ($this->diForm())
                         <fieldset @disabled($formReadOnly) class="space-y-6">
 
                             {{-- ══ WAKTU & URGENSI ══ --}}
@@ -1296,7 +1296,7 @@ new class extends Component {
             {{-- FOOTER --}}
             <div
                 class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
-                    @if ($this->diForm())
+                @if ($this->diForm())
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     @if ($viewOnly)
                         <p class="flex items-center gap-1.5 text-sm text-sky-600 dark:text-sky-400">
@@ -1351,21 +1351,21 @@ new class extends Component {
                             </x-primary-button>
                         @endif
                     </div>
-                    @else
-                        <div class="flex flex-wrap items-center justify-end gap-2">
-                            <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
-                            @unless ($isFormLocked)
-                                <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
-                                    wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                    </svg>
-                                    Tambah Entri
-                                </x-primary-button>
-                            @endunless
-                        </div>
-                    @endif
                 </div>
+                @else
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                        @unless ($isFormLocked)
+                            <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
+                                wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Tambah Entri
+                            </x-primary-button>
+                        @endunless
+                    </div>
+                @endif
             </div>
 
         </div>
