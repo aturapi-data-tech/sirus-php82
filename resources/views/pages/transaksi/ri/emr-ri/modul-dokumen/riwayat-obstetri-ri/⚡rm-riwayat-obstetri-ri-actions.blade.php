@@ -732,7 +732,7 @@ new class extends Component {
              wire:key="{{ $this->renderKey('modal-riwayat-obstetri-ri', [$riHdrNo ?? 'new']) }}">
             {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
             <div class="px-6 py-2.5 border-b shrink-0 bg-surface-soft border-hairline dark:border-gray-700">
-                <div class="flex items-center gap-3 min-w-0">
+                <div class="flex items-center gap-3 min-w-0 flex-1 min-w-0">
                     <div class="flex items-center gap-2.5">
                         <div class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-brand-green/10 dark:bg-brand-lime/15">
                             <svg class="w-4 h-4 text-brand-green dark:text-brand-lime" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -752,12 +752,12 @@ new class extends Component {
                             <x-badge variant="danger">Read Only</x-badge>
                         @endif
                     </div>
-                <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-2 shrink-0">
-                    <span class="sr-only">Tutup</span>
-                    <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                    <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-auto shrink-0 shrink-0">
+                        <span class="sr-only">Tutup</span>
+                        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                    </svg>
-                </x-icon-button>
+                        </svg>
+                    </x-icon-button>
                 </div>
             </div>
 
