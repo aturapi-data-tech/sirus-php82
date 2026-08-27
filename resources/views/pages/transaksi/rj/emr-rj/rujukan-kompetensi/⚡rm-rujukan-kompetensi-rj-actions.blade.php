@@ -849,7 +849,23 @@ new class extends Component {
             return;
         }
 
-        $respon = SisruteTrait::sisrute_delete_rujukan($noRujukan, auth()->user()->name ?? 'Sirus')->getOriginalContent();
+        // Blok satuSehatRujukan ikut dikirim — tanpa itu BPJS tak punya bahan untuk
+        // membatalkan sisi SATUSEHAT-nya, dan ServiceRequest tertinggal hidup di sana.
+        // Semua nilainya dipungut dari hasil kirim yang tersimpan, bukan dirakit ulang
+        // dari form: form bisa sudah berubah sejak rujukan dikirim.
+        $hasil = $this->formRujukan['hasil'] ?? [];
+        $satuSehatRujukan = array_filter([
+            'kodeFaskesSatuSehat' => (string) env('SATUSEHAT_ORGANIZATION_ID'),
+            'idPasienSatuSehat' => $this->patientUuid(),
+            'kdppkSatuSehatTujuanRujukan' => (string) ($hasil['tujuanSatuSehat'] ?? ''),
+            'kdDokterSatuSehat' => $this->dokterUuid(),
+            // UUID POLOS tanpa prefix "Encounter/" — sama seperti Insert
+            'encounter' => ['reference' => $this->encounterUuid()],
+            'patientInstruction' => 'Rujukan ke ' . (string) ($hasil['tujuanNama'] ?? ''),
+            'keteranganRujukan' => (string) ($this->formRujukan['catatan'] ?? ''),
+        ], fn($nilai) => $nilai !== '' && $nilai !== null && $nilai !== ['reference' => '']);
+
+        $respon = SisruteTrait::sisrute_delete_rujukan($noRujukan, auth()->user()->name ?? 'Sirus', $satuSehatRujukan)->getOriginalContent();
         $code = $respon['metadata']['code'] ?? 0;
         $message = $respon['metadata']['message'] ?? '';
 

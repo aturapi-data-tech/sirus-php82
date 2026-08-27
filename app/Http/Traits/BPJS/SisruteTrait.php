@@ -325,7 +325,15 @@ trait SisruteTrait
     }
 
     // DELETE RUJUKAN — HTTP method DELETE (bukan POST!)
-    public static function sisrute_delete_rujukan($noRujukan, $user = 'Sirus')
+    // DELETE RUJUKAN — verb DELETE, body request.t_rujukan.
+    // $satuSehatRujukan WAJIB ikut: contoh resmi BPJS (documenter INTEGRASI SATU SEHAT
+    // RUJUKAN & koleksi Postman Sisrute) selalu menyertakannya. Tanpa blok itu BPJS
+    // tak punya bahan untuk membatalkan sisi SATUSEHAT-nya — yang terhapus cuma rujukan
+    // BPJS, dan ServiceRequest-nya tertinggal hidup di SATUSEHAT.
+    // Isi: kodeFaskesSatuSehat, idPasienSatuSehat, kdppkSatuSehatTujuanRujukan,
+    // kdDokterSatuSehat, encounter.reference (UUID POLOS — sama seperti Insert),
+    // patientInstruction, keteranganRujukan.
+    public static function sisrute_delete_rujukan($noRujukan, $user = 'Sirus', array $satuSehatRujukan = [])
     {
         // 1. Custom error messages
         $messages = [
@@ -365,10 +373,13 @@ trait SisruteTrait
                 ->withHeaders($signature)
                 ->delete($url, [
                     'request' => [
-                        't_rujukan' => [
+                        't_rujukan' => array_filter([
                             'noRujukan' => $noRujukan,
                             'user' => $user,
-                        ],
+                            // Kosong = jangan dikirim: field objek kosong ditolak
+                            // SATUSEHAT (unparseable_resource), bukan diabaikan.
+                            'satuSehatRujukan' => $satuSehatRujukan ?: null,
+                        ], fn($nilai) => $nilai !== null),
                     ],
                 ]);
 
