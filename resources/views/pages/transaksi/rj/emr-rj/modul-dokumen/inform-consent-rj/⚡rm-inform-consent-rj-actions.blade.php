@@ -62,6 +62,12 @@ new class extends Component {
     // null = sedang membuat entri baru.
     public ?string $editingKey = null;
 
+    // Layar aktif di modal: 'daftar' (grid entri) atau 'form' (tambah/edit/lihat).
+    // Formulir sengaja tidak nongkrong bersama daftarnya: dulu ia ikut tampil terus lalu
+    // dikosongkan diam-diam sesudah tersimpan, dan petugas yang mengira itu masih formulir
+    // yang tadi diisi mengetik ulang — tersimpan sebagai draft baru.
+    public string $layar = 'daftar';
+
     // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja, tak bisa edit).
     public bool $viewOnly = false;
 
@@ -116,6 +122,8 @@ new class extends Component {
         $this->newConsent['waliHubungan'] = 'pasien';
         $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-inform-consent-rj');
+
+        $this->layar = 'daftar';
 
         $this->dispatch('open-modal', name: "rm-inform-consent-rj-{$this->rjNo}");
     }
@@ -566,6 +574,29 @@ new class extends Component {
         $this->incrementVersion('modal-inform-consent-rj');
     }
 
+    /** Layar formulir sedang tampil? Saat terkunci, formulir tak pernah dirender. */
+    public function diForm(): bool
+    {
+        return !$this->isFormLocked && ($this->viewOnly || $this->editingKey !== null || $this->layar === 'form');
+    }
+
+    /** Buka formulir kosong untuk entri baru. */
+    public function tambahEntri(): void
+    {
+        if ($this->isFormLocked || $this->disabled) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menambah entri.');
+            return;
+        }
+        $this->cancelEdit();     // kosongkan formulir (sekaligus balik ke daftar)…
+        $this->layar = 'form';   // …lalu naikkan formulirnya
+    }
+
+    /** Tutup formulir, kembali ke daftar entri. Formulir selalu ditinggalkan kosong. */
+    public function kembaliKeDaftar(): void
+    {
+        $this->cancelEdit();
+    }
+
     /* ===============================
      | CETAK
      =============================== */
@@ -653,6 +684,7 @@ new class extends Component {
             'petugasPemeriksaCode' => '',
             'petugasPemeriksaDate' => '',
         ];
+        $this->layar = 'daftar';   // mengosongkan formulir = kembali ke daftar
     }
 
     protected function resetForm(): void
@@ -858,6 +890,7 @@ new class extends Component {
                         @endif
 
                         {{-- ══ INFORMASI TINDAKAN ══ --}}
+                        @if ($this->diForm())
                         <section class="space-y-4">
                             <h3 class="text-base font-semibold text-ink dark:text-gray-200">
                                 Informasi Tindakan
@@ -1120,6 +1153,8 @@ new class extends Component {
                         </section>
 
                         {{-- DAFTAR CONSENT TERSIMPAN --}}
+                        @endif
+                        @unless ($this->diForm())
                         @if (count($consentList) > 0)
                             <div class="mt-6 overflow-x-auto">
                                 <div class="flex items-center justify-between gap-2 pb-2 border-b border-hairline-soft dark:border-gray-800 mb-3">
@@ -1322,6 +1357,7 @@ new class extends Component {
                                 </table>
                             </div>
                         @endif
+                        @endunless
 
                     </div>
                 </div>
@@ -1330,6 +1366,7 @@ new class extends Component {
             {{-- FOOTER --}}
             <div
                 class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
+                @if ($this->diForm())
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     @if ($viewOnly)
                         <p class="flex items-center gap-1.5 text-sm text-sky-600 dark:text-sky-400">
@@ -1354,7 +1391,7 @@ new class extends Component {
                     @endif
 
                     <div class="flex flex-wrap items-center justify-end gap-3">
-                        <x-secondary-button wire:click="closeModal">Tutup</x-secondary-button>
+                        <x-secondary-button wire:click="kembaliKeDaftar">Kembali ke Daftar</x-secondary-button>
 
                         @if ($viewOnly)
                             <x-primary-button wire:click.prevent="cancelEdit" wire:target="cancelEdit"
@@ -1391,6 +1428,20 @@ new class extends Component {
                         @endif
                     </div>
                 </div>
+                @else
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                        @unless ($isFormLocked)
+                            <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
+                                wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Tambah Entri
+                            </x-primary-button>
+                        @endunless
+                    </div>
+                @endif
             </div>
 
         </div>
