@@ -973,6 +973,7 @@ new class extends Component {
                             Asesmen pasien menjelang akhir hayat &amp; keluarganya
                         </span>
                     </h2>
+                    <p class="flex-1 hidden min-w-0 truncate text-xs text-muted sm:block dark:text-gray-400">Pengkajian pasien tahap terminal — kondisi medis, gejala, psikososial &amp; spiritual, lalu rencana perawatan.</p>
                     @if ($akhirHayatCount > 0)
                         <x-badge variant="info">{{ $akhirHayatCount }} tersimpan</x-badge>
                     @endif

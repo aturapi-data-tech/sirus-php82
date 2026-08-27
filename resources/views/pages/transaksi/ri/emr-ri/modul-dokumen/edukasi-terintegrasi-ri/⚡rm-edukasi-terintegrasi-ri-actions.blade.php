@@ -958,6 +958,7 @@ new class extends Component {
             <div class="flex items-center justify-between gap-4 px-6 py-2.5 border-b border-hairline bg-surface-soft dark:border-gray-700">
                 <div class="flex items-center gap-2.5">
                     <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Edukasi Terintegrasi</h2>
+                    <p class="flex-1 hidden min-w-0 truncate text-xs text-muted sm:block dark:text-gray-400">Edukasi pasien &amp; keluarga oleh seluruh profesi — kebutuhan, metode, hasil, dan tindak lanjutnya.</p>
                     @if ($jumlahEdukasiTerintegrasi > 0)
                         <x-badge variant="info">{{ $jumlahEdukasiTerintegrasi }} tersimpan</x-badge>
                     @endif

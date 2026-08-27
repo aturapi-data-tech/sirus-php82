@@ -635,7 +635,7 @@ new class extends Component {
             <div class="flex items-center justify-between gap-4">
                 <div class="flex items-baseline flex-1 gap-2 min-w-0">
                     <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">
-                        Pulang Atas Permintaan Sendiri (APS)
+                        Pulang Atas Permintaan Sendiri
                     </h3>
                     @if ($poCount > 0)
                         <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $poCount }} surat</x-badge>

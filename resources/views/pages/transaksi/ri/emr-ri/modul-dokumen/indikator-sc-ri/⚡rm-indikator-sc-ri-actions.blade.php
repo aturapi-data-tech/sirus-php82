@@ -602,7 +602,7 @@ new class extends Component {
             <div class="flex-1 min-w-0 space-y-2">
                 {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
                 <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Indikator Proses SC</h3>
+                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Indikator Proses Sectio Caesarea</h3>
                     @if ($scCount > 0)
                         <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $scCount }} entri</x-badge>
                     @else
@@ -675,7 +675,7 @@ new class extends Component {
                             </svg>
                         </div>
                         <div class="flex items-baseline gap-2 min-w-0">
-                            <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Indikator Proses SC</h2>
+                            <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Indikator Proses Sectio Caesarea</h2>
                             <p class="truncate text-xs text-muted dark:text-gray-400">Audit sectio caesaria (VK) — tiap entri = 1 audit. Diisi Dokter.</p>
                         </div>
                     </div>

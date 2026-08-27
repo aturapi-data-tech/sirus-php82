@@ -619,7 +619,7 @@ new class extends Component {
                             </svg>
                         </div>
                         <div class="flex items-baseline gap-2 min-w-0">
-                            <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">Permintaan Darah</h2>
+                            <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">Formulir Permintaan Darah</h2>
                             <p class="truncate text-xs text-muted dark:text-gray-400">Permintaan darah &amp; komponen darah — Rawat Inap</p>
                         </div>
                         <div class="flex items-center gap-1.5 ml-auto shrink-0">

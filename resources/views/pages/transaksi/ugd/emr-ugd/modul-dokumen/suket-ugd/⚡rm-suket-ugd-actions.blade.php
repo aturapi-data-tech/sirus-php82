@@ -261,6 +261,7 @@ new class extends Component {
             {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
             <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-hairline bg-surface-soft dark:border-gray-700">
                 <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Surat Keterangan</h2>
+                <p class="flex-1 hidden min-w-0 truncate text-xs text-muted sm:block dark:text-gray-400">Surat keterangan untuk keperluan pasien — keterangan sakit, sehat, atau keperluan lain.</p>
                 <x-icon-button class="ml-auto shrink-0" color="gray" type="button" wire:click="closeModal">
                     <span class="sr-only">Close</span>
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">

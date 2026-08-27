@@ -679,7 +679,7 @@ new class extends Component {
             <div class="flex-1 space-y-3">
                 {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
                 <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Form Transfer UGD &rarr; RI</h3>
+                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Formulir Transfer UGD &rarr; Rawat Inap</h3>
                     @if ($trfKirim && $trfTerima)
                         <x-badge variant="success">Selesai</x-badge>
                     @elseif ($trfKirim)
@@ -730,7 +730,8 @@ new class extends Component {
 
             {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
             <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-hairline bg-surface-soft dark:border-gray-700">
-                <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Form Transfer UGD &rarr; RI</h2>
+                <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Formulir Transfer UGD &rarr; Rawat Inap</h2>
+                <p class="flex-1 hidden min-w-0 truncate text-xs text-muted sm:block dark:text-gray-400">Serah terima pasien dari Unit Gawat Darurat ke ruang Rawat Inap — kondisi, terapi, dan alat terpasang.</p>
                 <x-icon-button class="ml-auto shrink-0" color="gray" type="button" wire:click="closeModal">
                     <span class="sr-only">Close</span>
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">

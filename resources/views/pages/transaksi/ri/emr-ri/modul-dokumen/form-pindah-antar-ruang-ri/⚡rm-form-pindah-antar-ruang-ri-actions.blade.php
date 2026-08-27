@@ -539,7 +539,7 @@ new class extends Component {
                 {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
                 <div class="flex items-baseline flex-1 gap-2 min-w-0">
                     <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">
-                        Form Pindah Antar Ruang
+                        Formulir Pindah Antar Ruang
                     </h3>
                     @if ($pindahCount > 0)
                         <x-badge variant="success">{{ $pindahCount }} riwayat</x-badge>
@@ -609,7 +609,7 @@ new class extends Component {
 
                             <div class="flex items-baseline gap-2 min-w-0">
                                 <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">
-                                    Form Pindah Antar Ruang
+                                    Formulir Pindah Antar Ruang
                                 </h2>
                                 <p class="flex-1 min-w-0 truncate text-xs text-muted dark:text-gray-400">
                                     Pengirim TTD &rarr; Penerima lanjutkan TTD &rarr; Final (terkunci)

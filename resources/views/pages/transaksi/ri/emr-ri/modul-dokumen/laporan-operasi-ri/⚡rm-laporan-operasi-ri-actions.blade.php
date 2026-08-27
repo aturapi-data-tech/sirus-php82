@@ -741,7 +741,7 @@ new class extends Component {
                                 </svg>
                             </div>
                             <div class="flex items-baseline gap-2 min-w-0">
-                                <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">Laporan Operasi (DPJP)</h2>
+                                <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">Laporan Operasi</h2>
                                 <p class="truncate text-xs text-muted dark:text-gray-400">
                                     PAB 7.2 &amp; 7.4 — tiap entri = 1 laporan operasi; cicil Draft lalu kunci lewat TTD Operator
                                 </p>

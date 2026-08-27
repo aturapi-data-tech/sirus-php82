@@ -752,7 +752,7 @@ new class extends Component {
             <div class="flex-1 space-y-2">
                 {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
                 <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Case Manager (MPP)</h3>
+                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Case Manager — Manajer Pelayanan Pasien</h3>
                     <x-badge variant="{{ $mppCountA > 0 ? 'success' : 'warning' }}">Form A: {{ $mppCountA }}</x-badge>
                     <x-badge variant="{{ $mppCountB > 0 ? 'success' : 'warning' }}">Form B: {{ $mppCountB }}</x-badge>
                     <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Skrining awal &amp; pelaksanaan/monitoring oleh Manajer Pelayanan Pasien selama perawatan.</p>
@@ -782,7 +782,8 @@ new class extends Component {
             wire:key="{{ $this->renderKey('modal-case-manager-ri', [$riHdrNo ?? 'new']) }}">
             {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
             <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-hairline bg-surface-soft dark:border-gray-700 shrink-0">
-                <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Case Manager (MPP)</h2>
+                <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Case Manager — Manajer Pelayanan Pasien</h2>
+                <p class="flex-1 hidden min-w-0 truncate text-xs text-muted sm:block dark:text-gray-400">Form A &amp; B Manajer Pelayanan Pasien — skrining, rencana pelayanan, dan evaluasinya.</p>
                 <div class="flex items-center gap-2">
                     @if ($mppCountA + $mppCountB > 0)
                         <x-badge variant="info">{{ $mppCountA + $mppCountB }} tersimpan</x-badge>

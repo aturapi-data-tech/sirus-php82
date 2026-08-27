@@ -699,7 +699,7 @@ new class extends Component {
             <div class="flex-1 min-w-0 space-y-2">
                 {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
                 <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Monitoring Pasca Anestesi (RR)</h3>
+                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Monitoring Pasca Anestesi — Ruang Pemulihan</h3>
                     @if ($paCount > 0)
                         <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $paCount }} catatan</x-badge>
                     @else
