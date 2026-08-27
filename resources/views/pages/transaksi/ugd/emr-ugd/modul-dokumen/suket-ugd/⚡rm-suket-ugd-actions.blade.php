@@ -258,23 +258,23 @@ new class extends Component {
     <x-modal name="rm-suket-ugd-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal-suket-ugd', [$rjNo ?? 'new']) }}">
 
-            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
-            <div class="px-4 pt-2">
-                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
-                    wire:key="suket-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
-            </div>
-
             {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
             <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-hairline bg-surface-soft dark:border-gray-700">
                 <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Surat Keterangan</h2>
                 <x-icon-button class="ml-auto shrink-0" color="gray" type="button" wire:click="closeModal">
-                <span class="sr-only">Close</span>
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd"
-                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                clip-rule="evenodd" />
-                </svg>
+                    <span class="sr-only">Close</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd"
+                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                    clip-rule="evenodd" />
+                    </svg>
                 </x-icon-button>
+            </div>
+
+            {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
+            <div class="px-4 pt-2">
+                <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
+                    wire:key="suket-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
             </div>
 
             {{-- KONTEN (flex-1 → dorong footer sticky ke bawah, pola emr-ugd) --}}
