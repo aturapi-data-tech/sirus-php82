@@ -1126,13 +1126,13 @@ new class extends Component {
                                 <table class="min-w-full text-sm">
                                     <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
                                         <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                                            <th class="w-8 px-2 py-3 border-b bg-surface-card dark:bg-gray-800"></th>
-                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Lembar Dibuat</th>
-                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Baris</th>
-                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Periode Pemantauan</th>
-                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Petugas (TTD)</th>
-                                            <th class="px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Status</th>
-                                            <th class="px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Aksi</th>
+                                            <th class="whitespace-nowrap w-8 px-2 py-3 border-b bg-surface-card dark:bg-gray-800"></th>
+                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Lembar Dibuat</th>
+                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Baris</th>
+                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Periode Pemantauan</th>
+                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Petugas (TTD)</th>
+                                            <th class="whitespace-nowrap px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Status</th>
+                                            <th class="whitespace-nowrap px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Aksi</th>
                                         </tr>
                                     </thead>
                                     @forelse (array_reverse($entriList) as $entry)
@@ -1262,27 +1262,27 @@ new class extends Component {
                                                         <table class="ds-table">
                                                             <thead>
                                                                 <tr>
-                                                                    <th class="ds-c w-10">No</th>
-                                                                    <th>Tgl / Jam</th>
-                                                                    <th>TD (mmHg)</th>
-                                                                    <th>Nadi</th>
-                                                                    <th>RR</th>
-                                                                    <th>Suhu</th>
-                                                                    <th>EWS</th>
-                                                                    <th>TFU</th>
-                                                                    <th>Kontraksi</th>
-                                                                    <th>Lochia</th>
-                                                                    <th>Drh (cc)</th>
-                                                                    <th>Luka</th>
-                                                                    <th>BAK</th>
-                                                                    <th>BAB</th>
-                                                                    <th>Laktasi</th>
-                                                                    <th>ASI</th>
-                                                                    <th>Rawat Gabung</th>
-                                                                    <th>Mobilisasi</th>
-                                                                    <th>Keluhan</th>
-                                                                    <th>Asuhan / Tindakan</th>
-                                                                    <th>Petugas</th>
+                                                                    <th class="whitespace-nowrap ds-c w-10">No</th>
+                                                                    <th class="whitespace-nowrap">Tgl / Jam</th>
+                                                                    <th class="whitespace-nowrap">TD (mmHg)</th>
+                                                                    <th class="whitespace-nowrap">Nadi</th>
+                                                                    <th class="whitespace-nowrap">RR</th>
+                                                                    <th class="whitespace-nowrap">Suhu</th>
+                                                                    <th class="whitespace-nowrap">EWS</th>
+                                                                    <th class="whitespace-nowrap">TFU</th>
+                                                                    <th class="whitespace-nowrap">Kontraksi</th>
+                                                                    <th class="whitespace-nowrap">Lochia</th>
+                                                                    <th class="whitespace-nowrap">Drh (cc)</th>
+                                                                    <th class="whitespace-nowrap">Luka</th>
+                                                                    <th class="whitespace-nowrap">BAK</th>
+                                                                    <th class="whitespace-nowrap">BAB</th>
+                                                                    <th class="whitespace-nowrap">Laktasi</th>
+                                                                    <th class="whitespace-nowrap">ASI</th>
+                                                                    <th class="whitespace-nowrap">Rawat Gabung</th>
+                                                                    <th class="whitespace-nowrap">Mobilisasi</th>
+                                                                    <th class="whitespace-nowrap">Keluhan</th>
+                                                                    <th class="whitespace-nowrap">Asuhan / Tindakan</th>
+                                                                    <th class="whitespace-nowrap">Petugas</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>

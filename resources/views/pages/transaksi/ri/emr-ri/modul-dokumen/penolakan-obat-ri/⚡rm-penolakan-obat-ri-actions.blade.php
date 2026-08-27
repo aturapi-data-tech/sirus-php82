@@ -987,13 +987,13 @@ new class extends Component {
                                 <table class="min-w-full text-base">
                                     <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
                                         <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                                            <th class="w-8 px-2 py-3 border-b bg-surface-card dark:bg-gray-800"></th>
-                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Pembuat Pernyataan</th>
-                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Obat yang Ditolak</th>
-                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Tanggal Dibuat</th>
-                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Petugas RS</th>
-                                            <th class="px-4 py-3 border-b text-center bg-surface-card dark:bg-gray-800">Status</th>
-                                            <th class="px-4 py-3 border-b text-center bg-surface-card dark:bg-gray-800">Aksi</th>
+                                            <th class="whitespace-nowrap w-8 px-2 py-3 border-b bg-surface-card dark:bg-gray-800"></th>
+                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Pembuat Pernyataan</th>
+                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Obat yang Ditolak</th>
+                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Tanggal Dibuat</th>
+                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Petugas RS</th>
+                                            <th class="whitespace-nowrap px-4 py-3 border-b text-center bg-surface-card dark:bg-gray-800">Status</th>
+                                            <th class="whitespace-nowrap px-4 py-3 border-b text-center bg-surface-card dark:bg-gray-800">Aksi</th>
                                         </tr>
                                     </thead>
                                     @forelse (array_reverse($penolakanList) as $entry)

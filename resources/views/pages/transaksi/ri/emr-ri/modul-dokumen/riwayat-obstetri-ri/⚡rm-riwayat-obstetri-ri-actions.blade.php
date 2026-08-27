@@ -970,12 +970,12 @@ new class extends Component {
                                 <table class="min-w-full text-sm">
                                     <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
                                         <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                                            <th class="w-8 px-2 py-3 border-b bg-surface-card dark:bg-gray-800"></th>
-                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Waktu</th>
-                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">G-P-A</th>
-                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Petugas (TTD)</th>
-                                            <th class="px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Status</th>
-                                            <th class="px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Aksi</th>
+                                            <th class="whitespace-nowrap w-8 px-2 py-3 border-b bg-surface-card dark:bg-gray-800"></th>
+                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Waktu</th>
+                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">G-P-A</th>
+                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Petugas (TTD)</th>
+                                            <th class="whitespace-nowrap px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Status</th>
+                                            <th class="whitespace-nowrap px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Aksi</th>
                                         </tr>
                                     </thead>
                                     @forelse (array_reverse($entriList) as $entry)
@@ -1111,18 +1111,18 @@ new class extends Component {
                                                                         <table class="w-full text-xs border-collapse">
                                                                             <thead>
                                                                                 <tr class="text-left tracking-wide uppercase text-muted bg-surface-soft border-b border-hairline dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">
-                                                                                    <th class="px-2 py-1.5 font-semibold text-center">No</th>
-                                                                                    <th class="px-2 py-1.5 font-semibold">Kehamilan</th>
-                                                                                    <th class="px-2 py-1.5 font-semibold">Cara Persalinan</th>
-                                                                                    <th class="px-2 py-1.5 font-semibold">Tempat</th>
-                                                                                    <th class="px-2 py-1.5 font-semibold">Penolong</th>
-                                                                                    <th class="px-2 py-1.5 font-semibold">Komplikasi</th>
-                                                                                    <th class="px-2 py-1.5 font-semibold">JK</th>
-                                                                                    <th class="px-2 py-1.5 font-semibold">Keadaan</th>
-                                                                                    <th class="px-2 py-1.5 font-semibold">Umur</th>
-                                                                                    <th class="px-2 py-1.5 font-semibold">BBL</th>
-                                                                                    <th class="px-2 py-1.5 font-semibold">Keterangan</th>
-                                                                                    <th class="px-2 py-1.5 font-semibold">Petugas</th>
+                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold text-center">No</th>
+                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Kehamilan</th>
+                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Cara Persalinan</th>
+                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Tempat</th>
+                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Penolong</th>
+                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Komplikasi</th>
+                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">JK</th>
+                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Keadaan</th>
+                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Umur</th>
+                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">BBL</th>
+                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Keterangan</th>
+                                                                                    <th class="whitespace-nowrap px-2 py-1.5 font-semibold">Petugas</th>
                                                                                 </tr>
                                                                             </thead>
                                                                             <tbody>

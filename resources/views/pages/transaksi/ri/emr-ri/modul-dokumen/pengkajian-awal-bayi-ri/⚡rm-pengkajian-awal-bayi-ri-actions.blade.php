@@ -872,12 +872,12 @@ new class extends Component {
                                 <table class="min-w-full text-sm">
                                     <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
                                         <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                                            <th class="w-8 px-2 py-3 border-b bg-surface-card dark:bg-gray-800"></th>
-                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Tgl / Jam Lahir</th>
-                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Jenis Kelamin</th>
-                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Petugas (TTD)</th>
-                                            <th class="px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Status</th>
-                                            <th class="px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Aksi</th>
+                                            <th class="whitespace-nowrap w-8 px-2 py-3 border-b bg-surface-card dark:bg-gray-800"></th>
+                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Tgl / Jam Lahir</th>
+                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Jenis Kelamin</th>
+                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Petugas (TTD)</th>
+                                            <th class="whitespace-nowrap px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Status</th>
+                                            <th class="whitespace-nowrap px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Aksi</th>
                                         </tr>
                                     </thead>
                                     @forelse (array_reverse($entriList) as $entry)
@@ -1023,9 +1023,9 @@ new class extends Component {
                                                                 <table class="min-w-full text-sm border-collapse">
                                                                     <thead>
                                                                         <tr class="text-left border-b border-hairline dark:border-gray-700">
-                                                                            <th class="py-1 pr-3 font-medium text-muted-soft">Komponen</th>
+                                                                            <th class="whitespace-nowrap py-1 pr-3 font-medium text-muted-soft">Komponen</th>
                                                                             @foreach ($menitD as $mk => $ml)
-                                                                                <th class="px-2 py-1 font-medium text-center text-muted-soft">Menit {{ $ml }}</th>
+                                                                                <th class="whitespace-nowrap px-2 py-1 font-medium text-center text-muted-soft">Menit {{ $ml }}</th>
                                                                             @endforeach
                                                                         </tr>
                                                                     </thead>

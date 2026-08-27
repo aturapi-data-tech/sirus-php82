@@ -868,10 +868,10 @@ new class extends Component {
                 <table class="min-w-full text-sm">
                     <thead class="bg-surface-card dark:bg-gray-800">
                         <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                            <th class="px-3 py-2 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Tanggal</th>
-                            <th class="px-3 py-2 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Pasien / Keluarga</th>
-                            <th class="px-3 py-2 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Petugas (TTD)</th>
-                            <th class="px-3 py-2 text-sm font-medium text-center text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Status</th>
+                            <th class="whitespace-nowrap px-3 py-2 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Tanggal</th>
+                            <th class="whitespace-nowrap px-3 py-2 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Pasien / Keluarga</th>
+                            <th class="whitespace-nowrap px-3 py-2 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Petugas (TTD)</th>
+                            <th class="whitespace-nowrap px-3 py-2 text-sm font-medium text-center text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1453,12 +1453,12 @@ new class extends Component {
             <table class="min-w-full text-sm">
                 <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
                     <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                        <th class="w-8 px-2 py-3 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800"></th>
-                        <th class="px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Tanggal</th>
-                        <th class="px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Pasien / Keluarga</th>
-                        <th class="px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Petugas (TTD)</th>
-                        <th class="px-4 py-3 text-sm font-medium text-center text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Status</th>
-                        <th class="px-4 py-3 text-sm font-medium text-center text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 w-64 bg-surface-card dark:bg-gray-800">Aksi</th>
+                        <th class="whitespace-nowrap w-8 px-2 py-3 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800"></th>
+                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Tanggal</th>
+                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Pasien / Keluarga</th>
+                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Petugas (TTD)</th>
+                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-center text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Status</th>
+                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-center text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 w-64 bg-surface-card dark:bg-gray-800">Aksi</th>
                     </tr>
                 </thead>
                 @forelse (array_reverse($list) as $entri)

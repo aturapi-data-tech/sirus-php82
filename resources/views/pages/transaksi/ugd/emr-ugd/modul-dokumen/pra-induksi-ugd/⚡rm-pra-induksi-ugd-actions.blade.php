@@ -767,11 +767,11 @@ new class extends Component {
                 <table class="min-w-full text-sm">
                     <thead class="bg-surface-card dark:bg-gray-800">
                         <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                            <th class="px-3 py-2 border-b">Tanggal</th>
-                            <th class="px-3 py-2 border-b">ASA</th>
-                            <th class="px-3 py-2 border-b">Rencana</th>
-                            <th class="px-3 py-2 border-b">Petugas (TTD)</th>
-                            <th class="px-3 py-2 text-center border-b">Status</th>
+                            <th class="whitespace-nowrap px-3 py-2 border-b">Tanggal</th>
+                            <th class="whitespace-nowrap px-3 py-2 border-b">ASA</th>
+                            <th class="whitespace-nowrap px-3 py-2 border-b">Rencana</th>
+                            <th class="whitespace-nowrap px-3 py-2 border-b">Petugas (TTD)</th>
+                            <th class="whitespace-nowrap px-3 py-2 text-center border-b">Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1172,13 +1172,13 @@ new class extends Component {
                                     <table class="min-w-full text-base">
                                         <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
                                             <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                                                <th class="w-8 px-2 py-3 border-b bg-surface-card dark:bg-gray-800"></th>
-                                                <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Tanggal</th>
-                                                <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">ASA</th>
-                                                <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Rencana</th>
-                                                <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Petugas (TTD)</th>
-                                                <th class="px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Status</th>
-                                                <th class="px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Aksi</th>
+                                                <th class="whitespace-nowrap w-8 px-2 py-3 border-b bg-surface-card dark:bg-gray-800"></th>
+                                                <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Tanggal</th>
+                                                <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">ASA</th>
+                                                <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Rencana</th>
+                                                <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Petugas (TTD)</th>
+                                                <th class="whitespace-nowrap px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Status</th>
+                                                <th class="whitespace-nowrap px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Aksi</th>
                                             </tr>
                                         </thead>
                                         @forelse (array_reverse($praInduksiList) as $entry)

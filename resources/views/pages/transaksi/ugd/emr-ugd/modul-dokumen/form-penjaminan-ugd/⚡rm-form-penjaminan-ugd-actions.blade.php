@@ -927,13 +927,13 @@ new class extends Component {
                 <table class="min-w-full text-base">
                     <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
                         <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                            <th class="w-8 px-2 py-3 border-b bg-surface-card dark:bg-gray-800"></th>
-                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Tanggal</th>
-                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Nama Pembuat</th>
-                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Jenis Penjamin</th>
-                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Petugas</th>
-                            <th class="px-4 py-3 border-b text-center bg-surface-card dark:bg-gray-800">Status</th>
-                            <th class="px-4 py-3 border-b text-center bg-surface-card dark:bg-gray-800">Aksi</th>
+                            <th class="whitespace-nowrap w-8 px-2 py-3 border-b bg-surface-card dark:bg-gray-800"></th>
+                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Tanggal</th>
+                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Nama Pembuat</th>
+                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Jenis Penjamin</th>
+                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Petugas</th>
+                            <th class="whitespace-nowrap px-4 py-3 border-b text-center bg-surface-card dark:bg-gray-800">Status</th>
+                            <th class="whitespace-nowrap px-4 py-3 border-b text-center bg-surface-card dark:bg-gray-800">Aksi</th>
                         </tr>
                     </thead>
                     @forelse (array_reverse($listForm) as $entry)
