@@ -924,10 +924,10 @@ new class extends Component {
                     wire:key="akhir-hayat-ri-display-pasien-{{ $riHdrNo ?? 'init' }}" />
             </div>
 
-            {{-- JUDUL RINGKAS --}}
-            <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-hairline bg-surface-soft dark:border-gray-700">
+            {{-- JUDUL SATU BARIS — judul dipotong, subjudul & badge ke kanan, tak menumpuk ke bawah --}}
+            <div class="flex items-center justify-between gap-4 px-6 py-2.5 border-b border-hairline bg-surface-soft dark:border-gray-700">
                 <div class="flex items-center gap-2.5">
-                    <h2 class="text-xl font-semibold text-ink dark:text-gray-100">
+                    <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">
                         Pengkajian Akhir Hayat
                         <span class="block text-sm font-normal text-muted dark:text-gray-400">
                             Asesmen pasien menjelang akhir hayat &amp; keluarganya

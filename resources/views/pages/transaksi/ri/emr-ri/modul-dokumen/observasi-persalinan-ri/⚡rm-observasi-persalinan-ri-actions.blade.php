@@ -806,18 +806,18 @@ new class extends Component {
                     wire:key="observasi-persalinan-display-pasien-{{ $riHdrNo }}" />
             </div>
 
-            {{-- JUDUL RINGKAS --}}
-            <div class="px-6 py-4 border-b shrink-0 bg-surface-soft border-hairline dark:border-gray-700">
-                <div class="flex items-start justify-between gap-4">
+            {{-- JUDUL SATU BARIS — judul dipotong, subjudul & badge ke kanan, tak menumpuk ke bawah --}}
+            <div class="px-6 py-2.5 border-b shrink-0 bg-surface-soft border-hairline dark:border-gray-700">
+                <div class="flex items-center gap-3 min-w-0">
                     <div class="flex items-center gap-2.5">
-                        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-green/10 dark:bg-brand-lime/15">
+                        <div class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-brand-green/10 dark:bg-brand-lime/15">
                             <svg class="w-4 h-4 text-brand-green dark:text-brand-lime" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                         </div>
-                        <div>
-                            <h2 class="text-lg font-semibold text-ink dark:text-gray-100">Observasi Persalinan</h2>
-                            <p class="mt-0.5 text-sm text-muted dark:text-gray-400">Lembar pemantauan persalinan (VK) — tiap entri = 1 lembar berisi banyak titik-waktu. Diisi Bidan / Perawat.</p>
+                        <div class="flex items-baseline gap-2 min-w-0">
+                            <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Observasi Persalinan</h2>
+                            <p class="truncate text-xs text-muted dark:text-gray-400">Lembar pemantauan persalinan (VK) — tiap entri = 1 lembar berisi banyak titik-waktu. Diisi Bidan / Perawat.</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">

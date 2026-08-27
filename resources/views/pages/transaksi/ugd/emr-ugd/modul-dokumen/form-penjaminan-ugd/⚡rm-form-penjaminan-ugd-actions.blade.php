@@ -687,10 +687,10 @@ new class extends Component {
                     wire:key="penj-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
             </div>
 
-            {{-- JUDUL RINGKAS --}}
-            <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-hairline bg-surface-soft dark:border-gray-700">
+            {{-- JUDUL SATU BARIS — judul dipotong, subjudul & badge ke kanan, tak menumpuk ke bawah --}}
+            <div class="flex items-center justify-between gap-4 px-6 py-2.5 border-b border-hairline bg-surface-soft dark:border-gray-700">
                 <div class="flex items-center gap-2.5">
-                    <h2 class="text-xl font-semibold text-ink dark:text-gray-100">Form Penjaminan &amp; Orientasi Kamar</h2>
+                    <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Form Penjaminan &amp; Orientasi Kamar</h2>
                     <x-badge variant="danger">UGD</x-badge>
                     @if ($penjaminanCount > 0)
                         <x-badge variant="info">{{ $penjaminanCount }} tersimpan</x-badge>

@@ -648,27 +648,27 @@ new class extends Component {
                     wire:key="ipb-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
             </div>
 
-            {{-- JUDUL RINGKAS --}}
-            <div class="relative px-6 py-3 border-b border-hairline dark:border-gray-700 shrink-0 bg-surface-soft">
-                <div class="relative flex items-start justify-between gap-4">
+            {{-- JUDUL SATU BARIS — judul dipotong, subjudul & badge ke kanan, tak menumpuk ke bawah --}}
+            <div class="relative px-6 py-2.5 border-b border-hairline dark:border-gray-700 shrink-0 bg-surface-soft">
+                <div class="relative flex items-center gap-3 min-w-0">
                     @if ($this->diForm())
-                    <div>
-                        <div class="flex items-center gap-2.5">
-                            <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/10">
+                    <div class="flex items-center flex-1 gap-3 min-w-0">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-emerald-500/10">
                                 <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round"
                                         d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                                 </svg>
                             </div>
-                            <div>
-                                <h2 class="font-semibold text-base text-ink dark:text-gray-100">Instruksi Pasca Bedah</h2>
-                                <p class="mt-0.5 text-xs text-muted dark:text-gray-400">
+                            <div class="flex items-baseline gap-2 min-w-0">
+                                <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">Instruksi Pasca Bedah</h2>
+                                <p class="truncate text-xs text-muted dark:text-gray-400">
                                     RM 56 — PAB 7.3 · tiap entri = 1 instruksi · diisi &amp; ditandatangani ahli anestesiologi
                                 </p>
                             </div>
                         </div>
-                        <div class="flex flex-wrap gap-2 mt-2">
+                        <div class="flex items-center gap-1.5 ml-auto shrink-0">
                             <x-badge variant="brand">Rawat Inap</x-badge>
                             @if (count($instruksiList) > 0)
                                 <x-badge variant="info">{{ count($instruksiList) }} tersimpan</x-badge>

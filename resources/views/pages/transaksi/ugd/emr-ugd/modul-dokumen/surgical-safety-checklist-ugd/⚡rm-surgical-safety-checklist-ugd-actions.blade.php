@@ -725,20 +725,20 @@ new class extends Component {
                 <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo" wire:key="ssc-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
             </div>
 
-            {{-- JUDUL RINGKAS --}}
-            <div class="relative px-6 py-3 border-b border-hairline dark:border-gray-700">
-                <div class="relative flex items-start justify-between gap-4">
-                    <div>
-                        <div class="flex items-center gap-2.5">
-                            <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-teal-500/10">
+            {{-- JUDUL SATU BARIS — judul dipotong, subjudul & badge ke kanan, tak menumpuk ke bawah --}}
+            <div class="relative px-6 py-2.5 border-b border-hairline dark:border-gray-700">
+                <div class="relative flex items-center gap-3 min-w-0">
+                    <div class="flex items-center flex-1 gap-3 min-w-0">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-teal-500/10">
                                 <svg class="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             </div>
-                            <div>
-                                <h2 class="font-semibold text-base text-ink dark:text-gray-100">Surgical Safety Checklist</h2>
-                                <p class="mt-0.5 text-xs text-muted dark:text-gray-400">UGD — WHO SSC</p>
+                            <div class="flex items-baseline gap-2 min-w-0">
+                                <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">Surgical Safety Checklist</h2>
+                                <p class="truncate text-xs text-muted dark:text-gray-400">UGD — WHO SSC</p>
                             </div>
                         </div>
-                        <div class="flex flex-wrap gap-2 mt-2">
+                        <div class="flex items-center gap-1.5 ml-auto shrink-0">
                             <x-badge variant="brand">UGD</x-badge>
                             @if (count($surgicalSafetyChecklistList) > 0) <x-badge variant="info">{{ count($surgicalSafetyChecklistList) }} tersimpan</x-badge> @endif
                             @if ($isFormLocked) <x-badge variant="danger">Read Only</x-badge> @endif

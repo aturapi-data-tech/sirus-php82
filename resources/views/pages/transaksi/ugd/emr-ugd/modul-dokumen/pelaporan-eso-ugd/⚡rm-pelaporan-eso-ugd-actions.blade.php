@@ -773,11 +773,11 @@ new class extends Component {
                     wire:key="pelaporan-eso-ugd-display-pasien-{{ $rjNo ?? 'init' }}" />
             </div>
 
-            {{-- JUDUL RINGKAS --}}
+            {{-- JUDUL SATU BARIS — judul dipotong, subjudul & badge ke kanan, tak menumpuk ke bawah --}}
             <div
                 class="flex items-center justify-between gap-4 px-6 py-4 border-b border-hairline bg-surface-soft dark:border-gray-700">
                 <div class="flex items-center gap-2.5">
-                    <h2 class="text-xl font-semibold text-ink dark:text-gray-100">
+                    <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">
                         Formulir Pelaporan Efek Samping Obat
                         <span class="block text-sm font-normal text-muted dark:text-gray-400">
                             RM 37 &middot; mengikuti Form Kuning MESO BPOM

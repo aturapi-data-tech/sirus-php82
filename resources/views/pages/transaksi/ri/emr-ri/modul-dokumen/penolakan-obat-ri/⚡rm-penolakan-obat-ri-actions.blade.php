@@ -730,16 +730,16 @@ new class extends Component {
                     wire:key="po-ri-display-pasien-{{ $riHdrNo ?? 'init' }}" />
             </div>
 
-            {{-- JUDUL RINGKAS --}}
-            <div class="relative px-6 py-3 border-b border-hairline dark:border-gray-700">
+            {{-- JUDUL SATU BARIS — judul dipotong, subjudul & badge ke kanan, tak menumpuk ke bawah --}}
+            <div class="relative px-6 py-2.5 border-b border-hairline dark:border-gray-700">
                 <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
                     style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
                 </div>
 
-                <div class="relative flex items-start justify-between gap-4">
-                    <div>
-                        <div class="flex items-center gap-2.5">
-                            <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-red-500/10">
+                <div class="relative flex items-center gap-3 min-w-0">
+                    <div class="flex items-center flex-1 gap-3 min-w-0">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-red-500/10">
                                 <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -747,18 +747,18 @@ new class extends Component {
                                 </svg>
                             </div>
 
-                            <div>
-                                <h2 class="font-semibold text-base text-ink dark:text-gray-100">
+                            <div class="flex items-baseline gap-2 min-w-0">
+                                <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">
                                     Surat Pernyataan Penolakan Pengobatan / Obat Tertentu
                                 </h2>
-                                <p class="mt-0.5 text-xs text-muted dark:text-gray-400">
+                                <p class="truncate text-xs text-muted dark:text-gray-400">
                                     Formulir diisi & dijelaskan kepada pasien/keluarga — tampilan dapat diputar ke arah
                                     pasien
                                 </p>
                             </div>
                         </div>
 
-                        <div class="flex flex-wrap gap-2 mt-2">
+                        <div class="flex items-center gap-1.5 ml-auto shrink-0">
                             <x-badge variant="brand">Rawat Inap</x-badge>
                             @if (count($penolakanList) > 0)
                                 <x-badge variant="info">{{ count($penolakanList) }} tersimpan</x-badge>
