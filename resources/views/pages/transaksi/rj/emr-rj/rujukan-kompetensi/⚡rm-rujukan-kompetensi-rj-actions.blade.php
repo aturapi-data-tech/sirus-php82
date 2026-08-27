@@ -217,12 +217,12 @@ new class extends Component {
         return $masalah;
     }
 
-    private function nomorSep(): string
+    public function nomorSep(): string
     {
         return (string) (DB::table('rsview_rjkasir')->where('rj_no', $this->rjNo)->value('vno_sep') ?? '');
     }
 
-    private function encounterUuid(): string
+    public function encounterUuid(): string
     {
         return (string) ($this->dataDaftarPoliRJ['satusehat']['encounterId'] ?? '');
     }
@@ -1059,7 +1059,7 @@ new class extends Component {
 
     {{-- Panduan pemakaian — komponen bersama; varian SISRUTE (tanpa persetujuan). --}}
     <div class="mb-3">
-        <x-rujukan.panduan-kirim jalur="sisrute" :jalurGanda="false" />
+        <x-rujukan-kompetensi.panduan-kirim jalur="sisrute" :jalurGanda="false" />
     </div>
 
     {{-- Prasyarat & penanda langkah disandingkan: keduanya keterangan keadaan,
@@ -1253,13 +1253,14 @@ new class extends Component {
                 <p class="text-sm {{ str_starts_with($infoKandidat, '✓') || str_starts_with($infoKandidat, 'Tujuan:') ? 'text-green-700 dark:text-green-300' : 'text-muted-soft' }}">{{ $infoKandidat }}</p>
             @endif
 
-            <x-rujukan.kandidat-tabel :rows="$formRujukan['kandidatList']"
+            <x-rujukan-kompetensi.kandidat-tabel :rows="$formRujukan['kandidatList']"
                 :selectedIndex="$formRujukan['kandidatIdx']" :disabled="$isFormLocked" :requireBpjs="true" />
         </div>
 
         {{-- LANGKAH 3 — KIRIM --}}
         <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
             <p class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200"><x-step-number :n="3" /><span class="ml-0.5">Kirim Rujukan</span></p>
+            <x-rujukan-kompetensi.identitas-kiriman :noSep="$this->nomorSep()" :encounterId="$this->encounterUuid()" />
             <div class="grid grid-cols-1 gap-3">
                 <div>
                     <livewire:lov.poli.lov-poli label="Poli Rujukan (kode BPJS 3 huruf)"
