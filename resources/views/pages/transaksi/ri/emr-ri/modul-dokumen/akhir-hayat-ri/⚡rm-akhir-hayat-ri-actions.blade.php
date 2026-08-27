@@ -1569,7 +1569,9 @@ new class extends Component {
                                 @endphp
 
                                 <tbody wire:key="akhir-hayat-{{ $id ?: $loop->index }}"
-                                    x-data="{ open: {{ $loop->first ? 'true' : 'false' }} }"
+                                    {{-- Semua baris mulai TERTUTUP: daftar dipakai untuk MEMILIH entri, bukan
+                                         membacanya. Baris teratas yang terbuka sendiri bikin grid langsung panjang. --}}
+                                    x-data="{ open: false }"
                                     class="border-b border-hairline dark:border-gray-700">
                                     <tr @click="open = !open"
                                         class="cursor-pointer align-top hover:bg-surface-soft dark:hover:bg-gray-800/60 {{ $editingKey && $editingKey === $id ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : '' }}">

@@ -1345,7 +1345,9 @@ new class extends Component {
                                             $jcRow = $consent['jenisConsent'] ?? 'umum';
                                             $jcBadge = ['umum' => 'Tindakan', 'operasi' => 'Operasi', 'anestesi' => 'Anestesi', 'transfusi' => 'Transfusi'][$jcRow] ?? 'Tindakan';
                                         @endphp
-                                        <tbody x-data="{ open: {{ $loop->first ? 'true' : 'false' }} }" class="border-b border-hairline dark:border-gray-700">
+                                        {{-- Semua baris mulai TERTUTUP: daftar dipakai untuk MEMILIH entri, bukan
+                                             membacanya. Baris teratas yang terbuka sendiri bikin grid langsung panjang. --}}
+                                        <tbody x-data="{ open: false }" class="border-b border-hairline dark:border-gray-700">
                                             <tr @click="open = !open"
                                                 class="cursor-pointer hover:bg-surface-soft dark:hover:bg-gray-800 {{ $editingKey && $editingKey === $rowKey ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : '' }}">
                                                 <td class="px-2 py-3 text-center align-middle">
