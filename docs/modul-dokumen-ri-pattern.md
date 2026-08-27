@@ -35,6 +35,84 @@ berisi `<livewire:… :riHdrNo="$riHdrNo" :disabled="$isFormLocked" wire:key="�
 - `array_replace_recursive(defaultForm(), $entri['form'])` saat memuat entri lama —
   record lama yang belum punya key baru tetap aman (lihat feedback normalisasi JSON legacy).
 
+## 2a. Tampilan baku modul dokumen (BAKU sejak 2026-08-27) — RINGKASAN
+
+Berlaku untuk **semua 69 modul dokumen** (multi-entri maupun sekali-entri). Kalau membuat
+modul baru, salin susunan ini apa adanya; kalau menyunting yang lama, jangan turunkan
+salah satunya diam-diam.
+
+### Kartu di tab
+
+```
+[judul · badge · deskripsi(1 baris + "Selengkapnya")]                    [Buka … ]
+[tabel pratinjau 3 entri terbaru — tetap tampil walau kosong]
+```
+
+- baris judul: `flex items-baseline flex-1 gap-2 min-w-0`; judul `truncate shrink-0`;
+  badge `shrink-0 whitespace-nowrap`; deskripsi `<x-deskripsi-ringkas>` bila > 90 karakter
+- **induk baris judul WAJIB `min-w-0`** — tanpa itu `truncate` tak menggigit dan kartunya
+  melar melewati layar sampai tombol "Buka …" terdorong keluar
+
+### Modal
+
+```
+[ikon] Judul · deskripsi ······················ [badge] [✕]     ← satu baris, X mepet kanan
+[display pasien]
+[isi: daftar ⇄ formulir]                                        ← area flex-1
+[footer]                                                        ← DI LUAR area isi
+```
+
+- X = **anak terakhir baris flex judul**, `class="ml-auto shrink-0"`. Jangan dibuat
+  mengambang (`absolute`), jangan diberi baris sendiri, jangan ditaruh di dalam kelompok judul.
+- footer = **saudara** area isi yang ber-`flex-1`, ditambah `sticky bottom-0`: menempel di
+  dasar saat isi pendek, tetap terlihat saat isi panjang.
+- tombol: layar daftar `[Tutup] [Isi Formulir Baru]`, layar formulir
+  `[Kembali ke Daftar] [Simpan …]`.
+
+### Tabel (daftar & pratinjau)
+
+```blade
+<div class="overflow-x-auto rounded-2xl">      {{-- sudut ikut kartu; tabel tanpa border sendiri --}}
+    <table class="min-w-full text-sm">
+        <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
+            <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">…</th>
+```
+
+- latar wajib ikut di `<th>` (syarat sticky), judul kolom `whitespace-nowrap` supaya tak patah
+- **`whitespace-nowrap` hanya untuk tabel daftar/pratinjau**, jangan tabel di dalam formulir —
+  kolomnya banyak dan judulnya panjang, nowrap memaksa formulir bergulir ke samping
+- kosong pun tabel tetap tampil, dengan `<td colspan="N">Belum ada data tersimpan</td>`
+
+### Penamaan
+
+Kalimat utuh, bukan singkatan: "Lanjutkan Pengisian" (bukan "Lanjut Isi"), "Isi Formulir
+Baru" (bukan "Tambah Entri"), "Formulir Transfer UGD → Rawat Inap" (bukan "Form Transfer
+UGD → RI"), "Case Manager — Manajer Pelayanan Pasien" (bukan "(MPP)"). Tiap modal wajib
+punya **ikon + judul + keterangan**.
+
+### Alat periksa
+
+```bash
+php .claude/skills/modul-dokumen/periksa-tampilan.php            # semua modul dokumen
+php .claude/skills/modul-dokumen/periksa-tampilan.php <berkas…>  # sebagian
+```
+
+Membaca HTML hasil render (bukan isi berkas): keseimbangan tag di kedua layar, posisi tombol
+tutup lewat DOM, kelengkapan tombol footer, dan keterangan tabel saat kosong. EXIT 0 = lolos.
+
+### Jebakan yang sudah menggigit (jangan diulang)
+
+| Gejala | Sebabnya |
+|---|---|
+| `truncate` tak menggigit, kartu melar | induk `flex-1` tanpa `min-w-0` (item flex bawaannya `min-width:auto`) |
+| Badge patah dua baris | badge tanpa `shrink-0 whitespace-nowrap` |
+| X turun sendiri / tak mepet kanan | X di luar baris flex, atau di dalam kelompok judul, atau tanpa `ml-auto` |
+| X & badge hilang di layar daftar | `@if ($this->diForm())` terbuka DI DALAM baris judul — naikkan markupnya ke atas penjaga, jangan geser penjaganya (di sebagian berkas directive & tag HTML saling menyilang) |
+| Sel tabel berdempet tanpa padding | kelas `ds-c`/`ds-td-*` dipakai di luar `<table class="ds-table">` |
+| Footer mengambang di tengah | footer ditulis DI DALAM area isi, bukan sebagai saudaranya |
+| Kartu bergaris dua | tabel membawa `border … rounded-lg` sendiri di dalam kartu `padding="p-0"` |
+
 ## 2b. Dua layar: daftar dulu, formulir menyusul (BAKU sejak 2026-08-27)
 
 Modal modul dokumen punya **dua layar**, tidak boleh menampilkan formulir dan daftarnya

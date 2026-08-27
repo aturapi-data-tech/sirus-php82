@@ -35,6 +35,16 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
 6. **Baris aksi tabel entri seragam** — DUA BARIS: baris **atas** = aksi non-destruktif (Lanjut Isi/TTD, **Lihat** = `viewEntry(...)` `<x-secondary-button>`, **Cetak** = `cetak(...)` dgn spinner swap `<x-loading/> Mencetak...`); baris **bawah** = `@if (!$isFormLocked)` berisi **Buka Kunci** (`<x-confirm-button action="bukaKunci(...)">` di dalam `@can('dokumen.bukaKunci')`) + **Hapus** (`<x-outline-button wire:click.prevent="hapus(...)" wire:confirm>` di dalam `@can('dokumen.hapus')`) — server: guard `if (!auth()->user()?->can('dokumen.hapus')) { toast; return; }` sebagai statement pertama method hapus. Kontainer: `<div class="flex flex-col items-center gap-2">` membungkus dua `<div class="flex items-center justify-center gap-2">`. Varian fungsional Cetak (`cetakSemua`/`cetakLembar`/`cetakFormA-B`) boleh tetap. Doc: `docs/modul-dokumen-ri-pattern.md`.
 7. **Penanda tab (badge "ada data")** — tiap `<x-tab>` di `modul-dokumen-<jalur>.blade.php` WAJIB tampil badge saat dokumennya ada isi, baca dari `$dataDaftar<Jalur>['<jsonKey>']`. Gaya seragam `<x-badge variant="success" class="text-[10px] px-1.5 py-0">…</x-badge>` sebelum `</x-tab>`. Isi badge per tipe: **multi** → `{{ count($key) }}` (guard `@if (count($key ?? []) > 0)`); **single** → `&#10003;` (guard `!empty($key['signature'])`/`['isFinal']`); **dual** (mis. `formMPP`) → `count(formA)+count(formB)`; **umbrella** (tab berisi banyak sub-dokumen, mis. Pelayanan Bedah/VK) → `&#10003;` bila `collect([...childKeys])->first(fn($k) => !empty($dataDaftar<Jalur>[$k]))`. Doc: `docs/modul-dokumen-ri-pattern.md`.
 
+8. **Tampilan baku (BAKU sejak 2026-08-27, berlaku 69 modul)** — susunan modal
+   `[ikon · judul · deskripsi · badge · ✕ sebaris]` → `[display pasien]` → `[isi flex-1]` →
+   `[footer di LUAR area isi, sticky bottom-0]`; kartu di tab `[judul · badge · deskripsi
+   1 baris]` + tabel pratinjau 3 entri terbaru yang **tetap tampil saat kosong**. Tombol
+   tutup = anak terakhir baris flex judul dengan `ml-auto shrink-0` — **jangan** mengambang
+   (`absolute`), **jangan** diberi baris sendiri, **jangan** di dalam kelompok judul.
+   Nama tombol kalimat utuh ("Lanjutkan Pengisian", "Isi Formulir Baru"), judul tanpa
+   singkatan, deskripsi > 90 karakter pakai `<x-deskripsi-ringkas>`. Rincian + tabel
+   jebakan: `docs/modul-dokumen-ri-pattern.md §2a`.
+
 ## Port ke jalur lain (RI ⇄ UGD ⇄ RJ)
 
 Salin actions + cetak, ganti token **per-string** (bukan `RI→UGD` global). Tabel lengkap di
@@ -51,6 +61,12 @@ Folder/file UGD/RJ **buang sufiks** `-ri`, tapi modal-name/renderArea/nama PDF *
 
 ## Verifikasi (WAJIB sebelum lapor selesai)
 
+- **Tampilan**: `php .claude/skills/modul-dokumen/periksa-tampilan.php` → EXIT 0. Skrip ini
+  membaca **HTML hasil render**, bukan isi berkas: keseimbangan tag di kedua layar, posisi
+  tombol tutup lewat DOM, kelengkapan tombol footer, dan keterangan tabel saat kosong.
+  Pelajaran mahal: `grep`/pemeriksa statis pernah meloloskan 10 berkas yang `@if`-nya
+  membungkus header (tag "seimbang" tapi salah sarang), dan render satu komponen sendirian
+  pernah meloloskan kelebihan `</div>` yang baru meledak saat bersarang di komponen payung.
 - **`php artisan view:cache`** → EXIT 0 (pipeline Blade asli), lalu `php artisan view:clear`.
   Jangan andalkan `Blade::compileString` untuk file host rekam-medis — banyak yang tak
   standalone-compilable (bandingkan dgn `git HEAD`: gagal identik = pre-existing).
