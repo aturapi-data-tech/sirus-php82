@@ -125,6 +125,27 @@ Aturan yang lahir dari percobaan, jangan diulang:
 - **Jangan** menumpuk judul/subjudul/badge ke bawah; semuanya `truncate` + `min-w-0` supaya
   memendek, bukan turun baris.
 
+### Blok daftar: tanpa judul sendiri, tabel selebar kartunya
+
+Blok daftar **tidak** memasang judul lagi (`<h3>Daftar … Tersimpan</h3>`) — judul modal di
+baris atas sudah menyebutkan dokumennya, jadi judul kedua cuma memakan tinggi. Kartunya juga
+tanpa padding dalam supaya tabel memakai ruang penuh:
+
+```blade
+@unless ($this->diForm())
+    <x-border-form padding="p-0">   {{-- tanpa title, tanpa padding --}}
+        <div class="overflow-x-auto">   {{-- bukan "mt-6 overflow-x-auto px-4 pb-4" --}}
+            <table class="min-w-full …">…</table>
+        </div>
+    </x-border-form>
+@endunless
+```
+
+> **Awas saat menyisir berkas:** jangan memakai kata "Tersimpan"/"Riwayat" sebagai penyaring
+> `grep` untuk menemukan modul dokumen — sejak judul blok dibuang, 18 berkas tak lagi memuat
+> kata itu dan daftar berkasnya menyusut diam-diam (55 → 37). Penanda yang stabil:
+> `grep -rl 'this->diForm()' resources/views/pages/transaksi`.
+
 ### Cara memverifikasi (jangan cuma lihat "tidak error")
 
 `php -l` maupun `Blade::compileString` TIDAK menangkap kerusakan berkas Volt, dan halaman

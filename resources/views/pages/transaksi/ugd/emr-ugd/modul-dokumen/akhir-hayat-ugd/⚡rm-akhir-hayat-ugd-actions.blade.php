@@ -1535,7 +1535,7 @@ new class extends Component {
 
                 {{-- ═══════════ RIWAYAT ═══════════ --}}
                 @unless ($this->diForm())
-                <x-border-form title="Riwayat Pengkajian Akhir Hayat" align="start" bgcolor="bg-surface-soft">
+                <x-border-form padding="p-0" align="start" bgcolor="bg-surface-soft">
                     @php $list = $dataDaftarUGD['pengkajianAkhirHayatUGD'] ?? []; @endphp
                     <div class="mt-3 overflow-x-auto bg-canvas border border-hairline rounded-xl dark:border-gray-700 dark:bg-gray-900">
                         <table class="min-w-full text-sm">

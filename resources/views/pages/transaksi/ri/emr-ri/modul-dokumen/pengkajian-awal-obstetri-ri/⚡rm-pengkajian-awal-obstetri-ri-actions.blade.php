@@ -1029,7 +1029,7 @@ new class extends Component {
                     {{-- ── DAFTAR ENTRI TERSIMPAN (expandable) ── --}}
                     @endif
                     @unless ($this->diForm())
-                    <x-border-form title="Riwayat Pengkajian Tersimpan">
+                    <x-border-form padding="p-0">
                             <div class="flex items-center justify-between gap-2 mb-3">
                                 <span class="text-xs italic text-muted-soft">Klik baris untuk lihat detail lengkap</span>
                             </div>

@@ -1119,7 +1119,7 @@ new class extends Component {
                     {{-- ── DAFTAR BARIS OBSERVASI TERSIMPAN (expandable) ── --}}
                     @endif
                     @unless ($this->diForm())
-                    <x-border-form title="Lembar Observasi Nifas Tersimpan">
+                    <x-border-form padding="p-0">
                             <div class="mb-3">
                                 <span class="text-xs italic text-muted-soft">Klik baris untuk lihat detail lengkap. Tiap lembar dicetak lewat tombol <strong>Cetak</strong> di barisnya.</span>
                             </div>

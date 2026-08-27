@@ -767,7 +767,7 @@ new class extends Component {
                         {{-- ── DAFTAR LAPORAN TERSIMPAN (expandable) ── --}}
                         @endif
                         @unless ($this->diForm())
-                        <div class="pt-6 border-t border-hairline dark:border-gray-700">
+                        <div class="border-t border-hairline dark:border-gray-700">
                             <h3 class="mb-3 text-base font-semibold text-ink dark:text-gray-200">Daftar Laporan Tersimpan</h3>
                                 <p class="mb-3 text-xs italic text-muted-soft">Klik baris untuk lihat detail lengkap.</p>
                                 <div class="overflow-x-auto">

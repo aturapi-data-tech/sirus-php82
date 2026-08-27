@@ -1360,7 +1360,7 @@ new class extends Component {
 
     {{-- ═══════════════ LIST RIWAYAT (layar 'daftar' saja) ═══════════════ --}}
     @unless ($this->diForm())
-    <x-border-form title="Riwayat Edukasi Terintegrasi" align="start" bgcolor="bg-surface-soft">
+    <x-border-form padding="p-0" align="start" bgcolor="bg-surface-soft">
         @php $list = $dataDaftarRi['edukasiPasienTerintegrasi'] ?? []; @endphp
         <div class="mt-3 overflow-x-auto bg-canvas border border-hairline rounded-xl dark:border-gray-700 dark:bg-gray-900">
             {{-- Tanpa kepala tabel sendiri: judulnya sudah di x-border-form, dan tombol

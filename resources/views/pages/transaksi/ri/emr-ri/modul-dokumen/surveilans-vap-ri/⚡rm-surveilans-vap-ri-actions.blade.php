@@ -986,7 +986,7 @@ new class extends Component {
                     {{-- ══ DAFTAR ENTRI ══ --}}
                     @endif
                     @unless ($this->diForm())
-                    <x-border-form title="Riwayat Surveilans Pneumonia Ventilator">
+                    <x-border-form padding="p-0">
                         @forelse ($entriList as $entri)
                             @php
                                 $rowKey = $entri['createdAt'] ?? '';

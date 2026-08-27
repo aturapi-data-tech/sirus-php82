@@ -1050,7 +1050,7 @@ new class extends Component {
                         {{-- ══ DAFTAR LAPORAN TERSIMPAN (expandable) ══ --}}
                         @endif
                         @unless ($this->diForm())
-                        <div class="pt-6 border-t border-hairline dark:border-gray-700">
+                        <div class="border-t border-hairline dark:border-gray-700">
                             <h3 class="text-base font-semibold text-body dark:text-gray-300 pb-2 border-b border-hairline-soft dark:border-gray-800 mb-3">
                                 Daftar Laporan Operasi Tersimpan
                             </h3>

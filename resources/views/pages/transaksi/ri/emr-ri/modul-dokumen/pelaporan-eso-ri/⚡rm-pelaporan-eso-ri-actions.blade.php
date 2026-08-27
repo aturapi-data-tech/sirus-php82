@@ -1315,7 +1315,7 @@ new class extends Component {
                             </x-primary-button>
                         @endunless
                     </div>
-                <x-border-form title="Laporan ESO Tersimpan" align="start" bgcolor="bg-surface-soft">
+                <x-border-form padding="p-0" align="start" bgcolor="bg-surface-soft">
                     <div class="mt-3 overflow-x-auto border bg-canvas rounded-2xl border-hairline dark:border-gray-700">
                         <table class="ds-table">
                             <thead>

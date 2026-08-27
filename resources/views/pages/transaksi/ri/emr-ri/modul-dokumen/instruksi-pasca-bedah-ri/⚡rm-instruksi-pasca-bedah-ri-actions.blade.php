@@ -798,7 +798,7 @@ new class extends Component {
                     {{-- ── DAFTAR INSTRUKSI TERSIMPAN (expandable) ── --}}
                     @endif
                     @unless ($this->diForm())
-                    <x-border-form title="Daftar Instruksi Tersimpan">
+                    <x-border-form padding="p-0">
                             <div class="mb-3">
                                 <span class="text-xs italic text-muted-soft">Klik baris untuk lihat detail lengkap</span>
                             </div>

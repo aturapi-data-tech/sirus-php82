@@ -799,7 +799,7 @@ new class extends Component {
                 @endif
                 @unless ($this->diForm())
                 @php $list = $dataDaftarRi['permintaanDarahRI'] ?? []; @endphp
-                <x-border-form title="Riwayat Permintaan Darah" align="start" bgcolor="bg-surface-soft">
+                <x-border-form padding="p-0" align="start" bgcolor="bg-surface-soft">
                     <div class="mt-2 overflow-x-auto">
                         <table class="w-full text-sm">
                             <thead>

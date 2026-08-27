@@ -921,13 +921,7 @@ new class extends Component {
                         {{-- ══ DAFTAR TERSIMPAN ══ --}}
                         @endif
                         @unless ($this->diForm())
-                            <div class="mt-6 overflow-x-auto">
-                                <div class="flex items-center justify-between gap-2 pb-2 border-b border-hairline-soft dark:border-gray-800 mb-3">
-                                    <h3 class="text-base font-semibold text-body dark:text-gray-300">
-                                        Daftar Permintaan Tersimpan
-                                    </h3>
-                                    <span class="text-xs italic text-muted-soft">Klik baris untuk lihat detail lengkap</span>
-                                </div>
+                            <div class="overflow-x-auto">
                                 <table class="min-w-full text-base border border-hairline rounded-lg dark:border-gray-700">
                                     <thead class="bg-surface-soft dark:bg-gray-800">
                                         <tr class="text-left text-sm font-semibold tracking-wide text-muted uppercase dark:text-gray-300">
