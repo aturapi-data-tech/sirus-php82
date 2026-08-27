@@ -544,9 +544,10 @@ new class extends Component {
     {{-- KARTU RINGKAS + TOMBOL BUKA --}}
     @php $darahCount = count($dataDaftarRi['permintaanDarahRI'] ?? []); @endphp
     <div class="flex items-center justify-between gap-3 p-4 border rounded-xl border-hairline bg-canvas dark:bg-gray-800 dark:border-gray-700">
-        <div class="min-w-0">
-            <p class="text-sm font-semibold text-ink dark:text-white">Formulir Permintaan Darah</p>
-            <p class="mt-0.5 text-xs text-muted dark:text-gray-400">
+        {{-- JUDUL KARTU SEBARIS — judul · deskripsi --}}
+        <div class="flex items-baseline flex-1 gap-2 min-w-0">
+            <p class="truncate shrink-0 text-sm font-semibold text-ink dark:text-white">Formulir Permintaan Darah</p>
+            <p class="hidden truncate text-xs text-muted sm:block dark:text-gray-400">
                 Permintaan komponen darah untuk transfusi — ditandatangani dokter peminta lalu dicetak untuk PMI.
                 @if ($darahCount > 0)
                     <span class="font-medium">· {{ $darahCount }} permintaan</span>

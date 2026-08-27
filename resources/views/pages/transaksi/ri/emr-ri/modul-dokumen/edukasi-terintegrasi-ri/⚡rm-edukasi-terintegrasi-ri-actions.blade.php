@@ -830,18 +830,16 @@ new class extends Component {
     <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div class="flex-1 space-y-2">
-                <div class="flex items-center gap-2">
-                    <h3 class="text-base font-semibold text-ink dark:text-gray-200">Edukasi Terintegrasi</h3>
+                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
+                <div class="flex items-baseline flex-1 gap-2 min-w-0">
+                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Edukasi Terintegrasi</h3>
                     @if ($jumlahEdukasiTerintegrasi > 0)
                         <x-badge variant="success">{{ $jumlahEdukasiTerintegrasi }} entri</x-badge>
                     @else
                         <x-badge variant="warning">Belum ada</x-badge>
                     @endif
+                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Pemberian informasi &amp; edukasi pasien/keluarga — satu formulir terintegrasi antar-PPA (dokter, perawat, gizi, farmasi, dll.), menggantikan form Edukasi Pasien lama.</p>
                 </div>
-                <p class="text-base text-muted dark:text-gray-400">
-                    Pemberian informasi &amp; edukasi pasien/keluarga — satu formulir terintegrasi antar-PPA
-                    (dokter, perawat, gizi, farmasi, dll.), menggantikan form Edukasi Pasien lama.
-                </p>
                 @if (count($dataDaftarRi['edukasiPasien'] ?? []) > 0)
                     <p class="text-sm text-muted-soft">
                         + {{ count($dataDaftarRi['edukasiPasien']) }} entri form Edukasi Pasien lama — lihat &amp; cetak lewat display Rekam Medis.

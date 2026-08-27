@@ -182,6 +182,10 @@ petugas tak perlu membuka modal hanya untuk memastikan sudah terisi:
 Kolomnya sengaja **diklon dari tabel di modalnya sendiri** (buang kolom panah & kolom Aksi),
 supaya istilah dan urutan kolomnya sama persis — bukan dikarang ulang per modul.
 
+**Judul kartu juga SATU BARIS**, sama seperti judul modal — judul · badge · deskripsi
+(`hidden truncate … sm:block`, jadi menghilang di layar sempit alih-alih memanjangkan kartu),
+tombol "Buka …" tetap di kanan.
+
 **Gaya tabel kartu = gaya tabel modal**: pembungkus `mt-3 overflow-x-auto rounded-2xl border`,
 `<table class="min-w-full text-sm">` tanpa border sendiri, `<thead class="bg-surface-card …">`,
 baris header `text-xs … uppercase`, sel `px-3 py-2`.

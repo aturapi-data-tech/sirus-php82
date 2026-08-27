@@ -734,15 +734,13 @@ new class extends Component {
     <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div class="flex-1 space-y-3">
-                <div class="flex items-center gap-2">
-                    <h3 class="text-base font-semibold text-ink dark:text-gray-200">Asesmen Pra Induksi</h3>
+                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
+                <div class="flex items-baseline flex-1 gap-2 min-w-0">
+                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Asesmen Pra Induksi</h3>
                     @if ($entriCount > 0) <x-badge variant="success">{{ $entriCount }} asesmen</x-badge>
                     @else <x-badge variant="warning">Belum ada</x-badge> @endif
+                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Re-asesmen segera sebelum induksi (PAB 6 / RM 50.a): verifikasi kondisi terkini, ASA, rencana anestesi & obat pre-medikasi sesaat sebelum tindakan.</p>
                 </div>
-                <p class="text-base text-muted dark:text-gray-400">
-                    Re-asesmen segera sebelum induksi (PAB 6 / RM 50.a): verifikasi kondisi terkini, ASA, rencana
-                    anestesi & obat pre-medikasi sesaat sebelum tindakan.
-                </p>
                 @if ($entriCount > 0)
                     <ul class="space-y-1 text-base text-muted dark:text-gray-300 list-disc pl-5">
                         @foreach (array_slice(array_reverse($praInduksiList), 0, 3) as $entri)

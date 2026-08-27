@@ -676,19 +676,16 @@ new class extends Component {
     <div class="p-5 border shadow-sm bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div class="flex-1 space-y-2">
-                <div class="flex items-center gap-2">
-                    <h3 class="text-base font-semibold text-ink dark:text-gray-200">Surveilans Pneumonia Non-Ventilator (HAP)</h3>
+                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
+                <div class="flex items-baseline flex-1 gap-2 min-w-0">
+                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Surveilans Pneumonia Non-Ventilator (HAP)</h3>
                     @if ($jumlahEntri > 0)
                         <x-badge variant="success">{{ $jumlahEntri }} entri</x-badge>
                     @else
                         <x-badge variant="warning">Belum ada</x-badge>
                     @endif
+                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Pemantauan pneumonia yang timbul selama perawatan TANPA ventilator — lama tirah baring, demam, leukosit, onset baru sputum purulen, serta kultur sputum. Diisi IPCLN / Perawat ruangan.</p>
                 </div>
-                <p class="text-sm text-muted dark:text-gray-400">
-                    Pemantauan pneumonia yang timbul selama perawatan TANPA ventilator — lama tirah baring,
-                    demam, leukosit, onset baru sputum purulen, serta kultur sputum.
-                    Diisi IPCLN / Perawat ruangan.
-                </p>
             </div>
             <div class="flex shrink-0">
                 <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"

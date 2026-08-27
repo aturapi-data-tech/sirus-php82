@@ -759,9 +759,10 @@ new class extends Component {
     <div
         class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-3">
-            <div class="flex items-start justify-between gap-4">
-                <div class="flex items-center gap-2">
-                    <h3 class="text-base font-semibold text-ink dark:text-gray-200">
+            {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi; tombol tetap di kanan --}}
+            <div class="flex items-center justify-between gap-4">
+                <div class="flex items-baseline flex-1 gap-2 min-w-0">
+                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">
                         Inform Consent
                     </h3>
                     @if ($informConsentCount > 0)
@@ -769,6 +770,7 @@ new class extends Component {
                     @else
                         <x-badge variant="warning">Belum ada</x-badge>
                     @endif
+                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Persetujuan tindakan medis per-tindakan: tujuan, risiko, alternatif, serta tanda tangan pasien/wali, dokter penjelas, dan saksi.</p>
                 </div>
 
                 <div class="flex shrink-0">
@@ -788,10 +790,6 @@ new class extends Component {
                 </div>
             </div>
 
-            <p class="text-base text-muted dark:text-gray-400">
-                Persetujuan tindakan medis per-tindakan: tujuan, risiko, alternatif, serta tanda tangan
-                pasien/wali, dokter penjelas, dan saksi.
-            </p>
 
                 <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
                     <table class="min-w-full text-sm">
