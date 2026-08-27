@@ -141,6 +141,18 @@ tanpa padding dalam supaya tabel memakai ruang penuh:
 @endunless
 ```
 
+**Kepala tabel menyontek `daftar-rj`** (acuan halaman list):
+
+```blade
+<thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
+    <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+        <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Tindakan</th>
+        …
+```
+
+Latar dipasang di `<th>` juga, bukan cuma di `<thead>` — itu syarat header sticky supaya
+baris tabel tak menembus di belakangnya saat digulir.
+
 > **Awas saat menyisir berkas:** jangan memakai kata "Tersimpan"/"Riwayat" sebagai penyaring
 > `grep` untuk menemukan modul dokumen — sejak judul blok dibuang, 18 berkas tak lagi memuat
 > kata itu dan daftar berkasnya menyusut diam-diam (55 → 37). Penanda yang stabil:

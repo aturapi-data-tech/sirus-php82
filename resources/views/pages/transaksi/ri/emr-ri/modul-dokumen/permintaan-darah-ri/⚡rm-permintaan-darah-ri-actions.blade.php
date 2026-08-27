@@ -802,13 +802,13 @@ new class extends Component {
                 <x-border-form padding="p-0" align="start" bgcolor="bg-surface-soft">
                     <div class="mt-2 overflow-x-auto">
                         <table class="w-full text-sm">
-                            <thead>
-                                <tr class="text-left text-muted dark:text-gray-400">
-                                    <th class="px-3 py-2 border-b border-hairline dark:border-gray-700">Tanggal</th>
-                                    <th class="px-3 py-2 border-b border-hairline dark:border-gray-700">Jenis</th>
-                                    <th class="px-3 py-2 border-b border-hairline dark:border-gray-700">Status</th>
-                                    <th class="px-3 py-2 border-b border-hairline dark:border-gray-700">Dokter</th>
-                                    <th class="px-3 py-2 text-center border-b border-hairline dark:border-gray-700 w-72">Aksi</th>
+                            <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
+                                <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                                    <th class="px-3 py-2 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Tanggal</th>
+                                    <th class="px-3 py-2 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Jenis</th>
+                                    <th class="px-3 py-2 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Status</th>
+                                    <th class="px-3 py-2 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Dokter</th>
+                                    <th class="px-3 py-2 text-center border-b border-hairline dark:border-gray-700 w-72 bg-surface-card dark:bg-gray-800">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>

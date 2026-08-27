@@ -1303,15 +1303,15 @@ new class extends Component {
                         @unless ($this->diForm())
                             <div class="overflow-x-auto">
                                 <table class="min-w-full text-base border border-hairline rounded-lg dark:border-gray-700">
-                                    <thead class="bg-surface-soft dark:bg-gray-800">
-                                        <tr class="text-left text-sm font-semibold tracking-wide text-muted uppercase dark:text-gray-300">
-                                            <th class="w-8 px-2 py-3 border-b"></th>
-                                            <th class="px-4 py-3 border-b">Tindakan</th>
-                                            <th class="px-4 py-3 border-b">Tanggal Dibuat</th>
-                                            <th class="px-4 py-3 border-b">Pemberi Informasi</th>
-                                            <th class="px-4 py-3 border-b text-center">Persetujuan</th>
-                                            <th class="px-4 py-3 border-b text-center">Status</th>
-                                            <th class="px-4 py-3 border-b text-center">Aksi</th>
+                                    <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
+                                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                                            <th class="w-8 px-2 py-3 border-b bg-surface-card dark:bg-gray-800"></th>
+                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Tindakan</th>
+                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Tanggal Dibuat</th>
+                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Pemberi Informasi</th>
+                                            <th class="px-4 py-3 border-b text-center bg-surface-card dark:bg-gray-800">Persetujuan</th>
+                                            <th class="px-4 py-3 border-b text-center bg-surface-card dark:bg-gray-800">Status</th>
+                                            <th class="px-4 py-3 border-b text-center bg-surface-card dark:bg-gray-800">Aksi</th>
                                         </tr>
                                     </thead>
                                     @forelse (array_reverse($consentList) as $consent)

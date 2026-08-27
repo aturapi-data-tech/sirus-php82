@@ -1318,15 +1318,15 @@ new class extends Component {
                 <x-border-form padding="p-0" align="start" bgcolor="bg-surface-soft">
                     <div class="mt-3 overflow-x-auto border bg-canvas rounded-2xl border-hairline dark:border-gray-700">
                         <table class="ds-table">
-                            <thead>
-                                <tr>
-                                    <th class="ds-c w-10">No</th>
-                                    <th>Tgl. Laporan</th>
-                                    <th>Manifestasi ESO</th>
-                                    <th class="ds-c w-24">Jml Obat</th>
-                                    <th>Pelapor</th>
-                                    <th class="ds-c w-24">Status</th>
-                                    <th class="ds-c w-56">Aksi</th>
+                            <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
+                                <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                                    <th class="ds-c w-10 bg-surface-card dark:bg-gray-800">No</th>
+                                    <th class="bg-surface-card dark:bg-gray-800">Tgl. Laporan</th>
+                                    <th class="bg-surface-card dark:bg-gray-800">Manifestasi ESO</th>
+                                    <th class="ds-c w-24 bg-surface-card dark:bg-gray-800">Jml Obat</th>
+                                    <th class="bg-surface-card dark:bg-gray-800">Pelapor</th>
+                                    <th class="ds-c w-24 bg-surface-card dark:bg-gray-800">Status</th>
+                                    <th class="ds-c w-56 bg-surface-card dark:bg-gray-800">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>

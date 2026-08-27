@@ -870,14 +870,14 @@ new class extends Component {
                             </div>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
-                                    <thead class="bg-surface-soft dark:bg-gray-800">
-                                        <tr class="text-left text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-300">
-                                            <th class="w-8 px-2 py-3 border-b"></th>
-                                            <th class="px-4 py-3 border-b">Tgl / Jam Lahir</th>
-                                            <th class="px-4 py-3 border-b">Jenis Kelamin</th>
-                                            <th class="px-4 py-3 border-b">Petugas (TTD)</th>
-                                            <th class="px-4 py-3 text-center border-b">Status</th>
-                                            <th class="px-4 py-3 text-center border-b">Aksi</th>
+                                    <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
+                                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                                            <th class="w-8 px-2 py-3 border-b bg-surface-card dark:bg-gray-800"></th>
+                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Tgl / Jam Lahir</th>
+                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Jenis Kelamin</th>
+                                            <th class="px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Petugas (TTD)</th>
+                                            <th class="px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Status</th>
+                                            <th class="px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Aksi</th>
                                         </tr>
                                     </thead>
                                     @forelse (array_reverse($entriList) as $entry)
