@@ -842,7 +842,7 @@ new class extends Component {
                 @unless ($this->diForm())
                 @php $list = $dataDaftarRi['permintaanDarahRI'] ?? []; @endphp
                 <x-border-form padding="p-0" align="start" bgcolor="bg-surface-soft">
-                    <div class="mt-2 overflow-x-auto">
+                    <div class="overflow-x-auto rounded-2xl">
                         <table class="w-full text-sm">
                             <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
                                 <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">

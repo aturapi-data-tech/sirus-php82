@@ -1333,7 +1333,7 @@ new class extends Component {
                 @endif
                 @unless ($this->diForm())
                 <x-border-form padding="p-0">
-                    <div class="mt-3 overflow-x-auto border bg-canvas rounded-2xl border-hairline dark:border-gray-700">
+                    <div class="overflow-x-auto rounded-2xl">
                         <table class="ds-table">
                             <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
                                 <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">

@@ -1107,7 +1107,7 @@ new class extends Component {
                                                             <dt class="mb-1 text-xs font-semibold tracking-wide uppercase text-muted-soft">Riwayat Kehamilan / Persalinan Yang Lalu</dt>
                                                             <dd class="mt-0.5">
                                                                 @if (!empty($entry['rows']))
-                                                                    <div class="overflow-x-auto border rounded-lg border-hairline dark:border-gray-700">
+                                                                    <div class="overflow-x-auto rounded-2xl">
                                                                         <table class="w-full text-xs border-collapse">
                                                                             <thead>
                                                                                 <tr class="text-left tracking-wide uppercase text-muted bg-surface-soft border-b border-hairline dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">

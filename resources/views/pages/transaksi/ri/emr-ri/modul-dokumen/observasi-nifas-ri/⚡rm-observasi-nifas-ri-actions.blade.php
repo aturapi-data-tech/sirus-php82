@@ -1258,7 +1258,7 @@ new class extends Component {
                                                         </div>
                                                     </dl>
 
-                                                    <div class="overflow-x-auto bg-canvas border rounded-2xl border-hairline dark:border-gray-700">
+                                                    <div class="overflow-x-auto rounded-2xl">
                                                         <table class="ds-table">
                                                             <thead>
                                                                 <tr>

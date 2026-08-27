@@ -1595,7 +1595,7 @@ new class extends Component {
                 @unless ($this->diForm())
                 <x-border-form padding="p-0" align="start" bgcolor="bg-surface-soft">
                     @php $list = $dataDaftarUGD['pengkajianAkhirHayatUGD'] ?? []; @endphp
-                    <div class="mt-3 overflow-x-auto bg-canvas border border-hairline rounded-xl dark:border-gray-700 dark:bg-gray-900">
+                    <div class="overflow-x-auto rounded-2xl">
                         <table class="min-w-full text-sm">
                             <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
                                 <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">

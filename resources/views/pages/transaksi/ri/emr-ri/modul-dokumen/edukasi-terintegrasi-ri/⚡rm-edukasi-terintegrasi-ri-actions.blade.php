@@ -1447,7 +1447,7 @@ new class extends Component {
     @unless ($this->diForm())
     <x-border-form padding="p-0" align="start" bgcolor="bg-surface-soft">
         @php $list = $dataDaftarRi['edukasiPasienTerintegrasi'] ?? []; @endphp
-        <div class="mt-3 overflow-x-auto bg-canvas border border-hairline rounded-xl dark:border-gray-700 dark:bg-gray-900">
+        <div class="overflow-x-auto rounded-2xl">
             {{-- Tanpa kepala tabel sendiri: judulnya sudah di x-border-form, dan tombol
                  Tambah cukup satu di footer. --}}
             <table class="min-w-full text-sm">
