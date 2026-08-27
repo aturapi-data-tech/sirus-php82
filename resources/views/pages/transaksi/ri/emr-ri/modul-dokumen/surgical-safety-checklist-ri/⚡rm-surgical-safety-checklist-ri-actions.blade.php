@@ -1019,11 +1019,11 @@ new class extends Component {
                         {{-- ── DAFTAR CHECKLIST TERSIMPAN (expandable) ── --}}
                         @endif
                         @unless ($this->diForm())
-                            <div class="overflow-x-auto">
+                            <div class="overflow-x-auto rounded-2xl">
                                 <h3 class="text-base font-semibold text-body dark:text-gray-300 pb-2 border-b border-hairline-soft dark:border-gray-800 mb-3">Daftar Checklist Tersimpan</h3>
                                 <p class="mb-3 text-xs italic text-muted-soft">Klik baris untuk lihat detail lengkap</p>
-                                <div class="overflow-x-auto">
-                                    <table class="min-w-full text-base border border-hairline rounded-lg dark:border-gray-700">
+                                <div class="overflow-x-auto rounded-2xl">
+                                    <table class="min-w-full text-base">
                                         <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
                                             <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
                                                 <th class="w-8 px-2 py-3 border-b bg-surface-card dark:bg-gray-800"></th>

@@ -770,8 +770,8 @@ new class extends Component {
                         <div class="border-t border-hairline dark:border-gray-700">
                             <h3 class="mb-3 text-base font-semibold text-ink dark:text-gray-200">Daftar Laporan Tersimpan</h3>
                                 <p class="mb-3 text-xs italic text-muted-soft">Klik baris untuk lihat detail lengkap.</p>
-                                <div class="overflow-x-auto">
-                                    <table class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
+                                <div class="overflow-x-auto rounded-2xl">
+                                    <table class="min-w-full text-sm">
                                         <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
                                             <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
                                                 <th class="w-8 px-2 py-3 border-b bg-surface-card dark:bg-gray-800"></th>

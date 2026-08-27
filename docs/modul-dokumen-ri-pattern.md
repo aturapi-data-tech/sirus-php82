@@ -134,12 +134,16 @@ tanpa padding dalam supaya tabel memakai ruang penuh:
 ```blade
 @unless ($this->diForm())
     <x-border-form padding="p-0">   {{-- tanpa title, tanpa padding --}}
-        <div class="overflow-x-auto">   {{-- bukan "mt-6 overflow-x-auto px-4 pb-4" --}}
-            <table class="min-w-full …">…</table>
+        <div class="overflow-x-auto rounded-2xl">   {{-- sudut ikut kartunya --}}
+            <table class="min-w-full text-sm">…</table>   {{-- TANPA border/rounded sendiri --}}
         </div>
     </x-border-form>
 @endunless
 ```
+
+Bingkai & sudut cukup dari kartunya. Tabel yang membawa `border … rounded-lg` sendiri bikin
+garis ganda dengan radius yang beda (lg di dalam 2xl), dan sudut header sticky-nya menyembul
+keluar kartu.
 
 **Kepala tabel menyontek `daftar-rj`** (acuan halaman list):
 
