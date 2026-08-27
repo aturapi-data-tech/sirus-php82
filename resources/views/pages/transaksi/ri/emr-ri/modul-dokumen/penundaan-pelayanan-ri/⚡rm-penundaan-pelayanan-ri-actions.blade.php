@@ -827,14 +827,11 @@ new class extends Component {
                         </section>
 
                         {{-- ══ CATATAN KEBIJAKAN ══ --}}
-                        @endif
-                        @unless ($this->diForm())
                         <div
                             class="px-4 py-3 text-sm border rounded-xl bg-surface-soft border-hairline text-muted dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">
                             Tidak berlaku untuk keterlambatan staf medis di RJ / IGD penuh. Onkologi &amp; transplantasi
                             mengikuti norma nasional. Dicatat di rekam medis (Lihat KE 2).
                         </div>
-                        @endunless
 
                         {{-- ══ TANDA TANGAN ══ --}}
                         <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
@@ -934,7 +931,8 @@ new class extends Component {
                         </section>
 
                         {{-- ══ DAFTAR TERSIMPAN (expandable) ══ --}}
-                        @if (count($penundaanList) > 0)
+                        @endif
+                        @unless ($this->diForm())
                             <div class="mt-6 overflow-x-auto">
                                 <div class="flex items-center justify-between gap-2 pb-2 border-b border-hairline-soft dark:border-gray-800 mb-3">
                                     <h3 class="text-base font-semibold text-body dark:text-gray-300">
@@ -954,7 +952,7 @@ new class extends Component {
                                             <th class="px-4 py-3 border-b text-center">Aksi</th>
                                         </tr>
                                     </thead>
-                                    @foreach (array_reverse($penundaanList) as $entry)
+                                    @forelse (array_reverse($penundaanList) as $entry)
                                         @php
                                             // Normalisasi entri lama agar semua key ada (cegah "Undefined array key")
                                             $entry = array_replace([
@@ -1109,10 +1107,21 @@ new class extends Component {
                                                 </td>
                                             </tr>
                                         </tbody>
-                                    @endforeach
+                                    @empty
+                                        <tbody>
+                                            <tr>
+                                                <td colspan="7" class="px-6 py-12">
+                                                    <div class="flex flex-col items-center justify-center gap-3">
+                                                        <svg class="w-12 h-12 text-muted-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                                                        <p class="text-base font-medium text-muted dark:text-gray-400">Belum ada data tersimpan</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    @endforelse
                                 </table>
                             </div>
-                        @endif
+                        @endunless
 
                     </div>
                 </div>

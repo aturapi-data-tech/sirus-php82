@@ -89,10 +89,14 @@ yang tetap ter-render belum berarti layarnya berpindah. Ukur tiga hal lewat `Liv
    kedua layar (harus 0 vs puluhan). Ini yang menangkap "konversi palsu" (12 berkas sempat
    lolos render tapi tak menyembunyikan apa pun);
 3. tombol ada di layar yang benar (`saveDraft` 0 di daftar, `tambahEntri` 0 di formulir);
-4. **keseimbangan tag pada HTML HASIL RENDER di kedua layar** (`<div>` vs `</div>`, section,
+4. **daftar TETAP menampilkan tabelnya saat kosong**, lengkap dengan baris
+   `<td colspan="N">Belum ada data tersimpan</td>` (pola empty state `daftar-rj`). Jangan
+   membungkus tabel dengan `@if (count($list) > 0)` — layar daftar jadi kosong melompong dan
+   petugas tak tahu apakah datanya nihil atau halamannya rusak;
+5. **keseimbangan tag pada HTML HASIL RENDER di kedua layar** (`<div>` vs `</div>`, section,
    fieldset, table, ul/ol, p, span).
 
-Lapis 4 itu wajib dan tidak bisa digantikan pemeriksa statis. Menghitung tag pada BERKAS
+Lapis 5 itu wajib dan tidak bisa digantikan pemeriksa statis. Menghitung tag pada BERKAS
 tidak cukup: rentang yang menutup `<div>` header lalu membuka `<div>` isi terhitung
 "seimbang" padahal sarangnya salah. Render komponen sendirian juga tidak cukup: anak yang
 kelebihan satu `</div>` tetap terlihat wajar berdiri sendiri, dan baru meledak saat
