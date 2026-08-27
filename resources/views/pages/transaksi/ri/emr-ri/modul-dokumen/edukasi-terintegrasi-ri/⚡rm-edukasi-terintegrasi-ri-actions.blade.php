@@ -29,6 +29,12 @@ new class extends Component {
     // Kunci entri yang sedang diedit (= id entri). null = membuat entri baru.
     public ?string $editingKey = null;
 
+    // Layar aktif di dalam modal: 'daftar' (grid entri) atau 'form' (tambah/edit/lihat).
+    // Formulir SENGAJA tidak nongkrong di layar yang sama dengan daftarnya: dulu form
+    // ikut tampil terus, dan sesudah tersimpan ia dikosongkan diam-diam — petugas
+    // mengira masih formulir yang tadi, mengetik lagi, lalu tersimpan sebagai draft baru.
+    public string $layar = 'daftar';
+
     // true = entri terkunci ditampilkan di form dalam mode read-only.
     public bool $viewOnly = false;
 
@@ -92,6 +98,7 @@ new class extends Component {
         $this->editingKey = null;
         $this->viewOnly = false;
         $this->resetFormEdukasi();
+        $this->layar = 'daftar';
 
         $this->dispatch('open-modal', name: "rm-edukasi-terintegrasi-ri-{$this->riHdrNo}");
     }
@@ -407,9 +414,9 @@ new class extends Component {
 
         try {
             $this->persistEntry($edukasiId, false, 'Simpan draft');
-            $this->editingKey = $edukasiId; // lanjut edit entri yang sama, tidak buat duplikat
-            $this->incrementVersion('modal-edukasi-terintegrasi-ri');
-            $this->dispatch('toast', type: 'success', message: 'Draft tersimpan.');
+            // Balik ke daftar, bukan menyisakan formulir kosong yang menyaru formulir tadi.
+            $this->kembaliKeDaftar();
+            $this->dispatch('toast', type: 'success', message: 'Draft tersimpan — ada di daftar. Klik Edit untuk melanjutkan.');
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Throwable $e) {
@@ -452,9 +459,7 @@ new class extends Component {
 
         try {
             $this->persistEntry($edukasiId, true, 'Kunci (TTD)');
-            $this->resetFormEdukasi();
-            $this->editingKey = null;
-            $this->viewOnly = false;
+            $this->kembaliKeDaftar();
             $this->dispatch('toast', type: 'success', message: 'Edukasi ditandatangani & terkunci.');
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
@@ -548,6 +553,7 @@ new class extends Component {
 
         $this->viewOnly = false;
         $this->hydrateFormFromEntry($entri);
+        $this->layar = 'form';
         $this->dispatch('toast', type: 'info', message: 'Draft dimuat untuk dilanjutkan.');
     }
 
@@ -561,14 +567,26 @@ new class extends Component {
 
         $this->viewOnly = true;
         $this->hydrateFormFromEntry($entri);
+        $this->layar = 'form';
         $this->dispatch('toast', type: 'info', message: 'Menampilkan entri terkunci (hanya lihat).');
     }
 
-    public function cancelEdit(): void
+    /** Buka formulir kosong untuk entri baru. */
+    public function tambahEntri(): void
     {
+        if ($this->isFormLocked || $this->disabled) {
+            $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang — form read-only.');
+            return;
+        }
         $this->resetFormEdukasi();
-        $this->editingKey = null;
-        $this->viewOnly = false;
+        $this->layar = 'form';
+    }
+
+    /** Tutup formulir, kembali ke daftar entri. Formulir selalu ditinggalkan kosong. */
+    public function kembaliKeDaftar(): void
+    {
+        $this->resetFormEdukasi();   // sudah mengosongkan editingKey, viewOnly, validasi
+        $this->layar = 'daftar';
     }
 
     public function removeEdukasiTerintegrasiById(string $edukasiId): void
@@ -604,7 +622,7 @@ new class extends Component {
 
             // bila entri yang dihapus sedang dibuka di form, kosongkan form
             if ($this->editingKey === $edukasiId) {
-                $this->cancelEdit();
+                $this->kembaliKeDaftar();
             }
             $this->afterSave('Data edukasi berhasil dihapus.');
         } catch (\RuntimeException $e) {
@@ -852,6 +870,11 @@ new class extends Component {
                     @if ($jumlahEdukasiTerintegrasi > 0)
                         <x-badge variant="info">{{ $jumlahEdukasiTerintegrasi }} tersimpan</x-badge>
                     @endif
+                    @if ($layar === 'form')
+                        <x-badge :variant="$viewOnly ? 'info' : ($editingKey ? 'warning' : 'success')">
+                            {{ $viewOnly ? 'Mode: Lihat' : ($editingKey ? 'Mode: Edit' : 'Mode: Tambah') }}
+                        </x-badge>
+                    @endif
                     @if ($isFormLocked)
                         <x-badge variant="danger">Read Only</x-badge>
                     @endif
@@ -888,25 +911,25 @@ new class extends Component {
         </div>
     @endif
 
-    @if ($viewOnly)
+    @if ($layar === 'form' && $viewOnly)
         <div class="flex items-center gap-2 px-4 py-2.5 mb-2 text-sm font-medium text-sky-700 bg-sky-50 border border-sky-200 rounded-lg dark:bg-sky-900/20 dark:border-sky-600 dark:text-sky-300">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
-            Menampilkan entri terkunci (hanya lihat) — klik <strong>Selesai Melihat</strong> untuk kembali ke form entri baru.
+            Menampilkan entri terkunci (hanya lihat) — klik <strong>Kembali ke Daftar</strong> untuk keluar.
         </div>
-    @elseif ($editingKey && !$isFormLocked)
+    @elseif ($layar === 'form' && $editingKey && !$isFormLocked)
         <div class="flex items-center gap-2 px-4 py-2.5 mb-2 text-sm font-medium text-brand-green bg-brand-lime/10 border border-brand-lime/40 rounded-lg dark:text-brand-lime dark:bg-brand-lime/5">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
-            Sedang melanjutkan entri draft — <strong>Simpan Draft</strong> menyimpan ke entri ini; klik <strong>Entri Baru</strong> untuk menambah edukasi lain.
+            Sedang melanjutkan entri draft — <strong>Simpan Perubahan</strong> menyimpan ke entri ini, lalu kembali ke daftar.
         </div>
     @endif
 
-    {{-- ═══════════════ FORM ENTRY ═══════════════ --}}
-    @if (!$isFormLocked)
+    {{-- ═══════════════ FORM ENTRY (layar 'form' saja) ═══════════════ --}}
+    @if ($layar === 'form')
         <x-border-form title="Formulir Edukasi Terintegrasi Pasien & Keluarga" align="start" bgcolor="bg-surface-soft">
             <fieldset @disabled($formReadOnly)>
             <div class="mt-3 space-y-5">
@@ -1327,15 +1350,14 @@ new class extends Component {
         </x-border-form>
     @endif
 
-    {{-- ═══════════════ LIST RIWAYAT (expandable) ═══════════════ --}}
+    {{-- ═══════════════ LIST RIWAYAT (layar 'daftar' saja) ═══════════════ --}}
+    @if ($layar === 'daftar')
     <x-border-form title="Riwayat Edukasi Terintegrasi" align="start" bgcolor="bg-surface-soft">
         @php $list = $dataDaftarRi['edukasiPasienTerintegrasi'] ?? []; @endphp
         <div class="mt-3 overflow-x-auto bg-canvas border border-hairline rounded-xl dark:border-gray-700 dark:bg-gray-900">
-            <div class="flex items-center justify-between gap-2 px-4 pt-3">
-                <span class="text-sm font-semibold text-body dark:text-gray-300">Daftar Edukasi Tersimpan</span>
-                <span class="text-xs italic text-muted-soft">Klik baris untuk lihat detail lengkap</span>
-            </div>
-            <table class="min-w-full mt-2 text-sm">
+            {{-- Tanpa kepala tabel sendiri: judulnya sudah di x-border-form, dan tombol
+                 Tambah cukup satu di footer. --}}
+            <table class="min-w-full text-sm">
                 <thead class="bg-surface-soft dark:bg-gray-800">
                     <tr class="text-left">
                         <th class="w-8 px-2 py-3 border-b border-hairline dark:border-gray-700"></th>
@@ -1388,7 +1410,10 @@ new class extends Component {
                     @endphp
 
                     <tbody wire:key="edu-terint-{{ $edukasiId ?: $loop->index }}"
-                        x-data="{ open: {{ $loop->first ? 'true' : 'false' }} }"
+                        {{-- Semua baris mulai TERTUTUP: daftar dipakai untuk memilih entri,
+                             bukan membaca isinya. Baris teratas yang terbuka sendiri bikin
+                             grid langsung panjang dan entri lain terdorong keluar layar. --}}
+                        x-data="{ open: false }"
                         class="border-b border-hairline dark:border-gray-700">
                         <tr @click="open = !open"
                             class="cursor-pointer align-top hover:bg-surface-soft dark:hover:bg-gray-800/60 {{ $editingKey && $editingKey === $edukasiId ? 'bg-brand-lime/10 dark:bg-brand-lime/5' : ($alertRow ? 'bg-red-50/50 dark:bg-red-900/10' : '') }}">
@@ -1587,13 +1612,22 @@ new class extends Component {
             </table>
         </div>
     </x-border-form>
+    @endif
 
             </div>{{-- /konten flex-1 --}}
 
             {{-- ══ FOOTER STICKY (anak langsung modal-body → selalu terlihat) ══ --}}
             <div class="sticky bottom-0 z-10 px-6 py-3 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex flex-wrap items-center justify-between gap-3">
-                    @if ($viewOnly)
+                    {{-- Keterangan kiri --}}
+                    @if ($layar === 'daftar')
+                        <p class="flex items-center gap-1.5 text-sm text-muted dark:text-gray-400">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Setiap entri berdiri sendiri — <strong>Tambah Edukasi</strong> untuk entri baru, <strong>Edit</strong> untuk melanjutkan draft.</span>
+                        </p>
+                    @elseif ($viewOnly)
                         <p class="flex items-center gap-1.5 text-sm text-sky-600 dark:text-sky-400">
                             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -1612,38 +1646,43 @@ new class extends Component {
                         <span></span>
                     @endif
 
+                    {{-- Tombol kanan --}}
                     <div class="flex flex-wrap items-center justify-end gap-2">
-                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                        @if ($layar === 'daftar')
+                            {{-- Tutup HANYA di layar daftar: di layar form, jalan keluarnya lewat
+                                 Kembali ke Daftar supaya isian tak hilang tanpa disadari. --}}
+                            <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
 
-                        @if ($viewOnly)
-                            <x-primary-button wire:click.prevent="cancelEdit" wire:target="cancelEdit"
-                                wire:loading.attr="disabled" class="gap-1.5 min-w-[160px] justify-center">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                                </svg>
-                                Selesai Melihat
-                            </x-primary-button>
-                        @elseif (!$isFormLocked)
-                            @if ($editingKey)
-                                <x-outline-button wire:click.prevent="cancelEdit" wire:target="cancelEdit"
-                                    wire:loading.attr="disabled" class="gap-1.5"
-                                    title="Kosongkan form untuk menambah edukasi lain — entri yang sudah tersimpan tidak berubah">
+                            @unless ($isFormLocked)
+                                <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
+                                    wire:loading.attr="disabled" class="gap-1.5 min-w-[160px] justify-center">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                                     </svg>
-                                    Entri Baru
-                                </x-outline-button>
-                            @endif
-                            <x-primary-button wire:click.prevent="saveDraft" wire:loading.attr="disabled"
-                                wire:target="saveDraft" class="gap-2 min-w-[160px] justify-center">
-                                <span wire:loading.remove wire:target="saveDraft" class="flex items-center gap-1.5">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-8H7v8M7 3v5h8M5 3h11l4 4v12a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
-                                    </svg>
-                                    {{ $editingKey ? 'Simpan Perubahan' : 'Simpan Draft' }}
-                                </span>
-                                <span wire:loading wire:target="saveDraft"><x-loading class="w-4 h-4" /> Menyimpan...</span>
-                            </x-primary-button>
+                                    Tambah Edukasi
+                                </x-primary-button>
+                            @endunless
+                        @else
+                            <x-secondary-button type="button" wire:click="kembaliKeDaftar" wire:target="kembaliKeDaftar"
+                                wire:loading.attr="disabled" class="gap-1.5">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                Kembali ke Daftar
+                            </x-secondary-button>
+
+                            @unless ($viewOnly || $isFormLocked)
+                                <x-primary-button wire:click.prevent="saveDraft" wire:loading.attr="disabled"
+                                    wire:target="saveDraft" class="gap-2 min-w-[160px] justify-center">
+                                    <span wire:loading.remove wire:target="saveDraft" class="flex items-center gap-1.5">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-8H7v8M7 3v5h8M5 3h11l4 4v12a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
+                                        </svg>
+                                        {{ $editingKey ? 'Simpan Perubahan' : 'Simpan Draft' }}
+                                    </span>
+                                    <span wire:loading wire:target="saveDraft"><x-loading class="w-4 h-4" /> Menyimpan...</span>
+                                </x-primary-button>
+                            @endunless
                         @endif
                     </div>
                 </div>
