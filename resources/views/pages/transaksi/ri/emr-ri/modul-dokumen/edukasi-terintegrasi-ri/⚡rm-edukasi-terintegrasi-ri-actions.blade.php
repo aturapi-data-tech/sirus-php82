@@ -1449,7 +1449,7 @@ new class extends Component {
                                     @endif
                                 </div>
                             </td>
-                            <td class="px-4 py-3 text-center align-middle whitespace-nowrap [&_button]:px-3 [&_button]:py-1.5 [&_button]:text-xs [&_button]:gap-1 [&_svg]:w-4 [&_svg]:h-4" @click.stop>
+                            <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
                                 <div class="flex flex-wrap items-center justify-center gap-1.5">
                                     {{-- Baris atas: aksi non-destruktif (Lanjut/Lihat/Cetak) --}}
                                     <div class="flex items-center justify-center gap-2">
@@ -1460,7 +1460,7 @@ new class extends Component {
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                             </svg>
-                                            Lanjut Isi
+                                            Lanjutkan Pengisian
                                         </x-primary-button>
                                     @endif
                                     @if ($isFinal && $edukasiId)
@@ -1631,7 +1631,7 @@ new class extends Component {
                             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <span>Setiap entri berdiri sendiri — <strong>Tambah Edukasi</strong> untuk entri baru, <strong>Edit</strong> untuk melanjutkan draft.</span>
+                            <span>Setiap entri berdiri sendiri — <strong>Isi Formulir Baru</strong> untuk entri baru, <strong>Edit</strong> untuk melanjutkan draft.</span>
                         </p>
                     @elseif ($viewOnly)
                         <p class="flex items-center gap-1.5 text-sm text-sky-600 dark:text-sky-400">
@@ -1665,7 +1665,7 @@ new class extends Component {
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                                     </svg>
-                                    Tambah Edukasi
+                                    Isi Formulir Baru
                                 </x-primary-button>
                             @endunless
                         @else

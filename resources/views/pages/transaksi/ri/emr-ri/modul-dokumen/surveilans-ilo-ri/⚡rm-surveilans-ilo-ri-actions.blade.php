@@ -1094,7 +1094,7 @@ new class extends Component {
                                         @if ($rowFinal)
                                             <x-secondary-button type="button" wire:click="viewEntry('{{ $rowKey }}')" class="px-3 py-1.5 text-sm">Lihat</x-secondary-button>
                                         @else
-                                            <x-secondary-button type="button" wire:click="editEntry('{{ $rowKey }}')" class="px-3 py-1.5 text-sm">Lanjut Isi</x-secondary-button>
+                                            <x-secondary-button type="button" wire:click="editEntry('{{ $rowKey }}')" class="px-3 py-1.5 text-sm">Lanjutkan Pengisian</x-secondary-button>
                                         @endif
                                         <x-secondary-button type="button" wire:click="cetak('{{ $rowKey }}')" wire:loading.attr="disabled"
                                             wire:target="cetak('{{ $rowKey }}')" class="px-3 py-1.5 text-sm">
@@ -1152,7 +1152,7 @@ new class extends Component {
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                                 </svg>
-                                Tambah Entri
+                                Isi Formulir Baru
                             </x-primary-button>
                         @endunless
                     </div>

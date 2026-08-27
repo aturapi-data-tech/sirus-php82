@@ -1,7 +1,7 @@
 <?php
 // resources/views/pages/transaksi/ri/emr-ri/modul-dokumen/laporan-anestesi-ri/rm-laporan-anestesi-ri-actions.blade.php
 // Laporan Anestesi — PAB 6 / RM 53. Multi-entri append-only:
-// Draft (nyicil) + Lanjut Isi + TTD-Kunci (finalize) + Lihat (read-only) + tabel expandable.
+// Draft (nyicil) + Lanjutkan Pengisian + TTD-Kunci (finalize) + Lihat (read-only) + tabel expandable.
 // Disimpan ke datadaftarri_json key 'laporanAnestesiRI'. Kunci entri stabil = createdAt.
 // TTD ahli anestesiologi (setTtd) = FINALIZE/kunci; field kunci = 'ttd' (nama myuser_name).
 
@@ -814,7 +814,7 @@ new class extends Component {
                                                             <x-badge variant="warning">Draft</x-badge>
                                                         @endif
                                                     </td>
-                                                    <td class="px-4 py-3 text-center align-middle whitespace-nowrap [&_button]:px-3 [&_button]:py-1.5 [&_button]:text-xs [&_button]:gap-1 [&_svg]:w-4 [&_svg]:h-4" @click.stop>
+                                                    <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
                                                         <div class="flex flex-wrap items-center justify-center gap-1.5">
                                                             <div class="flex items-center justify-center gap-2">
                                                             @if (!$isFinal && !$isFormLocked)
@@ -822,7 +822,7 @@ new class extends Component {
                                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                                     </svg>
-                                                                    Lanjut Isi
+                                                                    Lanjutkan Pengisian
                                                                 </x-primary-button>
                                                             @endif
                                                             @if ($isFinal)
@@ -1078,7 +1078,7 @@ new class extends Component {
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                                 </svg>
-                                Tambah Entri
+                                Isi Formulir Baru
                             </x-primary-button>
                         @endunless
                     </div>

@@ -71,7 +71,7 @@ new class extends Component {
                     <li>Klik <b>Buka Formulir</b> pada jenis surveilans yang dipantau.</li>
                     <li>Isi <b>Data Dasar</b> (tanggal, cara masuk/keluar, tempat dirawat) dan <b>Faktor Risiko</b> pasien.</li>
                     <li>Lengkapi bagian khusus jenis infeksinya, lalu <b>Pemakaian Antibiotik</b>.</li>
-                    <li>Klik <b>Simpan Draft</b> untuk mencicil; pantauan bisa dilanjutkan hari berikutnya lewat tombol <b>Lanjut Isi</b>.</li>
+                    <li>Klik <b>Simpan Draft</b> untuk mencicil; pantauan bisa dilanjutkan hari berikutnya lewat tombol <b>Lanjutkan Pengisian</b>.</li>
                     <li><b>Tanda Tangan Petugas</b> adalah aksi terakhir — sekaligus <b>mengunci</b> entri. Setelah terkunci hanya bisa Lihat / Cetak.</li>
                     <li>Satu pasien boleh punya lebih dari satu entri (mis. pemasangan ulang / operasi berulang).</li>
                     <li>Ragu sebuah temuan dihitung insiden atau bukan? Buka panel <b>"Kriteria Kasus … — Kapan Dihitung Insiden"</b>

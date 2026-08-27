@@ -1310,7 +1310,7 @@ new class extends Component {
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                                 </svg>
-                                Tambah Entri
+                                Isi Formulir Baru
                             </x-primary-button>
                         @endunless
                     </div>
@@ -1367,7 +1367,7 @@ new class extends Component {
                                                         <x-primary-button type="button"
                                                             wire:click="editEntry('{{ $idEntri }}')"
                                                             wire:loading.attr="disabled" class="gap-1.5"
-                                                            title="Lanjutkan mengisi entri ini">Lanjut Isi</x-primary-button>
+                                                            title="Lanjutkan mengisi entri ini">Lanjutkan Pengisian</x-primary-button>
                                                     @endif
                                                     @if ($isFinal && $idEntri)
                                                         <x-secondary-button type="button"

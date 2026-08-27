@@ -3,7 +3,7 @@
 // Pengkajian Pre Operasi (RM 49) — persiapan pasien & serah-terima ruangan → OK,
 // GABUNG dengan Penandaan Lokasi Operasi (Site Marking, SKP 4): perlu penandaan,
 // region/sisi/detail lokasi + diagram tubuh (marks).
-// Pola: multi-entri (Draft + Lanjut Isi + TTD + Lihat read-only + tabel expandable),
+// Pola: multi-entri (Draft + Lanjutkan Pengisian + TTD + Lihat read-only + tabel expandable),
 // disimpan ke datadaftarri_json (jsonKey = pengkajianPreOpRI). Kunci entri stabil = createdAt.
 // TTD 3 PIHAK (stamp user login, setTtdRole): Perawat Ruangan + Perawat Kamar Bedah +
 // Dokter Operator. Entri otomatis TERKUNCI saat KETIGA TTD terisi (TTD terakhir = finalize);

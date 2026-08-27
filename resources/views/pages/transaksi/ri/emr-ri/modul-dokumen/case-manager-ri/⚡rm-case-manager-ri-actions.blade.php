@@ -1,7 +1,7 @@
 <?php
 // resources/views/pages/transaksi/ri/emr-ri/modul-dokumen/case-manager-ri/rm-case-manager-ri-actions.blade.php
 // Case Manager (MPP) — DUA list independen: Form A (Skrining Awal) & Form B (Pelaksanaan/Monitoring).
-// Pola multi-entri: Draft (nyicil) + Lanjut Isi + TTD-Kunci (finalize) + Lihat (read-only) + tabel expandable.
+// Pola multi-entri: Draft (nyicil) + Lanjutkan Pengisian + TTD-Kunci (finalize) + Lihat (read-only) + tabel expandable.
 // Disimpan ke datadaftarri_json → formMPP.formA[] / formMPP.formB[]. Kunci entri stabil = formA_id / formB_id (uuid).
 // FINAL = petugas sudah TTD (tandaTanganPetugas.petugasName terisi). Stempel NAMA saja (tanpa gambar), jabatan MPP.
 // Model diterapkan ke KEDUA list secara independen (editingKeyA/B, viewOnlyA/B).
@@ -588,7 +588,7 @@ new class extends Component {
     }
 
     // Tutup editor Form B sepenuhnya (buang referensi Form A juga) → editor tersembunyi lagi.
-    // Form B kini "anak" Form A: editor hanya muncul saat + Form B / Lanjut Isi / Lihat.
+    // Form B kini "anak" Form A: editor hanya muncul saat + Form B / Lanjutkan Pengisian / Lihat.
     public function tutupFormB(): void
     {
         $this->resetFormB();
@@ -818,7 +818,7 @@ new class extends Component {
             $formALabels[$fa['formA_id'] ?? ''] = ($fa['tanggal'] ?? '-') . ' — ' . (data_get($fa, 'tandaTanganPetugas.petugasName') ?: 'Draft');
         }
         // Editor Form B hanya tampil saat sedang menambah/melanjutkan/melihat satu Form B
-        // (dipicu tombol + Form B / Lanjut Isi / Lihat pada entri Form A) — Form B = anak Form A.
+        // (dipicu tombol + Form B / Lanjutkan Pengisian / Lihat pada entri Form A) — Form B = anak Form A.
         $formBActive = $viewOnlyB || filled($editingKeyB) || filled($formB['formA_id'] ?? null);
     @endphp
 
@@ -983,7 +983,7 @@ new class extends Component {
                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                     </svg>
-                                                    Lanjut Isi
+                                                    Lanjutkan Pengisian
                                                 </x-primary-button>
                                             @endif
                                             @if ($isFinal)
@@ -1099,7 +1099,7 @@ new class extends Component {
                                                                     @if (!$fbFinal && !$isFormLocked)
                                                                         <x-primary-button type="button" wire:click="editEntryB('{{ $fbKey }}')" class="!px-2.5 !py-1 gap-1" title="Lanjutkan mengisi draft ini">
                                                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                                                            Lanjut Isi
+                                                                            Lanjutkan Pengisian
                                                                         </x-primary-button>
                                                                     @endif
                                                                     @if ($fbFinal)
@@ -1148,7 +1148,7 @@ new class extends Component {
         </div>
     </x-border-form>
 
-    {{-- ══════ EDITOR FORM B — muncul saat + Form B / Lanjut Isi / Lihat pada entri Form A (Form B = anak Form A) ══════ --}}
+    {{-- ══════ EDITOR FORM B — muncul saat + Form B / Lanjutkan Pengisian / Lihat pada entri Form A (Form B = anak Form A) ══════ --}}
     @if ($formBActive)
     <x-border-form title="Form B — Pelaksanaan, Monitoring, Advokasi, Terminasi" align="start" bgcolor="bg-surface-soft">
 
