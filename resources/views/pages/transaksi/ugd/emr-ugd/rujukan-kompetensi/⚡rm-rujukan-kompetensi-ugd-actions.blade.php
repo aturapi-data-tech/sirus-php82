@@ -674,12 +674,6 @@ new class extends Component {
      * Hanya TIGA langkah: jalur BPJS tidak punya tahap persetujuan faskes tujuan
      * (accept/reject cuma berlaku untuk IGD & Ranap).
      */
-    /** Dipakai template; kelasnya tak terjangkau dari zona template Volt. */
-    public function rujukanJarakTampil($nilai): string
-    {
-        return RujukanTampil::jarak($nilai);
-    }
-
     public function langkahRujukan(): array
     {
         $sudahKirim = !empty($this->formRujukan['hasil']['noRujukanSatuSehat']);
@@ -737,7 +731,7 @@ new class extends Component {
         }
 
         $this->formRujukan['kandidatIdx'] = $index;
-        $this->infoKandidat = "Tujuan: {$kandidat['nama']} (PPK {$kandidat['kdppk']} / SATUSEHAT {$kandidat['kodeFaskesSatuSehat']})";
+        $this->infoKandidat = RujukanTampil::infoTujuan($kandidat);
     }
 
     /* ═══════════════════════════════════════
@@ -1245,79 +1239,8 @@ new class extends Component {
                 <p class="text-sm {{ str_starts_with($infoKandidat, '✓') || str_starts_with($infoKandidat, 'Tujuan:') ? 'text-green-700 dark:text-green-300' : 'text-muted-soft' }}">{{ $infoKandidat }}</p>
             @endif
 
-            @if (!empty($formRujukan['kandidatList']))
-                {{-- Kolom sempit (1/3 layar): PPK, kelas, jarak & beban dilebur ke sel Faskes
-                     supaya kolom Aksi selalu kelihatan tanpa geser mendatar. --}}
-                <div class="mt-2 overflow-x-auto border bg-canvas rounded-2xl border-hairline dark:border-gray-700">
-                    <table class="ds-table">
-                        <thead>
-                            <tr>
-                                <th class="ds-c w-10">No</th>
-                                <th>Faskes Tujuan</th>
-                                <th class="ds-c w-28">Pilih</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($formRujukan['kandidatList'] as $indexKandidat => $kandidat)
-                                @php
-                                    $tanpaPpk = $kandidat['kdppk'] === '' || strtolower($kandidat['kdppk']) === 'null';
-                                    $terpilih = $formRujukan['kandidatIdx'] === $indexKandidat;
-                                    // Sebagian alamatPpk sudah memuat nama kota di ekornya — jangan
-                                    // ditempeli nmkc lagi supaya tak tertulis dua kali.
-                                    $alamat = trim($kandidat['alamat'] ?? '');
-                                    $kota = trim($kandidat['kota'] ?? '');
-                                    $kotaSudahAda = $kota !== '' && stripos($alamat, $kota) !== false;
-                                    $alamatKota = trim($alamat . ($kota !== '' && !$kotaSudahAda ? ' · ' . $kota : ''), ' ·');
-                                @endphp
-                                <tr class="{{ $terpilih ? 'bg-brand-green/5 dark:bg-brand-lime/5' : '' }}">
-                                    <td class="ds-c ds-td-meta">{{ $indexKandidat + 1 }}</td>
-                                    <td>
-                                        <span class="ds-td-strong">{{ ($kandidat['nama'] ?? '') ?: '-' }}</span>
-                                        @if (filled($alamatKota))
-                                            <span class="block ds-td-meta">{{ $alamatKota }}</span>
-                                        @endif
-                                        <span class="flex flex-wrap items-center mt-1 gap-x-2 gap-y-1 text-xs text-muted dark:text-gray-400">
-                                            {{-- Dua kode dari DUA SISTEM. Keduanya dikirim bersama
-                                                 (ppkDirujuk & kdppkSatuSehatTujuanRujukan) dan WAJIB
-                                                 milik RS yang sama, jadi masing-masing disebut namanya
-                                                 — "PPK" saja terlalu jargon untuk dicocokkan mata. --}}
-                                            @if ($tanpaPpk)
-                                                <x-badge variant="gray">non-BPJS</x-badge>
-                                            @else
-                                                <span>Kode BPJS
-                                                    <span class="font-mono text-ink dark:text-gray-200">{{ $kandidat['kdppk'] }}</span>
-                                                </span>
-                                            @endif
-                                            @if (filled($kandidat['kodeFaskesSatuSehat'] ?? ''))
-                                                <span title="Kode faskes di SATUSEHAT (Organization ID) — dipakai memasangkan faskes BPJS dengan SATUSEHAT">· Org ID
-                                                    <span class="font-mono text-ink dark:text-gray-200">{{ $kandidat['kodeFaskesSatuSehat'] }}</span>
-                                                </span>
-                                            @endif
-                                            @if (filled($kandidat['kelas'] ?? ''))
-                                                <span>· Kelas {{ $kandidat['kelas'] }}</span>
-                                            @endif
-                                            @if (filled($kandidat['distance'] ?? ''))
-                                                <span class="tabular-nums">· {{ $this->rujukanJarakTampil($kandidat['distance']) }}</span>
-                                            @endif
-                                            @if (($kandidat['jmlRujuk'] ?? '') !== '')
-                                                <span class="tabular-nums" title="Rujukan masuk / kapasitas">· beban {{ $kandidat['jmlRujuk'] }}/{{ ($kandidat['kapasitas'] ?? '') ?: '-' }}</span>
-                                            @endif
-                                        </span>
-                                    </td>
-                                    {{-- wireClick dikirim INDEKS angka: nama faskes ber-& akan
-                                         ter-escape ganda dan aksinya gagal diam-diam. --}}
-                                    <td class="ds-c">
-                                        <x-toggle :current="$terpilih ? 'Ya' : 'Tidak'" trueValue="Ya" falseValue="Tidak"
-                                            :disabled="$isFormLocked || $tanpaPpk"
-                                            wireClick="pilihKandidat({{ $indexKandidat }})"
-                                            :label="$terpilih ? 'Dipilih' : ($tanpaPpk ? 'Tak bisa' : 'Pilih')" />
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @endif
+            <x-rujukan.kandidat-tabel :rows="$formRujukan['kandidatList']"
+                :selectedIndex="$formRujukan['kandidatIdx']" :disabled="$isFormLocked" :requireBpjs="true" />
         </div>
 
         {{-- LANGKAH 3 — KIRIM --}}
