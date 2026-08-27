@@ -1001,8 +1001,7 @@ new class extends Component {
                                          sampai petugas memilih ruangan sungguhan. --}}
                                     <x-ruangan-combobox wire-model="dataDaftarUGD.trfUgd.pindahDariRoomId"
                                         wire-model-nama="dataDaftarUGD.trfUgd.pindahDariRuangan"
-                                        :nilai="$dataDaftarUGD['trfUgd']['pindahDariRoomId'] ?? null"
-                                        :nama-awal="$dataDaftarUGD['trfUgd']['pindahDariRuangan'] ?? null"
+                                        enter-action="$wire.save()"
                                         placeholder="Ketik nama ruangan asal…" />
                                 @else
                                     <x-text-input :value="$dataDaftarUGD['trfUgd']['pindahDariRuangan'] ?? 'UGD'" disabled
@@ -1018,8 +1017,8 @@ new class extends Component {
                                          jangan melebarkan daftar form transfer ini. --}}
                                     <x-ruangan-combobox wire-model="dataDaftarUGD.trfUgd.pindahKeRoomId"
                                         wire-model-nama="dataDaftarUGD.trfUgd.pindahKeRuangan"
-                                        :nilai="$dataDaftarUGD['trfUgd']['pindahKeRoomId'] ?? null"
-                                        :error="$errors->has('dataDaftarUGD.trfUgd.pindahKeRoomId')"
+                                        enter-action="$wire.save()"
+                                        :error="$errors->has('dataDaftarUGD.trfUgd.pindahKeRuangan')"
                                         placeholder="Ketik nama ruangan tujuan…" />
                                 @else
                                     <x-text-input :value="($dataDaftarUGD['trfUgd']['pindahKeRuangan'] ?? '') .
