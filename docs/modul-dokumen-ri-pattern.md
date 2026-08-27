@@ -88,7 +88,20 @@ yang tetap ter-render belum berarti layarnya berpindah. Ukur tiga hal lewat `Liv
 2. **isian formulir benar-benar hilang** di layar daftar — hitung `wire:model` pada HTML
    kedua layar (harus 0 vs puluhan). Ini yang menangkap "konversi palsu" (12 berkas sempat
    lolos render tapi tak menyembunyikan apa pun);
-3. tombol ada di layar yang benar (`saveDraft` 0 di daftar, `tambahEntri` 0 di formulir).
+3. tombol ada di layar yang benar (`saveDraft` 0 di daftar, `tambahEntri` 0 di formulir);
+4. **keseimbangan tag pada HTML HASIL RENDER di kedua layar** (`<div>` vs `</div>`, section,
+   fieldset, table, ul/ol, p, span).
+
+Lapis 4 itu wajib dan tidak bisa digantikan pemeriksa statis. Menghitung tag pada BERKAS
+tidak cukup: rentang yang menutup `<div>` header lalu membuka `<div>` isi terhitung
+"seimbang" padahal sarangnya salah. Render komponen sendirian juga tidak cukup: anak yang
+kelebihan satu `</div>` tetap terlihat wajar berdiri sendiri, dan baru meledak saat
+bersarang di komponen induk — `MultipleRootElementsDetectedException` pada INDUK, bukan pada
+berkas yang salah. Sepuluh berkas pernah lolos tiga lapis pertama dengan cacat ini.
+
+Kalau modul yang dikonversi ikut dipasang di komponen payung (mis. Pelayanan Bedah yang
+menampung 8 anak), buka juga halaman daftarnya (`/ri/daftar`, `/rj/daftar`, `/ugd/daftar`)
+dan pastikan 200.
 
 ## 3. Siklus hidup entri (BAKU)
 
