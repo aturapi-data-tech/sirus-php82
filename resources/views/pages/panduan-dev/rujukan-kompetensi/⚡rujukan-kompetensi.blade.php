@@ -409,6 +409,7 @@ new class extends Component {
                                     </table>
                                 </div>
                                 <p class="ds-body-sm mt-3" style="color:var(--muted)">Production: base URL &amp; ketentuan header mengikuti katalog Trustmark BPJS. Jebakan: di server dev BPJS tertentu header <span class="ds-code">Content-Type</span> justru harus DILEPAS; production wajib pakai.</p>
+                                <p class="ds-body-sm mt-2" style="color:var(--muted)"><strong>TIDAK ada <span class="ds-code">X-Authorization</span></strong> di keempat endpoint FKRTL — documenter resmi hanya menyebut empat header di atas. Berkas Postman yang beredar sempat menambahkan <span class="ds-code">X-Authorization: Basic @{{AUTH}}</span>; itu kebiasaan service VClaim lain (antrean/apotek), bukan syarat SISRUTE. Buktinya <span class="ds-code">GetKriteriaRujukan</span> kita sudah menembus gateway tanpa header itu (balas 500 <em>Object reference</em>, bukan 401). Kalau kelak Insert/Delete membalas 401/403, barulah <span class="ds-code">SISRUTE_AUTH_USER</span>/<span class="ds-code">SISRUTE_AUTH_PASS</span> di <span class="ds-code">.env</span> (sudah disiapkan, masih dikomentari) diaktifkan.</p>
                             </div>
                         </div>
 
@@ -539,6 +540,7 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
                                 <p class="ds-body-sm mb-1">Method : <strong>POST</strong></p>
                                 <p class="ds-body-sm mb-1">Format : <strong>Json</strong></p>
                                 <p class="ds-body-sm mb-1">Catatan : kriteria TEPAT SATU terisi; <span class="ds-code">estimasiRujuk</span> dd-mm-yyyy vs <span class="ds-code">tglRencanaKunjungan</span> yyyy-mm-dd</p>
+                                <p class="ds-body-sm mb-1" style="color:var(--muted)">Belum terkonfirmasi: <span class="ds-code">kodeSarana</span> &amp; <span class="ds-code">estimasiRujuk</span> kita kirim sebagai warisan Postman V30062026, tetapi contoh resmi terbaru tidak memuat keduanya — yang ada hanya <span class="ds-code">tglRencanaKunjungan</span>. Field berlebih biasanya diabaikan gateway, jadi keduanya SENGAJA dibiarkan: menghapus field yang ternyata wajib jauh lebih mahal daripada mengirim field yang ternyata diabaikan. Tanyakan ke BPJS saat UAT.</p>
                                 <div class="ds-card-dark my-4" style="padding:0; overflow:hidden">
                                     <div class="px-4 py-2" style="background:var(--surface-dark-soft)"><span class="ds-caption-up" style="color:var(--on-dark-soft)">Request</span></div>
 @verbatim<pre class="ds-code" style="margin:0; padding:20px; color:var(--on-dark-soft); overflow-x:auto">{
@@ -662,12 +664,26 @@ SATUSEHAT_ORGANIZATION_ID="100027469"</pre>
                                 <p class="ds-body-sm mb-1">Fungsi : Batalkan/hapus rujukan</p>
                                 <p class="ds-body-sm mb-1">Method : <strong>DELETE</strong> <span style="color:var(--muted)">(POST dibalas "No Mapping Rule matched")</span></p>
                                 <p class="ds-body-sm mb-1">Format : <strong>Json</strong></p>
+                                <p class="ds-body-sm mb-1">Catatan : blok <span class="ds-code">satuSehatRujukan</span> <strong>WAJIB ikut</strong> — bukan hanya <span class="ds-code">noRujukan</span> + <span class="ds-code">user</span></p>
                                 <div class="ds-card-dark my-4" style="padding:0; overflow:hidden">
-                                    <div class="px-4 py-2" style="background:var(--surface-dark-soft)"><span class="ds-caption-up" style="color:var(--on-dark-soft)">Request</span></div>
+                                    <div class="px-4 py-2" style="background:var(--surface-dark-soft)"><span class="ds-caption-up" style="color:var(--on-dark-soft)">Request (documenter resmi BPJS + koleksi Postman Sisrute, 27/08/26)</span></div>
 @verbatim<pre class="ds-code" style="margin:0; padding:20px; color:var(--on-dark-soft); overflow-x:auto">{
-    "request": { "t_rujukan": { "noRujukan": "0184R0060826B000001", "user": "namauser" } }
+    "request": { "t_rujukan": {
+        "noRujukan": "0184R0060826B000001",
+        "user": "namauser",
+        "satuSehatRujukan": {
+            "kodeFaskesSatuSehat": "100027469",
+            "idPasienSatuSehat": "P20395452616",
+            "kdppkSatuSehatTujuanRujukan": "100025548",
+            "kdDokterSatuSehat": "10009880728",
+            "encounter": { "reference": "897d7713-b87f-4d45-ba3f-4a52a3d44746" },
+            "patientInstruction": "Rujukan ke RSUD Dr. Iskak",
+            "keteranganRujukan": "Perlu penanganan spesialis jantung"
+        }
+    }}
 }</pre>@endverbatim
                                 </div>
+                                <p class="ds-body-sm" style="color:var(--muted)">Delete membatalkan <strong>DUA sisi</strong>. Tanpa blok <span class="ds-code">satuSehatRujukan</span>, BPJS tak punya bahan untuk membatalkan sisi SATUSEHAT-nya — rujukan BPJS terhapus, <span class="ds-code">ServiceRequest</span>-nya tertinggal hidup. <span class="ds-code">encounter.reference</span> di sini <strong>UUID polos</strong> (tanpa prefix <span class="ds-code">Encounter/</span>), sama seperti Insert. Nilainya dipungut dari hasil kirim yang <strong>tersimpan</strong>, bukan dirakit ulang dari form — form bisa sudah berubah sejak rujukan dikirim. Implementasi: <span class="ds-code">SisruteTrait::sisrute_delete_rujukan($noRujukan, $user, $satuSehatRujukan)</span>.</p>
                             </div>
                         </div>
 
