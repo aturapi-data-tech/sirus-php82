@@ -1,20 +1,29 @@
 <?php
 // Modal rincian satu rujukan KELUAR (SRBK sisi faskes perujuk). HANYA BACA.
 //
-// Baris dikirim utuh lewat event dari layar pemantauan — modal TIDAK menarik
-// ulang Task-nya, supaya membuka detail tidak memakan kuota API. Tidak ada satu
-// pun panggilan API di sini.
+// Baris dikirim utuh lewat event dari layar pemantauan — MEMBUKA modal tidak
+// menarik ulang Task, supaya melihat detail tidak memakan kuota API.
 //
-// Sengaja tanpa tombol aksi. Membatalkan tugas rujukan memang mungkin secara
-// teknis (rujukanTaskCancel di trait), tapi itu tindakan yang terbaca RS tujuan
-// dan mengubah alur pelayanan pasien — bukan sesuatu yang pantas menempel diam-diam
-// pada layar pemantauan. Kalau nanti dibutuhkan, pasang di sini dengan konfirmasi.
+// Satu-satunya panggilan API di sini: tombol "Cek Status" di footer, dan hanya
+// bila ditekan. Ia GET Task (rujukanGetTask) — membaca, bukan mengubah apa pun di
+// SATUSEHAT — lalu menyegarkan status di modal DAN baris di layar pemantauan.
+// Tombolnya cuma muncul selagi rujukan belum dijawab; begitu ada keputusan atau
+// tugasnya dibatalkan, status sudah final dan mengecek ulang tak ada gunanya.
+//
+// Membatalkan tugas TETAP tidak ada di sini. Secara teknis bisa (rujukanTaskCancel
+// di trait), tapi itu tindakan yang terbaca RS tujuan dan mengubah alur pelayanan
+// pasien — bukan sesuatu yang pantas menempel diam-diam pada layar pemantauan.
+// Tempatnya di panel rujukan EMR pasien, bersama konfirmasinya.
 
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
+use App\Http\Traits\SATUSEHAT\SatuSehatRujukanTrait;
 
 new class extends Component {
+    use SatuSehatRujukanTrait;
+
     public array $rujukan = [];
 
     #[On('rujukan-keluar-actions.open')]
@@ -22,6 +31,80 @@ new class extends Component {
     {
         $this->rujukan = $rujukan;
         $this->dispatch('open-modal', name: 'rujukan-keluar-actions');
+    }
+
+    /** Belum dijawab = belum ada keputusan DAN tugasnya belum dibatalkan. */
+    public function belumDijawab(): bool
+    {
+        return ($this->rujukan['keputusan'] ?? '') === ''
+            && ($this->rujukan['statusTask'] ?? '') !== 'cancelled';
+    }
+
+    /**
+     * Tanyakan ulang satu Task ke SATUSEHAT. Dipanggil HANYA saat tombol ditekan —
+     * SATUSEHAT tidak memberi tahu sendiri saat RS tujuan menjawab.
+     */
+    public function cekStatus(): void
+    {
+        $taskId = (string) ($this->rujukan['taskId'] ?? '');
+        if ($taskId === '') {
+            $this->dispatch('toast', type: 'error', message: 'Task ID rujukan ini tidak diketahui, status tak bisa dicek.');
+            return;
+        }
+
+        $hasil = $this->rujukanGetTask($taskId);
+        if (($hasil['code'] ?? 0) < 200 || ($hasil['code'] ?? 0) >= 300) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal mengecek status [' . ($hasil['code'] ?? '-') . '] — ' . $this->ringkasGangguan($hasil['body'] ?? null));
+            return;
+        }
+
+        $task = $this->rujukanTaskDariResponse($hasil['body'] ?? null);
+        if (!$task) {
+            $this->dispatch('toast', type: 'error', message: 'SATUSEHAT menjawab tanpa Task — status tidak berubah.');
+            return;
+        }
+
+        $statusLama = (string) ($this->rujukan['statusTask'] ?? '');
+        $keputusanLama = (string) ($this->rujukan['keputusan'] ?? '');
+
+        $this->rujukan['statusTask'] = (string) ($task['status'] ?? $statusLama);
+        $this->rujukan['keputusan'] = $this->rujukanKeputusanDariTask($task);
+
+        // Layar pemantauan memegang salinan baris yang sama — segarkan juga di sana,
+        // supaya menutup modal tidak mengembalikan badge ke keadaan basi.
+        $this->dispatch(
+            'rujukan-keluar.status-diperbarui',
+            taskId: $taskId,
+            statusTask: $this->rujukan['statusTask'],
+            keputusan: $this->rujukan['keputusan'],
+        );
+
+        if ($this->rujukan['statusTask'] === $statusLama && $this->rujukan['keputusan'] === $keputusanLama) {
+            $this->dispatch('toast', type: 'info', message: 'Belum ada jawaban baru — RS tujuan masih belum menjawab.');
+            return;
+        }
+
+        $kabar = match ($this->rujukan['keputusan']) {
+            'accepted' => 'RS tujuan MENYETUJUI rujukan ini.',
+            'rejected' => 'RS tujuan MENOLAK rujukan ini.',
+            default => $this->rujukan['statusTask'] === 'cancelled'
+                ? 'Tugas rujukan ini sudah dibatalkan.'
+                : 'Status rujukan diperbarui.',
+        };
+        $this->dispatch('toast', type: 'success', message: $kabar);
+    }
+
+    /** Ringkas badan error SATUSEHAT jadi satu kalimat yang muat di toast. */
+    private function ringkasGangguan($body): string
+    {
+        if (is_string($body)) {
+            return Str::limit($body, 140);
+        }
+        if (is_array($body)) {
+            $pesan = $body['issue'][0]['details']['text'] ?? ($body['issue'][0]['diagnostics'] ?? ($body['message'] ?? null));
+            return Str::limit((string) ($pesan ?: json_encode($body)), 140);
+        }
+        return 'tidak ada keterangan';
     }
 
     public function waktuTampil(string $iso): string
@@ -263,6 +346,25 @@ new class extends Component {
                     x-on:click="$dispatch('close-modal', { name: 'rujukan-keluar-actions' })">
                     Tutup
                 </x-secondary-button>
+
+                {{-- Hanya selagi menunggu: sesudah dijawab/dibatalkan, statusnya final. --}}
+                @if ($this->belumDijawab())
+                    <x-primary-button type="button" wire:click="cekStatus" wire:loading.attr="disabled"
+                        wire:target="cekStatus"
+                        title="Tanyakan ulang jawaban RS tujuan — SATUSEHAT tidak memberi tahu sendiri (1 panggilan API)">
+                        <span wire:loading.remove wire:target="cekStatus" class="inline-flex items-center gap-2">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                            </svg>
+                            Cek Status
+                        </span>
+                        <span wire:loading wire:target="cekStatus" class="inline-flex items-center gap-1">
+                            <x-loading /> Mengecek...
+                        </span>
+                    </x-primary-button>
+                @endif
             </div>
 
         </div>
