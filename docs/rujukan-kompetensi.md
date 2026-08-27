@@ -48,6 +48,47 @@ Body JSON: `kodeDiagnosa` + `kodeFaskesSatuSehat` (+ `encounter.reference` bila 
 - **Sukses = ada identifier `http://sys-ids.kemkes.go.id/referral-number-satusehat`** di ServiceRequest response (plus `referral-number-pcare`/BPJS = no rujukan BPJS). Tidak ada identifier itu = GAGAL walau resource terbentuk. **Nomor wajib tersimpan di DB** (tampil di UI opsional — syarat UAT).
 - 1 CarePlan = 1 ServiceRequest = 1 nomor rujukan. Jangan tembak beberapa RS; penerima punya 15 menit sebelum sistem menyarankan pindah kandidat.
 
+### 2.3b Rujukan/Delete (DELETE) — WAJIB bawa `satuSehatRujukan`
+
+Contoh resmi BPJS (documenter *INTEGRASI SATU SEHAT RUJUKAN* dan koleksi Postman *Sisrute*
+dari Kepwil Jatim, diterima 27/08/26) **selalu** menyertakan blok `satuSehatRujukan` pada
+body Delete — bukan hanya `noRujukan` + `user`:
+
+```json
+{"request":{"t_rujukan":{
+  "noRujukan":"1001R0120326B000017","user":"string",
+  "satuSehatRujukan":{
+    "kodeFaskesSatuSehat":"100010939","idPasienSatuSehat":"P20395452616",
+    "kdppkSatuSehatTujuanRujukan":"100025548","kdDokterSatuSehat":"10009880728",
+    "encounter":{"reference":"897d7713-…"},
+    "patientInstruction":"…","keteranganRujukan":"…"}}}}
+```
+
+Alasannya masuk akal: Delete membatalkan DUA sisi. Tanpa blok itu BPJS tak punya bahan
+untuk membatalkan sisi SATUSEHAT-nya — rujukan BPJS terhapus, ServiceRequest-nya tertinggal
+hidup. `encounter.reference` di sini **UUID polos**, sama seperti Insert (§2.4).
+Nilai-nilainya dipungut dari hasil kirim yang TERSIMPAN, bukan dirakit ulang dari form —
+form bisa sudah berubah sejak rujukan dikirim. Sudah diterapkan:
+`SisruteTrait::sisrute_delete_rujukan($noRujukan, $user, $satuSehatRujukan)`.
+
+### 2.3c Header: TIDAK ada `X-Authorization` di keempat endpoint FKRTL
+
+Documenter resmi memakai **`X-Cons-ID` + `X-Timestamp` + `X-Signature` + `user_key`** saja —
+persis yang dikirim `SisruteTrait::signature()`. Berkas koleksi Postman yang beredar sempat
+menambahkan `X-Authorization: Basic {{AUTH}}` pada GetFaskesRujukan/Insert/Delete; itu
+kebiasaan service VClaim lain (antrean/apotek), bukan syarat SISRUTE. Bukti pendukung:
+`GetKriteriaRujukan` kita sudah menembus gateway (balas 500 `Object reference`, bukan 401)
+tanpa header itu. Kalau kelak Insert/Delete membalas 401/403, barulah `SISRUTE_AUTH_USER`/
+`SISRUTE_AUTH_PASS` di `.env` (sudah disiapkan, masih dikomentari) diaktifkan.
+
+### 2.3d Belum terkonfirmasi: `kodeSarana` & `estimasiRujuk` di GetFaskesRujukan
+
+Kita mengirim keduanya (warisan Postman V30062026), tetapi **contoh resmi terbaru tidak
+memuat keduanya** — yang ada hanya `tglRencanaKunjungan` (`yyyy-mm-dd`). Field berlebih
+biasanya diabaikan gateway, jadi keduanya SENGAJA dibiarkan sampai ada jawaban: menghapus
+field yang ternyata wajib jauh lebih mahal daripada mengirim field yang ternyata diabaikan.
+Tanyakan ke BPJS saat UAT; kalau dipastikan tak dipakai, buang dari payload panel RJ.
+
 ### 2.4 Format field krusial
 - **ICD-10 wajib kode rinci 4-karakter** (`A02.0`); kode induk 3-karakter (`A02`) DITOLAK → LOV diagnosa harus memaksa pilih kode anak; fallback `.9` boleh tapi jangan kebanyakan. (Awas: master kita punya 288 icdx kembar — lihat skill diagnosa-flow.)
 - `kodeFaskesSatuSehat` = **kode numerik 9-digit production** (kita: `100027469`), bukan UUID, bukan org-id staging, dan harus konsisten dengan cons-id (faskes yang sama).
