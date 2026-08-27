@@ -97,7 +97,12 @@ yang paling sering dicek petugas tidak tertutup blok judul besar:
 ```
 
 Judulnya sengaja kecil: modal ini sudah dibuka dari tab yang bernama sama, jadi judul besar
-cuma memakan ruang. Tombol tutup (X) tetap ikut di baris judul.
+cuma memakan ruang.
+
+**Tombol tutup (X) TIDAK ikut baris judul** — ia mengambang di pojok kanan atas modal:
+pembungkus modal diberi `relative`, tombolnya jadi anak langsung dengan
+`class="absolute z-20 top-3 right-3 bg-canvas/90 backdrop-blur-sm"`. Dengan begitu letaknya
+tetap di pojok walau susunan isinya berubah.
 
 ### Cara memverifikasi (jangan cuma lihat "tidak error")
 
