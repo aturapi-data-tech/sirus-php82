@@ -85,6 +85,12 @@ new class extends Component {
     // Kunci entri yang sedang diedit (createdAt = kunci stabil). null = membuat entri baru.
     public ?string $editingKey = null;
 
+    // Layar aktif di modal: 'daftar' (grid entri) atau 'form' (tambah/edit/lihat).
+    // Formulir sengaja tidak nongkrong bersama daftarnya: dulu ia ikut tampil terus lalu
+    // dikosongkan diam-diam sesudah tersimpan, dan petugas yang mengira itu masih formulir
+    // yang tadi diisi mengetik ulang — tersimpan sebagai draft baru.
+    public string $layar = 'daftar';
+
     // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja).
     public bool $viewOnly = false;
 
@@ -136,6 +142,8 @@ new class extends Component {
         $this->laporanList = $this->dataDaftarPoliRJ[$this->jsonKey];
         $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-laporan-operasi-rj');
+
+        $this->layar = 'daftar';
 
         $this->dispatch('open-modal', name: "rm-laporan-operasi-rj-{$this->rjNo}");
     }
@@ -420,6 +428,29 @@ new class extends Component {
         $this->incrementVersion('modal-laporan-operasi-rj');
     }
 
+    /** Layar formulir sedang tampil? Saat terkunci, formulir tak pernah dirender. */
+    public function diForm(): bool
+    {
+        return !$this->isFormLocked && ($this->viewOnly || $this->editingKey !== null || $this->layar === 'form');
+    }
+
+    /** Buka formulir kosong untuk entri baru. */
+    public function tambahEntri(): void
+    {
+        if ($this->isFormLocked || $this->disabled) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menambah entri.');
+            return;
+        }
+        $this->cancelEdit();     // kosongkan formulir (sekaligus balik ke daftar)…
+        $this->layar = 'form';   // …lalu naikkan formulirnya
+    }
+
+    /** Tutup formulir, kembali ke daftar entri. Formulir selalu ditinggalkan kosong. */
+    public function kembaliKeDaftar(): void
+    {
+        $this->cancelEdit();
+    }
+
     /* ===============================
      | CETAK (per-entri, inline stream PDF)
      =============================== */
@@ -566,6 +597,7 @@ new class extends Component {
             'operatorTtdCode' => '',
             'operatorTtdDate' => '',
         ];
+        $this->layar = 'daftar';   // mengosongkan formulir = kembali ke daftar
     }
 
     protected function resetForm(): void
@@ -654,6 +686,7 @@ new class extends Component {
             <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
                 <div class="relative flex items-start justify-between gap-4">
                     <div>
+                        @if ($this->diForm())
                         <div class="flex items-center gap-3">
                             <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-rose-500/10">
                                 <svg class="w-6 h-6 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -1012,6 +1045,8 @@ new class extends Component {
                         </fieldset>
 
                         {{-- ══ DAFTAR LAPORAN TERSIMPAN (expandable) ══ --}}
+                        @endif
+                        @unless ($this->diForm())
                         <div class="pt-6 border-t border-hairline dark:border-gray-700">
                             <h3 class="text-base font-semibold text-body dark:text-gray-300 pb-2 border-b border-hairline-soft dark:border-gray-800 mb-3">
                                 Daftar Laporan Operasi Tersimpan
@@ -1252,6 +1287,7 @@ new class extends Component {
                                 <p class="text-base text-muted dark:text-gray-400">Belum ada laporan operasi tersimpan.</p>
                             @endif
                         </div>
+                        @endunless
 
                     </div>
                 </div>
@@ -1260,6 +1296,7 @@ new class extends Component {
             {{-- FOOTER --}}
             <div
                 class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
+                    @if ($this->diForm())
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     @if ($viewOnly)
                         <p class="flex items-center gap-1.5 text-sm text-sky-600 dark:text-sky-400">
@@ -1281,7 +1318,7 @@ new class extends Component {
                     @endif
 
                     <div class="flex flex-wrap items-center justify-end gap-3">
-                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="kembaliKeDaftar">Kembali ke Daftar</x-secondary-button>
 
                         @if ($viewOnly)
                             <x-primary-button wire:click.prevent="cancelEdit" wire:target="cancelEdit"
@@ -1314,6 +1351,20 @@ new class extends Component {
                             </x-primary-button>
                         @endif
                     </div>
+                    @else
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                            <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                            @unless ($isFormLocked)
+                                <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
+                                    wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Tambah Entri
+                                </x-primary-button>
+                            @endunless
+                        </div>
+                    @endif
                 </div>
             </div>
 
