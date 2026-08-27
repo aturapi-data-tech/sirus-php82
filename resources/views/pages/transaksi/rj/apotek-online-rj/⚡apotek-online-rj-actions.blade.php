@@ -22,6 +22,7 @@ use Carbon\Carbon;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\BPJS\ApotekTrait;
 use App\Support\EresepJson;
+use App\Support\NoSep;
 
 new class extends Component {
     use EmrRJTrait, ApotekTrait;
@@ -118,7 +119,10 @@ new class extends Component {
         $this->info = [
             'regName' => $pasien->reg_name ?? '-',
             'regNo' => $pasien->reg_no ?? '-',
-            'noSep' => $pasien->vno_sep ?? '',
+            // vno_sep kolom TEKS BEBAS (ITER/…, LAB, BATAL) — wajib diekstrak.
+            'noSep' => NoSep::ekstrak($pasien->vno_sep ?? null),
+            'noSepAsli' => (string) ($pasien->vno_sep ?? ''),
+            'sepCatatan' => NoSep::catatan($pasien->vno_sep ?? null),
             'poliDesc' => $pasien->poli_desc ?? '-',
             'drName' => $pasien->dr_name ?? '-',
             'rjDate' => $pasien->rj_date ?? '',
@@ -162,20 +166,51 @@ new class extends Component {
             ->orderBy('o.rjobat_dtl')
             ->get();
 
+        // Signa dari e-resep dokter. Field-nya memang sepasang dengan milik BPJS:
+        // di form e-resep, signaX berlabel "Signa1" dan signaHari berlabel "Signa2".
+        // Dipetakan per productId supaya baris kronis mengambil signa obatnya sendiri.
+        $signaEresep = [];
+        foreach (EresepJson::lembar($data) as $lembarEresep) {
+            foreach ($lembarEresep['nonRacikan'] as $obatEresep) {
+                $productId = trim((string) ($obatEresep['productId'] ?? ''));
+                if ($productId === '') {
+                    continue;
+                }
+                $signaEresep[$productId] = [
+                    'signa1' => (int) ($obatEresep['signaX'] ?? 0),
+                    'signa2' => (int) ($obatEresep['signaHari'] ?? 0),
+                ];
+            }
+        }
+
         $obatBibit = [];
         foreach ($obatKronisList as $obatKronis) {
+            $productId = (string) $obatKronis->product_id;
+            $signa1 = $signaEresep[$productId]['signa1'] ?? 0;
+            $signa2 = $signaEresep[$productId]['signa2'] ?? 0;
+
+            // Obat yang tak ketemu di e-resep (mis. ditambahkan langsung di Administrasi)
+            // tetap dapat nilai 1 supaya JHO tidak dibagi nol.
+            $signa1 = $signa1 > 0 ? $signa1 : 1;
+            $signa2 = $signa2 > 0 ? $signa2 : 1;
+
+            // JHO = JUMLAH HARI obat, bukan jumlah butir. Sebelumnya diisi qty_kronis
+            // sehingga 30 tablet terkirim sebagai "30 hari" walau diminum 3x sehari.
+            $qtyKronis = (int) $obatKronis->qty_kronis;
+            $jho = (int) max(1, ceil($qtyKronis / ($signa1 * $signa2)));
+
             $obatBibit[] = [
                 'jenis' => 'nonRacikan',       // split kronis RJ hanya untuk non-racikan
                 'noRacikan' => '',
-                'productId' => (string) $obatKronis->product_id,
+                'productId' => $productId,
                 'nama' => (string) ($obatKronis->product_name ?? '-'),
                 'kodeDpho' => (string) ($obatKronis->kode_dpho ?? ''),
                 // JMLOBT = porsi KRONIS. Signa & JHO tebakan awal — WAJIB diverifikasi
                 // (e-resep/rjobats tak menyimpan signa dalam format BPJS yang baku).
-                'signa1' => '1',
-                'signa2' => '1',
-                'jml' => (string) (int) $obatKronis->qty_kronis,
-                'jho' => (string) (int) $obatKronis->qty_kronis,
+                'signa1' => (string) $signa1,
+                'signa2' => (string) $signa2,
+                'jml' => (string) $qtyKronis,
+                'jho' => (string) $jho,
                 'catatan' => trim((string) ($obatKronis->catatan_khusus ?: $obatKronis->rj_carapakai)),
             ];
         }
@@ -281,26 +316,42 @@ new class extends Component {
             $tgl = Carbon::parse($this->info['rjDate'] ?? now());
 
             // 1) POLIRSP dari SEP (BPJS pakai kode poli-nya sendiri, bukan poli_id kita).
+            // Tanpa nomor SEP tak ada yang bisa dikirim — REFASALSJP wajib dan BPJS
+            // menuntut tepat 19 karakter. Dihentikan di sini, bukan di ujung rantai.
+            if (blank($this->info['noSep'] ?? '')) {
+                $this->gagal('Kolom SEP kunjungan ini tidak memuat nomor SEP ('
+                    . (($this->info['noSepAsli'] ?? '') ?: 'kosong') . '). Betulkan di Pendaftaran lebih dulu.');
+                return;
+            }
+
             $sep = $this->apotek_sep($this->info['noSep'])->getData(true);
             if ((string) ($sep['metadata']['code'] ?? '') !== '200') {
                 $this->gagal('Baca SEP gagal — ' . ($sep['metadata']['message'] ?? 'gangguan BPJS'));
                 return;
             }
             $poliRsp = (string) ($sep['response']['poli'] ?? '');
+
+            // SEP asal & kode dokter diambil dari BALASAN BPJS, bukan dari kolom kita:
+            // itu bentuk yang mereka akui sendiri. Kalau kosong, baru pakai hasil ekstraksi.
+            $sepAsal = (string) ($sep['response']['noSep'] ?? '') ?: $this->info['noSep'];
+            $kdDokter = (string) ($sep['response']['kodedokter'] ?? '');
+
             $this->log[] = ['ok' => true, 'teks' => 'SEP terbaca. Poli resep: ' . ($poliRsp ?: '(kosong)')];
 
             // 2) Simpan resep → dapat No. SJP apotek.
             $noResep = (string) ($this->noResep ?: '1');
             $resep = $this->apotek_resep_insert([
                 'TGLSJP' => $tgl->format('Y-m-d H:i:s'),
-                'REFASALSJP' => $this->info['noSep'],
+                'REFASALSJP' => $sepAsal,
                 'POLIRSP' => $poliRsp,
                 'KDJNSOBAT' => $this->kdJnsObat,
                 'NORESEP' => $noResep,
                 'IDUSERSJP' => (string) (auth()->user()->myuser_code ?? 'SIMRS'),
                 'TGLRSP' => $tgl->format('Y-m-d 00:00:00'),
                 'TGLPELRSP' => now()->format('Y-m-d 00:00:00'),
-                'KdDokter' => '0',
+                // Dipetakan dari respons SEP; katalog membolehkan kosong, jadi '' bila
+                // BPJS memang tak mengirimnya — bukan dipaku '0' seperti sebelumnya.
+                'KdDokter' => $kdDokter,
                 'iterasi' => $this->iterasi,
             ])->getData(true);
             if ((string) ($resep['metadata']['code'] ?? '') !== '200') {
@@ -675,8 +726,9 @@ new class extends Component {
                 <div class="px-3 py-2 text-xs border rounded-lg bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200">
                     <strong>Periksa Signa &amp; Jumlah Hari (JHO)</strong> tiap obat sebelum kirim.
                     Jumlah (Jml) terisi dari <strong>porsi kronis</strong> (qty_kronis), bukan qty resep utuh.
-                    Pemetaan signa ke format BPJS (berapa kali × berapa) belum baku — betulkan bila perlu.
-                    Daftar obat bisa disusun ulang: hapus baris, atau tambah obat DPHO lain di bawah.
+                    Signa1 &amp; Signa2 diambil dari e-resep dokter; JHO dihitung Jml ÷ (Signa1 × Signa2).
+                    Obat yang tidak ada di e-resep — mis. ditambahkan langsung di Administrasi — jatuh ke 1 × 1.
+                    Daftar obat bisa disusun ulang: hapus baris, atau tambah obat DPHO lain di atas.
                 </div>
 
                 </div>{{-- /kanan: payload klaim --}}
