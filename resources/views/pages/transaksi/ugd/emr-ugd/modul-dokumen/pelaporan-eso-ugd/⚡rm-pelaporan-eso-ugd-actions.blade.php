@@ -1332,21 +1332,6 @@ new class extends Component {
                 </x-border-form>
 
                 {{-- ══════ FOOTER AKSI ══════ --}}
-                <div class="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-2 px-6 py-3 -mx-4 border-t bg-canvas border-hairline sm:-mx-6 dark:bg-gray-900 dark:border-gray-700">
-                    <x-secondary-button type="button" wire:click="kembaliKeDaftar">Kembali ke Daftar</x-secondary-button>
-                    @if (!$viewOnly)
-                        @unless ($isFormLocked)
-                            <x-primary-button type="button" wire:click="saveDraft" wire:loading.attr="disabled"
-                                wire:target="saveDraft" class="gap-1.5">
-                                <span wire:loading.remove wire:target="saveDraft"
-                                    class="flex items-center gap-1.5">Simpan Draft</span>
-                                <span wire:loading wire:target="saveDraft" class="flex items-center gap-1.5">
-                                    <x-loading class="w-4 h-4" /> Menyimpan...
-                                </span>
-                            </x-primary-button>
-                        @endunless
-                    @endif
-                </div>
 
                 {{-- ══════ DAFTAR ENTRI TERSIMPAN ══════ --}}
                 @endif
@@ -1473,20 +1458,39 @@ new class extends Component {
                     </div>
                 </x-border-form>
                     {{-- FOOTER LAYAR DAFTAR — Tutup + Isi Formulir Baru, seragam dengan modul lain --}}
-                    <div class="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-2 px-6 py-3 -mx-4 border-t bg-canvas border-hairline sm:-mx-6 dark:bg-gray-900 dark:border-gray-700">
-                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
-                            @unless ($isFormLocked)
-                                <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
-                                    wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                    </svg>
-                                    Isi Formulir Baru
-                                </x-primary-button>
-                            @endunless
-                    </div>
                 @endunless
 
+            </div>
+            {{-- FOOTER MODAL — menempel di bawah; saat isi pendek pun tetap di dasar modal --}}
+            <div class="sticky bottom-0 z-10 px-6 py-3 border-t bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    @if ($this->diForm())
+                        <x-secondary-button type="button" wire:click="kembaliKeDaftar">Kembali ke Daftar</x-secondary-button>
+                        @if (!$viewOnly)
+                            @unless ($isFormLocked)
+                                <x-primary-button type="button" wire:click="saveDraft" wire:loading.attr="disabled"
+                                    wire:target="saveDraft" class="gap-1.5">
+                                    <span wire:loading.remove wire:target="saveDraft"
+                                        class="flex items-center gap-1.5">Simpan Draft</span>
+                                    <span wire:loading wire:target="saveDraft" class="flex items-center gap-1.5">
+                                        <x-loading class="w-4 h-4" /> Menyimpan...
+                                    </span>
+                                </x-primary-button>
+                            @endunless
+                        @endif
+                    @else
+                            <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                                @unless ($isFormLocked)
+                                    <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
+                                        wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Isi Formulir Baru
+                                    </x-primary-button>
+                                @endunless
+                    @endif
+                </div>
             </div>
         </div>
     </x-modal>
