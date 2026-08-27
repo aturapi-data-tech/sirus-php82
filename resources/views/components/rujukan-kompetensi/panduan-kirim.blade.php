@@ -1,4 +1,4 @@
-{{-- resources/views/components/rujukan/panduan-kirim.blade.php
+{{-- resources/views/components/rujukan-kompetensi/panduan-kirim.blade.php
 
     Panduan pemakaian Rujukan Berbasis Kompetensi jalur FHIR (Ranap & IGD),
     gaya biru-info standar, default TERTUTUP.

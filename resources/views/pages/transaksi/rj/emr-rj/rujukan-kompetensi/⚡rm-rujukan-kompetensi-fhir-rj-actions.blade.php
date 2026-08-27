@@ -367,7 +367,7 @@ new class extends Component {
         return $kurang;
     }
 
-    private function encounterUuid(): string
+    public function encounterUuid(): string
     {
         return (string) ($this->dataDaftarPoliRJ['satusehat']['encounterId'] ?? '');
     }
@@ -1089,7 +1089,7 @@ new class extends Component {
 
     {{-- Panduan pemakaian — komponen bersama 3 panel. --}}
     <div class="mb-3">
-        <x-rujukan.panduan-kirim :jalurGanda="true" />
+        <x-rujukan-kompetensi.panduan-kirim :jalurGanda="true" />
     </div>
 
     {{-- Prasyarat & penanda langkah disandingkan: keduanya keterangan keadaan,
@@ -1246,13 +1246,14 @@ new class extends Component {
                     <p class="text-sm {{ str_starts_with($infoKandidat, '✓') || str_starts_with($infoKandidat, 'Tujuan:') ? 'text-green-700 dark:text-green-300' : 'text-muted-soft' }}">{{ $infoKandidat }}</p>
                 @endif
 
-                <x-rujukan.kandidat-tabel :rows="$formRujukan['kandidatList']"
+                <x-rujukan-kompetensi.kandidat-tabel :rows="$formRujukan['kandidatList']"
                     :selectedIndex="$formRujukan['kandidatIdx']" :disabled="$isFormLocked" />
             </div>
 
             {{-- LANGKAH 2 & 3 — TUGAS RUJUKAN + SERVICEREQUEST --}}
             <div class="p-3 space-y-3 bg-canvas border border-hairline rounded-lg dark:bg-gray-800 dark:border-gray-700">
                 <p class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200"><x-step-number :n="3" /><span>Kirim Tugas Rujukan</span><span class="text-muted-soft">→</span><x-step-number :n="4" /><span>Persetujuan Faskes</span><span class="text-muted-soft">→</span><x-step-number :n="5" /><span>Kirim Rujukan</span></p>
+                <x-rujukan-kompetensi.identitas-kiriman :encounterId="$this->encounterUuid()" />
 
                 <div class="grid grid-cols-1 gap-3">
                     {{-- Satu layanan = satu pilihan. Kotak kode & nama hanya muncul
