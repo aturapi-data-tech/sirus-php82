@@ -344,13 +344,13 @@ new class extends Component {
                         Surat Keterangan Kematian
                     </h3>
                     @if (!$this->isPasienMeninggal())
-                        <x-badge variant="warning">Tidak berlaku</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Tidak berlaku</x-badge>
                     @elseif (!$sudahAda)
-                        <x-badge variant="warning">Belum ada</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @elseif ($isFinal)
-                        <x-badge variant="success">Ditandatangani</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">Ditandatangani</x-badge>
                     @else
-                        <x-badge variant="warning">Draft</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Draft</x-badge>
                     @endif
                 </div>
 
@@ -459,9 +459,9 @@ new class extends Component {
             <div class="flex items-center gap-3 min-w-0 px-6 py-2.5 border-b border-hairline dark:border-gray-700">
                 <div class="flex items-baseline gap-2 min-w-0 flex-1 min-w-0">
                     <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">Surat Keterangan Kematian</h2>
-                    <p class="truncate text-xs text-muted dark:text-gray-400">Rawat Inap</p>
+                    <p class="flex-1 min-w-0 truncate text-xs text-muted dark:text-gray-400">Rawat Inap</p>
                     @if ($isFormLocked)
-                        <div class="mt-2"><x-badge variant="danger">Read Only</x-badge></div>
+                        <div class="mt-2"><x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge></div>
                     @endif
                 </div>
                 <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-auto shrink-0 shrink-0">

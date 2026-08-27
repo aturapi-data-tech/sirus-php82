@@ -657,7 +657,7 @@ new class extends Component {
                     @else
                         <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Pengkajian awal pasien obstetri (RM 44/44.a) — identitas & sosial, status obstetri (G-P-A), riwayat persalinan, TTV, pemeriksaan dalam, skrining (PP 1.2), diagnosa & rencana. Diisi Bidan/Dokter.</p>
+                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Pengkajian awal pasien obstetri (RM 44/44.a) — identitas & sosial, status obstetri (G-P-A), riwayat persalinan, TTV, pemeriksaan dalam, skrining (PP 1.2), diagnosa & rencana. Diisi Bidan/Dokter.</x-deskripsi-ringkas>
                 </div>
             </div>
             <div class="flex shrink-0">
@@ -727,15 +727,15 @@ new class extends Component {
                         </div>
                         <div class="flex items-baseline gap-2 min-w-0">
                             <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Pengkajian Awal Obstetri</h2>
-                            <p class="truncate text-xs text-muted dark:text-gray-400">RM 44 / 44.a — kebidanan (VK). Diisi Bidan / Dokter.</p>
+                            <p class="flex-1 min-w-0 truncate text-xs text-muted dark:text-gray-400">RM 44 / 44.a — kebidanan (VK). Diisi Bidan / Dokter.</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
                         @if (count($entriList) > 0)
-                            <x-badge variant="info">{{ count($entriList) }} tersimpan</x-badge>
+                            <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ count($entriList) }} tersimpan</x-badge>
                         @endif
                         @if ($isFormLocked)
-                            <x-badge variant="danger">Read Only</x-badge>
+                            <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
                         @endif
                     </div>
                     <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-auto shrink-0 shrink-0">

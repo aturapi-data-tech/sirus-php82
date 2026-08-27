@@ -838,7 +838,7 @@ new class extends Component {
                     @else
                         <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Pemberian informasi &amp; edukasi pasien/keluarga — satu formulir terintegrasi antar-PPA (dokter, perawat, gizi, farmasi, dll.), menggantikan form Edukasi Pasien lama.</p>
+                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Pemberian informasi &amp; edukasi pasien/keluarga — satu formulir terintegrasi antar-PPA (dokter, perawat, gizi, farmasi, dll.), menggantikan form Edukasi Pasien lama.</x-deskripsi-ringkas>
                 </div>
                 @if (count($dataDaftarRi['edukasiPasien'] ?? []) > 0)
                     <p class="text-sm text-muted-soft">
@@ -958,9 +958,9 @@ new class extends Component {
             <div class="flex items-center justify-between gap-4 px-6 py-2.5 border-b border-hairline bg-surface-soft dark:border-gray-700">
                 <div class="flex items-center gap-2.5 flex-1 min-w-0">
                     <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Edukasi Terintegrasi</h2>
-                    <p class="flex-1 hidden min-w-0 truncate text-xs text-muted sm:block dark:text-gray-400">Edukasi pasien &amp; keluarga oleh seluruh profesi — kebutuhan, metode, hasil, dan tindak lanjutnya.</p>
+                    <x-deskripsi-ringkas class="hidden sm:flex text-xs">Edukasi pasien &amp; keluarga oleh seluruh profesi — kebutuhan, metode, hasil, dan tindak lanjutnya.</x-deskripsi-ringkas>
                     @if ($jumlahEdukasiTerintegrasi > 0)
-                        <x-badge variant="info">{{ $jumlahEdukasiTerintegrasi }} tersimpan</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ $jumlahEdukasiTerintegrasi }} tersimpan</x-badge>
                     @endif
                 <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-auto shrink-0 shrink-0">
                     <span class="sr-only">Close</span>
@@ -971,12 +971,12 @@ new class extends Component {
                     </svg>
                 </x-icon-button>
                     @if ($this->diForm())
-                        <x-badge :variant="$viewOnly ? 'info' : ($editingKey ? 'warning' : 'success')">
+                        <x-badge class="shrink-0 whitespace-nowrap" :variant="$viewOnly ? 'info' : ($editingKey ? 'warning' : 'success')">
                             {{ $viewOnly ? 'Mode: Lihat' : ($editingKey ? 'Mode: Edit' : 'Mode: Tambah') }}
                         </x-badge>
                     @endif
                     @if ($isFormLocked)
-                        <x-badge variant="danger">Read Only</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
                     @endif
                 </div>
             </div>

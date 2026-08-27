@@ -606,7 +606,7 @@ new class extends Component {
                     @else
                         <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Formulir permintaan pendapat medis kedua (second opinion) atas tindakan medis, pengobatan/obat, atau pemilihan tenaga medis. Dapat lebih dari satu catatan.</p>
+                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Formulir permintaan pendapat medis kedua (second opinion) atas tindakan medis, pengobatan/obat, atau pemilihan tenaga medis. Dapat lebih dari satu catatan.</x-deskripsi-ringkas>
                 </div>
 
                 <div class="flex shrink-0">
@@ -691,19 +691,19 @@ new class extends Component {
                                 <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">
                                     Permintaan Second Opinion
                                 </h2>
-                                <p class="truncate text-xs text-muted dark:text-gray-400">
+                                <p class="flex-1 min-w-0 truncate text-xs text-muted dark:text-gray-400">
                                     Formulir permintaan pendapat medis kedua — tindakan, obat, atau tenaga medis
                                 </p>
                             </div>
                         </div>
 
                         <div class="flex items-center gap-1.5 ml-auto shrink-0">
-                            <x-badge variant="brand">Rawat Inap</x-badge>
+                            <x-badge class="shrink-0 whitespace-nowrap" variant="brand">Rawat Inap</x-badge>
                             @if (count($secondOpinionList) > 0)
-                                <x-badge variant="info">{{ count($secondOpinionList) }} tersimpan</x-badge>
+                                <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ count($secondOpinionList) }} tersimpan</x-badge>
                             @endif
                             @if ($isFormLocked)
-                                <x-badge variant="danger">Read Only</x-badge>
+                                <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
                             @endif
                         </div>
                     </div>

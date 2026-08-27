@@ -676,18 +676,18 @@ new class extends Component {
     @endphp
     <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 space-y-3">
+            <div class="flex-1 min-w-0 space-y-3">
                 {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
                 <div class="flex items-baseline flex-1 gap-2 min-w-0">
                     <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Formulir Transfer UGD &rarr; Rawat Inap</h3>
                     @if ($trfKirim && $trfTerima)
-                        <x-badge variant="success">Selesai</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">Selesai</x-badge>
                     @elseif ($trfKirim)
-                        <x-badge variant="warning">Menunggu TTD Penerima</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Menunggu TTD Penerima</x-badge>
                     @else
-                        <x-badge variant="warning">Belum diisi</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum diisi</x-badge>
                     @endif
-                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Serah-terima pasien UGD ke ruang rawat inap — dua tahap (TTD Pengirim lalu Penerima).</p>
+                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Serah-terima pasien UGD ke ruang rawat inap — dua tahap (TTD Pengirim lalu Penerima).</p>
                 </div>
                 @if ($trfKirim)
                     <dl class="grid grid-cols-1 gap-2 text-base sm:grid-cols-3 text-muted dark:text-gray-300">
@@ -731,7 +731,7 @@ new class extends Component {
             {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
             <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-hairline bg-surface-soft dark:border-gray-700">
                 <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Formulir Transfer UGD &rarr; Rawat Inap</h2>
-                <p class="flex-1 hidden min-w-0 truncate text-xs text-muted sm:block dark:text-gray-400">Serah terima pasien dari Unit Gawat Darurat ke ruang Rawat Inap — kondisi, terapi, dan alat terpasang.</p>
+                <x-deskripsi-ringkas class="hidden sm:flex text-xs">Serah terima pasien dari Unit Gawat Darurat ke ruang Rawat Inap — kondisi, terapi, dan alat terpasang.</x-deskripsi-ringkas>
                 <x-icon-button class="ml-auto shrink-0" color="gray" type="button" wire:click="closeModal">
                     <span class="sr-only">Close</span>
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">

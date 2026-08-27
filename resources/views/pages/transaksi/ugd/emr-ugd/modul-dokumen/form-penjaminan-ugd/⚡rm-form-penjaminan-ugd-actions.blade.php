@@ -674,12 +674,12 @@ new class extends Component {
                 <div class="flex items-center gap-2.5 flex-1 min-w-0">
                     <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Formulir Penjaminan &amp; Orientasi Kamar</h2>
                     <p class="flex-1 hidden min-w-0 truncate text-xs text-muted sm:block dark:text-gray-400">Pernyataan penjaminan pembiayaan sekaligus orientasi ruang rawat kepada pasien/keluarga.</p>
-                    <x-badge variant="danger">UGD</x-badge>
+                    <x-badge class="shrink-0 whitespace-nowrap" variant="danger">UGD</x-badge>
                     @if ($penjaminanCount > 0)
-                        <x-badge variant="info">{{ $penjaminanCount }} tersimpan</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ $penjaminanCount }} tersimpan</x-badge>
                     @endif
                     @if ($isFormLocked)
-                        <x-badge variant="danger">Read Only</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
                     @endif
                 </div>
                 <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-auto shrink-0 shrink-0">

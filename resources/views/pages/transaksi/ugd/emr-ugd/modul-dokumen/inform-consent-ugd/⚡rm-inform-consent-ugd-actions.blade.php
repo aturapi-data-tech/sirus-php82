@@ -770,7 +770,7 @@ new class extends Component {
                     @else
                         <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Persetujuan tindakan medis per-tindakan: tujuan, risiko, alternatif, serta tanda tangan pasien/wali, dokter penjelas, dan saksi.</p>
+                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Persetujuan tindakan medis per-tindakan: tujuan, risiko, alternatif, serta tanda tangan pasien/wali, dokter penjelas, dan saksi.</x-deskripsi-ringkas>
                 </div>
 
                 <div class="flex shrink-0">
@@ -862,19 +862,19 @@ new class extends Component {
 
                             <div class="flex items-baseline gap-2 min-w-0">
                                 <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">Inform Consent</h2>
-                                <p class="truncate text-xs text-muted dark:text-gray-400">
+                                <p class="flex-1 min-w-0 truncate text-xs text-muted dark:text-gray-400">
                                     Persetujuan tindakan medis UGD — tampilan ini dapat diputar ke arah pasien
                                 </p>
                             </div>
                         </div>
 
                         <div class="flex items-center gap-1.5 ml-auto shrink-0">
-                            <x-badge variant="danger">UGD</x-badge>
+                            <x-badge class="shrink-0 whitespace-nowrap" variant="danger">UGD</x-badge>
                             @if ($informConsentCount > 0)
-                                <x-badge variant="info">{{ $informConsentCount }} tersimpan</x-badge>
+                                <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ $informConsentCount }} tersimpan</x-badge>
                             @endif
                             @if ($isFormLocked)
-                                <x-badge variant="danger">Read Only</x-badge>
+                                <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
                             @endif
                         </div>
                     </div>

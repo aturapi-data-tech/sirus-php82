@@ -705,7 +705,7 @@ new class extends Component {
                     @else
                         <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Pemulihan di Recovery Room (PAB 6.1 / RM 55): skor <span class="font-medium">Aldrete</span> (anestesi umum) &amp; <span class="font-medium">Bromage</span> (regional/spinal), skala nyeri, rekomendasi pemindahan pasien. Tiap entri = 1 catatan pemantauan.</p>
+                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Pemulihan di Recovery Room (PAB 6.1 / RM 55): skor <span class="font-medium">Aldrete</span> (anestesi umum) &amp; <span class="font-medium">Bromage</span> (regional/spinal), skala nyeri, rekomendasi pemindahan pasien. Tiap entri = 1 catatan pemantauan.</x-deskripsi-ringkas>
                 </div>
             </div>
 
@@ -781,18 +781,18 @@ new class extends Component {
                             <div class="flex items-baseline gap-2 min-w-0">
                                 <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Monitoring Pasca Anestesi
                                 </h2>
-                                <p class="truncate text-xs text-muted dark:text-gray-400">
+                                <p class="flex-1 min-w-0 truncate text-xs text-muted dark:text-gray-400">
                                     PAB 6.1 / RM 55 — Aldrete &amp; Bromage di Recovery Room · tiap entri = 1 catatan
                                 </p>
                             </div>
                         </div>
                         <div class="flex items-center gap-1.5 ml-auto shrink-0">
-                            <x-badge variant="brand">Rawat Inap</x-badge>
+                            <x-badge class="shrink-0 whitespace-nowrap" variant="brand">Rawat Inap</x-badge>
                             @if (count($pascaList) > 0)
-                                <x-badge variant="info">{{ count($pascaList) }} tersimpan</x-badge>
+                                <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ count($pascaList) }} tersimpan</x-badge>
                             @endif
                             @if ($isFormLocked)
-                                <x-badge variant="danger">Read Only</x-badge>
+                                <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
                             @endif
                         </div>
                     </div>

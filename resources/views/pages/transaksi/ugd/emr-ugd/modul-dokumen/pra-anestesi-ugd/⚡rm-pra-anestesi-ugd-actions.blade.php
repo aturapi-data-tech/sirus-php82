@@ -744,7 +744,7 @@ new class extends Component {
                     @else
                         <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Asesmen pra anestesi (PAB 4 / RM 50) oleh dokter anestesi: anamnese, jalan nafas (Mallampati), status fisik ASA, rencana teknik anestesi & analgesia pasca-op. Tiap entri = 1 pengkajian.</p>
+                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Asesmen pra anestesi (PAB 4 / RM 50) oleh dokter anestesi: anamnese, jalan nafas (Mallampati), status fisik ASA, rencana teknik anestesi & analgesia pasca-op. Tiap entri = 1 pengkajian.</x-deskripsi-ringkas>
                 </div>
             </div>
 
@@ -816,16 +816,16 @@ new class extends Component {
                             </div>
                             <div class="flex items-baseline gap-2 min-w-0">
                                 <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">Pengkajian Pra Anestesi & Pra Sedasi</h2>
-                                <p class="truncate text-xs text-muted dark:text-gray-400">PAB 4 / RM 50 — dokter anestesi</p>
+                                <p class="flex-1 min-w-0 truncate text-xs text-muted dark:text-gray-400">PAB 4 / RM 50 — dokter anestesi</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-1.5 ml-auto shrink-0">
-                            <x-badge variant="brand">UGD</x-badge>
+                            <x-badge class="shrink-0 whitespace-nowrap" variant="brand">UGD</x-badge>
                             @if (count($praAnestesiList) > 0)
-                                <x-badge variant="info">{{ count($praAnestesiList) }} tersimpan</x-badge>
+                                <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ count($praAnestesiList) }} tersimpan</x-badge>
                             @endif
                             @if ($isFormLocked)
-                                <x-badge variant="danger">Read Only</x-badge>
+                                <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
                             @endif
                         </div>
                     </div>

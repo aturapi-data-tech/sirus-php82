@@ -728,7 +728,7 @@ new class extends Component {
                     @else
                         <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Formulir kuning MESO: data penderita, manifestasi efek samping, daftar obat yang dicurigai, lalu ditandatangani pelapor. Bentuk kolom mengikuti Form Kuning BPOM 2026 supaya bisa langsung dilaporkan ke e-MESO.</p>
+                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Formulir kuning MESO: data penderita, manifestasi efek samping, daftar obat yang dicurigai, lalu ditandatangani pelapor. Bentuk kolom mengikuti Form Kuning BPOM 2026 supaya bisa langsung dilaporkan ke e-MESO.</x-deskripsi-ringkas>
                 </div>
             </div>
             <div class="flex shrink-0">

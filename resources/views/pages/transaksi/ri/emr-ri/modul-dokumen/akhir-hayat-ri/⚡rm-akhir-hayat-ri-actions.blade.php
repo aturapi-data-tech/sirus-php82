@@ -881,7 +881,7 @@ new class extends Component {
                     @else
                         <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Asesmen pasien terminal &amp; keluarganya: kondisi medis, simptom, psikososial-spiritual, rencana &amp; intervensi (termasuk DNR), lalu ditandatangani pasien/keluarga, saksi, dan petugas.</p>
+                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Asesmen pasien terminal &amp; keluarganya: kondisi medis, simptom, psikososial-spiritual, rencana &amp; intervensi (termasuk DNR), lalu ditandatangani pasien/keluarga, saksi, dan petugas.</x-deskripsi-ringkas>
                 </div>
             </div>
             <div class="flex shrink-0">
@@ -973,12 +973,12 @@ new class extends Component {
                             Asesmen pasien menjelang akhir hayat &amp; keluarganya
                         </span>
                     </h2>
-                    <p class="flex-1 hidden min-w-0 truncate text-xs text-muted sm:block dark:text-gray-400">Pengkajian pasien tahap terminal — kondisi medis, gejala, psikososial &amp; spiritual, lalu rencana perawatan.</p>
+                    <x-deskripsi-ringkas class="hidden sm:flex text-xs">Pengkajian pasien tahap terminal — kondisi medis, gejala, psikososial &amp; spiritual, lalu rencana perawatan.</x-deskripsi-ringkas>
                     @if ($akhirHayatCount > 0)
-                        <x-badge variant="info">{{ $akhirHayatCount }} tersimpan</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ $akhirHayatCount }} tersimpan</x-badge>
                     @endif
                     @if ($isFormLocked)
-                        <x-badge variant="danger">Read Only</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
                     @endif
                 </div>
                 <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-auto shrink-0 shrink-0">

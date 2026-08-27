@@ -863,16 +863,16 @@ new class extends Component {
 
     <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 space-y-3">
+            <div class="flex-1 min-w-0 space-y-3">
                 {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
                 <div class="flex items-baseline flex-1 gap-2 min-w-0">
                     <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Pengkajian Pre Operasi</h3>
                     @if ($preOpCount > 0)
-                        <x-badge variant="success">{{ $preOpCount }} pengkajian</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $preOpCount }} pengkajian</x-badge>
                     @else
-                        <x-badge variant="warning">Belum ada</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Persiapan pasien & serah-terima ruangan → OK (RM 49): keadaan pra bedah, persiapan pasien (puasa/cukur/premedikasi), kelengkapan administrasi yang disertakan ke kamar operasi. Tiap entri = 1 pengkajian; simpan draft dulu lalu kunci lewat TTD.</p>
+                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Persiapan pasien & serah-terima ruangan → OK (RM 49): keadaan pra bedah, persiapan pasien (puasa/cukur/premedikasi), kelengkapan administrasi yang disertakan ke kamar operasi. Tiap entri = 1 pengkajian; simpan draft dulu lalu kunci lewat TTD.</x-deskripsi-ringkas>
                 </div>
             </div>
 
@@ -947,18 +947,18 @@ new class extends Component {
                             <div class="flex items-baseline gap-2 min-w-0">
                                 <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">Pengkajian Pre Operasi
                                 </h2>
-                                <p class="truncate text-xs text-muted dark:text-gray-400">
+                                <p class="flex-1 min-w-0 truncate text-xs text-muted dark:text-gray-400">
                                     RM 49 — persiapan pasien & serah-terima ruangan → kamar operasi
                                 </p>
                             </div>
                         </div>
                         <div class="flex items-center gap-1.5 ml-auto shrink-0">
-                            <x-badge variant="brand">UGD</x-badge>
+                            <x-badge class="shrink-0 whitespace-nowrap" variant="brand">UGD</x-badge>
                             @if (count($preOpList) > 0)
-                                <x-badge variant="info">{{ count($preOpList) }} tersimpan</x-badge>
+                                <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ count($preOpList) }} tersimpan</x-badge>
                             @endif
                             @if ($isFormLocked)
-                                <x-badge variant="danger">Read Only</x-badge>
+                                <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
                             @endif
                         </div>
                     </div>

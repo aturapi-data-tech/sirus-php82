@@ -749,13 +749,13 @@ new class extends Component {
     @endphp
     <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 space-y-2">
+            <div class="flex-1 min-w-0 space-y-2">
                 {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
                 <div class="flex items-baseline flex-1 gap-2 min-w-0">
                     <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Case Manager — Manajer Pelayanan Pasien</h3>
-                    <x-badge variant="{{ $mppCountA > 0 ? 'success' : 'warning' }}">Form A: {{ $mppCountA }}</x-badge>
-                    <x-badge variant="{{ $mppCountB > 0 ? 'success' : 'warning' }}">Form B: {{ $mppCountB }}</x-badge>
-                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Skrining awal &amp; pelaksanaan/monitoring oleh Manajer Pelayanan Pasien selama perawatan.</p>
+                    <x-badge class="shrink-0 whitespace-nowrap" variant="{{ $mppCountA > 0 ? 'success' : 'warning' }}">Form A: {{ $mppCountA }}</x-badge>
+                    <x-badge class="shrink-0 whitespace-nowrap" variant="{{ $mppCountB > 0 ? 'success' : 'warning' }}">Form B: {{ $mppCountB }}</x-badge>
+                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Skrining awal &amp; pelaksanaan/monitoring oleh Manajer Pelayanan Pasien selama perawatan.</p>
                 </div>
             </div>
             <div class="flex shrink-0">
@@ -786,10 +786,10 @@ new class extends Component {
                 <p class="flex-1 hidden min-w-0 truncate text-xs text-muted sm:block dark:text-gray-400">Form A &amp; B Manajer Pelayanan Pasien — skrining, rencana pelayanan, dan evaluasinya.</p>
                 <div class="flex items-center gap-2 flex-1 min-w-0">
                     @if ($mppCountA + $mppCountB > 0)
-                        <x-badge variant="info">{{ $mppCountA + $mppCountB }} tersimpan</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ $mppCountA + $mppCountB }} tersimpan</x-badge>
                     @endif
                     @if ($isFormLocked)
-                        <x-badge variant="danger">Read Only</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
                     @endif
                 </div>
                 <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-auto shrink-0 shrink-0">

@@ -682,7 +682,7 @@ new class extends Component {
                     <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Surgical Safety Checklist</h3>
                     @if ($entriCount > 0) <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $entriCount }} checklist</x-badge>
                     @else <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge> @endif
-                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">WHO Surgical Safety Checklist — verifikasi tiga fase: Sign In (sebelum anestesi), Time Out (sebelum insisi), dan Sign Out (sebelum meninggalkan kamar operasi).</p>
+                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">WHO Surgical Safety Checklist — verifikasi tiga fase: Sign In (sebelum anestesi), Time Out (sebelum insisi), dan Sign Out (sebelum meninggalkan kamar operasi).</x-deskripsi-ringkas>
                 </div>
                 @if ($entriCount > 0)
                     <ul class="space-y-1 text-base text-muted dark:text-gray-300 list-disc pl-5">
@@ -763,13 +763,13 @@ new class extends Component {
                             </div>
                             <div class="flex items-baseline gap-2 min-w-0">
                                 <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">Surgical Safety Checklist</h2>
-                                <p class="truncate text-xs text-muted dark:text-gray-400">Rawat Inap — WHO SSC</p>
+                                <p class="flex-1 min-w-0 truncate text-xs text-muted dark:text-gray-400">Rawat Inap — WHO SSC</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-1.5 ml-auto shrink-0">
-                            <x-badge variant="brand">Rawat Inap</x-badge>
-                            @if (count($surgicalSafetyChecklistList) > 0) <x-badge variant="info">{{ count($surgicalSafetyChecklistList) }} tersimpan</x-badge> @endif
-                            @if ($isFormLocked) <x-badge variant="danger">Read Only</x-badge> @endif
+                            <x-badge class="shrink-0 whitespace-nowrap" variant="brand">Rawat Inap</x-badge>
+                            @if (count($surgicalSafetyChecklistList) > 0) <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ count($surgicalSafetyChecklistList) }} tersimpan</x-badge> @endif
+                            @if ($isFormLocked) <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge> @endif
                         </div>
                     </div>
                     <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-auto shrink-0 shrink-0">

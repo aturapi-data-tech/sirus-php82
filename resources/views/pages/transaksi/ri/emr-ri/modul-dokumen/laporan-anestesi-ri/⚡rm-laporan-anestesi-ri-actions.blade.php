@@ -526,7 +526,7 @@ new class extends Component {
                     <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Laporan Anestesi</h3>
                     @if ($laCount > 0) <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $laCount }} laporan</x-badge>
                     @else <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge> @endif
-                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Laporan pelaksanaan anestesi (PAB 6 / RM 53): teknik anestesi, monitoring sistem organ selama pembedahan, masalah &amp; keadaan akhir, ditandatangani ahli anestesiologi.</p>
+                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Laporan pelaksanaan anestesi (PAB 6 / RM 53): teknik anestesi, monitoring sistem organ selama pembedahan, masalah &amp; keadaan akhir, ditandatangani ahli anestesiologi.</x-deskripsi-ringkas>
                 </div>
             </div>
             <div class="flex shrink-0">
@@ -588,7 +588,7 @@ new class extends Component {
                             </div>
                             <div class="flex items-baseline gap-2 min-w-0">
                                 <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">Laporan Anestesi</h2>
-                                <p class="truncate text-xs text-muted dark:text-gray-400">PAB 6 / RM 53 — ahli anestesiologi. Tiap entri = 1 laporan; kunci lewat TTD.</p>
+                                <p class="flex-1 min-w-0 truncate text-xs text-muted dark:text-gray-400">PAB 6 / RM 53 — ahli anestesiologi. Tiap entri = 1 laporan; kunci lewat TTD.</p>
                             </div>
                         </div>
                         <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-auto shrink-0">
@@ -597,9 +597,9 @@ new class extends Component {
                         </x-icon-button>
                         @if ($this->diForm())
                         <div class="flex items-center gap-1.5 ml-auto shrink-0">
-                            <x-badge variant="brand">Rawat Inap</x-badge>
-                            @if (count($laporanAnList) > 0) <x-badge variant="info">{{ count($laporanAnList) }} tersimpan</x-badge> @endif
-                            @if ($isFormLocked) <x-badge variant="danger">Read Only</x-badge> @endif
+                            <x-badge class="shrink-0 whitespace-nowrap" variant="brand">Rawat Inap</x-badge>
+                            @if (count($laporanAnList) > 0) <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ count($laporanAnList) }} tersimpan</x-badge> @endif
+                            @if ($isFormLocked) <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge> @endif
                         </div>
                     </div>
                 </div>

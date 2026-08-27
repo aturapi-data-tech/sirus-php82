@@ -685,7 +685,7 @@ new class extends Component {
                     @else
                         <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Pemantauan pneumonia terkait pemakaian ventilator — lama pemasangan, demam, sekresi dahak purulen, rasio FiO2/PO2, gambaran foto toraks, serta kultur aspirat / biopsi. Diisi IPCLN / Perawat ruangan (ICU).</p>
+                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Pemantauan pneumonia terkait pemakaian ventilator — lama pemasangan, demam, sekresi dahak purulen, rasio FiO2/PO2, gambaran foto toraks, serta kultur aspirat / biopsi. Diisi IPCLN / Perawat ruangan (ICU).</x-deskripsi-ringkas>
                 </div>
             </div>
             <div class="flex shrink-0">
@@ -720,7 +720,7 @@ new class extends Component {
                         </div>
                         <div class="flex items-baseline gap-2 min-w-0">
                             <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Surveilans Pneumonia Ventilator (VAP)</h2>
-                            <p class="truncate text-xs text-muted dark:text-gray-400">Formulir Surveilans HAIs — diisi IPCLN / Perawat ruangan.</p>
+                            <p class="flex-1 min-w-0 truncate text-xs text-muted dark:text-gray-400">Formulir Surveilans HAIs — diisi IPCLN / Perawat ruangan.</p>
                         </div>
                     </div>
                     <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-auto shrink-0 shrink-0">

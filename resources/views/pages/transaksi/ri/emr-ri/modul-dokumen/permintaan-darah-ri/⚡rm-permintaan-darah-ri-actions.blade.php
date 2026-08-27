@@ -547,12 +547,10 @@ new class extends Component {
         {{-- JUDUL KARTU SEBARIS — judul · deskripsi --}}
         <div class="flex items-baseline flex-1 gap-2 min-w-0">
             <p class="flex-1 min-w-0 truncate shrink-0 text-sm font-semibold text-ink dark:text-white">Formulir Permintaan Darah</p>
-            <p class="flex-1 min-w-0 hidden truncate text-xs text-muted sm:block dark:text-gray-400">
-                Permintaan komponen darah untuk transfusi — ditandatangani dokter peminta lalu dicetak untuk PMI.
+            <x-deskripsi-ringkas class="hidden sm:flex text-xs">Permintaan komponen darah untuk transfusi — ditandatangani dokter peminta lalu dicetak untuk PMI.
                 @if ($darahCount > 0)
                     <span class="font-medium">· {{ $darahCount }} permintaan</span>
-                @endif
-            </p>
+                @endif</x-deskripsi-ringkas>
         </div>
         <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled" wire:target="openModal"
             :disabled="!$riHdrNo" class="gap-2 shrink-0">
@@ -620,15 +618,15 @@ new class extends Component {
                         </div>
                         <div class="flex items-baseline gap-2 min-w-0">
                             <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">Formulir Permintaan Darah</h2>
-                            <p class="truncate text-xs text-muted dark:text-gray-400">Permintaan darah &amp; komponen darah — Rawat Inap</p>
+                            <p class="flex-1 min-w-0 truncate text-xs text-muted dark:text-gray-400">Permintaan darah &amp; komponen darah — Rawat Inap</p>
                         </div>
                         <div class="flex items-center gap-1.5 ml-auto shrink-0">
-                            <x-badge variant="info">RI</x-badge>
+                            <x-badge class="shrink-0 whitespace-nowrap" variant="info">RI</x-badge>
                             @if (count($dataDaftarRi['permintaanDarahRI'] ?? []) > 0)
-                                <x-badge variant="info">{{ count($dataDaftarRi['permintaanDarahRI']) }} tersimpan</x-badge>
+                                <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ count($dataDaftarRi['permintaanDarahRI']) }} tersimpan</x-badge>
                             @endif
                             @if ($isFormLocked)
-                                <x-badge variant="danger">Read Only</x-badge>
+                                <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
                             @endif
                         </div>
                     </div>

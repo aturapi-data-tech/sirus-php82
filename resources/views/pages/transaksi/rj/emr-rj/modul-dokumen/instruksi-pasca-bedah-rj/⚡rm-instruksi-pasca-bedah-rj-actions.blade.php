@@ -571,7 +571,7 @@ new class extends Component {
                     @else
                         <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
                     @endif
-                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Instruksi pasca-bedah/anestesi (RM 56, PAB 7.3): penanganan nyeri, mual/muntah, antibiotik, obat, minum, infus, monitor tanda vital. Diisi &amp; ditandatangani ahli anestesiologi. Tiap entri = 1 instruksi.</p>
+                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Instruksi pasca-bedah/anestesi (RM 56, PAB 7.3): penanganan nyeri, mual/muntah, antibiotik, obat, minum, infus, monitor tanda vital. Diisi &amp; ditandatangani ahli anestesiologi. Tiap entri = 1 instruksi.</x-deskripsi-ringkas>
                 </div>
             </div>
 
@@ -644,18 +644,18 @@ new class extends Component {
                             </div>
                             <div class="flex items-baseline gap-2 min-w-0">
                                 <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">Instruksi Pasca Bedah</h2>
-                                <p class="truncate text-xs text-muted dark:text-gray-400">
+                                <p class="flex-1 min-w-0 truncate text-xs text-muted dark:text-gray-400">
                                     RM 56 — PAB 7.3 · tiap entri = 1 instruksi · diisi &amp; ditandatangani ahli anestesiologi
                                 </p>
                             </div>
                         </div>
                         <div class="flex items-center gap-1.5 ml-auto shrink-0">
-                            <x-badge variant="brand">Rawat Inap</x-badge>
+                            <x-badge class="shrink-0 whitespace-nowrap" variant="brand">Rawat Inap</x-badge>
                             @if (count($instruksiList) > 0)
-                                <x-badge variant="info">{{ count($instruksiList) }} tersimpan</x-badge>
+                                <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ count($instruksiList) }} tersimpan</x-badge>
                             @endif
                             @if ($isFormLocked)
-                                <x-badge variant="danger">Read Only</x-badge>
+                                <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
                             @endif
                         </div>
                     </div>

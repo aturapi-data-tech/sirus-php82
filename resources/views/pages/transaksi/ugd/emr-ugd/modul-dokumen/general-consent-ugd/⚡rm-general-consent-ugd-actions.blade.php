@@ -458,18 +458,18 @@ new class extends Component {
     <div
         class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 space-y-3">
+            <div class="flex-1 min-w-0 space-y-3">
                 {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
                 <div class="flex items-baseline flex-1 gap-2 min-w-0">
                     <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">
                         General Consent
                     </h3>
                     @if ($gcSigned)
-                        <x-badge variant="success">Sudah ditandatangani</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">Sudah ditandatangani</x-badge>
                     @else
-                        <x-badge variant="warning">Belum ditandatangani</x-badge>
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ditandatangani</x-badge>
                     @endif
-                    <p class="hidden truncate text-sm text-muted sm:block dark:text-gray-400">Persetujuan umum pasien terhadap pelayanan UGD, hak & tanggung jawab, serta perlindungan data.</p>
+                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Persetujuan umum pasien terhadap pelayanan UGD, hak & tanggung jawab, serta perlindungan data.</x-deskripsi-ringkas>
                 </div>
 
                 @if ($gcSigned)
@@ -536,16 +536,16 @@ new class extends Component {
                                 <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">
                                     General Consent
                                 </h2>
-                                <p class="truncate text-xs text-muted dark:text-gray-400">
+                                <p class="flex-1 min-w-0 truncate text-xs text-muted dark:text-gray-400">
                                     Persetujuan umum pasien UGD — tampilan ini dapat diputar ke arah pasien
                                 </p>
                             </div>
                         </div>
 
                         <div class="flex items-center gap-1.5 ml-auto shrink-0">
-                            <x-badge variant="danger">UGD</x-badge>
+                            <x-badge class="shrink-0 whitespace-nowrap" variant="danger">UGD</x-badge>
                             @if ($isFormLocked)
-                                <x-badge variant="danger">Read Only</x-badge>
+                                <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
                             @endif
                         </div>
                     </div>
