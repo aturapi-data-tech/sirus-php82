@@ -966,7 +966,7 @@ new class extends Component {
                         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
-                        Melanjutkan entri draft — klik <strong>Entri Baru</strong> untuk asesmen ulang berikutnya.
+                        Melanjutkan entri draft — setelah tersimpan Anda kembali ke daftar entri.
                     </div>
                 @endif
 
@@ -1731,12 +1731,6 @@ new class extends Component {
                                 Selesai Melihat
                             </x-primary-button>
                         @elseif (!$isFormLocked)
-                            @if ($editingKey)
-                                <x-outline-button wire:click.prevent="cancelEdit" wire:target="cancelEdit"
-                                    wire:loading.attr="disabled" class="gap-1.5" title="Kosongkan form untuk asesmen ulang berikutnya">
-                                    Entri Baru
-                                </x-outline-button>
-                            @endif
                             <x-primary-button wire:click.prevent="saveDraft" wire:loading.attr="disabled"
                                 wire:target="saveDraft" class="gap-2 min-w-[170px] justify-center">
                                 <span wire:loading.remove wire:target="saveDraft">{{ $editingKey ? 'Simpan Perubahan' : 'Simpan Draft' }}</span>
