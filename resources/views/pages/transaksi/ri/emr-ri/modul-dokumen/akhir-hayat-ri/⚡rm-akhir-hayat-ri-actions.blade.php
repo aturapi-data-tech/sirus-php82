@@ -901,6 +901,63 @@ new class extends Component {
                 </x-primary-button>
             </div>
         </div>
+        {{-- PRATINJAU ENTRI DI KARTU — ringkasan entri terbaru, tanpa perlu membuka modal --}}
+        @if (count($list ?? []) > 0)
+            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-surface-card dark:bg-gray-800">
+                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                            <th class="px-3 py-2 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Tanggal</th>
+                            <th class="px-3 py-2 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Jenis</th>
+                            <th class="px-3 py-2 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Penanda Tangan</th>
+                            <th class="px-3 py-2 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Petugas</th>
+                            <th class="px-3 py-2 text-sm font-medium text-center text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (array_slice(array_reverse($list ?? []), 0, 3) as $entri)
+                            @php
+                                $formEntri = $entri['form'] ?? [];
+                                $id = $entri['id'] ?? null;
+                                $tgl = $formEntri['tglAsesmen'] ?? '-';
+                                $jenis = ($formEntri['jenisAsesmen'] ?? 'awal') === 'ulang' ? 'Ulang' : 'Awal';
+                                $keluargaNama = data_get($formEntri, 'ttd.keluargaNama', '-') ?: '-';
+                                $petugasName = data_get($formEntri, 'ttd.petugasName', '-') ?: '-';
+                                $isFinal = $this->entryIsFinal($entri);
+                                $adaDnr = in_array('dnr', data_get($formEntri, 'intervensi.medis', []) ?? [], true);
+                                $diagnosaUtama = data_get($formEntri, 'medis.diagnosaUtama') ?: '-';
+                                $nyeriLabel = $skalaSimptom[data_get($formEntri, 'simptom.nyeri')] ?? '-';
+                                $sesakLabel = $skalaSimptom[data_get($formEntri, 'simptom.sesak')] ?? '-';
+                                $saksiNama = data_get($formEntri, 'ttd.saksiNama') ?: '-';
+                                $intervensiMedisTxt = collect(data_get($formEntri, 'intervensi.medis', []) ?? [])
+                                    ->map(fn($k) => $intervensiMedisList[$k] ?? $k)->implode(', ');
+                            @endphp
+                            <tr class="border-t border-hairline dark:border-gray-800">
+                                <td class="px-3 py-2 font-mono text-muted whitespace-nowrap align-middle dark:text-gray-300">{{ $tgl }}</td>
+                                <td class="px-3 py-2 align-middle text-body dark:text-gray-300">{{ $jenis }}</td>
+                                <td class="px-3 py-2 font-medium text-ink align-middle dark:text-white">{{ $keluargaNama }}</td>
+                                <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">{{ $petugasName }}</td>
+                                <td class="px-3 py-2 text-center align-middle">
+                                    <div class="flex flex-col items-center gap-1">
+                                        @if ($isFinal)
+                                            <x-badge variant="info">Terkunci</x-badge>
+                                        @else
+                                            <x-badge variant="warning">Draft</x-badge>
+                                        @endif
+                                        @if ($adaDnr)
+                                            <x-badge variant="danger">DNR</x-badge>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @if (count($list) > 3)
+                <p class="mt-2 text-xs italic text-muted-soft">+{{ count($list) - 3 }} entri lain — buka untuk melihat semua.</p>
+            @endif
+        @endif
     </div>
 
     {{-- ══ MODAL ══ --}}

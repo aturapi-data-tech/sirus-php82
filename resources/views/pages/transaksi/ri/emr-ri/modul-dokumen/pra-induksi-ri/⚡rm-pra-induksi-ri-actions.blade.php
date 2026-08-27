@@ -764,6 +764,52 @@ new class extends Component {
                 </x-primary-button>
             </div>
         </div>
+        {{-- PRATINJAU ENTRI DI KARTU — ringkasan entri terbaru, tanpa perlu membuka modal --}}
+        @if (count($praInduksiList ?? []) > 0)
+            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-surface-card dark:bg-gray-800">
+                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                            <th class="px-3 py-2 border-b">Tanggal</th>
+                            <th class="px-3 py-2 border-b">ASA</th>
+                            <th class="px-3 py-2 border-b">Rencana</th>
+                            <th class="px-3 py-2 border-b">Petugas (TTD)</th>
+                            <th class="px-3 py-2 text-center border-b">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (array_slice(array_reverse($praInduksiList ?? []), 0, 3) as $entry)
+                            @php
+                                $isFinal = $this->entryIsFinal($entry);
+                                $rowKey = $entry['createdAt'] ?? '';
+                            @endphp
+                            <tr class="border-t border-hairline dark:border-gray-800">
+                                <td class="px-3 py-2 font-semibold align-middle text-ink dark:text-gray-100">{{ $entry['tanggal'] ?: ($rowKey ?: '-') }}</td>
+                                <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">ASA {{ $entry['klasifikasiAsa'] ?: '-' }}</td>
+                                <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">{{ $entry['rencanaAnestesi'] ?: '-' }}</td>
+                                <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">
+                                    @if (!empty($entry['ttd']))
+                                        <span class="font-medium text-ink dark:text-gray-200">{{ $entry['ttd'] }}</span>
+                                    @else
+                                        <x-badge variant="danger">Belum TTD</x-badge>
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2 text-center align-middle">
+                                    @if ($isFinal)
+                                        <x-badge variant="info">Terkunci</x-badge>
+                                    @else
+                                        <x-badge variant="warning">Draft</x-badge>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @if (count($praInduksiList) > 3)
+                <p class="mt-2 text-xs italic text-muted-soft">+{{ count($praInduksiList) - 3 }} entri lain — buka untuk melihat semua.</p>
+            @endif
+        @endif
     </div>
 
     <x-modal name="rm-pra-induksi-ri-{{ $riHdrNo ?? 'init' }}" size="full" height="full" focusable>

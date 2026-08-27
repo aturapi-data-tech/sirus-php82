@@ -708,6 +708,47 @@ new class extends Component {
                 </x-primary-button>
             </div>
         </div>
+        {{-- PRATINJAU ENTRI DI KARTU — ringkasan entri terbaru, tanpa perlu membuka modal --}}
+        @if (count($surgicalSafetyChecklistList ?? []) > 0)
+            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-surface-card dark:bg-gray-800">
+                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                            <th class="px-3 py-2 border-b">Tanggal</th>
+                            <th class="px-3 py-2 border-b">Tindakan</th>
+                            <th class="px-3 py-2 border-b">TTD (3 Pihak)</th>
+                            <th class="px-3 py-2 text-center border-b">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (array_slice(array_reverse($surgicalSafetyChecklistList ?? []), 0, 3) as $entry)
+                            @php
+                                $isFinal = $this->entryIsFinal($entry);
+                                $rowKey = $entry['createdAt'] ?? '';
+                                $entryTtdCount = collect(['ttdDokterAnestesi', 'ttdPerawatInstrumen', 'ttdOperator'])->filter(fn($k) => !empty($entry[$k]))->count();
+                            @endphp
+                            <tr class="border-t border-hairline dark:border-gray-800">
+                                <td class="px-3 py-2 font-semibold align-middle text-ink dark:text-gray-100">{{ $entry['tanggal'] ?: ($rowKey ?: '-') }}</td>
+                                <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">{{ $entry['tindakan'] ? Str::limit($entry['tindakan'], 45) : '-' }}</td>
+                                <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">
+                                    <x-badge :variant="$entryTtdCount === 3 ? 'success' : ($entryTtdCount > 0 ? 'warning' : 'danger')">{{ $entryTtdCount }}/3 TTD</x-badge>
+                                </td>
+                                <td class="px-3 py-2 text-center align-middle">
+                                    @if ($isFinal)
+                                        <x-badge variant="info">Terkunci</x-badge>
+                                    @else
+                                        <x-badge variant="warning">Draft</x-badge>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @if (count($surgicalSafetyChecklistList) > 3)
+                <p class="mt-2 text-xs italic text-muted-soft">+{{ count($surgicalSafetyChecklistList) - 3 }} entri lain — buka untuk melihat semua.</p>
+            @endif
+        @endif
     </div>
 
     <x-modal name="rm-surgical-safety-checklist-ugd-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>

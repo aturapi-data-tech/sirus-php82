@@ -561,6 +561,44 @@ new class extends Component {
             </svg>
             Buka Formulir
         </x-primary-button>
+        {{-- PRATINJAU ENTRI DI KARTU — ringkasan entri terbaru, tanpa perlu membuka modal --}}
+        @if (count($list ?? []) > 0)
+            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-surface-card dark:bg-gray-800">
+                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                            <th class="px-3 py-2 border-b border-hairline dark:border-gray-700">Jenis</th>
+                            <th class="px-3 py-2 border-b border-hairline dark:border-gray-700">Status</th>
+                            <th class="px-3 py-2 border-b border-hairline dark:border-gray-700">Dokter</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (array_slice(array_reverse($list ?? []), 0, 3) as $row)
+                            @php
+                                $rid = $row['id'] ?? '';
+                                $rf = $row['form'] ?? [];
+                                $final = array_key_exists('finalized', $row) ? (bool) $row['finalized'] : filled(data_get($rf, 'ttd.dokterNama'));
+                                $jenisRingkas = collect($jenisOptions)->filter(fn($l, $k) => !empty(data_get($rf, "jenisDarah.$k.pilih")))->values()->implode(', ');
+                            @endphp
+                            <tr class="border-t border-hairline dark:border-gray-800">
+                                <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-muted dark:text-gray-300">{{ $jenisRingkas ?: '-' }}</td>
+                                <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700">
+                                    @if ($final)
+                                        <x-badge variant="success">Terkunci</x-badge>
+                                    @else
+                                        <x-badge variant="warning">Draft</x-badge>
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-muted dark:text-gray-300">{{ data_get($rf, 'ttd.dokterNama') ?: '-' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @if (count($list) > 3)
+                <p class="mt-2 text-xs italic text-muted-soft">+{{ count($list) - 3 }} entri lain — buka untuk melihat semua.</p>
+            @endif
+        @endif
     </div>
 
     <x-modal name="rm-permintaan-darah-ri-{{ $riHdrNo ?? 'init' }}" size="full" height="full" focusable>

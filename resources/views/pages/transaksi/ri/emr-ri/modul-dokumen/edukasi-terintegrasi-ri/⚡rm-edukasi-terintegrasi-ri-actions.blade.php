@@ -864,6 +864,90 @@ new class extends Component {
                 </x-primary-button>
             </div>
         </div>
+        {{-- PRATINJAU ENTRI DI KARTU — ringkasan entri terbaru, tanpa perlu membuka modal --}}
+        @if (count($list ?? []) > 0)
+            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-surface-card dark:bg-gray-800">
+                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                            <th class="px-3 py-2 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Tanggal</th>
+                            <th class="px-3 py-2 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Pasien / Keluarga</th>
+                            <th class="px-3 py-2 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Petugas (TTD)</th>
+                            <th class="px-3 py-2 text-sm font-medium text-center text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (array_slice(array_reverse($list ?? []), 0, 3) as $entri)
+                            @php
+                                $entriForm  = $entri['form'] ?? [];
+                                $edukasiId    = $entri['id'] ?? null;
+                                $tglEdukasi   = $entriForm['tglEdukasi'] ?? '-';
+                                $petugasName = data_get($entriForm, 'pemberiInformasi.petugasName', '-') ?: '-';
+                                $pasienNama  = data_get($entriForm, 'ttd.pasienKeluargaNama', '-') ?: '-';
+                                $isFinal     = $this->entryIsFinal($entri);
+                                $hasTtd      = !empty(data_get($entriForm, 'ttd.pasienKeluargaTTD'));
+
+                                $hambatanEmosionalAda = data_get($entriForm, 'evaluasiAwal.hambatanEmosional.ada');
+                                $keterbatasanFisikAda  = data_get($entriForm, 'evaluasiAwal.keterbatasanFisikKognitif.ada');
+                                $adaHambatanEmosional       = in_array($hambatanEmosionalAda, [true, 1, '1'], true);
+                                $adaKeterbatasanFisik        = in_array($keterbatasanFisikAda, [true, 1, '1'], true);
+                                $isPahamTidak = in_array(data_get($entriForm, 'hasil.paham.ya'), [false, 0, '0'], true);
+                                $alertRow    = $isPahamTidak || $adaHambatanEmosional || $adaKeterbatasanFisik;
+
+                                // ringkasan join label
+                                $tujuanTeks = collect($entriForm['tujuan']['opsi'] ?? [])->map(fn($k) => $tujuanList[$k] ?? $k)->implode(', ');
+                                if (!empty($entriForm['tujuan']['lainnya'])) {
+                                    $tujuanTeks = trim($tujuanTeks . ($tujuanTeks ? ', ' : '') . $entriForm['tujuan']['lainnya']);
+                                }
+                                $kebutuhanTeks = collect($entriForm['kebutuhan']['opsi'] ?? [])->map(fn($k) => $kebutuhanList[$k] ?? $k)->implode(', ');
+                                if (!empty($entriForm['kebutuhan']['lainnya'])) {
+                                    $kebutuhanTeks = trim($kebutuhanTeks . ($kebutuhanTeks ? ', ' : '') . $entriForm['kebutuhan']['lainnya']);
+                                }
+                                $metodeTeks = collect($entriForm['metodeMedia']['opsi'] ?? [])->map(fn($k) => $metodeList[$k] ?? $k)->implode(', ');
+                                if (!empty($entriForm['metodeMedia']['lainnya'])) {
+                                    $metodeTeks = trim($metodeTeks . ($metodeTeks ? ', ' : '') . $entriForm['metodeMedia']['lainnya']);
+                                }
+                                $rujukTeks = collect($entriForm['tindakLanjut']['dirujukKe'] ?? [])->map(fn($k) => $rujukList[$k] ?? $k)->implode(', ');
+                                $literasi = data_get($entriForm, 'evaluasiAwal.literasi') ?: '-';
+                                $hubunganLabel = $hubunganOptions[data_get($entriForm, 'ttd.pasienKeluargaHubungan')] ?? data_get($entriForm, 'ttd.pasienKeluargaHubungan', '');
+                                // Entri lama belum punya node sasaran → fallback ke penanda tangan.
+                                $sasaranNama = data_get($entriForm, 'sasaran.nama') ?: $pasienNama;
+                                $sasaranHubunganLabel = $hubunganOptions[data_get($entriForm, 'sasaran.hubungan')] ?? (data_get($entriForm, 'sasaran.hubungan') ?: $hubunganLabel);
+                                $tindakLanjutTanggal    = data_get($entriForm, 'tindakLanjut.edukasiLanjutanTanggal') ?: '-';
+                                $tindakLanjutKeterangan = data_get($entriForm, 'tindakLanjut.edukasiLanjutanKeterangan') ?: '';
+                                $tidakPerluTL = (bool) data_get($entriForm, 'tindakLanjut.tidakPerluTL');
+                            @endphp
+                            <tr class="border-t border-hairline dark:border-gray-800">
+                                <td class="px-3 py-2 font-mono text-muted whitespace-nowrap align-middle dark:text-gray-300">{{ $tglEdukasi }}</td>
+                                <td class="px-3 py-2 font-medium text-ink align-middle dark:text-white">{{ $pasienNama }}</td>
+                                <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">
+                                    @if ($petugasName !== '-')
+                                        <span class="font-medium text-ink dark:text-gray-200">{{ $petugasName }}</span>
+                                    @else
+                                        <x-badge variant="danger">Belum TTD</x-badge>
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2 text-center align-middle">
+                                    <div class="flex flex-col items-center gap-1">
+                                        @if ($isFinal)
+                                            <x-badge variant="info">Terkunci</x-badge>
+                                        @else
+                                            <x-badge variant="warning">Draft</x-badge>
+                                        @endif
+                                        @if ($alertRow)
+                                            <x-badge variant="danger">⚠ Risiko</x-badge>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @if (count($list) > 3)
+                <p class="mt-2 text-xs italic text-muted-soft">+{{ count($list) - 3 }} entri lain — buka untuk melihat semua.</p>
+            @endif
+        @endif
     </div>
 
     {{-- MODAL FORM --}}

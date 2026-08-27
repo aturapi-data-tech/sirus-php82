@@ -750,6 +750,58 @@ new class extends Component {
                 </x-primary-button>
             </div>
         </div>
+        {{-- PRATINJAU ENTRI DI KARTU — ringkasan entri terbaru, tanpa perlu membuka modal --}}
+        @if (count($dataDaftarUGD['pelaporanEsoUGD'] ?? [] ?? []) > 0)
+            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-surface-card dark:bg-gray-800">
+                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                            <th class="">Tgl. Laporan</th>
+                            <th class="">Manifestasi ESO</th>
+                            <th class="ds-c w-24">Jml Obat</th>
+                            <th class="">Pelapor</th>
+                            <th class="ds-c w-24">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (array_slice(array_reverse($dataDaftarUGD['pelaporanEsoUGD'] ?? [] ?? []), 0, 3) as $indexEntri)
+                            @php
+                                $idEntri = $entri['id'] ?? null;
+                                $isFinal = (bool) ($entri['finalized'] ?? false);
+                                $manifestasi = (string) data_get($entri, 'form.eso.manifestasi', '');
+                                $jumlahObat = count((array) data_get($entri, 'form.obat', []));
+                                $obatDicurigai = collect((array) data_get($entri, 'form.obat', []))
+                                    ->filter(fn($baris) => ($baris['dicurigai'] ?? 'Tidak') === 'Ya')
+                                    ->count();
+                            @endphp
+                            <tr class="border-t border-hairline dark:border-gray-800">
+                                <td class="ds-td-strong">{{ data_get($entri, 'form.tglLaporan', '-') }}</td>
+                                <td>
+                                    <div class="max-w-md truncate">{{ $manifestasi !== '' ? $manifestasi : '-' }}</div>
+                                </td>
+                                <td class="ds-c">
+                                    {{ $jumlahObat }}
+                                    @if ($obatDicurigai > 0)
+                                        <div class="text-muted dark:text-gray-400">{{ $obatDicurigai }} dicurigai</div>
+                                    @endif
+                                </td>
+                                <td>{{ data_get($entri, 'form.ttd.petugasName') ?: data_get($entri, 'created_by.name', '-') }}</td>
+                                <td class="ds-c">
+                                    @if ($isFinal)
+                                        <x-badge variant="success">Terkunci</x-badge>
+                                    @else
+                                        <x-badge variant="warning">Draft</x-badge>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @if (count($dataDaftarUGD['pelaporanEsoUGD'] ?? []) > 3)
+                <p class="mt-2 text-xs italic text-muted-soft">+{{ count($dataDaftarUGD['pelaporanEsoUGD'] ?? []) - 3 }} entri lain — buka untuk melihat semua.</p>
+            @endif
+        @endif
     </div>
 
     {{-- ══ MODAL ══ --}}

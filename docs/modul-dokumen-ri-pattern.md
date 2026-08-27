@@ -162,6 +162,26 @@ baris tabel tak menembus di belakangnya saat digulir.
 > kata itu dan daftar berkasnya menyusut diam-diam (55 → 37). Penanda yang stabil:
 > `grep -rl 'this->diForm()' resources/views/pages/transaksi`.
 
+### Kartu di tab: pratinjau entri
+
+Kartu modul di tab (sebelum modal dibuka) menampilkan **ringkasan entri terbaru** supaya
+petugas tak perlu membuka modal hanya untuk memastikan sudah terisi:
+
+```blade
+{{-- PRATINJAU ENTRI DI KARTU — ringkasan entri terbaru, tanpa perlu membuka modal --}}
+@if (count($daftar ?? []) > 0)
+    <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline …">
+        <table class="min-w-full text-sm">   {{-- kolom = kolom tabel modal, tanpa panah & Aksi --}}
+    </div>
+    @if (count($daftar) > 3)
+        <p class="…">+{{ count($daftar) - 3 }} entri lain — buka untuk melihat semua.</p>
+    @endif
+@endif
+```
+
+Kolomnya sengaja **diklon dari tabel di modalnya sendiri** (buang kolom panah & kolom Aksi),
+supaya istilah dan urutan kolomnya sama persis — bukan dikarang ulang per modul.
+
 ### Cara memverifikasi (jangan cuma lihat "tidak error")
 
 `php -l` maupun `Blade::compileString` TIDAK menangkap kerusakan berkas Volt, dan halaman
