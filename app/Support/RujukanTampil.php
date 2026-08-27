@@ -41,6 +41,68 @@ final class RujukanTampil
         return $angka === null ? '—' : number_format(round($angka), 0, ',', '.') . ' menit';
     }
 
+    /**
+     * Meratakan satu kandidat faskes dari DUA sumber yang bentuknya berbeda
+     * menjadi satu bentuk baku untuk ditampilkan:
+     *
+     *   SISRUTE (BPJS)     kdppk, kodeFaskesSatuSehat, nmppk->nama, alamat, kota,
+     *                      kelas, distance, jmlRujuk/kapasitas
+     *   FHIR (SATUSEHAT)   bpjsCode, orgId, nama, distance, estimatedTime, bed
+     *
+     * Dipusatkan di sini supaya keenam panel rujukan memakai sebutan yang sama
+     * untuk angka yang sama — "Kode BPJS" dan "Org ID", bukan PPK/SATUSEHAT di
+     * satu layar lalu nama lain di layar sebelah. Kunci yang tak dimiliki suatu
+     * sumber dikembalikan sebagai string kosong, bukan absen, supaya pemakainya
+     * tak perlu ?? di Blade.
+     */
+    public static function kandidatBaris(array $kandidat): array
+    {
+        $bpjs = trim((string) ($kandidat['kdppk'] ?? ($kandidat['bpjsCode'] ?? '')));
+        // Gateway BPJS pernah mengirim string "null" — itu KOSONG, bukan kode.
+        if (strtolower($bpjs) === 'null') {
+            $bpjs = '';
+        }
+
+        // Sebagian alamat sudah memuat nama kota di ekornya — jangan ditempeli
+        // lagi supaya kotanya tak tertulis dua kali.
+        $alamat = trim((string) ($kandidat['alamat'] ?? ''));
+        $kota = trim((string) ($kandidat['kota'] ?? ''));
+        $kotaSudahAda = $kota !== '' && stripos($alamat, $kota) !== false;
+        $alamatKota = trim($alamat . ($kota !== '' && !$kotaSudahAda ? ' · ' . $kota : ''), ' ·');
+
+        $jmlRujuk = trim((string) ($kandidat['jmlRujuk'] ?? ''));
+        $kapasitas = trim((string) ($kandidat['kapasitas'] ?? ''));
+
+        return [
+            'nama' => trim((string) ($kandidat['nama'] ?? '')) ?: '-',
+            'alamat' => $alamatKota,
+            'bpjs' => $bpjs,
+            'orgId' => trim((string) ($kandidat['kodeFaskesSatuSehat'] ?? ($kandidat['orgId'] ?? ''))),
+            'kelas' => trim((string) ($kandidat['kelas'] ?? '')),
+            'jarak' => $kandidat['distance'] ?? '',
+            'estimasi' => $kandidat['estimatedTime'] ?? '',
+            // Beban hanya berarti kalau kapasitasnya diketahui — "0/" bukan informasi.
+            'beban' => $jmlRujuk !== '' && $kapasitas !== '' ? $jmlRujuk . '/' . $kapasitas : '',
+            'bed' => trim((string) ($kandidat['bed'] ?? '')),
+        ];
+    }
+
+    /**
+     * Baris "Tujuan: …" di bawah tabel kandidat. Memakai sebutan yang SAMA
+     * dengan tabelnya; sebelumnya jalur BPJS menulis "PPK … / SATUSEHAT …"
+     * sementara jalur FHIR menulis "Org …" untuk angka yang sama persis.
+     */
+    public static function infoTujuan(array $kandidat): string
+    {
+        $baris = self::kandidatBaris($kandidat);
+        $kode = array_filter([
+            $baris['bpjs'] !== '' ? 'Kode BPJS ' . $baris['bpjs'] : null,
+            $baris['orgId'] !== '' ? 'Org ID ' . $baris['orgId'] : null,
+        ]);
+
+        return 'Tujuan: ' . $baris['nama'] . ($kode ? ' (' . implode(' · ', $kode) . ')' : '');
+    }
+
     private static function angkaWajar($nilai, float $batas): ?float
     {
         if ($nilai === null || $nilai === '' || !is_numeric($nilai)) {

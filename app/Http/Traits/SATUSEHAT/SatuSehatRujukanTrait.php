@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Support\Options\RujukanOptions;
-use App\Support\RujukanTampil;
 
 /**
  * SATUSEHAT Rujukan (SRBK) — jalur FHIR LANGSUNG untuk Rawat Inap & Rawat Darurat.
@@ -404,17 +403,6 @@ trait SatuSehatRujukanTrait
         ];
 
         return $this->rujukanRequest('POST', 'Task', $task);
-    }
-
-    /** Perapian angka kandidat — logikanya di App\Support\RujukanTampil (dipakai jalur BPJS juga). */
-    public function rujukanJarakTampil($nilai): string
-    {
-        return RujukanTampil::jarak($nilai);
-    }
-
-    public function rujukanWaktuTampil($nilai): string
-    {
-        return RujukanTampil::waktu($nilai);
     }
 
     /* ═══════════════════════════════════════

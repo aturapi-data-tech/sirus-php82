@@ -6,6 +6,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\SATUSEHAT\SatuSehatRujukanTrait;
+use App\Support\RujukanTampil;
 use App\Support\Options\RujukanOptions;
 
 new class extends Component {
@@ -561,7 +562,7 @@ new class extends Component {
         }
 
         $this->formRujukan['kandidatIdx'] = $index;
-        $this->infoKandidat = "Tujuan: {$kandidat['nama']} (Org {$kandidat['orgId']})";
+        $this->infoKandidat = RujukanTampil::infoTujuan($kandidat);
     }
 
     /* ═══════════════════════════════════════
@@ -1243,70 +1244,8 @@ new class extends Component {
                     <p class="text-sm {{ str_starts_with($infoKandidat, '✓') || str_starts_with($infoKandidat, 'Tujuan:') ? 'text-green-700 dark:text-green-300' : 'text-muted-soft' }}">{{ $infoKandidat }}</p>
                 @endif
 
-                @if (!empty($formRujukan['kandidatList']))
-                    <div class="mt-2 overflow-x-auto border bg-canvas rounded-2xl border-hairline dark:border-gray-700">
-                        <table class="ds-table">
-                            <thead>
-                                <tr>
-                                    <th class="ds-c w-10">No</th>
-                                    <th>Faskes Tujuan</th>
-                                    <th class="ds-c w-32">Jarak / Estimasi</th>
-                                    <th class="ds-c w-32">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($formRujukan['kandidatList'] as $indexKandidat => $kandidat)
-                                    @php $terpilih = $formRujukan['kandidatIdx'] === $indexKandidat; @endphp
-                                    <tr class="{{ $terpilih ? 'bg-brand-green/5 dark:bg-brand-lime/5' : '' }}">
-                                        <td class="ds-c ds-td-meta">{{ $indexKandidat + 1 }}</td>
-                                        {{-- Dua kode dari DUA SISTEM berbeda. Dulu yang satu jadi
-                                             sub-baris tanpa label dan yang satu berkolom sendiri, jadi
-                                             tak terbaca mana yang mana. Sekarang menyatu di satu sel
-                                             dan masing-masing disebut namanya, memakai sebutan yang SAMA
-                                             dengan layar /rujukan/masuk & /rujukan/keluar ("Org ID") —
-                                             satu angka tak boleh punya dua nama di aplikasi yang sama.
-                                             Keduanya dipakai
-                                             mencocokkan pasangan faskes BPJS <-> SATUSEHAT untuk
-                                             pasien JKN, dan tertukar berarti rujukan nyasar.
-
-                                             Strata SENGAJA tidak ditampilkan: SATUSEHAT mengirim kunci
-                                             'strata' tanpa nilai untuk semua kandidat. --}}
-                                        <td>
-                                            <span class="ds-td-strong">{{ ($kandidat['nama'] ?? '') ?: '-' }}</span>
-                                            <span class="flex flex-wrap items-center mt-1 gap-x-2 gap-y-1 text-xs text-muted dark:text-gray-400">
-                                                <span title="Kode faskes di SATUSEHAT (Organization ID) — dipakai memasangkan faskes BPJS dengan SATUSEHAT">Org ID
-                                                    <span class="font-mono text-ink dark:text-gray-200">{{ ($kandidat['orgId'] ?? '') ?: '—' }}</span>
-                                                </span>
-                                                <span>·</span>
-                                                <span>Kode BPJS
-                                                    <span class="font-mono text-ink dark:text-gray-200">{{ ($kandidat['bpjsCode'] ?? '') ?: '—' }}</span>
-                                                </span>
-                                            </span>
-                                        </td>
-                                        {{-- Dua angka yang selalu dibaca berpasangan ("seberapa jauh
-                                             dan berapa lama") — dijadikan satu sel bertumpuk supaya modal
-                                             tak menggulung ke samping. Jarak di atas karena itu yang
-                                             dipakai memilih; estimasi jadi keterangannya.
-                                             tabular-nums menjaga digitnya sejajar antar baris. --}}
-                                        <td class="ds-c">
-                                            <span class="block tabular-nums">{{ $this->rujukanJarakTampil($kandidat['distance'] ?? null) }}</span>
-                                            <span class="block ds-td-meta tabular-nums">{{ $this->rujukanWaktuTampil($kandidat['estimatedTime'] ?? null) }}</span>
-                                        </td>
-                                        {{-- Mode 2 x-toggle (current + wireClick). Argumen wireClick
-                                             dikirim sebagai INDEKS angka, bukan nama faskes — nama
-                                             ber-& akan ter-escape ganda dan aksinya diam-diam gagal. --}}
-                                        <td class="ds-c">
-                                            <x-toggle :current="$terpilih ? 'Ya' : 'Tidak'" trueValue="Ya" falseValue="Tidak"
-                                                :disabled="$isFormLocked"
-                                                wireClick="pilihKandidat({{ $indexKandidat }})"
-                                                :label="$terpilih ? 'Dipilih' : 'Pilih'" />
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @endif
+                <x-rujukan.kandidat-tabel :rows="$formRujukan['kandidatList']"
+                    :selectedIndex="$formRujukan['kandidatIdx']" :disabled="$isFormLocked" />
             </div>
 
             {{-- LANGKAH 2 & 3 — TUGAS RUJUKAN + SERVICEREQUEST --}}
