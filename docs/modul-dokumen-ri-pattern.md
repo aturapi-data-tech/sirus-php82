@@ -182,6 +182,19 @@ petugas tak perlu membuka modal hanya untuk memastikan sudah terisi:
 Kolomnya sengaja **diklon dari tabel di modalnya sendiri** (buang kolom panah & kolom Aksi),
 supaya istilah dan urutan kolomnya sama persis — bukan dikarang ulang per modul.
 
+**Gaya tabel kartu = gaya tabel modal**: pembungkus `mt-3 overflow-x-auto rounded-2xl border`,
+`<table class="min-w-full text-sm">` tanpa border sendiri, `<thead class="bg-surface-card …">`,
+baris header `text-xs … uppercase`, sel `px-3 py-2`.
+
+**Saat belum ada entri, tabelnya TETAP tampil** dengan baris
+`<td colspan="N">Belum ada data tersimpan</td>` — jangan dibungkus `@if (count(...) > 0)`.
+Kartu yang kosong melompong tak bisa dibedakan dari kartu yang gagal memuat.
+
+> **Jebakan scope:** variabel sumber daftar (mis. `$list`) sering didefinisikan `@php` DI DALAM
+> modal, jadi null di kartu. Pratinjau di kartu wajib punya definisinya sendiri
+> (`@php $list = $dataDaftarRi['kunci'] ?? []; @endphp`) — kalau tidak, `count($list)` melempar
+> "must be of type Countable|array, null given" begitu penjaga `@if (count(...))` dibuang.
+
 ### Cara memverifikasi (jangan cuma lihat "tidak error")
 
 `php -l` maupun `Blade::compileString` TIDAK menangkap kerusakan berkas Volt, dan halaman

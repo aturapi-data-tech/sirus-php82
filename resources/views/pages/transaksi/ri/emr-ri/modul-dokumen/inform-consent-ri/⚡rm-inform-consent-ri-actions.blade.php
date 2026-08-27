@@ -818,12 +818,10 @@ new class extends Component {
                 pasien/wali, dokter penjelas, dan saksi.
             </p>
 
-            @if ($icCount > 0)
-                <div class="overflow-x-auto">
-                    <h4 class="mb-2 text-sm font-semibold text-body dark:text-gray-300">Daftar Inform Consent Tersimpan</h4>
-                    <table class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
-                        <thead class="bg-surface-soft dark:bg-gray-800">
-                            <tr class="text-left text-muted dark:text-gray-300">
+                <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-surface-card dark:bg-gray-800">
+                            <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
                                 <th class="px-3 py-2 border-b">Tindakan</th>
                                 <th class="px-3 py-2 border-b">Tanggal</th>
                                 <th class="px-3 py-2 border-b">Pemberi Informasi</th>
@@ -832,7 +830,7 @@ new class extends Component {
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (array_reverse($consentList) as $ic)
+                            @forelse (array_reverse($consentList) as $ic)
                                 <tr class="border-b border-hairline dark:border-gray-700">
                                     <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">
                                         {{ \Illuminate\Support\Str::limit($ic['tindakan'] ?? '-', 50) }}
@@ -856,11 +854,14 @@ new class extends Component {
                                         @endif
                                     </td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
-            @endif
         </div>
     </div>
 

@@ -561,8 +561,8 @@ new class extends Component {
             </svg>
             Buka Formulir
         </x-primary-button>
+        @php $list = $dataDaftarRi['permintaanDarahRI'] ?? []; @endphp
         {{-- PRATINJAU ENTRI DI KARTU — ringkasan entri terbaru, tanpa perlu membuka modal --}}
-        @if (count($list ?? []) > 0)
             <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
                 <table class="min-w-full text-sm">
                     <thead class="bg-surface-card dark:bg-gray-800">
@@ -573,7 +573,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (array_slice(array_reverse($list ?? []), 0, 3) as $row)
+                        @forelse (array_slice(array_reverse($list ?? []), 0, 3) as $row)
                             @php
                                 $rid = $row['id'] ?? '';
                                 $rf = $row['form'] ?? [];
@@ -591,14 +591,17 @@ new class extends Component {
                                 </td>
                                 <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-muted dark:text-gray-300">{{ data_get($rf, 'ttd.dokterNama') ?: '-' }}</td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr>
+                                <td colspan="3" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
             @if (count($list) > 3)
                 <p class="mt-2 text-xs italic text-muted-soft">+{{ count($list) - 3 }} entri lain — buka untuk melihat semua.</p>
             @endif
-        @endif
     </div>
 
     <x-modal name="rm-permintaan-darah-ri-{{ $riHdrNo ?? 'init' }}" size="full" height="full" focusable>

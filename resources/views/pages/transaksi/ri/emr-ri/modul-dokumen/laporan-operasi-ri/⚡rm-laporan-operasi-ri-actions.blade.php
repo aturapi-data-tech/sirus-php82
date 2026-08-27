@@ -676,7 +676,6 @@ new class extends Component {
             </div>
         </div>
         {{-- PRATINJAU ENTRI DI KARTU — ringkasan entri terbaru, tanpa perlu membuka modal --}}
-        @if (count($laporanList ?? []) > 0)
             <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
                 <table class="min-w-full text-sm">
                     <thead class="bg-surface-card dark:bg-gray-800">
@@ -688,7 +687,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (array_slice(array_reverse($laporanList ?? []), 0, 3) as $entry)
+                        @forelse (array_slice(array_reverse($laporanList ?? []), 0, 3) as $entry)
                             @php
                                 $isFinal = $this->entryIsFinal($entry);
                                 $rowKey = $entry['createdAt'] ?? '';
@@ -715,14 +714,17 @@ new class extends Component {
                                     @endif
                                 </td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr>
+                                <td colspan="4" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
             @if (count($laporanList) > 3)
                 <p class="mt-2 text-xs italic text-muted-soft">+{{ count($laporanList) - 3 }} entri lain — buka untuk melihat semua.</p>
             @endif
-        @endif
     </div>
 
     {{-- ══ MODAL FORM ══ --}}
