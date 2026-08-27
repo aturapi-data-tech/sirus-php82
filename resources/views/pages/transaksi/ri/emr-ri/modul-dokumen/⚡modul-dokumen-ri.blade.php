@@ -152,6 +152,19 @@ new class extends Component {
                             @endif
                         </x-tab>
 
+                        <x-tab variant="underline" active-expr="activeTab === 'penolakanResusitasi'"
+                            x-on:click="activeTab = 'penolakanResusitasi'" class="inline-flex items-center gap-2">
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
+                            </svg>
+                            Penolakan Resusitasi (DNR)
+                            @if (count($dataDaftarRi['penolakanResusitasiRI'] ?? []) > 0)
+                                <x-badge variant="success" class="text-[10px] px-1.5 py-0">{{ count($dataDaftarRi['penolakanResusitasiRI']) }}</x-badge>
+                            @endif
+                        </x-tab>
+
                         <x-tab variant="underline" active-expr="activeTab === 'pulangAps'"
                             x-on:click="activeTab = 'pulangAps'" class="inline-flex items-center gap-2">
                             <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -408,6 +421,14 @@ new class extends Component {
                     <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.penolakan-obat-ri.rm-penolakan-obat-ri-actions
                         :riHdrNo="$riHdrNo" :disabled="$isFormLocked"
                         wire:key="penolakan-obat-ri-{{ $riHdrNo ?? 'init' }}" />
+                </div>
+
+                {{-- TAB: PENOLAKAN TINDAKAN RESUSITASI (DNR) --}}
+                <div x-show="activeTab === 'penolakanResusitasi'" x-transition.opacity.duration.200ms
+                    style="display:none">
+                    <livewire:pages::transaksi.ri.emr-ri.modul-dokumen.penolakan-resusitasi-ri.rm-penolakan-resusitasi-ri-actions
+                        :riHdrNo="$riHdrNo" :disabled="$isFormLocked"
+                        wire:key="penolakan-resusitasi-ri-{{ $riHdrNo ?? 'init' }}" />
                 </div>
 
                 {{-- TAB: PULANG ATAS PERMINTAAN SENDIRI (APS) --}}

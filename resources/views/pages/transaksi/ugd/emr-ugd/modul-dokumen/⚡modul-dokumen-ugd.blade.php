@@ -237,6 +237,22 @@ new class extends Component {
                                         @endif
                                     </x-tab>
 
+                                    <x-tab variant="underline" active-expr="activeTab === 'penolakan-resusitasi'"
+                                        x-on:click="activeTab = 'penolakan-resusitasi'"
+                                        class="inline-flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M3 3l18 18" />
+                                        </svg>
+                                        Penolakan Resusitasi (DNR)
+                                        @if (!empty($dataDaftarUGD['penolakanResusitasiUGD']) && count($dataDaftarUGD['penolakanResusitasiUGD']) > 0)
+                                            <x-badge variant="success"
+                                                class="text-[10px] px-1.5 py-0">{{ count($dataDaftarUGD['penolakanResusitasiUGD']) }}</x-badge>
+                                        @endif
+                                    </x-tab>
+
                                     {{-- Permintaan Second Opinion --}}
                                     <x-tab variant="underline" active-expr="activeTab === 'secondOpinion'"
                                         x-on:click="activeTab = 'secondOpinion'"
@@ -361,6 +377,13 @@ new class extends Component {
                                 <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.penolakan-obat-ugd.rm-penolakan-obat-ugd-actions
                                     :rjNo="$rjNo" :disabled="$isFormLocked"
                                     wire:key="penolakan-obat-ugd-{{ $rjNo ?? 'init' }}" />
+                            </div>
+
+                            {{-- TAB: PENOLAKAN TINDAKAN RESUSITASI (DNR) --}}
+                            <div x-show="activeTab === 'penolakan-resusitasi'" x-transition.opacity.duration.300ms>
+                                <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.penolakan-resusitasi-ugd.rm-penolakan-resusitasi-ugd-actions
+                                    :rjNo="$rjNo" :disabled="$isFormLocked"
+                                    wire:key="penolakan-resusitasi-ugd-{{ $rjNo ?? 'init' }}" />
                             </div>
 
                             {{-- Panel: Permintaan Second Opinion --}}
