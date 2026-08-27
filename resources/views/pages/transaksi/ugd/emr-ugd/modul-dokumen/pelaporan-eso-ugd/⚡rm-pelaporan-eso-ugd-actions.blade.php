@@ -807,30 +807,27 @@ new class extends Component {
     <x-modal name="rm-pelaporan-eso-ugd-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]">
             {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
-            <div
-                class="flex items-center justify-between gap-4 px-6 py-4 border-b border-hairline bg-surface-soft dark:border-gray-700">
-                <div class="flex items-center gap-2.5">
-                    <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">
-                        Formulir Pelaporan Efek Samping Obat
-                        <span class="block text-sm font-normal text-muted dark:text-gray-400">
-                            RM 37 &middot; mengikuti Form Kuning MESO BPOM
-                        </span>
-                    </h2>
-                    @if ($esoCount > 0)
-                        <x-badge variant="info">{{ $esoCount }} tersimpan</x-badge>
-                    @endif
-                    @if ($isFormLocked)
-                        <x-badge variant="danger">Read Only</x-badge>
-                    @endif
-                <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-2 shrink-0">
-                    <span class="sr-only">Close</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd"
-                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                            clip-rule="evenodd" />
-                    </svg>
-                </x-icon-button>
+            <div class="flex items-center gap-3 px-6 py-2.5 border-b border-hairline dark:border-gray-700">
+                <div class="flex items-baseline flex-1 gap-2 min-w-0">
+                    <h2 class="truncate shrink-0 text-sm font-semibold text-ink dark:text-gray-100">Formulir Pelaporan Efek Samping Obat</h2>
+                    <p class="flex-1 hidden min-w-0 truncate text-xs text-muted sm:block dark:text-gray-400">RM 37 &middot; mengikuti Form Kuning MESO BPOM</p>
+                    <div class="flex items-center gap-1.5 ml-auto shrink-0">
+                        @if ($esoCount > 0)
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ $esoCount }} tersimpan</x-badge>
+                        @endif
+                        @if ($isFormLocked)
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
+                        @endif
+                    </div>
                 </div>
+                <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-2 shrink-0">
+                <span class="sr-only">Close</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clip-rule="evenodd" />
+                </svg>
+                </x-icon-button>
             </div>
 
             {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
@@ -1335,7 +1332,7 @@ new class extends Component {
                 </x-border-form>
 
                 {{-- ══════ FOOTER AKSI ══════ --}}
-                <div class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-hairline dark:border-gray-700">
+                <div class="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-2 px-6 py-3 -mx-4 border-t bg-canvas border-hairline sm:-mx-6 dark:bg-gray-900 dark:border-gray-700">
                     <x-secondary-button type="button" wire:click="kembaliKeDaftar">Kembali ke Daftar</x-secondary-button>
                     @if (!$viewOnly)
                         @unless ($isFormLocked)
@@ -1476,7 +1473,7 @@ new class extends Component {
                     </div>
                 </x-border-form>
                     {{-- FOOTER LAYAR DAFTAR — Tutup + Isi Formulir Baru, seragam dengan modul lain --}}
-                    <div class="flex flex-wrap items-center justify-end gap-2 pt-3 mt-4 border-t border-hairline dark:border-gray-700">
+                    <div class="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-2 px-6 py-3 -mx-4 border-t bg-canvas border-hairline sm:-mx-6 dark:bg-gray-900 dark:border-gray-700">
                         <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
                             @unless ($isFormLocked)
                                 <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
