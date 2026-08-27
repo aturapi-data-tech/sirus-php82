@@ -749,13 +749,13 @@ new class extends Component {
         </div>
         {{-- PRATINJAU ENTRI DI KARTU — ringkasan entri terbaru, tanpa perlu membuka modal --}}
             <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
-                <table class="min-w-full text-sm">
+                <table class="ds-table">
                     <thead class="bg-surface-card dark:bg-gray-800">
                         <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                            <th class="">Tgl. Laporan</th>
-                            <th class="">Manifestasi ESO</th>
+                            <th>Tgl. Laporan</th>
+                            <th>Manifestasi ESO</th>
                             <th class="ds-c w-24">Jml Obat</th>
-                            <th class="">Pelapor</th>
+                            <th>Pelapor</th>
                             <th class="ds-c w-24">Status</th>
                         </tr>
                     </thead>
@@ -1337,12 +1337,7 @@ new class extends Component {
                 {{-- ══════ FOOTER AKSI ══════ --}}
                 <div class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-hairline dark:border-gray-700">
                     <x-secondary-button type="button" wire:click="kembaliKeDaftar">Kembali ke Daftar</x-secondary-button>
-                    @if ($viewOnly)
-                        <x-secondary-button type="button" wire:click="cancelEdit">Selesai Melihat</x-secondary-button>
-                    @else
-                        @if ($editingKey)
-                            <x-secondary-button type="button" wire:click="cancelEdit">Batal Edit</x-secondary-button>
-                        @endif
+                    @if (!$viewOnly)
                         @unless ($isFormLocked)
                             <x-primary-button type="button" wire:click="saveDraft" wire:loading.attr="disabled"
                                 wire:target="saveDraft" class="gap-1.5">
@@ -1370,7 +1365,7 @@ new class extends Component {
                             </x-primary-button>
                         @endunless
                     </div>
-                <x-border-form padding="p-0" align="start" bgcolor="bg-surface-soft">
+                <x-border-form padding="p-0">
                     <div class="mt-3 overflow-x-auto border bg-canvas rounded-2xl border-hairline dark:border-gray-700">
                         <table class="ds-table">
                             <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
