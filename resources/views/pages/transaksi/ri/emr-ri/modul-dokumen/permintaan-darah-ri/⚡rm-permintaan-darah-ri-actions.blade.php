@@ -567,17 +567,31 @@ new class extends Component {
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
             wire:key="{{ $this->renderKey('modal-permintaan-darah-ri', [$riHdrNo ?? 'new']) }}">
 
-            {{-- HEADER: identitas pasien --}}
-            <div class="px-6 py-4 border-b border-hairline dark:border-gray-700">
-                <div class="flex items-start justify-between gap-4">
-                    <div class="flex-1 min-w-0">
-                        <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
-                            wire:key="permintaan-darah-ri-display-pasien-{{ $riHdrNo ?? 'init' }}" />
-                        @if ($isFormLocked)
-                            <div class="mt-2"><x-badge variant="danger">Pasien Pulang — Read Only</x-badge></div>
-                        @endif
+            {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
+            <div class="relative px-6 py-2.5 border-b border-hairline dark:border-gray-700">
+                <div class="relative flex items-center gap-3 min-w-0">
+                    <div class="flex items-center flex-1 gap-3 min-w-0">
+                        <div class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-red-500/10 dark:bg-red-400/15">
+                            <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3s5.5 6.3 5.5 10a5.5 5.5 0 11-11 0C6.5 9.3 12 3 12 3z" />
+                            </svg>
+                        </div>
+                        <div class="flex items-baseline gap-2 min-w-0">
+                            <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">Permintaan Darah</h2>
+                            <p class="truncate text-xs text-muted dark:text-gray-400">Permintaan darah &amp; komponen darah — Rawat Inap</p>
+                        </div>
+                        <div class="flex items-center gap-1.5 ml-auto shrink-0">
+                            <x-badge variant="info">RI</x-badge>
+                            @if (count($dataDaftarRi['permintaanDarahRI'] ?? []) > 0)
+                                <x-badge variant="info">{{ count($dataDaftarRi['permintaanDarahRI']) }} tersimpan</x-badge>
+                            @endif
+                            @if ($isFormLocked)
+                                <x-badge variant="danger">Read Only</x-badge>
+                            @endif
+                        </div>
                     </div>
-                    <x-icon-button color="gray" type="button" wire:click="closeModal" class=" shrink-0">
+                    <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-2 shrink-0">
+                        <span class="sr-only">Close</span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd"
                                 d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
@@ -585,6 +599,12 @@ new class extends Component {
                         </svg>
                     </x-icon-button>
                 </div>
+            </div>
+
+            {{-- DISPLAY PASIEN — mengikuti pola EMR --}}
+            <div class="px-4 pt-2">
+                <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
+                wire:key="permintaan-darah-ri-display-pasien-{{ $riHdrNo ?? 'init' }}" />
             </div>
 
             {{-- BODY --}}

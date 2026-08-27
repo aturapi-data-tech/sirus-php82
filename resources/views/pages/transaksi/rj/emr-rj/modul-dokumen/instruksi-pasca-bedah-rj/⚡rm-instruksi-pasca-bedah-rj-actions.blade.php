@@ -633,7 +633,6 @@ new class extends Component {
             {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
             <div class="relative px-6 py-2.5 border-b border-hairline dark:border-gray-700 shrink-0 bg-surface-soft">
                 <div class="relative flex items-center gap-3 min-w-0">
-                    @if ($this->diForm())
                     <div class="flex items-center flex-1 gap-3 min-w-0">
                         <div class="flex items-center gap-2.5 min-w-0">
                             <div class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-emerald-500/10">
@@ -660,6 +659,7 @@ new class extends Component {
                             @endif
                         </div>
                     </div>
+                    @if ($this->diForm())
 
                 <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-2 shrink-0">
                     <span class="sr-only">Close</span>

@@ -668,7 +668,6 @@ new class extends Component {
             {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
             <div class="px-6 py-2.5 border-b shrink-0 bg-surface-soft border-hairline dark:border-gray-700">
                 <div class="flex items-center gap-3 min-w-0">
-                    @if ($this->diForm())
                     <div class="flex items-center gap-2.5">
                         <div class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-brand-green/10 dark:bg-brand-lime/15">
                             <svg class="w-4 h-4 text-brand-green dark:text-brand-lime" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -680,6 +679,7 @@ new class extends Component {
                             <p class="truncate text-xs text-muted dark:text-gray-400">Audit sectio caesaria (VK) — tiap entri = 1 audit. Diisi Dokter.</p>
                         </div>
                     </div>
+                    @if ($this->diForm())
                     <div class="flex items-center gap-2">
                         @if (count($entriList) > 0)
                             <x-badge variant="info">{{ count($entriList) }} tersimpan</x-badge>

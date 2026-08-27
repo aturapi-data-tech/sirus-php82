@@ -582,7 +582,6 @@ new class extends Component {
             <div class="relative px-6 py-2.5 border-b border-hairline dark:border-gray-700 shrink-0">
                 <div class="relative flex items-center gap-3 min-w-0">
                     <div>
-                        @if ($this->diForm())
                         <div class="flex items-center gap-2.5">
                             <div class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-cyan-500/10">
                                 <svg class="w-4 h-4 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l2 5 4-10 2 5h6" /></svg>
@@ -592,6 +591,7 @@ new class extends Component {
                                 <p class="truncate text-xs text-muted dark:text-gray-400">PAB 6 / RM 53 — ahli anestesiologi. Tiap entri = 1 laporan; kunci lewat TTD.</p>
                             </div>
                         </div>
+                        @if ($this->diForm())
                         <div class="flex items-center gap-1.5 ml-auto shrink-0">
                             <x-badge variant="brand">Rawat Inap</x-badge>
                             @if (count($laporanAnList) > 0) <x-badge variant="info">{{ count($laporanAnList) }} tersimpan</x-badge> @endif
