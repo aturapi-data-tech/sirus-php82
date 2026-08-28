@@ -909,6 +909,20 @@ new class extends Component {
         };
         return $hint !== '' ? " — {$hint}" : '';
     }
+    /**
+     * Cetak Surat Pengantar Rujukan + Resume Klinis Pasien Rujukan.
+     *
+     * Format ditetapkan Kemkes 27/08/2026 (calon Kepmenkes) dan berlaku untuk SEMUA
+     * rujukan. Isinya dirakit komponen headless bersama supaya keenam panel memakai
+     * satu cetakan yang sama.
+     */
+    public function cetakSuratRujukan(): void
+    {
+        $this->dispatch('cetak-surat-rujukan.open',
+            jalur: 'ugd',
+            noKunjungan: (string) $this->rjNo,
+            node: 'rujukanKompetensi');
+    }
 };
 ?>
 
@@ -1023,6 +1037,16 @@ new class extends Component {
                 <tr><td class="pr-3">Tujuan</td><td>{{ $formRujukan['hasil']['tujuanNama'] ?? '-' }} (PPK {{ $formRujukan['hasil']['tujuanPpk'] ?? '-' }})</td></tr>
                 <tr><td class="pr-3">Dikirim</td><td>{{ $formRujukan['hasil']['dikirimPada'] ?? '-' }} oleh {{ $formRujukan['hasil']['dikirimOleh'] ?? '-' }}</td></tr>
             </table>
+
+            {{-- Surat Pengantar Rujukan + Resume Klinis — format Kemkes (calon Kepmenkes),
+                 wajib untuk SEMUA rujukan. Komponen cetaknya headless di halaman EMR. --}}
+            <div class="pt-2">
+                <x-outline-button type="button" wire:click="cetakSuratRujukan"
+                    wire:loading.attr="disabled" wire:target="cetakSuratRujukan">
+                    <span wire:loading.remove wire:target="cetakSuratRujukan">Cetak Surat Rujukan</span>
+                    <span wire:loading wire:target="cetakSuratRujukan">Menyiapkan...</span>
+                </x-outline-button>
+            </div>
             @if (!$isFormLocked)
                 <div class="pt-2">
                     <x-danger-button type="button" wire:click="hapusRujukan" wire:confirm="Batalkan/hapus rujukan ini di BPJS & SATUSEHAT?"
