@@ -185,19 +185,19 @@ new class extends Component {
     {
         if ($this->mode === 'bulanan') {
             try {
-                $d = Carbon::createFromFormat('m/Y', trim($this->filterBulan))->startOfMonth();
+                $tanggal = Carbon::createFromFormat('m/Y', trim($this->filterBulan))->startOfMonth();
             } catch (\Throwable) {
-                $d = now()->startOfMonth();
+                $tanggal = now()->startOfMonth();
             }
-            return [$d, (clone $d)->endOfMonth()];
+            return [$tanggal, (clone $tanggal)->endOfMonth()];
         }
 
         try {
-            $d = Carbon::createFromFormat('d/m/Y', trim($this->filterTanggal))->startOfDay();
+            $tanggal = Carbon::createFromFormat('d/m/Y', trim($this->filterTanggal))->startOfDay();
         } catch (\Throwable) {
-            $d = now()->startOfDay();
+            $tanggal = now()->startOfDay();
         }
-        return [$d, (clone $d)->endOfDay()];
+        return [$tanggal, (clone $tanggal)->endOfDay()];
     }
 
     /**
@@ -223,8 +223,8 @@ new class extends Component {
             ->whereBetween('h.rj_date', [$mulai, $selesai])
             ->whereRaw("h.vno_sep IS NOT NULL AND LENGTH(TRIM(h.vno_sep)) > 0")
             // BPJS: klaim_status='BPJS' atau klaim JKN Mobile
-            ->where(function ($q) {
-                $q->where('k.klaim_status', 'BPJS')->orWhere('h.klaim_id', 'JM');
+            ->where(function ($subQuery) {
+                $subQuery->where('k.klaim_status', 'BPJS')->orWhere('h.klaim_id', 'JM');
             })
             ->select([
                 'h.rj_no',
@@ -266,12 +266,12 @@ new class extends Component {
         }
 
         if (trim($this->searchKeyword) !== '') {
-            $kw = '%' . mb_strtoupper(trim($this->searchKeyword)) . '%';
-            $query->where(function ($q) use ($kw) {
-                $q->whereRaw('UPPER(p.reg_name) LIKE ?', [$kw])
-                  ->orWhereRaw('UPPER(h.reg_no) LIKE ?', [$kw])
-                  ->orWhereRaw('UPPER(h.vno_sep) LIKE ?', [$kw])
-                  ->orWhereRaw('TO_CHAR(h.rj_no) LIKE ?', [$kw]);
+            $keyword = '%' . mb_strtoupper(trim($this->searchKeyword)) . '%';
+            $query->where(function ($subQuery) use ($keyword) {
+                $subQuery->whereRaw('UPPER(p.reg_name) LIKE ?', [$keyword])
+                  ->orWhereRaw('UPPER(h.reg_no) LIKE ?', [$keyword])
+                  ->orWhereRaw('UPPER(h.vno_sep) LIKE ?', [$keyword])
+                  ->orWhereRaw('TO_CHAR(h.rj_no) LIKE ?', [$keyword]);
             });
         }
 
@@ -346,7 +346,7 @@ new class extends Component {
             ->select('p.kode_dpho')
             ->get();
 
-        $berDpho = $obat->filter(fn($x) => trim((string) ($x->kode_dpho ?? '')) !== '')->count();
+        $berDpho = $obat->filter(fn($barisObat) => trim((string) ($barisObat->kode_dpho ?? '')) !== '')->count();
 
         return [
             'kronis' => $obat->count(),
