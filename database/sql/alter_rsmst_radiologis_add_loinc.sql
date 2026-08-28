@@ -12,6 +12,14 @@ CREATE INDEX idx_rad_loinc ON rsmst_radiologis (loinc_code);
 
 -- ============================================================
 -- Update mapping LOINC untuk radiologi
+--
+-- ⚠️ USANG — JANGAN DIJALANKAN LAGI.
+-- Kode di bawah terbukti karangan: dari 63 kode yang dipakai, 44 tidak ada di
+-- LOINC dan 17 ada tapi artinya pemeriksaan lain. Satu kode juga dipakai
+-- berulang untuk sisi kanan/kiri dan proyeksi berbeda.
+-- Pengganti: database/sql/remap_rsmst_radiologis_loinc.sql
+-- (jalankan setelah seed_rsmst_loinc_codes_radiologi.sql yang sudah diperbarui).
+-- Bagian ALTER TABLE di atas tetap berlaku.
 -- ============================================================
 
 -- ────────────────────────────────────────────────────────────
