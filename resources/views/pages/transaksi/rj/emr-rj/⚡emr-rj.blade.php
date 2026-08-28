@@ -560,6 +560,9 @@ new class extends Component {
     {{-- Cetak E-Resep PDF (headless: listen event cetak-eresep-rj.open) --}}
     <livewire:pages::components.rekam-medis.rj.cetak-eresep.cetak-eresep wire:key="cetak-eresep-rj-emr" />
 
+    {{-- Cetak Surat Pengantar Rujukan + Resume Klinis (headless: cetak-surat-rujukan.open) --}}
+    <livewire:pages::components.rekam-medis.rujukan-kompetensi.cetak-surat-rujukan wire:key="cetak-surat-rujukan-rj-emr" />
+
     {{-- Screening RJ (x-modal, dibuka via tombol / dispatch open-rm-screening-rj) --}}
     <livewire:pages::transaksi.rj.emr-rj.screening.rm-screening-rj-actions :rjNo="$rjNo"
         wire:key="screening-rj-{{ $rjNo }}" />

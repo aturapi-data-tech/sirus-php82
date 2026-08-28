@@ -638,4 +638,7 @@ new class extends Component {
     <livewire:pages::components.rekam-medis.ri.ringkasan-pulang-ri.ringkasan-pulang-ri-actions
         wire:key="ringkasan-pulang-ri-actions" />
 
+    {{-- Cetak Surat Pengantar Rujukan + Resume Klinis (headless: cetak-surat-rujukan.open) --}}
+    <livewire:pages::components.rekam-medis.rujukan-kompetensi.cetak-surat-rujukan wire:key="cetak-surat-rujukan-ri-emr" />
+
 </div>
