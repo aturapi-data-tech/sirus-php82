@@ -54,8 +54,18 @@ new class extends Component {
      */
     public array $eresepLembar = [];
 
-    /** Tab entri obat, meniru e-resep: NonRacikan | Racikan. */
+    /** Tab entri obat, meniru e-resep: NonRacikan | Racikan | Verifikasi. */
     public string $tabObat = 'NonRacikan';
+
+    /**
+     * Hasil tarikan tab Verifikasi. Dua daftar terpisah karena datang dari dua
+     * endpoint berbeda: daftar RESEP milik apotek (rentang tanggal) dan daftar
+     * OBAT milik satu SJP.
+     */
+    public array $daftarResepBpjs = [];
+    public array $daftarObatBpjs = [];
+    public string $verifikasiPesan = '';
+    public bool $verifikasiGagal = false;
 
 
     /**
@@ -70,7 +80,8 @@ new class extends Component {
     public function open(string $rjNo): void
     {
         $this->reset(['obatList', 'log', 'noSjpApotek', 'sedangKirim', 'eresepLembar',
-            'tabObat', 'permintaanRacikan']);
+            'tabObat', 'permintaanRacikan',
+            'daftarResepBpjs', 'daftarObatBpjs', 'verifikasiPesan', 'verifikasiGagal']);
         $this->statusKlaim = 'draft';
         $this->rjNo = $rjNo;
 
@@ -132,15 +143,15 @@ new class extends Component {
     }
 
     /** Pulihkan setup yang tersimpan di JSON. */
-    private function restoreDari(array $ao): void
+    private function restoreDari(array $apotekOnline): void
     {
-        $this->kdJnsObat = (string) ($ao['kdJnsObat'] ?? '1');
-        $this->iterasi = (string) ($ao['iterasi'] ?? '0');
+        $this->kdJnsObat = (string) ($apotekOnline['kdJnsObat'] ?? '1');
+        $this->iterasi = (string) ($apotekOnline['iterasi'] ?? '0');
         // Klaim lama menampilkan nomor yang BENAR-BENAR dikirim, bukan hasil hitung
         // ulang — kalau aturannya pernah berubah, jejaknya tetap jujur.
-        $this->noResep = (string) ($ao['noResep'] ?? '') ?: self::noResepDari($this->rjNo);
-        $this->noSjpApotek = (string) ($ao['noSjp'] ?? '');
-        $this->statusKlaim = (string) ($ao['status'] ?? ($this->noSjpApotek !== '' ? 'terkirim' : 'draft'));
+        $this->noResep = (string) ($apotekOnline['noResep'] ?? '') ?: self::noResepDari($this->rjNo);
+        $this->noSjpApotek = (string) ($apotekOnline['noSjp'] ?? '');
+        $this->statusKlaim = (string) ($apotekOnline['status'] ?? ($this->noSjpApotek !== '' ? 'terkirim' : 'draft'));
         // obatList & permintaanRacikan TIDAK diisi di sini — keduanya cermin yang
         // dibaca ulang oleh segarkanDaftar() supaya cuma ada satu jalur muat.
     }
@@ -161,6 +172,159 @@ new class extends Component {
      * mengembalikan resepNo null untuk jalur RJ (penomoran lembar hanya ada di RI),
      * jadi cabang itu tak pernah sekali pun terpakai dan cuma menyesatkan pembaca.
      */
+    /* ═══════════ VERIFIKASI & KOREKSI DI SISI BPJS ═══════════
+     | Empat endpoint yang membaca/menghapus apa yang SUDAH tersimpan di BPJS —
+     | bukan menyusun kiriman baru. Berpasangan dua-dua:
+     |   daftar resep (rentang tanggal)  <-> hapus resep  (seluruh SJP)
+     |   daftar obat  (satu SJP)         <-> hapus obat   (satu baris)
+     | Semuanya menembak BPJS sungguhan, jadi tak ada yang berjalan otomatis. */
+
+    private function catatVerifikasi(array $balasan, string $judul): bool
+    {
+        $kode = (string) ($balasan['metadata']['code'] ?? '');
+        $pesan = (string) ($balasan['metadata']['message'] ?? 'tanpa keterangan');
+        $this->verifikasiGagal = $kode !== '200';
+        $this->verifikasiPesan = $judul . ($this->verifikasiGagal ? ' ditolak — ' : ' berhasil — ') . $pesan;
+
+        return !$this->verifikasiGagal;
+    }
+
+    /** Modul 10 — daftar resep apotek pada rentang tanggal kunjungan ini. */
+    public function tarikDaftarResep(): void
+    {
+        $tglKunjungan = Carbon::parse($this->info['rjDate'] ?? now());
+
+        $balasan = $this->apotek_resep_daftar([
+            'kdppk' => (string) env('APOTEK_KDPPK'),
+            'KdJnsObat' => '0',
+            'JnsTgl' => 'TGLRSP',
+            'TglMulai' => $tglKunjungan->copy()->startOfDay()->format('Y-m-d H:i:s'),
+            'TglAkhir' => $tglKunjungan->copy()->endOfDay()->format('Y-m-d H:i:s'),
+        ])->getData(true);
+
+        $this->daftarResepBpjs = $this->catatVerifikasi($balasan, 'Daftar resep')
+            ? self::ratakanBalasan($balasan['response'] ?? [])
+            : [];
+    }
+
+    /** Modul 14 — daftar obat yang tersimpan di BPJS untuk SJP klaim ini. */
+    public function tarikDaftarObat(): void
+    {
+        if (blank($this->noSjpApotek)) {
+            $this->verifikasiGagal = true;
+            $this->verifikasiPesan = 'Belum ada No. SJP — klaim ini belum pernah terkirim.';
+            return;
+        }
+
+        $balasan = $this->apotek_pelayanan_daftar($this->noSjpApotek)->getData(true);
+
+        $this->daftarObatBpjs = $this->catatVerifikasi($balasan, 'Daftar obat')
+            ? self::ratakanBalasan($balasan['response'] ?? [])
+            : [];
+    }
+
+    /** Modul 11 — hapus SELURUH resep di BPJS. */
+    public function hapusResepBpjs(): void
+    {
+        if (blank($this->noSjpApotek)) {
+            $this->verifikasiGagal = true;
+            $this->verifikasiPesan = 'Belum ada No. SJP yang bisa dihapus.';
+            return;
+        }
+
+        // Ejaan field di sini HURUF KECIL semua, berbeda dari saat menyimpan
+        // (NORESEP/REFASALSJP). Menyalin nama field dari simpan akan ditolak.
+        $balasan = $this->apotek_resep_hapus([
+            'nosjp' => $this->noSjpApotek,
+            'refasalsjp' => (string) ($this->info['noSep'] ?? ''),
+            'noresep' => $this->noResep,
+        ])->getData(true);
+
+        if ($this->catatVerifikasi($balasan, 'Hapus resep')) {
+            // Klaim tak lagi ada di BPJS: kembalikan layar ke keadaan draf supaya
+            // petugas bisa menyusun & mengirim ulang.
+            $this->noSjpApotek = '';
+            $this->statusKlaim = 'draft';
+            $this->daftarObatBpjs = [];
+            $data = $this->findDataRJ($this->rjNo);
+            $this->simpanNode($data, 'draft', '', 0);
+            $this->dispatch('apotek-online-rj.refresh');
+        }
+    }
+
+    /** Modul 13 — hapus SATU baris obat di BPJS. */
+    public function hapusObatBpjs(string $kodeObat, string $tipeObat): void
+    {
+        if (blank($this->noSjpApotek)) {
+            $this->verifikasiGagal = true;
+            $this->verifikasiPesan = 'Belum ada No. SJP yang bisa dikoreksi.';
+            return;
+        }
+
+        $balasan = $this->apotek_pelayanan_hapus([
+            'nosepapotek' => $this->noSjpApotek,
+            'noresep' => $this->noResep,
+            'kodeobat' => $kodeObat,
+            'tipeobat' => $tipeObat !== '' ? $tipeObat : 'N',
+        ])->getData(true);
+
+        if ($this->catatVerifikasi($balasan, 'Hapus obat ' . $kodeObat)) {
+            $this->tarikDaftarObat();
+        }
+    }
+
+    /** Ratakan balasan jadi daftar baris — bentuknya tak seragam antar endpoint. */
+    private static function ratakanBalasan(mixed $response): array
+    {
+        if (!is_array($response) || $response === []) {
+            return [];
+        }
+
+        if (array_is_list($response)) {
+            return array_values(array_filter($response, 'is_array'));
+        }
+
+        foreach ($response as $isi) {
+            if (is_array($isi) && array_is_list($isi) && $isi !== [] && is_array($isi[0])) {
+                return $isi;
+            }
+        }
+
+        return [$response];
+    }
+
+    /** Batas hari resep terhadap tanggal SEP menurut BPJS (checklist UAT butir 9.9). */
+    private const BATAS_HARI_RESEP = 15;
+
+    /**
+     * Selisih hari tanggal resep terhadap tanggal SEP, atau null bila tanggal SEP
+     * tak terbaca — dalam hal itu pengiriman TIDAK dihalangi, biar BPJS yang menilai;
+     * menolak karena format tanggal mereka berubah akan lebih merugikan.
+     *
+     * Nilai negatif berarti resep MENDAHULUI SEP; itu bukan pelanggaran batas 15 hari,
+     * jadi dibiarkan lewat dan cukup ditolak BPJS bila memang salah.
+     */
+    private static function selisihHariResepDariSep(string $tglSep, Carbon $tglResep): ?int
+    {
+        $tglSep = trim($tglSep);
+        if ($tglSep === '') {
+            return null;
+        }
+
+        try {
+            $awal = Carbon::parse($tglSep)->startOfDay();
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        // Selisih dihitung dari timestamp mentah, BUKAN diffInDays(..., false):
+        // di Carbon 3 tanda hasil diff terbalik dari Carbon 2 dan sudah pernah membuat
+        // laporan lain salah hitung senyap. Lihat memory carbon3-diff-signed.
+        $selisihDetik = $tglResep->copy()->startOfDay()->getTimestamp() - $awal->getTimestamp();
+
+        return intdiv($selisihDetik, 86400);
+    }
+
     private static function noResepDari(?string $rjNo): string
     {
         return substr(preg_replace('/\D/', '', (string) $rjNo), -5);
@@ -274,14 +438,14 @@ new class extends Component {
             return;
         }
 
-        $ao = $this->findDataRJ($this->rjNo)['apotekOnline'] ?? [];
+        $apotekOnline = $this->findDataRJ($this->rjNo)['apotekOnline'] ?? [];
 
         $this->obatList = array_merge(
-            array_values(array_filter($ao['obat'] ?? [], 'is_array')),
-            array_values(array_filter($ao['obatRacikan'] ?? [], 'is_array')),
+            array_values(array_filter($apotekOnline['obat'] ?? [], 'is_array')),
+            array_values(array_filter($apotekOnline['obatRacikan'] ?? [], 'is_array')),
         );
         $this->permintaanRacikan = array_filter(
-            (array) ($ao['permintaanRacikan'] ?? []),
+            (array) ($apotekOnline['permintaanRacikan'] ?? []),
             fn($jumlah) => is_numeric($jumlah)
         );
     }
@@ -328,7 +492,7 @@ new class extends Component {
             }
 
             $data = $this->findDataRJ($this->rjNo);
-            $tgl = Carbon::parse($this->info['rjDate'] ?? now());
+            $tglKunjungan = Carbon::parse($this->info['rjDate'] ?? now());
 
             // 1) POLIRSP dari SEP (BPJS pakai kode poli-nya sendiri, bukan poli_id kita).
             // Tanpa nomor SEP tak ada yang bisa dikirim — REFASALSJP wajib dan BPJS
@@ -353,16 +517,35 @@ new class extends Component {
 
             $this->log[] = ['ok' => true, 'teks' => 'SEP terbaca. Poli resep: ' . ($poliRsp ?: '(kosong)')];
 
+            // BATAS 15 HARI. BPJS menolak resep yang tanggalnya lebih dari 15 hari dari
+            // tanggal SEP (checklist UAT butir 9.9). Dijaga di sini supaya petugas tahu
+            // sebelum menempuh sisa rantai, bukan setelah resep terlanjur dibuat di sana.
+            // Tanggal SEP diambil dari respons BPJS (tglsep), bukan dari tanggal kunjungan
+            // kita — keduanya bisa berbeda bila SEP dibuat mundur.
+            $selisihHari = self::selisihHariResepDariSep(
+                (string) ($sep['response']['tglsep'] ?? ''),
+                $tglKunjungan
+            );
+
+            if ($selisihHari !== null && $selisihHari > self::BATAS_HARI_RESEP) {
+                $this->gagal(
+                    'Resep melewati batas ' . self::BATAS_HARI_RESEP . ' hari dari tanggal SEP — '
+                    . 'SEP ' . ($sep['response']['tglsep'] ?? '?') . ', resep '
+                    . $tglKunjungan->format('Y-m-d') . ' (selisih ' . $selisihHari . ' hari).'
+                );
+                return;
+            }
+
             // 2) Simpan resep → dapat No. SJP apotek.
             $noResep = (string) ($this->noResep ?: '1');
             $resep = $this->apotek_resep_insert([
-                'TGLSJP' => $tgl->format('Y-m-d H:i:s'),
+                'TGLSJP' => $tglKunjungan->format('Y-m-d H:i:s'),
                 'REFASALSJP' => $sepAsal,
                 'POLIRSP' => $poliRsp,
                 'KDJNSOBAT' => $this->kdJnsObat,
                 'NORESEP' => $noResep,
                 'IDUSERSJP' => (string) (auth()->user()->myuser_code ?? 'SIMRS'),
-                'TGLRSP' => $tgl->format('Y-m-d 00:00:00'),
+                'TGLRSP' => $tglKunjungan->format('Y-m-d 00:00:00'),
                 'TGLPELRSP' => now()->format('Y-m-d 00:00:00'),
                 // Dipetakan dari respons SEP; katalog membolehkan kosong, jadi '' bila
                 // BPJS memang tak mengirimnya — bukan dipaku '0' seperti sebelumnya.
@@ -690,6 +873,58 @@ new class extends Component {
                             </div>
                         @endforelse
                     </div>
+
+                    {{-- CARA PAKAI — gaya biru-info standar repo, DEFAULT TERTUTUP.
+                       | Memakai <details> native, bukan toggle Alpine: isi modal ini sering
+                       | di-morph Livewire dan island Alpine gampang putus di situ. --}}
+                    <details class="mt-4 overflow-hidden border border-blue-200 bg-blue-50 rounded-2xl dark:bg-blue-900/20 dark:border-blue-700 group">
+                        <summary class="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
+                            <svg class="w-4 h-4 text-blue-700 transition-transform dark:text-blue-300 shrink-0 group-open:rotate-90"
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                            <div class="flex flex-wrap items-baseline gap-x-2">
+                                <span class="text-sm font-semibold text-ink dark:text-gray-100">Cara Pakai</span>
+                                <span class="text-xs text-muted dark:text-gray-400">— urutan mendaftarkan klaim obat ke BPJS</span>
+                            </div>
+                        </summary>
+
+                        <div class="px-4 pt-1 pb-4 space-y-3 border-t border-blue-200 dark:border-blue-800">
+                            <ol class="pl-4 mt-3 space-y-2 text-xs list-decimal text-body dark:text-gray-300">
+                                <li>
+                                    Periksa <strong>Jenis Obat</strong> dan <strong>Iterasi</strong> di atas.
+                                    No. Resep terisi otomatis dari No. RJ dan tidak bisa diubah — itu yang menjamin
+                                    nomornya tak kembar dalam satu bulan klaim.
+                                </li>
+                                <li>
+                                    Susun obat di tab <strong>Non Racikan</strong> dan <strong>Racikan</strong>.
+                                    Daftar awal dibibitkan dari obat kronis yang sudah ditandai di Administrasi;
+                                    tambah obat DPHO lain lewat kotak pencarian di atas tabel.
+                                </li>
+                                <li>
+                                    Cocokkan dengan panel <strong>E-Resep dari Dokter</strong> di atas. Obat yang
+                                    ikut diklaim bertanda centang hijau — wajar bila jumlahnya lebih sedikit,
+                                    karena yang diklaim hanya porsi kronisnya.
+                                </li>
+                                <li>
+                                    Betulkan <strong>Signa1</strong>, <strong>Signa2</strong>, dan
+                                    <strong>JHO</strong> bila perlu, lalu tekan
+                                    <strong>Daftarkan &amp; Kirim</strong>. Rantainya: baca SEP → simpan resep →
+                                    kirim tiap obat. Berhenti di kegagalan pertama, dan tiap langkah tercatat di log.
+                                </li>
+                                <li>
+                                    Sesudah terkirim, tab <strong>Verifikasi &amp; Koreksi</strong> dipakai
+                                    memeriksa apa yang benar-benar tersimpan di BPJS — dan menghapusnya bila salah.
+                                </li>
+                            </ol>
+
+                            <div class="pt-3 space-y-1.5 text-xs border-t border-blue-200 dark:border-blue-800 text-muted dark:text-gray-400">
+                                <p><strong class="text-body dark:text-gray-300">Obat tanpa kode DPHO dilewati</strong> saat kirim — petakan dulu di Master Obat.</p>
+                                <p><strong class="text-body dark:text-gray-300">Resep maksimal 15 hari</strong> dari tanggal SEP; lebih dari itu ditahan sebelum dikirim.</p>
+                                <p><strong class="text-body dark:text-gray-300">Simpan Draf</strong> menyimpan susunan tanpa mengirim; entri obat sendiri tersimpan otomatis tiap diubah.</p>
+                            </div>
+                        </div>
+                    </details>
                 </div>
 
                 {{-- ══════════ KANAN: PAYLOAD KLAIM KE BPJS ══════════ --}}
@@ -706,6 +941,9 @@ new class extends Component {
                     <x-tab :active="$tabObat === 'Racikan'" wire:click="$set('tabObat', 'Racikan')">
                         Racikan
                     </x-tab>
+                    <x-tab :active="$tabObat === 'Verifikasi'" wire:click="$set('tabObat', 'Verifikasi')">
+                        Verifikasi &amp; Koreksi
+                    </x-tab>
                 </x-tabs>
 
                 {{-- Tiap tab satu komponen ANAK yang berdiri sendiri — meniru e-resep RJ.
@@ -717,10 +955,156 @@ new class extends Component {
                         <livewire:pages::transaksi.rj.apotek-online-rj.apotek-online-rj-non-racikan
                             :rjNo="$rjNo" :isFormLocked="$statusKlaim === 'terkirim'"
                             wire:key="ao-non-racikan-{{ $rjNo }}" />
-                    @else
+                    @elseif ($tabObat === 'Racikan')
                         <livewire:pages::transaksi.rj.apotek-online-rj.apotek-online-rj-racikan
                             :rjNo="$rjNo" :isFormLocked="$statusKlaim === 'terkirim'"
                             wire:key="ao-racikan-{{ $rjNo }}" />
+                    @else
+                        {{-- VERIFIKASI & KOREKSI — membaca/menghapus apa yang SUDAH tersimpan
+                           | di BPJS. Tidak ada yang berjalan otomatis: tiap tombol menembak
+                           | BPJS sungguhan dan terhitung kuota. --}}
+                        <div class="space-y-4">
+
+                            @if ($verifikasiPesan)
+                                <div class="px-3 py-2 text-sm border rounded-lg
+                                    {{ $verifikasiGagal
+                                        ? 'bg-error/10 border-error/30 text-error-deep dark:text-red-300'
+                                        : 'bg-success/10 border-success/30 text-success' }}">
+                                    {{ $verifikasiPesan }}
+                                </div>
+                            @endif
+
+                            {{-- MODUL 14 + 13: daftar obat satu SJP, dan koreksi per baris --}}
+                            <div class="border rounded-lg border-hairline dark:border-gray-700">
+                                <div class="flex flex-wrap items-center gap-3 px-3 py-2 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">
+                                    <span class="text-sm font-semibold text-ink dark:text-gray-100">Obat tersimpan di BPJS</span>
+                                    <span class="text-xs text-muted dark:text-gray-400">
+                                        {{ $noSjpApotek ? 'SJP ' . $noSjpApotek : 'belum ada No. SJP' }}
+                                    </span>
+                                    <x-outline-button type="button" class="ml-auto shrink-0" wire:click="tarikDaftarObat"
+                                        wire:loading.attr="disabled" wire:target="tarikDaftarObat">
+                                        <span wire:loading.remove wire:target="tarikDaftarObat">Tarik Data Obat</span>
+                                        <span wire:loading wire:target="tarikDaftarObat"><x-loading /> Menarik...</span>
+                                    </x-outline-button>
+                                </div>
+
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full text-sm">
+                                        <thead class="bg-surface-card dark:bg-gray-800">
+                                            <tr class="text-xs font-semibold text-left uppercase text-muted dark:text-gray-300">
+                                                @forelse (array_keys($daftarObatBpjs[0] ?? []) as $kolom)
+                                                    <th class="px-3 py-2 whitespace-nowrap">{{ $kolom }}</th>
+                                                @empty
+                                                    <th class="px-3 py-2">Obat</th>
+                                                @endforelse
+                                                <th class="w-24 px-3 py-2"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @forelse ($daftarObatBpjs as $indeks => $barisObat)
+                                                <tr wire:key="obat-bpjs-{{ $indeks }}" class="border-t border-hairline dark:border-gray-700">
+                                                    @foreach (array_keys($daftarObatBpjs[0]) as $kolom)
+                                                        <td class="px-3 py-2 align-top text-body dark:text-gray-300">
+                                                            {{ is_scalar($barisObat[$kolom] ?? null) ? $barisObat[$kolom] : json_encode($barisObat[$kolom] ?? null, JSON_UNESCAPED_UNICODE) }}
+                                                        </td>
+                                                    @endforeach
+                                                    <td class="px-3 py-2">
+                                                        {{-- Kode & tipe obat dibaca dari balasan BPJS sendiri; nama
+                                                           | field-nya berbeda antar versi, jadi dicoba beberapa. --}}
+                                                        @php
+                                                            $kodeObat = (string) ($barisObat['kodeobat'] ?? $barisObat['kdobat'] ?? $barisObat['KDOBT'] ?? '');
+                                                            $tipeObat = (string) ($barisObat['tipeobat'] ?? $barisObat['jnsobat'] ?? 'N');
+                                                        @endphp
+                                                        @if ($kodeObat !== '')
+                                                            <x-outline-button type="button"
+                                                                wire:click="hapusObatBpjs('{{ $kodeObat }}', '{{ $tipeObat }}')"
+                                                                wire:confirm="Hapus obat {{ $kodeObat }} dari klaim di BPJS?"
+                                                                wire:loading.attr="disabled"
+                                                                class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300
+                                                                       dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30
+                                                                       dark:hover:!bg-red-900/30 dark:hover:!text-red-300 !px-2 !py-1 text-xs">
+                                                                Hapus
+                                                            </x-outline-button>
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            @empty
+                                                <tr>
+                                                    <td colspan="2" class="px-3 py-8 text-center text-muted">
+                                                        Belum ditarik. Tekan <strong>Tarik Data Obat</strong> untuk melihat apa yang tersimpan di BPJS.
+                                                    </td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {{-- MODUL 10: daftar resep apotek pada tanggal kunjungan ini --}}
+                            <div class="border rounded-lg border-hairline dark:border-gray-700">
+                                <div class="flex flex-wrap items-center gap-3 px-3 py-2 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">
+                                    <span class="text-sm font-semibold text-ink dark:text-gray-100">Resep apotek di BPJS</span>
+                                    <span class="text-xs text-muted dark:text-gray-400">tanggal kunjungan ini</span>
+                                    <x-outline-button type="button" class="ml-auto shrink-0" wire:click="tarikDaftarResep"
+                                        wire:loading.attr="disabled" wire:target="tarikDaftarResep">
+                                        <span wire:loading.remove wire:target="tarikDaftarResep">Tarik Daftar Resep</span>
+                                        <span wire:loading wire:target="tarikDaftarResep"><x-loading /> Menarik...</span>
+                                    </x-outline-button>
+                                </div>
+
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full text-sm">
+                                        <thead class="bg-surface-card dark:bg-gray-800">
+                                            <tr class="text-xs font-semibold text-left uppercase text-muted dark:text-gray-300">
+                                                @forelse (array_keys($daftarResepBpjs[0] ?? []) as $kolom)
+                                                    <th class="px-3 py-2 whitespace-nowrap">{{ $kolom }}</th>
+                                                @empty
+                                                    <th class="px-3 py-2">Resep</th>
+                                                @endforelse
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @forelse ($daftarResepBpjs as $indeks => $barisResep)
+                                                <tr wire:key="resep-bpjs-{{ $indeks }}" class="border-t border-hairline dark:border-gray-700">
+                                                    @foreach (array_keys($daftarResepBpjs[0]) as $kolom)
+                                                        <td class="px-3 py-2 align-top text-body dark:text-gray-300">
+                                                            {{ is_scalar($barisResep[$kolom] ?? null) ? $barisResep[$kolom] : json_encode($barisResep[$kolom] ?? null, JSON_UNESCAPED_UNICODE) }}
+                                                        </td>
+                                                    @endforeach
+                                                </tr>
+                                            @empty
+                                                <tr>
+                                                    <td colspan="1" class="px-3 py-8 text-center text-muted">
+                                                        Belum ditarik. Tekan <strong>Tarik Daftar Resep</strong>.
+                                                    </td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {{-- MODUL 11: hapus seluruh SJP resep --}}
+                            @if (filled($noSjpApotek))
+                                <div class="flex flex-wrap items-center gap-3 px-3 py-3 border rounded-lg border-error/30 bg-error/5">
+                                    <p class="flex-1 min-w-[16rem] text-xs text-error-deep dark:text-red-300">
+                                        Menghapus SELURUH resep SJP {{ $noSjpApotek }} di BPJS beserta obat di dalamnya.
+                                        Klaim akan kembali berstatus draf dan bisa disusun ulang.
+                                    </p>
+                                    <x-outline-button type="button"
+                                        wire:click="hapusResepBpjs"
+                                        wire:confirm="Hapus seluruh resep SJP {{ $noSjpApotek }} di BPJS?"
+                                        wire:loading.attr="disabled" wire:target="hapusResepBpjs"
+                                        class="shrink-0 !text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300
+                                               dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30
+                                               dark:hover:!bg-red-900/30 dark:hover:!text-red-300">
+                                        <span wire:loading.remove wire:target="hapusResepBpjs">Hapus Resep di BPJS</span>
+                                        <span wire:loading wire:target="hapusResepBpjs"><x-loading /> Menghapus...</span>
+                                    </x-outline-button>
+                                </div>
+                            @endif
+
+                        </div>
                     @endif
                 </div>
 
