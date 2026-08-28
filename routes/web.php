@@ -259,6 +259,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/apotek-online/rj', 'pages::transaksi.rj.apotek-online-rj.apotek-online-rj')
         ->name('apotek-online.rj');
 
+    Route::livewire('/apotek-online/referensi', 'pages::transaksi.rj.apotek-online-referensi.apotek-online-referensi')
+        ->name('apotek-online.referensi');
+
     // ===========================================
     // TRANSAKSI RJ - ANTRIAN KASIR (clone Apotek RJ)
     // ===========================================
