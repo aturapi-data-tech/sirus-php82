@@ -208,6 +208,41 @@ new class extends Component {
         $this->loincDisplay = '';
     }
 
+    /**
+     * Cek kode LOINC ke daftar resmi SATUSEHAT.
+     *
+     * Dicocokkan ke rsmst_loinc_codes, yang diisi dari lampiran terminologi
+     * radiologi SATUSEHAT — BUKAN ditembakkan ke API mereka: base fhir-r4 tidak
+     * melayani operasi terminologi (dibalas "invalid ID '$lookup'"), dan Kemkes
+     * tidak mendokumentasikan endpoint $lookup / $validate-code mana pun.
+     *
+     * LOV sendiri mencari ke tx.fhir.org, yang katalognya lebih luas daripada
+     * daftar SATUSEHAT — kode bisa sah sebagai LOINC tapi tidak diakui SATUSEHAT.
+     * Itulah yang dijaring tombol ini.
+     */
+    public function cekLoincKeSatuSehat(): void
+    {
+        $kode = trim($this->loincCode);
+
+        if ($kode === '') {
+            $this->dispatch('toast', type: 'info', message: 'Isi kode LOINC dulu sebelum dicek.');
+            return;
+        }
+
+        $baris = DB::table('rsmst_loinc_codes')->where('loinc_code', $kode)->first();
+
+        if (! $baris) {
+            $this->dispatch('toast', type: 'error',
+                message: "Kode {$kode} tidak ada di daftar resmi SATUSEHAT — kemungkinan besar ditolak saat kirim.");
+            return;
+        }
+
+        $nama = trim((string) ($baris->display_id ?? '')) ?: trim((string) ($baris->display ?? ''));
+
+        $this->dispatch('toast', type: 'success',
+            message: "Kode {$kode} terdaftar di SATUSEHAT: {$nama}");
+    }
+
     // ==================== TOGGLE STATUS AKTIF ====================
     #[On('master.radiologis.toggleActive')]
     public function toggleActive(string $radId): void
@@ -375,8 +410,21 @@ new class extends Component {
                                     placeholder="Ketik nama pemeriksaan / kode LOINC..." :initialLoincCode="$loincCode ?: null"
                                     :disabled="false" wire:key="lov-loinc-rad-{{ $renderVersions['modal'] ?? 0 }}" />
                                 <x-input-error :messages="$errors->get('loincCode')" class="mt-1" />
-                                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Cari kode LOINC dari database
-                                    lokal atau FHIR server. Dipakai untuk kirim ke Satu Sehat.</p>
+
+                                {{-- Cek ke server terminologi SATUSEHAT (bukan tx.fhir.org yang dipakai LOV) --}}
+                                <div class="flex flex-wrap items-center gap-2 mt-2">
+                                    <x-outline-button type="button" wire:click="cekLoincKeSatuSehat"
+                                        :disabled="trim($loincCode) === ''" wire:loading.attr="disabled"
+                                        wire:target="cekLoincKeSatuSehat">
+                                        <span wire:loading.remove wire:target="cekLoincKeSatuSehat">Cek ke Satu
+                                            Sehat</span>
+                                        <span wire:loading wire:target="cekLoincKeSatuSehat">Mengecek...</span>
+                                    </x-outline-button>
+                                </div>
+
+                                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">LOV mencari kode dari
+                                    database lokal atau tx.fhir.org. Tombol cek memastikan kodenya ada di daftar resmi
+                                    terminologi radiologi Satu Sehat sebelum dipakai mengirim.</p>
                             </div>
                         </div>
                     </x-border-form>

@@ -36,6 +36,28 @@ new class extends Component {
     }
 
     /* =========================
+     | Cek status LOINC
+     * ========================= */
+    public function cekStatusLoinc(): void
+    {
+        $total = DB::table('rsmst_radiologis')->count();
+        $terisi = DB::table('rsmst_radiologis')->whereRaw('loinc_code IS NOT NULL')->count();
+        $terdaftar = DB::table('rsmst_radiologis as r')
+            ->whereRaw('r.loinc_code IS NOT NULL')
+            ->whereExists(function ($subQuery) {
+                $subQuery->selectRaw('1')->from('rsmst_loinc_codes as c')
+                    ->whereColumn('c.loinc_code', 'r.loinc_code');
+            })->count();
+
+        $asing = $terisi - $terdaftar;
+        $kosong = $total - $terisi;
+
+        $this->dispatch('toast',
+            type: $asing > 0 ? 'error' : 'success',
+            message: "LOINC: {$terdaftar} terdaftar di daftar resmi SATUSEHAT, {$asing} tidak dikenal, {$kosong} belum dipetakan (dari {$total} tindakan).");
+    }
+
+    /* =========================
      | Child modal triggers
      * ========================= */
 
@@ -87,7 +109,17 @@ new class extends Component {
     {
         $searchKeyword = trim($this->searchKeyword);
 
-        $queryBuilder = DB::table('rsmst_radiologis')->select('rad_id', 'rad_desc', 'rad_price', 'active_status', 'rad_jd', 'rad_jm', 'loinc_code', 'loinc_display')->orderBy('rad_desc', 'asc');
+        // leftJoin ke daftar resmi SATUSEHAT supaya kolom LOINC bisa menyatakan
+        // status keterdaftaran langsung di tabel — tanpa perlu ditekan dulu.
+        $queryBuilder = DB::table('rsmst_radiologis as r')
+            ->leftJoin('rsmst_loinc_codes as c', 'c.loinc_code', '=', 'r.loinc_code')
+            ->select(
+                'r.rad_id', 'r.rad_desc', 'r.rad_price', 'r.active_status',
+                'r.rad_jd', 'r.rad_jm', 'r.loinc_code', 'r.loinc_display',
+                DB::raw('c.loinc_code AS loinc_terdaftar'),
+                DB::raw('c.display_id AS loinc_nama_id'),
+            )
+            ->orderBy('r.rad_desc', 'asc');
 
         if ($searchKeyword !== '') {
             $uppercaseKeyword = mb_strtoupper($searchKeyword);
@@ -95,15 +127,15 @@ new class extends Component {
             $queryBuilder->where(function ($subQuery) use ($uppercaseKeyword, $searchKeyword) {
                 // Pencarian berdasarkan ID jika keyword berupa angka
                 if (ctype_digit($searchKeyword)) {
-                    $subQuery->orWhere('rad_id', $searchKeyword);
+                    $subQuery->orWhere('r.rad_id', $searchKeyword);
                 }
 
                 $subQuery
-                    ->orWhereRaw('UPPER(rad_desc) LIKE ?', ["%{$uppercaseKeyword}%"])
-                    ->orWhereRaw('UPPER(rad_jd) LIKE ?', ["%{$uppercaseKeyword}%"])
-                    ->orWhereRaw('UPPER(rad_jm) LIKE ?', ["%{$uppercaseKeyword}%"])
-                    ->orWhereRaw('UPPER(loinc_code) LIKE ?', ["%{$uppercaseKeyword}%"])
-                    ->orWhereRaw('UPPER(loinc_display) LIKE ?', ["%{$uppercaseKeyword}%"]);
+                    ->orWhereRaw('UPPER(r.rad_desc) LIKE ?', ["%{$uppercaseKeyword}%"])
+                    ->orWhereRaw('UPPER(r.rad_jd) LIKE ?', ["%{$uppercaseKeyword}%"])
+                    ->orWhereRaw('UPPER(r.rad_jm) LIKE ?', ["%{$uppercaseKeyword}%"])
+                    ->orWhereRaw('UPPER(r.loinc_code) LIKE ?', ["%{$uppercaseKeyword}%"])
+                    ->orWhereRaw('UPPER(r.loinc_display) LIKE ?', ["%{$uppercaseKeyword}%"]);
             });
         }
 
@@ -115,6 +147,58 @@ new class extends Component {
     public function rows()
     {
         return $this->baseQuery()->paginate($this->itemsPerPage);
+    }
+
+    /**
+     * Kepanjangan singkatan pada nama tindakan — untuk TAMPILAN saja,
+     * rad_desc di database tidak diubah.
+     *
+     * D = dextra (kanan), S = sinistra (kiri); dipakai berpasangan di master
+     * (ANKLE JOINT D / ANKLE JOINT S) dan digabung jadi D/S, D&S, D+S untuk
+     * kedua sisi.
+     */
+    public function namaLengkap(?string $namaTindakan): string
+    {
+        $nama = trim((string) $namaTindakan);
+        if ($nama === '') {
+            return '-';
+        }
+
+        $kamus = [
+            // sisi — pola gabungan didahulukan supaya tidak terpotong sebagian
+            // Lookaround menolak apostrof supaya WATER'S / STEVENVER'S tidak
+            // ikut terbaca sebagai singkatan sisi.
+            "/(?<![\\w'])D\\s*[\\/&+]\\s*S(?![\\w'])/i" => 'DEXTRA & SINISTRA',
+            "/(?<![\\w'])D(?![\\w'])/"                => 'DEXTRA',
+            "/(?<![\\w'])S(?![\\w'])/"                => 'SINISTRA',
+            // singkatan berimbuhan titik
+            '/\bVERT\./i'  => 'VERTEBRA',
+            '/\bART\./i'   => 'ARTICULATIO',
+            '/\bPROC\./i'  => 'PROCESSUS',
+            '/\bCERV\./i'  => 'CERVICAL',
+            '/\bLAT\.?\b/i' => 'LATERAL',
+            '/\bOBL\.?\b/i' => 'OBLIQUE',
+            '/\bTG\b/i'    => 'TANGENSIAL',
+        ];
+
+        foreach ($kamus as $pola => $ganti) {
+            $nama = preg_replace($pola, $ganti, $nama);
+        }
+
+        return preg_replace('/\s{2,}/', ' ', trim($nama));
+    }
+
+    /**
+     * Arti awalan rad_id — R rontgen, U USG, H HSG, sisanya kelompok rujukan.
+     */
+    public function artiAwalanId(?string $radId): string
+    {
+        return match (strtoupper(substr((string) $radId, 0, 1))) {
+            'R' => 'R = Rontgen / radiologi konvensional',
+            'U' => 'U = USG',
+            'H' => 'H = Histerosalpingografi',
+            default => 'Kelompok rujukan luar / Madinah',
+        };
     }
 
     // ==================== FORMAT RUPIAH ====================
@@ -161,6 +245,12 @@ new class extends Component {
                             </x-select-input>
                         </div>
 
+                        <x-outline-button type="button" wire:click="cekStatusLoinc"
+                            wire:loading.attr="disabled" wire:target="cekStatusLoinc">
+                            <span wire:loading.remove wire:target="cekStatusLoinc">Cek Status LOINC</span>
+                            <span wire:loading wire:target="cekStatusLoinc">Mengecek...</span>
+                        </x-outline-button>
+
                         <x-primary-button type="button" wire:click="openCreate">
                             + Tambah Data Radiologis Baru
                         </x-primary-button>
@@ -187,6 +277,7 @@ new class extends Component {
                                 <th>Rad JD</th>
                                 <th>Rad JM</th>
                                 <th>LOINC</th>
+                                <th>Status LOINC</th>
                                 <th class="ds-c">Aksi</th>
                             </tr>
                         </thead>
@@ -194,8 +285,15 @@ new class extends Component {
                         <tbody>
                             @forelse($this->rows as $row)
                                 <tr wire:key="radiologis-row-{{ $row->rad_id }}">
-                                    <td class="ds-td-token">{{ $row->rad_id }}</td>
-                                    <td class="ds-td-strong">{{ $row->rad_desc }}</td>
+                                    <td class="ds-td-token" title="{{ $this->artiAwalanId($row->rad_id) }}">
+                                        {{ $row->rad_id }}</td>
+                                    <td class="ds-td-strong" title="{{ $row->rad_desc }}">
+                                        {{ $this->namaLengkap($row->rad_desc) }}
+                                        @if ($this->namaLengkap($row->rad_desc) !== trim((string) $row->rad_desc))
+                                            <div class="text-xs font-normal" style="color:var(--muted)">
+                                                {{ $row->rad_desc }}</div>
+                                        @endif
+                                    </td>
                                     <td class="px-6 py-4">{{ $this->formatRupiah($row->rad_price) }}</td>
                                     <td class="px-6 py-4">
                                         <x-toggle :current="(string) $row->active_status" trueValue="1" falseValue="0"
@@ -207,11 +305,25 @@ new class extends Component {
                                     <td class="px-6 py-4">{{ $row->rad_jm ?? '-' }}</td>
                                     <td class="px-6 py-4">
                                         @if (!empty($row->loinc_code))
-                                            <x-badge variant="success" title="{{ $row->loinc_display }}">
+                                            <x-badge :variant="filled($row->loinc_terdaftar) ? 'success' : 'danger'"
+                                                title="{{ $row->loinc_display }}">
                                                 {{ $row->loinc_code }}
                                             </x-badge>
                                         @else
                                             <span class="text-xs" style="color:var(--muted)">Belum dipetakan</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        @if (empty($row->loinc_code))
+                                            <x-badge variant="gray">Belum dipetakan</x-badge>
+                                        @elseif (filled($row->loinc_terdaftar))
+                                            <x-badge variant="success">Terdaftar</x-badge>
+                                            <div class="mt-1 text-xs" style="color:var(--muted)">
+                                                {{ $row->loinc_nama_id }}</div>
+                                        @else
+                                            <x-badge variant="danger">Tidak terdaftar</x-badge>
+                                            <div class="mt-1 text-xs text-error-deep dark:text-red-300">Tak ada di
+                                                daftar resmi SATUSEHAT</div>
                                         @endif
                                     </td>
                                     <td class="ds-c px-6 py-4">
@@ -225,7 +337,7 @@ new class extends Component {
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="px-6 py-10 text-center" style="color:var(--muted)">
+                                    <td colspan="9" class="px-6 py-10 text-center" style="color:var(--muted)">
                                         <div class="flex flex-col items-center justify-center">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mb-3 text-gray-400"
                                                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
