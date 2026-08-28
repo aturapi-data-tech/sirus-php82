@@ -1,0 +1,156 @@
+rad_id,rad_desc,aktif,kode_lama,display_lama,kode_baru,display_baru_resmi,nama_indonesia,keyakinan
+111,,1,,,,,,administratif
+R41,ANKLE JOINT D,1,36619-5,XR Ankle,26387-1,XR Ankle - right 2 Views,XR ankle dua proyeksi kanan,pasti
+R67,ANKLE JOINT S,1,36619-5,XR Ankle,26386-3,XR Ankle - left 2 Views,XR ankle dua proyeksi kiri,pasti
+R17,ANTEBRACHII D,1,37048-7,XR Forearm,37708-5,XR Radius and Ulna - right AP and Lateral,XR antebrachi AP dan lateral kanan,pasti
+R27,ANTEBRACHII S,1,37048-7,XR Forearm,36700-3,XR Radius and Ulna - left AP and Lateral,XR antebrachi AP dan lateral kiri,pasti
+R78,APPENDICOGRAFI 1,1,24626-2,RF Appendix with barium,69242-6,RF Guidance for percutaneous drainage of abscess and placement of drainage catheter of Appendix,Appendicography,perlu-cek
+R79,APPENDICOGRAFI 2,1,24626-2,RF Appendix with barium,69242-6,RF Guidance for percutaneous drainage of abscess and placement of drainage catheter of Appendix,Appendicography,perlu-cek
+R115,ART. COXAE AP D,1,37181-6,XR Hip AP,26132-1,XR Hip - right Views,XR coxae kanan,pasti
+R116,ART. COXAE AP S,1,37181-6,XR Hip AP,26131-3,XR Hip - left Views,XR artc. coxae kiri,pasti
+R117,ART. COXAE LAT D,1,37182-4,XR Hip Lateral,37730-9,XR Hip - right Lateral,XR artc. coxae lateral kanan,pasti
+R118,ART. COXAE LAT S,1,37182-4,XR Hip Lateral,36603-9,XR Hip - left Lateral,XR artc. coxae lateral kiri,pasti
+R119,BABYGRAM,1,36643-5,XR Babygram,83019-0,XR Chest and Abdomen and Pelvis View babygram,XR abdomen dan thorax babygram,pasti
+2D,BACAAN MADINAH,0,,,,,,administratif
+R83,BARIUM FOLLOW THROUGH,1,24855-7,RF Barium follow through,43574-3,RF Upper gastrointestinal tract and Small bowel Views W barium contrast PO,RF followtrough,pasti
+R33,BASIS CRANII,1,36287-1,XR Skull submentovertex,48697-7,XR Skull base Views,XR basis cranium,pasti
+R15,BENDING D,1,36589-0,XR Lumbar spine Bending,42429-1,XR Thoracic and lumbar spine AP for scoliosis W standing and W right bending,XR vertebra thoracolumbar bending kanan,pasti
+R12,BENDING S,1,36589-0,XR Lumbar spine Bending,44206-1,XR Thoracic and lumbar spine for scoliosis single view,XR thoracolumbal bending kiri,pasti
+R24,BNO,1,43462-6,XR Abdomen AP,24799-9,XR Abdomen AP,XR abdomen AP,pasti
+2A,BOF,0,,,24799-9,XR Abdomen AP,XR abdomen AP,pasti
+R4,BOF,1,43462-6,XR Abdomen AP,24799-9,XR Abdomen AP,XR abdomen AP,pasti
+R55,BOF 1/2 DUDUK,1,43462-6,XR Abdomen AP upright,37046-0,XR Abdomen Upright,XR BOF/BNO/KUB erect,pasti
+R121,BOF 3 POSISI,1,43462-6,XR Abdomen 3 Views,36293-9,XR Abdomen 3 Views,XR abdomen tiga proyeksi,pasti
+R42,CALCANEUS  AP / TG D,1,36639-3,XR Calcaneus,98303-1,XR Calcaneus - right Lateral,XR calcaneus lateral kanan,perlu-cek
+R70,CALCANEUS AP / TG S,1,36639-3,XR Calcaneus,98311-4,XR Calcaneus - left Lateral,XR calcaneus lateral kiri,perlu-cek
+R1041,CERV. AP / LAT. / OBL. D / OBL. S,1,36657-5,XR Cervical spine AP and Lateral,36331-7,XR Cervical spine 4 Views,XR cervical 4 proyeksi,pasti
+R10,CERVICAL AP,1,36657-5,XR Cervical spine AP,30725-6,XR Cervical spine AP,XR cervical AP,pasti
+2C,CERVICAL AP LATERAL,0,,,24942-5,XR Cervical spine AP and Lateral,XR cervical AP dan lateral,pasti
+R108,CERVICAL LAT.,1,36659-1,XR Cervical spine Lateral,24943-3,XR Cervical spine Lateral,XR cervical lateral,pasti
+R11,CERVICAL OBLIQUE D,1,36660-9,XR Cervical spine Oblique,36748-2,XR Cervical spine Oblique Views,XR cervical oblique,perlu-cek
+R50,CERVICAL OBLIQUE S,1,36660-9,XR Cervical spine Oblique,36748-2,XR Cervical spine Oblique Views,XR cervical oblique,perlu-cek
+R34,CLAVICULA D,1,36695-5,XR Clavicle,97362-8,XR Clavicle - right AP,XR clavicula AP kanan,pasti
+R56,CLAVICULA S,1,36695-5,XR Clavicle,97347-9,XR Clavicle - left AP,XR clavicula AP kiri,pasti
+R21,COCCYGEUS AP,1,36697-1,XR Coccyx AP,98356-9,XR Coccyx AP,XR coccygeus AP,pasti
+R54,COCCYGEUS LATERAL,1,36698-9,XR Coccyx Lateral,98357-7,XR Coccyx Lateral,XR coccygeus lateral,pasti
+R71,COLON IN LOOP,1,24745-0,RF Colon Barium enema,44227-7,RF Colon Views W barium contrast PR,RF kolon dengan barium enema,pasti
+R81,COLON IN LOOP BAYI,1,24745-0,RF Colon Barium enema,44227-7,RF Colon Views W barium contrast PR,RF kolon dengan barium enema,perlu-cek
+R29,CRURIS D,1,37917-3,XR Tibia and Fibula,37816-6,XR Tibia and Fibula - right AP and Lateral,XR cruris AP dan lateral kanan,pasti
+R20,CRURIS S,1,37917-3,XR Tibia and Fibula,36718-5,XR Tibia and Fibula - left AP and Lateral,XR cruris AP dan lateral kiri,pasti
+2F,CT SCAN,1,,,,,,terlalu-umum
+R112,DYNAMIC CERV EXTENSI,1,36657-5,XR Cervical spine Extension,98360-1,XR Cervical spine Single view W extension,XR cervical extensi,pasti
+R13,DYNAMIC CERV FLEXI,0,36657-5,XR Cervical spine Flexion,98358-5,XR Cervical spine Single view W flexion,XR cervical flexi,pasti
+R114,DYNAMIC LS EXTENSI,1,36589-0,XR Lumbar spine Extension,37132-8,XR Lumbar spine Lateral Views W flexion and W extension,XR vertebra lumbosakral lateral flexi dan extensi,perlu-cek
+R113,DYNAMIC LS FLEXI,1,36589-0,XR Lumbar spine Flexion,37132-8,XR Lumbar spine Lateral Views W flexion and W extension,XR vertebra lumbosakral lateral flexi dan extensi,perlu-cek
+R36,ELBOW D,1,36856-3,XR Elbow,37684-8,XR Elbow - right AP and Lateral,XR elbow AP dan lateral kanan,pasti
+R61,ELBOW S,1,36856-3,XR Elbow,36691-4,XR Elbow - left AP and Lateral,XR elbow AP dan lateral kiri,pasti
+R28,FEMUR D,1,37026-3,XR Femur,37692-1,XR Femur - right AP and Lateral,XR femur AP dan lateral kanan,pasti
+R49,FEMUR S,1,37026-3,XR Femur,36695-5,XR Femur - left AP and Lateral,XR femur AP dan lateral kiri,pasti
+R19,GENU D,1,37302-8,XR Knee,37745-7,XR Knee - right AP and Lateral,XR genu AP dan lateral kanan,pasti
+R52,GENU S,1,37302-8,XR Knee,36710-2,XR Knee - left AP and Lateral,XR genu AP dan lateral kiri,pasti
+R57,HIP JOINT D AP/LATERAL,1,37181-6,XR Hip AP,37725-9,XR Hip - right AP and Lateral,XR hip joint AP dan lateral kanan,pasti
+R58,HIP JOINT S AP/LATERAL,1,37181-6,XR Hip AP,36704-5,XR Hip - left AP and Lateral,XR hip joint AP dan lateral kiri,pasti
+H01,HISTEROSALPINGOGRAFI (HSG),0,24853-2,RF Uterus and Fallopian tubes HSG,25022-5,RF Uterus and Fallopian tubes Views W contrast IU,RF histerosalfingografi (HSG),pasti
+R74,HSG,1,24853-2,RF Uterus and Fallopian tubes HSG,25022-5,RF Uterus and Fallopian tubes Views W contrast IU,RF histerosalfingografi (HSG),pasti
+R26,HUMERUS D,1,37220-2,XR Humerus,37062-7,XR Humerus - bilateral Views,XR humerus dua proyeksi kanan atau kiri,perlu-cek
+R47,HUMERUS S,1,37220-2,XR Humerus,37062-7,XR Humerus - bilateral Views,XR humerus dua proyeksi kanan atau kiri,perlu-cek
+R44,IVP 1,1,24850-8,XR Urinary tract IVP,37607-9,XR Kidney Views W contrast IV,XR urografi (pielografi) dengan kontras IV,pasti
+R45,IVP 2,1,24850-8,XR Urinary tract IVP,37607-9,XR Kidney Views W contrast IV,XR urografi (pielografi) dengan kontras IV,pasti
+2G,KIRIM KE RAD LUAR,1,,,,,,administratif
+R5,LLD & BOF,1,43462-6,XR Abdomen AP and Lateral decubitus,36641-9,XR Abdomen 2 Views,XR abdomen dua proyeksi,perlu-cek
+R7,MANDIBULA AP,1,37339-0,XR Mandible AP,43521-4,XR Mandible 1 or 2 Views,XR mandibula AP,pasti
+R46,MANDIBULA EISLER,1,37339-0,XR Mandible,36747-4,XR Mandible Oblique Views,XR mandibula eisler,pasti
+R53,MANUS D,1,37154-3,XR Hand,37710-1,XR Hand - right AP and Lateral,XR manus AP dan lateral kanan,pasti
+R38,MANUS S,1,37154-3,XR Hand,38847-0,XR Hand - left AP and Lateral,XR manus AP dan lateral kiri,pasti
+R8,MASTOIS SCHULLER D,1,36780-6,XR Mastoid,26141-2,XR Mastoid - right Views,XR mastoid schuller kanan,pasti
+R18,MASTOIS SCHULLER S,1,36780-6,XR Mastoid,26140-4,XR Mastoid - left Views,XR mastoid schuller kiri,pasti
+R48,NASAL LATERAL,1,36957-0,XR Nasal bones Lateral,24834-4,XR Nasal bones Views,XR nasal tangensial,perlu-cek
+R16,ODONTOID,1,36661-7,XR Cervical spine Odontoid AP,24948-2,XR Spine Cervical Odontoid and Cervical axis AP,XR cervical I dan odontoid,pasti
+R76,OESOPHAGOGRAFI,1,24856-5,RF Esophagus with barium,24678-5,RF Esophagus Views W contrast PO,RF esofagografi,pasti
+R43,PEDIS PA / OBL D,1,37042-0,XR Foot,39076-5,XR Foot AP and Oblique,XR pedis AP dan oblique kanan,pasti
+R68,PEDIS PA / OBL S,1,37042-0,XR Foot,30784-3,XR Foot 2 Views,XR pedis dua proyeksi,perlu-cek
+R6,PELVIS AP,1,37620-3,XR Pelvis AP,37622-8,XR Pelvis AP,XR pelvis AP,pasti
+R25,PELVIS FROG POSITON,1,37620-3,XR Pelvis Frog leg,37626-9,XR Pelvis Lateral frog,XR frog position,pasti
+R125,PELVIS INLET & OUTLET,1,37620-3,XR Pelvis Inlet and Outlet,37623-6,XR Pelvis AP and Inlet and Outlet,"XR pelvis AP, inlet dan outlet",pasti
+R106,PENIS,1,37629-4,XR Penis,37586-5,RF Penis Views W contrast intra corpus cavernosum,RF corpora cavernosografi,perlu-cek
+R109,PROC. ODONTOIDEUS,1,36661-7,XR Cervical spine Odontoid AP,24948-2,XR Spine Cervical Odontoid and Cervical axis AP,XR cervical I dan odontoid,pasti
+01,RADIOLOGI LAIN-LAIN MADINAH,1,,,,,,administratif
+R110,SACRO-COCCYGEUS AP,1,36697-1,XR Sacrococcyx AP,44179-0,XR Sacrum and Coccyx 2 Views,XR vertebra sacrococcygeus AP dan lateral,perlu-cek
+R111,SACRO-COCCYGEUS LAT,1,36698-9,XR Sacrococcyx Lateral,44179-0,XR Sacrum and Coccyx 2 Views,XR vertebra sacrococcygeus AP dan lateral,perlu-cek
+R39,SACRUM AP,1,37682-3,XR Sacrum AP,37651-7,XR Sacrum 2 Views,XR sacrum dua proyeksi,perlu-cek
+R40,SACRUM LATERAL,1,37683-1,XR Sacrum Lateral,37652-5,XR Sacrum AP and Lateral,XR sacrum lateral,pasti
+R51,SHOULDER AP D,1,37764-9,XR Shoulder AP,37798-6,XR Shoulder - right AP,XR bahu AP kanan,pasti
+R59,SHOULDER AP S,1,37764-9,XR Shoulder AP,36587-4,XR Shoulder - left AP,XR bahu AP kiri,pasti
+R107,SHOULDER AXIAL D/S,1,37764-9,XR Shoulder Axial,37800-0,XR Shoulder - right Axillary,XR bahu axial kanan,perlu-cek
+R35,SHOULDER JOINT EXO-ENDO D,1,37764-9,XR Shoulder,39395-9,XR Shoulder - right AP internal rotation and AP external rotation,XR shoulder exo dan endo kanan,pasti
+R60,SHOULDER JOINT EXO-ENDO S,1,37764-9,XR Shoulder,39328-0,XR Shoulder - left AP internal rotation and AP external rotation,XR shoulder exo dan endo kiri,pasti
+R80,SINGLE SHOT IVP,1,24850-8,XR Urinary tract Single shot IVP,37607-9,XR Kidney Views W contrast IV,XR urografi (pielografi) dengan kontras IV,perlu-cek
+R73,SISTOGRAFI,1,24695-7,RF Bladder Cystography,86401-7,RF Urinary bladder Views W contrast intra bladder,RF cystogram w kontras intrabladder,pasti
+R30,SKULL AP,1,36287-1,XR Skull AP,69269-9,XR Skull AP,XR skull AP,pasti
+R31,SKULL LATERAL,1,36288-9,XR Skull Lateral,24920-1,XR Skull Lateral,XR skull lateral,pasti
+R64,SKYLINE D,1,37302-8,XR Knee Skyline,69256-6,XR Knee - right Sunrise,XR sky line kanan,pasti
+R65,SKYLINE S,1,37302-8,XR Knee Skyline,43779-8,XR Knee - left Sunrise,XR sky line kiri,pasti
+R104,STEVENVER'S D,1,36780-6,XR Mastoid Stenvers,37153-4,XR Mastoid Stenver and Arcelin,XR stenvers kanan,pasti
+R105,STEVENVER'S S,1,36780-6,XR Mastoid Stenvers,37153-4,XR Mastoid Stenver and Arcelin,XR stenvers kanan,perlu-cek
+R2,THORAX LATERAL,1,36554-4,XR Chest Lateral,39051-8,XR Chest Lateral,XR thorax lateral,pasti
+R22,THORAX OBLIQUE D,1,37439-8,XR Chest Oblique,37010-6,XR Chest Right oblique,XR thorax oblique kanan,pasti
+R3,THORAX OBLIQUE S,1,37439-8,XR Chest Oblique,37008-0,XR Chest Left oblique,XR thorax oblique kiri,pasti
+2B,THORAX PA,0,,,24648-8,XR Chest PA upright,XR thorax PA,pasti
+R1,THORAX PA / AP,1,36643-5,XR Chest 2 Views,36643-5,XR Chest 2 Views,XR thorax dua proyeksi,pasti
+R1036,THORAX PA / LAT.,1,36643-5,XR Chest PA and Lateral,36687-2,XR Chest AP and Lateral,XR thorax dua proyeksi AP dan lateral,pasti
+R23,THORAX TOP LORDOTIC,1,36687-2,XR Chest AP Lordotic,24640-5,XR Chest Apical lordotic,XR top lordotik,pasti
+R9,TMJ D,0,37901-7,XR Temporomandibular joint,48490-7,XR Temporomandibular joint - right Open and Closed mouth,XR TMJ buka mulut kanan,perlu-cek
+R209,TMJ D/S OPEN & CLOSE MOUTH,1,37901-7,XR Temporomandibular joint,37546-9,XR Temporomandibular joint - bilateral Open and Closed mouth,XR sendi temporomandibula buka dan tutup mulut bilateral,pasti
+R14,TMJ S,0,37901-7,XR Temporomandibular joint,48491-5,XR Temporomandibular joint - left Open and Closed mouth,XR TMJ buka mulut kiri,perlu-cek
+R75,UPPER GI,1,24855-7,RF Upper GI tract with barium,98283-5,XR Gastrointestinal tract upper Views,XR traktus gastrointestinal atas,pasti
+R82,UPPER GI BAYI,1,24855-7,RF Upper GI tract with barium,98283-5,XR Gastrointestinal tract upper Views,XR traktus gastrointestinal atas,perlu-cek
+R77,URETHRO-SISTOGRAFI,1,24852-4,RF Urethra and Bladder Voiding cystourethrography,25020-9,RF Urinary bladder and Urethra Views W contrast retrograde via urethra,RF uretrosistografi retrograd,pasti
+R72,URETHROGRAFI,1,24852-4,RF Urethra Urethrography,25016-7,RF Urethra Views W contrast intra urethra,RF urethrografi,pasti
+R218,USG ABDOMEN + DOPPLER,1,24685-8,US Abdomen Doppler,24534-0,US.doppler Abdominal vessels,US doppler pembuluh darah abdomen,pasti
+U5,USG ABDOMEN ATAS,1,24558-9,US Abdomen upper,24558-9,US Abdomen,US abdomen,perlu-cek
+U4,USG ABDOMEN BAWAH,1,24558-9,US Abdomen lower,24558-9,US Abdomen,US abdomen,perlu-cek
+R212,USG ABDOMEN CITO,1,24558-9,US Abdomen,24558-9,US Abdomen,US abdomen,pasti
+U3,USG ABDOMEN TOTAL,1,24558-9,US Abdomen,24558-9,US Abdomen,US abdomen,pasti
+U15,USG AXILLA D/S,1,37432-3,US Axilla,80852-7,US Axilla,US axilla,pasti
+U28,USG COLLI,1,24558-9,US Neck,24842-7,US Neck,US leher,pasti
+U20,USG DEEP VEIN THROMBOSIS (DVT) D/S,1,24862-3,US Lower extremity vein Duplex,46364-6,US Lower extremity vein - bilateral,US vena ekstremitas inferior bilateral,perlu-cek
+2E,USG DI MADINAH,0,,,,,,administratif
+U25,USG DOPLER EXTERMITAS,1,24862-3,US Extremity vein Duplex,39449-4,US.doppler Extremity vein,US doppler vena ekstremitas,perlu-cek
+U26,USG DOPLER EXTERMITAS ATAS D/S,0,24862-3,US Upper extremity Duplex,39423-9,US.doppler Upper extremity artery - bilateral,US doppler arteri ekstremitas atas bilateral,perlu-cek
+U27,USG DOPLER EXTERMITAS BWH D/S,0,24862-3,US Lower extremity Duplex,39421-3,US.doppler Lower extremity artery - bilateral,US doppler arteri ekstremitas bawah bilateral lengkap,perlu-cek
+U2,USG DOPPLER CAROTIS D+S,1,24648-6,US Carotid artery Duplex,43765-7,US.doppler Carotid arteries - bilateral,US doppler carotis bilateral,pasti
+U12,USG DOPPLER GINJAL D&S,1,24696-5,US Kidney Duplex bilateral,39426-2,US.doppler Renal vessels,US doppler pembuluh darah abdomen bawah (ginjal),pasti
+U11,USG DOPPLER GINJAL D/S,1,24696-5,US Kidney Duplex,39426-2,US.doppler Renal vessels,US doppler pembuluh darah abdomen bawah (ginjal),pasti
+U22,USG DOPPLER PER ORGAN,1,24558-9,US Doppler per organ,24558-9,US Abdomen,US abdomen,perlu-cek
+U6,USG HEPAR DOPPLER,1,24685-8,US Liver Doppler,69284-8,US.doppler Portal vein and Hepatic vein,US doppler vaskular hepar,pasti
+U19,USG INGUINAL(KGB) D/S,1,37432-3,US Inguinal,24719-7,US Groin,US inguinal,pasti
+U17,USG KANDUNGAN 4D,1,24854-0,US Pelvis 4D,42455-6,US Pelvis transabdominal and transvaginal,US obstetri ginekologi 2 dimensi,perlu-cek
+U16,USG KANDUNGAN CDFI,1,24854-0,US Pelvis transvaginal,42455-6,US Pelvis transabdominal and transvaginal,US obstetri ginekologi 2 dimensi,perlu-cek
+3A,USG KE LUAR,1,,,,,,administratif
+U9,USG KELENJAR LIUR,1,24838-3,US Salivary gland,38138-4,US Parotid gland,US parotid,perlu-cek
+U1,USG KEPALA,1,24590-2,US Head,81158-8,US Pediatric Head,US kepala anak,perlu-cek
+R214,USG LOWER ABDOMEN CITO,1,24558-9,US Abdomen lower,24558-9,US Abdomen,US abdomen,perlu-cek
+R220,USG LOWER ABDOMEN CITO,0,,,24558-9,US Abdomen,US abdomen,perlu-cek
+U14,USG MAMMAE D&S,1,24604-9,US Breast bilateral,24601-7,US Breast,US mammae,pasti
+U13,USG MAMMAE D/S,1,24604-9,US Breast unilateral,24601-7,US Breast,US mammae,pasti
+U21,"USG MUSCILO. D/S, SHOUL. KNEE",1,24754-2,US Musculoskeletal,80855-0,US Extremity musculoskeletal tissue,US muskuloskeletal,pasti
+R217,USG OBGYN CITO,1,24854-0,US Pelvis,42455-6,US Pelvis transabdominal and transvaginal,US obstetri ginekologi 2 dimensi,perlu-cek
+U18,USG TESTIS,1,24841-7,US Scrotum,25002-7,US Scrotum and testicle,US skrotum dan testis,pasti
+R216,USG TESTIS/SCROTUM CITO,1,24841-7,US Scrotum,25002-7,US Scrotum and testicle,US skrotum dan testis,pasti
+U23,USG THORAX MARKER,1,24643-7,US Chest,24630-6,US Chest,US thorax,pasti
+U24,USG THORAX MARKER CITO,1,24643-7,US Chest,24630-6,US Chest,US thorax,pasti
+U8,USG TYROID,1,24843-3,US Thyroid,25010-0,US Thyroid gland,US thyroid,pasti
+U7,USG TYROID,0,24843-3,US Thyroid,25010-0,US Thyroid gland,US thyroid,pasti
+R213,USG UPPER ABDOMEN CITO,1,24558-9,US Abdomen upper,24558-9,US Abdomen,US abdomen,perlu-cek
+U10,USG UROLOGI,1,24854-0,US Urinary tract,35093-4,Urology urinary tract ultrasound,US tractus urinarius,pasti
+R215,USG UROLOGI CITO,1,24854-0,US Urinary tract,35093-4,Urology urinary tract ultrasound,US tractus urinarius,pasti
+R100,VERT. LUMBOSACRAL AP,1,36589-0,XR Lumbar spine AP,36670-8,XR Lumbar spine 2 Views,XR vertebra lumbal dua proyeksi,perlu-cek
+R1034,VERT. LUMBOSACRAL AP / LAT,1,36589-0,XR Lumbar spine AP and Lateral,79371-1,XR Spine Lumbar and Sacrum GE 2 Views,XR vertebra lumbosakral AP dan lateral,pasti
+R102,VERT. LUMBOSACRAL LATERAL,1,36591-6,XR Lumbar spine Lateral,24969-8,XR Lumbar spine Lateral,XR vertebra lumbosakral lateral,pasti
+R101,VERT. THORACALIS AP,1,37944-7,XR Thoracic spine AP,30752-0,XR Thoracic spine AP,XR vertebra thorakal AP,pasti
+R120,VERT. THORACALIS AP/LAT,1,37944-7,XR Thoracic spine AP and Lateral,30753-8,XR Thoracic spine AP and Lateral,XR vertebra thorakal AP dan lateral,pasti
+R103,VERT. THORACALIS LATERAL,1,37945-4,XR Thoracic spine Lateral,30756-1,XR Thoracic spine Lateral,XR vertebra thorakal lateral,pasti
+R32,WATER'S,1,37017-2,XR Sinuses Waters view,24921-9,XR Skull Waters,XR waters,pasti
+R37,WRIST JOINT D,0,37974-4,XR Wrist,37832-3,XR Wrist - right AP and Lateral,XR wrist joint dextra AP dan lateral,pasti
+R62,WRIST JOINT D,1,37974-4,XR Wrist,37832-3,XR Wrist - right AP and Lateral,XR wrist joint dextra AP dan lateral,pasti
+R63,WRIST JOINT S,1,37974-4,XR Wrist,38860-3,XR Wrist - left AP and Lateral,XR wrist joint sinistra AP dan lateral,pasti
