@@ -810,7 +810,7 @@ new class extends Component {
                     @endif
 
                     <div
-                        class="p-6 space-y-6 bg-canvas border border-hairline shadow-sm sm:p-8 rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                        class="{{ $this->diForm() ? 'p-6 sm:p-8 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700' : '' }} space-y-6">
 
                         {{-- ── FORM ENTRI (1 laporan) ── --}}
                         @if ($this->diForm())
@@ -1095,11 +1095,7 @@ new class extends Component {
                         {{-- ══ DAFTAR LAPORAN TERSIMPAN (expandable) ══ --}}
                         @endif
                         @unless ($this->diForm())
-                        <div class="border-t border-hairline dark:border-gray-700">
-                            <h3 class="text-base font-semibold text-body dark:text-gray-300 pb-2 border-b border-hairline-soft dark:border-gray-800 mb-3">
-                                Daftar Laporan Operasi Tersimpan
-                            </h3>
-                                <p class="mb-3 text-xs italic text-muted-soft">Klik baris untuk lihat detail lengkap</p>
+                        <div class="">
                                 <div class="overflow-x-auto rounded-2xl">
                                     <table class="min-w-full text-base">
                                         <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">

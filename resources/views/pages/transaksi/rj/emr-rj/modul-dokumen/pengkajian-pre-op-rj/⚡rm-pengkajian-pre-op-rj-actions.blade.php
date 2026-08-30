@@ -1019,7 +1019,7 @@ new class extends Component {
                     @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
                     <div
-                        class="p-6 space-y-6 bg-canvas border border-hairline shadow-sm sm:p-8 rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                        class="{{ $this->diForm() ? 'p-6 sm:p-8 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700' : '' }} space-y-6">
 
                         @if ($isFormLocked)
                             <div

@@ -1,11 +1,6 @@
                         {{-- ══ DAFTAR PENGKAJIAN TERSIMPAN (expandable) ══ --}}
                         @if (count($preOpList ?? []))
                             <div class="mt-6">
-                                <h3
-                                    class="text-base font-semibold text-body dark:text-gray-300 pb-2 border-b border-hairline-soft dark:border-gray-800 mb-3">
-                                    Daftar Pengkajian Tersimpan
-                                </h3>
-                                <p class="mb-3 text-xs italic text-muted-soft">Klik baris untuk lihat detail lengkap</p>
                                 <div class="overflow-x-auto">
                                     <table class="min-w-full text-base border border-hairline rounded-lg dark:border-gray-700">
                                         <thead class="bg-surface-soft dark:bg-gray-800">
