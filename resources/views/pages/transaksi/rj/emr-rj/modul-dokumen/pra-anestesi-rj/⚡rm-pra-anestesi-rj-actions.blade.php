@@ -125,7 +125,7 @@ new class extends Component {
             if ($data) {
                 $this->dataDaftarPoliRJ = $data;
                 $this->regNo = $data['regNo'] ?? null;
-                $this->praList = $data['praAnestesiRJ'] ?? [];
+                $this->praAnestesiList = $data['praAnestesiRJ'] ?? [];
                 $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $disabled;
             }
         }
@@ -157,7 +157,7 @@ new class extends Component {
         if (!isset($this->dataDaftarPoliRJ['praAnestesiRJ']) || !is_array($this->dataDaftarPoliRJ['praAnestesiRJ'])) {
             $this->dataDaftarPoliRJ['praAnestesiRJ'] = [];
         }
-        $this->praList = $this->dataDaftarPoliRJ['praAnestesiRJ'];
+        $this->praAnestesiList = $this->dataDaftarPoliRJ['praAnestesiRJ'];
         $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-pra-anestesi-rj');
 
@@ -305,7 +305,7 @@ new class extends Component {
 
             $this->updateJsonRJ((int) $this->rjNo, $fresh);
             $this->dataDaftarPoliRJ = $fresh;
-            $this->praList = $fresh['praAnestesiRJ'];
+            $this->praAnestesiList = $fresh['praAnestesiRJ'];
 
             $this->appendAdminLogRJ((int) $this->rjNo, $logVerb . ' Pengkajian Pra Anestesi — ' . ($entry['psAsa'] ?: '-') . ' (' . $key . ')', 'MR');
         });
@@ -490,7 +490,7 @@ new class extends Component {
 
                 $this->updateJsonRJ((int) $this->rjNo, $fresh);
                 $this->dataDaftarPoliRJ = $fresh;
-                $this->praList = $fresh['praAnestesiRJ'];
+                $this->praAnestesiList = $fresh['praAnestesiRJ'];
 
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Buka kunci Pengkajian Pra Anestesi (' . $createdAt . ') oleh ' . $pembukaKunci . ' — kedua TTD dicabut', 'MR');
@@ -529,7 +529,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Form read-only.');
             return;
         }
-        $entry = collect($this->praList)->firstWhere('createdAt', $key);
+        $entry = collect($this->praAnestesiList)->firstWhere('createdAt', $key);
         if (!$entry) {
             $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
             return;
@@ -547,7 +547,7 @@ new class extends Component {
     // Lihat entri terkunci: muat ke form atas dalam mode read-only.
     public function viewEntry(string $key): void
     {
-        $entry = collect($this->praList)->firstWhere('createdAt', $key);
+        $entry = collect($this->praAnestesiList)->firstWhere('createdAt', $key);
         if (!$entry) {
             $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
             return;
@@ -596,7 +596,7 @@ new class extends Component {
      =============================== */
     public function cetak(string $createdAt)
     {
-        $entry = collect($this->praList)->firstWhere('createdAt', $createdAt);
+        $entry = collect($this->praAnestesiList)->firstWhere('createdAt', $createdAt);
         if (!$entry) {
             $this->dispatch('toast', type: 'error', message: 'Data pengkajian tidak ditemukan.');
             return;
@@ -673,7 +673,7 @@ new class extends Component {
 
                 $this->updateJsonRJ((int) $this->rjNo, $fresh);
                 $this->dataDaftarPoliRJ = $fresh;
-                $this->praList = $fresh['praAnestesiRJ'];
+                $this->praAnestesiList = $fresh['praAnestesiRJ'];
 
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Hapus Pengkajian Pra Anestesi — ' . $createdAt, 'MR');
             });
@@ -720,7 +720,7 @@ new class extends Component {
         $this->resetVersion();
         $this->isFormLocked = false;
         $this->dataDaftarPoliRJ = [];
-        $this->praList = [];
+        $this->praAnestesiList = [];
         $this->resetNewForm();
         $this->signaturePasien = '';
         $this->editingKey = null;
