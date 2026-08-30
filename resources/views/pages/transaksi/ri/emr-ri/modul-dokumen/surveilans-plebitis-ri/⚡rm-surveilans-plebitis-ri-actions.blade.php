@@ -831,13 +831,21 @@ new class extends Component {
                             <p class="flex-1 min-w-0 truncate text-xs text-muted dark:text-gray-400">Formulir Surveilans HAIs — diisi IPCLN / Perawat ruangan.</p>
                         </div>
                     </div>
+                    <div class="flex items-center gap-1.5 ml-auto shrink-0">
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="brand">Rawat Inap</x-badge>
+                        @if (count($entriList) > 0)
+                            <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ count($entriList) }} tersimpan</x-badge>
+                        @endif
+                        @if ($isFormLocked)
+                            <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
+                        @endif
+                    </div>
                     <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-auto shrink-0 shrink-0">
                         <span class="sr-only">Tutup</span>
                         <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
                         </svg>
                     </x-icon-button>
-                    @if ($this->diForm())
                 </div>
             </div>
 
@@ -920,6 +928,7 @@ new class extends Component {
 
                     @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
+                    @if ($this->diForm())
                     <fieldset @disabled($formReadOnly) class="space-y-4">
 
                         {{-- 1. DATA DASAR --}}

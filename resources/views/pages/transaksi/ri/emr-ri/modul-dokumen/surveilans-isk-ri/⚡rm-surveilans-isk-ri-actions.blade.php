@@ -795,6 +795,15 @@ new class extends Component {
                             <p class="flex-1 min-w-0 truncate text-xs text-muted dark:text-gray-400">Formulir Surveilans HAIs — diisi IPCLN / Perawat ruangan.</p>
                         </div>
                     </div>
+                    <div class="flex items-center gap-1.5 ml-auto shrink-0">
+                        <x-badge class="shrink-0 whitespace-nowrap" variant="brand">Rawat Inap</x-badge>
+                        @if (count($entriList) > 0)
+                            <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ count($entriList) }} tersimpan</x-badge>
+                        @endif
+                        @if ($isFormLocked)
+                            <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
+                        @endif
+                    </div>
                     <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-auto shrink-0 shrink-0">
                         <span class="sr-only">Tutup</span>
                         <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
