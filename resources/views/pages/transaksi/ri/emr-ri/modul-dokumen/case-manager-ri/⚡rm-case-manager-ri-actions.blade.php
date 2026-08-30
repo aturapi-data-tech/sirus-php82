@@ -53,6 +53,10 @@ new class extends Component {
     public bool $viewOnlyA = false;
     public bool $viewOnlyB = false;
 
+    // Layar aktif di modal: 'daftar' (grid entri Form A + Form B anaknya), 'formA', atau 'formB'.
+    // Formulir sengaja tidak nongkrong bersama daftarnya — pola baku modul dokumen.
+    public string $layar = 'daftar';
+
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-case-manager-ri'];
 
@@ -103,6 +107,8 @@ new class extends Component {
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
 
         $this->incrementVersion('modal-case-manager-ri');
+        $this->layar = 'daftar';
+
         $this->dispatch('open-modal', name: "rm-case-manager-ri-{$this->riHdrNo}");
     }
 
@@ -495,6 +501,7 @@ new class extends Component {
         $this->viewOnlyA = false;
         $this->hydrateFormAFromEntry($entry, $id);
         $this->dispatch('toast', type: 'info', message: 'Draft Form A dimuat untuk dilanjutkan.');
+        $this->layar = 'formA';
     }
 
     public function viewEntryA(string $id): void
@@ -507,6 +514,7 @@ new class extends Component {
         $this->viewOnlyA = true;
         $this->hydrateFormAFromEntry($entry, $id);
         $this->dispatch('toast', type: 'info', message: 'Menampilkan entri Form A terkunci (hanya lihat).');
+        $this->layar = 'formA';
     }
 
     public function editEntryB(string $id): void
@@ -527,6 +535,7 @@ new class extends Component {
         $this->viewOnlyB = false;
         $this->hydrateFormBFromEntry($entry, $id);
         $this->dispatch('toast', type: 'info', message: 'Draft Form B dimuat untuk dilanjutkan.');
+        $this->layar = 'formB';
     }
 
     public function viewEntryB(string $id): void
@@ -539,6 +548,7 @@ new class extends Component {
         $this->viewOnlyB = true;
         $this->hydrateFormBFromEntry($entry, $id);
         $this->dispatch('toast', type: 'info', message: 'Menampilkan entri Form B terkunci (hanya lihat).');
+        $this->layar = 'formB';
     }
 
     /* ===============================
@@ -552,6 +562,7 @@ new class extends Component {
         }
         $this->cancelEditA();
         $this->formA['tanggal'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+        $this->layar = 'formA';
     }
 
     public function tambahFormB(string $formA_id = ''): void
@@ -565,6 +576,7 @@ new class extends Component {
             $this->formB['formA_id'] = $formA_id;
         }
         $this->formB['tanggal'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+        $this->layar = 'formB';
     }
 
     public function cancelEditA(): void
@@ -585,6 +597,38 @@ new class extends Component {
         $this->viewOnlyB = false;
         $this->resetValidation();
         $this->incrementVersion('modal-case-manager-ri');
+    }
+
+    /** Layar formulir Form A sedang tampil? Saat terkunci, formulir tak pernah dirender. */
+    public function diFormA(): bool
+    {
+        return !$this->isFormLocked && ($this->viewOnlyA || $this->editingKeyA !== null || $this->layar === 'formA');
+    }
+
+    /** Layar formulir Form B (anak Form A) sedang tampil? */
+    public function diFormB(): bool
+    {
+        return !$this->isFormLocked && ($this->viewOnlyB || $this->editingKeyB !== null || $this->layar === 'formB');
+    }
+
+    /** Salah satu formulir sedang tampil → daftar entri disembunyikan. */
+    public function diForm(): bool
+    {
+        return $this->diFormA() || $this->diFormB();
+    }
+
+    /** Nama baku modul dokumen untuk "entri baru"; di modul ini entri baru = Form A baru
+     *  (Form B selalu anak Form A, dibuka dari barisnya). */
+    public function tambahEntri(): void
+    {
+        $this->tambahFormA();
+    }
+
+    /** Tutup formulir, kembali ke daftar entri. Formulir selalu ditinggalkan kosong. */
+    public function kembaliKeDaftar(): void
+    {
+        $this->cancelEditA();
+        $this->tutupFormB();
     }
 
     // Tutup editor Form B sepenuhnya (buang referensi Form A juga) → editor tersembunyi lagi.
@@ -710,6 +754,7 @@ new class extends Component {
             'perencanaan' => '',
             'tandaTanganPetugas' => ['petugasCode' => '', 'petugasName' => '', 'jabatan' => 'MPP'],
         ];
+        $this->layar = 'daftar';   // mengosongkan formulir = kembali ke daftar
     }
 
     private function resetFormB(): void
@@ -724,6 +769,7 @@ new class extends Component {
             'terminasi' => '',
             'tandaTanganPetugas' => ['petugasCode' => '', 'petugasName' => '', 'jabatan' => 'MPP'],
         ];
+        $this->layar = 'daftar';   // mengosongkan formulir = kembali ke daftar
     }
 
     protected function resetForm(): void
@@ -822,9 +868,6 @@ new class extends Component {
         foreach ($listFormA as $fa) {
             $formALabels[$fa['formA_id'] ?? ''] = ($fa['tanggal'] ?? '-') . ' — ' . (data_get($fa, 'tandaTanganPetugas.petugasName') ?: 'Draft');
         }
-        // Editor Form B hanya tampil saat sedang menambah/melanjutkan/melihat satu Form B
-        // (dipicu tombol + Form B / Lanjutkan Pengisian / Lihat pada entri Form A) — Form B = anak Form A.
-        $formBActive = $viewOnlyB || filled($editingKeyB) || filled($formB['formA_id'] ?? null);
     @endphp
 
     @if ($isFormLocked)
@@ -839,6 +882,7 @@ new class extends Component {
 
     {{-- ══════════════════════════ SECTION A — SKRINING AWAL MPP ══════════════════════════ --}}
     <x-border-form title="Form A — Skrining Awal MPP" align="start" bgcolor="bg-surface-soft">
+        @if ($this->diFormA())
 
         {{-- Banner status per-section A --}}
         @if ($viewOnlyA)
@@ -898,6 +942,7 @@ new class extends Component {
 
         {{-- Footer aksi Section A --}}
         <div class="flex flex-wrap items-center justify-end gap-2 mt-3">
+            <x-secondary-button type="button" wire:click="kembaliKeDaftar">Kembali ke Daftar</x-secondary-button>
             @if ($viewOnlyA)
                 <x-primary-button wire:click.prevent="cancelEditA" wire:target="cancelEditA" wire:loading.attr="disabled"
                     class="gap-1.5">
@@ -907,15 +952,6 @@ new class extends Component {
                     Selesai Melihat
                 </x-primary-button>
             @elseif (!$isFormLocked)
-                @if ($editingKeyA)
-                    <x-outline-button wire:click.prevent="tambahFormA" wire:target="tambahFormA" wire:loading.attr="disabled"
-                        class="gap-1.5" title="Kosongkan form untuk menambah catatan lain — entri tersimpan tidak berubah">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Entri Baru
-                    </x-outline-button>
-                @endif
                 <x-primary-button wire:click.prevent="saveDraftA" wire:loading.attr="disabled" wire:target="saveDraftA"
                     class="gap-2 min-w-[160px] justify-center">
                     <span wire:loading.remove wire:target="saveDraftA" class="flex items-center gap-1.5">
@@ -929,10 +965,11 @@ new class extends Component {
             @endif
         </div>
 
+        @endif
+        @unless ($this->diForm())
         {{-- ── TABEL EXPANDABLE Form A ── --}}
         <div class="mt-4">
             @if (count($listFormA))
-                <span class="block mb-2 text-xs italic text-muted-soft">Klik baris untuk lihat detail lengkap</span>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
                         <thead class="bg-surface-soft dark:bg-gray-800">
@@ -1149,10 +1186,23 @@ new class extends Component {
                 <p class="text-sm text-muted dark:text-gray-400">Belum ada entri Form A tersimpan.</p>
             @endif
         </div>
+        <div class="flex flex-wrap items-center justify-end gap-2 mt-4">
+            <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+            @unless ($isFormLocked)
+                <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
+                    wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Isi Formulir Baru
+                </x-primary-button>
+            @endunless
+        </div>
+        @endunless
     </x-border-form>
 
     {{-- ══════ EDITOR FORM B — muncul saat + Form B / Lanjutkan Pengisian / Lihat pada entri Form A (Form B = anak Form A) ══════ --}}
-    @if ($formBActive)
+    @if ($this->diFormB())
     <x-border-form title="Form B — Pelaksanaan, Monitoring, Advokasi, Terminasi" align="start" bgcolor="bg-surface-soft">
 
         {{-- Banner status per-section B --}}
@@ -1231,22 +1281,13 @@ new class extends Component {
                     Selesai Melihat
                 </x-primary-button>
             @elseif (!$isFormLocked)
-                <x-outline-button wire:click.prevent="tutupFormB" wire:target="tutupFormB" wire:loading.attr="disabled"
-                    class="gap-1.5" title="Tutup editor Form B tanpa menyimpan">
+                <x-outline-button wire:click.prevent="kembaliKeDaftar" wire:target="kembaliKeDaftar" wire:loading.attr="disabled"
+                    class="gap-1.5" title="Tutup formulir Form B, kembali ke daftar entri">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                    Tutup
+                    Kembali ke Daftar
                 </x-outline-button>
-                @if ($editingKeyB)
-                    <x-outline-button wire:click.prevent="tambahFormB" wire:target="tambahFormB" wire:loading.attr="disabled"
-                        class="gap-1.5" title="Kosongkan form untuk menambah catatan lain — entri tersimpan tidak berubah">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Entri Baru
-                    </x-outline-button>
-                @endif
                 <x-primary-button wire:click.prevent="saveDraftB" wire:loading.attr="disabled" wire:target="saveDraftB"
                     class="gap-2 min-w-[160px] justify-center">
                     <span wire:loading.remove wire:target="saveDraftB" class="flex items-center gap-1.5">

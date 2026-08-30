@@ -23,6 +23,10 @@ new class extends Component {
     /** Track entry yang sedang di-edit (null = entry baru) */
     public ?string $editingTglPindah = null;
 
+    // Layar aktif di modal: 'daftar' (riwayat pindah) atau 'form' (isian baru/edit).
+    // Formulir sengaja tidak nongkrong bersama daftarnya — pola baku modul dokumen.
+    public string $layar = 'daftar';
+
     public array $newPindah = [
         'tglPindah' => '',
         'tglTerima' => '',
@@ -112,6 +116,8 @@ new class extends Component {
 
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
         $this->incrementVersion('modal-form-pindah-ri');
+        $this->layar = 'daftar';
+
 
         $this->dispatch('open-modal', name: "rm-form-pindah-ri-{$this->riHdrNo}");
     }
@@ -156,6 +162,7 @@ new class extends Component {
         $this->resetValidation();
         $this->newPindah = array_replace_recursive($this->newPindah, $entry);
         $this->incrementVersion('modal-form-pindah-ri');
+        $this->layar = 'form';
     }
 
     public function batalEdit(): void
@@ -166,6 +173,30 @@ new class extends Component {
         $this->newPindah['dariRoomDesc'] = $this->dataDaftarRi['roomDesc'] ?? '';
         $this->resetValidation();
         $this->incrementVersion('modal-form-pindah-ri');
+        $this->layar = 'daftar';
+    }
+
+    /** Layar formulir sedang tampil? Saat terkunci, formulir tak pernah dirender. */
+    public function diForm(): bool
+    {
+        return !$this->isFormLocked && ($this->editingTglPindah !== null || $this->layar === 'form');
+    }
+
+    /** Buka formulir kosong untuk entri baru. */
+    public function tambahEntri(): void
+    {
+        if ($this->isFormLocked || $this->disabled) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menambah entri.');
+            return;
+        }
+        $this->batalEdit();      // kosongkan formulir (sekaligus balik ke daftar)…
+        $this->layar = 'form';   // …lalu naikkan formulirnya
+    }
+
+    /** Tutup formulir, kembali ke daftar entri. Formulir selalu ditinggalkan kosong. */
+    public function kembaliKeDaftar(): void
+    {
+        $this->batalEdit();
     }
 
     /** Cek apakah entry sudah final (kedua TTD ada) */
@@ -507,6 +538,7 @@ new class extends Component {
             'petugasPenerimaCode' => '',
             'petugasPenerimaDate' => '',
         ];
+        $this->layar = 'daftar';   // mengosongkan formulir = kembali ke daftar
     }
 
     protected function resetForm(): void
@@ -655,6 +687,7 @@ new class extends Component {
             <div class="flex-1 px-4 py-4 bg-surface-soft/70 dark:bg-gray-950/20">
                 <div class="max-w-full mx-auto space-y-4">
 
+                    @if ($this->diForm())
                     {{-- ══ PANDUAN PENGISIAN (collapsible) ══ --}}
                     <div x-data="{ open: false }"
                         class="overflow-hidden border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
@@ -1017,13 +1050,11 @@ new class extends Component {
 
                     </div>
 
+                    @endif
                     {{-- ══ DAFTAR RIWAYAT PINDAH ══ --}}
-                    @if (count($listPindah) > 0)
+                    @unless ($this->diForm())
                         <div
                             class="p-6 space-y-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                            <h3 class="text-base font-semibold text-ink dark:text-gray-200">
-                                Riwayat Pindah Tersimpan
-                            </h3>
                             <div class="overflow-x-auto">
                                 <table
                                     class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
@@ -1038,7 +1069,7 @@ new class extends Component {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach ($listPindah as $pindah)
+                                        @forelse ($listPindah as $pindah)
                                             @php
                                                 $rowLocked =
                                                     !empty($pindah['petugasPengirim']) &&
@@ -1051,7 +1082,7 @@ new class extends Component {
                                                         <x-badge variant="success">Selesai</x-badge>
                                                     @else
                                                         <x-badge variant="warning">Transit</x-badge>
-                                                    @endif
+                    @endunless
                                                 </td>
                                                 <td class="px-3 py-2 text-muted dark:text-gray-400">
                                                     {{ $pindah['tglPindah'] ?? '-' }}
@@ -1135,7 +1166,13 @@ new class extends Component {
                                                     </div>
                                                 </td>
                                             </tr>
-                                        @endforeach
+                                        @empty
+                                            <tr>
+                                                <td colspan="6" class="px-3 py-6 text-sm text-center text-muted-soft">
+                                                    Belum ada data tersimpan
+                                                </td>
+                                            </tr>
+                                        @endforelse
                                     </tbody>
                                 </table>
                             </div>
@@ -1147,8 +1184,9 @@ new class extends Component {
             {{-- FOOTER --}}
             <div
                 class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
+                @if ($this->diForm())
                 <div class="flex flex-wrap items-center justify-end gap-3">
-                    <x-secondary-button wire:click="closeModal">Tutup</x-secondary-button>
+                    <x-secondary-button wire:click="kembaliKeDaftar">Kembali ke Daftar</x-secondary-button>
 
                     @if ($riHdrNo && !$isFormLocked)
                         <x-primary-button wire:click.prevent="save" wire:loading.attr="disabled" wire:target="save"
@@ -1164,6 +1202,20 @@ new class extends Component {
                         </x-primary-button>
                     @endif
                 </div>
+                @else
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                        @unless ($isFormLocked)
+                            <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
+                                wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Isi Formulir Baru
+                            </x-primary-button>
+                        @endunless
+                    </div>
+                @endif
             </div>
 
         </div>
