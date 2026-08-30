@@ -228,27 +228,41 @@
     </div>
 
     {{--
-        wire:ignore WAJIB di sini. Isi daftar 100% dibangun Alpine dari `allOptions`
-        (sudah dibekukan ke x-data saat render) — server tidak pernah perlu memperbaruinya.
-        Tanpa ini, morph Livewire ikut mengaduk <template x-for>; kalau <li>-nya sampai
-        tercabut ke DOM hidup, `opt` kehilangan scope x-for dan Alpine melempar
-        "opt is not defined" DI TENGAH flushHandlers — sisa directive pada batch initTree
-        yang sama (mis. x-bind:class tab lain di halaman) ikut batal dijalankan.
+        TIGA LAPIS PENGAMAN untuk satu penyakit yang sama: sebuah <li> hasil x-for
+        ter-inisialisasi ULANG di luar scope x-for, lalu Alpine melempar
+        "opt is not defined" DI TENGAH flushHandlers — dan sisa directive pada batch
+        initTree yang sama ikut batal, sehingga elemen lain di halaman (mis. chip
+        sub-nav di tab Pelayanan Bedah RI) tampil kosong tanpa styling.
+
+        1. wire:ignore — isi daftar 100% dibangun Alpine dari `allOptions` (sudah dibekukan
+           ke x-data saat render), server tak pernah perlu memperbaruinya. Tanpa ini morph
+           Livewire ikut mengaduk <template x-for> dan bisa mencabut <li>-nya ke DOM hidup.
+        2. <template x-if="open"> — selama daftar tertutup (nyaris selalu) TIDAK ADA <li>
+           di DOM sama sekali, jadi tak ada yang bisa tercabut morph. Tanpa ini tiap
+           combobox menyimpan 50 <li> tersembunyi seumur halaman, padahal satu halaman EMR
+           memuat banyak combobox sekaligus (e-resep, inform consent, pindah ruang, ESO…).
+        3. typeof-guard di :class/x-text/handler — kalau toh ada <li> yang ter-init tanpa
+           scope, ekspresinya menghasilkan nilai kosong, BUKAN ReferenceError; batch
+           initTree jalan terus dan komponen lain di halaman tidak ikut jadi korban.
     --}}
     <div wire:ignore
          x-show="open && filtered.length > 0"
          x-transition.opacity.duration.100ms
          class="absolute z-50 w-full mt-2 overflow-hidden bg-white border border-gray-200 shadow-lg rounded-xl dark:bg-gray-900 dark:border-gray-700">
-        <ul class="overflow-y-auto divide-y divide-gray-100 max-h-72 dark:divide-gray-800">
-            <template x-for="(opt, idx) in filtered" :key="idx + '-' + opt.jenis + '-' + opt.id">
-                <li :class="idx === highlighted
-                        ? 'bg-brand-lime/15 dark:bg-brand-lime/25 ring-1 ring-brand-lime/30'
-                        : 'hover:bg-brand-lime/10 dark:hover:bg-brand-lime/20'"
-                    class="w-full px-4 py-3 text-left text-gray-800 dark:text-gray-100 rounded-lg transition-colors duration-150 cursor-pointer"
-                    x-on:mousedown.prevent="pick(opt)"
-                    x-on:mouseenter="highlighted = idx"
-                    x-text="teks(opt)"></li>
-            </template>
-        </ul>
+        <template x-if="open">
+            <ul class="overflow-y-auto divide-y divide-gray-100 max-h-72 dark:divide-gray-800">
+                <template x-for="(opt, idx) in filtered" :key="idx + '-' + opt.jenis + '-' + opt.id">
+                    <li :class="typeof idx === 'undefined'
+                            ? ''
+                            : (idx === highlighted
+                                ? 'bg-brand-lime/15 dark:bg-brand-lime/25 ring-1 ring-brand-lime/30'
+                                : 'hover:bg-brand-lime/10 dark:hover:bg-brand-lime/20')"
+                        class="w-full px-4 py-3 text-left text-gray-800 dark:text-gray-100 rounded-lg transition-colors duration-150 cursor-pointer"
+                        x-on:mousedown.prevent="if (typeof opt !== 'undefined') { pick(opt); }"
+                        x-on:mouseenter="if (typeof idx !== 'undefined') { highlighted = idx; }"
+                        x-text="typeof opt === 'undefined' ? '' : teks(opt)"></li>
+                </template>
+            </ul>
+        </template>
     </div>
 </div>
