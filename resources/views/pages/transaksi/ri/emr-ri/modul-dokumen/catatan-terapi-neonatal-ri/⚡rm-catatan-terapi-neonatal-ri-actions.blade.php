@@ -729,7 +729,6 @@ new class extends Component {
                     @unless ($this->diForm())
                     <x-border-form padding="p-0">
                             <div class="flex items-center justify-between gap-2 mb-3">
-                                <span class="text-xs italic text-muted-soft">Klik baris untuk lihat detail lengkap</span>
                                 <x-secondary-button type="button" wire:click="cetakSemua" wire:loading.attr="disabled"
                                     wire:target="cetakSemua" class="px-3 py-1.5 text-sm gap-1.5">
                                     <span wire:loading.remove wire:target="cetakSemua">Cetak Catatan</span>

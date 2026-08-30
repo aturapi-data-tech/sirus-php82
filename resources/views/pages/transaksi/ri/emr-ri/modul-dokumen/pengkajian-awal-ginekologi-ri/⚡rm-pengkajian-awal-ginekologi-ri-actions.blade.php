@@ -1008,9 +1008,6 @@ new class extends Component {
                     @endif
                     @unless ($this->diForm())
                     <x-border-form padding="p-0">
-                            <div class="flex items-center justify-between gap-2 mb-3">
-                                <span class="text-xs italic text-muted-soft">Klik baris untuk lihat detail lengkap</span>
-                            </div>
                             <div class="overflow-x-auto rounded-2xl">
                                 <table class="min-w-full text-sm">
                                     <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">

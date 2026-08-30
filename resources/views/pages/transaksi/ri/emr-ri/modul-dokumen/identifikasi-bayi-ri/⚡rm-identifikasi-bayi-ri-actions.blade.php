@@ -60,6 +60,11 @@ new class extends Component {
 
     public array $entriList = [];
 
+    // Layar aktif di modal: 'daftar' (riwayat entri) atau 'form' (isian baru).
+    // Formulir sengaja tidak nongkrong bersama daftarnya — lihat pola baku
+    // docs/modul-dokumen-ri-pattern.md §2b.
+    public string $layar = 'daftar';
+
     protected function rules(): array
     {
         return [
@@ -99,6 +104,7 @@ new class extends Component {
 
         $this->resetNewForm();
         $this->resetValidation();
+        $this->layar = 'daftar';
 
         $data = $this->findDataRI($this->riHdrNo);
         if (!$data) {
@@ -258,6 +264,32 @@ new class extends Component {
         foreach ($this->newForm as $k => $v) {
             $this->newForm[$k] = is_array($v) ? [] : '';
         }
+        $this->layar = 'daftar';   // mengosongkan formulir = kembali ke daftar
+    }
+
+    /** Layar formulir sedang tampil? Saat terkunci, formulir tak pernah dirender. */
+    public function diForm(): bool
+    {
+        return !$this->isFormLocked && $this->layar === 'form';
+    }
+
+    /** Buka formulir kosong untuk entri baru. */
+    public function tambahEntri(): void
+    {
+        if ($this->isFormLocked || $this->disabled) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menambah entri.');
+            return;
+        }
+        $this->resetNewForm();
+        $this->resetValidation();
+        $this->layar = 'form';
+    }
+
+    /** Tutup formulir, kembali ke daftar entri. Formulir selalu ditinggalkan kosong. */
+    public function kembaliKeDaftar(): void
+    {
+        $this->resetNewForm();
+        $this->resetValidation();
     }
 
     public function addEntry(): void
@@ -464,6 +496,7 @@ new class extends Component {
                     @endif
 
                     {{-- ── FORM ENTRI ── --}}
+                    @if ($this->diForm())
                     <fieldset @disabled($isFormLocked) class="space-y-4">
 
                         {{-- 1. Identitas --}}
@@ -559,9 +592,11 @@ new class extends Component {
                             </x-primary-button>
                         </div>
                     </fieldset>
+                    @endif
 
                     {{-- ── DAFTAR ENTRI TERSIMPAN ── --}}
-                    <x-border-form title="Riwayat Identifikasi Bayi Tersimpan">
+                    @unless ($this->diForm())
+                    <x-border-form padding="p-0">
                         @forelse ($entriList as $entri)
                             <div wire:key="entri-{{ $entri['createdAt'] }}" class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border rounded-lg border-hairline dark:border-gray-700">
                                 <div class="text-sm">
@@ -617,15 +652,31 @@ new class extends Component {
                             <p class="text-sm text-muted dark:text-gray-400">Belum ada identifikasi bayi tersimpan.</p>
                         @endforelse
                     </x-border-form>
+                    @endunless
 
                 </div>
             </div>
 
             {{-- FOOTER --}}
             <div class="sticky bottom-0 z-10 px-6 py-3 bg-surface-soft border-t shrink-0 border-hairline dark:bg-gray-900 dark:border-gray-700">
-                <div class="flex justify-end">
-                    <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
-                </div>
+                @if ($this->diForm())
+                    <div class="flex justify-end">
+                        <x-secondary-button type="button" wire:click="kembaliKeDaftar">Kembali ke Daftar</x-secondary-button>
+                    </div>
+                @else
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                        @unless ($isFormLocked)
+                            <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
+                                wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Isi Formulir Baru
+                            </x-primary-button>
+                        @endunless
+                    </div>
+                @endif
             </div>
 
         </div>
