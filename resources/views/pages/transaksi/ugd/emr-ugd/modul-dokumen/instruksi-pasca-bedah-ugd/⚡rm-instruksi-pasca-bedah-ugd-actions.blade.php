@@ -667,7 +667,6 @@ new class extends Component {
                         clip-rule="evenodd" />
                         </svg>
                     </x-icon-button>
-                    @if ($this->diForm())
 
                 </div>
             </div>
@@ -680,7 +679,7 @@ new class extends Component {
 
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">
-                <div class="max-w-5xl mx-auto space-y-4">
+                <div class="max-w-full mx-auto space-y-4">
 
                     @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
@@ -712,6 +711,7 @@ new class extends Component {
                     @endif
 
                     {{-- ── FORM ENTRI (1 instruksi) ── --}}
+                    @if ($this->diForm())
                     <fieldset @disabled($formReadOnly) class="p-6 space-y-6 bg-canvas border border-hairline shadow-sm sm:p-8 rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
                         {{-- ══ TANGGAL ══ --}}

@@ -816,7 +816,7 @@ new class extends Component {
 
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">
-                <div class="max-w-5xl mx-auto space-y-4">
+                <div class="max-w-full mx-auto space-y-4">
 
                     @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 

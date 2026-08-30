@@ -595,7 +595,6 @@ new class extends Component {
                             <span class="sr-only">Close</span>
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                         </x-icon-button>
-                        @if ($this->diForm())
                         <div class="flex items-center gap-1.5 ml-auto shrink-0">
                             <x-badge class="shrink-0 whitespace-nowrap" variant="brand">Rawat Inap</x-badge>
                             @if (count($laporanAnList) > 0) <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ count($laporanAnList) }} tersimpan</x-badge> @endif
@@ -642,6 +641,7 @@ new class extends Component {
                     <div class="p-6 space-y-6 bg-canvas border border-hairline shadow-sm sm:p-8 rounded-2xl dark:bg-gray-900 dark:border-gray-700">
 
                         {{-- ── FORM ENTRI (1 laporan) ── --}}
+                        @if ($this->diForm())
                         <fieldset @disabled($formReadOnly) class="space-y-6">
 
                             <section class="grid grid-cols-1 gap-4 md:grid-cols-2">

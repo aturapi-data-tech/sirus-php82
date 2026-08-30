@@ -114,6 +114,12 @@ new class extends Component {
     // null = sedang membuat entri baru.
     public ?string $editingKey = null;
 
+    // Layar aktif di modal: 'daftar' (grid entri) atau 'form' (tambah/edit/lihat).
+    // Formulir sengaja tidak nongkrong bersama daftarnya: dulu ia ikut tampil terus lalu
+    // dikosongkan diam-diam sesudah tersimpan, dan petugas yang mengira itu masih formulir
+    // yang tadi diisi mengetik ulang — tersimpan sebagai draft baru.
+    public string $layar = 'daftar';
+
     // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja, tak bisa edit).
     public bool $viewOnly = false;
 
@@ -150,6 +156,7 @@ new class extends Component {
         $this->editingKey = null;
         $this->viewOnly = false;
         $this->resetValidation();
+        $this->layar = 'daftar';
 
         $data = $this->findDataRI($this->riHdrNo);
         if (!$data) {
@@ -596,6 +603,29 @@ new class extends Component {
         $this->incrementVersion('modal-pengkajian-pre-op-ri');
     }
 
+    /** Layar formulir sedang tampil? Saat terkunci, formulir tak pernah dirender. */
+    public function diForm(): bool
+    {
+        return !$this->isFormLocked && ($this->viewOnly || $this->editingKey !== null || $this->layar === 'form');
+    }
+
+    /** Buka formulir kosong untuk entri baru. */
+    public function tambahEntri(): void
+    {
+        if ($this->isFormLocked || $this->disabled) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menambah entri.');
+            return;
+        }
+        $this->cancelEdit();     // kosongkan formulir (sekaligus balik ke daftar)…
+        $this->layar = 'form';   // …lalu naikkan formulirnya
+    }
+
+    /** Tutup formulir, kembali ke daftar entri. Formulir selalu ditinggalkan kosong. */
+    public function kembaliKeDaftar(): void
+    {
+        $this->cancelEdit();
+    }
+
     /* ===============================
      | CETAK (inline stream PDF, by createdAt)
      =============================== */
@@ -842,6 +872,7 @@ new class extends Component {
             'ttdDokterOperatorCode' => '',
             'ttdDokterOperatorDate' => '',
         ];
+        $this->layar = 'daftar';   // mengosongkan formulir = kembali ke daftar
     }
 
     protected function resetForm(): void
@@ -853,6 +884,7 @@ new class extends Component {
         $this->resetNewForm();
         $this->editingKey = null;
         $this->viewOnly = false;
+        $this->layar = 'daftar';
     }
 };
 ?>
@@ -1013,11 +1045,12 @@ new class extends Component {
                                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
-                                Sedang melanjutkan entri <strong>{{ $editingKey }}</strong> — <strong>Simpan Perubahan</strong> menyimpan ke entri ini; klik <strong>Entri Baru</strong> untuk menambah pengkajian lain.
+                                Sedang melanjutkan entri <strong>{{ $editingKey }}</strong> — <strong>Simpan Perubahan</strong> menyimpan ke entri ini. Setelah tersimpan, Anda kembali ke daftar entri.
                             </div>
                         @endif
 
                         {{-- ── FORM ENTRI ── --}}
+                        @if ($this->diForm())
                         <fieldset @disabled($formReadOnly) class="space-y-6">
 
                             @include('pages.transaksi.ri.emr-ri.modul-dokumen.pengkajian-pre-op-ri.rm-pengkajian-pre-op-ri-data-operasi')
@@ -1026,7 +1059,10 @@ new class extends Component {
                             @include('pages.transaksi.ri.emr-ri.modul-dokumen.pengkajian-pre-op-ri.rm-pengkajian-pre-op-ri-persiapan-administrasi')
                             @include('pages.transaksi.ri.emr-ri.modul-dokumen.pengkajian-pre-op-ri.rm-pengkajian-pre-op-ri-site-marking')
                             @include('pages.transaksi.ri.emr-ri.modul-dokumen.pengkajian-pre-op-ri.rm-pengkajian-pre-op-ri-ttd')
+                        @endif
+                        @unless ($this->diForm())
                         @include('pages.transaksi.ri.emr-ri.modul-dokumen.pengkajian-pre-op-ri.rm-pengkajian-pre-op-ri-daftar-tersimpan')
+                        @endunless
 
                     </div>
                 </div>
@@ -1035,6 +1071,7 @@ new class extends Component {
             {{-- FOOTER --}}
             <div
                 class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
+                @if ($this->diForm())
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     @if ($viewOnly)
                         <p class="flex items-center gap-1.5 text-sm text-sky-600 dark:text-sky-400">
@@ -1056,7 +1093,7 @@ new class extends Component {
                     @endif
 
                     <div class="flex flex-wrap items-center justify-end gap-3">
-                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                        <x-secondary-button type="button" wire:click="kembaliKeDaftar">Kembali ke Daftar</x-secondary-button>
 
                         @if ($viewOnly)
                             <x-primary-button wire:click.prevent="cancelEdit" wire:target="cancelEdit"
@@ -1067,16 +1104,6 @@ new class extends Component {
                                 Selesai Melihat
                             </x-primary-button>
                         @elseif (!$isFormLocked)
-                            @if ($editingKey)
-                                <x-outline-button wire:click.prevent="cancelEdit" wire:target="cancelEdit"
-                                    wire:loading.attr="disabled" class="gap-1.5"
-                                    title="Kosongkan form untuk menambah pengkajian lain — entri yang sudah tersimpan tidak berubah">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                    </svg>
-                                    Entri Baru
-                                </x-outline-button>
-                            @endif
                             <x-primary-button wire:click.prevent="saveDraft" wire:loading.attr="disabled"
                                 wire:target="saveDraft" class="gap-2 min-w-[160px] justify-center">
                                 <span wire:loading.remove wire:target="saveDraft" class="flex items-center gap-1.5">
@@ -1090,6 +1117,20 @@ new class extends Component {
                         @endif
                     </div>
                 </div>
+                @else
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                        @unless ($isFormLocked)
+                            <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
+                                wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Isi Formulir Baru
+                            </x-primary-button>
+                        @endunless
+                    </div>
+                @endif
             </div>
 
         </div>
