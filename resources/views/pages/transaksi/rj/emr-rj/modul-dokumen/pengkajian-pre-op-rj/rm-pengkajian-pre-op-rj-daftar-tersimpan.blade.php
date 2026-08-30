@@ -13,7 +13,7 @@
                                                 <th class="px-4 py-3 text-center border-b">Aksi</th>
                                             </tr>
                                         </thead>
-                                        @foreach (array_reverse($preOpList) as $entry)
+                                        @foreach (collect($preOpList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
                                             @php
                                                 $isFinal = $this->entryIsFinal($entry);
                                                 $rowKey = $entry['createdAt'] ?? '';

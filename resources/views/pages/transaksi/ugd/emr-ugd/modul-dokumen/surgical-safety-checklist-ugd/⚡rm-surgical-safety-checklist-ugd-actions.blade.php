@@ -686,7 +686,7 @@ new class extends Component {
                 </div>
                 @if ($entriCount > 0)
                     <ul class="space-y-1 text-base text-muted dark:text-gray-300 list-disc pl-5">
-                        @foreach (array_slice(array_reverse($surgicalSafetyChecklistList), 0, 3) as $entri)
+                        @foreach (array_slice(collect($surgicalSafetyChecklistList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all(), 0, 3) as $entri)
                             <li>
                                 <span class="font-medium">{{ $entri['tindakan'] ?? '-' }}</span>
                                 @if (!empty($entri['tanggal'])) <span class="text-sm text-muted-soft">— {{ $entri['tanggal'] }}</span> @endif
@@ -718,7 +718,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse (array_slice(array_reverse($surgicalSafetyChecklistList ?? []), 0, 3) as $entry)
+                        @forelse (array_slice(collect($surgicalSafetyChecklistList ?? [])->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all(), 0, 3) as $entry)
                             @php
                                 $isFinal = $this->entryIsFinal($entry);
                                 $rowKey = $entry['createdAt'] ?? '';
@@ -1073,7 +1073,7 @@ new class extends Component {
                                                 <th class="whitespace-nowrap px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Aksi</th>
                                             </tr>
                                         </thead>
-                                        @forelse (array_reverse($surgicalSafetyChecklistList) as $entry)
+                                        @forelse (collect($surgicalSafetyChecklistList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
                                             @php
                                                 $isFinal = $this->entryIsFinal($entry);
                                                 $rowKey = $entry['createdAt'] ?? '';

@@ -913,7 +913,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse (array_slice(array_reverse($list ?? []), 0, 3) as $entri)
+                        @forelse (array_slice(collect($list ?? [])->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all(), 0, 3) as $entri)
                             @php
                                 $formEntri = $entri['form'] ?? [];
                                 $id = $entri['id'] ?? null;
@@ -1609,7 +1609,7 @@ new class extends Component {
                                     <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-center text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 w-56 bg-surface-card dark:bg-gray-800">Aksi</th>
                                 </tr>
                             </thead>
-                            @forelse (array_reverse($list) as $entri)
+                            @forelse (collect($list)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entri)
                                 @php
                                     $formEntri = $entri['form'] ?? [];
                                     $id = $entri['id'] ?? null;

@@ -684,7 +684,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse (array_slice(array_reverse($laporanList ?? []), 0, 3) as $entry)
+                        @forelse (array_slice(collect($laporanList ?? [])->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all(), 0, 3) as $entry)
                             @php
                                 $isFinal = $this->entryIsFinal($entry);
                                 $rowKey = $entry['createdAt'] ?? '';
@@ -1108,7 +1108,7 @@ new class extends Component {
                                                 <th class="whitespace-nowrap px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Aksi</th>
                                             </tr>
                                         </thead>
-                                        @forelse (array_reverse($laporanList) as $entry)
+                                        @forelse (collect($laporanList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
                                             @php
                                                 $isFinal = $this->entryIsFinal($entry);
                                                 $rowKey = $entry['createdAt'] ?? '';

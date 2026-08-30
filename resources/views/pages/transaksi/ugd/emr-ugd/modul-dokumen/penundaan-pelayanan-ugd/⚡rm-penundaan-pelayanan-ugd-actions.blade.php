@@ -594,7 +594,7 @@ new class extends Component {
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse (array_reverse($penundaanList) as $pp)
+                            @forelse (collect($penundaanList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $pp)
                                 <tr class="border-b border-hairline dark:border-gray-700">
                                     <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">
                                         {{ Str::limit($pp['jenis'] ?: ($pp['alasan'] ?? '-'), 50) ?: '-' }}
@@ -915,7 +915,7 @@ new class extends Component {
                                             <th class="whitespace-nowrap px-4 py-3 border-b text-center bg-surface-card dark:bg-gray-800">Aksi</th>
                                         </tr>
                                     </thead>
-                                    @forelse (array_reverse($penundaanList) as $entry)
+                                    @forelse (collect($penundaanList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
                                         @php
                                             // Normalisasi entri lama agar semua key ada (cegah "Undefined array key")
                                             $entry = array_replace([

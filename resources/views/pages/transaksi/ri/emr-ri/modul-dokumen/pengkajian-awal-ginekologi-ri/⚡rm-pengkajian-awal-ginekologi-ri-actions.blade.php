@@ -674,7 +674,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse (array_reverse($entriList) as $entri)
+                        @forelse (collect($entriList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entri)
                             <tr class="border-b border-hairline dark:border-gray-700">
                                 <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ ($entri['tglJamPengkajian'] ?? '') ?: ($entri['createdAt'] ?? '-') }}</td>
                                 <td class="px-3 py-2 text-muted dark:text-gray-400">{{ \Illuminate\Support\Str::limit($entri['diagnosa'] ?? '', 60) ?: '-' }}</td>
@@ -1020,7 +1020,7 @@ new class extends Component {
                                             <th class="whitespace-nowrap px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Aksi</th>
                                         </tr>
                                     </thead>
-                                    @forelse (array_reverse($entriList) as $entry)
+                                    @forelse (collect($entriList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
                                         @php
                                             $isFinal = $this->entryIsFinal($entry);
                                             $rowKey = $entry['createdAt'] ?? '';

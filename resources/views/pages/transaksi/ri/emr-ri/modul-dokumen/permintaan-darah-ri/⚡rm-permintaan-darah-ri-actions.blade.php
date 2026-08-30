@@ -572,7 +572,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse (array_slice(array_reverse($list ?? []), 0, 3) as $row)
+                        @forelse (array_slice(collect($list ?? [])->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all(), 0, 3) as $row)
                             @php
                                 $rid = $row['id'] ?? '';
                                 $rf = $row['form'] ?? [];

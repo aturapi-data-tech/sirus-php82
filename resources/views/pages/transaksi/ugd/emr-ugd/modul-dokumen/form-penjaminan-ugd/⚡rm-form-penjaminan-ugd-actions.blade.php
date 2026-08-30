@@ -636,7 +636,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse (array_reverse($listForm) as $ic)
+                        @forelse (collect($listForm)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $ic)
                             @php
                                 $jenisRow = collect($jenisPenjaminOptions)->firstWhere('id', $ic['jenisPenjamin'] ?? '');
                                 $jenisRowDesc = $jenisRow ? $jenisRow['desc'] : ($ic['jenisPenjamin'] ?? '-');
@@ -937,7 +937,7 @@ new class extends Component {
                             <th class="whitespace-nowrap px-4 py-3 border-b text-center bg-surface-card dark:bg-gray-800">Aksi</th>
                         </tr>
                     </thead>
-                    @forelse (array_reverse($listForm) as $entry)
+                    @forelse (collect($listForm)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
                         @php
                             $isFinal = $this->entryIsFinal($entry);
                             $rowKey = $entry['signaturePembuatDate'] ?? '';

@@ -945,7 +945,7 @@ new class extends Component {
                                 <th class="px-4 py-3 text-center border-b">Aksi</th>
                             </tr>
                         </thead>
-                        @foreach (array_reverse($listFormA) as $entry)
+                        @foreach (collect($listFormA)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
                             @php
                                 $isFinal = $this->entryIsFinal($entry);
                                 $rowKey = $entry['formA_id'] ?? '';

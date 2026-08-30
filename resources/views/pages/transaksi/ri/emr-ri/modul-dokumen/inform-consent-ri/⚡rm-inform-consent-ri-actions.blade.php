@@ -828,7 +828,7 @@ new class extends Component {
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse (array_reverse($consentList) as $ic)
+                            @forelse (collect($consentList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $ic)
                                 <tr class="border-b border-hairline dark:border-gray-700">
                                     <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">
                                         {{ \Illuminate\Support\Str::limit($ic['tindakan'] ?? '-', 50) }}
@@ -1332,7 +1332,7 @@ new class extends Component {
                                             <th class="whitespace-nowrap px-4 py-3 border-b text-center bg-surface-card dark:bg-gray-800">Aksi</th>
                                         </tr>
                                     </thead>
-                                    @forelse (array_reverse($consentList) as $consent)
+                                    @forelse (collect($consentList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $consent)
                                         @php
                                             $isFinal = $this->entryIsFinal($consent);
                                             $rowKey = $consent['signatureDate'] ?? '';

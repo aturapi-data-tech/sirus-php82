@@ -756,7 +756,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse (array_slice(array_reverse($dataDaftarRi['pelaporanEsoRI'] ?? [] ?? []), 0, 3) as $indexEntri)
+                        @forelse (array_slice(collect($dataDaftarRi['pelaporanEsoRI'] ?? [] ?? [])->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all(), 0, 3) as $indexEntri)
                             @php
                                 $idEntri = $entri['id'] ?? null;
                                 $isFinal = (bool) ($entri['finalized'] ?? false);

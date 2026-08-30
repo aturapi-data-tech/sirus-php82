@@ -937,7 +937,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (array_reverse($preOpList) as $entry)
+                        @foreach (collect($preOpList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
                             @php $entryTtdCount = collect(['ttdPerawatRuangan', 'ttdPerawatKamarBedah', 'ttdDokterOperator'])->filter(fn($ttdKey) => !empty($entry[$ttdKey]))->count(); @endphp
                             <tr class="border-b border-hairline dark:border-gray-700">
                                 <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ $entry['createdAt'] ?? '-' }}</td>
