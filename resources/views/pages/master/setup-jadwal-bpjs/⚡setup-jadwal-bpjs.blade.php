@@ -118,7 +118,14 @@ new class extends Component {
             ->select('shift')
             ->whereNotNull('shift_start')
             ->whereNotNull('shift_end')
-            ->whereRaw('? BETWEEN shift_start AND shift_end', [$jam])
+            // Dibandingkan pada HH:MM saja: sebagian baris menyimpan 'HH:MM',
+            // sebagian 'HH:MM:SS'. '14:00:00' BETWEEN '07:00' AND '14:00' bernilai
+            // FALSE kalau panjangnya beda — jadwal lalu jatuh ke shift 1 diam-diam.
+            ->whereRaw('SUBSTR(?, 1, 5) BETWEEN SUBSTR(shift_start, 1, 5) AND SUBSTR(shift_end, 1, 5)', [$jam])
+            // Tepat di jam batas (mis. 14:00 = akhir shift 1 = awal shift 2) DUA baris
+            // cocok. Tanpa urutan Oracle memulangkan mana saja — dan yang terpilih
+            // selalu shift 1. Ambil shift_start paling akhir → 14:00 masuk shift 2.
+            ->orderByDesc('shift_start')
             ->first();
 
         return ((int) ($barisShift?->shift ?? 1)) ?: 1;
@@ -147,14 +154,18 @@ new class extends Component {
             'kuota'                => $kuota,
         ];
 
-        $baris = DB::table('scmst_scpolis')
+        $barisQuery = DB::table('scmst_scpolis')
             ->where('day_id',      $dayId)
             ->where('poli_id',     $poliId)
             ->where('dr_id',       $drId)
             ->where('sc_poli_ket', $jamPraktek);
 
-        if ((clone $baris)->exists()) {
-            $baris->update($payload);
+        if ((clone $barisQuery)->exists()) {
+            // Shift boleh dikoreksi manual di layar Jadwal RS (jam batas antar-shift
+            // di rstxn_shiftctls tidak selalu persis). Sync ulang memperbarui kuota &
+            // jam praktek, tapi TIDAK menimpa koreksi itu.
+            unset($payload['shift']);
+            $barisQuery->update($payload);
             return true;
         }
 
@@ -370,29 +381,86 @@ new class extends Component {
      *  baris yang ditampilkan.
      * ══════════════════════════════════════════════════════════════════ */
 
-    /* ─── Hapus satu baris jadwal ─── */
-    public function hapusJadwal(int $indeksHari, int $indeksBaris): void
+    /* ─── Query yang mengunci TEPAT satu baris jadwal yang tampil ─── */
+    private function kunciBaris(object $barisJadwal): \Illuminate\Database\Query\Builder
     {
-        $baris = $this->jadwalRS[$indeksHari]['jadwal'][$indeksBaris] ?? null;
-        if (!$baris) {
+        $query = DB::table('scmst_scpolis')
+            ->where('sc_poli_status_', '1')
+            ->where('day_id',  $barisJadwal->day_id)
+            ->where('poli_id', $barisJadwal->poli_id)
+            ->where('dr_id',   $barisJadwal->dr_id);
+
+        // Di Oracle '' identik NULL: baris legacy tanpa sc_poli_ket dikunci lewat
+        // jam mulai, supaya tidak ikut menyapu jadwal lain dokter yang sama.
+        filled($barisJadwal->sc_poli_ket)
+            ? $query->where('sc_poli_ket', $barisJadwal->sc_poli_ket)
+            : $query->whereNull('sc_poli_ket')->where('mulai_praktek', $barisJadwal->mulai_praktek);
+
+        return $query;
+    }
+
+    /* ─── Daftar nomor shift yang dikenal (pilihan di tabel Jadwal RS) ─── */
+    #[Computed]
+    public function daftarShift(): array
+    {
+        $daftar = DB::table('rstxn_shiftctls')
+            ->whereNotNull('shift')
+            ->distinct()
+            ->orderBy('shift')
+            ->pluck('shift')
+            ->map(fn($nomorShift) => (int) $nomorShift)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return $daftar ?: [1, 2, 3];
+    }
+
+    /* ─── Ubah shift satu baris jadwal (koreksi manual) ─── */
+    public function ubahShift(int $indeksHari, int $indeksBaris, string $shift): void
+    {
+        $barisJadwal = $this->jadwalRS[$indeksHari]['jadwal'][$indeksBaris] ?? null;
+        if (!$barisJadwal) {
             $this->dispatch('toast', type: 'error', message: 'Baris jadwal tidak ditemukan, muat ulang halaman.');
             return;
         }
 
-        $hapusQuery = DB::table('scmst_scpolis')
-            ->where('sc_poli_status_', '1')
-            ->where('day_id',  $baris->day_id)
-            ->where('poli_id', $baris->poli_id)
-            ->where('dr_id',   $baris->dr_id);
+        $shiftBaru = (int) $shift;
+        if (!in_array($shiftBaru, $this->daftarShift, true)) {
+            $this->dispatch('toast', type: 'error', message: "Shift {$shift} tidak dikenal di rstxn_shiftctls.");
+            return;
+        }
 
-        // Di Oracle '' identik NULL: baris legacy tanpa sc_poli_ket dikunci lewat
-        // jam mulai, supaya tidak ikut menyapu jadwal lain dokter yang sama.
-        filled($baris->sc_poli_ket)
-            ? $hapusQuery->where('sc_poli_ket', $baris->sc_poli_ket)
-            : $hapusQuery->whereNull('sc_poli_ket')->where('mulai_praktek', $baris->mulai_praktek);
+        if ($shiftBaru === (int) $barisJadwal->shift) {
+            return;
+        }
 
         try {
-            $jumlahTerhapus = $hapusQuery->delete();
+            $jumlahDiubah = $this->kunciBaris($barisJadwal)->update(['shift' => $shiftBaru]);
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal mengubah shift: ' . $e->getMessage());
+            return;
+        }
+
+        unset($this->jadwalRS);
+
+        $this->dispatch('toast', type: $jumlahDiubah ? 'success' : 'warning', message: $jumlahDiubah
+            ? "Shift {$barisJadwal->dr_name} (" . substr($barisJadwal->mulai_praktek, 0, 5) . ") diubah ke Shift {$shiftBaru}."
+            : 'Tidak ada baris yang berubah — mungkin sudah dihapus pengguna lain.');
+    }
+
+    /* ─── Hapus satu baris jadwal ─── */
+    public function hapusJadwal(int $indeksHari, int $indeksBaris): void
+    {
+        $barisJadwal = $this->jadwalRS[$indeksHari]['jadwal'][$indeksBaris] ?? null;
+        if (!$barisJadwal) {
+            $this->dispatch('toast', type: 'error', message: 'Baris jadwal tidak ditemukan, muat ulang halaman.');
+            return;
+        }
+
+        try {
+            $jumlahTerhapus = $this->kunciBaris($barisJadwal)->delete();
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal menghapus: ' . $e->getMessage());
             return;
@@ -401,7 +469,7 @@ new class extends Component {
         unset($this->jadwalRS, $this->dokterBelumTerjadwal);
 
         $this->dispatch('toast', type: $jumlahTerhapus ? 'success' : 'warning', message: $jumlahTerhapus
-            ? "Jadwal dihapus: {$baris->dr_name} — {$baris->poli_desc} (" . substr($baris->mulai_praktek, 0, 5) . ')'
+            ? "Jadwal dihapus: {$barisJadwal->dr_name} — {$barisJadwal->poli_desc} (" . substr($barisJadwal->mulai_praktek, 0, 5) . ')'
             : 'Tidak ada baris terhapus — mungkin sudah dihapus pengguna lain.');
     }
 
@@ -904,7 +972,13 @@ new class extends Component {
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap">
                                             <span class="font-semibold text-gray-700 dark:text-white">{{ substr($barisJadwal->mulai_praktek, 0, 5) }}&ndash;{{ substr($barisJadwal->selesai_praktek, 0, 5) }}</span><br>
-                                            <span class="text-xs text-gray-400">Shift {{ $barisJadwal->shift }}</span>
+                                            <x-select-input class="px-2 py-1 mt-1 text-xs"
+                                                wire:key="shift-{{ $hari['day_id'] }}-{{ $key }}"
+                                                wire:change="ubahShift({{ $loop->parent->index }}, {{ $key }}, $event.target.value)">
+                                                @foreach($this->daftarShift as $nomorShift)
+                                                <option value="{{ $nomorShift }}" @selected((int) $barisJadwal->shift === $nomorShift)>Shift {{ $nomorShift }}</option>
+                                                @endforeach
+                                            </x-select-input>
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap text-gray-600 dark:text-gray-300">
                                             {{ $barisJadwal->kuota }}
