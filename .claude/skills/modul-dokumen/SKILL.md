@@ -45,6 +45,28 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
    singkatan, deskripsi > 90 karakter pakai `<x-deskripsi-ringkas>`. Rincian + tabel
    jebakan: `docs/modul-dokumen-ri-pattern.md §2a`.
 
+9. **Dua layar + nama method baku (BAKU, berlaku SEMUA modul multi-entri)** — `$layar` +
+   `diForm()`; `reset*()` ikut menyetel `$layar = 'daftar'` sehingga setiap jalur (simpan
+   draft, TTD/kunci, batal, hapus) otomatis balik ke daftar. Method **wajib bernama
+   `tambahEntri()` & `kembaliKeDaftar()`** — `periksa-tampilan.php` mencari persis
+   `wire:click="tambahEntri"` (layar daftar) dan `wire:click="kembaliKeDaftar"` (layar
+   formulir); modul dengan nama sendiri (Case Manager: `tambahFormA`/`cancelEditA`/
+   `tutupFormB`) WAJIB menyediakan alias. **Letak `@if ($this->diForm())` = tepat sebelum
+   `<fieldset>` formulir** — memasangnya di header modal membuat badge + **display pasien** +
+   pembungkus isi ikut hilang di layar daftar (9 modul kena 2026-08-30, dan pemeriksa TETAP
+   lolos). Buktikan lewat render: `str_contains($html, 'display-pasien')` di layar daftar.
+   Awas positif palsu: `edukasi-terintegrasi-ri` memang sengaja mem-`@if(diForm)` badge "Mode:"
+   di header. Doc: `docs/modul-dokumen-ri-pattern.md §2b`.
+10. **Layar daftar polos, selebar modal, urut terbaru di atas** — TANPA judul
+   `<h3>Daftar … Tersimpan</h3>` dan TANPA baris "Klik baris untuk lihat detail lengkap"
+   (judul modul sudah di header modal). Kartu `p-6 … sm:p-8` hanya milik layar formulir:
+   tempelkan di `<fieldset>` atau buat kelasnya bersyarat `$this->diForm()`; `max-w-5xl`
+   dilarang (pakai `max-w-full`). Urutan tabel: `collect($daftar)->sortByDesc(fn($entri) =>
+   strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))
+   ->values()->all()` — **jangan** `array_reverse` (itu urutan simpan, bukan tanggal), jangan
+   `Carbon::createFromFormat` (exception → modal 500 bila ada satu entri berformat menyimpang),
+   jangan `Carbon::parse` (menebak m/d/Y). Doc: `docs/modul-dokumen-ri-pattern.md §2a & §2c`.
+
 ## Port ke jalur lain (RI ⇄ UGD ⇄ RJ)
 
 Salin actions + cetak, ganti token **per-string** (bukan `RI→UGD` global). Tabel lengkap di

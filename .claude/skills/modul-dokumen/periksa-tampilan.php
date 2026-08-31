@@ -11,6 +11,9 @@
  *   2. tombol tutup benar-benar mepet kanan (dibaca lewat DOM: induk & saudaranya)
  *   3. layar daftar punya tombol Tutup + Isi Formulir Baru (modul dua layar)
  *   4. saat kosong, tabel tetap tampil dengan keterangan
+ *   5. display pasien ikut tampil di layar daftar (penjaga @if diForm salah tempat)
+ *   6. layar daftar polos & full width: tanpa judul "… Tersimpan", tanpa "Klik baris …", tanpa max-w-5xl
+ *   7. tabel entri tidak lagi memakai array_reverse() (lihat docs §2c)
  */
 require __DIR__ . '/../../../vendor/autoload.php';
 $app = require __DIR__ . '/../../../bootstrap/app.php';
@@ -60,7 +63,23 @@ foreach ($berkas as $path) {
         if ($s = saldoTag($daftar)) $catatan[] = 'tag layar daftar timpang: ' . json_encode($s);
         if ($e = tutupMepetKanan($daftar)) $catatan[] = $e;
 
-        $duaLayar = str_contains(file_get_contents($path), 'this->diForm()');
+        $sumber = file_get_contents($path);
+
+        // Display pasien WAJIB ikut tampil di layar daftar. Kalau berkasnya memasang
+        // <livewire:…display-pasien…> tapi HTML-nya tak memuatnya, biasanya
+        // @if ($this->diForm()) kepasang di HEADER modal, bukan sebelum <fieldset>.
+        if (str_contains($sumber, 'display-pasien') && !str_contains($daftar, 'display-pasien'))
+            $catatan[] = 'display pasien hilang di layar daftar (@if diForm salah tempat?)';
+
+        // Layar daftar polos: judul modul sudah di header modal.
+        if (preg_match('/Tersimpan\s*<\/h3>/', $daftar)) $catatan[] = 'layar daftar masih berjudul "… Tersimpan"';
+        if (str_contains($daftar, 'Klik baris')) $catatan[] = 'layar daftar masih memuat baris petunjuk "Klik baris …"';
+        if (str_contains($daftar, 'max-w-5xl')) $catatan[] = 'isi terkurung max-w-5xl (harus max-w-full)';
+
+        // Urutan tabel entri: terbaru di atas, bukan urutan simpan.
+        if (str_contains($sumber, 'array_reverse(')) $catatan[] = 'masih array_reverse() — pakai collect()->sortByDesc(strtotime(strtr(…)))';
+
+        $duaLayar = str_contains($sumber, 'this->diForm()');
         if ($duaLayar) {
             if (!preg_match('/>\s*Tutup\s*</', $daftar)) $catatan[] = 'layar daftar tanpa tombol Tutup';
             if (!str_contains($daftar, 'wire:click="tambahEntri"')) $catatan[] = 'layar daftar tanpa Isi Formulir Baru';

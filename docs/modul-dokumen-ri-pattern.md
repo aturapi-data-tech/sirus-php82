@@ -84,6 +84,31 @@ salah satunya diam-diam.
   kolomnya banyak dan judulnya panjang, nowrap memaksa formulir bergulir ke samping
 - kosong pun tabel tetap tampil, dengan `<td colspan="N">Belum ada data tersimpan</td>`
 
+### Layar daftar: polos dan selebar modal (BAKU sejak 2026-08-30)
+
+Layar daftar **tidak boleh** punya judul sendiri (`<h3>Daftar … Tersimpan</h3>`) maupun baris
+petunjuk "Klik baris untuk lihat detail lengkap" — judul modul sudah terpampang di header
+modal, jadi keduanya cuma pengulangan (keputusan user 2026-08-30, dibuang di 8 modul bedah +
+11 VK + kelompok lain).
+
+Tabelnya juga wajib **selebar modal**. Kartu `p-6 space-y-6 bg-canvas border … sm:p-8
+rounded-2xl` hanya milik LAYAR FORMULIR — dua cara yang sah:
+
+```blade
+{{-- a. kartu menempel di <fieldset> (dipakai Monitoring Pasca Anestesi, Instruksi Pasca Bedah) --}}
+<fieldset @disabled($formReadOnly) class="p-6 space-y-6 bg-canvas border border-hairline shadow-sm sm:p-8 rounded-2xl …">
+
+{{-- b. kartu membungkus keduanya → kelasnya dibuat BERSYARAT --}}
+<div class="{{ $this->diForm() ? 'p-6 sm:p-8 bg-canvas border border-hairline shadow-sm rounded-2xl …' : '' }} space-y-6">
+```
+
+`max-w-5xl mx-auto` pada pembungkus isi **dilarang** — pakai `max-w-full mx-auto`; modal sudah
+`size="full" height="full"`.
+
+Badge header baku: `Rawat Inap` · `{{ count($daftar) }} tersimpan` · `Read Only` (bila terkunci),
+dalam `<div class="flex items-center gap-1.5 ml-auto shrink-0">` **sebelum** tombol ✕. Lima modul
+Surveilans HAIs sempat tanpa badge sama sekali.
+
 ### Penamaan
 
 Kalimat utuh, bukan singkatan: "Lanjutkan Pengisian" (bukan "Lanjut Isi"), "Isi Formulir
@@ -112,6 +137,9 @@ tutup lewat DOM, kelengkapan tombol footer, dan keterangan tabel saat kosong. EX
 | Sel tabel berdempet tanpa padding | kelas `ds-c`/`ds-td-*` dipakai di luar `<table class="ds-table">` |
 | Footer mengambang di tengah | footer ditulis DI DALAM area isi, bukan sebagai saudaranya |
 | Kartu bergaris dua | tabel membawa `border … rounded-lg` sendiri di dalam kartu `padding="p-0"` |
+| **Display pasien & badge hilang di layar daftar, modal "berantakan"** | `@if ($this->diForm())` dipasang **di header modal**, bukan tepat sebelum `<fieldset>` formulir — seluruh blok badge, display pasien, dan pembungkus isi ikut tak dirender. Kena 9 modul di 3 kelompok (bedah, VK, HAIs) |
+| Tabel layar daftar tampak sempit walau modal `size="full"` | isi terkurung `max-w-5xl mx-auto`, atau kartu `p-6 … sm:p-8` membungkus formulir **dan** daftarnya sekaligus |
+| Kolom Tanggal urut acak | daftar dibalik `array_reverse()` (urutan simpan), bukan diurutkan tanggal — lihat §2c |
 
 ## 2b. Dua layar: daftar dulu, formulir menyusul (BAKU sejak 2026-08-27)
 
@@ -156,6 +184,41 @@ tanpa perlu diingat satu per satu. `openModal()` juga menyetelnya ke `'daftar'`.
 
 Di markup: formulir dibungkus `@if ($this->diForm())`, daftar dibungkus
 `@unless ($this->diForm())`, dan isi footer bercabang mengikuti keduanya.
+
+**LETAK `@if ($this->diForm())` — tepat sebelum `<fieldset>` formulir, TITIK.** Ini kesalahan
+paling mahal yang ditemukan 2026-08-30: di 9 modul (Laporan Anestesi, Instruksi Pasca Bedah,
+Laporan Persalinan, Indikator SC, Pengkajian Awal Bayi, Surveilans HAP/ILO/Plebitis/VAP)
+penjaga itu dipasang **di dalam header modal**, sehingga di layar daftar blok badge, display
+pasien, dan pembungkus isi ikut hilang — petugas melihat modal "berantakan" tanpa identitas
+pasien. `periksa-tampilan.php` TETAP LOLOS waktu itu, karena saldo tag & tombol tutupnya masih
+benar.
+
+Cara memastikan (jangan mengandalkan urutan baris):
+
+```php
+// display pasien WAJIB ada di HTML layar daftar
+$html = Livewire::test($komponen, ['riHdrNo' => $hdr])->call('openModal')->html();
+str_contains($html, 'display-pasien');   // harus true
+```
+
+**AWAS POSITIF PALSU:** membandingkan nomor baris `@if ($this->diForm())` dengan baris
+`display-pasien` saja menyesatkan. Di `edukasi-terintegrasi-ri` penjaga itu memang sengaja
+membungkus badge "Mode: Lihat/Edit/Tambah" di header; memindahkannya justru membuat saldo
+`<div>` timpang. Yang sahih adalah hasil render.
+
+**NAMA METHOD WAJIB `tambahEntri()` dan `kembaliKeDaftar()`.** `periksa-tampilan.php` mencari
+persis `wire:click="tambahEntri"` di layar daftar dan `wire:click="kembaliKeDaftar"` di layar
+formulir. Modul dengan tombol bernama sendiri gagal periksa — Case Manager RI (tiga layar:
+`daftar` → `formA` → `formB`, karena Form B anak Form A) memakai `tambahFormA`/`cancelEditA`/
+`tutupFormB`, jadi ditambahi alias:
+
+```php
+/** Nama baku modul dokumen untuk "entri baru"; di modul ini entri baru = Form A baru. */
+public function tambahEntri(): void { $this->tambahFormA(); }
+
+/** Tutup formulir mana pun yang sedang tampil, kembali ke daftar. */
+public function kembaliKeDaftar(): void { $this->cancelEditA(); $this->tutupFormB(); }
+```
 
 ### Susunan atas modal (BAKU)
 
@@ -304,6 +367,29 @@ berkas yang salah. Sepuluh berkas pernah lolos tiga lapis pertama dengan cacat i
 Kalau modul yang dikonversi ikut dipasang di komponen payung (mis. Pelayanan Bedah yang
 menampung 8 anak), buka juga halaman daftarnya (`/ri/daftar`, `/rj/daftar`, `/ugd/daftar`)
 dan pastikan 200.
+
+## 2c. Urutan tabel entri: TERBARU DI ATAS (BAKU sejak 2026-08-30)
+
+`array_reverse($daftar)` **dilarang** — ia cuma membalik urutan simpan. Kolom Tanggal diisi
+petugas (boleh mundur/maju) dan entri yang di-edit tetap duduk di posisi lamanya, jadi begitu
+urutan isi ≠ urutan simpan tabelnya tampil acak (laporan user 2026-08-30 di Pra Anestesi:
+10:32 → 10:37 → 10:45 → 10:43 → 10:14).
+
+Pola baku, ditulis langsung di komponen (114 titik di 59 blade RI/RJ/UGD, commit `695dd130`) —
+**tanpa trait/helper**, mengikuti daftar CPPT/SBAR EMR RI:
+
+```blade
+@forelse (collect($daftar)->sortByDesc(fn($entri) => strtotime(strtr(
+    ($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
+```
+
+| Aturan | Alasan |
+|---|---|
+| Kunci urut = **tanggal yang TAMPIL** di kolom, fallback `createdAt` | yang dibaca petugas itu kolomnya, bukan waktu simpan |
+| **Jangan** `Carbon::createFromFormat` | melempar exception untuk satu entri berformat menyimpang (tanggal tanpa jam / data lama kotor) → modal 500 |
+| **Jangan** `Carbon::parse` | dengan garis miring ia menebak m/d/Y (Amerika): 09/08 jadi 9 Agustus |
+| `strtr('/', '-')` sebelum `strtotime` | memaksa pembacaan d-m-Y gaya Eropa; nilai tak terbaca → `false` → entri turun ke bawah, bukan error |
+| Tutup dengan `->values()->all()` | tetap array — ada pemanggil `array_slice(...)` untuk pratinjau 3 entri di kartu |
 
 ## 3. Siklus hidup entri (BAKU)
 
