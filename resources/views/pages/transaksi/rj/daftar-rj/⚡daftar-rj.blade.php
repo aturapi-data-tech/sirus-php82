@@ -591,10 +591,11 @@ new class extends Component {
         $row->is_json_valid = $row->rj_no == $row->rj_no_json;
         $row->bg_check_json = $row->is_json_valid ? 'bg-green-100' : 'bg-red-100';
 
-        // Status berdasarkan urutan Task ID (3=Pendaftaran, 4=Masuk Poli, 5=Keluar Poli, 6=Menunggu Resep, 7=Terima Resep, 99=Batal)
-        // Batal di-detect dari Task ID 99 OR rj_status='F' (legacy dari Oracle Dev 6i / mutasi langsung)
+        // Status berdasarkan urutan Task ID (3=Pendaftaran, 4=Masuk Poli, 5=Keluar Poli, 6=Menunggu Resep, 7=Terima Resep)
+        // BATAL HANYA DARI rj_status='F' (batalKunjungan di kasir-rj). taskId99 SENGAJA tidak
+        // ikut dinilai: itu laporan batal ke antrean BPJS dan tidak menyentuh status transaksi.
         $tasks = $json['taskIdPelayanan'] ?? [];
-        if (!empty($tasks['taskId99']) || $row->rj_status === 'F') {
+        if ($row->rj_status === 'F') {
             $row->status_text = 'Batal';
             $row->status_variant = 'danger';
         } elseif (!empty($tasks['taskId7'])) {

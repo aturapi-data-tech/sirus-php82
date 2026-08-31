@@ -274,8 +274,9 @@ new class extends Component {
             $row->bg_check_json = $row->is_json_valid ? 'bg-green-100' : 'bg-red-100';
 
             /* Status text berdasarkan role */
-            // Batal di-detect dari Task ID 99 OR rj_status='F' (legacy mutasi langsung)
-            if (!empty($row->task_id99) || $row->rj_status === 'F') {
+            // BATAL HANYA DARI rj_status='F'. taskId99 = laporan batal antrean BPJS,
+            // tidak menyentuh status transaksi (tetap ditampilkan sebagai info sendiri).
+            if ($row->rj_status === 'F') {
                 $row->status_text = 'Batal';
                 $row->status_variant = 'danger';
             } elseif ($this->isDokterOrPerawat()) {
@@ -638,8 +639,10 @@ new class extends Component {
                                             </div>
                                         @endif
 
+                                        {{-- taskId99 = pembatalan ANTREAN BPJS saja; status transaksi tetap
+                                             dari rj_status, jadi badge ini bukan penanda kunjungan batal. --}}
                                         @if ($row->task_id99)
-                                            <x-badge variant="danger">Batal {{ $row->task_id99 }}</x-badge>
+                                            <x-badge variant="warning">Antrean BPJS Batal {{ $row->task_id99 }}</x-badge>
                                         @endif
 
                                         {{-- Waktu UGD (datang/periksa/selesai) — selalu visible, kritis untuk emergency timing --}}
