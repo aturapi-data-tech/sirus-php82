@@ -19,13 +19,15 @@ new class extends Component {
     public array  $jadwalBpjs    = [];
     public bool   $loadingJadwal = false;
 
-    /* ─── Sync All progress ─── */
-    public bool   $syncingAll    = false;
-    public int    $syncAllTotal  = 0;
-    public int    $syncAllDone   = 0;
-    public int    $syncAllOk     = 0;
-    public int    $syncAllSkip   = 0;
-    public string $syncAllLog    = '';
+    /* ─── Sync All progress (poli × 7 hari, digilir wire:poll) ─── */
+    public bool   $syncingAll       = false;
+    public array  $syncQueue        = [];
+    public int    $syncAllPoliCount = 0;
+    public int    $syncAllTotal     = 0;
+    public int    $syncAllDone      = 0;
+    public int    $syncAllOk        = 0;
+    public int    $syncAllSkip      = 0;
+    public string $syncAllLog       = '';
 
     /* ─── Mount ─── */
     public function mount(): void
@@ -95,6 +97,50 @@ new class extends Component {
         }
     }
 
+    /* ─── Upsert satu baris jadwal ke scmst_scpolis ───
+     *  Dipakai bersama oleh syncJadwal(), syncSemua(), dan syncAllStep()
+     *  supaya rumus shift & payload-nya tidak pernah beda antar jalur.
+     *  Mengembalikan TRUE bila barisnya sudah ada (diperbarui), FALSE bila baru. */
+    private function simpanJadwal(int|string $poliId, int|string $drId, int $dayId, string $jamPraktek, int $kuota): bool
+    {
+        $jammulai   = substr($jamPraktek, 0, 5);
+        $jamselesai = substr($jamPraktek, 6, 5);
+
+        $shiftRow = DB::table('rstxn_shiftctls')
+            ->whereNotNull('shift_start')
+            ->whereNotNull('shift_end')
+            ->whereRaw("? BETWEEN shift_start AND shift_end", [$jammulai . ':00'])
+            ->first();
+
+        $payload = [
+            'sc_poli_status_'      => '1',
+            'sc_poli_ket'          => $jamPraktek,
+            'day_id'               => $dayId,
+            'poli_id'              => $poliId,
+            'dr_id'                => $drId,
+            'shift'                => $shiftRow?->shift ?? 1,
+            'mulai_praktek'        => $jammulai . ':00',
+            'selesai_praktek'      => $jamselesai . ':00',
+            'pelayanan_perp_asien' => '',
+            'no_urut'              => 1,
+            'kuota'                => $kuota,
+        ];
+
+        $baris = DB::table('scmst_scpolis')
+            ->where('day_id',      $dayId)
+            ->where('poli_id',     $poliId)
+            ->where('dr_id',       $drId)
+            ->where('sc_poli_ket', $jamPraktek);
+
+        if ((clone $baris)->exists()) {
+            $baris->update($payload);
+            return true;
+        }
+
+        DB::table('scmst_scpolis')->insert($payload);
+        return false;
+    }
+
     /* ─── Sync satu baris jadwal ke scmst_scpolis ─── */
     public function syncJadwal(string $kdPoliBpjs, string $kdDrBpjs, string $nmDokter, int $dayId, string $jamPraktek, int $kuota): void
     {
@@ -116,50 +162,12 @@ new class extends Component {
             return;
         }
 
-        $jammulai   = substr($jamPraktek, 0, 5);
-        $jamselesai = substr($jamPraktek, 6, 5);
-
-        $shiftRow = DB::table('rstxn_shiftctls')
-            ->whereNotNull('shift_start')
-            ->whereNotNull('shift_end')
-            ->whereRaw("? BETWEEN shift_start AND shift_end", [$jammulai . ':00'])
-            ->first();
-        $shift = $shiftRow?->shift ?? 1;
-
-        $payload = [
-            'sc_poli_status_'      => '1',
-            'sc_poli_ket'          => $jamPraktek,
-            'day_id'               => $dayId,
-            'poli_id'              => $poli->poli_id,
-            'dr_id'                => $dokter->dr_id,
-            'shift'                => $shift,
-            'mulai_praktek'        => $jammulai . ':00',
-            'selesai_praktek'      => $jamselesai . ':00',
-            'pelayanan_perp_asien' => '',
-            'no_urut'              => 1,
-            'kuota'                => $kuota,
-        ];
-
         try {
-            $exists = DB::table('scmst_scpolis')
-                ->where('day_id',     $dayId)
-                ->where('poli_id',    $poli->poli_id)
-                ->where('dr_id',      $dokter->dr_id)
-                ->where('sc_poli_ket', $jamPraktek)
-                ->exists();
+            $adaSebelumnya = $this->simpanJadwal($poli->poli_id, $dokter->dr_id, $dayId, $jamPraktek, $kuota);
 
-            if ($exists) {
-                DB::table('scmst_scpolis')
-                    ->where('day_id',     $dayId)
-                    ->where('poli_id',    $poli->poli_id)
-                    ->where('dr_id',      $dokter->dr_id)
-                    ->where('sc_poli_ket', $jamPraktek)
-                    ->update($payload);
-                $this->dispatch('toast', type: 'success', message: "Jadwal diperbarui: {$nmDokter} ({$jamPraktek})");
-            } else {
-                DB::table('scmst_scpolis')->insert($payload);
-                $this->dispatch('toast', type: 'success', message: "Jadwal ditambahkan: {$nmDokter} ({$jamPraktek})");
-            }
+            $this->dispatch('toast', type: 'success', message: $adaSebelumnya
+                ? "Jadwal diperbarui: {$nmDokter} ({$jamPraktek})"
+                : "Jadwal ditambahkan: {$nmDokter} ({$jamPraktek})");
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal sync: ' . $e->getMessage());
         }
@@ -176,46 +184,15 @@ new class extends Component {
         $ok = 0; $skip = 0;
         foreach ($this->jadwalBpjs as $j) {
             // day_id 8 = hari libur nasional, tidak ada di scmst_scdays → skip
-            if ((int)$j['hari'] >= 8) { $skip++; continue; }
+            if ((int) $j['hari'] >= 8) { $skip++; continue; }
 
             $poli   = DB::table('rsmst_polis')->where('kd_poli_bpjs', $j['kodepoli'])->first();
             $dokter = DB::table('rsmst_doctors')->where('kd_dr_bpjs', $j['kodedokter'])->first();
 
             if (!$poli || !$dokter) { $skip++; continue; }
 
-            $jammulai   = substr($j['jadwal'], 0, 5);
-            $jamselesai = substr($j['jadwal'], 6, 5);
-            $shiftRow   = DB::table('rstxn_shiftctls')
-                ->whereNotNull('shift_start')
-                ->whereNotNull('shift_end')
-                ->whereRaw("? BETWEEN shift_start AND shift_end", [$jammulai . ':00'])
-                ->first();
-
-            $payload = [
-                'sc_poli_status_'      => '1',
-                'sc_poli_ket'          => $j['jadwal'],
-                'day_id'               => $j['hari'],
-                'poli_id'              => $poli->poli_id,
-                'dr_id'                => $dokter->dr_id,
-                'shift'                => $shiftRow?->shift ?? 1,
-                'mulai_praktek'        => $jammulai . ':00',
-                'selesai_praktek'      => $jamselesai . ':00',
-                'pelayanan_perp_asien' => '',
-                'no_urut'              => 1,
-                'kuota'                => (int) $j['kapasitaspasien'],
-            ];
-
             try {
-                $exists = DB::table('scmst_scpolis')
-                    ->where('day_id',     $j['hari'])
-                    ->where('poli_id',    $poli->poli_id)
-                    ->where('dr_id',      $dokter->dr_id)
-                    ->where('sc_poli_ket', $j['jadwal'])
-                    ->exists();
-
-                $exists
-                    ? DB::table('scmst_scpolis')->where('day_id', $j['hari'])->where('poli_id', $poli->poli_id)->where('dr_id', $dokter->dr_id)->where('sc_poli_ket', $j['jadwal'])->update($payload)
-                    : DB::table('scmst_scpolis')->insert($payload);
+                $this->simpanJadwal($poli->poli_id, $dokter->dr_id, (int) $j['hari'], $j['jadwal'], (int) $j['kapasitaspasien']);
                 $ok++;
             } catch (\Exception $e) {
                 $skip++;
@@ -225,20 +202,35 @@ new class extends Component {
         $this->dispatch('toast', type: 'success', message: "Selesai: {$ok} jadwal berhasil diterapkan, {$skip} dilewati.");
     }
 
-    /* ─── Sync SEMUA poli yang sudah di-mapping di RS ─── */
+    /* ══════════════════════════════════════════════════════════════════
+     *  Terapkan Semua Poli — SATU MINGGU PENUH
+     *  ────────────────────────────────────────────────────────────────
+     *  Endpoint BPJS ref/jadwaldokter menerima SATU tanggal dan menjawab
+     *  jadwal untuk hari tanggal itu saja, jadi seminggu penuh = 7 kali
+     *  panggilan per poli. Antreannya (poli × 7 hari) disusun lebih dulu
+     *  oleh syncAllPoli(), lalu digilir syncAllStep() satu langkah per
+     *  request lewat wire:poll — supaya bilah kemajuan benar-benar
+     *  bergerak dan tidak menabrak max_execution_time / timeout HTTP.
+     *  Upsert-nya idempoten, aman bila satu langkah terulang.
+     * ══════════════════════════════════════════════════════════════════ */
+    private const NAMA_HARI = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
+
+    /* ─── Susun antrean: SEMUA poli ter-mapping × 7 hari ke depan ─── */
     public function syncAllPoli(): void
     {
         try {
-            $tgl = Carbon::createFromFormat('d/m/Y', $this->dateRef)->format('Y-m-d');
+            $mulai = Carbon::createFromFormat('d/m/Y', $this->dateRef)->startOfDay();
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Format tanggal tidak valid (dd/mm/yyyy).');
             return;
         }
 
-        // Ambil semua poli RS yang sudah punya kd_poli_bpjs
+        // Ambil semua poli RS yang sudah punya kd_poli_bpjs.
+        // Di Oracle '' identik NULL, jadi jangan pakai !== '' (selalu UNKNOWN).
         $allPolis = DB::table('rsmst_polis')
             ->whereNotNull('kd_poli_bpjs')
             ->whereRaw("LENGTH(TRIM(kd_poli_bpjs)) > 0")
+            ->orderBy('poli_desc')
             ->get();
 
         if ($allPolis->isEmpty()) {
@@ -246,85 +238,206 @@ new class extends Component {
             return;
         }
 
-        $this->syncingAll   = true;
-        $this->syncAllTotal = $allPolis->count();
-        $this->syncAllDone  = 0;
-        $this->syncAllOk    = 0;
-        $this->syncAllSkip  = 0;
-        $this->syncAllLog   = '';
-
+        $this->syncQueue = [];
         foreach ($allPolis as $poli) {
-            $this->syncAllDone++;
-            $this->syncAllLog = "Memproses: {$poli->poli_desc} ({$poli->kd_poli_bpjs})...";
-
-            try {
-                $res = AntrianTrait::ref_jadwal_dokter($poli->kd_poli_bpjs, $tgl)->getOriginalContent();
-            } catch (\Exception $e) {
-                $this->syncAllSkip++;
-                continue;
+            for ($i = 0; $i < 7; $i++) {
+                $tgl = $mulai->copy()->addDays($i);
+                $this->syncQueue[] = [
+                    'poliId'   => $poli->poli_id,
+                    'kdPoli'   => $poli->kd_poli_bpjs,
+                    'poliDesc' => $poli->poli_desc,
+                    'tanggal'  => $tgl->format('Y-m-d'),
+                    'tampil'   => $tgl->format('d/m/Y'),
+                    'namaHari' => self::NAMA_HARI[$tgl->dayOfWeekIso] ?? '-',
+                ];
             }
+        }
 
-            if (($res['metadata']['code'] ?? '') != 200) {
-                $this->syncAllSkip++;
-                continue;
-            }
+        $this->syncingAll       = true;
+        $this->syncAllPoliCount = $allPolis->count();
+        $this->syncAllTotal     = count($this->syncQueue);
+        $this->syncAllDone      = 0;
+        $this->syncAllOk        = 0;
+        $this->syncAllSkip      = 0;
+        $this->syncAllLog       = "Menyiapkan {$this->syncAllPoliCount} poli × 7 hari ("
+            . $mulai->format('d/m/Y') . ' s/d ' . $mulai->copy()->addDays(6)->format('d/m/Y') . ')...';
+    }
 
-            $jadwals = $res['response'] ?? [];
-            foreach ($jadwals as $j) {
+    /* ─── Gilir satu langkah antrean (1 poli × 1 hari) ─── */
+    public function syncAllStep(): void
+    {
+        if (!$this->syncingAll) {
+            return;
+        }
+
+        $item = array_shift($this->syncQueue);
+        if ($item === null) {
+            $this->selesaiSyncAll();
+            return;
+        }
+
+        $this->syncAllDone++;
+        $this->syncAllLog = "Memproses: {$item['poliDesc']} ({$item['kdPoli']}) — {$item['namaHari']} {$item['tampil']}";
+
+        try {
+            $res = AntrianTrait::ref_jadwal_dokter($item['kdPoli'], $item['tanggal'])->getOriginalContent();
+        } catch (\Exception $e) {
+            $this->syncAllSkip++;
+            $res = null;
+        }
+
+        if (is_array($res) && ($res['metadata']['code'] ?? '') == 200) {
+            foreach (($res['response'] ?? []) as $j) {
                 // day_id 8 = hari libur nasional, tidak ada di scmst_scdays → skip
-                if ((int)$j['hari'] >= 8) { $this->syncAllSkip++; continue; }
+                if ((int) $j['hari'] >= 8) { $this->syncAllSkip++; continue; }
 
                 $dokter = DB::table('rsmst_doctors')->where('kd_dr_bpjs', $j['kodedokter'])->first();
                 if (!$dokter) { $this->syncAllSkip++; continue; }
 
-                $jammulai   = substr($j['jadwal'], 0, 5);
-                $jamselesai = substr($j['jadwal'], 6, 5);
-                $shiftRow   = DB::table('rstxn_shiftctls')
-                    ->whereNotNull('shift_start')
-                    ->whereNotNull('shift_end')
-                    ->whereRaw("? BETWEEN shift_start AND shift_end", [$jammulai . ':00'])
-                    ->first();
-
-                $payload = [
-                    'sc_poli_status_'      => '1',
-                    'sc_poli_ket'          => $j['jadwal'],
-                    'day_id'               => $j['hari'],
-                    'poli_id'              => $poli->poli_id,
-                    'dr_id'                => $dokter->dr_id,
-                    'shift'                => $shiftRow?->shift ?? 1,
-                    'mulai_praktek'        => $jammulai . ':00',
-                    'selesai_praktek'      => $jamselesai . ':00',
-                    'pelayanan_perp_asien' => '',
-                    'no_urut'              => 1,
-                    'kuota'                => (int) $j['kapasitaspasien'],
-                ];
-
                 try {
-                    $exists = DB::table('scmst_scpolis')
-                        ->where('day_id',      $j['hari'])
-                        ->where('poli_id',     $poli->poli_id)
-                        ->where('dr_id',       $dokter->dr_id)
-                        ->where('sc_poli_ket', $j['jadwal'])
-                        ->exists();
-
-                    $exists
-                        ? DB::table('scmst_scpolis')
-                            ->where('day_id', $j['hari'])->where('poli_id', $poli->poli_id)
-                            ->where('dr_id', $dokter->dr_id)->where('sc_poli_ket', $j['jadwal'])
-                            ->update($payload)
-                        : DB::table('scmst_scpolis')->insert($payload);
+                    $this->simpanJadwal($item['poliId'], $dokter->dr_id, (int) $j['hari'], $j['jadwal'], (int) $j['kapasitaspasien']);
                     $this->syncAllOk++;
                 } catch (\Exception $e) {
                     $this->syncAllSkip++;
                 }
             }
+        } elseif (is_array($res)) {
+            // poli tanpa jadwal di hari itu bukan kegagalan — cukup dilewati
+            $this->syncAllSkip++;
         }
 
-        $this->syncingAll  = false;
-        $this->syncAllLog  = '';
+        if (empty($this->syncQueue)) {
+            $this->selesaiSyncAll();
+        }
+    }
+
+    /* ─── Hentikan proses di tengah jalan ─── */
+    public function batalSyncAll(): void
+    {
+        if (!$this->syncingAll) {
+            return;
+        }
+
+        $this->syncQueue  = [];
+        $this->syncingAll = false;
+        $this->syncAllLog = '';
+        $this->dispatch('toast', type: 'warning',
+            message: "Dihentikan: {$this->syncAllOk} jadwal sudah diterapkan dari {$this->syncAllDone}/{$this->syncAllTotal} permintaan.");
+    }
+
+    /* ─── Tutup proses + laporan akhir ─── */
+    private function selesaiSyncAll(): void
+    {
+        $this->syncingAll = false;
+        $this->syncQueue  = [];
+        $this->syncAllLog = '';
+        unset($this->jadwalRS, $this->dokterBelumTerjadwal);
+
         $this->dispatch('toast', type: 'success',
-            message: "Selesai: {$this->syncAllOk} jadwal berhasil diterapkan, {$this->syncAllSkip} dilewati dari {$this->syncAllTotal} poli.",
+            message: "Selesai: {$this->syncAllOk} jadwal diterapkan, {$this->syncAllSkip} dilewati "
+                . "({$this->syncAllPoliCount} poli × 7 hari).",
             duration: 8000);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+     *  Hapus jadwal RS (scmst_scpolis)
+     *  ────────────────────────────────────────────────────────────────
+     *  Tombolnya mengirim INDEKS array $this->jadwalRS, bukan sc_poli_ket —
+     *  string jam praktek gampang rusak saat di-escape ganda di wire:click.
+     *  Kunci baris = day_id + poli_id + dr_id + sc_poli_ket, sama persis
+     *  dengan kunci upsert simpanJadwal() supaya yang terhapus tepat satu
+     *  baris yang ditampilkan.
+     * ══════════════════════════════════════════════════════════════════ */
+
+    /* ─── Hapus satu baris jadwal ─── */
+    public function hapusJadwal(int $hariIdx, int $barisIdx): void
+    {
+        $baris = $this->jadwalRS[$hariIdx]['jadwal'][$barisIdx] ?? null;
+        if (!$baris) {
+            $this->dispatch('toast', type: 'error', message: 'Baris jadwal tidak ditemukan, muat ulang halaman.');
+            return;
+        }
+
+        $q = DB::table('scmst_scpolis')
+            ->where('sc_poli_status_', '1')
+            ->where('day_id',  $baris->day_id)
+            ->where('poli_id', $baris->poli_id)
+            ->where('dr_id',   $baris->dr_id);
+
+        // Di Oracle '' identik NULL: baris legacy tanpa sc_poli_ket dikunci lewat
+        // jam mulai, supaya tidak ikut menyapu jadwal lain dokter yang sama.
+        filled($baris->sc_poli_ket)
+            ? $q->where('sc_poli_ket', $baris->sc_poli_ket)
+            : $q->whereNull('sc_poli_ket')->where('mulai_praktek', $baris->mulai_praktek);
+
+        try {
+            $n = $q->delete();
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menghapus: ' . $e->getMessage());
+            return;
+        }
+
+        unset($this->jadwalRS, $this->dokterBelumTerjadwal);
+
+        $this->dispatch('toast', type: $n ? 'success' : 'warning', message: $n
+            ? "Jadwal dihapus: {$baris->dr_name} — {$baris->poli_desc} (" . substr($baris->mulai_praktek, 0, 5) . ')'
+            : 'Tidak ada baris terhapus — mungkin sudah dihapus pengguna lain.');
+    }
+
+    /* ─── Hapus seluruh jadwal pada satu hari ─── */
+    public function hapusJadwalHari(int $hariIdx): void
+    {
+        $hari = $this->jadwalRS[$hariIdx] ?? null;
+        if (!$hari) {
+            $this->dispatch('toast', type: 'error', message: 'Hari tidak ditemukan, muat ulang halaman.');
+            return;
+        }
+
+        try {
+            $n = DB::table('scmst_scpolis')
+                ->where('sc_poli_status_', '1')
+                ->where('day_id', $hari['day_id'])
+                ->delete();
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menghapus: ' . $e->getMessage());
+            return;
+        }
+
+        unset($this->jadwalRS, $this->dokterBelumTerjadwal);
+
+        $this->dispatch('toast', type: $n ? 'success' : 'warning',
+            message: $n ? "{$n} jadwal hari {$hari['day_desc']} dihapus."
+                        : "Tidak ada jadwal aktif di hari {$hari['day_desc']}.");
+    }
+
+    /* ─── Hapus SELURUH jadwal RS (7 hari) ─── */
+    public function hapusSemuaJadwal(): void
+    {
+        try {
+            $n = DB::table('scmst_scpolis')->where('sc_poli_status_', '1')->delete();
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal menghapus: ' . $e->getMessage());
+            return;
+        }
+
+        unset($this->jadwalRS, $this->dokterBelumTerjadwal);
+
+        $this->dispatch('toast', type: $n ? 'success' : 'warning', duration: 8000,
+            message: $n ? "Seluruh jadwal dihapus ({$n} baris). Tekan \"Terapkan Semua Poli\" untuk mengambil ulang dari BPJS."
+                        : 'Tidak ada jadwal aktif untuk dihapus.');
+    }
+
+    /* ─── Rentang 7 hari yang akan diambil, mulai dateRef ─── */
+    #[Computed]
+    public function rentangMinggu(): string
+    {
+        try {
+            $mulai = Carbon::createFromFormat('d/m/Y', $this->dateRef)->startOfDay();
+        } catch (\Exception $e) {
+            return '-';
+        }
+
+        return $mulai->format('d/m/Y') . ' s/d ' . $mulai->copy()->addDays(6)->format('d/m/Y');
     }
 
     /* ─── Data jadwal RS saat ini per hari ─── */
@@ -609,33 +722,58 @@ new class extends Component {
                         Cari Jadwal per Poli
                     </x-secondary-button>
 
+                    {{-- Rentang minggu yang akan diambil (ubah tanggal awalnya di modal Cari Jadwal per Poli) --}}
+                    <span class="mr-auto text-xs text-gray-600 dark:text-gray-400">
+                        Jadwal 7 hari: <strong>{{ $this->rentangMinggu }}</strong>
+                    </span>
+
+                    @unless($syncingAll)
+                    <x-confirm-button variant="danger-soft"
+                        action="hapusSemuaJadwal()"
+                        title="Hapus Seluruh Jadwal RS"
+                        message="Seluruh jadwal praktek dokter (7 hari, semua poli) akan dihapus dari data RS. Bisa diambil ulang lewat Terapkan Semua Poli. Lanjutkan?"
+                        confirmText="Ya, hapus semua">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Hapus Semua Jadwal
+                    </x-confirm-button>
+                    @endunless
+
+                    @if($syncingAll)
+                    <x-secondary-button type="button" wire:click="batalSyncAll">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9 9h6v6H9z" />
+                        </svg>
+                        Hentikan ({{ $syncAllDone }}/{{ $syncAllTotal }})
+                    </x-secondary-button>
+                    @else
                     <x-primary-button
                         wire:click="syncAllPoli"
                         wire:loading.attr="disabled"
                         wire:target="syncAllPoli"
-                        wire:confirm="Terapkan jadwal dari SEMUA poli yang sudah di-mapping ke BPJS? Proses ini akan memperbarui semua jadwal dokter di database RS.">
+                        wire:confirm="Terapkan jadwal SEMUA poli yang sudah di-mapping ke BPJS untuk 7 hari ({{ $this->rentangMinggu }})? Seluruh jadwal dokter di database RS akan diperbarui.">
                         <div wire:loading wire:target="syncAllPoli" class="mr-1"><x-loading /></div>
                         <svg wire:loading.remove wire:target="syncAllPoli" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
-                        <span wire:loading.remove wire:target="syncAllPoli">Terapkan Semua Poli</span>
-                        <span wire:loading wire:target="syncAllPoli">
-                            @if($syncingAll && $syncAllTotal > 0)
-                                {{ $syncAllDone }}/{{ $syncAllTotal }}
-                            @else
-                                Memproses...
-                            @endif
-                        </span>
-                    </x-secondary-button>
+                        <span wire:loading.remove wire:target="syncAllPoli">Terapkan Semua Poli (7 Hari)</span>
+                        <span wire:loading wire:target="syncAllPoli">Menyiapkan...</span>
+                    </x-primary-button>
+                    @endif
                 </div>
 
-                {{-- Progress bar Terapkan Semua Poli --}}
+                {{-- Progress bar Terapkan Semua Poli.
+                     wire:poll menggilir antrean satu langkah (1 poli × 1 hari) per request,
+                     jadi bilah ini benar-benar bergerak dan tidak ada request raksasa. --}}
                 @if($syncingAll && $syncAllTotal > 0)
-                <div class="mt-3">
+                <div class="mt-3" wire:poll.750ms.keep-alive="syncAllStep">
                     <div class="flex items-center justify-between mb-1 text-xs text-gray-600 dark:text-gray-400">
                         <span>{{ $syncAllLog }}</span>
-                        <span>{{ $syncAllDone }}/{{ $syncAllTotal }} poli diproses</span>
+                        <span>{{ $syncAllDone }}/{{ $syncAllTotal }} permintaan ({{ $syncAllPoliCount }} poli × 7 hari) &middot; {{ $syncAllOk }} diterapkan, {{ $syncAllSkip }} dilewati</span>
                     </div>
                     <div class="w-full h-2 bg-gray-200 rounded-full dark:bg-gray-700">
                         <div class="h-2 rounded-full bg-brand-green dark:bg-brand-lime transition-all duration-300"
@@ -697,6 +835,22 @@ new class extends Component {
                                         </th>
                                         <th class="px-4 py-3">Jadwal</th>
                                         <th class="px-4 py-3">Kuota</th>
+                                        <th class="px-4 py-3 text-right">
+                                            @if(count($hari['jadwal']))
+                                            <x-confirm-button variant="danger-soft"
+                                                wire:key="hapus-hari-{{ $hari['day_id'] }}"
+                                                :action="'hapusJadwalHari(' . $loop->index . ')'"
+                                                title="Hapus Jadwal {{ $hari['day_desc'] }}"
+                                                :message="'Hapus semua ' . count($hari['jadwal']) . ' jadwal di hari ' . $hari['day_desc'] . '?'"
+                                                confirmText="Ya, hapus">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                                <span class="sr-only">Hapus jadwal {{ $hari['day_desc'] }}</span>
+                                            </x-confirm-button>
+                                            @endif
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -717,10 +871,17 @@ new class extends Component {
                                         <td class="px-4 py-3 whitespace-nowrap text-gray-600 dark:text-gray-300">
                                             {{ $jd->kuota }}
                                         </td>
+                                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                                            <x-action-delete
+                                                wire:key="hapus-jadwal-{{ $hari['day_id'] }}-{{ $key }}"
+                                                :action="'hapusJadwal(' . $loop->parent->index . ', ' . $key . ')'"
+                                                title="Hapus Jadwal Dokter"
+                                                :message="'Hapus jadwal ' . $jd->dr_name . ' — ' . $jd->poli_desc . ' (' . $hari['day_desc'] . ' ' . substr($jd->mulai_praktek, 0, 5) . ') dari data RS?'" />
+                                        </td>
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="3" class="px-4 py-4 text-xs text-gray-400 text-center">Tidak ada jadwal</td>
+                                        <td colspan="4" class="px-4 py-4 text-xs text-gray-400 text-center">Tidak ada jadwal</td>
                                     </tr>
                                     @endforelse
                                 </tbody>
