@@ -238,7 +238,7 @@ new class extends Component {
         // Ambil semua poli RS yang sudah punya kd_poli_bpjs
         $allPolis = DB::table('rsmst_polis')
             ->whereNotNull('kd_poli_bpjs')
-            ->where('kd_poli_bpjs', '!=', '')
+            ->whereRaw("LENGTH(TRIM(kd_poli_bpjs)) > 0")
             ->get();
 
         if ($allPolis->isEmpty()) {
