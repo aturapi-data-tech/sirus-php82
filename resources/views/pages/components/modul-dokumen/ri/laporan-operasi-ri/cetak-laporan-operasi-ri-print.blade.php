@@ -30,7 +30,6 @@
         $rsName = $identitasRs->int_name ?? 'RSI MADINAH';
         $rsAddress = $identitasRs->int_address ?? '';
 
-        $kotak = fn($checked) => $checked ? '&#9745;' : '&#9744;';
         $val = fn($nilai) => filled($nilai) ? e($nilai) : '-';
         $implan = !empty($form['implanDipasang']);
     @endphp
@@ -43,10 +42,7 @@
                 <span class="font-bold">Tanggal / Jam Operasi:</span> {!! $val($form['tanggalOperasi'] ?? '') !!}
             </td>
             <td class="border border-black px-2 py-1.5 w-1/2 align-top">
-                <span class="font-bold">Urgensi:</span>
-                @foreach (['Elektif', 'Urgen', 'Cito'] as $opt)
-                    <span class="ml-1">{!! $kotak(($form['urgensi'] ?? '') === $opt) !!} {{ $opt }}</span>
-                @endforeach
+                <span class="font-bold">Urgensi:</span> {!! $val($form['urgensi'] ?? '') !!}
             </td>
         </tr>
 
@@ -111,9 +107,7 @@
                         Tidak
                     @endif
                 </p>
-                <p><span class="font-bold">Pemeriksaan PA:</span>
-                    {!! $kotak(($form['pemeriksaanPa'] ?? '') === 'Ya') !!} Ya
-                    &nbsp; {!! $kotak(($form['pemeriksaanPa'] ?? '') === 'Tidak') !!} Tidak</p>
+                <p><span class="font-bold">Pemeriksaan PA:</span> {!! $val($form['pemeriksaanPa'] ?? '') !!}</p>
                 @if (($form['pemeriksaanPa'] ?? '') === 'Ya' && filled($form['spesimenDetail'] ?? ''))
                     <p><span class="font-bold">Spesimen:</span> {!! e($form['spesimenDetail']) !!}</p>
                 @endif
