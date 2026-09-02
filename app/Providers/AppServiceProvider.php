@@ -39,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('emr.logAktivitas', fn ($user) => $user->hasAnyRole(AksiRole::EMR_LOG_AKTIVITAS));
         Gate::define('emr.cetakEresep', fn ($user) => $user->hasAnyRole(AksiRole::EMR_CETAK_ERESEP));
+        Gate::define('emr.penunjangLihat', fn ($user) => $user->hasAnyRole(AksiRole::EMR_PENUNJANG_LIHAT));
 
         Gate::define('rekonsiliasi.obat', fn ($user) => $user->hasAnyRole(AksiRole::REKONSILIASI_OBAT));
 

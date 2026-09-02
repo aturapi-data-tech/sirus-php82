@@ -744,8 +744,8 @@ new class extends Component {
                                                                 </x-dropdown-link>
                                                             @endhasanyrole
 
-                                                            {{-- Rekam Medis RI — Perawat, Dokter, Admin, Casemix, Apoteker, Gizi, Laboratorium (Casemix untuk verifikasi koding; Apoteker & Gizi untuk isi CPPT, lihat Pengkajian Dokter/Perawat; Laboratorium view-only konteks klinis order lab). MR cek kelengkapan via tombol info ⓘ di row, bukan via EMR. --}}
-                                                            @hasanyrole('Perawat|Dokter|Admin|Casemix|Apoteker|Gizi|Laboratorium')
+                                                            {{-- Rekam Medis RI — Perawat, Dokter, Admin, Casemix, Apoteker, Gizi, Laboratorium (Casemix untuk verifikasi koding; Apoteker & Gizi untuk isi CPPT, lihat Pengkajian Dokter/Perawat; Laboratorium & Radiologi view-only konteks klinis order penunjang). MR cek kelengkapan via tombol info ⓘ di row, bukan via EMR. --}}
+                                                            @hasanyrole('Perawat|Dokter|Admin|Casemix|Apoteker|Gizi|Laboratorium|Radiologi')
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="openRekamMedis('{{ $row->rihdr_no }}')"
                                                                     class="px-3 py-2 text-sm rounded-lg bg-green-50 hover:bg-green-100 dark:bg-green-900/20">
@@ -763,8 +763,9 @@ new class extends Component {
                                                                 </x-dropdown-link>
                                                             @endhasanyrole
 
-                                                            {{-- Modul Dokumen — Admin, Perawat, Dokter, Casemix, Mr, Gizi --}}
-                                                            @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr|Gizi')
+                                                            {{-- Modul Dokumen — Admin, Perawat, Dokter, Casemix, Mr, Gizi + penunjang
+                                                                 (Laboratorium/Radiologi: edukasi pasien & form pindah antar ruang) --}}
+                                                            @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr|Gizi|Laboratorium|Radiologi')
                                                                 <x-dropdown-link href="#"
                                                                     wire:click.prevent="openModulDokumen('{{ $row->rihdr_no }}')"
                                                                     class="px-3 py-2 text-sm rounded-lg bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20">

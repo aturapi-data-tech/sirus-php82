@@ -262,6 +262,27 @@ new class extends Component {
                             );
                         }
 
+                        // Penunjang (Laboratorium/Radiologi): konteks klinis order (dua tab
+                        // pengkajian — read-only sendiri lewat $isReadOnlyByRole, pemeriksaan,
+                        // riwayat) + CPPT & SBAR, karena mereka mencatat di kolom profesi
+                        // 'Penunjang'. Tab asuhan/observasi/penilaian/diagnosa/perencanaan/SKDP
+                        // tetap tertutup — itu domain perawat & dokter.
+                        if (auth()->user()->can('emr.penunjangLihat')) {
+                            $tabs = array_values(
+                                array_filter(
+                                    $tabs,
+                                    fn($t) => in_array($t['key'], [
+                                        'pengkajian-perawat',
+                                        'pengkajian-dokter',
+                                        'pemeriksaan',
+                                        'cppt',
+                                        'sbar',
+                                        'riwayat',
+                                    ]),
+                                ),
+                            );
+                        }
+
                         // Gizi: hanya tab yang relevan untuk asuhan gizi — pengkajian (view-only,
                         // ada skrining gizi), pemeriksaan (TTV/nutrisi), CPPT (tulis), SBAR, riwayat.
                         if (auth()->user()->hasRole('Gizi')) {
@@ -312,9 +333,9 @@ new class extends Component {
                         | Diisi oleh Perawat — Pengkajian Awal Rawat Inap
                         ──────────────────────────────────────────── --}}
                         <div x-show="activeTab === 'pengkajian-perawat'" x-transition.opacity.duration.200ms>
-                            {{-- Dokter & role lain (termasuk Apoteker, Gizi & Laboratorium) boleh lihat (view-only); edit/simpan di-gate di dalam component
+                            {{-- Dokter & role lain (termasuk Apoteker, Gizi, Laboratorium & Radiologi) boleh lihat (view-only); edit/simpan di-gate di dalam component
                                  lewat $isReadOnlyByRole. Lihat rm-pengkajian-awal-ri-actions.blade.php --}}
-                            @hasanyrole('Perawat|Dokter|Admin|Casemix|Mr|Apoteker|Gizi|Laboratorium')
+                            @hasanyrole('Perawat|Dokter|Admin|Casemix|Mr|Apoteker|Gizi|Laboratorium|Radiologi')
                                 <livewire:pages::transaksi.ri.emr-ri.pengkajian-awal-ri.rm-pengkajian-awal-ri-actions
                                     :riHdrNo="$riHdrNo" wire:key="pengkajian-awal-ri-{{ $riHdrNo }}" />
                             @else
@@ -334,9 +355,9 @@ new class extends Component {
                         | Diisi oleh Dokter — Pengkajian Dokter RI
                         ──────────────────────────────────────────── --}}
                         <div x-show="activeTab === 'pengkajian-dokter'" x-transition.opacity.duration.200ms>
-                            {{-- Perawat & role lain (termasuk Apoteker, Gizi & Laboratorium) boleh lihat (view-only); edit/simpan di-gate di dalam component
+                            {{-- Perawat & role lain (termasuk Apoteker, Gizi, Laboratorium & Radiologi) boleh lihat (view-only); edit/simpan di-gate di dalam component
                                  lewat $isReadOnlyByRole. Lihat rm-pengkajian-dokter-ri-actions.blade.php --}}
-                            @hasanyrole('Dokter|Perawat|Admin|Casemix|Mr|Apoteker|Gizi|Laboratorium')
+                            @hasanyrole('Dokter|Perawat|Admin|Casemix|Mr|Apoteker|Gizi|Laboratorium|Radiologi')
                                 <livewire:pages::transaksi.ri.emr-ri.pengkajian-dokter-ri.rm-pengkajian-dokter-ri-actions
                                     :riHdrNo="$riHdrNo" wire:key="pengkajian-dokter-ri-{{ $riHdrNo }}" />
                             @else
@@ -478,7 +499,7 @@ new class extends Component {
                             </x-primary-button>
                         @endcan
 
-                        @hasanyrole('Admin|Perawat|Dokter|Casemix|Apoteker|Gizi')
+                        @hasanyrole('Admin|Perawat|Dokter|Casemix|Apoteker|Gizi|Laboratorium|Radiologi')
                             {{-- Dokumen — indigo solid --}}
                             <x-primary-button type="button" wire:click="openModulDokumen('{{ $riHdrNo }}')"
                                 wire:loading.attr="disabled" wire:target="openModulDokumen"

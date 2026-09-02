@@ -53,6 +53,25 @@ class AksiRole
     public const EMR_CETAK_ERESEP = ['Perawat', 'Dokter', 'Casemix', 'Manager Medis', 'Manager Umum', 'Admin'];
 
     /**
+     * Role PENUNJANG di layar Rawat Inap — akses SEMPIT, bukan PPA.
+     *
+     * Boleh MELIHAT konteks klinis order (Pengkajian Perawat/Dokter — read-only,
+     * Pemeriksaan, Riwayat), MENULIS catatan di CPPT & SBAR pada kolom profesi
+     * 'Penunjang', serta MENGISI dua dokumen yang jadi tugas mereka saat pasien
+     * diantar ke unit penunjang: Edukasi Terintegrasi & Form Pindah Antar Ruang.
+     * Selebihnya tertutup — asuhan keperawatan, observasi, penilaian, diagnosa,
+     * perencanaan, SKDP, dan consent/dokumen bedah-kebidanan.
+     *
+     * Konstanta ini dipakai dua arah, dan itu disengaja:
+     *   - membuka pintu  : menu Daftar RI, tombol Rekam Medis & Modul Dokumen,
+     *   - menutup pintu  : daftar tab EMR + Modul Dokumen dipangkas seperlunya.
+     * Juga jadi acuan User::profesiKlinis() memetakan role penunjang ke profesi
+     * 'Penunjang' — nama tab profesi di CPPT/SBAR. Menambah role penunjang baru
+     * di sini otomatis ikut ketiga-tiganya, tidak bisa kelupaan sebelah.
+     */
+    public const EMR_PENUNJANG_LIHAT = ['Laboratorium', 'Radiologi'];
+
+    /**
      * Mengisi Rekonsiliasi Obat lewat titik-3 Daftar RI / Pelayanan UGD.
      *
      * Pintu ini milik FARMASI: apoteker mendata obat yang dibawa pasien tanpa

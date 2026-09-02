@@ -137,7 +137,7 @@ class AppMenu
             $entry(['group' => 'Unit Gawat Darurat', 'groupOrder' => 6, 'order' => 2, 'route' => 'ugd.pelayanan', 'title' => 'Pelayanan UGD', 'desc' => 'EMR UGD — triase, asesmen, tindakan & resep oleh dokter/perawat UGD', 'roles' => ['admin', 'manager medis', 'dokter', 'perawat', 'apoteker', 'laboratorium'], 'badge' => 'PEL-UGD']),
 
             // ── Rawat Inap ─────────────────────────────────────────────
-            $entry(['group' => 'Rawat Inap', 'groupOrder' => 7, 'order' => 1, 'route' => 'ri.daftar', 'title' => 'Daftar Rawat Inap', 'desc' => 'Pendaftaran, transfer kamar, & manajemen pasien rawat inap', 'roles' => ['admin', 'manager medis', 'manager umum', 'supervisor tu', 'mr', 'perawat', 'dokter', 'casemix', 'tu', 'apoteker', 'gizi', 'laboratorium'], 'badge' => 'RI']),
+            $entry(['group' => 'Rawat Inap', 'groupOrder' => 7, 'order' => 1, 'route' => 'ri.daftar', 'title' => 'Daftar Rawat Inap', 'desc' => 'Pendaftaran, transfer kamar, & manajemen pasien rawat inap', 'roles' => ['admin', 'manager medis', 'manager umum', 'supervisor tu', 'mr', 'perawat', 'dokter', 'casemix', 'tu', 'apoteker', 'gizi', 'laboratorium', 'radiologi'], 'badge' => 'RI']),
             $entry(['group' => 'Rawat Inap', 'groupOrder' => 7, 'order' => 2, 'route' => 'ri.update-tt', 'title' => 'Sinkronisasi Tempat Tidur', 'desc' => 'Sync ketersediaan TT rawat inap → Aplicares BPJS & SIRS Kemenkes', 'roles' => ['admin', 'mr', 'perawat', 'dokter'], 'badge' => 'TT']),
             $entry(['group' => 'Rawat Inap', 'groupOrder' => 7, 'order' => 3, 'route' => 'ri.gizi', 'title' => 'Gizi Rawat Inap', 'desc' => 'Program diet harian pasien RI & rekap porsi dapur', 'roles' => ['admin', 'manager medis', 'manager umum', 'gizi'], 'badge' => 'GIZI']),
 
