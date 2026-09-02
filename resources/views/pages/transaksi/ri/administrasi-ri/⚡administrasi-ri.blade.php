@@ -119,6 +119,18 @@ new class extends Component {
         $this->dispatch('cetak-kwitansi-ri-ringkas.open', riHdrNo: $this->riHdrNo);
     }
 
+    /**
+     * Rincian pemakaian obat (obat pinjam + resep) satu kunjungan.
+     * Sama seperti kwitansi: tombolnya baru muncul saat ri_status='P' (pulang).
+     */
+    public function cetakRincianObat(): void
+    {
+        if (!$this->riHdrNo) {
+            return;
+        }
+        $this->dispatch('cetak-rincian-obat-ri.open', riHdrNo: $this->riHdrNo);
+    }
+
     /* ===============================
      | CLOSE MODAL
      =============================== */
@@ -505,6 +517,18 @@ new class extends Component {
                     <div class="flex items-center gap-2">
                     {{-- Tombol cetak hanya muncul saat transaksi selesai (ri_status='P' Pulang) --}}
                     @if ($riStatus === 'P')
+                        <x-secondary-button type="button" wire:click="cetakRincianObat" wire:loading.attr="disabled"
+                            wire:target="cetakRincianObat" class="gap-2">
+                            <span wire:loading.remove wire:target="cetakRincianObat">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                </svg>
+                            </span>
+                            <span wire:loading wire:target="cetakRincianObat"><x-loading class="w-4 h-4" /></span>
+                            Cetak Rincian Obat
+                        </x-secondary-button>
+
                         <x-secondary-button type="button" wire:click="cetakKwitansiRingkas" wire:loading.attr="disabled"
                             wire:target="cetakKwitansiRingkas" class="gap-2">
                             <span wire:loading.remove wire:target="cetakKwitansiRingkas">
@@ -542,4 +566,5 @@ new class extends Component {
     {{-- PDF dispatchers (listener 'cetak-kwitansi-ri-detail.open' & 'cetak-kwitansi-ri-ringkas.open') --}}
     <livewire:pages::components.modul-dokumen.ri.kwitansi.cetak-kwitansi-ri-detail wire:key="cetak-kwitansi-ri-detail" />
     <livewire:pages::components.modul-dokumen.ri.kwitansi.cetak-kwitansi-ri-ringkas wire:key="cetak-kwitansi-ri-ringkas" />
+    <livewire:pages::components.modul-dokumen.ri.kwitansi.cetak-rincian-obat-ri wire:key="cetak-rincian-obat-ri" />
 </div>
