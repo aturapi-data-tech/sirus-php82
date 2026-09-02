@@ -1,7 +1,10 @@
 {{-- resources/views/pages/components/modul-dokumen/ugd/pelaporan-eso/cetak-pelaporan-eso-print.blade.php --}}
 {{-- RM 37 — Formulir Pelaporan Efek Samping Obat (ESO).
-     Tata letak meniru Form Kuning MESO BPOM 2026 supaya lembar cetak bisa langsung
-     dikirim ke Pusat Farmakovigilans; acuan ada di docs/referensi/. --}}
+     Susunan bagian mengikuti Form Kuning MESO BPOM 2026 (acuan di docs/referensi/),
+     TAPI pilihan tidak lagi dicetak sebagai deret kotak centang: sejak penyeragaman
+     cetak modul dokumen, setiap pilihan hanya menampilkan nilai yang dipilih.
+     Konsekuensinya lembar ini bukan lagi salinan persis Form Kuning — bila suatu saat
+     harus dikirim apa adanya ke Pusat Farmakovigilans, deret kotaknya perlu dipulihkan. --}}
 
 <x-pdf.layout-a4-with-out-background title="FORMULIR PELAPORAN EFEK SAMPING OBAT (ESO)">
 
@@ -45,15 +48,20 @@
 
         $nilai = fn(string $path, string $kosong = '-') => filled(data_get($form, $path)) ? data_get($form, $path) : $kosong;
 
-        // Checkbox tercetak: kotak hitam = terpilih. Pakai border, BUKAN karakter
-        // centang — dompdf butuh font khusus utk ✓ dan mudah jadi "?" (lihat
-        // feedback centang dompdf).
-        $kotak = function (bool $terpilih): string {
-            $isi = $terpilih ? 'background-color:#000;' : '';
-            return '<span style="display:inline-block; width:8px; height:8px; border:1px solid #000; ' . $isi . ' margin-right:4px;">&nbsp;</span>';
-        };
-
         $kondisiTerpilih = (array) data_get($form, 'penderita.kondisiMenyertai', []);
+
+        // Pilihan jamak: cetak hanya kondisi yang dicentang, dipisah koma.
+        // Butir "lainLain" membawa keterangan bebasnya sekalian.
+        $kondisiTercetak = collect($opsiLabel['kondisiMenyertai'] ?? [])
+            ->filter(fn($labelKondisi, $kunciKondisi) => in_array($kunciKondisi, $kondisiTerpilih, true))
+            ->map(function ($labelKondisi, $kunciKondisi) use ($form) {
+                $keteranganLain = data_get($form, 'penderita.kondisiMenyertaiLainnya');
+
+                return $kunciKondisi === 'lainLain' && filled($keteranganLain)
+                    ? $labelKondisi . ' : ' . $keteranganLain
+                    : $labelKondisi;
+            })
+            ->implode(', ');
         $daftarObat = (array) data_get($form, 'obat', []);
     @endphp
 
@@ -78,15 +86,9 @@
         <tr>
             <td style="border:1px solid #000; padding:2px 4px; vertical-align:top;">
                 <strong>Kelamin :</strong><br>
-                @foreach ($opsiLabel['kelamin'] ?? [] as $opsiKelamin)
-                    {!! $kotak(data_get($form, 'penderita.kelamin') === $opsiKelamin) !!}{{ $opsiKelamin }}<br>
-                @endforeach
+                {{ $nilai('penderita.kelamin') }}
                 @if (data_get($form, 'penderita.kelamin') === 'Wanita')
-                    <span style="padding-left:12px;">
-                        @foreach ($opsiLabel['statusKehamilan'] ?? [] as $opsiHamil)
-                            {!! $kotak(data_get($form, 'penderita.statusKehamilan') === $opsiHamil) !!}{{ $opsiHamil }}<br>
-                        @endforeach
-                    </span>
+                    <br><span style="padding-left:12px;">{{ $nilai('penderita.statusKehamilan') }}</span>
                 @endif
             </td>
             <td style="border:1px solid #000; padding:2px 4px; vertical-align:top;" colspan="2">
@@ -95,21 +97,13 @@
             </td>
             <td style="border:1px solid #000; padding:2px 4px; vertical-align:top;">
                 <strong>Kesudahan Penyakit Utama :</strong><br>
-                @foreach ($opsiLabel['kesudahan'] ?? [] as $opsiKesudahan)
-                    {!! $kotak(data_get($form, 'penderita.kesudahanPenyakitUtama') === $opsiKesudahan) !!}{{ $opsiKesudahan }}<br>
-                @endforeach
+                {{ $nilai('penderita.kesudahanPenyakitUtama') }}
             </td>
         </tr>
         <tr>
             <td style="border:1px solid #000; padding:2px 4px;" colspan="4">
                 <strong>Penyakit / Kondisi Lain yang Menyertai :</strong><br>
-                @foreach ($opsiLabel['kondisiMenyertai'] ?? [] as $kunciKondisi => $labelKondisi)
-                    <span style="display:inline-block; width:32%;">
-                        {!! $kotak(in_array($kunciKondisi, $kondisiTerpilih, true)) !!}{{ $labelKondisi }}@if ($kunciKondisi === 'lainLain' && filled(data_get($form, 'penderita.kondisiMenyertaiLainnya')))
-                            : {{ data_get($form, 'penderita.kondisiMenyertaiLainnya') }}
-                        @endif
-                    </span>
-                @endforeach
+                {{ $kondisiTercetak ?: '-' }}
             </td>
         </tr>
     </table>
@@ -134,9 +128,7 @@
             <td style="border:1px solid #000; padding:2px 4px; vertical-align:top;">
                 <strong>Kesudahan ESO :</strong><br>
                 Tanggal : {{ $nilai('eso.tglKesudahanEso') }}<br>
-                @foreach ($opsiLabel['kesudahan'] ?? [] as $opsiKesudahanEso)
-                    {!! $kotak(data_get($form, 'eso.kesudahanEso') === $opsiKesudahanEso) !!}{{ $opsiKesudahanEso }}<br>
-                @endforeach
+                {{ $nilai('eso.kesudahanEso') }}
             </td>
         </tr>
         <tr>
@@ -171,11 +163,11 @@
                 <td style="border:1px solid #000; padding:2px;">{{ $barisObat['namaObat'] ?: '-' }}</td>
                 <td style="border:1px solid #000; padding:2px;">{{ $barisObat['bentukSediaan'] ?: '-' }}</td>
                 <td style="border:1px solid #000; padding:2px; text-align:center;">
-                    {!! $kotak(($barisObat['obatJkn'] ?? 'Tidak') === 'Ya') !!}
+                    {{ filled($barisObat['obatJkn'] ?? null) ? $barisObat['obatJkn'] : 'Tidak' }}
                 </td>
                 <td style="border:1px solid #000; padding:2px;">{{ $barisObat['noBets'] ?: '-' }}</td>
                 <td style="border:1px solid #000; padding:2px; text-align:center;">
-                    {!! $kotak(($barisObat['dicurigai'] ?? 'Tidak') === 'Ya') !!}
+                    {{ filled($barisObat['dicurigai'] ?? null) ? $barisObat['dicurigai'] : 'Tidak' }}
                 </td>
                 <td style="border:1px solid #000; padding:2px;">{{ $barisObat['cara'] ?: '-' }}</td>
                 <td style="border:1px solid #000; padding:2px;">{{ $barisObat['dosisWaktu'] ?: '-' }}</td>
