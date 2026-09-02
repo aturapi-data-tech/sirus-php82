@@ -573,6 +573,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/manajemen/rs/tu/piutang-pasien', 'pages::manajemen.rs.tu.piutang-pasien.piutang-pasien')
         ->name('manajemen.rs.tu.piutang-pasien');
 
+    Route::livewire('/manajemen/rs/tu/laporan-operasi', 'pages::manajemen.rs.tu.laporan-operasi.laporan-operasi')
+        ->name('manajemen.rs.tu.laporan-operasi');
+
     Route::livewire('/manajemen/rs/tu/gaji-dokter', 'pages::manajemen.rs.tu.gaji-dokter.gaji-dokter')
         ->name('manajemen.rs.tu.gaji-dokter');
 
