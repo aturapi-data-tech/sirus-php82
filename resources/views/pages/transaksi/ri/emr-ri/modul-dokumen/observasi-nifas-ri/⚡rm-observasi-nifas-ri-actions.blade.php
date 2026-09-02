@@ -1093,7 +1093,7 @@ new class extends Component {
                                             <div class="col-span-2 sm:col-span-3 lg:col-span-2">
                                                 <x-input-label value="Asuhan / Tindakan Kebidanan" />
                                                 <x-textarea wire:model="barisAsuhanTindakan" rows="2" class="w-full mt-1"
-                                                    placeholder="mis. observasi TTV, perawatan luka, edukasi menyusui, mobilisasi dini" />
+                                                    placeholder="mis. observasi TTV, perawatan luka, edukasi menyusui, mobilisasi dini" :error="$errors->has('barisAsuhanTindakan')" />
                                                 <x-input-error :messages="$errors->get('barisAsuhanTindakan')" class="mt-1" />
                                             </div>
                                         </div>

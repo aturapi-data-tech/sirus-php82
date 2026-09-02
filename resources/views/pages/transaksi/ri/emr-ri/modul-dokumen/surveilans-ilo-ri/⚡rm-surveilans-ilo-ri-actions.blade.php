@@ -887,7 +887,8 @@ new class extends Component {
                                 </div>
                                 <div class="lg:col-span-2">
                                     <x-input-label value="Tindakan Operasi" />
-                                    <x-text-input wire:model="newForm.tindakanOperasi" class="w-full mt-1" placeholder="Nama tindakan / prosedur" />
+                                    <x-text-input wire:model="newForm.tindakanOperasi" class="w-full mt-1" placeholder="Nama tindakan / prosedur" :error="$errors->has('newForm.tindakanOperasi')" />
+                                    <x-input-error :messages="$errors->get('newForm.tindakanOperasi')" class="mt-1" />
                                 </div>
                                 <div>
                                     <x-input-label value="Dokter Operator" />
@@ -1051,7 +1052,8 @@ new class extends Component {
                                     </div>
                                     <div>
                                         <x-input-label value="Catatan" />
-                                        <x-textarea wire:model="newForm.catatan" rows="3" class="w-full mt-1" placeholder="Catatan tambahan surveilans" />
+                                        <x-textarea wire:model="newForm.catatan" rows="3" class="w-full mt-1" placeholder="Catatan tambahan surveilans" :error="$errors->has('newForm.catatan')" />
+                                        <x-input-error :messages="$errors->get('newForm.catatan')" class="mt-1" />
                                     </div>
                                 </div>
                                 <div class="space-y-2">

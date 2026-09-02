@@ -896,9 +896,10 @@ new class extends Component {
                                         <div>
                                             <x-input-label value="Jam" class="mb-1" />
                                             <div class="flex items-center gap-2">
-                                                <x-text-input wire:model.live="newForm.jamSignIn" placeholder="HH:mm:ss" class="w-full" />
+                                                <x-text-input wire:model.live="newForm.jamSignIn" placeholder="HH:mm:ss" class="w-full" :error="$errors->has('newForm.jamSignIn')" />
                                                 @if (!$formReadOnly) <x-now-button wire:click="setJamSekarang('jamSignIn')" /> @endif
                                             </div>
+                                            <x-input-error :messages="$errors->get('newForm.jamSignIn')" class="mt-1" />
                                         </div>
 
                                         <div>
@@ -924,14 +925,16 @@ new class extends Component {
                                         <div class="space-y-2">
                                             <x-toggle wire:model.live="newForm.riwayatAlergi" :trueValue="true" :falseValue="false" label="Ada riwayat alergi" :disabled="$formReadOnly" />
                                             @if ($newForm['riwayatAlergi'])
-                                                <x-text-input wire:model.live="newForm.riwayatAlergiKet" placeholder="Keterangan alergi" class="w-full" />
+                                                <x-text-input wire:model.live="newForm.riwayatAlergiKet" placeholder="Keterangan alergi" class="w-full" :error="$errors->has('newForm.riwayatAlergiKet')" />
+                                                <x-input-error :messages="$errors->get('newForm.riwayatAlergiKet')" class="mt-1" />
                                             @endif
                                         </div>
 
                                         <div class="space-y-2">
                                             <x-toggle wire:model.live="newForm.penyulitAirwayResikoAspirasi" :trueValue="true" :falseValue="false" label="Penyulit airway / resiko aspirasi" :disabled="$formReadOnly" />
                                             @if ($newForm['penyulitAirwayResikoAspirasi'])
-                                                <x-text-input wire:model.live="newForm.penyulitAirwayKet" placeholder="Tersedia peralatan / keterangan" class="w-full" />
+                                                <x-text-input wire:model.live="newForm.penyulitAirwayKet" placeholder="Tersedia peralatan / keterangan" class="w-full" :error="$errors->has('newForm.penyulitAirwayKet')" />
+                                                <x-input-error :messages="$errors->get('newForm.penyulitAirwayKet')" class="mt-1" />
                                             @endif
                                         </div>
 
@@ -947,9 +950,10 @@ new class extends Component {
                                         <div>
                                             <x-input-label value="Jam" class="mb-1" />
                                             <div class="flex items-center gap-2">
-                                                <x-text-input wire:model.live="newForm.jamTimeOut" placeholder="HH:mm:ss" class="w-full" />
+                                                <x-text-input wire:model.live="newForm.jamTimeOut" placeholder="HH:mm:ss" class="w-full" :error="$errors->has('newForm.jamTimeOut')" />
                                                 @if (!$formReadOnly) <x-now-button wire:click="setJamSekarang('jamTimeOut')" /> @endif
                                             </div>
+                                            <x-input-error :messages="$errors->get('newForm.jamTimeOut')" class="mt-1" />
                                         </div>
 
                                         <div>
@@ -971,8 +975,10 @@ new class extends Component {
                                                 <div class="p-3 rounded-lg bg-canvas dark:bg-gray-900 border border-hairline dark:border-gray-700 space-y-2">
                                                     <p class="text-sm font-medium text-muted dark:text-gray-400">Operator</p>
                                                     <x-toggle wire:model.live="newForm.operatorTindakanDarurat" :trueValue="true" :falseValue="false" label="Tindakan darurat / prosedur luar standar" :disabled="$formReadOnly" />
-                                                    <x-text-input wire:model.live="newForm.operatorLamaOperasi" placeholder="Lama operasi" class="w-full" />
-                                                    <x-text-input wire:model.live="newForm.operatorAntisipasiKehilanganDarah" placeholder="Antisipasi kehilangan darah" class="w-full" />
+                                                    <x-text-input wire:model.live="newForm.operatorLamaOperasi" placeholder="Lama operasi" class="w-full" :error="$errors->has('newForm.operatorLamaOperasi')" />
+                                                    <x-input-error :messages="$errors->get('newForm.operatorLamaOperasi')" class="mt-1" />
+                                                    <x-text-input wire:model.live="newForm.operatorAntisipasiKehilanganDarah" placeholder="Antisipasi kehilangan darah" class="w-full" :error="$errors->has('newForm.operatorAntisipasiKehilanganDarah')" />
+                                                    <x-input-error :messages="$errors->get('newForm.operatorAntisipasiKehilanganDarah')" class="mt-1" />
                                                 </div>
 
                                                 <div class="p-3 rounded-lg bg-canvas dark:bg-gray-900 border border-hairline dark:border-gray-700 space-y-2">
@@ -983,7 +989,8 @@ new class extends Component {
                                                 <div class="p-3 rounded-lg bg-canvas dark:bg-gray-900 border border-hairline dark:border-gray-700 space-y-2">
                                                     <p class="text-sm font-medium text-muted dark:text-gray-400">Instrumen</p>
                                                     <x-toggle wire:model.live="newForm.instrumenPeralatanDisterilisasi" :trueValue="true" :falseValue="false" label="Peralatan disterilisasi" :disabled="$formReadOnly" />
-                                                    <x-text-input wire:model.live="newForm.instrumenPerhatianKhususPeralatan" placeholder="Perhatian khusus peralatan" class="w-full" />
+                                                    <x-text-input wire:model.live="newForm.instrumenPerhatianKhususPeralatan" placeholder="Perhatian khusus peralatan" class="w-full" :error="$errors->has('newForm.instrumenPerhatianKhususPeralatan')" />
+                                                    <x-input-error :messages="$errors->get('newForm.instrumenPerhatianKhususPeralatan')" class="mt-1" />
                                                     <x-toggle wire:model.live="newForm.instrumenInstrumentasiRadiologi" :trueValue="true" :falseValue="false" label="Instrumentasi radiologi" :disabled="$formReadOnly" />
                                                 </div>
                                             </div>
@@ -997,9 +1004,10 @@ new class extends Component {
                                         <div>
                                             <x-input-label value="Jam" class="mb-1" />
                                             <div class="flex items-center gap-2">
-                                                <x-text-input wire:model.live="newForm.jamSignOut" placeholder="HH:mm:ss" class="w-full" />
+                                                <x-text-input wire:model.live="newForm.jamSignOut" placeholder="HH:mm:ss" class="w-full" :error="$errors->has('newForm.jamSignOut')" />
                                                 @if (!$formReadOnly) <x-now-button wire:click="setJamSekarang('jamSignOut')" /> @endif
                                             </div>
+                                            <x-input-error :messages="$errors->get('newForm.jamSignOut')" class="mt-1" />
                                         </div>
 
                                         <p class="text-sm font-semibold text-ink dark:text-gray-200">Perawat membacakan:</p>
@@ -1022,7 +1030,8 @@ new class extends Component {
 
                                         <div class="pt-3 border-t border-hairline-soft dark:border-gray-700">
                                             <x-input-label value="Perhatian khusus masa pemulihan / recovery" class="mb-1" />
-                                            <x-textarea wire:model.live="newForm.perhatianKhususRecovery" rows="3" class="w-full" />
+                                            <x-textarea wire:model.live="newForm.perhatianKhususRecovery" rows="3" class="w-full" :error="$errors->has('newForm.perhatianKhususRecovery')" />
+                                            <x-input-error :messages="$errors->get('newForm.perhatianKhususRecovery')" class="mt-1" />
                                         </div>
                                     </div>
                                 </x-border-form>

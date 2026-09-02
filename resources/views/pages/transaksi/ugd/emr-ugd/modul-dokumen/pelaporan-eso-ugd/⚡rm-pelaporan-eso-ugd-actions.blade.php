@@ -1036,7 +1036,8 @@ new class extends Component {
                                     <div>
                                         <x-input-label value="Tgl. Kesudahan ESO" />
                                         <x-text-input wire:model="form.eso.tglKesudahanEso" :disabled="$formReadOnly"
-                                            placeholder="dd/mm/yyyy" class="w-full px-2 mt-1" />
+                                            placeholder="dd/mm/yyyy" class="w-full px-2 mt-1" :error="$errors->has('form.eso.tglKesudahanEso')" />
+                                        <x-input-error :messages="$errors->get('form.eso.tglKesudahanEso')" class="mt-1" />
                                     </div>
                                 </div>
 
@@ -1131,7 +1132,8 @@ new class extends Component {
                                         <x-input-label value="Tgl. Akhir" class="truncate whitespace-nowrap" />
                                         <x-text-input wire:model="formEntryObat.tglAkhir"
                                             wire:keydown.enter.prevent="addBarisObat" placeholder="dd/mm/yyyy"
-                                            class="w-full px-2 mt-1" />
+                                            class="w-full px-2 mt-1" :error="$errors->has('formEntryObat.tglAkhir')" />
+                                        <x-input-error :messages="$errors->get('formEntryObat.tglAkhir')" class="mt-1" />
                                     </div>
                                 </div>
 
@@ -1311,7 +1313,8 @@ new class extends Component {
                                     Tanggal sampel laboratorium di samping diperiksa.
                                 </p>
                                 <x-text-input wire:model="form.tglPemeriksaanLab" :disabled="$formReadOnly"
-                                    placeholder="dd/mm/yyyy" class="w-full px-2" />
+                                    placeholder="dd/mm/yyyy" class="w-full px-2" :error="$errors->has('form.tglPemeriksaanLab')" />
+                                <x-input-error :messages="$errors->get('form.tglPemeriksaanLab')" class="mt-1" />
                             </div>
                         </div>
                     </div>
