@@ -1038,7 +1038,7 @@ new class extends Component {
                         <x-input-label value="Tanggal Edukasi *" />
                         <div class="flex items-end gap-2 mt-1">
                             <x-text-input wire:model="form.tglEdukasi" class="flex-1 font-mono"
-                                placeholder="dd/mm/yyyy hh:ii:ss" readonly
+                                placeholder="dd/mm/yyyy hh:ii:ss" :disabled="$formReadOnly"
                                 :error="$errors->has('form.tglEdukasi')" />
                             <x-now-button wire:click="setTglEdukasi" :disabled="$formReadOnly" />
                         </div>

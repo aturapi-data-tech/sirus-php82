@@ -908,7 +908,7 @@ new class extends Component {
             <div class="flex items-end gap-3">
                 <div class="flex-1">
                     <x-input-label value="Tanggal *" />
-                    <x-text-input wire:model="formA.tanggal" class="w-full mt-1 font-mono" readonly
+                    <x-text-input wire:model="formA.tanggal" class="w-full mt-1 font-mono" :disabled="$formReadOnlyA"
                         :error="$errors->has('formA.tanggal')" placeholder="dd/mm/yyyy HH:mm:ss" />
                     <x-input-error :messages="$errors->get('formA.tanggal')" class="mt-1" />
                 </div>
@@ -1227,7 +1227,7 @@ new class extends Component {
             <div class="flex items-end gap-3">
                 <div class="flex-1">
                     <x-input-label value="Tanggal *" />
-                    <x-text-input wire:model="formB.tanggal" class="w-full mt-1 font-mono" readonly
+                    <x-text-input wire:model="formB.tanggal" class="w-full mt-1 font-mono" :disabled="$formReadOnlyB"
                         :error="$errors->has('formB.tanggal')" placeholder="dd/mm/yyyy HH:mm:ss" />
                     <x-input-error :messages="$errors->get('formB.tanggal')" class="mt-1" />
                 </div>

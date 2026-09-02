@@ -1036,7 +1036,7 @@ new class extends Component {
                             <x-input-label value="Tanggal & Jam Asesmen *" />
                             <div class="flex items-end gap-2 mt-1">
                                 <x-text-input wire:model="form.tglAsesmen" class="flex-1 font-mono"
-                                    placeholder="dd/mm/yyyy hh:ii:ss" readonly :error="$errors->has('form.tglAsesmen')" />
+                                    placeholder="dd/mm/yyyy hh:ii:ss" :disabled="$formReadOnly" :error="$errors->has('form.tglAsesmen')" />
                                 <x-now-button wire:click="setTglAsesmen" :disabled="$formReadOnly" />
                             </div>
                             <x-input-error :messages="$errors->get('form.tglAsesmen')" class="mt-1" />
