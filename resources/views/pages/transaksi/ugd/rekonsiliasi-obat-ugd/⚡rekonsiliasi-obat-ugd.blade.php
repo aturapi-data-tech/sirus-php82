@@ -273,7 +273,8 @@ new class extends Component {
                                             <div class="col-span-5">
                                                 <x-input-label value="Nama Obat" :required="true" class="truncate whitespace-nowrap" />
                                                 <x-rekonsiliasi-obat-combobox wire-model="formEntryRekonsiliasi.namaObat"
-                                                    enter-action="$wire.addRekonsiliasiObat()" :error="$errors->has('formEntryRekonsiliasi.namaObat')"
+                                                    input-id="rekon-ugd-modal-nama"
+                                                    enter-action="document.getElementById('rekon-ugd-modal-dosis')?.focus()" :error="$errors->has('formEntryRekonsiliasi.namaObat')"
                                                     class="w-full px-2 mt-1" />
                                                 <x-input-error :messages="$errors->get('formEntryRekonsiliasi.namaObat')" class="mt-1" />
                                             </div>
@@ -281,14 +282,15 @@ new class extends Component {
                                             <div class="col-span-3">
                                                 <x-input-label value="Dosis" :required="true" class="truncate whitespace-nowrap" />
                                                 <x-text-input wire:model="formEntryRekonsiliasi.dosis"
-                                                    wire:keydown.enter.prevent="addRekonsiliasiObat" placeholder="1x1 tab"
+                                                    id="rekon-ugd-modal-dosis" x-on:keydown.enter.prevent="document.getElementById('rekon-ugd-modal-rute')?.focus()" placeholder="1x1 tab"
                                                     :error="$errors->has('formEntryRekonsiliasi.dosis')" class="w-full px-2 mt-1" />
                                                 <x-input-error :messages="$errors->get('formEntryRekonsiliasi.dosis')" class="mt-1" />
                                             </div>
 
                                             <div class="col-span-4">
                                                 <x-input-label value="Rute" :required="true" class="truncate whitespace-nowrap" />
-                                                <x-select-input wire:model="formEntryRekonsiliasi.rute"
+                                                <x-select-input wire:model="formEntryRekonsiliasi.rute" id="rekon-ugd-modal-rute"
+                                                    x-on:keydown.enter.prevent="$wire.addRekonsiliasiObat().then(() => document.getElementById('rekon-ugd-modal-nama')?.focus())"
                                                     :error="$errors->has('formEntryRekonsiliasi.rute')" class="w-full px-2 mt-1">
                                                     <option value="">&mdash;</option>
                                                     @foreach ($ruteOptions as $rute)

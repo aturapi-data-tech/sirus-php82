@@ -59,14 +59,15 @@
                     <div class="col-span-5">
                         <x-input-label value="Nama Obat" :required="true" class="truncate whitespace-nowrap" />
                         <x-rekonsiliasi-obat-combobox wire-model="formEntryRekonsiliasi.namaObat"
-                            enter-action="$wire.addRekonsiliasiObat()" :error="$errors->has('formEntryRekonsiliasi.namaObat')"
+                            input-id="rekon-ugd-nama"
+                        enter-action="document.getElementById('rekon-ugd-dosis')?.focus()" :error="$errors->has('formEntryRekonsiliasi.namaObat')"
                             :disabled="$isFormLocked" class="w-full px-2 mt-1" />
                         <x-input-error :messages="$errors->get('formEntryRekonsiliasi.namaObat')" class="mt-1" />
                     </div>
 
                     <div class="col-span-3">
                         <x-input-label value="Dosis" :required="true" class="truncate whitespace-nowrap" />
-                        <x-text-input wire:model="formEntryRekonsiliasi.dosis" wire:keydown.enter.prevent="addRekonsiliasiObat"
+                        <x-text-input wire:model="formEntryRekonsiliasi.dosis" id="rekon-ugd-dosis" x-on:keydown.enter.prevent="document.getElementById('rekon-ugd-rute')?.focus()"
                             placeholder="1x1 tab" :error="$errors->has('formEntryRekonsiliasi.dosis')" :disabled="$isFormLocked"
                             class="w-full px-2 mt-1" />
                         <x-input-error :messages="$errors->get('formEntryRekonsiliasi.dosis')" class="mt-1" />
@@ -74,7 +75,8 @@
 
                     <div class="col-span-4">
                         <x-input-label value="Rute" :required="true" class="truncate whitespace-nowrap" />
-                        <x-select-input wire:model="formEntryRekonsiliasi.rute" :error="$errors->has('formEntryRekonsiliasi.rute')" :disabled="$isFormLocked"
+                        <x-select-input wire:model="formEntryRekonsiliasi.rute" id="rekon-ugd-rute"
+                        x-on:keydown.enter.prevent="$wire.addRekonsiliasiObat().then(() => document.getElementById('rekon-ugd-nama')?.focus())" :error="$errors->has('formEntryRekonsiliasi.rute')" :disabled="$isFormLocked"
                             class="w-full px-2 mt-1">
                             <option value="">—</option>
                             @foreach (RekonsiliasiObat::RUTE as $rute)

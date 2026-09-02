@@ -47,6 +47,12 @@ new class extends Component {
         $this->dispatch('pto.selectPasien', rihdrNo: $rihdrNo);
     }
 
+    /* --- Pintu Rekonsiliasi Obat (sama dgn titik-3 Daftar RI) --- */
+    public function openRekonsiliasiObat(string $riHdrNo): void
+    {
+        $this->dispatch('rekonsiliasi-obat-ri.open', riHdrNo: $riHdrNo);
+    }
+
     /* --- Daftar pasien RI aktif --- */
     #[Computed]
     public function pasiens()
@@ -234,6 +240,40 @@ new class extends Component {
                                                     <x-badge :variant="$p->jumlah_resep > 0 ? 'info' : 'gray'">
                                                         {{ $p->jumlah_resep }} resep
                                                     </x-badge>
+
+                                                    {{-- Titik-3 aksi — @click.stop supaya klik menu tidak ikut memilih baris
+                                                         (re-render baris bakal menutup dropdown Alpine-nya). --}}
+                                                    @can('rekonsiliasi.obat')
+                                                        <div @click.stop class="mt-0.5">
+                                                            <x-dropdown width="w-[300px]">
+                                                                <x-slot name="trigger">
+                                                                    <x-secondary-button type="button" class="p-2">
+                                                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path
+                                                                                d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
+                                                                        </svg>
+                                                                    </x-secondary-button>
+                                                                </x-slot>
+
+                                                                <x-slot name="content">
+                                                                    <x-dropdown-link href="#"
+                                                                        wire:click.prevent="openRekonsiliasiObat('{{ $p->rihdr_no }}')"
+                                                                        class="px-3 py-2 text-sm rounded-lg bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/20">
+                                                                        <div class="flex items-start gap-2 text-left">
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor"
+                                                                                viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                                                            </svg>
+                                                                            <span>Rekonsiliasi Obat<br>
+                                                                                <span class="font-semibold">Obat Bawaan Pasien</span>
+                                                                            </span>
+                                                                        </div>
+                                                                    </x-dropdown-link>
+                                                                </x-slot>
+                                                            </x-dropdown>
+                                                        </div>
+                                                    @endcan
                                                 </div>
                                             </td>
                                         </tr>
@@ -259,6 +299,9 @@ new class extends Component {
                 </div>
 
             </div>
+
+            {{-- Modal Rekonsiliasi Obat (Farmasi) — listen ke event rekonsiliasi-obat-ri.open --}}
+            <livewire:pages::transaksi.ri.rekonsiliasi-obat-ri.rekonsiliasi-obat-ri wire:key="rekonsiliasi-obat-ri" />
         </div>
     </div>
 </div>
