@@ -11,6 +11,14 @@ namespace App\Support\Options;
  * perangkat, kapasitas AC) dipakai KEDUA modul, jadi tinggal di RuangServerOptions
  * — bukan disalin ke sini.
  *
+ * DUA SUHU per pengukuran, keduanya wajib:
+ *   - suhuAc     suhu keluaran / setelan AC (biasanya jauh di bawah suhu ruang)
+ *   - suhuRuang  suhu ruang server itu sendiri — INI yang diadu dengan standar
+ *                18-27 C dan menentukan kondisi N/TN.
+ * AC yang disetel 17 C wajar dan tidak membuat kondisi jadi Tidak Normal; yang
+ * dinilai akreditasi adalah suhu ruangnya. Record lama yang hanya punya kunci
+ * 'suhu' dibaca sebagai suhu ruang - lihat suhuRuang().
+ *
  * HANYA SUHU. Formulir kertas menyebut standar kelembaban (40%-60% RH), tapi RS
  * belum punya thermohygrometer — jadi kelembaban tidak direkam sama sekali,
  * bukan direkam sebagai kolom kosong yang menuntut diisi. Kalau alatnya kelak
@@ -102,17 +110,44 @@ class SuhuRuangServerOptions
     }
 
     /**
-     * Kondisi N/TN dari suhu satu entri terhadap standar lembar.
+     * Suhu RUANG satu entri, atau null bila tak terbaca.
      *
-     * Entri tanpa suhu terbaca dianggap Tidak Normal supaya baris setengah terisi
-     * tidak lolos sebagai "aman".
+     * Record lama menyimpan angka ruangnya di kunci 'suhu' (belum ada pemisahan
+     * AC/ruang), jadi kunci itu dipakai sebagai cadangan — tanpa ini seluruh
+     * riwayat lama tampil kosong dan ikut terhitung Tidak Normal.
+     */
+    public static function suhuRuang(array $entri): ?float
+    {
+        return self::angka($entri['suhuRuang'] ?? null) ?? self::angka($entri['suhu'] ?? null);
+    }
+
+    /**
+     * Suhu AC satu entri, atau null bila tak terbaca.
      *
-     * @param  array  $entri  entri harian ('suhu')
+     * Tanpa cadangan ke 'suhu': record lama memang tak pernah merekam angka AC,
+     * dan menebaknya dari suhu ruang akan mengarang data yang tak pernah diukur.
+     */
+    public static function suhuAc(array $entri): ?float
+    {
+        return self::angka($entri['suhuAc'] ?? null);
+    }
+
+    /**
+     * Kondisi N/TN dari suhu RUANG satu entri terhadap standar lembar.
+     *
+     * Suhu AC sengaja tidak ikut dinilai: AC disetel dingin (17 C) justru supaya
+     * ruangnya masuk rentang standar, jadi mengadu setelan AC dengan ambang ruang
+     * akan menandai pengukuran sehat sebagai Tidak Normal.
+     *
+     * Entri tanpa suhu ruang terbaca dianggap Tidak Normal supaya baris setengah
+     * terisi tidak lolos sebagai "aman".
+     *
+     * @param  array  $entri  entri harian ('suhuRuang', atau 'suhu' untuk record lama)
      * @param  array  $ruang  Bagian A ('standarSuhuMin', 'standarSuhuMax')
      */
     public static function hitungKondisi(array $entri, array $ruang): string
     {
-        $suhu = self::angka($entri['suhu'] ?? null);
+        $suhu = self::suhuRuang($entri);
 
         if ($suhu === null) {
             return 'TN';

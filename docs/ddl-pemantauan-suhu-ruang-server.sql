@@ -88,7 +88,7 @@ COMMENT ON COLUMN RSTXN_SUHUSERVERS.SUHUSERVER_NO IS
     'PK dari SEQ_SUHUSERVERS';
 
 COMMENT ON COLUMN RSTXN_SUHUSERVERS.SUHUSERVER_JSON IS
-    'Isi satu pengukuran. Kunci waktu, suhu, statusAc, kondisi, tindakLanjut, paraf';
+    'Isi satu pengukuran. Kunci waktu, suhuAc, suhuRuang, statusAc, kondisi, tindakLanjut, paraf';
 
 
 -- =============================================================
@@ -96,7 +96,8 @@ COMMENT ON COLUMN RSTXN_SUHUSERVERS.SUHUSERVER_JSON IS
 -- =============================================================
 -- {
 --   "waktu":        "26/08/2026 08:59:42",
---   "suhu":         "22.5",
+--   "suhuAc":       "17",
+--   "suhuRuang":    "22.5",
 --   "statusAc":     "normal",
 --   "kondisi":      "N",
 --   "tindakLanjut": "",
@@ -111,7 +112,15 @@ COMMENT ON COLUMN RSTXN_SUHUSERVERS.SUHUSERVER_JSON IS
 --   - statusAc menyimpan KUNCI (lihat SuhuRuangServerOptions), bukan label.
 --     Redaksi label boleh diperbaiki tanpa merusak record lama, dan kunci yang
 --     tak dikenal dibuang saat ditampilkan - tak pernah dicetak mentah.
---   - kondisi 'N'/'TN' DIHITUNG dari suhu terhadap ambang standar, lalu DISIMPAN
+--   - DUA suhu per pengukuran: suhuAc (setelan/keluaran AC, biasanya jauh lebih
+--     dingin) dan suhuRuang (suhu ruang server itu sendiri). HANYA suhuRuang yang
+--     diadu dengan ambang standar - AC yang disetel 17 C wajar dan tidak boleh
+--     membuat kondisi jadi Tidak Normal.
+--   - RECORD LAMA hanya punya kunci "suhu" (belum ada pemisahan AC/ruang).
+--     Angkanya dibaca sebagai suhu RUANG lewat SuhuRuangServerOptions::suhuRuang();
+--     suhuAc-nya dibiarkan kosong, bukan ditebak dari suhu ruang - angka itu
+--     memang tak pernah diukur. TAK ADA MIGRASI DATA yang diperlukan.
+--   - kondisi 'N'/'TN' DIHITUNG dari suhuRuang terhadap ambang standar, lalu DISIMPAN
 --     sebagai snapshot. Standar boleh direvisi kelak - yang sudah tercetak dan
 --     ditandatangani harus tetap sama dengan yang dinilai petugas saat itu.
 --   - TIDAK ADA kelembaban: formulir menyebut standar 40%-60% RH, tapi RS belum

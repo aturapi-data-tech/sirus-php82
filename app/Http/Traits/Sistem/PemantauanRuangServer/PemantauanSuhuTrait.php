@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\DB;
  * Pemantauan Suhu Ruang Server (Akreditasi MRMIK 2.2).
  *
  * SATU BARIS = SATU PENGUKURAN. Tabelnya cuma dua kolom: PK + CLOB JSON berisi
- * satu pengukuran (waktu, suhu, status AC, kondisi, tindak lanjut, paraf).
+ * satu pengukuran (waktu, suhu AC, suhu ruang, status AC, kondisi, tindak
+ * lanjut, paraf). Kondisi N/TN dihitung dari suhu RUANG, bukan suhu AC.
  * Rancangan & alasannya: docs/ddl-pemantauan-suhu-ruang-server.sql.
  *
  * Tak ada lembar, tak ada array entri, tak ada lock — menambah baris tak pernah
@@ -167,7 +168,11 @@ trait PemantauanSuhuTrait
             'urut' => $stempel,
             // 'MM/YYYY' bulan pengukuran — bahan filter periode di layar list.
             'periode' => $stempel === 0 ? '' : Carbon::createFromTimestamp($stempel)->format('m/Y'),
-            'suhu' => (string) ($isi['suhu'] ?? ''),
+            // Dua angka terpisah. suhuRuang lewat helper supaya record lama yang
+            // hanya punya kunci 'suhu' tetap terbaca; suhuAc kosong apa adanya
+            // untuk record lama, karena angkanya memang tak pernah diukur.
+            'suhuAc' => ($acLama = SuhuRuangServerOptions::suhuAc($isi)) === null ? '' : (string) $acLama,
+            'suhuRuang' => ($ruangLama = SuhuRuangServerOptions::suhuRuang($isi)) === null ? '' : (string) $ruangLama,
             'statusAc' => $statusAc,
             'statusAcLabel' => SuhuRuangServerOptions::labelStatusAc($statusAc),
             'kondisi' => (string) ($isi['kondisi'] ?? ''),
@@ -182,8 +187,16 @@ trait PemantauanSuhuTrait
     /** Rekap sebulan untuk kepala cetakan & layar list. */
     protected function rekapSuhu(array $daftar): array
     {
+        // Min/max/rata memakai suhu RUANG — itu angka yang diadu dengan standar.
+        // Suhu AC direkap terpisah sebagai rata-rata saja: yang berguna dibaca
+        // adalah kecenderungan setelannya, bukan rentangnya.
         $suhuList = array_values(array_filter(
-            array_map(fn (array $catatan) => SuhuRuangServerOptions::angka($catatan['suhu']), $daftar),
+            array_map(fn (array $catatan) => SuhuRuangServerOptions::angka($catatan['suhuRuang'] ?? null), $daftar),
+            fn (?float $suhu) => $suhu !== null
+        ));
+
+        $acList = array_values(array_filter(
+            array_map(fn (array $catatan) => SuhuRuangServerOptions::angka($catatan['suhuAc'] ?? null), $daftar),
             fn (?float $suhu) => $suhu !== null
         ));
 
@@ -194,6 +207,7 @@ trait PemantauanSuhuTrait
             'suhuMax' => $suhuList === [] ? null : max($suhuList),
             // Rata-rata dibulatkan satu desimal — angka pengukurannya pun satu desimal.
             'suhuRata' => $suhuList === [] ? null : round(array_sum($suhuList) / count($suhuList), 1),
+            'suhuAcRata' => $acList === [] ? null : round(array_sum($acList) / count($acList), 1),
         ];
     }
 

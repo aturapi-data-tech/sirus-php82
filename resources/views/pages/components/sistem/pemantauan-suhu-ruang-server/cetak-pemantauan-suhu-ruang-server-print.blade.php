@@ -57,14 +57,16 @@
     <table class="w-full border border-black border-collapse" style="font-size: 8px;">
         <thead>
             <tr>
+                {{-- Jumlah lebar HARUS 100%: 4+10+7+8+9+14+9+25+14. --}}
                 <th class="px-1 py-1 border border-black" style="width: 4%;">No</th>
-                <th class="px-1 py-1 border border-black" style="width: 11%;">Tanggal</th>
-                <th class="px-1 py-1 border border-black" style="width: 8%;">Jam</th>
-                <th class="px-1 py-1 border border-black" style="width: 9%;">Suhu (°C)</th>
-                <th class="px-1 py-1 border border-black" style="width: 16%;">Status AC</th>
-                <th class="px-1 py-1 border border-black" style="width: 10%;">Kondisi (N / TN)*</th>
-                <th class="px-1 py-1 border border-black" style="width: 27%;">Tindak Lanjut</th>
-                <th class="px-1 py-1 border border-black" style="width: 15%;">Paraf</th>
+                <th class="px-1 py-1 border border-black" style="width: 10%;">Tanggal</th>
+                <th class="px-1 py-1 border border-black" style="width: 7%;">Jam</th>
+                <th class="px-1 py-1 border border-black" style="width: 8%;">Suhu AC (°C)</th>
+                <th class="px-1 py-1 border border-black" style="width: 9%;">Suhu Ruang (°C)</th>
+                <th class="px-1 py-1 border border-black" style="width: 14%;">Status AC</th>
+                <th class="px-1 py-1 border border-black" style="width: 9%;">Kondisi (N / TN)*</th>
+                <th class="px-1 py-1 border border-black" style="width: 25%;">Tindak Lanjut</th>
+                <th class="px-1 py-1 border border-black" style="width: 14%;">Paraf</th>
             </tr>
         </thead>
         <tbody>
@@ -73,7 +75,8 @@
                     <td class="px-1 py-1 text-center align-top border border-black">{{ $urut + 1 }}</td>
                     <td class="px-1 py-1 align-top border border-black">{{ $isi($catatan['tanggal']) }}</td>
                     <td class="px-1 py-1 text-center align-top border border-black">{{ $isi($catatan['jam']) }}</td>
-                    <td class="px-1 py-1 text-center align-top border border-black">{{ $isi($catatan['suhu']) }}</td>
+                    <td class="px-1 py-1 text-center align-top border border-black">{{ $isi($catatan['suhuAc']) }}</td>
+                    <td class="px-1 py-1 text-center align-top border border-black">{{ $isi($catatan['suhuRuang']) }}</td>
                     <td class="px-1 py-1 align-top border border-black">{{ $catatan['statusAcLabel'] }}</td>
                     <td class="px-1 py-1 text-center align-top border border-black">{{ $isi($catatan['kondisi']) }}</td>
                     <td class="px-1 py-1 align-top border border-black">{{ $isi($catatan['tindakLanjut']) }}</td>
@@ -81,14 +84,14 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8" class="px-1 py-4 text-center border border-black">Belum ada pengukuran pada bulan ini.</td>
+                    <td colspan="9" class="px-1 py-4 text-center border border-black">Belum ada pengukuran pada bulan ini.</td>
                 </tr>
             @endforelse
         </tbody>
     </table>
 
     <p class="mt-1 italic" style="font-size: 8px;">
-        *) N = Normal (suhu {{ SuhuRuangServerOptions::SUHU_MIN_DEFAULT }}&ndash;{{ SuhuRuangServerOptions::SUHU_MAX_DEFAULT }} °C)
+        *) N = Normal (suhu RUANG {{ SuhuRuangServerOptions::SUHU_MIN_DEFAULT }}&ndash;{{ SuhuRuangServerOptions::SUHU_MAX_DEFAULT }} °C; suhu AC tidak ikut dinilai)
         &nbsp;|&nbsp; TN = Tidak Normal (di luar rentang, wajib tindak lanjut)
     </p>
 
@@ -99,18 +102,24 @@
             <tr>
                 <td class="px-2 py-1 align-top border border-black" style="width: 25%;">Jumlah Pengukuran</td>
                 <td class="px-2 py-1 align-top border border-black" style="width: 25%;">{{ $rekap['jumlah'] ?? 0 }}</td>
-                <td class="px-2 py-1 align-top border border-black" style="width: 25%;">Suhu Terendah / Tertinggi</td>
+                <td class="px-2 py-1 align-top border border-black" style="width: 25%;">Suhu Ruang Terendah / Tertinggi</td>
                 <td class="px-2 py-1 align-top border border-black">
                     {{ ($rekap['suhuMin'] ?? null) === null ? '-' : $rekap['suhuMin'] . ' / ' . $rekap['suhuMax'] . ' °C' }}
                 </td>
             </tr>
             <tr>
-                <td class="px-2 py-1 align-top border border-black">Suhu Rata-rata</td>
+                <td class="px-2 py-1 align-top border border-black">Suhu Ruang Rata-rata</td>
                 <td class="px-2 py-1 align-top border border-black">
                     {{ ($rekap['suhuRata'] ?? null) === null ? '-' : $rekap['suhuRata'] . ' °C' }}
                 </td>
                 <td class="px-2 py-1 align-top border border-black">Kondisi Tidak Normal</td>
                 <td class="px-2 py-1 align-top border border-black">{{ $rekap['tidakNormal'] ?? 0 }} kali</td>
+            </tr>
+            <tr>
+                <td class="px-2 py-1 align-top border border-black">Suhu AC Rata-rata</td>
+                <td class="px-2 py-1 align-top border border-black" colspan="3">
+                    {{ ($rekap['suhuAcRata'] ?? null) === null ? '-' : $rekap['suhuAcRata'] . ' °C' }}
+                </td>
             </tr>
         </tbody>
     </table>

@@ -292,19 +292,20 @@ new class extends Component {
                                 <div class="text-[10px] text-muted dark:text-gray-400">baris tercatat</div>
                             </div>
                             <div class="p-3 border bg-blue-50 border-blue-200 rounded-xl dark:bg-blue-900/20 dark:border-blue-700">
-                                <div class="text-xs text-blue-700 uppercase dark:text-blue-300">Rentang Suhu</div>
+                                <div class="text-xs text-blue-700 uppercase dark:text-blue-300">Rentang Suhu Ruang</div>
                                 <div class="mt-1 text-xl font-bold text-blue-800 dark:text-blue-200">
                                     {{ $rekap['suhuMin'] === null ? '-' : $rekap['suhuMin'] . ' – ' . $rekap['suhuMax'] . ' °C' }}
                                 </div>
                                 <div class="text-[10px] text-blue-600 dark:text-blue-400">terendah &ndash; tertinggi</div>
                             </div>
                             <div class="p-3 border bg-emerald-50 border-emerald-200 rounded-xl dark:bg-emerald-900/20 dark:border-emerald-700">
-                                <div class="text-xs uppercase text-emerald-700 dark:text-emerald-300">Rata-rata</div>
+                                <div class="text-xs uppercase text-emerald-700 dark:text-emerald-300">Rata-rata Ruang</div>
                                 <div class="mt-1 text-2xl font-bold text-emerald-800 dark:text-emerald-200">
                                     {{ $rekap['suhuRata'] === null ? '-' : $rekap['suhuRata'] . ' °C' }}
                                 </div>
                                 <div class="text-[10px] text-emerald-600 dark:text-emerald-400">
                                     standar {{ \App\Support\Options\SuhuRuangServerOptions::SUHU_MIN_DEFAULT }}&ndash;{{ \App\Support\Options\SuhuRuangServerOptions::SUHU_MAX_DEFAULT }} °C
+                                    &middot; AC rata-rata {{ ($rekap['suhuAcRata'] ?? null) === null ? '-' : $rekap['suhuAcRata'] . ' °C' }}
                                 </div>
                             </div>
                             {{-- Merah hanya kalau memang ada yang di luar rentang — kartu
@@ -333,7 +334,8 @@ new class extends Component {
                         <thead class="sticky top-0 z-10">
                             <tr>
                                 <th>Waktu Pemantauan</th>
-                                <th class="ds-c">Suhu (°C)</th>
+                                <th class="ds-c">Suhu AC (°C)</th>
+                                <th class="ds-c">Suhu Ruang (°C)</th>
                                 <th>Status AC</th>
                                 <th class="ds-c">Kondisi</th>
                                 <th>Tindak Lanjut</th>
@@ -345,8 +347,11 @@ new class extends Component {
                             @forelse ($this->rows as $catatan)
                                 <tr wire:key="suhu-{{ $catatan['suhuNo'] }}">
                                     <td class="ds-td-token">{{ filled($catatan['waktu']) ? $catatan['waktu'] : '-' }}</td>
-                                    {{-- filled(), bukan ?: — suhu 0 °C nilai yang sah. --}}
-                                    <td class="ds-c ds-td-strong">{{ filled($catatan['suhu']) ? $catatan['suhu'] : '-' }}</td>
+                                    {{-- filled(), bukan ?: — suhu 0 °C nilai yang sah.
+                                         Suhu AC kosong pada record lama: angkanya memang
+                                         belum pernah diukur, jadi tampil '-' bukan ditebak. --}}
+                                    <td class="ds-c">{{ filled($catatan['suhuAc']) ? $catatan['suhuAc'] : '-' }}</td>
+                                    <td class="ds-c ds-td-strong">{{ filled($catatan['suhuRuang']) ? $catatan['suhuRuang'] : '-' }}</td>
                                     <td>{{ $catatan['statusAcLabel'] }}</td>
                                     <td class="ds-c">
                                         @if ($catatan['kondisi'] === 'TN')

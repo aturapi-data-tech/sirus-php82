@@ -87,7 +87,10 @@ new class extends Component {
         // kunci yang baru ditambahkan, dan kunci itu tetap terisi nilai bawaan.
         $this->form = array_replace($this->formKosong(), [
             'waktu' => (string) ($isi['waktu'] ?? ''),
-            'suhu' => (string) ($isi['suhu'] ?? ''),
+            // Lewat helper: record lama menaruh angka ruangnya di kunci 'suhu',
+            // dan tanpa ini kolomnya tampil kosong saat baris lama dikoreksi.
+            'suhuAc' => ($ac = SuhuRuangServerOptions::suhuAc($isi)) === null ? '' : (string) $ac,
+            'suhuRuang' => ($ruang = SuhuRuangServerOptions::suhuRuang($isi)) === null ? '' : (string) $ruang,
             'statusAc' => (string) ($isi['statusAc'] ?? 'normal'),
             'tindakLanjut' => (string) ($isi['tindakLanjut'] ?? ''),
         ]);
@@ -123,7 +126,8 @@ new class extends Component {
     {
         return [
             'waktu' => '',
-            'suhu' => '',
+            'suhuAc' => '',
+            'suhuRuang' => '',
             'statusAc' => 'normal',
             'tindakLanjut' => '',
         ];
@@ -154,17 +158,20 @@ new class extends Component {
         // validate() DULUAN — guard sebelum validasi menyembunyikan field merah.
         $this->validateWithToast([
             'form.waktu' => ['required', 'date_format:' . SuhuRuangServerOptions::FORMAT_WAKTU],
-            'form.suhu' => ['required', 'numeric', 'min:-50', 'max:100'],
+            'form.suhuAc' => ['required', 'numeric', 'min:-50', 'max:100'],
+            'form.suhuRuang' => ['required', 'numeric', 'min:-50', 'max:100'],
             'form.statusAc' => ['required', 'in:' . implode(',', array_keys(SuhuRuangServerOptions::STATUS_AC))],
             'form.tindakLanjut' => ['nullable', 'string', 'max:255'],
         ], [
             'form.waktu.required' => 'Waktu pemantauan wajib diisi.',
             'form.waktu.date_format' => 'Waktu harus berformat dd/mm/yyyy HH:MM:SS.',
-            'form.suhu.required' => 'Suhu wajib diisi.',
+            'form.suhuAc.required' => 'Suhu AC wajib diisi.',
+            'form.suhuRuang.required' => 'Suhu ruang wajib diisi.',
             'form.statusAc.in' => 'Status AC tidak dikenal.',
         ], [
             'form.waktu' => 'Waktu pemantauan',
-            'form.suhu' => 'Suhu',
+            'form.suhuAc' => 'Suhu AC',
+            'form.suhuRuang' => 'Suhu ruang',
             'form.statusAc' => 'Status AC',
             'form.tindakLanjut' => 'Tindak lanjut',
         ]);
@@ -192,7 +199,8 @@ new class extends Component {
         try {
             $this->simpanSuhu($this->suhuNo === 0 ? null : $this->suhuNo, [
                 'waktu' => $this->form['waktu'],
-                'suhu' => (string) $this->form['suhu'],
+                'suhuAc' => (string) $this->form['suhuAc'],
+                'suhuRuang' => (string) $this->form['suhuRuang'],
                 'statusAc' => $this->form['statusAc'],
                 // Snapshot, bukan hitungan ulang saat cetak.
                 'kondisi' => $kondisi,
@@ -291,12 +299,23 @@ new class extends Component {
                                     </div>
                                     <x-input-error :messages="$errors->get('form.waktu')" class="mt-1" />
                                 </div>
-                                <div>
-                                    <x-input-label value="Suhu (°C)" class="mb-1" />
-                                    <x-text-input wire:model.live.debounce.400ms="form.suhu" x-ref="inputSuhu"
-                                        :error="$errors->has('form.suhu')"
-                                        inputmode="decimal" placeholder="cth: 22.5" class="w-full" />
-                                    <x-input-error :messages="$errors->get('form.suhu')" class="mt-1" />
+                                {{-- Dua angka: setelan AC dan suhu ruang. Yang diadu dengan
+                                     standar 18-27 C hanya suhu ruang. --}}
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <x-input-label value="Suhu AC (°C)" class="mb-1" />
+                                        <x-text-input wire:model.live.debounce.400ms="form.suhuAc" x-ref="inputSuhu"
+                                            :error="$errors->has('form.suhuAc')"
+                                            inputmode="decimal" placeholder="cth: 17" class="w-full" />
+                                        <x-input-error :messages="$errors->get('form.suhuAc')" class="mt-1" />
+                                    </div>
+                                    <div>
+                                        <x-input-label value="Suhu Ruang (°C) *" class="mb-1" />
+                                        <x-text-input wire:model.live.debounce.400ms="form.suhuRuang"
+                                            :error="$errors->has('form.suhuRuang')"
+                                            inputmode="decimal" placeholder="cth: 22.5" class="w-full" />
+                                        <x-input-error :messages="$errors->get('form.suhuRuang')" class="mt-1" />
+                                    </div>
                                 </div>
                             </div>
 
