@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\KamarOperasiTarif;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -32,6 +33,20 @@ new class extends Component
     public string $filterOperator = '';
 
     public string $filterLayanan = '';
+
+    /**
+     * Tab aktif: 'operator' | 'anestesi' | 'rincian'.
+     *
+     * Dipegang di server, bukan Alpine x-show, supaya HANYA tabel tab aktif yang
+     * dirender dan computed tab lain tak ikut dijalankan — tiga tabel sekaligus
+     * berarti tiga query berat untuk satu layar yang cuma menampilkan satu.
+     */
+    public string $tab = 'operator';
+
+    public function setTab(string $tab): void
+    {
+        $this->tab = in_array($tab, ['operator', 'anestesi', 'rincian'], true) ? $tab : 'operator';
+    }
 
     public function mount(): void
     {
@@ -103,6 +118,24 @@ new class extends Component
                 END AS tgl_induk
            FROM rstxn_oks k)
         SQL;
+
+    /**
+     * Pemilah "jumlah operasi" menurut keadaan pasiennya sekarang.
+     *
+     * Kode status induk TIDAK SERAGAM antar jalur, jadi dipilah per jalur:
+     *   RI     : 'I' masih dirawat, 'P' pulang
+     *   RJ/UGD : pasien pulang hari itu juga; yang menandai kelar adalah 'L'
+     *            (selesai pembayaran), bukan 'P' — kode 'P' tak dipakai di sana.
+     *
+     * Ketiga kolom ini SELALU berjumlah sama dengan COUNT(*), supaya angkanya
+     * bisa diadu dan tak ada baris yang menghilang tanpa jejak. "Lainnya"
+     * menampung yang belum kelar (RJ/UGD 'A'), pindah jalur ('I' di RJ/UGD),
+     * induk batal ('F'), dan status kosong.
+     */
+    private const MASIH_DIRAWAT = "CASE WHEN NVL(o.status_rjri,'RI') = 'RI' AND o.status_induk = 'I' THEN 1 ELSE 0 END";
+
+    private const SUDAH_PULANG = "CASE WHEN (NVL(o.status_rjri,'RI') = 'RI'  AND o.status_induk = 'P')
+              OR (NVL(o.status_rjri,'RI') <> 'RI' AND o.status_induk = 'L') THEN 1 ELSE 0 END";
 
     /** Rumus total 11 pos — sama persis dengan Daftar Kamar Operasi. */
     private const TOTAL_TARIF = 'NVL(o.oprdoc_fee,0) + NVL(o.anesdoc_fee,0) + NVL(o.changeanesdoc_fee,0)
@@ -182,16 +215,12 @@ new class extends Component
                 'o.tgl_induk',
                 'o.reg_no',
                 'p.reg_name',
+                'p.sex',
+                'p.address',
+                DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"),
                 'dopr.dr_name as operator_name',
                 'danes.dr_name as anestesi_name',
                 DB::raw("to_char(o.ok_date,'dd/mm/yyyy hh24:mi') as ok_date_display"),
-                DB::raw('NVL(o.oprdoc_fee,0) as oprdoc_fee'),
-                DB::raw('NVL(o.anesdoc_fee,0) as anesdoc_fee'),
-                DB::raw('NVL(o.omlop_fee,0) as omlop_fee'),
-                // Sisa pos di luar tiga kolom yang ditampilkan sendiri.
-                DB::raw('NVL(o.changeanesdoc_fee,0) + NVL(o.instrument_fee,0) + NVL(o.asistopr_fee,0)
-                        + NVL(o.asistanes_fee,0) + NVL(o.ok_fee,0) + NVL(o.rr_fee,0)
-                        + NVL(o.equipment_fee,0) + NVL(o.rentequipment_fee,0) as lainnya_fee'),
                 DB::raw('(' . self::TOTAL_TARIF . ') as total_fee'),
                 DB::raw("(
                     SELECT string_agg(a.accdoc_desc)
@@ -199,6 +228,14 @@ new class extends Component
                     JOIN rsmst_accdocs a ON a.accdoc_id = t.accdoc_id
                     WHERE t.ok_reg = o.ok_reg
                 ) AS tindakan_desc"),
+                // 11 pos dirinci satu per satu, daftarnya diambil dari
+                // KamarOperasiTarif::POS supaya tak ada pos yang terlewat kalau
+                // kelak master tarifnya bertambah — dan tak perlu ditulis ulang
+                // di header tabel. Spread WAJIB argumen terakhir.
+                ...array_map(
+                    fn (string $kolom) => DB::raw("NVL(o.{$kolom},0) as {$kolom}"),
+                    array_keys(KamarOperasiTarif::POS)
+                ),
             )
             ->orderBy('o.ok_date')
             ->get();
@@ -220,12 +257,123 @@ new class extends Component
                 'o.dr_id',
                 DB::raw("NVL(MAX(dopr.dr_name), '(tanpa operator)') as dr_name"),
                 DB::raw('COUNT(*) as jumlah'),
+                DB::raw('SUM(' . self::MASIH_DIRAWAT . ') as masih_dirawat'),
+                DB::raw('SUM(' . self::SUDAH_PULANG . ') as sudah_pulang'),
+                DB::raw('COUNT(*) - SUM(' . self::MASIH_DIRAWAT . ') - SUM(' . self::SUDAH_PULANG . ') as lainnya'),
                 DB::raw('SUM(NVL(o.oprdoc_fee,0)) as oprdoc_fee'),
                 DB::raw('SUM(' . self::TOTAL_TARIF . ') as total_fee'),
             )
             ->groupBy('o.dr_id')
             ->orderByRaw('SUM(' . self::TOTAL_TARIF . ') DESC')
             ->get();
+    }
+
+    /**
+     * Rekap per dokter ANESTESI — pasangan rekapOperator().
+     *
+     * Dikelompokkan pada dr_id_ok (kolom dokter anestesi di rstxn_oks), bukan
+     * dr_id. Angka yang benar-benar milik dokter anestesi adalah anesdoc_fee;
+     * "Total Tarif" ikut ditampilkan supaya sebanding dengan tabel operator,
+     * TAPI itu nilai penuh operasinya, bukan penghasilan si anestesi — operasi
+     * yang sama juga terhitung di baris operatornya. Jangan menjumlahkan kedua
+     * tabel: hasilnya dobel.
+     */
+    #[Computed]
+    public function rekapAnestesi()
+    {
+        $query = $this->baseQuery();
+
+        if ($query === null) {
+            return collect();
+        }
+
+        return $query
+            ->leftJoin('rsmst_doctors as danes2', 'danes2.dr_id', '=', 'o.dr_id_ok')
+            ->select(
+                'o.dr_id_ok',
+                DB::raw("NVL(MAX(danes2.dr_name), '(tanpa dokter anestesi)') as dr_name"),
+                DB::raw('COUNT(*) as jumlah'),
+                DB::raw('SUM(' . self::MASIH_DIRAWAT . ') as masih_dirawat'),
+                DB::raw('SUM(' . self::SUDAH_PULANG . ') as sudah_pulang'),
+                DB::raw('COUNT(*) - SUM(' . self::MASIH_DIRAWAT . ') - SUM(' . self::SUDAH_PULANG . ') as lainnya'),
+                DB::raw('SUM(NVL(o.anesdoc_fee,0)) as anesdoc_fee'),
+                DB::raw('SUM(NVL(o.changeanesdoc_fee,0)) as changeanesdoc_fee'),
+                DB::raw('SUM(' . self::TOTAL_TARIF . ') as total_fee'),
+            )
+            ->groupBy('o.dr_id_ok')
+            ->orderByRaw('SUM(NVL(o.anesdoc_fee,0)) DESC')
+            ->get();
+    }
+
+    /**
+     * Ekspor CSV — rincian per operasi, satu baris satu operasi.
+     *
+     * Mengikuti tab yang sedang dibuka SECARA SENGAJA TIDAK: yang diekspor selalu
+     * rinciannya, bukan rekap yang sedang tampil. Rekap per dokter bisa dibuat
+     * ulang dari rincian lewat pivot, sebaliknya tidak bisa.
+     *
+     * Bentuk berkas mengikuti pola ekspor repo (lihat Gizi RI): BOM UTF-8 supaya
+     * Excel tak membacanya sebagai ANSI, pemisah titik-koma mengikuti Excel
+     * ber-locale Indonesia, dan angka ditulis MENTAH tanpa pemisah ribuan supaya
+     * tetap terbaca sebagai angka, bukan teks.
+     */
+    public function exportCsv()
+    {
+        $baris = $this->rows;
+        $rentang = $this->rentangBulan();
+        $labelBulan = $rentang === null ? 'semua' : $rentang[0]->format('m-Y');
+        $namaBerkas = 'laporan-operasi-' . $labelBulan . '.csv';
+
+        // Tanggal ekspor ikut di SETIAP baris, bukan jadi baris judul terpisah —
+        // gabungan beberapa berkas ekspor tetap bisa dipivot per tanggal.
+        $tglExport = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+        $posLabel = KamarOperasiTarif::LABEL;
+
+        return response()->streamDownload(function () use ($baris, $tglExport, $posLabel) {
+            $keluaran = fopen('php://output', 'w');
+
+            // BOM UTF-8 — tanpa ini Excel membaca berkas sebagai ANSI.
+            fwrite($keluaran, "\xEF\xBB\xBF");
+
+            fputcsv($keluaran, [
+                'Tgl Export', 'Tgl Operasi', 'Tgl Masuk', 'No RM', 'Nama Pasien', 'JK',
+                'Layanan', 'Status Kunjungan', 'Tindakan', 'Dokter Operator', 'Dokter Anestesi',
+                ...array_values($posLabel), 'Total Tarif',
+            ], ';');
+
+            foreach ($baris as $row) {
+                $sumber = strtoupper($row->sumber ?? 'RI');
+                $status = strtoupper($row->status_induk ?? '');
+
+                // Label status dibaca PER JALUR — 'I' di RJ/UGD berarti transfer,
+                // 'I' di RI berarti masih dirawat.
+                $statusLabel = $sumber === 'RI'
+                    ? match ($status) { 'I' => 'Masih Dirawat', 'P' => 'Pulang', 'F' => 'Batal', default => '' }
+                    : match ($status) { 'A' => 'Menunggu Pembayaran', 'L' => 'Lunas', 'I' => 'Transfer UGD', 'F' => 'Batal', default => '' };
+
+                fputcsv($keluaran, [
+                    $tglExport,
+                    $row->ok_date_display,
+                    $row->tgl_induk,
+                    $row->reg_no,
+                    $row->reg_name,
+                    $row->sex ?? '',
+                    $sumber,
+                    $statusLabel,
+                    $row->tindakan_desc,
+                    $row->operator_name,
+                    $row->anestesi_name,
+                    // Angka MENTAH tanpa pemisah ribuan — begitu diberi titik,
+                    // Excel membacanya sebagai teks dan tak bisa dijumlah.
+                    ...array_map(fn (string $kolom) => (int) $row->{$kolom}, array_keys($posLabel)),
+                    (int) $row->total_fee,
+                ], ';');
+            }
+
+            fclose($keluaran);
+        }, $namaBerkas, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
     }
 
     /** Kartu ringkasan di kepala laporan. */
@@ -250,21 +398,15 @@ new class extends Component
         title="Laporan Bulanan Operasi"
         subtitle="Rekap tindakan kamar operasi per bulan — dokter operator, dokter anestesi & tarif sampai ON LOOP" />
 
-    <div class="w-full min-h-[calc(100vh-5rem)] bg-canvas dark:bg-gray-800">
-        <div class="px-6 pt-2 pb-6">
+    {{-- Kerangka meniru Slip Gaji Dokter: tinggi layar dikunci lalu dibagi
+         flex-kolom, jadi yang menggulung isinya — toolbar & tab tetap di tempat.
+         Latar surface-soft dengan kartu tabel canvas. --}}
+    <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-800">
+        <div class="flex flex-col flex-1 min-h-0 px-6 pt-0 pb-6">
 
-            <div class="flex flex-wrap items-center justify-end gap-2 mb-4">
-                <a href="{{ route('manajemen.monitoring-keuangan') }}" wire:navigate
-                    class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-body bg-canvas border border-gray-300 rounded-lg hover:bg-surface-soft dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-800 shrink-0">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Kembali
-                </a>
-            </div>
 
             {{-- TOOLBAR --}}
-            <div class="sticky z-30 px-4 py-3 bg-surface-soft border-b border-hairline top-20 dark:bg-gray-900 dark:border-gray-700">
+            <div class="sticky z-30 px-4 pt-1 pb-2 bg-surface-soft border-b border-hairline top-16 dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex flex-wrap items-end gap-3">
                     <div class="w-full sm:w-auto">
                         <x-input-label value="Bulan" />
@@ -292,57 +434,152 @@ new class extends Component
                         </x-select-input>
                     </div>
 
-                    <div class="pb-0.5">
-                        <x-secondary-button wire:click="resetFilters" type="button">Reset</x-secondary-button>
+                    {{-- Tombol didorong ke kanan dengan ml-auto dan Kembali ikut di
+                         baris ini — sama seperti Slip Gaji Dokter. Sebelumnya Kembali
+                         berdiri sendiri di baris atas dan memakan satu baris penuh
+                         hanya untuk satu tombol. --}}
+                    <div class="flex flex-wrap items-end gap-2 ml-auto">
+                        {{-- Ekspor CSV selalu berisi RINCIAN per operasi, apa pun tab
+                             yang sedang dibuka: rekap per dokter bisa dibuat ulang dari
+                             rincian lewat pivot, sebaliknya tidak bisa. Nonaktif saat
+                             bulannya kosong supaya tak mengunduh berkas berisi judul saja. --}}
+                        <x-info-button type="button" class="gap-2" wire:click="exportCsv"
+                            wire:loading.attr="disabled" wire:target="exportCsv"
+                            :disabled="$this->ringkasan['jumlah'] === 0"
+                            title="Unduh rincian operasi bulan ini sebagai CSV — satu baris satu operasi, 11 pos tarif dirinci">
+                            <span wire:loading.remove wire:target="exportCsv" class="inline-flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                </svg>
+                                Export CSV
+                            </span>
+                            <span wire:loading wire:target="exportCsv" class="inline-flex items-center gap-2">
+                                <x-loading /> Menyiapkan...
+                            </span>
+                        </x-info-button>
+
+                        {{-- Tombol baku toolbar list: Refresh (muat ulang tanpa mengubah
+                             filter) + Reset (kembalikan filter ke awal). --}}
+                        <x-toolbar-refresh-reset :label="null" />
+
+                        <a href="{{ route('manajemen.monitoring-keuangan') }}" wire:navigate
+                            class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-body bg-canvas border border-gray-300 rounded-lg hover:bg-surface-soft dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-800 shrink-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            Kembali
+                        </a>
                     </div>
                 </div>
+
+                <p class="mt-2 text-sm text-muted dark:text-gray-400">
+                    Laporan dipatok <span class="font-semibold">tanggal operasi</span>; kolom Tgl Masuk menunjukkan
+                    sejak kapan pasiennya dirawat. Operasi berstatus batal tidak ikut dihitung.
+                </p>
             </div>
 
-            {{-- RINGKASAN --}}
+            {{-- RINGKASAN — panel LIPAT bergaya Slip Gaji Dokter, default TERTUTUP.
+                 Angka pentingnya tetap terbaca di bilah judul walau tertutup, jadi
+                 lima kartu tak perlu memakan tinggi layar terus-menerus. Sengaja
+                 BUKAN gaya biru-info: biru dicadangkan untuk panel panduan. --}}
             @php $ringkasan = $this->ringkasan; @endphp
-            <div class="grid grid-cols-2 gap-3 mt-4 lg:grid-cols-5">
-                <div class="p-3 border bg-canvas border-hairline rounded-xl dark:bg-gray-900 dark:border-gray-700">
-                    <div class="text-xs uppercase text-muted dark:text-gray-400">Jumlah Operasi</div>
-                    <div class="mt-1 text-2xl font-bold text-ink dark:text-gray-100">{{ $ringkasan['jumlah'] }}</div>
-                    <div class="text-[10px] text-muted dark:text-gray-400">batal tidak dihitung</div>
-                </div>
-                <div class="p-3 border bg-emerald-50 border-emerald-200 rounded-xl dark:bg-emerald-900/20 dark:border-emerald-700">
-                    <div class="text-xs uppercase text-emerald-700 dark:text-emerald-300">Jasa Operator</div>
-                    <div class="mt-1 text-lg font-bold text-emerald-800 dark:text-emerald-200">
-                        {{ number_format($ringkasan['oprdoc'], 0, ',', '.') }}
+            <div x-data="{ buka: false }"
+                class="mt-4 overflow-hidden border rounded-2xl border-hairline bg-canvas dark:bg-gray-900 dark:border-gray-700">
+                <button type="button" x-on:click="buka = !buka"
+                    class="flex items-center justify-between w-full px-4 py-2.5 text-sm font-semibold transition-colors text-ink hover:bg-surface-soft dark:text-gray-100 dark:hover:bg-gray-800">
+                    <span class="flex items-center min-w-0 gap-2">
+                        <svg class="w-4 h-4 shrink-0 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 17V7m4 10V11m4 6V9M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        <span class="shrink-0">Ringkasan bulan ini</span>
+                        <span class="text-sm font-normal truncate text-muted dark:text-gray-400">
+                            ({{ $ringkasan['jumlah'] }} operasi &middot; total
+                            {{ number_format($ringkasan['total'], 0, ',', '.') }})
+                        </span>
+                    </span>
+                    <svg class="w-4 h-4 ml-2 transition-transform shrink-0 text-muted" x-bind:class="buka && 'rotate-180'"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+
+                {{-- Lima angka dalam SATU baris: kotak kartu dilepas, tinggal label
+                     kecil di atas nilai, dipisah garis tipis. --}}
+                <div x-show="buka" x-cloak
+                    class="grid grid-cols-5 px-4 pb-4 divide-x divide-hairline dark:divide-gray-700">
+
+                    <div class="px-2 first:pl-0 last:pr-0">
+                        <div class="text-sm text-muted dark:text-gray-400">Operasi</div>
+                        <div class="font-semibold t-num text-ink dark:text-gray-100">{{ $ringkasan['jumlah'] }}</div>
+                        <div class="text-sm text-muted dark:text-gray-400 whitespace-nowrap">batal tidak dihitung</div>
                     </div>
-                </div>
-                <div class="p-3 border bg-blue-50 border-blue-200 rounded-xl dark:bg-blue-900/20 dark:border-blue-700">
-                    <div class="text-xs text-blue-700 uppercase dark:text-blue-300">Jasa Anestesi</div>
-                    <div class="mt-1 text-lg font-bold text-blue-800 dark:text-blue-200">
-                        {{ number_format($ringkasan['anesdoc'], 0, ',', '.') }}
+
+                    <div class="px-2">
+                        <div class="text-sm text-muted dark:text-gray-400">Jasa Operator</div>
+                        <div class="font-semibold t-num text-emerald-700 dark:text-emerald-300">
+                            {{ number_format($ringkasan['oprdoc'], 0, ',', '.') }}
+                        </div>
                     </div>
-                </div>
-                <div class="p-3 border bg-amber-50 border-amber-200 rounded-xl dark:bg-amber-900/20 dark:border-amber-700">
-                    <div class="text-xs uppercase text-amber-700 dark:text-amber-300">Biaya ON LOOP</div>
-                    <div class="mt-1 text-lg font-bold text-amber-800 dark:text-amber-200">
-                        {{ number_format($ringkasan['omlop'], 0, ',', '.') }}
+
+                    <div class="px-2">
+                        <div class="text-sm text-muted dark:text-gray-400">Jasa Anestesi</div>
+                        <div class="font-semibold t-num text-blue-700 dark:text-blue-300">
+                            {{ number_format($ringkasan['anesdoc'], 0, ',', '.') }}
+                        </div>
                     </div>
-                </div>
-                <div class="p-3 border bg-surface-soft border-hairline rounded-xl dark:bg-gray-800 dark:border-gray-700">
-                    <div class="text-xs uppercase text-muted dark:text-gray-400">Total Tarif</div>
-                    <div class="mt-1 text-lg font-bold text-ink dark:text-gray-100">
-                        {{ number_format($ringkasan['total'], 0, ',', '.') }}
+
+                    <div class="px-2">
+                        <div class="text-sm text-muted dark:text-gray-400">Biaya ON LOOP</div>
+                        <div class="font-semibold t-num text-amber-700 dark:text-amber-300">
+                            {{ number_format($ringkasan['omlop'], 0, ',', '.') }}
+                        </div>
                     </div>
-                    <div class="text-[10px] text-muted dark:text-gray-400">11 pos, termasuk ON LOOP</div>
+
+                    <div class="px-2 last:pr-0">
+                        <div class="text-sm text-muted dark:text-gray-400">Total Tarif</div>
+                        <div class="font-semibold t-num text-ink dark:text-gray-100">
+                            {{ number_format($ringkasan['total'], 0, ',', '.') }}
+                        </div>
+                        <div class="text-sm text-muted dark:text-gray-400 whitespace-nowrap">11 pos, termasuk ON LOOP</div>
+                    </div>
+
                 </div>
             </div>
 
+            {{-- TAB --}}
+            {{-- Tab dipegang server (bukan Alpine x-show) supaya hanya tabel tab aktif
+                 yang dirender — tiga tabel sekaligus berarti tiga query berat untuk satu
+                 layar yang cuma menampilkan satu. --}}
+            <div class="mt-4">
+                <x-tabs variant="underline">
+                    <x-tab :active="$tab === 'operator'" color="emerald" wire:click="setTab('operator')">
+                        Rekap Dokter Operator
+                    </x-tab>
+                    <x-tab :active="$tab === 'anestesi'" color="blue" wire:click="setTab('anestesi')">
+                        Rekap Dokter Anestesi
+                    </x-tab>
+                    <x-tab :active="$tab === 'rincian'" color="brand" wire:click="setTab('rincian')">
+                        Rincian Operasi
+                    </x-tab>
+                </x-tabs>
+            </div>
+
+            {{-- Kartu tabel bergaya Slip Gaji Dokter: canvas ber-ring, sudut 2xl,
+                 kepala kolom sticky, isi yang menggulung. --}}
+            <div class="flex flex-col flex-1 min-h-0 mt-3 bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
+                @if ($tab === 'operator')
             {{-- REKAP PER OPERATOR --}}
-            <h3 class="mt-6 mb-2 text-sm font-semibold tracking-wider uppercase text-muted dark:text-gray-400">
-                Rekap per Dokter Operator
-            </h3>
-            <div class="overflow-x-auto rounded-xl">
+            <div class="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-t-2xl">
                 <table class="ds-table">
                     <thead>
                         <tr>
                             <th>Dokter Operator</th>
                             <th class="ds-c">Jumlah Operasi</th>
+                            <th class="ds-c">Sudah Pulang</th>
+                            <th class="ds-c">Masih Dirawat</th>
+                            <th class="ds-c">Lainnya</th>
                             <th class="ds-r">Jasa Operator</th>
                             <th class="ds-r">Total Tarif</th>
                         </tr>
@@ -351,13 +588,16 @@ new class extends Component
                         @forelse ($this->rekapOperator as $rekap)
                             <tr wire:key="rekap-{{ $rekap->dr_id ?? 'x' }}">
                                 <td class="ds-td-strong">{{ $rekap->dr_name }}</td>
-                                <td class="ds-c">{{ $rekap->jumlah }}</td>
+                                <td class="ds-c ds-td-strong">{{ $rekap->jumlah }}</td>
+                                <td class="ds-c">{{ (int) $rekap->sudah_pulang ?: '-' }}</td>
+                                <td class="ds-c">{{ (int) $rekap->masih_dirawat ?: '-' }}</td>
+                                <td class="ds-c">{{ (int) $rekap->lainnya ?: '-' }}</td>
                                 <td class="ds-r">{{ number_format((int) $rekap->oprdoc_fee, 0, ',', '.') }}</td>
                                 <td class="ds-r ds-td-strong">{{ number_format((int) $rekap->total_fee, 0, ',', '.') }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="py-6 text-center text-muted dark:text-gray-400">
+                                <td colspan="7" class="py-6 text-center text-muted dark:text-gray-400">
                                     Belum ada operasi pada bulan ini.
                                 </td>
                             </tr>
@@ -366,26 +606,71 @@ new class extends Component
                 </table>
             </div>
 
-            {{-- RINCIAN PER OPERASI --}}
-            <h3 class="mt-6 mb-2 text-sm font-semibold tracking-wider uppercase text-muted dark:text-gray-400">
-                Rincian Operasi
-            </h3>
-            <div class="overflow-x-auto rounded-xl">
+            <p class="mt-1 text-xs text-muted dark:text-gray-400">
+                <span class="font-medium">Sudah Pulang</span> = rawat inap berstatus Pulang, plus RJ/UGD yang
+                pembayarannya selesai. <span class="font-medium">Masih Dirawat</span> = rawat inap yang belum pulang.
+                <span class="font-medium">Lainnya</span> = RJ/UGD belum selesai bayar, pindah jalur, atau kunjungan
+                induknya batal. Ketiganya selalu berjumlah sama dengan Jumlah Operasi.
+            </p>
+                @elseif ($tab === 'anestesi')
+            {{-- REKAP PER ANESTESI --}}
+            <div class="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-t-2xl">
                 <table class="ds-table">
                     <thead>
                         <tr>
-                            <th>Tgl Operasi</th>
-                            <th>Tgl Masuk</th>
-                            <th>Pasien</th>
-                            <th class="ds-c">Layanan</th>
-                            <th class="ds-c">Status Kunjungan</th>
-                            <th>Tindakan</th>
-                            <th>Dokter Operator</th>
                             <th>Dokter Anestesi</th>
-                            <th class="ds-r">Jasa Operator</th>
+                            <th class="ds-c">Jumlah Operasi</th>
+                            <th class="ds-c">Sudah Pulang</th>
+                            <th class="ds-c">Masih Dirawat</th>
+                            <th class="ds-c">Lainnya</th>
                             <th class="ds-r">Jasa Anestesi</th>
-                            <th class="ds-r">ON LOOP</th>
-                            <th class="ds-r">Pos Lain</th>
+                            <th class="ds-r">Jasa Pengganti</th>
+                            <th class="ds-r">Total Tarif</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($this->rekapAnestesi as $rekap)
+                            <tr wire:key="rekap-anes-{{ $rekap->dr_id_ok ?? 'x' }}">
+                                <td class="ds-td-strong">{{ $rekap->dr_name }}</td>
+                                <td class="ds-c ds-td-strong">{{ $rekap->jumlah }}</td>
+                                <td class="ds-c">{{ (int) $rekap->sudah_pulang ?: '-' }}</td>
+                                <td class="ds-c">{{ (int) $rekap->masih_dirawat ?: '-' }}</td>
+                                <td class="ds-c">{{ (int) $rekap->lainnya ?: '-' }}</td>
+                                <td class="ds-r ds-td-strong">{{ number_format((int) $rekap->anesdoc_fee, 0, ',', '.') }}</td>
+                                <td class="ds-r">{{ number_format((int) $rekap->changeanesdoc_fee, 0, ',', '.') }}</td>
+                                <td class="ds-r">{{ number_format((int) $rekap->total_fee, 0, ',', '.') }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="8" class="py-6 text-center text-muted dark:text-gray-400">
+                                    Belum ada operasi pada bulan ini.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            {{-- "Total Tarif" di tabel ini adalah nilai penuh operasinya, bukan
+                 penghasilan dokter anestesi — operasi yang sama juga terhitung di
+                 tabel operator. Menjumlahkan kedua tabel akan dobel. --}}
+            <p class="mt-1 text-xs text-muted dark:text-gray-400">
+                Kolom Total Tarif adalah nilai penuh operasi, bukan penghasilan dokter anestesi &mdash;
+                operasi yang sama juga muncul di rekap operator. Jangan menjumlahkan kedua tabel.
+            </p>
+                @else
+            {{-- RINCIAN PER OPERASI --}}
+            <div class="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-t-2xl">
+                <table class="ds-table">
+                    <thead>
+                        <tr>
+                            {{-- Kolom yang berpasangan disatukan jadi satu sel bertingkat:
+                                 tanggal (operasi + masuk), kunjungan (jalur + status),
+                                 dan dokter (operator + anestesi). Kolom angka tetap
+                                 terpisah supaya mudah dibandingkan antar baris. --}}
+                            <th>Tanggal</th>
+                            <th>Pasien</th>
+                            <th>Tindakan &amp; Dokter</th>
+                            <th>Rincian Tarif</th>
                             <th class="ds-r">Total</th>
                         </tr>
                     </thead>
@@ -414,38 +699,78 @@ new class extends Component
                                             default => ['-', 'gray'],
                                         };
                                 @endphp
-                                <td class="ds-td-token">{{ $row->ok_date_display ?? '-' }}</td>
-                                <td class="ds-td-token">{{ $row->tgl_induk ?? '-' }}</td>
-                                <td>
-                                    <div class="font-medium text-ink dark:text-gray-100">{{ $row->reg_name ?? '-' }}</div>
-                                    <div class="text-xs text-muted dark:text-gray-400">{{ $row->reg_no ?? '-' }}</div>
+                                <td class="whitespace-nowrap">
+                                    <div class="ds-td-token">{{ $row->ok_date_display ?? '-' }}</div>
+                                    <div class="text-xs text-muted dark:text-gray-400">
+                                        masuk {{ $row->tgl_induk ?? '-' }}
+                                    </div>
                                 </td>
-                                <td class="ds-c">
-                                    <x-badge :variant="match ($sumber) { 'RJ' => 'info', 'UGD' => 'warning', default => 'success' }">
-                                        {{ $sumber }}
-                                    </x-badge>
+                                {{-- Identitas pasien memakai komponen baku list transaksi
+                                     (acuannya Pelayanan RJ), jadi urutan No RM -> Nama/gender
+                                     -> tgl lahir (umur) -> alamat seragam di seluruh repo.
+                                     collapseUmur SENGAJA false: laporan ini tak punya toggle
+                                     Alpine `expanded`, dan komponen itu menyembunyikan baris
+                                     umur di balik x-show bila dinyalakan. --}}
+                                <td class="min-w-[18rem]">
+                                    <x-list.identitas-pasien :regNo="$row->reg_no" :nama="$row->reg_name"
+                                        :sex="$row->sex" :tglLahir="$row->birth_date" :alamat="$row->address">
+                                        <div class="flex flex-wrap items-center gap-1 mt-1">
+                                            <x-badge :variant="match ($sumber) { 'RJ' => 'info', 'UGD' => 'warning', default => 'success' }">
+                                                {{ $sumber }}
+                                            </x-badge>
+                                            <x-badge :variant="$statusVariant">{{ $statusLabel }}</x-badge>
+                                        </div>
+                                    </x-list.identitas-pasien>
                                 </td>
-                                <td class="ds-c">
-                                    <x-badge :variant="$statusVariant">{{ $statusLabel }}</x-badge>
+                                <td class="max-w-[20rem]">
+                                    {{-- Nama dokter seukuran nama tindakan: keduanya sama-sama
+                                         isi pokok kolom ini, bukan keterangan tambahan. Yang
+                                         diredupkan cukup kata penunjuknya. --}}
+                                    <div class="text-ink dark:text-gray-100">{{ $row->tindakan_desc ?: '-' }}</div>
+                                    <div class="mt-1 text-ink dark:text-gray-100">
+                                        <span class="text-muted dark:text-gray-400">operator:</span>
+                                        {{ $row->operator_name ?? '-' }}
+                                    </div>
+                                    <div class="text-ink dark:text-gray-100">
+                                        <span class="text-muted dark:text-gray-400">anestesi:</span>
+                                        {{ $row->anestesi_name ?? '-' }}
+                                    </div>
                                 </td>
-                                <td class="max-w-[16rem]">{{ $row->tindakan_desc ?: '-' }}</td>
-                                <td>{{ $row->operator_name ?? '-' }}</td>
-                                <td>{{ $row->anestesi_name ?? '-' }}</td>
-                                <td class="ds-r">{{ number_format((int) $row->oprdoc_fee, 0, ',', '.') }}</td>
-                                <td class="ds-r">{{ number_format((int) $row->anesdoc_fee, 0, ',', '.') }}</td>
-                                <td class="ds-r">{{ number_format((int) $row->omlop_fee, 0, ',', '.') }}</td>
-                                <td class="ds-r">{{ number_format((int) $row->lainnya_fee, 0, ',', '.') }}</td>
-                                <td class="ds-r ds-td-strong">{{ number_format((int) $row->total_fee, 0, ',', '.') }}</td>
+                                {{-- Seluruh pos tarif jadi SATU sel. Hanya pos yang terisi
+                                     yang ditulis: menampilkan 11 baris dengan sebagian besar
+                                     nol membuat selnya panjang tanpa menambah keterangan. --}}
+                                <td class="max-w-[22rem] text-xs">
+                                    @php
+                                        $posTerisi = [];
+                                        foreach (KamarOperasiTarif::LABEL as $kolomPos => $labelPos) {
+                                            $nilaiPos = (int) $row->{$kolomPos};
+                                            if ($nilaiPos !== 0) {
+                                                $posTerisi[$labelPos] = $nilaiPos;
+                                            }
+                                        }
+                                    @endphp
+                                    @forelse ($posTerisi as $labelPos => $nilaiPos)
+                                        <div class="flex justify-between gap-3">
+                                            <span class="text-muted dark:text-gray-400">{{ $labelPos }}</span>
+                                            <span class="font-mono text-ink dark:text-gray-200">{{ number_format($nilaiPos, 0, ',', '.') }}</span>
+                                        </div>
+                                    @empty
+                                        <span class="text-muted dark:text-gray-400">-</span>
+                                    @endforelse
+                                </td>
+                                <td class="ds-r ds-td-strong whitespace-nowrap">{{ number_format((int) $row->total_fee, 0, ',', '.') }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="13" class="py-6 text-center text-muted dark:text-gray-400">
+                                <td colspan="5" class="py-6 text-center text-muted dark:text-gray-400">
                                     Belum ada operasi pada bulan ini.
                                 </td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+                @endif
             </div>
 
         </div>
