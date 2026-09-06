@@ -109,6 +109,7 @@ ulang, sehingga rekam medis tetap konsisten walau ambang master diubah kemudian.
 - Tabel riwayat: kolom Kesadaran, O₂, EWS (badge warna + kategori; tooltip skor per
   parameter; tanda "belum lengkap"), Pantau Ulang (jatuh tempo + frekuensi).
 - Panel biru "Keterangan skor" (tertutup) memuat tabel respon varian aktif dari master.
+- Pratinjau skor di form (chip per parameter + total) dihitung tiap field selesai diisi (`hitungPratinjauEws`, input angka `wire:model.blur`); badge skor per sel di tabel riwayat; badge EWS terakhir di display pasien.
 
 ## 7. Master UI `/master/ews`
 
@@ -134,7 +135,7 @@ memanggil `EwsMaster::flush()`.
 
 ## 9. Belum dikerjakan
 
-- Badge EWS terakhir di header pasien + daftar pasien EWS tinggi per ruangan (tim code blue).
+- Daftar pasien EWS tinggi per ruangan (tim code blue). Badge EWS terakhir di display pasien RI/UGD SUDAH ada (`EwsSkor::terakhirDari`, tanda TERLAMBAT bila jatuh tempo pantau ulang lewat).
 - Grafik skor EWS per waktu (grafik UGD masih suhu & nadi).
 - RJ tidak punya observasi berseri; belum ada EWS di RJ.
 - Cetak PDF Observasi Lanjutan tersendiri ala RM 93a (saat ini kolom EWS ikut di

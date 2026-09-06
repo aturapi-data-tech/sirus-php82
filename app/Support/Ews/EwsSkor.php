@@ -193,21 +193,21 @@ class EwsSkor
     /** Parameter varian yang aktif, urut URUTAN. */
     public static function paramsVarian(array $master, string $varian): array
     {
-        $params = array_filter(
+        $params = \array_filter(
             $master['params'] ?? [],
-            fn(array $p) => $p['varian'] === $varian && (($p['active_status'] ?? '1') === '1'),
+            fn(array $param) => $param['varian'] === $varian && ($param['active_status'] ?? '1') === '1',
         );
-        usort($params, fn($a, $b) => (int) $a['urutan'] <=> (int) $b['urutan']);
+        \usort($params, fn($a, $b) => (int) $a['urutan'] <=> (int) $b['urutan']);
 
-        return array_values($params);
+        return \array_values($params);
     }
 
     public static function responsVarian(array $master, string $varian): array
     {
-        $respons = array_filter($master['respons'] ?? [], fn(array $r) => $r['varian'] === $varian);
-        usort($respons, fn($a, $b) => (int) $a['urutan'] <=> (int) $b['urutan']);
+        $respons = \array_filter($master['respons'] ?? [], fn(array $respon) => $respon['varian'] === $varian);
+        \usort($respons, fn($a, $b) => (int) $a['urutan'] <=> (int) $b['urutan']);
 
-        return array_values($respons);
+        return \array_values($respons);
     }
 
     /**
@@ -233,6 +233,63 @@ class EwsSkor
         return null;
     }
 
+    /**
+     * Skor EWS TERAKHIR dari daftar entri Observasi Lanjutan (untuk badge di display
+     * pasien). "Terakhir" = waktuPemeriksaan paling baru (input manual, urutan array
+     * tidak dijamin kronologis); entri tanpa `ews` tersimpan dilewati. Null bila
+     * belum ada skor.
+     *
+     * @return array{total:int, kategori:?string, warna:?string, frekuensi:?string, pantauUlang:?string,
+     *               varian:string, waktu:string, lengkap:bool, terlambat:bool}|null
+     */
+    public static function terakhirDari(array $tandaVital, ?Carbon $sekarang = null): ?array
+    {
+        $terakhir = null;
+        $maxTimestamp = null;
+        foreach ($tandaVital as $entri) {
+            if (!\is_array($entri) || !\is_array($entri['ews'] ?? null) || empty($entri['ews']['tersedia'])) {
+                continue;
+            }
+            try {
+                $timestamp = Carbon::createFromFormat('d/m/Y H:i:s', \trim((string) ($entri['waktuPemeriksaan'] ?? '')))->getTimestamp();
+            } catch (Throwable) {
+                $timestamp = null;
+            }
+            // >= : waktu sama / tak terparse → entri yang diinput belakangan menang (pola risiko jatuh)
+            if ($terakhir === null || $timestamp === null || $maxTimestamp === null || $timestamp >= $maxTimestamp) {
+                $terakhir = $entri;
+                $maxTimestamp = $timestamp ?? $maxTimestamp;
+            }
+        }
+        if ($terakhir === null) {
+            return null;
+        }
+
+        $ews = $terakhir['ews'];
+        $pantauUlang = $ews['pantauUlang'] ?? null;
+        $terlambat = false;
+        if ($pantauUlang) {
+            try {
+                $terlambat = Carbon::createFromFormat('d/m/Y H:i', $pantauUlang)
+                    ->lessThan($sekarang ?? Carbon::now(config('app.timezone')));
+            } catch (Throwable) {
+                $terlambat = false;
+            }
+        }
+
+        return [
+            'total'       => (int) ($ews['total'] ?? 0),
+            'kategori'    => $ews['kategori'] ?? null,
+            'warna'       => $ews['warna'] ?? null,
+            'frekuensi'   => $ews['frekuensi'] ?? null,
+            'pantauUlang' => $pantauUlang,
+            'varian'      => (string) ($ews['varian'] ?? $terakhir['ewsVarian'] ?? 'DEWASA'),
+            'waktu'       => (string) ($terakhir['waktuPemeriksaan'] ?? ''),
+            'lengkap'     => !empty($ews['lengkap']),
+            'terlambat'   => $terlambat,
+        ];
+    }
+
     /** Label baris respon untuk tabel keterangan: "1 - 4", "≥ 7", "5 - 6 / 1 parameter merah". */
     public static function labelRespon(array $respon): string
     {
@@ -245,7 +302,7 @@ class EwsSkor
             $bagian[] = '1 parameter merah';
         }
 
-        return implode(' / ', $bagian);
+        return \implode(' / ', $bagian);
     }
 
     /** Kelas Tailwind untuk badge warna skor (dipakai layar & cetak). */
@@ -292,15 +349,15 @@ class EwsSkor
 
     private static function cocokAngka(array $param, mixed $mentah, array $nilai, ?int $umurBulan): ?array
     {
-        if (!is_numeric($mentah)) {
+        if (!\is_numeric($mentah)) {
             return null;
         }
         // Rentang master bertelinga 1-2 desimal (35.1-36.0); nilai diseragamkan dulu
         // supaya 36.04 tidak jatuh ke celah antara 36.0 dan 36.1.
-        $angka = round((float) $mentah, 1);
+        $angka = \round((float) $mentah, 1);
 
         $rentangs = $param['rentang'] ?? [];
-        usort($rentangs, fn($a, $b) => (int) $a['urutan'] <=> (int) $b['urutan']);
+        \usort($rentangs, fn($a, $b) => (int) $a['urutan'] <=> (int) $b['urutan']);
 
         foreach ($rentangs as $rentang) {
             if (!self::usiaCocok($rentang, $umurBulan)) {
@@ -343,7 +400,7 @@ class EwsSkor
     private static function syaratTerpenuhi(string $syarat, array $nilai): bool
     {
         foreach ($nilai as $isi) {
-            if (is_string($isi) && $isi === $syarat) {
+            if (\is_string($isi) && $isi === $syarat) {
                 return true;
             }
         }

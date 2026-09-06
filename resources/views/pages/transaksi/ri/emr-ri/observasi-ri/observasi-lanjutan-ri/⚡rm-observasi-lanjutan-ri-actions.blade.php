@@ -109,6 +109,12 @@ new class extends Component {
         return EwsSkor::acuanUsia($this->ewsMaster(), $this->ewsVarian, $kode, $this->umurBulan);
     }
 
+    /** Varian yang disarankan dari umur pasien (null bila umur tak diketahui). */
+    public function ewsVarianDisarankan(): ?string
+    {
+        return EwsSkor::varianUntukUmur($this->umurHari, $this->umurTahun);
+    }
+
     public function ewsVarianList(): array
     {
         return EwsMaster::varianTersedia($this->ewsMaster()) ?: EwsDefault::VARIAN;
@@ -145,6 +151,27 @@ new class extends Component {
             }
         }
         $this->resetValidation();
+        $this->hitungPratinjauEws();
+    }
+
+    /** Pratinjau skor dari isian form (dihitung ulang tiap field selesai diisi), sebelum disimpan. */
+    public ?array $ewsPratinjau = null;
+
+    public function hitungPratinjauEws(): void
+    {
+        if (!$this->ewsTersedia()) {
+            $this->ewsPratinjau = null;
+            return;
+        }
+        $adaIsi = collect($this->formEntryObservasi)->except(['waktuPemeriksaan', 'pemeriksa', 'cairan', 'tetesan'])->filter(fn($v) => $v !== '' && $v !== null)->isNotEmpty();
+        $this->ewsPratinjau = $adaIsi
+            ? EwsSkor::hitung($this->ewsVarian, $this->formEntryObservasi, $this->ewsMaster(), $this->umurBulan)
+            : null;
+    }
+
+    public function updatedFormEntryObservasi(): void
+    {
+        $this->hitungPratinjauEws();
     }
 
     /** Aturan validasi parameter EWS wajib untuk varian aktif — dari master, bukan hard-code. */
@@ -290,7 +317,7 @@ new class extends Component {
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah Observasi Lanjutan — entri ' . ($this->formEntryObservasi['waktuPemeriksaan'] ?? '-') . $ringkasEws, 'MR');
             });
 
-            $this->reset(['formEntryObservasi']);
+            $this->reset(['formEntryObservasi', 'ewsPratinjau']);
             $this->setWaktuPemeriksaan();
             $this->incrementVersion('modal-observasi-lanjutan-ri');
             $this->dispatch('refresh-after-ri.saved', tab: 'observasi', subTab: 'ttv');
@@ -348,7 +375,7 @@ new class extends Component {
         $this->resetVersion();
         $this->isFormLocked = false;
         $this->dataDaftarRi = [];
-        $this->reset(['formEntryObservasi']);
+        $this->reset(['formEntryObservasi', 'ewsPratinjau']);
     }
 };
 ?>
@@ -381,7 +408,29 @@ new class extends Component {
                             $ewsParamTambahan = $this->ewsParamTambahan();
                             $acuanNadi = $this->ewsAcuanUsia('nadiNormal');
                             $acuanNafas = $this->ewsAcuanUsia('nafasNormal');
-                        @endphp
+                            // Lebar kolom: pilihan berlabel panjang (> 2 opsi) memakai 2 kolom; "Alat O₂" ikut setelah oksigen.
+                            $ewsLebar = [];
+                            foreach ($ewsParamTambahan as $kodeLebar => $paramLebar) {
+                                $ewsLebar[$kodeLebar] = $paramLebar['tipe'] === 'PILIHAN' && count($paramLebar['pilihan']) > 2 ? 2 : 1;
+                                if ($kodeLebar === 'oksigen') {
+                                    $ewsLebar['alatOksigen'] = 1;
+                                }
+                            }
+                            $ewsTotalLebar = max(1, array_sum($ewsLebar));
+                            // Pilih jumlah kolom (4-6) yang membagi habis total lebar supaya barisnya penuh; kalau tidak ada, 6.
+                            $ewsKolom = collect([6, 5, 4])->first(fn($n) => $ewsTotalLebar % $n === 0) ?? 6;
+                            if ($ewsTotalLebar < 4) {
+                                $ewsKolom = $ewsTotalLebar;
+                            }
+                            $ewsGridKelas = match ($ewsKolom) {
+                                1 => 'grid-cols-1',
+                                2 => 'grid-cols-2',
+                                3 => 'grid-cols-2 md:grid-cols-3',
+                                4 => 'grid-cols-2 md:grid-cols-4',
+                                5 => 'grid-cols-2 md:grid-cols-5',
+                                default => 'grid-cols-2 md:grid-cols-4 xl:grid-cols-6',
+                            };
+                            @endphp
                         <div class="pb-3 mb-3 border-b border-hairline dark:border-gray-700"
                             x-on:keydown.enter.prevent="
                                 const sel = 'input:not([type=hidden]), select';
@@ -391,13 +440,25 @@ new class extends Component {
                                 if (i > -1 && i < els.length - 1) { els[i + 1].focus() } else { $refs.olWaktu?.focus() }">
                             <div class="flex flex-wrap items-center gap-2 mb-2">
                                 <span class="text-sm font-semibold text-body dark:text-gray-300">Skor EWS</span>
-                                <x-select-input wire:model.live="ewsVarian" class="!w-auto py-1 text-sm">
+                                <x-select-input wire:model.live="ewsVarian" class="!w-auto">
                                     @foreach ($this->ewsVarianList() as $kode => $label)
-                                        <option value="{{ $kode }}">{{ $label }}</option>
+                                        <option value="{{ $kode }}">{{ EwsDefault::labelVarianLengkap($kode) }}</option>
                                     @endforeach
                                 </x-select-input>
+                                @php
+                                    $ewsDisarankan = $this->ewsVarianDisarankan();
+                                    $ewsVarianLabel = $this->ewsVarianList();
+                                @endphp
                                 @if ($umurTahun !== null)
                                     <x-badge variant="gray">Umur {{ $umurTahun >= 1 ? $umurTahun . ' th' : ($umurBulan >= 1 ? $umurBulan . ' bln' : $umurHari . ' hr') }}</x-badge>
+                                    @if ($ewsDisarankan)
+                                        <span class="text-xs text-muted dark:text-gray-400">sesuai umur: <b>{{ $ewsVarianLabel[$ewsDisarankan] ?? $ewsDisarankan }}</b></span>
+                                    @endif
+                                    @if ($ewsDisarankan && $ewsDisarankan !== $ewsVarian)
+                                        <x-badge variant="warning">dipilih manual: {{ $ewsVarianLabel[$ewsVarian] ?? $ewsVarian }}</x-badge>
+                                    @endif
+                                @else
+                                    <x-badge variant="warning">tgl lahir kosong, varian dipilih manual</x-badge>
                                 @endif
                                 @if ($acuanNadi)
                                     <x-badge variant="info">Nadi normal {{ EwsDefault::labelRentang($acuanNadi['batas_bawah'], $acuanNadi['batas_atas']) }} x/mnt</x-badge>
@@ -407,13 +468,13 @@ new class extends Component {
                                 @endif
                                 <span class="text-xs text-muted-soft">Skor, frekuensi pantau & respon dihitung otomatis saat Simpan.</span>
                             </div>
-                            <div class="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-6 items-stretch">
+                            <div class="grid gap-2 items-stretch {{ $ewsGridKelas }}">
                                 @foreach ($ewsParamTambahan as $kode => $param)
-                                    <div class="flex flex-col {{ $param['tipe'] === 'PILIHAN' && count($param['pilihan']) > 2 ? 'col-span-2' : '' }}"
+                                    <div class="flex flex-col {{ ($ewsLebar[$kode] ?? 1) === 2 ? 'col-span-2' : '' }}"
                                         wire:key="ews-field-{{ $ewsVarian }}-{{ $kode }}">
                                         <x-input-label class="mb-1">{{ $param['param_desc'] }}{{ ($param['wajib'] ?? '1') === '1' ? ' *' : '' }}</x-input-label>
                                         @if ($param['tipe'] === 'PILIHAN')
-                                            <x-select-input wire:model="formEntryObservasi.{{ $kode }}" class="w-full mt-auto"
+                                            <x-select-input wire:model.live="formEntryObservasi.{{ $kode }}" class="w-full mt-auto"
                                                 :error="$errors->has('formEntryObservasi.' . $kode)" :id="$loop->first ? 'ews-ri-first' : null">
                                                 <option value="">— pilih —</option>
                                                 @foreach ($param['pilihan'] as $pilihanKode => $pilihanLabel)
@@ -421,7 +482,7 @@ new class extends Component {
                                                 @endforeach
                                             </x-select-input>
                                         @else
-                                            <x-text-input wire:model="formEntryObservasi.{{ $kode }}" type="number" step="0.1"
+                                            <x-text-input wire:model.blur="formEntryObservasi.{{ $kode }}" type="number" step="0.1"
                                                 placeholder="{{ $param['satuan'] ?? '' }}" class="w-full mt-auto"
                                                 :error="$errors->has('formEntryObservasi.' . $kode)" :id="$loop->first ? 'ews-ri-first' : null" />
                                         @endif
@@ -435,6 +496,22 @@ new class extends Component {
                                     @endif
                                 @endforeach
                             </div>
+                            @if ($ewsPratinjau)
+                                <div class="flex flex-wrap items-center gap-1.5 mt-3 text-xs">
+                                    <span class="font-semibold text-body dark:text-gray-300">Pratinjau skor:</span>
+                                    @foreach ($ewsPratinjau['per'] as $kode => $skorParam)
+                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded {{ EwsSkor::skorKelas($skorParam['skor']) }}"
+                                            title="{{ $skorParam['label'] ?? 'belum diisi' }}" wire:key="pratinjau-{{ $kode }}">{{ $skorParam['desc'] }} <b>{{ $skorParam['skor'] ?? '?' }}</b></span>
+                                    @endforeach
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded font-bold {{ EwsSkor::warnaKelas($ewsPratinjau['warna'] ?? null) }}">Total {{ $ewsPratinjau['total'] }}</span>
+                                    @if ($ewsPratinjau['kategori'])
+                                        <span class="text-muted dark:text-gray-400">{{ $ewsPratinjau['kategori'] }} · {{ $ewsPratinjau['frekuensi'] }}</span>
+                                    @endif
+                                    @if (!$ewsPratinjau['lengkap'])
+                                        <span class="text-warning-deep">belum lengkap: {{ implode(', ', $ewsPratinjau['kurang']) }}</span>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     @endif
 
@@ -470,56 +547,56 @@ new class extends Component {
                         </div>
                         <div class="flex flex-col">
                             <x-input-label class="mb-1">Sistolik<br>(mmHg)</x-input-label>
-                            <x-text-input wire:model="formEntryObservasi.sistolik" type="number"
+                            <x-text-input wire:model.blur="formEntryObservasi.sistolik" type="number"
                                 class="w-full mt-auto" x-ref="olSistolik"
                                 x-on:keydown.enter.prevent="$refs.olDistolik.focus()" />
                             <x-input-error :messages="$errors->get('formEntryObservasi.sistolik')" class="mt-1" />
                         </div>
                         <div class="flex flex-col">
                             <x-input-label class="mb-1">Diastolik<br>(mmHg)</x-input-label>
-                            <x-text-input wire:model="formEntryObservasi.distolik" type="number"
+                            <x-text-input wire:model.blur="formEntryObservasi.distolik" type="number"
                                 class="w-full mt-auto" x-ref="olDistolik"
                                 x-on:keydown.enter.prevent="$refs.olNadi.focus()" />
                             <x-input-error :messages="$errors->get('formEntryObservasi.distolik')" class="mt-1" />
                         </div>
                         <div class="flex flex-col">
                             <x-input-label class="mb-1">Nadi<br>(x/mnt)</x-input-label>
-                            <x-text-input wire:model="formEntryObservasi.frekuensiNadi" type="number"
+                            <x-text-input wire:model.blur="formEntryObservasi.frekuensiNadi" type="number"
                                 class="w-full mt-auto" x-ref="olNadi"
                                 x-on:keydown.enter.prevent="$refs.olNafas.focus()" />
                             <x-input-error :messages="$errors->get('formEntryObservasi.frekuensiNadi')" class="mt-1" />
                         </div>
                         <div class="flex flex-col">
                             <x-input-label class="mb-1">Nafas<br>(x/mnt)</x-input-label>
-                            <x-text-input wire:model="formEntryObservasi.frekuensiNafas" type="number"
+                            <x-text-input wire:model.blur="formEntryObservasi.frekuensiNafas" type="number"
                                 class="w-full mt-auto" x-ref="olNafas"
                                 x-on:keydown.enter.prevent="$refs.olSuhu.focus()" />
                             <x-input-error :messages="$errors->get('formEntryObservasi.frekuensiNafas')" class="mt-1" />
                         </div>
                         <div class="flex flex-col">
                             <x-input-label class="mb-1">Suhu<br>(°C)</x-input-label>
-                            <x-text-input wire:model="formEntryObservasi.suhu" type="number"
+                            <x-text-input wire:model.blur="formEntryObservasi.suhu" type="number"
                                 step="0.1" class="w-full mt-auto" x-ref="olSuhu"
                                 x-on:keydown.enter.prevent="$refs.olSpo2.focus()" />
                             <x-input-error :messages="$errors->get('formEntryObservasi.suhu')" class="mt-1" />
                         </div>
                         <div class="flex flex-col">
                             <x-input-label class="mb-1">SpO₂<br>(%)</x-input-label>
-                            <x-text-input wire:model="formEntryObservasi.spo2" type="number"
+                            <x-text-input wire:model.blur="formEntryObservasi.spo2" type="number"
                                 class="w-full mt-auto" x-ref="olSpo2"
                                 x-on:keydown.enter.prevent="$refs.olGda.focus()" />
                             <x-input-error :messages="$errors->get('formEntryObservasi.spo2')" class="mt-1" />
                         </div>
                         <div class="flex flex-col">
                             <x-input-label class="mb-1">GDA<br>(g/dL)</x-input-label>
-                            <x-text-input wire:model="formEntryObservasi.gda" type="number"
+                            <x-text-input wire:model.blur="formEntryObservasi.gda" type="number"
                                 step="0.1" class="w-full mt-auto" x-ref="olGda"
                                 x-on:keydown.enter.prevent="$refs.olGcs.focus()" />
                             <x-input-error :messages="$errors->get('formEntryObservasi.gda')" class="mt-1" />
                         </div>
                         <div class="flex flex-col">
                             <x-input-label class="mb-1">GCS<br>&nbsp;</x-input-label>
-                            <x-text-input wire:model="formEntryObservasi.gcs" type="number"
+                            <x-text-input wire:model.blur="formEntryObservasi.gcs" type="number"
                                 class="w-full mt-auto" x-ref="olGcs"
                                 x-on:keydown.enter.prevent="$el.blur(); $wire.addObservasiLanjutan()" />
                             <x-input-error :messages="$errors->get('formEntryObservasi.gcs')" class="mt-1" />
@@ -555,21 +632,15 @@ new class extends Component {
                             class="text-xs font-semibold text-muted uppercase bg-surface-soft dark:bg-gray-800/50 dark:text-gray-400">
                             <tr>
                                 <th class="px-4 py-3">No</th>
-                                <th class="px-4 py-3">Waktu</th>
-                                <th class="px-4 py-3">Cairan</th>
-                                <th class="px-4 py-3">Tetesan</th>
+                                <th class="px-4 py-3">Waktu / Pemeriksa</th>
+                                <th class="px-4 py-3">Cairan / Tetesan</th>
                                 <th class="px-4 py-3">TD</th>
-                                <th class="px-4 py-3">Nadi</th>
-                                <th class="px-4 py-3">Nafas</th>
+                                <th class="px-4 py-3">Nadi / Nafas</th>
                                 <th class="px-4 py-3">Suhu</th>
-                                <th class="px-4 py-3">SpO₂</th>
+                                <th class="px-4 py-3">SpO₂ / O₂</th>
                                 <th class="px-4 py-3">GDA</th>
-                                <th class="px-4 py-3">GCS</th>
-                                <th class="px-4 py-3">Kesadaran</th>
-                                <th class="px-4 py-3">O₂</th>
-                                <th class="px-4 py-3 text-center">EWS</th>
-                                <th class="px-4 py-3">Pantau Ulang</th>
-                                <th class="px-4 py-3">Pemeriksa</th>
+                                <th class="px-4 py-3">GCS / Kesadaran</th>
+                                <th class="px-4 py-3">EWS / Pantau Ulang</th>
                                 @if (!$isFormLocked)
                                     <th class="px-4 py-3 text-center w-20">Hapus</th>
                                 @endif
@@ -582,38 +653,59 @@ new class extends Component {
                                     $ewsRinci = $ewsItem
                                         ? collect($ewsItem['per'] ?? [])->map(fn($p) => $p['desc'] . ': ' . ($p['skor'] ?? '-'))->implode(' · ')
                                         : '';
+                                    $ewsSkorSel = function (string $kode) use ($ewsItem): string {
+                                        if (!$ewsItem || !array_key_exists($kode, $ewsItem['per'] ?? [])) {
+                                            return '';
+                                        }
+                                        $skor = $ewsItem['per'][$kode]['skor'];
+                                        return '<span class="ml-1 inline-block px-1 rounded text-xs font-semibold ' . EwsSkor::skorKelas($skor) . '" title="skor EWS ' . e($ewsItem['per'][$kode]['desc']) . '">' . ($skor ?? '?') . '</span>';
+                                    };
                                 @endphp
                                 <tr wire:key="obs-{{ $item['waktuPemeriksaan'] ?? '' }}"
                                     class="hover:bg-surface-soft dark:hover:bg-gray-800/40 transition">
                                     <td class="px-4 py-3 text-muted dark:text-gray-400">{{ $loop->iteration }}
                                     </td>
-                                    <td class="px-4 py-3 font-mono whitespace-nowrap">
-                                        {{ $item['waktuPemeriksaan'] ?? '-' }}</td>
-                                    <td class="px-4 py-3">{{ $item['cairan'] ?? '-' }}</td>
-                                    <td class="px-4 py-3">{{ $item['tetesan'] ?? '-' }}</td>
                                     <td class="px-4 py-3 whitespace-nowrap">
-                                        {{ ($item['sistolik'] ?? '-') . '/' . ($item['distolik'] ?? '-') }}</td>
-                                    <td class="px-4 py-3">{{ $item['frekuensiNadi'] ?? '-' }}</td>
-                                    <td class="px-4 py-3">{{ $item['frekuensiNafas'] ?? '-' }}</td>
-                                    <td class="px-4 py-3">{{ $item['suhu'] ?? '-' }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap">{{ $item['spo2'] ?? '-' }}@if (filled($item['spo2Skala2'] ?? null)) <span class="text-xs text-muted-soft" title="SpO₂ skala 2">(S2 {{ $item['spo2Skala2'] }})</span>@endif</td>
-                                    <td class="px-4 py-3">{{ $item['gda'] ?? '-' }}</td>
-                                    <td class="px-4 py-3">{{ $item['gcs'] ?? '-' }}</td>
-                                    <td class="px-4 py-3">{{ filled($item['kesadaran'] ?? null) ? $item['kesadaran'] : '-' }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        @if (($item['oksigen'] ?? '') === 'O2')
-                                            O₂ <span class="text-xs text-muted-soft">{{ $item['alatOksigen'] ?? '' }}</span>
-                                        @elseif (($item['oksigen'] ?? '') === 'ROOM_AIR')
-                                            Room air
-                                        @else
-                                            -
-                                        @endif
+                                        <div class="font-mono">{{ $item['waktuPemeriksaan'] ?? '-' }}</div>
+                                        <div class="text-xs text-muted-soft">{{ $item['pemeriksa'] ?? '-' }}</div>
                                     </td>
-                                    <td class="px-4 py-3 text-center whitespace-nowrap">
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <div>{{ filled($item['cairan'] ?? null) ? $item['cairan'] : '-' }}</div>
+                                        <div class="text-xs text-muted-soft">{{ filled($item['tetesan'] ?? null) ? $item['tetesan'] . ' gtt/mnt' : '-' }}</div>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        {{ ($item['sistolik'] ?? '-') . '/' . ($item['distolik'] ?? '-') }}{!! $ewsSkorSel('sistolik') !!}{!! $ewsSkorSel('distolik') !!}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <div>{{ $item['frekuensiNadi'] ?? '-' }}{!! $ewsSkorSel('frekuensiNadi') !!}</div>
+                                        <div class="text-xs text-muted-soft">RR {{ $item['frekuensiNafas'] ?? '-' }}{!! $ewsSkorSel('frekuensiNafas') !!}</div>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap">{{ $item['suhu'] ?? '-' }}{!! $ewsSkorSel('suhu') !!}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <div>{{ $item['spo2'] ?? '-' }}@if (filled($item['spo2Skala2'] ?? null)) <span class="text-xs text-muted-soft" title="SpO₂ skala 2">(S2 {{ $item['spo2Skala2'] }})</span>@endif{!! $ewsSkorSel('spo2') !!}{!! $ewsSkorSel('spo2Skala2') !!}</div>
+                                        <div class="text-xs text-muted-soft">
+                                            @if (($item['oksigen'] ?? '') === 'O2')
+                                                O₂ {{ $item['alatOksigen'] ?? '' }}
+                                            @elseif (($item['oksigen'] ?? '') === 'ROOM_AIR')
+                                                Room air
+                                            @else
+                                                -
+                                            @endif
+                                            {!! $ewsSkorSel('oksigen') !!}
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">{{ $item['gda'] ?? '-' }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <div>{{ filled($item['gcs'] ?? null) ? $item['gcs'] : '-' }}</div>
+                                        <div class="text-xs text-muted-soft">{{ filled($item['kesadaran'] ?? null) ? $item['kesadaran'] : '-' }}{!! $ewsSkorSel('kesadaran') !!}</div>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
                                         @if ($ewsItem)
                                             <span class="inline-flex items-center justify-center min-w-8 h-7 px-2 rounded font-bold {{ EwsSkor::warnaKelas($ewsItem['warna'] ?? null) }}"
                                                 title="{{ $ewsRinci }}">{{ $ewsItem['total'] }}</span>
-                                            <div class="text-xs text-muted-soft">{{ $ewsItem['kategori'] ?? '-' }}{{ ($ewsItem['varian'] ?? '') !== 'DEWASA' ? ' · ' . $ewsItem['varian'] : '' }}</div>
+                                            <span class="text-xs text-muted-soft">{{ $ewsItem['kategori'] ?? '-' }}{{ ($ewsItem['varian'] ?? '') !== 'DEWASA' ? ' · ' . $ewsItem['varian'] : '' }}</span>
+                                            @if (!empty($ewsItem['pantauUlang']))
+                                                <div class="text-xs text-muted-soft">ulang <span class="font-mono">{{ $ewsItem['pantauUlang'] }}</span> ({{ $ewsItem['frekuensi'] ?? '' }})</div>
+                                            @endif
                                             @if (empty($ewsItem['lengkap']))
                                                 <div class="text-xs text-warning-deep" title="{{ implode(', ', $ewsItem['kurang'] ?? []) }}">belum lengkap</div>
                                             @endif
@@ -621,15 +713,6 @@ new class extends Component {
                                             -
                                         @endif
                                     </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        @if ($ewsItem && !empty($ewsItem['pantauUlang']))
-                                            <div class="font-mono">{{ $ewsItem['pantauUlang'] }}</div>
-                                            <div class="text-xs text-muted-soft">{{ $ewsItem['frekuensi'] ?? '' }}</div>
-                                        @else
-                                            -
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-3">{{ $item['pemeriksa'] ?? '-' }}</td>
                                     @if (!$isFormLocked)
                                         <td class="px-4 py-3 text-center">
                                             <x-outline-button type="button"
@@ -649,7 +732,7 @@ new class extends Component {
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $isFormLocked ? 16 : 17 }}"
+                                    <td colspan="{{ $isFormLocked ? 10 : 11 }}"
                                         class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
                                         <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none"
                                             stroke="currentColor" viewBox="0 0 24 24">

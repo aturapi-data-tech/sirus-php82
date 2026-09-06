@@ -28,6 +28,23 @@ class EwsDefault
         'MEOWS'    => 'EWS Obstetri (MEOWS)',
     ];
 
+    /** Untuk siapa tiap varian — ditampilkan di pilihan dropdown Observasi Lanjutan. Selaras EwsSkor::varianUntukUmur(). */
+    public const VARIAN_UNTUK = [
+        'DEWASA'   => 'pasien 16 tahun ke atas',
+        'ANAK'     => 'anak 29 hari s.d. 15 tahun',
+        'NEONATUS' => 'bayi baru lahir 0-28 hari',
+        'MEOWS'    => 'ibu hamil / bersalin / nifas',
+    ];
+
+    /** Label opsi dropdown: "EWS Anak (PEWS) - untuk anak 29 hari s.d. 15 tahun". */
+    public static function labelVarianLengkap(string $kode): string
+    {
+        $label = self::VARIAN[$kode] ?? $kode;
+        $untuk = self::VARIAN_UNTUK[$kode] ?? null;
+
+        return $untuk ? $label . ' - untuk ' . $untuk : $label;
+    }
+
     /** Kesadaran ACVPU — dipakai DEWASA & MEOWS dengan kode sama supaya input seragam. */
     private const KESADARAN = [
         ['A', 'A: Sadar penuh (Alert)', 0],

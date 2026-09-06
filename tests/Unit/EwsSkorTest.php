@@ -180,6 +180,31 @@ class EwsSkorTest extends TestCase
         $this->assertSame(['hari' => null, 'bulan' => null, 'tahun' => null], EwsSkor::umurDari('bukan tanggal'));
     }
 
+    public function test_skor_terakhir_untuk_badge_display_pasien(): void
+    {
+        $entri = fn(string $waktu, int $total, ?string $pantau) => [
+            'waktuPemeriksaan' => $waktu,
+            'ews' => ['tersedia' => true, 'total' => $total, 'kategori' => 'Uji', 'warna' => 'MERAH', 'frekuensi' => 'Minimal tiap 1 jam', 'pantauUlang' => $pantau, 'varian' => 'DEWASA', 'lengkap' => true],
+        ];
+        $daftar = [
+            $entri('06/09/2026 10:00:00', 2, '06/09/2026 16:00'),
+            ['waktuPemeriksaan' => '06/09/2026 12:00:00'],                       // legacy tanpa ews → dilewati
+            $entri('06/09/2026 11:00:00', 7, '06/09/2026 12:00'),                // terbaru walau di tengah array
+            ['waktuPemeriksaan' => '06/09/2026 13:00:00', 'ews' => null],        // master tak tersedia → dilewati
+        ];
+
+        $hasil = EwsSkor::terakhirDari($daftar, Carbon::create(2026, 9, 6, 12, 30));
+        $this->assertSame(7, $hasil['total']);
+        $this->assertSame('06/09/2026 11:00:00', $hasil['waktu']);
+        $this->assertTrue($hasil['terlambat'], 'pantau ulang 12:00 sudah lewat pada 12:30');
+
+        $hasil = EwsSkor::terakhirDari($daftar, Carbon::create(2026, 9, 6, 11, 30));
+        $this->assertFalse($hasil['terlambat']);
+
+        $this->assertNull(EwsSkor::terakhirDari([['waktuPemeriksaan' => '06/09/2026 12:00:00']]));
+        $this->assertNull(EwsSkor::terakhirDari([]));
+    }
+
     public function test_master_kosong_menandai_tidak_tersedia(): void
     {
         $hasil = EwsSkor::hitung('DEWASA', ['frekuensiNafas' => 20], ['params' => [], 'respons' => []]);

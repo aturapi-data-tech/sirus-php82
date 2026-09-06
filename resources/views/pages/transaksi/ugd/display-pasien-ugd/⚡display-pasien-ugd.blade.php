@@ -3,6 +3,7 @@
 use Carbon\Carbon;
 use Livewire\Component;
 use Livewire\Attributes\On;
+use App\Support\Ews\EwsSkor;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
@@ -16,6 +17,9 @@ new class extends Component {
 
     /** Penilaian risiko jatuh terbaru — terisi hanya jika kategori Sedang/Tinggi. */
     public array $resikoJatuhTerakhir = [];
+
+    /** Skor EWS terakhir dari Observasi Lanjutan — tampil bila sudah ada entri berskor. */
+    public array $ewsTerakhir = [];
 
     /** Skrining risiko bunuh diri (C-SSRS) terbaru — terisi jika kategori Rendah/Sedang/Tinggi. */
     public array $resikoBunuhDiriTerakhir = [];
@@ -48,6 +52,7 @@ new class extends Component {
         $this->dataPasien = $this->findDataMasterPasien($dataDaftarUGD['regNo']) ?? [];
         $this->resikoJatuhTerakhir = $this->hitungResikoJatuhTerakhir($dataDaftarUGD);
         $this->resikoBunuhDiriTerakhir = $this->hitungResikoBunuhDiriTerakhir($dataDaftarUGD);
+        $this->ewsTerakhir = EwsSkor::terakhirDari($dataDaftarUGD['observasi']['observasiLanjutan']['tandaVital'] ?? []) ?? [];
     }
 
     /**
@@ -353,6 +358,25 @@ new class extends Component {
                             </x-badge>
                         </div>
                     @endif
+                    {{-- Penanda Skor EWS terakhir (Observasi Lanjutan) — tampil bila sudah ada entri berskor --}}
+                    @if (!empty($ewsTerakhir))
+                        <div class="flex justify-end">
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium {{ EwsSkor::warnaKelas($ewsTerakhir['warna']) }}"
+                                title="Observasi {{ $ewsTerakhir['waktu'] }}{{ $ewsTerakhir['frekuensi'] ? ' — ' . $ewsTerakhir['frekuensi'] : '' }}{{ $ewsTerakhir['pantauUlang'] ? ', pantau ulang ' . $ewsTerakhir['pantauUlang'] : '' }}{{ $ewsTerakhir['lengkap'] ? '' : ' (parameter belum lengkap)' }}">
+                                <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h2.382l1.447-2.894a1 1 0 011.79.026L11.6 10.6l1.2-1.8A1 1 0 0113.618 8H16a1 1 0 110 2h-1.882l-1.947 2.92a1 1 0 01-1.79-.026L8.4 8.4 7.2 10.2A1 1 0 016.382 11H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+                                </svg>
+                                EWS {{ $ewsTerakhir['total'] }}{{ $ewsTerakhir['kategori'] ? ' · ' . $ewsTerakhir['kategori'] : '' }}{{ $ewsTerakhir['varian'] !== 'DEWASA' ? ' · ' . $ewsTerakhir['varian'] : '' }}
+                                @if ($ewsTerakhir['pantauUlang'])
+                                    <span class="font-normal opacity-80">· ulang {{ $ewsTerakhir['pantauUlang'] }}</span>
+                                @endif
+                                @if ($ewsTerakhir['terlambat'])
+                                    <span class="font-semibold uppercase">terlambat</span>
+                                @endif
+                            </span>
+                        </div>
+                    @endif
+
                 </div>
 
             </div>
