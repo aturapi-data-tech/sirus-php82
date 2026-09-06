@@ -8,7 +8,7 @@ File tiap skill: `.claude/skills/<nama>/SKILL.md`. Panggil dengan `/<nama>`.
 > pembungkus "baca-dulu-sebelum-X" yang sering **menunjuk** ke docs terkait. Banyak skill = docs +
 > aturan keras + kapan-wajib-dibaca.
 
-Total: **15 skill**.
+Total: **16 skill**.
 
 ---
 
@@ -50,6 +50,7 @@ Total: **15 skill**.
 | **laborat** | Arsitektur & jebakan modul Laboratorium (`lbtxn_`/`lbmst_`, hasil, nilai rujukan & kritis per-gender, Mindray, status P/C/H/F, biaya ke induk RJ/UGD/RI). | Menambah/mengubah item master lab, input/tampilan/cetak hasil, ambang, laporan, batal. |
 | **administrasi-inline-edit** | Sel tabel yang diedit langsung ke DB di modul Administrasi/transaksi (tarif, hari, tanggal Riwayat Kamar/Visit/Konsul); jebakan kolom turunan (hari/subtotal) + audit log. | Sebelum menambah/mengubah kolom editable pada tabel transaksi. |
 | **satusehat-kirim** | Aturan mengirim resource ke SATUSEHAT (FHIR R4): sumber data JSON EMR yang benar, helper KFA/racikan (`ObatKfa`/`RacikanKfa`/`MedicationRequestItem`), jebakan validator Kemkes yang pernah menolak sungguhan, uji payload tanpa mengirim | Sebelum menambah/mengubah sender di `app/Http/Traits/SATUSEHAT` atau `*/satu-sehat/*`, atau saat kiriman ditolak `OperationOutcome`. Rujukan lengkap: `docs/satusehat-api.md` |
+| **ews** | Modul EWS (Early Warning System): master parameter/rentang/respon per varian (`RSMST_EWS_*`, `/master/ews`), mesin skor `EwsSkor`, skor tersimpan di `tandaVital[].ews`, badge display pasien; jebakan charset Latin-1 & directive di atribut komponen. | Sebelum mengubah ambang, menambah parameter/varian, menyentuh form/tabel Observasi Lanjutan RI/UGD, atau membuat pemakai baru skor (RJ, cetak RM 93a, daftar EWS tinggi). Rujukan: `docs/ews-modul.md` |
 | **bpjs-antrean-task-id** | Konsep `taskId` 1–7 & 99 (Antrean/Antrol BPJS) di node `taskIdPelayanan`: struktur RJ/UGD vs RI-Resep, format waktu ganda, siapa mengeset apa | Sebelum menyentuh titik yang mencatat waktu layanan (pendaftaran, poli, apotek, pembatalan), atau saat waktu antrean tak terkirim/dobel |
 
 ---

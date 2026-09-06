@@ -340,23 +340,16 @@
         @endif
     </x-border-form>
 
-    {{-- ═══════ OBSERVASI TANDA VITAL ═══════ --}}
+    {{-- ═══════ OBSERVASI TANDA VITAL ═══════ (susunan = tabel form Observasi Lanjutan: sel Tanda Vital dua baris + EWS) --}}
     <x-border-form title="Observasi Tanda Vital ({{ count($observasiTandaVital) }} kali)" :collapsible="true" :open="false">
         <div class="overflow-x-auto border rounded-xl border-hairline dark:border-gray-700">
             <table class="ds-table">
                 <thead>
                     <tr>
-                        <th>Waktu</th>
-                        <th class="ds-c">TD</th>
-                        <th class="ds-c">Nadi</th>
-                        <th class="ds-c">Nafas</th>
-                        <th class="ds-c">Suhu</th>
-                        <th class="ds-c">SpO₂</th>
-                        <th class="ds-c">GDA</th>
-                        <th class="ds-c">GCS</th>
-                        <th class="ds-c">EWS</th>
+                        <th>Waktu / Pemeriksa</th>
+                        <th>Tanda Vital</th>
+                        <th>EWS / Pantau Ulang</th>
                         <th>Cairan / Tetesan</th>
-                        <th>Pemeriksa</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -364,35 +357,57 @@
                         @php
                             $cairan = trim((string) ($tandaVital['cairan'] ?? ''));
                             $tetesan = trim((string) ($tandaVital['tetesan'] ?? ''));
-                            $cairanTetesan = collect([$cairan ? $cairan . ' ml' : null, $tetesan ? $tetesan . ' gtt/mnt' : null])
-                                ->filter()
-                                ->implode(' · ');
+                            $cairanTetesan = collect([$cairan ? $cairan . ' ml' : null, $tetesan ? $tetesan . ' gtt/mnt' : null])->filter()->implode(' · ');
                             // Skor EWS tersimpan di entri (dihitung saat entri dibuat) — entri lama tanpa `ews` tampil "-".
                             $ewsEntri = is_array($tandaVital['ews'] ?? null) && !empty($tandaVital['ews']['tersedia']) ? $tandaVital['ews'] : null;
+                            $ewsRinci = $ewsEntri ? collect($ewsEntri['per'] ?? [])->map(fn($p) => $p['desc'] . ': ' . ($p['skor'] ?? '-'))->implode(' · ') : '';
+                            // Badge kecil skor per parameter — susunan sama dengan tabel di form Observasi Lanjutan.
+                            $ewsSkorSel = function (string $kode) use ($ewsEntri): string {
+                                if (!$ewsEntri || !array_key_exists($kode, $ewsEntri['per'] ?? [])) {
+                                    return '';
+                                }
+                                $skor = $ewsEntri['per'][$kode]['skor'];
+                                return '<span class="ml-1 inline-block px-1 rounded text-xs font-semibold ' . \App\Support\Ews\EwsSkor::skorKelas($skor) . '" title="skor EWS ' . e($ewsEntri['per'][$kode]['desc']) . '">' . ($skor ?? '?') . '</span>';
+                            };
                         @endphp
                         <tr>
-                            <td class="ds-td-strong">{{ $tandaVital['waktuPemeriksaan'] ?? '-' }}</td>
-                            <td class="ds-c">{{ ($tandaVital['sistolik'] ?? '-') . '/' . ($tandaVital['distolik'] ?? '-') }}</td>
-                            <td class="ds-c">{{ $tandaVital['frekuensiNadi'] ?? '-' }}</td>
-                            <td class="ds-c">{{ $tandaVital['frekuensiNafas'] ?? '-' }}</td>
-                            <td class="ds-c">{{ $tandaVital['suhu'] ?? '-' }}</td>
-                            <td class="ds-c">{{ $tandaVital['spo2'] ?? '-' }}</td>
-                            <td class="ds-c">{{ filled($tandaVital['gda'] ?? null) ? $tandaVital['gda'] : '-' }}</td>
-                            <td class="ds-c">{{ filled($tandaVital['gcs'] ?? null) ? $tandaVital['gcs'] : '-' }}</td>
-                            <td class="ds-c whitespace-nowrap">
+                            <td class="whitespace-nowrap">
+                                <div class="ds-td-strong">{{ $tandaVital['waktuPemeriksaan'] ?? '-' }}</div>
+                                <div class="text-xs text-muted-soft">{{ $tandaVital['pemeriksa'] ?? '-' }}</div>
+                            </td>
+                            <td class="whitespace-nowrap">
+                                <div class="flex flex-wrap items-center gap-x-3">
+                                    <span>Tekanan darah <b>{{ ($tandaVital['sistolik'] ?? '-') . '/' . ($tandaVital['distolik'] ?? '-') }}</b> <span class="text-xs text-muted-soft">mmHg</span>{!! $ewsSkorSel('sistolik') !!}{!! $ewsSkorSel('distolik') !!}</span>
+                                    <span>Nadi <b>{{ $tandaVital['frekuensiNadi'] ?? '-' }}</b> <span class="text-xs text-muted-soft">x/mnt</span>{!! $ewsSkorSel('frekuensiNadi') !!}</span>
+                                    <span>Nafas <b>{{ $tandaVital['frekuensiNafas'] ?? '-' }}</b> <span class="text-xs text-muted-soft">x/mnt</span>{!! $ewsSkorSel('frekuensiNafas') !!}</span>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-x-3">
+                                    <span>Suhu <b>{{ $tandaVital['suhu'] ?? '-' }}</b> <span class="text-xs text-muted-soft">°C</span>{!! $ewsSkorSel('suhu') !!}</span>
+                                    <span>SpO₂ <b>{{ $tandaVital['spo2'] ?? '-' }}</b> <span class="text-xs text-muted-soft">%</span>@if (filled($tandaVital['spo2Skala2'] ?? null)) <span class="text-xs text-muted-soft" title="SpO₂ skala 2">(S2 {{ $tandaVital['spo2Skala2'] }})</span>@endif{!! $ewsSkorSel('spo2') !!}{!! $ewsSkorSel('spo2Skala2') !!}
+                                        · @if (($tandaVital['oksigen'] ?? '') === 'O2') O₂ {{ $tandaVital['alatOksigen'] ?? '' }} @elseif (($tandaVital['oksigen'] ?? '') === 'ROOM_AIR') Room air @else - @endif{!! $ewsSkorSel('oksigen') !!}</span>
+                                    <span>GDA <b>{{ filled($tandaVital['gda'] ?? null) ? $tandaVital['gda'] : '-' }}</b> <span class="text-xs text-muted-soft">mg/dL</span></span>
+                                    <span>GCS <b>{{ filled($tandaVital['gcs'] ?? null) ? $tandaVital['gcs'] : '-' }}</b> · {{ filled($tandaVital['kesadaran'] ?? null) ? $tandaVital['kesadaran'] : '-' }}{!! $ewsSkorSel('kesadaran') !!}</span>
+                                </div>
+                            </td>
+                            <td class="whitespace-nowrap">
                                 @if ($ewsEntri)
-                                    <span class="inline-block px-2 rounded font-bold {{ \App\Support\Ews\EwsSkor::warnaKelas($ewsEntri['warna'] ?? null) }}">{{ $ewsEntri['total'] }}</span>
-                                    <span class="text-xs text-muted-soft">{{ $ewsEntri['kategori'] ?? '' }}{{ ($ewsEntri['varian'] ?? 'DEWASA') !== 'DEWASA' ? ' · ' . $ewsEntri['varian'] : '' }}</span>
+                                    <span class="inline-flex items-center justify-center min-w-8 h-7 px-2 rounded font-bold {{ \App\Support\Ews\EwsSkor::warnaKelas($ewsEntri['warna'] ?? null) }}" title="{{ $ewsRinci }}">{{ $ewsEntri['total'] }}</span>
+                                    <span class="text-xs text-muted-soft">{{ $ewsEntri['kategori'] ?? '-' }}{{ ($ewsEntri['varian'] ?? 'DEWASA') !== 'DEWASA' ? ' · ' . $ewsEntri['varian'] : '' }}</span>
+                                    @if (!empty($ewsEntri['pantauUlang']))
+                                        <div class="text-xs text-muted-soft">ulang <span class="font-mono">{{ $ewsEntri['pantauUlang'] }}</span> ({{ $ewsEntri['frekuensi'] ?? '' }})</div>
+                                    @endif
+                                    @if (empty($ewsEntri['lengkap']))
+                                        <div class="text-xs text-warning-deep" title="{{ implode(', ', $ewsEntri['kurang'] ?? []) }}">belum lengkap</div>
+                                    @endif
                                 @else
                                     -
                                 @endif
                             </td>
                             <td>{{ $cairanTetesan ?: '-' }}</td>
-                            <td class="ds-td-meta">{{ $tandaVital['pemeriksa'] ?? '-' }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="11" class="ds-c italic text-muted-soft">Belum ada observasi tanda vital.</td>
+                            <td colspan="4" class="ds-c italic text-muted-soft">Belum ada observasi tanda vital.</td>
                         </tr>
                     @endforelse
                 </tbody>

@@ -643,59 +643,79 @@ new class extends Component {
                     </x-border-form>
                 @endif
 
-                {{-- OBSERVASI LANJUTAN (jika ada) --}}
+                {{-- OBSERVASI LANJUTAN (jika ada) — susunan = tabel form Observasi Lanjutan: sel Tanda Vital dua baris + EWS --}}
                 @php $obsList = $dataDaftarTxn['observasi']['observasiLanjutan']['tandaVital'] ?? []; @endphp
                 <x-border-form title="Observasi Lanjutan" class="mb-4">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm whitespace-nowrap">
-                                <thead>
-                                    <tr class="text-left border-b text-muted-soft border-hairline">
-                                        <th class="py-1 pr-2 font-semibold">Waktu</th>
-                                        <th class="px-2 font-semibold">TD</th>
-                                        <th class="px-2 font-semibold">Nadi</th>
-                                        <th class="px-2 font-semibold">Nafas</th>
-                                        <th class="px-2 font-semibold">Suhu</th>
-                                        <th class="px-2 font-semibold">SPO2</th>
-                                        <th class="px-2 font-semibold">GDA</th>
-                                        <th class="px-2 font-semibold">GCS</th>
-                                        <th class="px-2 font-semibold">EWS</th>
-                                        <th class="px-2 font-semibold">Cairan</th>
-                                        <th class="px-2 font-semibold">Tetes</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse ($obsList as $entriObservasi)
-                                        @php
-                                            // Skor EWS tersimpan di entri (dihitung saat entri dibuat) — entri lama tanpa `ews` tampil "-".
-                                            $ewsEntri = is_array($entriObservasi['ews'] ?? null) && !empty($entriObservasi['ews']['tersedia']) ? $entriObservasi['ews'] : null;
-                                        @endphp
-                                        <tr class="border-b border-hairline-soft last:border-0 text-ink dark:text-gray-200">
-                                            <td class="py-1 pr-2">{{ $entriObservasi['waktuPemeriksaan'] ?? '-' }}</td>
-                                            <td class="px-2">{{ $entriObservasi['sistolik'] ?? '-' }}/{{ $entriObservasi['distolik'] ?? '-' }}</td>
-                                            <td class="px-2">{{ $entriObservasi['frekuensiNadi'] ?? '-' }}</td>
-                                            <td class="px-2">{{ $entriObservasi['frekuensiNafas'] ?? '-' }}</td>
-                                            <td class="px-2">{{ $entriObservasi['suhu'] ?? '-' }}</td>
-                                            <td class="px-2">{{ $entriObservasi['spo2'] ?? '-' }}</td>
-                                            <td class="px-2">{{ $entriObservasi['gda'] ?? '-' }}</td>
-                                            <td class="px-2">{{ $entriObservasi['gcs'] ?? '-' }}</td>
-                                            <td class="px-2">
-                                                @if ($ewsEntri)
-                                                    <span class="inline-block px-2 rounded font-bold {{ \App\Support\Ews\EwsSkor::warnaKelas($ewsEntri['warna'] ?? null) }}">{{ $ewsEntri['total'] }}</span>
-                                                    <span class="text-xs text-muted-soft">{{ $ewsEntri['kategori'] ?? '' }}{{ ($ewsEntri['varian'] ?? 'DEWASA') !== 'DEWASA' ? ' · ' . $ewsEntri['varian'] : '' }}</span>
-                                                @else
-                                                    -
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm whitespace-nowrap">
+                            <thead>
+                                <tr class="text-left border-b text-muted-soft border-hairline">
+                                    <th class="py-1 pr-2 font-semibold">Waktu / Pemeriksa</th>
+                                    <th class="px-2 font-semibold">Tanda Vital</th>
+                                    <th class="px-2 font-semibold">EWS / Pantau Ulang</th>
+                                    <th class="px-2 font-semibold">Cairan / Tetesan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($obsList as $entriObservasi)
+                                    @php
+                                        $cairan = trim((string) ($entriObservasi['cairan'] ?? ''));
+                                        $tetesan = trim((string) ($entriObservasi['tetesan'] ?? ''));
+                                        $cairanTetesan = collect([$cairan ? $cairan . ' ml' : null, $tetesan ? $tetesan . ' gtt/mnt' : null])->filter()->implode(' · ');
+                                        // Skor EWS tersimpan di entri (dihitung saat entri dibuat) — entri lama tanpa `ews` tampil "-".
+                                        $ewsEntri = is_array($entriObservasi['ews'] ?? null) && !empty($entriObservasi['ews']['tersedia']) ? $entriObservasi['ews'] : null;
+                                        $ewsRinci = $ewsEntri ? collect($ewsEntri['per'] ?? [])->map(fn($p) => $p['desc'] . ': ' . ($p['skor'] ?? '-'))->implode(' · ') : '';
+                                        // Badge kecil skor per parameter — susunan sama dengan tabel di form Observasi Lanjutan.
+                                        $ewsSkorSel = function (string $kode) use ($ewsEntri): string {
+                                            if (!$ewsEntri || !array_key_exists($kode, $ewsEntri['per'] ?? [])) {
+                                                return '';
+                                            }
+                                            $skor = $ewsEntri['per'][$kode]['skor'];
+                                            return '<span class="ml-1 inline-block px-1 rounded text-xs font-semibold ' . \App\Support\Ews\EwsSkor::skorKelas($skor) . '" title="skor EWS ' . e($ewsEntri['per'][$kode]['desc']) . '">' . ($skor ?? '?') . '</span>';
+                                        };
+                                    @endphp
+                                    <tr class="border-b border-hairline-soft last:border-0 text-ink dark:text-gray-200">
+                                        <td class="py-1 pr-2 align-top">
+                                            <div>{{ $entriObservasi['waktuPemeriksaan'] ?? '-' }}</div>
+                                            <div class="text-xs text-muted-soft">{{ $entriObservasi['pemeriksa'] ?? '-' }}</div>
+                                        </td>
+                                        <td class="px-2 py-1 align-top">
+                                            <div class="flex flex-wrap items-center gap-x-3">
+                                                <span>Tekanan darah <b>{{ ($entriObservasi['sistolik'] ?? '-') . '/' . ($entriObservasi['distolik'] ?? '-') }}</b> <span class="text-xs text-muted-soft">mmHg</span>{!! $ewsSkorSel('sistolik') !!}{!! $ewsSkorSel('distolik') !!}</span>
+                                                <span>Nadi <b>{{ $entriObservasi['frekuensiNadi'] ?? '-' }}</b> <span class="text-xs text-muted-soft">x/mnt</span>{!! $ewsSkorSel('frekuensiNadi') !!}</span>
+                                                <span>Nafas <b>{{ $entriObservasi['frekuensiNafas'] ?? '-' }}</b> <span class="text-xs text-muted-soft">x/mnt</span>{!! $ewsSkorSel('frekuensiNafas') !!}</span>
+                                            </div>
+                                            <div class="flex flex-wrap items-center gap-x-3">
+                                                <span>Suhu <b>{{ $entriObservasi['suhu'] ?? '-' }}</b> <span class="text-xs text-muted-soft">°C</span>{!! $ewsSkorSel('suhu') !!}</span>
+                                                <span>SpO₂ <b>{{ $entriObservasi['spo2'] ?? '-' }}</b> <span class="text-xs text-muted-soft">%</span>@if (filled($entriObservasi['spo2Skala2'] ?? null)) <span class="text-xs text-muted-soft" title="SpO₂ skala 2">(S2 {{ $entriObservasi['spo2Skala2'] }})</span>@endif{!! $ewsSkorSel('spo2') !!}{!! $ewsSkorSel('spo2Skala2') !!}
+                                                    · @if (($entriObservasi['oksigen'] ?? '') === 'O2') O₂ {{ $entriObservasi['alatOksigen'] ?? '' }} @elseif (($entriObservasi['oksigen'] ?? '') === 'ROOM_AIR') Room air @else - @endif{!! $ewsSkorSel('oksigen') !!}</span>
+                                                <span>GDA <b>{{ filled($entriObservasi['gda'] ?? null) ? $entriObservasi['gda'] : '-' }}</b> <span class="text-xs text-muted-soft">mg/dL</span></span>
+                                                <span>GCS <b>{{ filled($entriObservasi['gcs'] ?? null) ? $entriObservasi['gcs'] : '-' }}</b> · {{ filled($entriObservasi['kesadaran'] ?? null) ? $entriObservasi['kesadaran'] : '-' }}{!! $ewsSkorSel('kesadaran') !!}</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-2 py-1 align-top">
+                                            @if ($ewsEntri)
+                                                <span class="inline-flex items-center justify-center min-w-8 h-7 px-2 rounded font-bold {{ \App\Support\Ews\EwsSkor::warnaKelas($ewsEntri['warna'] ?? null) }}" title="{{ $ewsRinci }}">{{ $ewsEntri['total'] }}</span>
+                                                <span class="text-xs text-muted-soft">{{ $ewsEntri['kategori'] ?? '-' }}{{ ($ewsEntri['varian'] ?? 'DEWASA') !== 'DEWASA' ? ' · ' . $ewsEntri['varian'] : '' }}</span>
+                                                @if (!empty($ewsEntri['pantauUlang']))
+                                                    <div class="text-xs text-muted-soft">ulang <span class="font-mono">{{ $ewsEntri['pantauUlang'] }}</span> ({{ $ewsEntri['frekuensi'] ?? '' }})</div>
                                                 @endif
-                                            </td>
-                                            <td class="px-2">{{ $entriObservasi['cairan'] ?? '-' }}</td>
-                                            <td class="px-2">{{ $entriObservasi['tetesan'] ?? '-' }}</td>
-                                        </tr>
-                                    @empty
-                                        <tr><td colspan="11" class="py-3 text-base text-center text-muted-soft">Belum ada observasi lanjutan.</td></tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
-                    </x-border-form>
+                                                @if (empty($ewsEntri['lengkap']))
+                                                    <div class="text-xs text-warning-deep" title="{{ implode(', ', $ewsEntri['kurang'] ?? []) }}">belum lengkap</div>
+                                                @endif
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                        <td class="px-2 py-1 align-top">{{ $cairanTetesan ?: '-' }}</td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="4" class="py-3 text-base text-center text-muted-soft">Belum ada observasi lanjutan.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </x-border-form>
 
                 {{-- PEMBERIAN OBAT & CAIRAN (jika ada) --}}
                 @php $ocList = $dataDaftarTxn['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? []; @endphp
