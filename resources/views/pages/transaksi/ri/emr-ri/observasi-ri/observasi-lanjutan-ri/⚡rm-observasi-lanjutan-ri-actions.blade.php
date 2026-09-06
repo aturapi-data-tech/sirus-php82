@@ -634,12 +634,7 @@ new class extends Component {
                                 <th class="px-4 py-3">No</th>
                                 <th class="px-4 py-3">Waktu / Pemeriksa</th>
                                 <th class="px-4 py-3">Cairan / Tetesan</th>
-                                <th class="px-4 py-3">TD</th>
-                                <th class="px-4 py-3">Nadi / Nafas</th>
-                                <th class="px-4 py-3">Suhu</th>
-                                <th class="px-4 py-3">SpO₂ / O₂</th>
-                                <th class="px-4 py-3">GDA</th>
-                                <th class="px-4 py-3">GCS / Kesadaran</th>
+                                <th class="px-4 py-3">Tanda Vital</th>
                                 <th class="px-4 py-3">EWS / Pantau Ulang</th>
                                 @if (!$isFormLocked)
                                     <th class="px-4 py-3 text-center w-20">Hapus</th>
@@ -673,30 +668,20 @@ new class extends Component {
                                         <div>{{ filled($item['cairan'] ?? null) ? $item['cairan'] : '-' }}</div>
                                         <div class="text-xs text-muted-soft">{{ filled($item['tetesan'] ?? null) ? $item['tetesan'] . ' gtt/mnt' : '-' }}</div>
                                     </td>
+                                    {{-- Tanda vital dalam satu sel: atas TD · Nadi · Nafas; bawah Suhu · SpO₂/O₂ · GDA · GCS/Kesadaran. Badge kecil = skor EWS per parameter. --}}
                                     <td class="px-4 py-3 whitespace-nowrap">
-                                        {{ ($item['sistolik'] ?? '-') . '/' . ($item['distolik'] ?? '-') }}{!! $ewsSkorSel('sistolik') !!}{!! $ewsSkorSel('distolik') !!}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <div>{{ $item['frekuensiNadi'] ?? '-' }}{!! $ewsSkorSel('frekuensiNadi') !!}</div>
-                                        <div class="text-xs text-muted-soft">RR {{ $item['frekuensiNafas'] ?? '-' }}{!! $ewsSkorSel('frekuensiNafas') !!}</div>
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap">{{ $item['suhu'] ?? '-' }}{!! $ewsSkorSel('suhu') !!}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <div>{{ $item['spo2'] ?? '-' }}@if (filled($item['spo2Skala2'] ?? null)) <span class="text-xs text-muted-soft" title="SpO₂ skala 2">(S2 {{ $item['spo2Skala2'] }})</span>@endif{!! $ewsSkorSel('spo2') !!}{!! $ewsSkorSel('spo2Skala2') !!}</div>
-                                        <div class="text-xs text-muted-soft">
-                                            @if (($item['oksigen'] ?? '') === 'O2')
-                                                O₂ {{ $item['alatOksigen'] ?? '' }}
-                                            @elseif (($item['oksigen'] ?? '') === 'ROOM_AIR')
-                                                Room air
-                                            @else
-                                                -
-                                            @endif
-                                            {!! $ewsSkorSel('oksigen') !!}
+                                        <div class="flex flex-wrap items-center gap-x-3">
+                                            <span>Tekanan darah <b>{{ ($item['sistolik'] ?? '-') . '/' . ($item['distolik'] ?? '-') }}</b> <span class="text-xs text-muted-soft">mmHg</span>{!! $ewsSkorSel('sistolik') !!}{!! $ewsSkorSel('distolik') !!}</span>
+                                            <span>Nadi <b>{{ $item['frekuensiNadi'] ?? '-' }}</b> <span class="text-xs text-muted-soft">x/mnt</span>{!! $ewsSkorSel('frekuensiNadi') !!}</span>
+                                            <span>Nafas <b>{{ $item['frekuensiNafas'] ?? '-' }}</b> <span class="text-xs text-muted-soft">x/mnt</span>{!! $ewsSkorSel('frekuensiNafas') !!}</span>
                                         </div>
-                                    </td>
-                                    <td class="px-4 py-3">{{ $item['gda'] ?? '-' }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <div>{{ filled($item['gcs'] ?? null) ? $item['gcs'] : '-' }}</div>
-                                        <div class="text-xs text-muted-soft">{{ filled($item['kesadaran'] ?? null) ? $item['kesadaran'] : '-' }}{!! $ewsSkorSel('kesadaran') !!}</div>
+                                        <div class="flex flex-wrap items-center gap-x-3">
+                                            <span>Suhu <b>{{ $item['suhu'] ?? '-' }}</b> <span class="text-xs text-muted-soft">°C</span>{!! $ewsSkorSel('suhu') !!}</span>
+                                            <span>SpO₂ <b>{{ $item['spo2'] ?? '-' }}</b> <span class="text-xs text-muted-soft">%</span>@if (filled($item['spo2Skala2'] ?? null)) <span title="SpO₂ skala 2">(S2 {{ $item['spo2Skala2'] }})</span>@endif{!! $ewsSkorSel('spo2') !!}{!! $ewsSkorSel('spo2Skala2') !!}
+                                                · @if (($item['oksigen'] ?? '') === 'O2') O₂ {{ $item['alatOksigen'] ?? '' }} @elseif (($item['oksigen'] ?? '') === 'ROOM_AIR') Room air @else - @endif{!! $ewsSkorSel('oksigen') !!}</span>
+                                            <span>GDA <b>{{ filled($item['gda'] ?? null) ? $item['gda'] : '-' }}</b> <span class="text-xs text-muted-soft">mg/dL</span></span>
+                                            <span>GCS <b>{{ filled($item['gcs'] ?? null) ? $item['gcs'] : '-' }}</b> · {{ filled($item['kesadaran'] ?? null) ? $item['kesadaran'] : '-' }}{!! $ewsSkorSel('kesadaran') !!}</span>
+                                        </div>
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap">
                                         @if ($ewsItem)
@@ -732,7 +717,7 @@ new class extends Component {
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $isFormLocked ? 10 : 11 }}"
+                                    <td colspan="{{ $isFormLocked ? 5 : 6 }}"
                                         class="px-4 py-10 text-sm text-center text-muted-soft dark:text-gray-600">
                                         <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none"
                                             stroke="currentColor" viewBox="0 0 24 24">

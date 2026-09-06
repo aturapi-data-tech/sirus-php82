@@ -724,12 +724,7 @@ new class extends Component {
                                 <tr class="text-center">
                                     <th class="px-4 py-3">No</th>
                                     <th class="px-4 py-3">Waktu / Pemeriksa</th>
-                                    <th class="px-4 py-3">TD</th>
-                                    <th class="px-4 py-3">Nadi / Nafas</th>
-                                    <th class="px-4 py-3">Suhu</th>
-                                    <th class="px-4 py-3">SpO₂ / O₂</th>
-                                    <th class="px-4 py-3">GDA</th>
-                                    <th class="px-4 py-3">GCS / Kesadaran</th>
+                                    <th class="px-4 py-3 text-left">Tanda Vital</th>
                                     <th class="px-4 py-3">EWS / Pantau Ulang</th>
                                     <th class="px-4 py-3">Cairan / Tetesan</th>
                                     @if (!$isFormLocked)
@@ -761,34 +756,20 @@ new class extends Component {
                                                 {{ $obs['waktuPemeriksaan'] ?? '-' }}</div>
                                             <div class="text-sm text-muted-soft">{{ $obs['pemeriksa'] ?? '-' }}</div>
                                         </td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-body dark:text-gray-300">
-                                            {{ $obs['sistolik'] ?? '-' }}/{{ $obs['distolik'] ?? '-' }} <span
-                                                class="text-sm">mmHg</span>{!! $ewsSkorSel('sistolik') !!}{!! $ewsSkorSel('distolik') !!}
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-body dark:text-gray-300">
-                                            <div>{{ $obs['frekuensiNadi'] ?? '-' }} <span class="text-sm text-muted-soft">x/mnt</span>{!! $ewsSkorSel('frekuensiNadi') !!}</div>
-                                            <div class="text-sm text-muted-soft">RR {{ $obs['frekuensiNafas'] ?? '-' }} x/mnt{!! $ewsSkorSel('frekuensiNafas') !!}</div>
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-body dark:text-gray-300">
-                                            {{ $obs['suhu'] ?? '-' }} <span class="text-sm">°C</span>{!! $ewsSkorSel('suhu') !!}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-body dark:text-gray-300">
-                                            <div>{{ $obs['spo2'] ?? '-' }} <span class="text-sm text-muted-soft">%</span>@if (filled($obs['spo2Skala2'] ?? null)) <span class="text-sm text-muted-soft" title="SpO₂ skala 2">(S2 {{ $obs['spo2Skala2'] }})</span>@endif{!! $ewsSkorSel('spo2') !!}{!! $ewsSkorSel('spo2Skala2') !!}</div>
-                                            <div class="text-sm text-muted-soft">
-                                                @if (($obs['oksigen'] ?? '') === 'O2')
-                                                    O₂ {{ $obs['alatOksigen'] ?? '' }}
-                                                @elseif (($obs['oksigen'] ?? '') === 'ROOM_AIR')
-                                                    Room air
-                                                @else
-                                                    -
-                                                @endif
-                                                {!! $ewsSkorSel('oksigen') !!}
+                                        {{-- Tanda vital dalam satu sel: atas TD · Nadi · Nafas; bawah Suhu · SpO₂/O₂ · GDA · GCS/Kesadaran. Badge kecil = skor EWS per parameter. --}}
+                                        <td class="px-4 py-3 text-left whitespace-nowrap text-body dark:text-gray-300">
+                                            <div class="flex flex-wrap items-center gap-x-3">
+                                                <span>Tekanan darah <b>{{ $obs['sistolik'] ?? '-' }}/{{ $obs['distolik'] ?? '-' }}</b> <span class="text-sm text-muted-soft">mmHg</span>{!! $ewsSkorSel('sistolik') !!}{!! $ewsSkorSel('distolik') !!}</span>
+                                                <span>Nadi <b>{{ $obs['frekuensiNadi'] ?? '-' }}</b> <span class="text-sm text-muted-soft">x/mnt</span>{!! $ewsSkorSel('frekuensiNadi') !!}</span>
+                                                <span>Nafas <b>{{ $obs['frekuensiNafas'] ?? '-' }}</b> <span class="text-sm text-muted-soft">x/mnt</span>{!! $ewsSkorSel('frekuensiNafas') !!}</span>
                                             </div>
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-body dark:text-gray-300">
-                                            {{ $obs['gda'] ?? '-' }} <span class="text-sm">mg/dL</span></td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-body dark:text-gray-300">
-                                            <div>{{ filled($obs['gcs'] ?? null) ? $obs['gcs'] : '-' }}</div>
-                                            <div class="text-sm text-muted-soft">{{ filled($obs['kesadaran'] ?? null) ? $obs['kesadaran'] : '-' }}{!! $ewsSkorSel('kesadaran') !!}</div>
+                                            <div class="flex flex-wrap items-center gap-x-3">
+                                                <span>Suhu <b>{{ $obs['suhu'] ?? '-' }}</b> <span class="text-sm text-muted-soft">°C</span>{!! $ewsSkorSel('suhu') !!}</span>
+                                                <span>SpO₂ <b>{{ $obs['spo2'] ?? '-' }}</b> <span class="text-sm text-muted-soft">%</span>@if (filled($obs['spo2Skala2'] ?? null)) <span title="SpO₂ skala 2">(S2 {{ $obs['spo2Skala2'] }})</span>@endif{!! $ewsSkorSel('spo2') !!}{!! $ewsSkorSel('spo2Skala2') !!}
+                                                    · @if (($obs['oksigen'] ?? '') === 'O2') O₂ {{ $obs['alatOksigen'] ?? '' }} @elseif (($obs['oksigen'] ?? '') === 'ROOM_AIR') Room air @else - @endif{!! $ewsSkorSel('oksigen') !!}</span>
+                                                <span>GDA <b>{{ filled($obs['gda'] ?? null) ? $obs['gda'] : '-' }}</b> <span class="text-sm text-muted-soft">mg/dL</span></span>
+                                                <span>GCS <b>{{ filled($obs['gcs'] ?? null) ? $obs['gcs'] : '-' }}</b> · {{ filled($obs['kesadaran'] ?? null) ? $obs['kesadaran'] : '-' }}{!! $ewsSkorSel('kesadaran') !!}</span>
+                                            </div>
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap">
                                             @if ($ewsItem)
@@ -830,7 +811,7 @@ new class extends Component {
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="{{ $isFormLocked ? 10 : 11 }}"
+                                        <td colspan="{{ $isFormLocked ? 5 : 6 }}"
                                             class="px-4 py-10 text-base text-center text-muted-soft dark:text-gray-600">
                                             <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none"
                                                 stroke="currentColor" viewBox="0 0 24 24">
