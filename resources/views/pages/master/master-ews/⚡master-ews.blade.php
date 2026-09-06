@@ -179,6 +179,93 @@ new class extends Component {
                 </div>
             </div>
 
+            {{-- PANDUAN — gaya biru-info standar, default TERTUTUP.
+                 Lihat memory project_panduan_panel_blue_info_standard (acuan: master-dokter-penggajian). --}}
+            <div x-data="{ buka: false }"
+                class="mt-4 overflow-hidden border rounded-2xl bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700 shrink-0">
+                <button type="button" x-on:click="buka = !buka"
+                    class="flex items-center justify-between w-full px-4 py-2.5 text-sm font-semibold text-blue-900 transition-colors hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/30">
+                    <span class="flex items-center min-w-0 gap-2">
+                        <svg class="w-4 h-4 shrink-0 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="truncate">Panduan: cara mengelola parameter, rentang skor &amp; respon EWS</span>
+                    </span>
+                    <svg class="w-4 h-4 ml-2 text-blue-600 transition-transform shrink-0"
+                        x-bind:class="buka && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+
+                <div x-show="buka" x-cloak class="px-4 pb-4 space-y-4 text-sm text-blue-900 dark:text-blue-100">
+
+                    <div>
+                        <div class="font-semibold">Varian = model skor (tab di atas)</div>
+                        <table class="w-full mt-1 text-sm text-left">
+                            <tbody class="align-top">
+                                <tr><td class="py-0.5 pr-3 font-mono whitespace-nowrap">DEWASA</td>
+                                    <td class="py-0.5"><span class="font-semibold">NEWS2</span> &mdash; pasien 16 tahun ke atas.</td></tr>
+                                <tr><td class="py-0.5 pr-3 font-mono whitespace-nowrap">ANAK</td>
+                                    <td class="py-0.5"><span class="font-semibold">PEWS</span> &mdash; 29 hari s.d. 15 tahun; nadi &amp; nafas dibandingkan ke tabel acuan per usia.</td></tr>
+                                <tr><td class="py-0.5 pr-3 font-mono whitespace-nowrap">NEONATUS</td>
+                                    <td class="py-0.5">bayi baru lahir 0-28 hari.</td></tr>
+                                <tr><td class="py-0.5 pr-3 font-mono whitespace-nowrap">MEOWS</td>
+                                    <td class="py-0.5">ibu hamil / bersalin / nifas &mdash; <span class="font-semibold">dipilih manual</span> oleh petugas, yang lain otomatis dari umur pasien.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pt-3 border-t border-blue-200 dark:border-blue-800">
+                        <div class="font-semibold">Parameter &amp; Rentang</div>
+                        <ol class="mt-1 ml-4 space-y-1 list-decimal">
+                            <li><span class="font-semibold">Kode JSON</span> &mdash; nama field di EMR (mis. <span class="font-mono">frekuensiNafas</span>).
+                                Jangan diubah sembarangan: parameter dengan kode yang sudah ada di baris tanda vital
+                                dibaca dari sana, kode baru akan memunculkan field baru di baris EWS Observasi Lanjutan.</li>
+                            <li><span class="font-semibold">Tipe</span> &mdash; <span class="font-semibold">ANGKA</span> dinilai
+                                lewat rentang batas bawah&ndash;atas (inklusif dua sisi; kosongkan bawah untuk "&lt;= X",
+                                kosongkan atas untuk "&gt;= X"); <span class="font-semibold">PILIHAN</span> lewat daftar
+                                pilihan berskor; <span class="font-semibold">REFERENSI</span> hanya acuan (nadi/nafas
+                                normal per usia) dan tidak diskor.</li>
+                            <li><span class="font-semibold">Syarat</span> pada rentang &mdash; kode pilihan parameter lain
+                                yang harus terpilih. Contoh SpO2 skala 2 "95-96 on O2" bersyarat <span class="font-mono">O2</span>.</li>
+                            <li><span class="font-semibold">Menggantikan kode</span> &mdash; bila parameter ini diisi,
+                                parameter berkode itu dilewati (SpO2 skala 2 menggantikan <span class="font-mono">spo2</span>).</li>
+                            <li><span class="font-semibold">Wajib</span> &mdash; field harus diisi sebelum entri disimpan.
+                                <span class="font-semibold">Aktif</span> dimatikan &mdash; parameter tidak ikut dihitung tanpa perlu dihapus.</li>
+                        </ol>
+                    </div>
+
+                    <div class="pt-3 border-t border-blue-200 dark:border-blue-800">
+                        <div class="font-semibold">Respon Skor</div>
+                        <ol class="mt-1 ml-4 space-y-1 list-decimal">
+                            <li>Total skor dipetakan ke <span class="font-semibold">kategori risiko</span>, warna,
+                                <span class="font-semibold">frekuensi pantau ulang</span> (teks + menit untuk jatuh tempo),
+                                dan <span class="font-semibold">respon klinis</span>.</li>
+                            <li>Baris cocok bila total ada di rentang skor <em>atau</em> (bila dicentang) ada satu parameter
+                                berskor 3 &mdash; aturan "kode merah" NEWS2 &amp; MEOWS.</li>
+                            <li>Bila lebih dari satu baris cocok, <span class="font-semibold">urutan terbesar</span> yang
+                                dipakai &mdash; susun dari ringan ke berat.</li>
+                        </ol>
+                    </div>
+
+                    <div class="pt-3 border-t border-blue-200 dark:border-blue-800">
+                        <div class="font-semibold">Setelah mengubah ambang</div>
+                        <ol class="mt-1 ml-4 space-y-1 list-decimal">
+                            <li>Klik <span class="font-semibold">Simulasi Skor</span>: isi nilai contoh, tekan Hitung, cocokkan
+                                dengan formulir manual RM 93a/b/c/d.</li>
+                            <li>Perubahan langsung berlaku untuk entri baru di Observasi Lanjutan RI &amp; UGD. Entri lama
+                                menyimpan skor saat dibuat dan <span class="font-semibold">tidak dihitung ulang</span>.</li>
+                            <li>Tulis label dengan huruf biasa (<span class="font-mono">&lt;= 8</span>,
+                                <span class="font-mono">&gt;= 25</span>, <span class="font-mono">SpO2</span>) &mdash; simbol
+                                matematika dan angka kecil tidak bisa disimpan Oracle.</li>
+                            <li>Kembali ke bawaan formulir RSUD dr. Iskak rev 2024:
+                                <span class="font-mono">php artisan ews:seed --force</span> (semua kustomisasi hilang).</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
             {{-- TABLE WRAPPER --}}
             <div class="mt-4 flex flex-col flex-1 min-h-0 bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
 
