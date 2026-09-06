@@ -49,13 +49,36 @@ new class extends Component {
 
         $this->dataDaftarUGD = $data;
 
-        $this->dataDaftarUGD['diagnosis'] ??= [];
+        $this->dataDaftarUGD['diagnosis'] = $this->normalisasiDiagnosis($this->dataDaftarUGD['diagnosis'] ?? []);
         $this->dataDaftarUGD['procedure'] ??= [];
         $this->dataDaftarUGD['diagnosisFreeText'] ??= '';
         $this->dataDaftarUGD['procedureFreeText'] ??= '';
 
         $this->isFormLocked = $this->checkEmrUGDStatus($rjNo);
         $this->incrementVersion('modal-diagnosis-ugd');
+    }
+
+    /*
+     | Entri legacy: komponen ini dikloning dari RJ, sehingga ±8.400 kunjungan lama
+     | menyimpan id detail sebagai `rjDtlDtl` (barisnya tetap ada di rstxn_ugddtls
+     | dengan id yang sama). Tanpa normalisasi, tombol hapus melempar
+     | "Undefined array key ugdDtlDtl". Key lama dibiarkan ikut tersimpan supaya
+     | pembaca lain tidak berubah; yang ditambah hanya `ugdDtlDtl`.
+     */
+    private function normalisasiDiagnosis(array $daftarDiagnosis): array
+    {
+        foreach ($daftarDiagnosis as &$diagnosa) {
+            if (!is_array($diagnosa)) {
+                continue;
+            }
+            if (!isset($diagnosa['ugdDtlDtl']) && isset($diagnosa['rjDtlDtl'])) {
+                $diagnosa['ugdDtlDtl'] = (int) $diagnosa['rjDtlDtl'];
+            }
+            $diagnosa['ugdDtlDtl'] = isset($diagnosa['ugdDtlDtl']) ? (int) $diagnosa['ugdDtlDtl'] : null;
+        }
+        unset($diagnosa);
+
+        return array_values($daftarDiagnosis);
     }
 
     /* ===============================
@@ -195,6 +218,11 @@ new class extends Component {
     {
         if ($this->isFormLocked) {
             $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menghapus diagnosa.');
+            return;
+        }
+        if ($ugdDtlDtl <= 0) {
+            // Tanpa id, filter `!= 0` di bawah akan ikut membuang entri ber-id null lainnya.
+            $this->dispatch('toast', type: 'error', message: 'Entri diagnosa ini tidak punya id detail, tidak bisa dihapus dari sini.');
             return;
         }
 
@@ -467,8 +495,10 @@ new class extends Component {
                                                         </td>
                                                         @if (!$isFormLocked)
                                                             <td class="px-3 py-2">
+                                                                {{-- Entri tanpa id detail (tak ada padanannya di rstxn_ugddtls) tidak bisa dihapus lewat sini; tombolnya dinonaktifkan, bukan meledak. --}}
                                                                 <x-outline-button type="button"
-                                                                    wire:click="removeDiagnosaICD10({{ $diagnosa['ugdDtlDtl'] }})"
+                                                                    wire:click="removeDiagnosaICD10({{ (int) ($diagnosa['ugdDtlDtl'] ?? 0) }})"
+                                                                    :disabled="empty($diagnosa['ugdDtlDtl'])"
                                                                     wire:confirm="Yakin ingin menghapus diagnosa ini?"
                                                                     wire:loading.attr="disabled"
                                                                     class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300"
