@@ -658,12 +658,17 @@ new class extends Component {
                                         <th class="px-2 font-semibold">SPO2</th>
                                         <th class="px-2 font-semibold">GDA</th>
                                         <th class="px-2 font-semibold">GCS</th>
+                                        <th class="px-2 font-semibold">EWS</th>
                                         <th class="px-2 font-semibold">Cairan</th>
                                         <th class="px-2 font-semibold">Tetes</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse ($obsList as $entriObservasi)
+                                        @php
+                                            // Skor EWS tersimpan di entri (dihitung saat entri dibuat) — entri lama tanpa `ews` tampil "-".
+                                            $ewsEntri = is_array($entriObservasi['ews'] ?? null) && !empty($entriObservasi['ews']['tersedia']) ? $entriObservasi['ews'] : null;
+                                        @endphp
                                         <tr class="border-b border-hairline-soft last:border-0 text-ink dark:text-gray-200">
                                             <td class="py-1 pr-2">{{ $entriObservasi['waktuPemeriksaan'] ?? '-' }}</td>
                                             <td class="px-2">{{ $entriObservasi['sistolik'] ?? '-' }}/{{ $entriObservasi['distolik'] ?? '-' }}</td>
@@ -673,11 +678,19 @@ new class extends Component {
                                             <td class="px-2">{{ $entriObservasi['spo2'] ?? '-' }}</td>
                                             <td class="px-2">{{ $entriObservasi['gda'] ?? '-' }}</td>
                                             <td class="px-2">{{ $entriObservasi['gcs'] ?? '-' }}</td>
+                                            <td class="px-2">
+                                                @if ($ewsEntri)
+                                                    <span class="inline-block px-2 rounded font-bold {{ \App\Support\Ews\EwsSkor::warnaKelas($ewsEntri['warna'] ?? null) }}">{{ $ewsEntri['total'] }}</span>
+                                                    <span class="text-xs text-muted-soft">{{ $ewsEntri['kategori'] ?? '' }}{{ ($ewsEntri['varian'] ?? 'DEWASA') !== 'DEWASA' ? ' · ' . $ewsEntri['varian'] : '' }}</span>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
                                             <td class="px-2">{{ $entriObservasi['cairan'] ?? '-' }}</td>
                                             <td class="px-2">{{ $entriObservasi['tetesan'] ?? '-' }}</td>
                                         </tr>
                                     @empty
-                                        <tr><td colspan="10" class="py-3 text-base text-center text-muted-soft">Belum ada observasi lanjutan.</td></tr>
+                                        <tr><td colspan="11" class="py-3 text-base text-center text-muted-soft">Belum ada observasi lanjutan.</td></tr>
                                     @endforelse
                                 </tbody>
                             </table>
