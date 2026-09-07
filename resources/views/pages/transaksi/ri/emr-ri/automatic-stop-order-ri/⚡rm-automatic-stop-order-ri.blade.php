@@ -123,7 +123,6 @@ new class extends Component {
                             <th>Obat</th>
                             <th>Golongan</th>
                             <th class="ds-c whitespace-nowrap">Resep Pertama</th>
-                            <th class="ds-c whitespace-nowrap">Resep Terakhir</th>
                             <th class="ds-c whitespace-nowrap">Batas Minimal</th>
                             <th class="ds-c whitespace-nowrap">Batas Stop</th>
                             <th>Keterangan</th>
@@ -146,7 +145,6 @@ new class extends Component {
                                     <div>{{ $obat['golonganNama'] }}</div>
                                 </td>
                                 <td class="ds-c whitespace-nowrap">{{ $obat['tglMulai'] }}</td>
-                                <td class="ds-c whitespace-nowrap">{{ $obat['tglResepTerakhir'] }}</td>
                                 <td class="ds-c whitespace-nowrap">
                                     @if ($obat['tglBatasMinimal'] !== null)
                                         <div>{{ $obat['tglBatasMinimal'] }}</div>
@@ -168,7 +166,7 @@ new class extends Component {
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="ds-c italic text-muted-soft">
+                                <td colspan="7" class="ds-c italic text-muted-soft">
                                     @if (!$masterTersedia)
                                         Master belum tersedia &mdash; jalankan DDL dan <code>php artisan automatic-stop-order:seed</code>.
                                     @elseif ($jumlahResepAktif === 0)
