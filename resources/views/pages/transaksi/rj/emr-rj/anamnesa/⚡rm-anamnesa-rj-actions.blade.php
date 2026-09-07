@@ -507,9 +507,18 @@ new class extends Component {
         $this->isFormLocked = false;
     }
 
-    public function mount()
+    /**
+     * rjNo datang lewat PROP dari emr-rj (seksi lahir di dalam @if($rjNo)), bukan lagi lewat
+     * event open-rm-anamnesa-rj: satu kali baca CLOB, tidak ada race urutan event.
+     * Handler #[On] tetap dipertahankan untuk pemanggil dari luar modal.
+     */
+    public function mount(?int $rjNo = null)
     {
         $this->registerAreas(['modal-anamnesa-rj']);
+
+        if (filled($rjNo)) {
+            $this->openAnamnesa($rjNo);
+        }
     }
 
     public function rendering(): void

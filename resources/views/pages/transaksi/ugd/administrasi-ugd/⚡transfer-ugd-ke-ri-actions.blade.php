@@ -148,6 +148,18 @@ new class extends Component {
         $this->adminAge = 0;
     }
 
+    /**
+     * Tutup lewat server (dulu tombol X/Batal hanya Alpine): kosongkan rjNo supaya isi modal
+     * (guard @if) benar-benar dihapus dan tidak di-mount ulang saat tutup.
+     */
+    public function closeModal(): void
+    {
+        $this->rjNo = null;
+        $this->resetTransferState();
+        $this->resetValidation();
+        $this->dispatch('close-modal', name: 'transfer-ugd-ke-ri');
+    }
+
     /* ===============================
      | LOV ROOM
      =============================== */
@@ -471,6 +483,7 @@ new class extends Component {
             $this->dispatch('refresh-after-ugd.saved');   // list pelayanan UGD
             $this->dispatch('refresh-after-kasir.saved'); // list antrian kasir UGD
             $this->dispatch('toast', type: 'success', message: 'Transfer biaya UGD ke RI berhasil.');
+            $this->rjNo = null; // isi modal (guard @if) ikut dihapus sesudah modal ditutup
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Exception $e) {
@@ -482,6 +495,9 @@ new class extends Component {
 
 <div>
     <x-modal name="transfer-ugd-ke-ri" size="full" height="full" focusable>
+        {{-- Isi modal hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali,
+             tutup = dihapus tanpa mount ulang (closeModal mengosongkan rjNo). --}}
+        @if ($rjNo)
         <div class="flex flex-col h-full" wire:key="{{ $this->renderKey('modal-transfer-ugd-ke-ri', [$rjNo ?? 'new']) }}">
 
             {{-- ═══════════ HEADER — identitas pasien (gaya EMR UGD) ═══════════ --}}
@@ -499,7 +515,7 @@ new class extends Component {
                                 wire:key="transfer-ri-display-pasien-{{ $rjNo }}" />
                         @endif
                     </div>
-                    <x-icon-button color="gray" type="button" x-on:click="$dispatch('close-modal', { name: 'transfer-ugd-ke-ri' })"
+                    <x-icon-button color="gray" type="button" wire:click="closeModal"
                         class="shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd"
@@ -718,7 +734,7 @@ new class extends Component {
                     @endif
                 </div>
                 <div class="flex items-center gap-3">
-                    <x-secondary-button type="button" x-on:click="$dispatch('close-modal', { name: 'transfer-ugd-ke-ri' })">
+                    <x-secondary-button type="button" wire:click="closeModal">
                         Batal
                     </x-secondary-button>
                     @if ($transferRoomId && $transferBedNo)
@@ -731,5 +747,6 @@ new class extends Component {
                 </div>
             </div>
         </div>
+        @endif
     </x-modal>
 </div>

@@ -110,14 +110,9 @@ new class extends Component {
         }
 
         $this->dispatch('open-modal', name: 'rm-ugd-actions');
-        $this->dispatch('open-rm-anamnesa-ugd', $rjNo);
-        $this->dispatch('open-rm-pemeriksaan-ugd', $rjNo);
-        $this->dispatch('open-rm-penilaian-ugd', $rjNo);
-        $this->dispatch('open-rm-diagnosa-ugd', $rjNo);
-        $this->dispatch('open-rm-perencanaan-ugd', $rjNo);
-        $this->dispatch('open-rm-observasi-ugd', $rjNo);
-        $this->dispatch('open-rm-obat-dan-cairan-ugd', $rjNo);
-        $this->dispatch('open-rm-sbar-ugd', $rjNo);
+        // Seksi EMR memuat datanya sendiri di mount dari prop rjNo (isi modal dibungkus
+        // @if($rjNo)), jadi tidak perlu lagi memancarkan open-rm-*-ugd: satu kali baca CLOB
+        // per seksi, tidak ada race urutan event. Handler #[On] di seksi tetap ada.
     }
 
     /* ===============================
@@ -149,9 +144,9 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Nomor kunjungan tidak ditemukan.');
             return;
         }
+        // Anak non-racikan/racikan memuat dari prop rjNo di mount (isi modal e-resep dibungkus
+        // @if($rjNo) dan key-nya ikut versi 'modal'), jadi open-eresep-*-ugd tidak dipancarkan dari sini.
         $this->dispatch('emr-ugd.eresep.open', rjNo: $rjNo);
-        $this->dispatch('open-eresep-non-racikan-ugd', rjNo: $rjNo);
-        $this->dispatch('open-eresep-racikan-ugd', rjNo: $rjNo);
     }
 
     public function cetakEresep(string $rjNo): void
@@ -194,6 +189,9 @@ new class extends Component {
 
 <div>
     <x-modal name="rm-ugd-actions" size="full" height="full" focusable>
+        {{-- Anak hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali (tiap seksi
+             baca CLOB dari prop rjNo di mount-nya), tutup = dihapus. Tidak ada event open-rm-* lagi. --}}
+        @if ($rjNo)
         <x-dirty-modal-content name="rm-ugd-actions" event="refresh-after-ugd.saved" label="EMR UGD" :save-events="[
             'save-rm-anamnesa-ugd',
             'save-rm-pemeriksaan-ugd',
@@ -565,6 +563,7 @@ new class extends Component {
             </div>
 
         </x-dirty-modal-content>
+        @endif
     </x-modal>
 
     {{-- Modal i-Care --}}

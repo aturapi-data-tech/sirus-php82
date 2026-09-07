@@ -44,30 +44,10 @@ new class extends Component {
 
         $this->dispatch('open-modal', name: 'rm-ri-actions');
 
-        /* Broadcast ke semua child */
-        $this->dispatch('open-rm-pengkajian-awal-ri', $riHdrNo);
-        $this->dispatch('open-rm-pengkajian-dokter-ri', $riHdrNo);
-        $this->dispatch('open-rm-pemeriksaan-ri', $riHdrNo);
-        $this->dispatch('open-rm-cppt-ri', $riHdrNo);
-        $this->dispatch('open-rm-sbar-ri', $riHdrNo);
-        $this->dispatch('open-rm-penilaian-ri', $riHdrNo);
-        $this->dispatch('open-rm-diagnosa-ri', $riHdrNo);
-        $this->dispatch('open-rm-observasi-ri', $riHdrNo);
-        $this->dispatch('open-rm-automatic-stop-order-ri', $riHdrNo);
-        $this->dispatch('open-rm-perencanaan-ri', $riHdrNo);
-        $this->dispatch('open-rm-asuhan-keperawatan-ri', $riHdrNo);
-        $this->dispatch('open-rm-edukasi-pasien-ri', $riHdrNo);
-        $this->dispatch('open-rm-inform-consent-ri', $riHdrNo);
-        $this->dispatch('open-rm-general-consent-ri', $riHdrNo);
-
-        // SKDP hanya untuk BPJS
-        $klaimStatus =
-            DB::table('rsmst_klaimtypes')
-                ->where('klaim_id', $data['klaimId'] ?? '')
-                ->value('klaim_status') ?? 'UMUM';
-        if ($klaimStatus === 'BPJS') {
-            $this->dispatch('open-rm-skdp-ri', $riHdrNo);
-        }
+        // Seksi anak memuat datanya sendiri di mount dari prop riHdrNo (isi modal dibungkus
+        // @if($riHdrNo)), jadi tidak ada lagi pancaran open-rm-*-ri dari sini. Handler
+        // #[On('open-rm-*-ri')] di anak tetap ada: dipakai reloadEvent tab sesudah simpan
+        // dan pemanggil lain. SKDP: syarat BPJS-nya sudah di template (@if $isBPJSRi).
     }
 
     /* ── Close ── */
@@ -111,6 +91,9 @@ new class extends Component {
 
 <div>
     <x-modal name="rm-ri-actions" size="full" height="full" focusable>
+        {{-- Anak hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali (tiap
+             seksi baca CLOB dari prop riHdrNo di mount-nya), tutup = dihapus. Tidak ada event open-rm-* lagi. --}}
+        @if ($riHdrNo)
         {{-- guardSwitch=false: pindah tab tidak lagi memunculkan dialog konfirmasi.
              Penanda dirty (titik amber di tab) & konfirmasi saat Tutup modal tetap aktif. --}}
         <x-tabbed-dirty-modal-content name="rm-ri-actions" savedEvent="refresh-after-ri.saved" :reloadArg="$riHdrNo" :guardSwitch="false" :wireKey="$this->renderKey('modal-emr-ri', [$riHdrNo ?? 'new'])"
@@ -413,7 +396,7 @@ new class extends Component {
                         ──────────────────────────────────────────── --}}
                         <div x-show="activeTab === 'automatic-stop-order'" x-transition.opacity.duration.200ms>
                             <livewire:pages::transaksi.ri.emr-ri.automatic-stop-order-ri.rm-automatic-stop-order-ri
-                                wire:key="automatic-stop-order-ri-{{ $riHdrNo }}" />
+                                :riHdrNo="$riHdrNo" wire:key="automatic-stop-order-ri-{{ $riHdrNo }}" />
                         </div>
 
                         {{-- ────────────────────────────────────────────
@@ -640,6 +623,7 @@ new class extends Component {
             </div>
 
         </x-tabbed-dirty-modal-content>
+        @endif
     </x-modal>
 
     {{-- Modal E-Resep RI --}}

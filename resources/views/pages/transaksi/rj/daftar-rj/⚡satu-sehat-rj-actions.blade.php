@@ -131,6 +131,21 @@ new class extends Component {
         $this->dispatch('open-modal', name: 'rj-satu-sehat');
     }
 
+    /**
+     * Tutup lewat server supaya penanda kunjungan dikosongkan: isi modal dibungkus
+     * guard if($rjNo) di template, jadi seluruh langkah SATUSEHAT ikut dihapus saat tutup, bukan
+     * tinggal tersembunyi. Antrean kirim ikut dikosongkan (sama seperti saat buka).
+     * Escape / klik backdrop tetap menutup di sisi Alpine saja.
+     */
+    public function closeModal(): void
+    {
+        $this->antrianKirim = [];
+        $this->langkahAktif = '';
+        $this->rjNo = null;
+        $this->dataDaftarPoliRJ = [];
+        $this->dispatch('close-modal', name: 'rj-satu-sehat');
+    }
+
     #[On('rj-satu-sehat.refresh')]
     public function onRefresh(string $rjNo): void
     {
@@ -158,6 +173,9 @@ new class extends Component {
 
 <div>
     <x-modal name="rj-satu-sehat" size="full" height="full" focusable>
+        {{-- Isi modal hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali
+             (anak memuat datanya dari prop), tutup = dihapus tanpa mount ulang. --}}
+        @if ($rjNo)
         <div class="flex flex-col min-h-0">
             {{-- HEADER --}}
             <div class="relative px-6 py-5 border-b border-hairline dark:border-gray-700">
@@ -223,7 +241,7 @@ new class extends Component {
                     </div>
 
                     <x-icon-button color="gray" type="button"
-                        x-on:click="$dispatch('close-modal', { name: 'rj-satu-sehat' })">
+                        wire:click="closeModal">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd"
                                 d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
@@ -299,5 +317,6 @@ new class extends Component {
                 </div>
             </div>
         </div>
+        @endif
     </x-modal>
 </div>

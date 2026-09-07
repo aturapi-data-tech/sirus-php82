@@ -34,9 +34,18 @@ new class extends Component {
     /* ===============================
      | MOUNT
      =============================== */
-    public function mount(): void
+    /**
+     * rjNo datang lewat PROP dari induk EMR UGD (seksi lahir di dalam @if($rjNo)),
+     * bukan lagi lewat event open-rm-*: satu kali baca CLOB, tidak ada race urutan event.
+     * Handler #[On] tetap dipertahankan untuk pemanggil dari luar modal.
+     */
+    public function mount(?int $rjNo = null): void
     {
         $this->registerAreas(['modal-obat-cairan-ugd']);
+
+        if (filled($rjNo)) {
+            $this->openObatDanCairan($rjNo);
+        }
     }
 
     /* ===============================

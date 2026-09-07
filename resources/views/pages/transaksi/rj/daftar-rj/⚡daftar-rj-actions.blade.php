@@ -24,6 +24,9 @@ new class extends Component {
     use EmrRJTrait, MasterPasienTrait, WithRenderVersioningTrait;
 
     public string $formMode = 'create';
+    // true hanya selama modal terbuka — guard @if isi modal. Tidak bisa pakai $rjNo karena
+    // mode create memang tanpa rjNo; isi modal (LOV pasien/dokter, vclaim) baru di-mount saat dibuka.
+    public bool $modalTerbuka = false;
     public bool $isFormLocked = false;
 
     public ?string $rjNo = null;
@@ -70,6 +73,7 @@ new class extends Component {
         $this->dataDaftarPoliRJ['rjDate'] = $now->format('d/m/Y H:i:s');
         $this->dataDaftarPoliRJ['shift'] = $this->resolveShiftByTime($now->format('H:i:s'));
 
+        $this->modalTerbuka = true;
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'rj-actions');
         $this->dispatch('focus-cari-pasien');
@@ -102,6 +106,7 @@ new class extends Component {
         $this->dataPasien = $this->findDataMasterPasien($this->dataDaftarPoliRJ['regNo'] ?? '');
         $this->syncFromDataDaftarPoliRJ();
 
+        $this->modalTerbuka = true;
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'rj-actions');
 
@@ -1346,6 +1351,7 @@ new class extends Component {
 
     protected function resetForm(): void
     {
+        $this->modalTerbuka = false;
         $this->reset(['rjNo', 'dataDaftarPoliRJ']);
         $this->resetVersion();
         $this->klaimId = 'UM';
@@ -1368,6 +1374,9 @@ new class extends Component {
 {{-- Blade template tidak ada perubahan --}}
 <div>
     <x-modal name="rj-actions" size="full" height="full" focusable>
+        {{-- Isi modal hanya ada saat modal terbuka (flag $modalTerbuka, bukan $rjNo — mode create tanpa rjNo):
+             tertutup = nol komponen (LOV pasien/dokter, vclaim tidak ikut di-mount), tutup = dihapus. --}}
+        @if ($modalTerbuka)
         <x-dirty-modal-content
             name="rj-actions"
             event="refresh-after-rj.saved"
@@ -1704,6 +1713,7 @@ new class extends Component {
             </div>
 
         </x-dirty-modal-content>
+        @endif
     </x-modal>
 
     {{-- Cetak SEP --}}

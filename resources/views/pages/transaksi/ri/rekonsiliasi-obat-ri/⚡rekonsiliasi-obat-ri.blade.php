@@ -231,6 +231,9 @@ new class extends Component {
     {{-- Ukuran & tema disamakan dengan modal EMR (rm-ugd-actions / rm-ri-actions):
          full/full, header bertitik + Display Pasien, body bertingkat abu, footer sendiri. --}}
     <x-modal name="rekonsiliasi-obat-ri" size="full" height="full" focusable>
+        {{-- Isi modal hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali,
+             tutup = dihapus tanpa mount ulang (closeModal mengosongkan riHdrNo). --}}
+        @if ($riHdrNo)
         <div class="flex flex-col min-h-[calc(100vh-4rem)]">
 
             {{-- ═══════════ HEADER ═══════════ --}}
@@ -478,5 +481,6 @@ new class extends Component {
             </div>
 
         </div>
+        @endif
     </x-modal>
 </div>

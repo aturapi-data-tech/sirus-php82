@@ -53,6 +53,9 @@ new class extends Component {
 
     public function closeModal(): void
     {
+        // Kosongkan penanda supaya isi modal (guard @if) benar-benar dihapus saat tutup.
+        $this->rjNo = null;
+        $this->adminLogs = [];
         $this->dispatch('close-modal', name: 'log-aktivitas-rj');
     }
 
@@ -81,6 +84,9 @@ new class extends Component {
 
 <div>
     <x-modal name="log-aktivitas-rj" size="full" height="full" focusable>
+        {{-- Isi modal hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali,
+             tutup = dihapus tanpa mount ulang (closeModal mengosongkan rjNo). --}}
+        @if ($rjNo)
         <div class="flex flex-col min-h-0"
             wire:key="{{ $this->renderKey('modal-log-aktivitas-rj', [$rjNo ?? 'new']) }}">
 
@@ -170,5 +176,6 @@ new class extends Component {
             </div>
 
         </div>
+        @endif
     </x-modal>
 </div>

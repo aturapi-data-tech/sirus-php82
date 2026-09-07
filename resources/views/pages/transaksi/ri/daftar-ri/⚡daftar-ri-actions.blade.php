@@ -22,6 +22,9 @@ new class extends Component {
 
     public string $formMode = 'create';
     public bool $isFormLocked = false;
+    // Guard @if isi modal: true hanya selama modal terbuka (create maupun edit). riHdrNo
+    // tidak bisa dipakai sebagai penanda karena mode create belum punya nomor.
+    public bool $modalTerbuka = false;
 
     public ?string $riHdrNo = null;
     public array $dataDaftarRi = [];
@@ -86,6 +89,7 @@ new class extends Component {
             ->first();
         $this->dataDaftarRi['shift'] = (string) ($findShift?->shift ?? 1);
 
+        $this->modalTerbuka = true;
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'ri-actions');
         $this->dispatch('focus-cari-pasien-ri');
@@ -117,6 +121,7 @@ new class extends Component {
         $this->dataPasien = $this->findDataMasterPasien($this->dataDaftarRi['regNo'] ?? '');
         $this->syncFromDataDaftarRI();
 
+        $this->modalTerbuka = true;
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'ri-actions');
     }
@@ -738,6 +743,7 @@ new class extends Component {
     /* ---- Helpers ---- */
     protected function resetForm(): void
     {
+        $this->modalTerbuka = false;
         $this->reset(['riHdrNo', 'dataDaftarRi', 'dataPasien']);
         $this->resetVersion();
         $this->klaimId = 'UM';
@@ -774,6 +780,10 @@ new class extends Component {
 
 <div>
     <x-modal name="ri-actions" size="full" height="full" focusable>
+        {{-- Isi modal (LOV pasien/dokter/ruang, VClaim) hanya di-mount saat modal terbuka:
+             tertutup = nol komponen, tutup = dihapus. Guard pakai flag $modalTerbuka karena
+             mode create belum punya riHdrNo. --}}
+        @if ($modalTerbuka)
         <x-dirty-modal-content
             name="ri-actions"
             event="refresh-after-ri.saved"
@@ -1145,6 +1155,7 @@ new class extends Component {
             </div>
 
         </x-dirty-modal-content>
+        @endif
     </x-modal>
 
     {{-- Cetak SEP --}}

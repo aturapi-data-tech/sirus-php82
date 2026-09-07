@@ -34,10 +34,19 @@ new class extends Component {
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-perencanaan-ri'];
 
-    public function mount(): void
+    /**
+     * riHdrNo datang lewat PROP dari induk (anak lahir di dalam @if($riHdrNo)), bukan lagi
+     * lewat event open-rm-*: satu kali baca CLOB, tidak ada race urutan event.
+     * Handler #[On] tetap dipertahankan untuk reloadEvent tab & pemanggil lain.
+     */
+    public function mount(?string $riHdrNo = null): void
     {
         $this->registerAreas(['modal-perencanaan-ri']);
         $this->tindakLanjutOptions = DischargeDisposition::OPTIONS;
+
+        if (filled($riHdrNo)) {
+            $this->open($riHdrNo);
+        }
     }
 
     #[On('open-rm-perencanaan-ri')]

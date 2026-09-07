@@ -46,6 +46,19 @@ new class extends Component {
     }
 
     /**
+     * Tutup lewat server supaya penanda kunjungan dikosongkan: isi modal dibungkus
+     * guard if($riHdrNo) di template, jadi seluruh SFC iDRG ikut dihapus saat tutup, bukan tinggal
+     * tersembunyi. Escape / klik backdrop tetap menutup di sisi Alpine saja.
+     */
+    public function closeModal(): void
+    {
+        $this->riHdrNo = null;
+        $this->dataDaftarRi = [];
+        $this->dataPasien = [];
+        $this->dispatch('close-modal', name: 'ri-idrg');
+    }
+
+    /**
      * Single listener untuk SEMUA perubahan state iDRG (pola mirror administrasi-rj):
      * SFC dispatch `idrg-section-changed-ri` setiap kali saveResult / state berubah.
      * Parent re-load data + incrementVersion('modal') → wire:key versioned berubah
@@ -82,6 +95,9 @@ new class extends Component {
 
 <div>
     <x-modal name="ri-idrg" size="full" height="full" focusable>
+        {{-- Isi modal hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali
+             (anak memuat datanya dari prop), tutup = dihapus tanpa mount ulang. --}}
+        @if ($riHdrNo)
         @php
             $idrgData = $dataDaftarRi['idrg'] ?? [];
             $hasClaim = !empty($idrgData['nomorSep']);
@@ -135,7 +151,7 @@ new class extends Component {
                         </h2>
                     </div>
                     <x-icon-button color="gray" type="button"
-                        x-on:click="$dispatch('close-modal', { name: 'ri-idrg' })">
+                        wire:click="closeModal">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd"
                                 d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
@@ -331,11 +347,12 @@ new class extends Component {
             {{-- FOOTER --}}
             <div class="sticky bottom-0 z-10 px-6 py-4 bg-surface-soft border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-end gap-3">
-                    <x-secondary-button x-on:click="$dispatch('close-modal', { name: 'ri-idrg' })">
+                    <x-secondary-button wire:click="closeModal">
                         Tutup
                     </x-secondary-button>
                 </div>
             </div>
         </div>
+        @endif
     </x-modal>
 </div>

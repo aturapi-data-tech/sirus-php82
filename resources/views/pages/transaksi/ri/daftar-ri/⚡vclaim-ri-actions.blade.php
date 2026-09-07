@@ -17,6 +17,8 @@ new class extends Component {
 
     public ?string $riHdrNo = null;
     public ?string $regNo = null;
+    // Guard @if isi modal. BUKAN $riHdrNo: mode 'create' (SEP/SPRI baru dari pendaftaran) dibuka tanpa riHdrNo.
+    public bool $modalTerbuka = false;
     public ?string $drId = null;
     public ?string $drDesc = null;
     public ?string $poliId = null;
@@ -237,6 +239,7 @@ new class extends Component {
 
         $this->resetVersion();
         $this->incrementVersion('modal');
+        $this->modalTerbuka = true;
         $this->dispatch('open-modal', name: 'vclaim-ri-actions');
 
         /* ---- Auto-fetch klsRawatHak: deferred agar modal buka dulu ---- */
@@ -835,6 +838,7 @@ new class extends Component {
         $this->dispatch('close-modal', name: 'vclaim-ri-actions');
         $this->resetFormData();
         $this->resetVersion();
+        $this->modalTerbuka = false; // isi modal (guard @if) dihapus, tidak di-mount ulang
     }
 };
 ?>
@@ -843,6 +847,9 @@ new class extends Component {
 {{-- Copy paste blade HTML dari file asli setelah baris ini --}}
 <div>
     <x-modal name="vclaim-ri-actions" size="full" height="full" focusable>
+        {{-- Isi modal hanya di-mount saat modal benar-benar dibuka (flag $modalTerbuka, bukan $riHdrNo —
+             mode create tanpa riHdrNo): tertutup = nol komponen, tutup = dihapus tanpa mount ulang. --}}
+        @if ($modalTerbuka)
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
             wire:key="{{ $this->renderKey('modal', [$formMode, $riHdrNo ?? 'new']) }}">
 
@@ -1657,5 +1664,6 @@ new class extends Component {
             </div>
 
         </div>
+        @endif
     </x-modal>
 </div>

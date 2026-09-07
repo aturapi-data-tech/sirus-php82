@@ -40,9 +40,16 @@ new class extends Component {
             'masuk' => $row->entry_date_display,
         ];
 
-        // Muat data pasien ke komponen form (komponen yang sama dgn tab EMR)
-        $this->dispatch('open-rm-penilaian-gizi-ri', $riHdrNo);
+        // Form gizi memuat datanya sendiri di mount dari prop riHdrNo (isi modal dibungkus
+        // @if($riHdrNo)) — tidak perlu lagi memancarkan open-rm-penilaian-gizi-ri dari sini.
         $this->dispatch('open-modal', name: 'gizi-ri-entri');
+    }
+
+    /** Kosongkan penanda pasien supaya isi modal (semua anak) dihapus, bukan cuma disembunyikan. */
+    public function closeModal(): void
+    {
+        $this->reset(['riHdrNo', 'identitas']);
+        $this->dispatch('close-modal', name: 'gizi-ri-entri');
     }
 
     public function simpan(): void
@@ -73,9 +80,12 @@ new class extends Component {
 
 <div>
     <x-modal name="gizi-ri-entri" size="full" height="full" focusable>
-        {{-- wire:key per pasien: ganti pasien → konten remount → Alpine reset ke tab gizi.
-             Komponen tab EMR memuat data lewat event open-rm-* (bukan prop) — dikirim
-             lazy saat tab pertama kali dibuka, sama semangat reloadEvent di emr-ri. --}}
+        {{-- Isi modal hanya ada saat ada pasien: tertutup = nol komponen, buka = mount sekali,
+             tutup (closeModal) = dihapus. wire:key per pasien: ganti pasien → konten remount →
+             Alpine reset ke tab gizi. Form gizi memuat dari prop riHdrNo; tab EMR lain SENGAJA
+             tanpa prop supaya tetap lazy — datanya dikirim lewat event open-rm-* saat tab
+             pertama kali dibuka (switchTab), sama semangat reloadEvent di emr-ri. --}}
+        @if ($riHdrNo)
         <div class="flex flex-col min-h-[calc(100vh-4rem)]"
             x-data="{
                 activeTab: 'gizi',
@@ -107,7 +117,7 @@ new class extends Component {
                     </div>
 
                     <x-icon-button color="gray" type="button" class="shrink-0"
-                        x-on:click="$dispatch('close-modal', { name: 'gizi-ri-entri' })">
+                        wire:click="closeModal">
                         <span class="sr-only">Tutup</span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd"
@@ -218,8 +228,10 @@ new class extends Component {
                         {{-- TAB — PENGKAJIAN PERAWAT (ada skrining gizi; edit di-gate role di dalam komponen) --}}
                         <div x-show="activeTab === 'pengkajian-perawat'" x-transition.opacity.duration.200ms>
                             @hasanyrole('Perawat|Dokter|Admin|Casemix|Mr|Apoteker|Gizi|Laboratorium')
+                                {{-- Tanpa prop riHdrNo (sengaja): mount ber-prop akan memuat CLOB seketika; di sini
+                                     data dikirim lazy lewat switchTab saat tab dibuka. --}}
                                 <livewire:pages::transaksi.ri.emr-ri.pengkajian-awal-ri.rm-pengkajian-awal-ri-actions
-                                    :riHdrNo="$riHdrNo" wire:key="gizi-entri-pengkajian-awal-{{ $riHdrNo }}" />
+                                    wire:key="gizi-entri-pengkajian-awal-{{ $riHdrNo }}" />
                             @endhasanyrole
                         </div>
 
@@ -227,25 +239,25 @@ new class extends Component {
                         <div x-show="activeTab === 'pengkajian-dokter'" x-transition.opacity.duration.200ms>
                             @hasanyrole('Dokter|Perawat|Admin|Casemix|Mr|Apoteker|Gizi|Laboratorium')
                                 <livewire:pages::transaksi.ri.emr-ri.pengkajian-dokter-ri.rm-pengkajian-dokter-ri-actions
-                                    :riHdrNo="$riHdrNo" wire:key="gizi-entri-pengkajian-dokter-{{ $riHdrNo }}" />
+                                    wire:key="gizi-entri-pengkajian-dokter-{{ $riHdrNo }}" />
                             @endhasanyrole
                         </div>
 
                         {{-- TAB — PEMERIKSAAN (TTV / Nutrisi / Lab / Radiologi) --}}
                         <div x-show="activeTab === 'pemeriksaan'" x-transition.opacity.duration.200ms>
                             <livewire:pages::transaksi.ri.emr-ri.pemeriksaan-ri.rm-pemeriksaan-ri-actions
-                                :riHdrNo="$riHdrNo" wire:key="gizi-entri-pemeriksaan-{{ $riHdrNo }}" />
+                                wire:key="gizi-entri-pemeriksaan-{{ $riHdrNo }}" />
                         </div>
 
                         {{-- TAB — CPPT (petugas gizi menulis CPPT profesi Gizi) --}}
                         <div x-show="activeTab === 'cppt'" x-transition.opacity.duration.200ms>
-                            <livewire:pages::transaksi.ri.emr-ri.cppt-ri.rm-cppt-ri-actions :riHdrNo="$riHdrNo"
+                            <livewire:pages::transaksi.ri.emr-ri.cppt-ri.rm-cppt-ri-actions
                                 wire:key="gizi-entri-cppt-{{ $riHdrNo }}" />
                         </div>
 
                         {{-- TAB — SBAR --}}
                         <div x-show="activeTab === 'sbar'" x-transition.opacity.duration.200ms>
-                            <livewire:pages::transaksi.ri.emr-ri.sbar-ri.rm-sbar-ri-actions :riHdrNo="$riHdrNo"
+                            <livewire:pages::transaksi.ri.emr-ri.sbar-ri.rm-sbar-ri-actions
                                 wire:key="gizi-entri-sbar-{{ $riHdrNo }}" />
                         </div>
 
@@ -306,7 +318,7 @@ new class extends Component {
                     {{-- KANAN: Tutup + Simpan (Simpan hanya di tab Penilaian Gizi — tab lain punya alur simpan sendiri) --}}
                     <div class="flex items-center gap-2">
                         <x-secondary-button type="button"
-                            x-on:click="$dispatch('close-modal', { name: 'gizi-ri-entri' })">
+                            wire:click="closeModal">
                             Tutup
                         </x-secondary-button>
                         <x-primary-button type="button" wire:click="simpan" wire:loading.attr="disabled"
@@ -380,5 +392,6 @@ new class extends Component {
             </div>
 
         </div>
+        @endif
     </x-modal>
 </div>

@@ -16,6 +16,8 @@ new class extends Component {
 
     public ?string $rjNo = null;
     public ?string $regNo = null;
+    // Guard @if isi modal. BUKAN $rjNo: mode 'create' (SEP baru dari pendaftaran) dibuka tanpa rjNo.
+    public bool $modalTerbuka = false;
     public ?string $drId = null;
     public ?string $drDesc = null;
     public ?string $poliId = null;
@@ -146,6 +148,7 @@ new class extends Component {
 
         $this->resetVersion();
         $this->incrementVersion('modal');
+        $this->modalTerbuka = true;
         $this->dispatch('open-modal', name: 'vclaim-ugd-actions');
         $this->dispatch('focus-vclaim-tgl-sep');
     }
@@ -424,6 +427,7 @@ new class extends Component {
         $this->dispatch('close-modal', name: 'vclaim-ugd-actions');
         $this->resetForm();
         $this->resetVersion();
+        $this->modalTerbuka = false; // isi modal (guard @if) dihapus, tidak di-mount ulang
     }
 
     public function mount(): void
@@ -436,6 +440,9 @@ new class extends Component {
 
 <div>
     <x-modal name="vclaim-ugd-actions" size="full" height="full" focusable>
+        {{-- Isi modal hanya di-mount saat modal benar-benar dibuka (flag $modalTerbuka, bukan $rjNo —
+             mode create tanpa rjNo): tertutup = nol komponen, tutup = dihapus tanpa mount ulang. --}}
+        @if ($modalTerbuka)
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
             wire:key="{{ $this->renderKey('modal', [$formMode, $rjNo ?? 'new']) }}">
 
@@ -975,6 +982,7 @@ new class extends Component {
                 </x-primary-button>
             </div>
         </div>
+        @endif
 
     </x-modal>
 </div>

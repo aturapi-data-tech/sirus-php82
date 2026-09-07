@@ -292,6 +292,9 @@ new class extends Component {
 
 <div>
     <x-modal name="emr-ri-administrasi" size="full" height="full" focusable>
+        {{-- Isi modal hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali
+             (anak memuat dari prop riHdrNo di mount masing-masing), tutup = dihapus tanpa mount ulang. --}}
+        @if ($riHdrNo)
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
             wire:key="{{ $this->renderKey('modal', [$riHdrNo ?? 'new']) }}">
 
@@ -561,6 +564,7 @@ new class extends Component {
             </div>
 
         </div>
+        @endif
     </x-modal>
 
     {{-- PDF dispatchers (listener 'cetak-kwitansi-ri-detail.open' & 'cetak-kwitansi-ri-ringkas.open') --}}

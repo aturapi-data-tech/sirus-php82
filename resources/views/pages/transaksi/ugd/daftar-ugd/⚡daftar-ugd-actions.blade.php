@@ -23,6 +23,9 @@ new class extends Component {
 
     public string $formMode = 'create';
     public bool $isFormLocked = false;
+    // true hanya selama modal terbuka — guard @if isi modal. Tidak bisa pakai $rjNo
+    // karena mode create belum punya nomor kunjungan.
+    public bool $modalTerbuka = false;
 
     public ?string $rjNo = null;
     public array $dataDaftarUGD = [];
@@ -82,6 +85,7 @@ new class extends Component {
         $this->dataDaftarUGD['entryId'] = $this->entryId;
         $this->dataDaftarUGD['entryDesc'] = collect($this->entryOptions)->firstWhere('entryId', $this->entryId)['entryDesc'] ?? '';
 
+        $this->modalTerbuka = true;
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'ugd-actions');
         $this->dispatch('focus-cari-pasien-ugd');
@@ -113,6 +117,7 @@ new class extends Component {
         $this->dataPasien = $this->findDataMasterPasien($this->dataDaftarUGD['regNo'] ?? '');
         $this->syncFromDataDaftarUGD();
 
+        $this->modalTerbuka = true;
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'ugd-actions');
     }
@@ -785,6 +790,7 @@ new class extends Component {
     {
         $this->reset(['rjNo', 'dataDaftarUGD', 'dataPasien']);
         $this->resetVersion();
+        $this->modalTerbuka = false;
         $this->klaimId = 'UM';
         $this->entryId = '5';
         $this->statusLanjutan = 'BS';
@@ -803,6 +809,9 @@ new class extends Component {
 
 <div>
     <x-modal name="ugd-actions" size="full" height="full" focusable>
+        {{-- Isi modal hanya ada saat modal benar-benar dibuka (flag $modalTerbuka; mode create belum
+             punya rjNo). Tertutup = LOV pasien/dokter & VClaim tidak ikut di-mount, tutup = dihapus. --}}
+        @if ($modalTerbuka)
         <x-dirty-modal-content
             name="ugd-actions"
             event="refresh-after-ugd.saved"
@@ -1044,6 +1053,7 @@ new class extends Component {
             </div>
 
         </x-dirty-modal-content>
+        @endif
     </x-modal>
 
     {{-- Cetak SEP --}}

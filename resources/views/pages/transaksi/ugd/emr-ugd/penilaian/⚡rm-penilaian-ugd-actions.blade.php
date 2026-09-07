@@ -122,7 +122,12 @@ new class extends Component {
     /* ===============================
      | MOUNT
      =============================== */
-    public function mount(): void
+    /**
+     * rjNo datang lewat PROP dari induk EMR UGD (seksi lahir di dalam @if($rjNo)),
+     * bukan lagi lewat event open-rm-*: satu kali baca CLOB, tidak ada race urutan event.
+     * Handler #[On] tetap dipertahankan untuk pemanggil dari luar modal.
+     */
+    public function mount(?int $rjNo = null): void
     {
         $this->registerAreas(['modal-penilaian-ugd']);
         $this->formEntryNyeri = $this->defaultFormEntryNyeriState();
@@ -130,6 +135,10 @@ new class extends Component {
         $this->formEntryResikoBunuhDiri = $this->defaultFormEntryResikoBunuhDiriState();
         $this->formEntryDekubitus = $this->defaultFormEntryDekubitusState();
         $this->formEntryGizi = $this->defaultFormEntryGiziState();
+
+        if (filled($rjNo)) {
+            $this->openPenilaian($rjNo);
+        }
     }
 
     public function rendering(): void

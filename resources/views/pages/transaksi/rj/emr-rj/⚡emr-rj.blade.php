@@ -113,11 +113,9 @@ new class extends Component {
         }
 
         $this->dispatch('open-modal', name: 'rm-perawat-actions');
-        $this->dispatch('open-rm-anamnesa-rj', $rjNo);
-        $this->dispatch('open-rm-pemeriksaan-rj', $rjNo);
-        $this->dispatch('open-rm-penilaian-rj', $rjNo);
-        $this->dispatch('open-rm-diagnosa-rj', $rjNo);
-        $this->dispatch('open-rm-perencanaan-rj', $rjNo);
+        // Seksi S/O/A/P/N memuat datanya sendiri di mount dari prop rjNo (isi modal dibungkus
+        // @if($rjNo)), jadi tidak perlu lagi memancarkan open-rm-*-rj — dulu tiap seksi membaca
+        // CLOB yang sama sekali lagi sesudah di-mount ulang.
     }
 
     /* ===============================
@@ -167,8 +165,9 @@ new class extends Component {
             return;
         }
         $this->dispatch('emr-rj.eresep.open', rjNo: $rjNo);
-        $this->dispatch('open-eresep-non-racikan-rj', rjNo: $rjNo);
-        $this->dispatch('open-eresep-racikan-rj', rjNo: $rjNo);
+        // Anak non-racikan/racikan sudah findData() di mount saat eresep-rj di-mount ulang per rjNo;
+        // open-eresep-*-rj di sini cuma bikin CLOB dibaca dua kali. Event itu tetap dipakai
+        // rekam-medis-display / perencanaan untuk muat ulang sesudah copy resep.
     }
 
     public function cetakEresep(string $rjNo): void
@@ -191,6 +190,9 @@ new class extends Component {
 
 <div>
     <x-modal name="rm-perawat-actions" size="full" height="full" focusable>
+        {{-- Anak hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali (tiap seksi
+             baca CLOB dari prop rjNo di mount-nya), tutup = dihapus. Tidak ada event open-rm-* lagi. --}}
+        @if ($rjNo)
         <x-dirty-modal-content name="rm-perawat-actions" event="refresh-after-rj.saved" label="EMR Rawat Jalan"
             :save-events="[
                 'save-rm-anamnesa-rj',
@@ -519,6 +521,7 @@ new class extends Component {
             </div>
 
         </x-dirty-modal-content>
+        @endif
     </x-modal>
 
     {{-- Modal i-Care --}}

@@ -25,9 +25,18 @@ new class extends Component {
     public string $descPDF = '';
     public string $viewFilePDF = '';
 
-    public function mount(): void
+    /**
+     * riHdrNo datang lewat PROP dari induk (anak lahir di dalam @if($riHdrNo)), bukan lagi
+     * lewat event open-rm-*: satu kali baca CLOB, tidak ada race urutan event.
+     * Handler #[On] tetap dipertahankan untuk reloadEvent tab & pemanggil lain.
+     */
+    public function mount(?string $riHdrNo = null): void
     {
         $this->registerAreas(['modal-pemeriksaan-ri']);
+
+        if (filled($riHdrNo)) {
+            $this->open($riHdrNo);
+        }
     }
 
     #[On('open-rm-pemeriksaan-ri')]

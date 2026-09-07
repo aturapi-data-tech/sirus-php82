@@ -457,6 +457,9 @@ new class extends Component {
 
 <div>
     <x-modal name="emr-ugd-administrasi" size="full" height="full" focusable>
+        {{-- Isi modal hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali
+             (anak memuat dari prop rjNo di mount masing-masing), tutup = dihapus tanpa mount ulang. --}}
+        @if ($rjNo)
         <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal', [$rjNo ?? 'new']) }}">
 
             {{-- ═══════════ HEADER ═══════════ --}}
@@ -779,6 +782,7 @@ new class extends Component {
             </div>
 
         </div>
+        @endif
     </x-modal>
 
     <livewire:pages::components.modul-dokumen.ugd.kwitansi.cetak-kwitansi-ugd wire:key="cetak-kwitansi-ugd" />

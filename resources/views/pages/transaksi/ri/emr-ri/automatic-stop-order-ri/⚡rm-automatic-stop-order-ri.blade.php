@@ -26,6 +26,17 @@ new class extends Component {
     public int $jumlahResepAktif = 0;
     public string $dihitungPada = '';
 
+    /**
+     * riHdrNo datang lewat PROP dari induk EMR RI (tab lahir di dalam @if($riHdrNo)), bukan lagi
+     * lewat event open-rm-*. Handler #[On] tetap untuk reloadEvent tab & pemanggil lain.
+     */
+    public function mount(?string $riHdrNo = null): void
+    {
+        if (filled($riHdrNo)) {
+            $this->open($riHdrNo);
+        }
+    }
+
     #[On('open-rm-automatic-stop-order-ri')]
     public function open(string $riHdrNo): void
     {

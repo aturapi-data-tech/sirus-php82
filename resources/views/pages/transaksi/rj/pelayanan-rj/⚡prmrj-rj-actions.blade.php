@@ -90,6 +90,17 @@ new class extends Component {
         $this->dispatch('open-modal', name: 'prmrj-rj');
     }
 
+    /**
+     * Tutup lewat server (dulu tombol X/Tutup hanya Alpine): kosongkan rjNo supaya isi modal
+     * (guard @if) benar-benar dihapus dan tidak di-mount ulang saat tutup.
+     */
+    public function closeModal(): void
+    {
+        $this->reset(['rjNo', 'regNo', 'namaPasien', 'otomatis', 'riwayat', 'riwayatTotal', 'form']);
+        $this->resetValidation();
+        $this->dispatch('close-modal', name: 'prmrj-rj');
+    }
+
     /** Muat baris PRMRJ kunjungan ini + segarkan formulir RM.06 di panel bawah. */
     private function muatPrmrj(int $rjNo): void
     {
@@ -509,6 +520,9 @@ new class extends Component {
     <x-modal name="prmrj-rj" size="full" height="full" focusable>
         @php $terkunci = $isFormLocked; @endphp
 
+        {{-- Isi modal hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali,
+             tutup = dihapus tanpa mount ulang (closeModal mengosongkan rjNo). --}}
+        @if ($rjNo)
         <div class="flex flex-col h-full">
             {{-- ══ HEADER ══ --}}
             <div class="px-6 py-4 border-b border-hairline dark:border-gray-700">
@@ -533,7 +547,7 @@ new class extends Component {
                         </p>
                     </div>
                     <x-icon-button color="gray" type="button"
-                        x-on:click="$dispatch('close-modal', { name: 'prmrj-rj' })" class="shrink-0">
+                        wire:click="closeModal" class="shrink-0">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -964,8 +978,9 @@ new class extends Component {
                     </x-outline-button>
                 @endif
                 <x-secondary-button type="button"
-                    x-on:click="$dispatch('close-modal', { name: 'prmrj-rj' })">Tutup</x-secondary-button>
+                    wire:click="closeModal">Tutup</x-secondary-button>
             </div>
         </div>
+        @endif
     </x-modal>
 </div>

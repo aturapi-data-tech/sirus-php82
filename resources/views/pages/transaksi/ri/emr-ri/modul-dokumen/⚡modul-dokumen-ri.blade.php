@@ -66,6 +66,9 @@ new class extends Component {
     {
         $this->resetValidation();
         $this->resetForm();
+        // Kosongkan penanda supaya guard if($riHdrNo) di template menghapus isi modal (anak ikut hilang).
+        // Tidak di resetForm(): open() memanggil resetForm() SESUDAH mengisi riHdrNo.
+        $this->riHdrNo = null;
         $this->dispatch('close-modal', name: 'modul-dokumen-ri');
     }
 
@@ -81,6 +84,9 @@ new class extends Component {
 
 <div>
     <x-modal name="modul-dokumen-ri" size="full" height="full" focusable>
+        {{-- Isi modal hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali
+             (anak memuat datanya dari prop), tutup = dihapus tanpa mount ulang. --}}
+        @if ($riHdrNo)
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
             wire:key="{{ $this->renderKey('modal-modul-dokumen-ri', [$riHdrNo ?? 'new']) }}">
 
@@ -503,5 +509,6 @@ new class extends Component {
             </div>
 
         </div>
+        @endif
     </x-modal>
 </div>

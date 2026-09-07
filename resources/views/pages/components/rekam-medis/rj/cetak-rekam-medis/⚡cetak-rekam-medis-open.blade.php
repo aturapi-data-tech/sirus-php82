@@ -118,6 +118,9 @@ new class extends Component {
 
 <div>
     <x-modal name="preview-rekam-medis" size="full" height="full" focusable>
+        {{-- Isi modal hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali
+             (anak memuat datanya dari prop), tutup = dihapus tanpa mount ulang. --}}
+        @if ($rjNo)
 
         @php
             $dataRekamMedis = $this->dataDaftarPoliRJ;
@@ -797,5 +800,6 @@ new class extends Component {
             </div>
 
         </div>
+        @endif
     </x-modal>
 </div>

@@ -289,6 +289,9 @@ new class extends Component {
 
 <div>
     <x-modal name="pindah-kamar-ri" size="2xl" focusable>
+        {{-- Isi modal hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali,
+             tutup = dihapus tanpa mount ulang (closeModal mengosongkan riHdrNo). --}}
+        @if ($riHdrNo)
         <div class="p-6 space-y-5"
             wire:key="{{ $this->renderKey('modal-pindah-kamar-ri', [$riHdrNo ?? 'new']) }}"
             x-data
@@ -484,5 +487,6 @@ new class extends Component {
             @endif
 
         </div>
+        @endif
     </x-modal>
 </div>

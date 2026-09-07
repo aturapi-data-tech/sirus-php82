@@ -194,6 +194,9 @@ new class extends Component {
 
 <div>
     <x-modal name="emr-ugd.eresep-ugd" size="full" height="full" focusable>
+        {{-- Anak hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali (anak
+             non-racikan/racikan memuat dari prop rjNo di mount), tutup = dihapus. --}}
+        @if ($rjNo)
         <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal', [$rjNo ?? 'new']) }}">
 
             {{-- HEADER --}}
@@ -309,5 +312,6 @@ new class extends Component {
             </div>
 
         </div>
+        @endif
     </x-modal>
 </div>
