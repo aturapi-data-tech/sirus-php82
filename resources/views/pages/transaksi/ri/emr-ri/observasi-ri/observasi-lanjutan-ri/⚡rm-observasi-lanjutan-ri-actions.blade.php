@@ -588,7 +588,7 @@ new class extends Component {
                             <x-input-error :messages="$errors->get('formEntryObservasi.spo2')" class="mt-1" />
                         </div>
                         <div class="flex flex-col">
-                            <x-input-label class="mb-1">GDA<br>(g/dL)</x-input-label>
+                            <x-input-label class="mb-1">GDA<br>(mg/dL)</x-input-label>
                             <x-text-input wire:model.blur="formEntryObservasi.gda" type="number"
                                 step="0.1" class="w-full mt-auto" x-ref="olGda"
                                 x-on:keydown.enter.prevent="$refs.olGcs.focus()" />

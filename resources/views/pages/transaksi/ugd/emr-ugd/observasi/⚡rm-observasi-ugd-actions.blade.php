@@ -497,7 +497,7 @@ new class extends Component {
                 {{-- FORM INPUT --}}
                 @if (!$isFormLocked)
                     <div
-                        class="grid grid-cols-12 gap-2 p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
+                        class="p-4 border border-hairline rounded-2xl dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40">
 
                         {{-- BARIS EWS: parameter tambahan varian aktif (dari master, bukan hard-code) — skor dihitung
                              otomatis saat Tambah. Enter di dalam baris ini pindah ke field berikutnya; di field terakhir turun ke baris TTV.
@@ -530,13 +530,13 @@ new class extends Component {
                                     default => 'grid-cols-2 md:grid-cols-4 xl:grid-cols-6',
                                 };
                                 @endphp
-                            <div class="col-span-12 pb-3 mb-1 border-b border-hairline dark:border-gray-700"
+                            <div class="pb-3 mb-3 border-b border-hairline dark:border-gray-700"
                                 x-on:keydown.enter.prevent="
                                     const sel = 'input:not([type=hidden]), select';
                                     if (!$event.target.matches(sel)) return;
                                     const els = [...$el.querySelectorAll(sel)].filter(x => !x.disabled && x.offsetParent !== null);
                                     const i = els.indexOf($event.target);
-                                    if (i > -1 && i < els.length - 1) { els[i + 1].focus() } else { document.getElementById('ol-ugd-cairan')?.focus() }">
+                                    if (i > -1 && i < els.length - 1) { els[i + 1].focus() } else { $refs.olWaktu?.focus() }">
                                 <div class="flex flex-wrap items-center gap-2 mb-2">
                                     <span class="text-sm font-semibold text-body dark:text-gray-300">Skor EWS</span>
                                     <x-select-input wire:model.live="ewsVarian" class="!w-auto">
@@ -614,83 +614,103 @@ new class extends Component {
                             </div>
                         @endif
 
-                        {{-- Cairan + Tetesan --}}
-                        <div class="col-span-12 md:col-span-6">
-                            <x-input-label value="Cairan" class="mb-1" />
-                            <div class="relative">
-                                <x-text-input wire:model="observasiLanjutan.cairan" placeholder="Cairan"
-                                    id="ol-ugd-cairan" class="w-full pr-8" x-ref="olCairan"
-                                    x-on:keydown.enter.prevent="$refs.olTetesan?.focus()" />
-                                <span
-                                    class="absolute inset-y-0 right-1.5 flex items-center text-xs text-muted-soft pointer-events-none">ml</span>
+                        {{-- SATU BARIS (disamakan dengan Observasi Lanjutan RI): Waktu Pemeriksaan, Cairan, Tetesan, lalu semua nilai numerik.
+                             15 kolom di layar lebar (waktu 3 + cairan 2 + tetesan 2 + 8 field @1) — di layar sempit membungkus.
+                             Tiap sel flex-col + input mt-auto: label boleh 1 atau 2 baris, kotak input tetap rata bawah.
+                             Enter-chain (pola e-resep): waktu → cairan → tetesan → sistolik → ... → gcs → simpan (tanpa tombol Tambah). --}}
+                        <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-[repeat(15,minmax(0,1fr))] gap-2 items-stretch">
+                            <div class="flex flex-col col-span-2 xl:col-span-3">
+                                <x-input-label value="Waktu Pemeriksaan *" class="mb-1" />
+                                <div class="flex items-center gap-1 mt-auto">
+                                    <x-text-input wire:model="observasiLanjutan.waktuPemeriksaan"
+                                        placeholder="dd/mm/yyyy HH:ii:ss" class="flex-1" x-ref="olWaktu"
+                                        x-init="$nextTick(() => (document.getElementById('ews-ugd-first') ?? $el).focus())"
+                                        x-on:keydown.enter.prevent="$refs.olCairan.focus()" />
+                                    <x-now-button wire:click.prevent="setWaktuPemeriksaan" />
+                                </div>
+                                <x-input-error :messages="$errors->get('observasiLanjutan.waktuPemeriksaan')" class="mt-1" />
                             </div>
-                            <x-input-error :messages="$errors->get('observasiLanjutan.cairan')" class="mt-1" />
-                        </div>
-
-                        <div class="col-span-12 md:col-span-6">
-                            <x-input-label value="Tetesan" class="mb-1" />
-                            <div class="relative">
+                            <div class="flex flex-col col-span-2 xl:col-span-2">
+                                <x-input-label value="Cairan" class="mb-1" />
+                                <x-text-input wire:model="observasiLanjutan.cairan" placeholder="Jenis cairan"
+                                    class="w-full mt-auto" x-ref="olCairan"
+                                    x-on:keydown.enter.prevent="$refs.olTetesan.focus()" />
+                                <x-input-error :messages="$errors->get('observasiLanjutan.cairan')" class="mt-1" />
+                            </div>
+                            <div class="flex flex-col xl:col-span-2">
+                                <x-input-label class="mb-1">Tetesan<br>(tetes/menit)</x-input-label>
                                 <x-text-input wire:model="observasiLanjutan.tetesan" placeholder="Tetesan/menit"
-                                    class="w-full pr-16" x-ref="olTetesan"
-                                    x-on:keydown.enter.prevent="$refs.olSistolik?.focus()" />
-                                <span
-                                    class="absolute inset-y-0 right-1.5 flex items-center text-xs text-muted-soft pointer-events-none">gtt/menit</span>
+                                    class="w-full mt-auto" x-ref="olTetesan"
+                                    x-on:keydown.enter.prevent="$refs.olSistolik.focus()" />
+                                <x-input-error :messages="$errors->get('observasiLanjutan.tetesan')" class="mt-1" />
                             </div>
-                        </div>
-
-                        {{-- Tanda Vital — label & placeholder disamakan dengan Form Transfer UGD→RI:
-                             satuan di label "(mmHg)", bukan overlay di dalam input. Enter berantai: sistolik → ... → gcs → waktu. --}}
-                        @php
-                            $ttvFields = [
-                                ['field' => 'sistolik',       'label' => 'Sistolik',  'unit' => 'mmHg',  'ph' => 'Sys',   'wajib' => true,  'ref' => 'olSistolik', 'next' => 'olDistolik'],
-                                ['field' => 'distolik',       'label' => 'Diastolik', 'unit' => 'mmHg',  'ph' => 'Dia',   'wajib' => true,  'ref' => 'olDistolik', 'next' => 'olNadi'],
-                                ['field' => 'frekuensiNadi',  'label' => 'Nadi',      'unit' => 'x/mnt', 'ph' => 'x/mnt', 'wajib' => true,  'ref' => 'olNadi',     'next' => 'olNafas'],
-                                ['field' => 'frekuensiNafas', 'label' => 'Nafas',     'unit' => 'x/mnt', 'ph' => 'x/mnt', 'wajib' => true,  'ref' => 'olNafas',    'next' => 'olSuhu'],
-                                ['field' => 'suhu',           'label' => 'Suhu',      'unit' => '°C',    'ph' => '°C',    'wajib' => true,  'ref' => 'olSuhu',     'next' => 'olSpo2'],
-                                ['field' => 'spo2',           'label' => 'SpO₂',      'unit' => '%',     'ph' => '%',     'wajib' => true,  'ref' => 'olSpo2',     'next' => 'olGda'],
-                                ['field' => 'gda',            'label' => 'GDA',       'unit' => 'mg/dL', 'ph' => 'mg/dL', 'wajib' => false, 'ref' => 'olGda',      'next' => 'olGcs'],
-                                ['field' => 'gcs',            'label' => 'GCS',       'unit' => '',      'ph' => 'E V M', 'wajib' => false, 'ref' => 'olGcs',      'next' => 'olWaktu'],
-                            ];
-                        @endphp
-                        @foreach ($ttvFields as $ttv)
-                            <div class="col-span-4 md:col-span-1" wire:key="ttv-field-{{ $ttv['field'] }}">
-                                <x-input-label :value="$ttv['label'] . ($ttv['unit'] ? ' (' . $ttv['unit'] . ')' : '') . ($ttv['wajib'] ? ' *' : '')"
-                                    class="mb-1 !text-sm whitespace-nowrap" />
-                                <x-text-input wire:model.blur="observasiLanjutan.{{ $ttv['field'] }}" placeholder="{{ $ttv['ph'] }}"
-                                    class="w-full px-2 text-center" x-ref="{{ $ttv['ref'] }}"
-                                    :error="$errors->has('observasiLanjutan.' . $ttv['field'])"
-                                    x-on:keydown.enter.prevent="$refs.{{ $ttv['next'] }}?.focus()" />
-                                <x-input-error :messages="$errors->get('observasiLanjutan.' . $ttv['field'])" class="mt-1" />
+                            <div class="flex flex-col">
+                                <x-input-label class="mb-1">Sistolik<br>(mmHg)</x-input-label>
+                                <x-text-input wire:model.blur="observasiLanjutan.sistolik" type="number"
+                                    class="w-full mt-auto" x-ref="olSistolik"
+                                    :error="$errors->has('observasiLanjutan.sistolik')"
+                                    x-on:keydown.enter.prevent="$refs.olDistolik.focus()" />
+                                <x-input-error :messages="$errors->get('observasiLanjutan.sistolik')" class="mt-1" />
                             </div>
-                        @endforeach
-
-                        {{-- Waktu + Aksi --}}
-                        <div class="col-span-12 md:col-span-3">
-                            <x-input-label value="Waktu Pemeriksaan *" class="mb-1 truncate whitespace-nowrap" />
-                            <div class="flex items-center gap-2">
-                                <x-text-input wire:model="observasiLanjutan.waktuPemeriksaan"
-                                    placeholder="dd/mm/yyyy hh:mm:ss" class="grow px-2" x-ref="olWaktu"
+                            <div class="flex flex-col">
+                                <x-input-label class="mb-1">Diastolik<br>(mmHg)</x-input-label>
+                                <x-text-input wire:model.blur="observasiLanjutan.distolik" type="number"
+                                    class="w-full mt-auto" x-ref="olDistolik"
+                                    :error="$errors->has('observasiLanjutan.distolik')"
+                                    x-on:keydown.enter.prevent="$refs.olNadi.focus()" />
+                                <x-input-error :messages="$errors->get('observasiLanjutan.distolik')" class="mt-1" />
+                            </div>
+                            <div class="flex flex-col">
+                                <x-input-label class="mb-1">Nadi<br>(x/mnt)</x-input-label>
+                                <x-text-input wire:model.blur="observasiLanjutan.frekuensiNadi" type="number"
+                                    class="w-full mt-auto" x-ref="olNadi"
+                                    :error="$errors->has('observasiLanjutan.frekuensiNadi')"
+                                    x-on:keydown.enter.prevent="$refs.olNafas.focus()" />
+                                <x-input-error :messages="$errors->get('observasiLanjutan.frekuensiNadi')" class="mt-1" />
+                            </div>
+                            <div class="flex flex-col">
+                                <x-input-label class="mb-1">Nafas<br>(x/mnt)</x-input-label>
+                                <x-text-input wire:model.blur="observasiLanjutan.frekuensiNafas" type="number"
+                                    class="w-full mt-auto" x-ref="olNafas"
+                                    :error="$errors->has('observasiLanjutan.frekuensiNafas')"
+                                    x-on:keydown.enter.prevent="$refs.olSuhu.focus()" />
+                                <x-input-error :messages="$errors->get('observasiLanjutan.frekuensiNafas')" class="mt-1" />
+                            </div>
+                            <div class="flex flex-col">
+                                <x-input-label class="mb-1">Suhu<br>(°C)</x-input-label>
+                                <x-text-input wire:model.blur="observasiLanjutan.suhu" type="number"
+                                    step="0.1"
+                                    class="w-full mt-auto" x-ref="olSuhu"
+                                    :error="$errors->has('observasiLanjutan.suhu')"
+                                    x-on:keydown.enter.prevent="$refs.olSpo2.focus()" />
+                                <x-input-error :messages="$errors->get('observasiLanjutan.suhu')" class="mt-1" />
+                            </div>
+                            <div class="flex flex-col">
+                                <x-input-label class="mb-1">SpO₂<br>(%)</x-input-label>
+                                <x-text-input wire:model.blur="observasiLanjutan.spo2" type="number"
+                                    class="w-full mt-auto" x-ref="olSpo2"
+                                    :error="$errors->has('observasiLanjutan.spo2')"
+                                    x-on:keydown.enter.prevent="$refs.olGda.focus()" />
+                                <x-input-error :messages="$errors->get('observasiLanjutan.spo2')" class="mt-1" />
+                            </div>
+                            <div class="flex flex-col">
+                                <x-input-label class="mb-1">GDA<br>(mg/dL)</x-input-label>
+                                <x-text-input wire:model.blur="observasiLanjutan.gda" type="number"
+                                    step="0.1"
+                                    class="w-full mt-auto" x-ref="olGda"
+                                    :error="$errors->has('observasiLanjutan.gda')"
+                                    x-on:keydown.enter.prevent="$refs.olGcs.focus()" />
+                                <x-input-error :messages="$errors->get('observasiLanjutan.gda')" class="mt-1" />
+                            </div>
+                            <div class="flex flex-col">
+                                <x-input-label class="mb-1">GCS<br>&nbsp;</x-input-label>
+                                <x-text-input wire:model.blur="observasiLanjutan.gcs" type="number"
+                                    class="w-full mt-auto" x-ref="olGcs"
+                                    :error="$errors->has('observasiLanjutan.gcs')"
                                     x-on:keydown.enter.prevent="$el.blur(); $wire.addObservasiLanjutan()" />
-                                <x-now-button wire:click.prevent="setWaktuPemeriksaan" />
+                                <x-input-error :messages="$errors->get('observasiLanjutan.gcs')" class="mt-1" />
                             </div>
-                            <x-input-error :messages="$errors->get('observasiLanjutan.waktuPemeriksaan')" class="mt-1" />
                         </div>
-
-                        <div class="col-span-12 md:col-span-1 flex items-end">
-                            <x-primary-button wire:click.prevent="addObservasiLanjutan" wire:loading.attr="disabled"
-                                wire:target="addObservasiLanjutan" class="gap-1.5 w-full justify-center px-2">
-                                <span wire:loading.remove wire:target="addObservasiLanjutan">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 4v16m8-8H4" />
-                                    </svg>
-                                </span>
-                                <span wire:loading wire:target="addObservasiLanjutan"><x-loading
-                                        class="w-4 h-4" /></span>
-                                Tambah
-                            </x-primary-button>
-                        </div>
-
 
                     </div>
                 @endif
