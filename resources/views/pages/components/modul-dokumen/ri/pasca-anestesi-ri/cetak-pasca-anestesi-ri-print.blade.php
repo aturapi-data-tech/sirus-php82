@@ -47,12 +47,53 @@
             </td>
             <td class="border border-black px-2 py-1.5 w-1/2 align-top">
                 <p><span class="font-bold">Keadaan Umum:</span> {!! $val($form['keadaanUmum'] ?? '') !!}</p>
-                <p><span class="font-bold">TTV:</span>
-                    TD {!! $val(filled($form['sistolik'] ?? '') || filled($form['diastolik'] ?? '') ? ($form['sistolik'] ?? '') . '/' . ($form['diastolik'] ?? '') : ($form['td'] ?? '')) !!} mmHg · N {!! $val($form['nadi'] ?? '') !!} ·
-                    RR {!! $val($form['rr'] ?? '') !!} · S {!! $val($form['suhu'] ?? '') !!} ·
-                    SpO2 {!! $val($form['spo2'] ?? '') !!} · GDA {!! $val($form['gda'] ?? '') !!}</p>
+                @php $adaTtvMasuk = filled($form['sistolik'] ?? '') || filled($form['diastolik'] ?? '') || filled($form['nadi'] ?? '') || filled($form['rr'] ?? '') || filled($form['suhu'] ?? '') || filled($form['spo2'] ?? '') || filled($form['gda'] ?? '') || filled($form['td'] ?? ''); @endphp
+                @if ($adaTtvMasuk)
+                    <p><span class="font-bold">TTV:</span>
+                        TD {!! $val(filled($form['sistolik'] ?? '') || filled($form['diastolik'] ?? '') ? ($form['sistolik'] ?? '') . '/' . ($form['diastolik'] ?? '') : ($form['td'] ?? '')) !!} mmHg · N {!! $val($form['nadi'] ?? '') !!} ·
+                        RR {!! $val($form['rr'] ?? '') !!} · S {!! $val($form['suhu'] ?? '') !!} ·
+                        SpO2 {!! $val($form['spo2'] ?? '') !!} · GDA {!! $val($form['gda'] ?? '') !!}</p>
+                @endif
             </td>
         </tr>
+
+        {{-- ── OBSERVASI LANJUTAN (pemantauan TTV berkala di RR) ── --}}
+        @php $obsCetak = $form['observasi'] ?? []; @endphp
+        @if (!empty($obsCetak))
+            <tr>
+                <td colspan="2" class="border border-black px-2 py-1.5 align-top">
+                    <p class="font-bold mb-1">Observasi Lanjutan (pemantauan berkala)</p>
+                    <table class="w-full text-[9px] border-collapse" cellpadding="2" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <td class="border border-black font-bold">Waktu</td>
+                                <td class="border border-black font-bold text-center">TD (mmHg)</td>
+                                <td class="border border-black font-bold text-center">Nadi</td>
+                                <td class="border border-black font-bold text-center">Nafas</td>
+                                <td class="border border-black font-bold text-center">Suhu</td>
+                                <td class="border border-black font-bold text-center">SpO2</td>
+                                <td class="border border-black font-bold text-center">GDA</td>
+                                <td class="border border-black font-bold">Catatan</td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($obsCetak as $row)
+                                <tr>
+                                    <td class="border border-black">{!! $val($row['waktu'] ?? '') !!}</td>
+                                    <td class="border border-black text-center">{!! $val((filled($row['sistolik'] ?? '') || filled($row['diastolik'] ?? '')) ? (($row['sistolik'] ?? '') . '/' . ($row['diastolik'] ?? '')) : '') !!}</td>
+                                    <td class="border border-black text-center">{!! $val($row['nadi'] ?? '') !!}</td>
+                                    <td class="border border-black text-center">{!! $val($row['nafas'] ?? '') !!}</td>
+                                    <td class="border border-black text-center">{!! $val($row['suhu'] ?? '') !!}</td>
+                                    <td class="border border-black text-center">{!! $val($row['spo2'] ?? '') !!}</td>
+                                    <td class="border border-black text-center">{!! $val($row['gda'] ?? '') !!}</td>
+                                    <td class="border border-black">{!! $val($row['catatan'] ?? '') !!}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        @endif
 
         {{-- ── ALDRETE ── --}}
         <tr>

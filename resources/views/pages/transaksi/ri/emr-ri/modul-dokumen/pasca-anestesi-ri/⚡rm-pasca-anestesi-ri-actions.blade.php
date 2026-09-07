@@ -54,10 +54,25 @@ new class extends Component {
         'skalaNyeri' => '',
         'rekomendasi' => '',
         'keteranganRekomendasi' => '',
+        // Observasi lanjutan (pemantauan TTV berkala di RR) — daftar baris {waktu, TTV, catatan}
+        'observasi' => [],
         // TTD Perawat RR
         'ttd' => '',
         'ttdCode' => '',
         'ttdDate' => '',
+    ];
+
+    // Baris entri sementara untuk tabel Observasi Lanjutan (belum masuk daftar sampai Tambah).
+    public array $obsInput = [
+        'waktu' => '',
+        'sistolik' => '',
+        'diastolik' => '',
+        'nadi' => '',
+        'nafas' => '',
+        'suhu' => '',
+        'spo2' => '',
+        'gda' => '',
+        'catatan' => '',
     ];
 
     public array $pascaList = [];
@@ -267,6 +282,7 @@ new class extends Component {
             'skalaNyeri' => $this->newForm['skalaNyeri'] ?? '',
             'rekomendasi' => $this->newForm['rekomendasi'] ?? '',
             'keteranganRekomendasi' => $this->newForm['keteranganRekomendasi'] ?? '',
+            'observasi' => array_values($this->newForm['observasi'] ?? []),
             'ttd' => $this->newForm['ttd'] ?? '',
             'ttdCode' => $this->newForm['ttdCode'] ?? '',
             'ttdDate' => $this->newForm['ttdDate'] ?? '',
@@ -279,6 +295,9 @@ new class extends Component {
     private function adaIntiPasca(): bool
     {
         if (filled($this->newForm['jamMasuk'] ?? null)) {
+            return true;
+        }
+        if (!empty($this->newForm['observasi'])) {
             return true;
         }
         foreach (($this->newForm['aldrete'] ?? []) as $v) {
@@ -457,7 +476,10 @@ new class extends Component {
     private function hydrateFormFromEntry(array $entry, string $key): void
     {
         foreach ($this->newForm as $k => $v) {
-            if (is_array($v)) {
+            if ($k === 'observasi') {
+                // Daftar baris (numeric) — muat apa adanya, bukan per-subkey seperti aldrete.
+                $this->newForm['observasi'] = array_values($entry['observasi'] ?? []);
+            } elseif (is_array($v)) {
                 foreach ($v as $sk => $sv) {
                     $this->newForm[$k][$sk] = $entry[$k][$sk] ?? '';
                 }
@@ -670,11 +692,87 @@ new class extends Component {
             'skalaNyeri' => '',
             'rekomendasi' => '',
             'keteranganRekomendasi' => '',
+            'observasi' => [],
             'ttd' => '',
             'ttdCode' => '',
             'ttdDate' => '',
         ];
+        $this->resetObsInput();
         $this->layar = 'daftar';   // mengosongkan formulir = kembali ke daftar
+    }
+
+    /* ===============================
+     | OBSERVASI LANJUTAN (TTV berkala di RR)
+     | Baris menumpuk di $newForm['observasi']; baru persist saat Simpan Draft / TTD.
+     =============================== */
+    private function resetObsInput(): void
+    {
+        $this->obsInput = [
+            'waktu' => '',
+            'sistolik' => '',
+            'diastolik' => '',
+            'nadi' => '',
+            'nafas' => '',
+            'suhu' => '',
+            'spo2' => '',
+            'gda' => '',
+            'catatan' => '',
+        ];
+    }
+
+    /** Isi Waktu observasi dengan jam sekarang (tombol jam). */
+    public function setObsWaktu(): void
+    {
+        $this->obsInput['waktu'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+    }
+
+    /** Tambah satu baris observasi berkala ke daftar (butuh Waktu + minimal satu nilai TTV). */
+    public function addObservasi(): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only, tidak dapat menambah observasi.');
+            return;
+        }
+        if (blank($this->obsInput['waktu'] ?? null)) {
+            $this->dispatch('toast', type: 'error', message: 'Isi Waktu pemeriksaan terlebih dahulu.');
+            return;
+        }
+        $adaNilai = collect(['sistolik', 'diastolik', 'nadi', 'nafas', 'suhu', 'spo2', 'gda', 'catatan'])
+            ->contains(fn($k) => filled($this->obsInput[$k] ?? null));
+        if (!$adaNilai) {
+            $this->dispatch('toast', type: 'error', message: 'Isi minimal satu nilai tanda vital atau catatan.');
+            return;
+        }
+
+        $this->newForm['observasi'][] = [
+            'waktu' => trim((string) $this->obsInput['waktu']),
+            'sistolik' => trim((string) ($this->obsInput['sistolik'] ?? '')),
+            'diastolik' => trim((string) ($this->obsInput['diastolik'] ?? '')),
+            'nadi' => trim((string) ($this->obsInput['nadi'] ?? '')),
+            'nafas' => trim((string) ($this->obsInput['nafas'] ?? '')),
+            'suhu' => trim((string) ($this->obsInput['suhu'] ?? '')),
+            'spo2' => trim((string) ($this->obsInput['spo2'] ?? '')),
+            'gda' => trim((string) ($this->obsInput['gda'] ?? '')),
+            'catatan' => trim((string) ($this->obsInput['catatan'] ?? '')),
+        ];
+        $this->newForm['observasi'] = array_values($this->newForm['observasi']);
+        $this->resetObsInput();
+        $this->incrementVersion('modal-pasca-anestesi-ri');
+        $this->dispatch('toast', type: 'success', message: 'Baris observasi ditambahkan. Jangan lupa Simpan Draft / TTD.');
+    }
+
+    /** Hapus satu baris observasi berkala berdasarkan indeks. */
+    public function removeObservasi(int $i): void
+    {
+        if ($this->isFormLocked || $this->viewOnly) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+        if (isset($this->newForm['observasi'][$i])) {
+            unset($this->newForm['observasi'][$i]);
+            $this->newForm['observasi'] = array_values($this->newForm['observasi']);
+            $this->incrementVersion('modal-pasca-anestesi-ri');
+        }
     }
 
     protected function resetForm(): void
@@ -883,41 +981,108 @@ new class extends Component {
                                 placeholder="cth: Sadar penuh, nafas spontan adekuat" class="w-full" />
                         </section>
 
-                        {{-- ══ TTV SAAT MASUK RR — pola frame Tanda Vital ala Pra Anestesi ══ --}}
+                        {{-- ══ OBSERVASI LANJUTAN — pemantauan TTV berkala di RR (contek Observasi Lanjutan) ══ --}}
                         <section class="pt-6 border-t border-hairline dark:border-gray-700">
-                            <h3 class="mb-3 text-base font-semibold text-ink dark:text-gray-200">Tanda Vital (saat masuk RR)</h3>
-                            <x-border-form :title="__('Tanda Vital')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
-                                <div class="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7">
-                                    <div>
-                                        <x-input-label value="Sistolik (mmHg)" class="whitespace-nowrap" />
-                                        <x-text-input wire:model.live="newForm.sistolik" :error="$errors->has('newForm.sistolik')" class="w-full mt-1" />
+                            <h3 class="mb-1 text-base font-semibold text-ink dark:text-gray-200">Observasi Lanjutan (pemantauan berkala)</h3>
+                            <p class="mb-3 text-sm text-muted dark:text-gray-400">Rekam tanda vital berkala selama di Recovery Room (mis. tiap 15 menit). Tekan Tambah untuk menyimpan baris ke daftar.</p>
+
+                            @unless ($viewOnly)
+                                <div class="grid grid-cols-2 gap-2 p-3 mb-3 border rounded-xl sm:grid-cols-4 xl:grid-cols-10 border-hairline dark:border-gray-700 bg-surface-soft dark:bg-gray-800/40 items-end">
+                                    <div class="flex flex-col col-span-2 xl:col-span-2">
+                                        <x-input-label value="Waktu" class="mb-1" />
+                                        <div class="flex items-center gap-1">
+                                            <x-text-input wire:model="obsInput.waktu" placeholder="dd/mm/yyyy HH:mm:ss" class="flex-1" />
+                                            <x-now-button wire:click.prevent="setObsWaktu" />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <x-input-label value="Diastolik (mmHg)" class="whitespace-nowrap" />
-                                        <x-text-input wire:model.live="newForm.diastolik" :error="$errors->has('newForm.diastolik')" class="w-full mt-1" />
+                                    <div class="flex flex-col">
+                                        <x-input-label value="Sistolik" class="mb-1 whitespace-nowrap" />
+                                        <x-text-input wire:model="obsInput.sistolik" type="number" placeholder="mmHg" class="w-full" />
                                     </div>
-                                    <div>
-                                        <x-input-label value="Nadi (x/mnt)" class="whitespace-nowrap" />
-                                        <x-text-input wire:model.live="newForm.nadi" :error="$errors->has('newForm.nadi')" class="w-full mt-1" />
+                                    <div class="flex flex-col">
+                                        <x-input-label value="Diastolik" class="mb-1 whitespace-nowrap" />
+                                        <x-text-input wire:model="obsInput.diastolik" type="number" placeholder="mmHg" class="w-full" />
                                     </div>
-                                    <div>
-                                        <x-input-label value="RR (x/mnt)" class="whitespace-nowrap" />
-                                        <x-text-input wire:model.live="newForm.rr" :error="$errors->has('newForm.rr')" class="w-full mt-1" />
+                                    <div class="flex flex-col">
+                                        <x-input-label value="Nadi" class="mb-1 whitespace-nowrap" />
+                                        <x-text-input wire:model="obsInput.nadi" type="number" placeholder="x/mnt" class="w-full" />
                                     </div>
-                                    <div>
-                                        <x-input-label value="Suhu (°C)" class="whitespace-nowrap" />
-                                        <x-text-input wire:model.live="newForm.suhu" :error="$errors->has('newForm.suhu')" class="w-full mt-1" />
+                                    <div class="flex flex-col">
+                                        <x-input-label value="Nafas" class="mb-1 whitespace-nowrap" />
+                                        <x-text-input wire:model="obsInput.nafas" type="number" placeholder="x/mnt" class="w-full" />
                                     </div>
-                                    <div>
-                                        <x-input-label value="SPO2 (%)" class="whitespace-nowrap" />
-                                        <x-text-input wire:model.live="newForm.spo2" :error="$errors->has('newForm.spo2')" class="w-full mt-1" />
+                                    <div class="flex flex-col">
+                                        <x-input-label value="Suhu" class="mb-1 whitespace-nowrap" />
+                                        <x-text-input wire:model="obsInput.suhu" type="number" step="0.1" placeholder="°C" class="w-full" />
                                     </div>
-                                    <div>
-                                        <x-input-label value="GDA (g/dl)" class="whitespace-nowrap" />
-                                        <x-text-input wire:model.live="newForm.gda" :error="$errors->has('newForm.gda')" class="w-full mt-1" />
+                                    <div class="flex flex-col">
+                                        <x-input-label value="SpO2" class="mb-1 whitespace-nowrap" />
+                                        <x-text-input wire:model="obsInput.spo2" type="number" placeholder="%" class="w-full" />
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <x-input-label value="GDA" class="mb-1 whitespace-nowrap" />
+                                        <x-text-input wire:model="obsInput.gda" type="number" step="0.1" placeholder="mg/dL" class="w-full" />
+                                    </div>
+                                    <div class="flex flex-col col-span-2 xl:col-span-6">
+                                        <x-input-label value="Catatan" class="mb-1" />
+                                        <x-text-input wire:model="obsInput.catatan" placeholder="Catatan (opsional)" class="w-full" />
+                                    </div>
+                                    <div class="flex flex-col col-span-2 xl:col-span-4">
+                                        <x-primary-button type="button" wire:click.prevent="addObservasi" wire:loading.attr="disabled" wire:target="addObservasi"
+                                            class="justify-center w-full gap-1.5">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                            Tambah observasi
+                                        </x-primary-button>
                                     </div>
                                 </div>
-                            </x-border-form>
+                            @endunless
+
+                            @php $obsRows = $newForm['observasi'] ?? []; @endphp
+                            <div class="overflow-x-auto border rounded-xl border-hairline dark:border-gray-700">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="text-xs font-semibold uppercase text-muted bg-surface-soft dark:bg-gray-800/50 dark:text-gray-400">
+                                        <tr>
+                                            <th class="px-3 py-2">No</th>
+                                            <th class="px-3 py-2 whitespace-nowrap">Waktu</th>
+                                            <th class="px-3 py-2 whitespace-nowrap">TD (mmHg)</th>
+                                            <th class="px-3 py-2 whitespace-nowrap">Nadi</th>
+                                            <th class="px-3 py-2 whitespace-nowrap">Nafas</th>
+                                            <th class="px-3 py-2 whitespace-nowrap">Suhu</th>
+                                            <th class="px-3 py-2 whitespace-nowrap">SpO2</th>
+                                            <th class="px-3 py-2 whitespace-nowrap">GDA</th>
+                                            <th class="px-3 py-2">Catatan</th>
+                                            @unless ($viewOnly)<th class="w-16 px-3 py-2 text-center">Hapus</th>@endunless
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-hairline dark:divide-gray-700">
+                                        @forelse ($obsRows as $i => $row)
+                                            <tr wire:key="obs-{{ $i }}-{{ $row['waktu'] ?? '' }}">
+                                                <td class="px-3 py-2 text-muted-soft">{{ $i + 1 }}</td>
+                                                <td class="px-3 py-2 whitespace-nowrap">{{ $row['waktu'] ?? '-' }}</td>
+                                                <td class="px-3 py-2 whitespace-nowrap">{{ (filled($row['sistolik'] ?? '') || filled($row['diastolik'] ?? '')) ? (($row['sistolik'] ?? '-') . '/' . ($row['diastolik'] ?? '-')) : '-' }}</td>
+                                                <td class="px-3 py-2">{{ filled($row['nadi'] ?? '') ? $row['nadi'] : '-' }}</td>
+                                                <td class="px-3 py-2">{{ filled($row['nafas'] ?? '') ? $row['nafas'] : '-' }}</td>
+                                                <td class="px-3 py-2">{{ filled($row['suhu'] ?? '') ? $row['suhu'] : '-' }}</td>
+                                                <td class="px-3 py-2">{{ filled($row['spo2'] ?? '') ? $row['spo2'] : '-' }}</td>
+                                                <td class="px-3 py-2">{{ filled($row['gda'] ?? '') ? $row['gda'] : '-' }}</td>
+                                                <td class="px-3 py-2">{{ filled($row['catatan'] ?? '') ? $row['catatan'] : '-' }}</td>
+                                                @unless ($viewOnly)
+                                                    <td class="px-3 py-2 text-center">
+                                                        <x-outline-button type="button" wire:click.prevent="removeObservasi({{ $i }})" wire:loading.attr="disabled"
+                                                            class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30" title="Hapus">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                        </x-outline-button>
+                                                    </td>
+                                                @endunless
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="{{ $viewOnly ? 9 : 10 }}" class="px-3 py-4 text-center text-muted-soft">Belum ada observasi berkala.</td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
                         </section>
 
                         {{-- ══ JENIS ANESTESI ══ --}}
@@ -1148,6 +1313,8 @@ new class extends Component {
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Keadaan Umum</dt>
                                                             <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['keadaanUmum'] ?: '-' }}</dd>
                                                         </div>
+                                                        @php $adaTtvMasuk = filled($entry['sistolik'] ?? '') || filled($entry['diastolik'] ?? '') || filled($entry['nadi'] ?? '') || filled($entry['rr'] ?? '') || filled($entry['suhu'] ?? '') || filled($entry['spo2'] ?? '') || filled($entry['gda'] ?? '') || filled($entry['td'] ?? ''); @endphp
+                                                        @if ($adaTtvMasuk)
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tekanan Darah</dt>
                                                             <dd class="mt-0.5 text-ink dark:text-gray-200">{{ filled($entry['sistolik'] ?? '') || filled($entry['diastolik'] ?? '') ? ($entry['sistolik'] ?? '-') . '/' . ($entry['diastolik'] ?? '-') . ' mmHg' : (($entry['td'] ?? '') ?: '-') }}</dd>
@@ -1172,6 +1339,7 @@ new class extends Component {
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">GDA (g/dl)</dt>
                                                             <dd class="mt-0.5 text-ink dark:text-gray-200">{{ ($entry['gda'] ?? '') ?: '-' }}</dd>
                                                         </div>
+                                                        @endif
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Jenis Anestesi</dt>
                                                             <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $entry['jenisAnestesi'] ?: '-' }}</dd>
@@ -1215,6 +1383,46 @@ new class extends Component {
                                                         <div class="md:col-span-2">
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Keterangan Rekomendasi</dt>
                                                             <dd class="mt-0.5 whitespace-pre-line text-ink dark:text-gray-200">{{ $entry['keteranganRekomendasi'] ?: '-' }}</dd>
+                                                        </div>
+                                                        <div class="md:col-span-2">
+                                                            <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Observasi Lanjutan (pemantauan berkala)</dt>
+                                                            <dd class="mt-1">
+                                                                @php $obsDetail = $entry['observasi'] ?? []; @endphp
+                                                                @if (empty($obsDetail))
+                                                                    <span class="text-muted-soft">-</span>
+                                                                @else
+                                                                    <div class="overflow-x-auto border rounded-lg border-hairline dark:border-gray-700">
+                                                                        <table class="w-full text-xs text-left">
+                                                                            <thead class="font-semibold uppercase text-muted-soft bg-surface-soft dark:bg-gray-800/50">
+                                                                                <tr>
+                                                                                    <th class="px-2 py-1.5">Waktu</th>
+                                                                                    <th class="px-2 py-1.5">TD</th>
+                                                                                    <th class="px-2 py-1.5">Nadi</th>
+                                                                                    <th class="px-2 py-1.5">Nafas</th>
+                                                                                    <th class="px-2 py-1.5">Suhu</th>
+                                                                                    <th class="px-2 py-1.5">SpO2</th>
+                                                                                    <th class="px-2 py-1.5">GDA</th>
+                                                                                    <th class="px-2 py-1.5">Catatan</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody class="divide-y divide-hairline dark:divide-gray-700">
+                                                                                @foreach ($obsDetail as $row)
+                                                                                    <tr>
+                                                                                        <td class="px-2 py-1.5 whitespace-nowrap">{{ $row['waktu'] ?? '-' }}</td>
+                                                                                        <td class="px-2 py-1.5 whitespace-nowrap">{{ (filled($row['sistolik'] ?? '') || filled($row['diastolik'] ?? '')) ? (($row['sistolik'] ?? '-') . '/' . ($row['diastolik'] ?? '-')) : '-' }}</td>
+                                                                                        <td class="px-2 py-1.5">{{ filled($row['nadi'] ?? '') ? $row['nadi'] : '-' }}</td>
+                                                                                        <td class="px-2 py-1.5">{{ filled($row['nafas'] ?? '') ? $row['nafas'] : '-' }}</td>
+                                                                                        <td class="px-2 py-1.5">{{ filled($row['suhu'] ?? '') ? $row['suhu'] : '-' }}</td>
+                                                                                        <td class="px-2 py-1.5">{{ filled($row['spo2'] ?? '') ? $row['spo2'] : '-' }}</td>
+                                                                                        <td class="px-2 py-1.5">{{ filled($row['gda'] ?? '') ? $row['gda'] : '-' }}</td>
+                                                                                        <td class="px-2 py-1.5">{{ filled($row['catatan'] ?? '') ? $row['catatan'] : '-' }}</td>
+                                                                                    </tr>
+                                                                                @endforeach
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                @endif
+                                                            </dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Petugas (TTD)</dt>
