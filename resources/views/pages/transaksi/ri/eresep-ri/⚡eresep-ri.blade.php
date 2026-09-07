@@ -19,6 +19,7 @@ new class extends Component {
 
     public array $formResepHdr = [
         'resepDate' => '',
+        'cito' => '0', // '1' = CITO (didahulukan apotek), '0' = rutin — pola sama order lab/radiologi
     ];
 
     public array $renderVersions = [];
@@ -156,6 +157,7 @@ new class extends Component {
                 $data['eresepHdr'][] = [
                     'resepNo' => $newResepNo,
                     'resepDate' => $this->formResepHdr['resepDate'],
+                    'cito' => $this->formResepHdr['cito'] === '1' ? '1' : '0',
                     'regNo' => $data['regNo'],
                     'riHdrNo' => $this->riHdrNo,
                     'eresep' => [],
@@ -168,6 +170,7 @@ new class extends Component {
             });
 
             $this->formResepHdr['resepDate'] = Carbon::now()->format('d/m/Y H:i:s');
+            $this->formResepHdr['cito'] = '0';
             $this->incrementVersion('modal');
             $this->incrementVersion('hdr-list');
             $this->dispatch('toast', type: 'success', message: 'Resep baru berhasil dibuat.');
@@ -175,6 +178,46 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Exception $e) {
             $this->dispatch('toast', type: 'error', message: 'Gagal membuat resep: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
+     | CITO — ubah prioritas resep DRAFT
+     | Hanya sebelum TTD/kirim: setelah terkirim, apotek sudah membaca prioritasnya.
+     =============================== */
+    public function toggleCitoResep(int $resepIndex): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form terkunci, pasien sudah pulang.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($resepIndex) {
+                $this->lockRIRow($this->riHdrNo);
+
+                $data = $this->findDataRI($this->riHdrNo) ?? [];
+                $hdr = $data['eresepHdr'][$resepIndex] ?? null;
+                if (!$hdr) {
+                    throw new \RuntimeException('Header resep tidak ditemukan.');
+                }
+                if (!empty($hdr['tandaTanganDokter']['dokterPeresep'] ?? null) || !empty($hdr['slsNo'] ?? null)) {
+                    throw new \RuntimeException('Resep sudah ditandatangani / terkirim — prioritas tidak bisa diubah.');
+                }
+
+                $cito = ($hdr['cito'] ?? '0') === '1' ? '0' : '1';
+                $data['eresepHdr'][$resepIndex]['cito'] = $cito;
+
+                $this->updateJsonRI($this->riHdrNo, $data);
+                $this->dataDaftarRI = $data;
+                $this->appendAdminLogRI((int) $this->riHdrNo, 'Resep #' . ($hdr['resepNo'] ?? '-') . ($cito === '1' ? ' ditandai CITO' : ' — tanda CITO dicabut'), 'MR');
+            });
+
+            $this->incrementVersion('hdr-list');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal mengubah prioritas: ' . $e->getMessage());
         }
     }
 
@@ -425,6 +468,7 @@ new class extends Component {
                 $data['eresepHdr'][] = [
                     'resepNo' => $newResepNo,
                     'resepDate' => $now,
+                    'cito' => ($srcHdr['cito'] ?? '0') === '1' ? '1' : '0',
                     'regNo' => $srcHdr['regNo'],
                     'riHdrNo' => $this->riHdrNo,
                     'eresep' => $srcHdr['eresep'] ?? [],
@@ -669,6 +713,9 @@ new class extends Component {
                                         </x-primary-button>
                                     </div>
                                 </div>
+                                {{-- Prioritas CITO — pola sama order lab/radiologi: apotek mendahulukan resep ini --}}
+                                <x-toggle wire:model.live="formResepHdr.cito" trueValue="1" falseValue="0" onColor="bg-error"
+                                    label="CITO — didahulukan apotek" />
                             @endif
 
                             {{-- List Resep — urutan terbaru di atas (key asli dipertahankan untuk selectResep/removeResepHdr/setDokterPeresep) --}}
@@ -683,6 +730,9 @@ new class extends Component {
                                                 Resep #{{ $hdr['resepNo'] }}
                                             </div>
                                             <div class="text-sm text-muted">{{ $hdr['resepDate'] }}</div>
+                                            @if (($hdr['cito'] ?? '0') === '1')
+                                                <x-badge variant="danger" class="font-bold">CITO</x-badge>
+                                            @endif
 
                                             @php
                                                 $hasTTD   = !empty($hdr['tandaTanganDokter']['dokterPeresep'] ?? null);
@@ -728,6 +778,10 @@ new class extends Component {
                                                 {{-- ── DRAFT: belum TTD ── --}}
                                                 @if (!$hasTTD && !$isFormLocked)
                                                     @role(['Dokter', 'Admin'])
+                                                        {{-- Prioritas CITO masih bisa diubah selama draft --}}
+                                                        <x-toggle :current="$hdr['cito'] ?? '0'" trueValue="1" falseValue="0" onColor="bg-error"
+                                                            wireClick="toggleCitoResep({{ $idx }})" label="CITO — didahulukan apotek" />
+
                                                         {{-- TTD & Kirim ke Apotek --}}
                                                         <x-primary-button
                                                             wire:click="setDokterPeresep({{ $idx }})"

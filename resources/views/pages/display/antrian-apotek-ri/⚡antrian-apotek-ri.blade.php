@@ -108,10 +108,12 @@ new #[Layout('layouts.app-fullscreen')] class extends Component {
 
                 $racikan = false;
                 $hasResep = false;
+                $cito = false;
                 foreach ($j['eresepHdr'] ?? [] as $h) {
                     if ((int) ($h['slsNo'] ?? 0) === (int) $r->sls_no) {
                         $hasResep = true;
                         $racikan = (bool) ($h['isRacikan'] ?? false) || !empty($h['eresepRacikan'] ?? []);
+                        $cito = ($h['cito'] ?? '0') === '1';
                         break;
                     }
                 }
@@ -131,6 +133,7 @@ new #[Layout('layouts.app-fullscreen')] class extends Component {
                     'no_antrian' => $noAntrian,
                     'has_resep' => $hasResep,
                     'racikan' => $racikan,
+                    'cito' => $cito,
                 ];
             });
 
@@ -226,6 +229,9 @@ new #[Layout('layouts.app-fullscreen')] class extends Component {
                                         <div class="mt-1">
                                             @if ($row->has_resep)
                                                 <x-badge :variant="$row->racikan ? 'warning' : 'success'">{{ $row->racikan ? 'racikan' : 'non racikan' }}</x-badge>
+                                                @if ($row->cito)
+                                                    <x-badge variant="danger" class="font-bold">CITO</x-badge>
+                                                @endif
                                             @else
                                                 <x-badge variant="danger">menunggu resep</x-badge>
                                             @endif
@@ -261,6 +267,9 @@ new #[Layout('layouts.app-fullscreen')] class extends Component {
                                         <div class="mt-1">
                                             @if ($row->has_resep)
                                                 <x-badge :variant="$row->racikan ? 'warning' : 'success'">{{ $row->racikan ? 'racikan' : 'non racikan' }}</x-badge>
+                                                @if ($row->cito)
+                                                    <x-badge variant="danger" class="font-bold">CITO</x-badge>
+                                                @endif
                                             @else
                                                 <x-badge variant="alternative">—</x-badge>
                                             @endif

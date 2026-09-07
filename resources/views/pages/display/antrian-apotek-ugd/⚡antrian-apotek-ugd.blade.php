@@ -96,6 +96,7 @@ new #[Layout('layouts.app-fullscreen')] class extends Component {
                     'antrian' => $antrian,
                     'has_eresep' => isset($j['eresep']),
                     'racikan' => !empty($j['eresepRacikan'] ?? []),
+                    'cito' => ($j['eresepCito'] ?? '0') === '1',
                     '_q' => $antrian > 0 ? 1 : 0,
                     '_admin' => isset($j['AdministrasiUgd']) ? 1 : 0,
                 ];
@@ -195,6 +196,9 @@ new #[Layout('layouts.app-fullscreen')] class extends Component {
                                         <div class="mt-1">
                                             @if ($row->has_eresep)
                                                 <x-badge :variant="$row->racikan ? 'warning' : 'success'">{{ $row->racikan ? 'racikan' : 'non racikan' }}</x-badge>
+                                                @if ($row->cito)
+                                                    <x-badge variant="danger" class="font-bold">CITO</x-badge>
+                                                @endif
                                             @else
                                                 <x-badge variant="danger">menunggu resep</x-badge>
                                             @endif
@@ -227,6 +231,9 @@ new #[Layout('layouts.app-fullscreen')] class extends Component {
                                         <div class="mt-1">
                                             @if ($row->has_eresep)
                                                 <x-badge :variant="$row->racikan ? 'warning' : 'success'">{{ $row->racikan ? 'racikan' : 'non racikan' }}</x-badge>
+                                                @if ($row->cito)
+                                                    <x-badge variant="danger" class="font-bold">CITO</x-badge>
+                                                @endif
                                             @else
                                                 <x-badge variant="alternative">—</x-badge>
                                             @endif

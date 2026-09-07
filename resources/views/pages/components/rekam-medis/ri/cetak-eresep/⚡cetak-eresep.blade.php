@@ -79,6 +79,7 @@ new class extends Component {
             'regNo' => $hdr->reg_no,
             'eresep' => $eresep['eresep'] ?? [],
             'eresepRacikan' => $eresep['eresepRacikan'] ?? [],
+            'cito' => ($eresep['cito'] ?? '0') === '1',                        // prioritas dari dokter (e-resep RI)
             'telaahResep' => $apotek['telaahResep'] ?? [],
             'telaahObat' => $apotek['telaahObat'] ?? [],
             'poliDesc' => trim(($hdr->room_name ?? '') . ($hdr->bangsal_name ? ' (' . $hdr->bangsal_name . ')' : '')) ?: '-',

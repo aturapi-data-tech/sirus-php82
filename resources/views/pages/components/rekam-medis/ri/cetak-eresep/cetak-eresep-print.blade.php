@@ -25,6 +25,9 @@
                     @if (($dataDaftarPoliRJ['statusResep']['status'] ?? null) === 'DITINGGAL')
                         <span style="color:#dc2626"> Ditinggal</span>
                     @endif
+                    @if ($dataDaftarPoliRJ['cito'] ?? false)
+                        <span style="color:#dc2626; font-weight:bold"> CITO</span>
+                    @endif
                 </td>
             </tr>
             <tr>

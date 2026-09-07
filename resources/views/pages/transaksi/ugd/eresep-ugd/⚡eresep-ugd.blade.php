@@ -145,6 +145,42 @@ new class extends Component {
     }
 
     /* ===============================
+     | CITO — prioritas e-resep kunjungan ini (eresepCito '1'/'0').
+     | UGD memakai SATU daftar e-resep per kunjungan (bukan per header seperti RI),
+     | jadi penandanya di level kunjungan. Disimpan langsung supaya tidak hilang
+     | bila modal ditutup tanpa Simpan.
+     =============================== */
+    public function toggleEresepCito(): void
+    {
+        if (empty($this->rjNo) || $this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form terkunci.');
+            return;
+        }
+
+        try {
+            DB::transaction(function () {
+                $this->lockUGDRow($this->rjNo);
+
+                $data = $this->findDataUGD($this->rjNo) ?? [];
+                if (empty($data)) {
+                    throw new \RuntimeException('Data UGD tidak ditemukan, simpan dibatalkan.');
+                }
+
+                $cito = ($data['eresepCito'] ?? '0') === '1' ? '0' : '1';
+                $data['eresepCito'] = $cito;
+
+                $this->updateJsonUGD($this->rjNo, $data);
+                $this->dataDaftarUGD = $data;
+                $this->appendAdminLogUGD((int) $this->rjNo, $cito === '1' ? 'E-Resep ditandai CITO' : 'Tanda CITO e-resep dicabut', 'MR');
+            });
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal mengubah prioritas: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
      | HELPERS
      =============================== */
     protected function resetForm(): void
@@ -177,11 +213,17 @@ new class extends Component {
                         <livewire:pages::transaksi.ugd.display-pasien-ugd.display-pasien-ugd :rjNo="$rjNo"
                             wire:key="eresep-ugd-display-pasien-ugd-header-{{ $rjNo }}" />
 
-                        <div class="flex flex-wrap gap-2 mt-3">
+                        <div class="flex flex-wrap items-center gap-2 mt-3">
                             <x-badge variant="danger">UGD / IGD</x-badge>
                             @if ($isFormLocked)
                                 <x-badge variant="danger">Read Only</x-badge>
                             @endif
+                            @if (($dataDaftarUGD['eresepCito'] ?? '0') === '1')
+                                <x-badge variant="danger" class="font-bold">CITO</x-badge>
+                            @endif
+                            {{-- Prioritas CITO — pola sama order lab/radiologi: apotek mendahulukan resep ini --}}
+                            <x-toggle :current="$dataDaftarUGD['eresepCito'] ?? '0'" trueValue="1" falseValue="0" onColor="bg-error"
+                                wireClick="toggleEresepCito" :disabled="$isFormLocked" label="CITO — didahulukan apotek" class="ml-2" />
                         </div>
                     </div>
                     <x-icon-button color="gray" type="button" wire:click="closeModal" class="shrink-0">

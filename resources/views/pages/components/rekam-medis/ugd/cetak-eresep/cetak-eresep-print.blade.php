@@ -28,6 +28,9 @@
                     @if (($dataDaftarUGD['statusResep']['status'] ?? null) === 'DITINGGAL')
                         <span style="color:#dc2626"> Ditinggal</span>
                     @endif
+                    @if (($dataDaftarUGD['eresepCito'] ?? '0') === '1')
+                        <span style="color:#dc2626; font-weight:bold"> CITO</span>
+                    @endif
                 </td>
             </tr>
             <tr>

@@ -151,6 +151,7 @@ new class extends Component {
             $list[] = [
                 'resepNo'   => $h['resepNo'] ?? '-',
                 'resepDate' => $h['resepDate'] ?? '-',
+                'cito'      => ($h['cito'] ?? '0') === '1',
                 'dokter'    => $h['tandaTanganDokter']['dokterPeresep'] ?? null,
                 'slsNo'     => $slsNo,
                 'status'    => $status,
@@ -266,6 +267,9 @@ new class extends Component {
                             <div class="flex items-center gap-3">
                                 <span class="text-base font-semibold text-ink dark:text-gray-100">Resep #{{ $r['resepNo'] }}</span>
                                 <span class="text-sm text-muted dark:text-gray-400">{{ $r['resepDate'] }}</span>
+                                @if ($r['cito'])
+                                    <x-badge variant="danger" class="font-bold">CITO</x-badge>
+                                @endif
                             </div>
                             <div class="flex items-center gap-2">
                                 @if ($r['slsNo'])

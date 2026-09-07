@@ -182,14 +182,17 @@ new class extends Component {
                 $no = (int) ($row->no_antrian ?? 0);
                 $hasAntrian = $no > 0 ? 0 : 1;
 
-                // Tanpa resep (tidak ada e-resep utk slsNo ini) → taruh di urutan bawah
+                // Tanpa resep (tidak ada e-resep utk slsNo ini) → taruh di urutan bawah.
+                // CITO (ditandai dokter di e-resep) → paling atas selama belum selesai (status A).
                 $hasEresep = 0;
+                $cito = 0;
                 try {
                     $data = ($jsonRaw = OracleLob::read($row->datadaftarri_json ?? null, 'rstxn_rihdrs', 'rihdr_no', $row->rihdr_no, 'datadaftarri_json')) !== '' ? json_decode($jsonRaw, true) : null;
                     if (is_array($data)) {
                         foreach ($data['eresepHdr'] ?? [] as $h) {
-                            if ((int) ($h['slsNo'] ?? 0) === (int) $row->sls_no && !empty($h['eresep'])) {
-                                $hasEresep = 1;
+                            if ((int) ($h['slsNo'] ?? 0) === (int) $row->sls_no) {
+                                $cito = ($h['cito'] ?? '0') === '1' ? 1 : 0;
+                                $hasEresep = !empty($h['eresep']) ? 1 : 0;
                                 break;
                             }
                         }
@@ -198,11 +201,12 @@ new class extends Component {
                     // ignore — fallback tanpa resep
                 }
                 $tanpaResep = $hasEresep ? 0 : 1;
+                $citoAktif = $cito && strtoupper($row->status ?? 'A') !== 'L' ? 0 : 1;
 
                 $slsDate = $row->sls_date_display ?? '';
                 $ts = $slsDate !== '' ? strtotime(str_replace('/', '-', $slsDate)) : PHP_INT_MAX;
 
-                return [$hasAntrian, -$no, $tanpaResep, $ts];
+                return [$citoAktif, $hasAntrian, -$no, $tanpaResep, $ts];
             })
             ->values();
 
@@ -243,6 +247,8 @@ new class extends Component {
 
             // Resep info (dari eresepHdr — dokter)
             $row->resep_no = $eresepHdr['resepNo'] ?? null;
+            $row->cito = ($eresepHdr['cito'] ?? '0') === '1';
+            $row->cito_aktif = $row->cito && strtoupper($row->status ?? 'A') !== 'L';
             $row->jenis_resep = !empty($eresepHdr['eresepRacikan']) ? 'racikan' : 'non racikan';
             $row->has_eresep = !empty($eresepHdr['eresep']) ? 1 : 0;
             $row->has_eresep_racikan = !empty($eresepHdr['eresepRacikan']) ? 1 : 0;
@@ -431,8 +437,10 @@ new class extends Component {
                             @forelse ($this->rows as $row)
                                 <tr
                                     wire:key="ri-resep-antrian-row-{{ $row->sls_no }}"
-                                    class="transition bg-canvas dark:bg-gray-900 hover:shadow-md hover:bg-surface-soft dark:hover:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-hairline dark:ring-gray-700
-                                    {{ $row->no_antrian > 0 ? 'border-l-4 border-l-blue-500' : '' }}">
+                                    class="transition rounded-2xl shadow-sm ring-1 ring-hairline dark:ring-gray-700 hover:shadow-md
+                                    {{ $row->cito_aktif
+                                        ? 'bg-red-50 dark:bg-red-900/10 border-l-4 border-l-red-500 hover:bg-red-100 dark:hover:bg-red-900/20'
+                                        : 'bg-canvas dark:bg-gray-900 hover:bg-surface-soft dark:hover:bg-gray-800 ' . ($row->no_antrian > 0 ? 'border-l-4 border-l-blue-500' : '') }}">
 
                                     {{-- ANTRIAN & PASIEN --}}
                                     <td class="px-4 py-5 align-top">
@@ -475,6 +483,9 @@ new class extends Component {
                                                     #{{ $row->resep_no }}</span>
                                             @endif
                                         </div>
+                                        @if ($row->cito)
+                                            <x-badge variant="danger" class="font-bold" title="Ditandai CITO oleh dokter — dahulukan">CITO</x-badge>
+                                        @endif
                                         <div class="text-sm text-body dark:text-gray-300">
                                             {{ $row->dr_name ?? '-' }}
                                         </div>

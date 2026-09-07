@@ -183,7 +183,10 @@ new class extends Component {
                 $taskId6 = $json['taskIdPelayanan']['taskId6'] ?? '';
                 $t6 = $taskId6 !== '' ? strtotime(str_replace('/', '-', $taskId6)) : PHP_INT_MAX;
 
-                return [$hasAntrian, -$noAntrian, $tanpaResep, $t6];
+                // CITO (ditandai dokter di e-resep) → paling atas selama pasien masih antri (rj_status A)
+                $citoAktif = ($json['eresepCito'] ?? '0') === '1' && ($row->rj_status ?? '') === 'A' ? 0 : 1;
+
+                return [$citoAktif, $hasAntrian, -$noAntrian, $tanpaResep, $t6];
             })
             ->values();
 
@@ -202,6 +205,8 @@ new class extends Component {
             $row->has_eresep = isset($json['eresep']) ? 1 : 0;
             $row->has_eresep_racikan = isset($json['eresepRacikan']) ? 1 : 0;
             $row->eresep_count = $row->has_eresep + $row->has_eresep_racikan;
+            $row->cito = ($json['eresepCito'] ?? '0') === '1';
+            $row->cito_aktif = $row->cito && ($row->rj_status ?? '') === 'A';
 
             $row->telaah_resep_done = isset($json['telaahResep']['penanggungJawab']) && !empty($json['telaahResep']['penanggungJawab']);
             $row->telaah_obat_done = isset($json['telaahObat']['penanggungJawab']) && !empty($json['telaahObat']['penanggungJawab']);
@@ -390,8 +395,10 @@ new class extends Component {
                             @forelse ($this->rows as $row)
                                 <tr
                                     wire:key="antrian-apotek-ugd-row-{{ $row->rj_no }}"
-                                    class="transition bg-canvas dark:bg-gray-900 hover:shadow-md hover:bg-surface-soft dark:hover:bg-gray-800 rounded-2xl shadow-sm ring-1 ring-hairline dark:ring-gray-700
-                                    {{ $row->no_antrian_apotek > 0 ? 'border-l-4 border-l-emerald-500' : '' }}">
+                                    class="transition rounded-2xl shadow-sm ring-1 ring-hairline dark:ring-gray-700 hover:shadow-md
+                                    {{ $row->cito_aktif
+                                        ? 'bg-red-50 dark:bg-red-900/10 border-l-4 border-l-red-500 hover:bg-red-100 dark:hover:bg-red-900/20'
+                                        : 'bg-canvas dark:bg-gray-900 hover:bg-surface-soft dark:hover:bg-gray-800 ' . ($row->no_antrian_apotek > 0 ? 'border-l-4 border-l-emerald-500' : '') }}">
 
                                     {{-- ANTRIAN & PASIEN — tile nomor antrian apotek (pola sama dgn RJ/RI;
                                          sebelumnya UGD tidak menampilkan nomor sama sekali padahal sudah dihitung) --}}
@@ -470,6 +477,9 @@ new class extends Component {
                                                     class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                                                     Racikan
                                                 </span>
+                                            @endif
+                                            @if ($row->cito)
+                                                <x-badge variant="danger" class="font-bold" title="Ditandai CITO oleh dokter — dahulukan">CITO</x-badge>
                                             @endif
                                         </div>
                                         @if ($row->status_resep)
