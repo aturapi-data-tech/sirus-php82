@@ -1221,84 +1221,67 @@ new class extends Component {
                                                                 jalur="Rawat Jalan" />
 
                                                             {{-- GRID 2 KOLOM --}}
-                                                            <div class="grid grid-cols-2 gap-1">
+                                                            <div class="grid grid-cols-2 gap-1 items-stretch">
 
-                                                                {{-- Pendaftaran Ubah — Mr, Admin, Supervisor Tu --}}
                                                                 @hasanyrole(['Mr', 'Admin', 'Supervisor Tu'])
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openEdit('{{ $row->rj_no }}')"
-                                                                        class="px-3 py-2 text-sm rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40">
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40">
                                                                         <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0"
-                                                                                fill="none" stroke="currentColor"
-                                                                                viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round"
-                                                                                    stroke-linejoin="round"
-                                                                                    d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2.5 2.5 0 113.536 3.536L12.536 16.536a4 4 0 01-1.414.95L7 19l1.514-4.122A4 4 0 019 13z" />
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2.5 2.5 0 113.536 3.536L12.536 16.536a4 4 0 01-1.414.95L7 19l1.514-4.122A4 4 0 019 13z" />
                                                                             </svg>
-                                                                            <span>
-                                                                                Pendaftaran Ubah
+                                                                            <span class="min-w-0">
+                                                                                <span class="block font-semibold">Pendaftaran Ubah</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">Ubah data pendaftaran</span>
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
 
-                                                                {{-- Riwayat Jadwal Kontrol — Admin, Mr, Tu, Casemix --}}
                                                                 @hasanyrole('Admin|Mr|Tu|Casemix')
                                                                     <x-dropdown-link href="#"
                                                                         x-on:click.prevent="$dispatch('riwayat-kontrol.open', { regNo: '{{ $row->reg_no }}', regName: '{{ addslashes($row->reg_name) }}' })"
-                                                                        class="px-3 py-2 text-sm rounded-lg bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/30 dark:hover:bg-cyan-900/40">
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/30 dark:hover:bg-cyan-900/40">
                                                                         <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-cyan-700"
-                                                                                fill="none" stroke="currentColor"
-                                                                                viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round"
-                                                                                    stroke-linejoin="round"
-                                                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-cyan-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                                             </svg>
-                                                                            <span>
-                                                                                Riwayat Kontrol <br>
-                                                                                <span class="font-semibold">Jadwal SKDP RJ/RI</span>
+                                                                            <span class="min-w-0">
+                                                                                <span class="block font-semibold">Riwayat Kontrol</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">Jadwal SKDP RJ/RI</span>
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
 
-                                                                {{-- EMR RJ khusus Diagnosa (ICD-10 + prosedur). Admin/Casemix/Mr/Dokter --}}
                                                                 @hasanyrole('Admin|Casemix|Mr|Dokter')
                                                                     <x-dropdown-link href="#"
                                                                         x-on:click.prevent="$dispatch('daftar-rj.diagnosa.open', { rjNo: {{ $row->rj_no }} })"
-                                                                        class="px-3 py-2 text-sm rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/40">
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/40">
                                                                         <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-indigo-700"
-                                                                                fill="none" stroke="currentColor"
-                                                                                viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-indigo-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                                             </svg>
-                                                                            <span>
-                                                                                Diagnosa <br>
-                                                                                <span class="font-semibold">ICD-10 (EMR khusus diagnosa)</span>
+                                                                            <span class="min-w-0">
+                                                                                <span class="block font-semibold">Diagnosa</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">ICD-10 (EMR khusus diagnosa)</span>
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
 
-                                                                {{-- Kirim Satu Sehat — Admin, Mr --}}
                                                                 @can('satusehat.kirim')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openSatuSehat('{{ $row->rj_no }}')"
-                                                                        class="px-3 py-2 text-sm rounded-lg bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40">
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40">
                                                                         <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0"
-                                                                                fill="none" stroke="currentColor"
-                                                                                viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round"
-                                                                                    stroke-linejoin="round"
-                                                                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                                                             </svg>
-                                                                            <span>
-                                                                                Kirim Satu Sehat
+                                                                            <span class="min-w-0">
+                                                                                <span class="block font-semibold">Kirim Satu Sehat</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">FHIR — RJ (Rawat Jalan)</span>
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
