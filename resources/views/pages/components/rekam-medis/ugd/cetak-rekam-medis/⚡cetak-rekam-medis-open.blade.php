@@ -452,6 +452,8 @@ new class extends Component {
                                                     class="px-2.5 py-1.5 text-body dark:text-gray-300 border border-hairline dark:border-gray-700">
                                                     Dibawa saat ranap :
                                                     {{ filled($obat['dibawaRanap'] ?? null) ? $obat['dibawaRanap'] : '-' }}<br>
+                                                    Digunakan saat ranap :
+                                                    {{ filled($obat['digunakanRanap'] ?? null) ? $obat['digunakanRanap'] : '-' }}<br>
                                                     Lanjut saat pulang :
                                                     {{ filled($obat['lanjutPulang'] ?? null) ? $obat['lanjutPulang'] : '-' }}
                                                 </td>

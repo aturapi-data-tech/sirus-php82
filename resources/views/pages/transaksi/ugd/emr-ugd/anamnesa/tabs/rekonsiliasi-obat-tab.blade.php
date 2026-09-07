@@ -35,7 +35,8 @@
                         (ketiganya wajib).
                     </li>
                     <li>
-                        Tentukan <strong>Dibawa Saat Ranap</strong> (obat ikut dibawa ke ruangan) dan
+                        Tentukan <strong>Dibawa Saat Ranap</strong> (obat ikut dibawa ke ruangan),
+                        <strong>Digunakan Saat Ranap</strong> (obat tetap dipakai selama dirawat), dan
                         <strong>Lanjut Saat Pulang</strong> (obat diteruskan di rumah).
                     </li>
                     <li>
@@ -96,6 +97,12 @@
                     </div>
 
                     <div class="flex items-center justify-between gap-3">
+                        <x-input-label value="Digunakan Saat Ranap" :required="false" />
+                        <x-toggle wire:model.live="formEntryRekonsiliasi.digunakanRanap" trueValue="Ya" falseValue="Tidak"
+                            :label="$formEntryRekonsiliasi['digunakanRanap'] === 'Ya' ? 'Ya' : 'Tidak'" :disabled="$isFormLocked" />
+                    </div>
+
+                    <div class="flex items-center justify-between gap-3">
                         <x-input-label value="Lanjut Saat Pulang" :required="false" />
                         <x-toggle wire:model.live="formEntryRekonsiliasi.lanjutPulang" trueValue="Ya" falseValue="Tidak"
                             :label="$formEntryRekonsiliasi['lanjutPulang'] === 'Ya' ? 'Ya' : 'Tidak'" :disabled="$isFormLocked" />
@@ -149,7 +156,7 @@
                             {{-- Keputusan rekonsiliasi — tampil sebagai data saja (diisi lewat form Tambah). --}}
                             <td>
                                 <div class="space-y-1.5">
-                                    @foreach ([['dibawaRanap', 'Dibawa saat ranap'], ['lanjutPulang', 'Lanjut saat pulang']] as [$kolom, $judul])
+                                    @foreach ([['dibawaRanap', 'Dibawa saat ranap'], ['digunakanRanap', 'Digunakan saat ranap'], ['lanjutPulang', 'Lanjut saat pulang']] as [$kolom, $judul])
                                         @php $nilai = ($obat[$kolom] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak'; @endphp
                                         <div class="flex items-center justify-between gap-2">
                                             <span class="text-muted dark:text-gray-400">{{ $judul }}</span>

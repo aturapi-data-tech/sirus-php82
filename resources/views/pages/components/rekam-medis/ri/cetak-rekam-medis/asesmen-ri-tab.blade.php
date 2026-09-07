@@ -164,6 +164,7 @@
                                             </td>
                                             <td>
                                                 Dibawa saat ranap: {{ ($obat['dibawaRanap'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak' }}<br>
+                                                Digunakan saat ranap: {{ ($obat['digunakanRanap'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak' }}<br>
                                                 Lanjut saat pulang: {{ ($obat['lanjutPulang'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak' }}
                                             </td>
                                             {{-- Pencatat entri; baris hasil prefill = petugas UGD.

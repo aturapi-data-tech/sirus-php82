@@ -31,6 +31,7 @@ new class extends Component {
         'dosis' => '',
         'rute' => '',
         'dibawaRanap' => 'Tidak',
+        'digunakanRanap' => 'Tidak',
         'lanjutPulang' => 'Tidak',
     ];
 
@@ -386,7 +387,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi['pengkajianDokter']['anamnesa']['rekonsiliasiObat'][] = RekonsiliasiObat::barisBaru($this->formEntryRekonsiliasi['namaObat'], $this->formEntryRekonsiliasi['dosis'], $this->formEntryRekonsiliasi['rute'], $this->formEntryRekonsiliasi['dibawaRanap'] ?? 'Tidak', $this->formEntryRekonsiliasi['lanjutPulang'] ?? 'Tidak');
+        $this->dataDaftarRi['pengkajianDokter']['anamnesa']['rekonsiliasiObat'][] = RekonsiliasiObat::barisBaru($this->formEntryRekonsiliasi['namaObat'], $this->formEntryRekonsiliasi['dosis'], $this->formEntryRekonsiliasi['rute'], $this->formEntryRekonsiliasi['dibawaRanap'] ?? 'Tidak', $this->formEntryRekonsiliasi['digunakanRanap'] ?? 'Tidak', $this->formEntryRekonsiliasi['lanjutPulang'] ?? 'Tidak');
 
         $namaObat = $this->formEntryRekonsiliasi['namaObat'];
         $this->reset(['formEntryRekonsiliasi']);
@@ -705,7 +706,8 @@ new class extends Component {
                             (ketiganya wajib).
                         </li>
                         <li>
-                            Tentukan <strong>Dibawa Saat Ranap</strong> (obat ikut dibawa ke ruangan) dan
+                            Tentukan <strong>Dibawa Saat Ranap</strong> (obat ikut dibawa ke ruangan),
+                            <strong>Digunakan Saat Ranap</strong> (obat tetap dipakai selama dirawat), dan
                             <strong>Lanjut Saat Pulang</strong> (obat diteruskan di rumah).
                         </li>
                         <li>
@@ -763,6 +765,12 @@ new class extends Component {
                     </div>
 
                     <div class="flex items-center justify-between gap-3">
+                        <x-input-label value="Digunakan Saat Ranap" :required="false" />
+                        <x-toggle wire:model.live="formEntryRekonsiliasi.digunakanRanap" trueValue="Ya" falseValue="Tidak"
+                            :label="($formEntryRekonsiliasi['digunakanRanap'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak'" />
+                    </div>
+
+                    <div class="flex items-center justify-between gap-3">
                         <x-input-label value="Lanjut Saat Pulang" :required="false" />
                         <x-toggle wire:model.live="formEntryRekonsiliasi.lanjutPulang" trueValue="Ya" falseValue="Tidak"
                             :label="($formEntryRekonsiliasi['lanjutPulang'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak'" />
@@ -815,7 +823,7 @@ new class extends Component {
                                 {{-- Keputusan rekonsiliasi — tampil sebagai data saja (diisi lewat form Tambah). --}}
                                 <td>
                                     <div class="space-y-1.5">
-                                        @foreach ([['dibawaRanap', 'Dibawa saat ranap'], ['lanjutPulang', 'Lanjut saat pulang']] as [$kolom, $judul])
+                                        @foreach ([['dibawaRanap', 'Dibawa saat ranap'], ['digunakanRanap', 'Digunakan saat ranap'], ['lanjutPulang', 'Lanjut saat pulang']] as [$kolom, $judul])
                                             @php $nilai = ($obat[$kolom] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak'; @endphp
                                             <div class="flex items-center justify-between gap-2">
                                                 <span

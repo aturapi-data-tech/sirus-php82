@@ -44,6 +44,7 @@ new class extends Component {
         'dosis' => '',
         'rute' => '',
         'dibawaRanap' => 'Tidak',
+        'digunakanRanap' => 'Tidak',
         'lanjutPulang' => 'Tidak',
     ];
 
@@ -394,7 +395,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD['anamnesa']['rekonsiliasiObat'][] = RekonsiliasiObat::barisBaru($this->formEntryRekonsiliasi['namaObat'], $this->formEntryRekonsiliasi['dosis'], $this->formEntryRekonsiliasi['rute'], $this->formEntryRekonsiliasi['dibawaRanap'], $this->formEntryRekonsiliasi['lanjutPulang']);
+        $this->dataDaftarUGD['anamnesa']['rekonsiliasiObat'][] = RekonsiliasiObat::barisBaru($this->formEntryRekonsiliasi['namaObat'], $this->formEntryRekonsiliasi['dosis'], $this->formEntryRekonsiliasi['rute'], $this->formEntryRekonsiliasi['dibawaRanap'], $this->formEntryRekonsiliasi['digunakanRanap'], $this->formEntryRekonsiliasi['lanjutPulang']);
 
         $namaObat = $this->formEntryRekonsiliasi['namaObat'];
         $this->reset(['formEntryRekonsiliasi']);

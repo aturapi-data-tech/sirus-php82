@@ -295,6 +295,7 @@
                 <td class="px-2 py-1 border border-black">{{ $obatRekonsiliasi['rute'] ?: '-' }}</td>
                 <td class="px-2 py-1 border border-black">
                     Dibawa saat ranap : {{ $obatRekonsiliasi['dibawaRanap'] }}<br>
+                    Digunakan saat ranap : {{ $obatRekonsiliasi['digunakanRanap'] }}<br>
                     Lanjut saat pulang : {{ $obatRekonsiliasi['lanjutPulang'] }}
                 </td>
                 <td class="px-2 py-1 border border-black">

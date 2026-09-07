@@ -182,6 +182,7 @@
                         @forelse ($dataDaftarTxn['anamnesa']['rekonsiliasiObat'] ?? [] as $obat)
                             @php
                                 $dibawaRanap = filled($obat['dibawaRanap'] ?? null) ? $obat['dibawaRanap'] : '-';
+                                $digunakanRanap = filled($obat['digunakanRanap'] ?? null) ? $obat['digunakanRanap'] : '-';
                                 $lanjutPulang = filled($obat['lanjutPulang'] ?? null) ? $obat['lanjutPulang'] : '-';
                                 $petugasRekon = filled($obat['petugasRekonsiliasi'] ?? null) ? $obat['petugasRekonsiliasi'] : '-';
                                 $tglRekon = filled($obat['tglRekonsiliasi'] ?? null) ? $obat['tglRekonsiliasi'] : '';
@@ -192,6 +193,7 @@
                                 <td class="border border-gray-500 px-1 py-0.5">{{ $obat['rute'] ?? '-' }}</td>
                                 <td class="border border-gray-500 px-1 py-0.5" style="white-space:nowrap">
                                     Dibawa saat ranap : {{ $dibawaRanap }}<br>
+                                    Digunakan saat ranap : {{ $digunakanRanap }}<br>
                                     Lanjut saat pulang : {{ $lanjutPulang }}
                                 </td>
                                 {{-- Pencatat entri; baris lama (sebelum field ini ada) tercetak '-'. --}}

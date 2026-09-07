@@ -26,13 +26,14 @@ final class RekonsiliasiObat
      * Baris BARU + stempel pencatat (user yang sedang login, jam sekarang).
      * Dipakai saat petugas menekan Tambah, di pintu mana pun.
      */
-    public static function barisBaru(string $namaObat, string $dosis, string $rute, ?string $dibawaRanap = 'Tidak', ?string $lanjutPulang = 'Tidak'): array
+    public static function barisBaru(string $namaObat, string $dosis, string $rute, ?string $dibawaRanap = 'Tidak', ?string $digunakanRanap = 'Tidak', ?string $lanjutPulang = 'Tidak'): array
     {
         return [
             'namaObat' => trim($namaObat),
             'dosis' => trim($dosis),
             'rute' => $rute,
             'dibawaRanap' => self::yaAtauTidak($dibawaRanap),
+            'digunakanRanap' => self::yaAtauTidak($digunakanRanap),
             'lanjutPulang' => self::yaAtauTidak($lanjutPulang),
             // Jejak pencatat menempel di entri (bukan cuma di audit log), supaya
             // ikut terbawa saat prefill ke RI dan bisa ditampilkan di cetakan.
@@ -55,6 +56,7 @@ final class RekonsiliasiObat
             'dosis' => (string) ($obat['dosis'] ?? ''),
             'rute' => (string) ($obat['rute'] ?? ''),
             'dibawaRanap' => self::yaAtauTidak($obat['dibawaRanap'] ?? null),
+            'digunakanRanap' => self::yaAtauTidak($obat['digunakanRanap'] ?? null),
             'lanjutPulang' => self::yaAtauTidak($obat['lanjutPulang'] ?? null),
             'tglRekonsiliasi' => (string) ($obat['tglRekonsiliasi'] ?? ''),
             'petugasRekonsiliasi' => (string) ($obat['petugasRekonsiliasi'] ?? ''),
