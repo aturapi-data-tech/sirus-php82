@@ -26,6 +26,7 @@
     $tandaVitalAwal = (array) data_get($pengkajianAwal, 'bagian4PemeriksaanFisik.tandaVital', []);
     $pengkajianDokter = (array) $ambil('pengkajianDokter', []);
     $rekonsiliasiObat = (array) data_get($pengkajianDokter, 'anamnesa.rekonsiliasiObat', []);
+    $statusRekonsiliasiObat = data_get($pengkajianDokter, 'anamnesa.' . \App\Support\RekonsiliasiObat::STATUS_KEY);
 
     // — Diagnosis & prosedur (ICD-10 / ICD-9) yang ditegakkan selama ranap
     $daftarDiagnosis = (array) $ambil('diagnosis', []);
@@ -134,8 +135,11 @@
 
                 <div class="pt-2">
                     <p class="mb-1 font-semibold text-ink dark:text-gray-100">Rekonsiliasi Obat</p>
+                    <p class="mb-2">
+                        <x-badge :variant="\App\Support\RekonsiliasiObat::sudahDirekonsiliasi($statusRekonsiliasiObat) ? 'success' : 'warning'">{{ \App\Support\RekonsiliasiObat::teksStatus($statusRekonsiliasiObat) }}</x-badge>
+                    </p>
                     @if (empty($rekonsiliasiObat))
-                        <p class="italic text-muted-soft">Belum ada riwayat pemakaian obat.</p>
+                        <p class="italic text-muted-soft">{{ \App\Support\RekonsiliasiObat::teksDaftarKosong($statusRekonsiliasiObat) }}</p>
                     @else
                         <div class="overflow-x-auto border rounded-xl border-hairline dark:border-gray-700">
                             <table class="ds-table">

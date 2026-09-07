@@ -295,9 +295,12 @@ new class extends Component {
                 // (titik-3 Daftar RI) bisa menambah baris selagi form ini terbuka, dan
                 // form ini menimpa SELURUH node pengkajianDokter dgn salinan di layar.
                 $daftarRekonsiliasiObatDb = (array) data_get($fresh, 'pengkajianDokter.anamnesa.rekonsiliasiObat', []);
+                $statusRekonsiliasiDb = data_get($fresh, 'pengkajianDokter.anamnesa.' . RekonsiliasiObat::STATUS_KEY);
 
                 $fresh['pengkajianDokter'] = $this->dataDaftarRi['pengkajianDokter'] ?? [];
                 $fresh['pengkajianDokter']['anamnesa']['rekonsiliasiObat'] = RekonsiliasiObat::gabungTigaArah($this->rekonsiliasiObatSaatDibuka, (array) data_get($this->dataDaftarRi, 'pengkajianDokter.anamnesa.rekonsiliasiObat', []), $daftarRekonsiliasiObatDb);
+                // Ceklis apoteker tidak pernah diubah dari form ini — nilai DB yang dipakai.
+                RekonsiliasiObat::pertahankanStatus($fresh['pengkajianDokter']['anamnesa'], $statusRekonsiliasiDb);
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->dataDaftarRi = $fresh;
@@ -722,6 +725,16 @@ new class extends Component {
                 </div>
             </div>
 
+            {{-- Ceklis Apoteker — ditampilkan saja; diubah lewat modal Rekonsiliasi Obat (titik-3 Daftar RI). --}}
+            @php
+                $statusRekonsiliasi = data_get($dataDaftarRi, 'pengkajianDokter.anamnesa.' . RekonsiliasiObat::STATUS_KEY);
+                $sudahDirekonsiliasi = RekonsiliasiObat::sudahDirekonsiliasi($statusRekonsiliasi);
+            @endphp
+            <div class="flex flex-wrap items-center gap-2">
+                <x-badge :variant="$sudahDirekonsiliasi ? 'success' : 'warning'">{{ RekonsiliasiObat::teksStatus($statusRekonsiliasi) }}</x-badge>
+                <span class="text-xs text-muted dark:text-gray-400">Ceklis diubah Apoteker lewat menu titik-3 Daftar RI.</span>
+            </div>
+
             @if (!$isFormLocked && !$isReadOnlyByRole)
                 {{-- Nama Obat · Dosis · Rute sebaris — pola sama dgn Rekonsiliasi Obat UGD --}}
                 <div class="grid grid-cols-12 gap-2">
@@ -872,7 +885,7 @@ new class extends Component {
                         @empty
                             <tr>
                                 <td colspan="5" class="ds-c italic text-muted-soft">
-                                    Belum ada riwayat pemakaian obat.
+                                    {{ RekonsiliasiObat::teksDaftarKosong($statusRekonsiliasi) }}
                                 </td>
                             </tr>
                         @endforelse

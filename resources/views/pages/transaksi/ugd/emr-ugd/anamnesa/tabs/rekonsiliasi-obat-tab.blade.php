@@ -1,7 +1,11 @@
 {{-- pages/transaksi/ugd/emr-ugd/anamnesa/tabs/rekonsiliasi-obat-tab.blade.php --}}
 {{-- @use wajib: partial TIDAK mewarisi import dari berkas induknya. --}}
 @use('App\Support\RekonsiliasiObat')
-@php $daftarRekonsiliasiObat = $dataDaftarUGD['anamnesa']['rekonsiliasiObat'] ?? []; @endphp
+@php
+    $daftarRekonsiliasiObat = $dataDaftarUGD['anamnesa']['rekonsiliasiObat'] ?? [];
+    $statusRekonsiliasi = $dataDaftarUGD['anamnesa'][RekonsiliasiObat::STATUS_KEY] ?? null;
+    $sudahDirekonsiliasi = RekonsiliasiObat::sudahDirekonsiliasi($statusRekonsiliasi);
+@endphp
 
 <x-border-form :title="__('Rekonsiliasi Obat')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
     <div class="space-y-4">
@@ -49,6 +53,12 @@
                     barisnya lalu tambahkan ulang dengan keterangan yang benar.
                 </p>
             </div>
+        </div>
+
+        {{-- Ceklis Apoteker — ditampilkan saja; diubah lewat modal Rekonsiliasi Obat (titik-3 Pelayanan UGD). --}}
+        <div class="flex flex-wrap items-center gap-2">
+            <x-badge :variant="$sudahDirekonsiliasi ? 'success' : 'warning'">{{ RekonsiliasiObat::teksStatus($statusRekonsiliasi) }}</x-badge>
+            <span class="text-xs text-muted dark:text-gray-400">Ceklis diubah Apoteker lewat menu titik-3 Pelayanan UGD.</span>
         </div>
 
         {{-- Form tambah --}}
@@ -198,7 +208,7 @@
                     @empty
                         <tr>
                             <td colspan="5" class="ds-c italic text-muted-soft">
-                                Belum ada riwayat pemakaian obat.
+                                {{ RekonsiliasiObat::teksDaftarKosong($statusRekonsiliasi) }}
                             </td>
                         </tr>
                     @endforelse

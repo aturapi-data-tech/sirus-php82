@@ -30,6 +30,9 @@ new class extends Component {
      */
     public array $rekonsiliasiObatSaatDibuka = [];
 
+    /** Ceklis "sudah direkonsiliasi Apoteker" — node sebelah daftar (RekonsiliasiObat::STATUS_KEY). */
+    public array $statusRekonsiliasi = [];
+
     /** LOV Rute dari sumber tunggal — disiapkan di kelas supaya markup tidak
      *  perlu menyebut nama class (aturan naming-conventions §2). */
     public array $ruteOptions = RekonsiliasiObat::RUTE;
@@ -64,6 +67,7 @@ new class extends Component {
         $this->isFormLocked = $this->checkEmrUGDStatus($rjNo);
         $this->daftarRekonsiliasiObat = RekonsiliasiObat::normalkanDaftar(data_get($data, 'anamnesa.rekonsiliasiObat', []));
         $this->rekonsiliasiObatSaatDibuka = $this->daftarRekonsiliasiObat;
+        $this->statusRekonsiliasi = RekonsiliasiObat::normalkanStatus(data_get($data, 'anamnesa.' . RekonsiliasiObat::STATUS_KEY));
 
         $this->dispatch('open-modal', name: 'rekonsiliasi-obat-ugd');
     }
@@ -115,10 +119,28 @@ new class extends Component {
         $this->simpan('Hapus Rekonsiliasi Obat UGD (Farmasi) — ' . $namaObat);
     }
 
+    /**
+     * Ceklis "sudah direkonsiliasi Apoteker" — pernyataan bahwa seluruh obat
+     * bawaan pasien sudah dikaji, TERMASUK bila pasien tak memakai obat apa pun
+     * (daftar kosong + ceklis = "Tidak ada riwayat pemakaian obat").
+     */
+    public function toggleSudahDirekonsiliasi(): void
+    {
+        if (!$this->siapDiubah()) {
+            return;
+        }
+
+        $sudah = RekonsiliasiObat::sudahDirekonsiliasi($this->statusRekonsiliasi);
+        $this->statusRekonsiliasi = $sudah ? RekonsiliasiObat::statusKosong() : RekonsiliasiObat::statusDicentang();
+
+        $this->simpan('Rekonsiliasi Obat UGD (Farmasi) — ' . ($sudah ? 'ceklis apoteker dibatalkan' : 'diceklis sudah direkonsiliasi apoteker'));
+    }
+
     public function closeModal(): void
     {
         $this->rjNo = null;
         $this->daftarRekonsiliasiObat = [];
+        $this->statusRekonsiliasi = [];
         $this->isFormLocked = false;
         $this->resetFormEntry();
         $this->resetValidation();
@@ -147,6 +169,7 @@ new class extends Component {
                 $daftarRekonsiliasiObatGabungan = RekonsiliasiObat::gabungTigaArah($this->rekonsiliasiObatSaatDibuka, $this->daftarRekonsiliasiObat, (array) data_get($fresh, 'anamnesa.rekonsiliasiObat', []));
 
                 data_set($fresh, 'anamnesa.rekonsiliasiObat', $daftarRekonsiliasiObatGabungan);
+                data_set($fresh, 'anamnesa.' . RekonsiliasiObat::STATUS_KEY, $this->statusRekonsiliasi);
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
 
                 $this->daftarRekonsiliasiObat = $daftarRekonsiliasiObatGabungan;
@@ -267,6 +290,27 @@ new class extends Component {
                             </div>
 
                             <div class="space-y-4">
+
+                                {{-- Ceklis Apoteker — membedakan "belum dikaji" dari "dikaji, tidak ada obat".
+                                     Satu-satunya pintu yang boleh mengubahnya; form EMR hanya menampilkan. --}}
+                                @php $sudahDirekonsiliasi = RekonsiliasiObat::sudahDirekonsiliasi($statusRekonsiliasi); @endphp
+                                <div
+                                    class="flex flex-wrap items-center justify-between gap-3 p-3 border rounded-xl border-hairline dark:border-gray-700 {{ $sudahDirekonsiliasi ? 'bg-success-tint dark:bg-green-900/20' : 'bg-warning-tint dark:bg-amber-900/20' }}">
+                                    <div class="min-w-0">
+                                        <div class="font-semibold {{ $sudahDirekonsiliasi ? 'text-success-deep dark:text-green-200' : 'text-warning-deep dark:text-amber-200' }}">
+                                            {{ $sudahDirekonsiliasi ? 'Sudah direkonsiliasi Apoteker' : 'Belum direkonsiliasi Apoteker' }}
+                                        </div>
+                                        <div class="text-xs text-muted dark:text-gray-400">
+                                            @if ($sudahDirekonsiliasi)
+                                                {{ $statusRekonsiliasi['petugasRekonsiliasi'] ?? '-' }} &middot; {{ $statusRekonsiliasi['tglRekonsiliasi'] ?? '-' }}
+                                            @else
+                                                Centang setelah seluruh obat bawaan pasien dikaji &mdash; termasuk bila pasien tidak memakai obat apa pun.
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <x-toggle :current="$statusRekonsiliasi['sudahDirekonsiliasi'] ?? ''" trueValue="Ya" falseValue=""
+                                        wireClick="toggleSudahDirekonsiliasi" :disabled="$isFormLocked" label="Sudah direkonsiliasi" />
+                                </div>
 
                                 @unless ($isFormLocked)
                                     <div class="space-y-3">
@@ -409,7 +453,7 @@ new class extends Component {
                                             @empty
                                                 <tr>
                                                     <td colspan="5" class="ds-c italic text-muted-soft">
-                                                        Belum ada riwayat pemakaian obat.
+                                                        {{ RekonsiliasiObat::teksDaftarKosong($statusRekonsiliasi) }}
                                                     </td>
                                                 </tr>
                                             @endforelse

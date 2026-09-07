@@ -212,9 +212,12 @@ new class extends Component {
                 // Farmasi (titik-3 Pelayanan UGD) bisa menambah baris selagi form ini
                 // terbuka, dan baris ini menimpa SELURUH node anamnesa dgn salinan layar.
                 $daftarRekonsiliasiObatDb = (array) data_get($data, 'anamnesa.rekonsiliasiObat', []);
+                $statusRekonsiliasiDb = data_get($data, 'anamnesa.' . RekonsiliasiObat::STATUS_KEY);
 
                 $data['anamnesa'] = $this->dataDaftarUGD['anamnesa'] ?? [];
                 $data['anamnesa']['rekonsiliasiObat'] = RekonsiliasiObat::gabungTigaArah($this->rekonsiliasiObatSaatDibuka, (array) data_get($this->dataDaftarUGD, 'anamnesa.rekonsiliasiObat', []), $daftarRekonsiliasiObatDb);
+                // Ceklis apoteker tidak pernah diubah dari form ini — nilai DB yang dipakai.
+                RekonsiliasiObat::pertahankanStatus($data['anamnesa'], $statusRekonsiliasiDb);
 
                 // 4. Update waktu_pasien_datang + waktu_pasien_dilayani
                 $now = Carbon::now()->format('d/m/Y H:i:s');

@@ -166,7 +166,7 @@
                 <span class="font-bold">Riwayat Penyakit Sekarang :</span> {!! nl2br(e($dataDaftarTxn['anamnesa']['riwayatPenyakitSekarangUmum']['riwayatPenyakitSekarangUmum'] ?? '-')) !!}<br>
                 <span class="font-bold">Riwayat Penyakit Dahulu :</span> {!! nl2br(e($dataDaftarTxn['anamnesa']['riwayatPenyakitDahulu']['riwayatPenyakitDahulu'] ?? '-')) !!}<br>
                 <span class="font-bold">Alergi :</span> {!! nl2br(e(\App\Support\Terminologi\AlergiSnomed::untukCetak($dataDaftarTxn['anamnesa']['alergi'] ?? []))) !!}<br>
-                <span class="font-bold">Rekonsiliasi Obat :</span>
+                <span class="font-bold">Rekonsiliasi Obat :</span> {{ \App\Support\RekonsiliasiObat::teksStatus($dataDaftarTxn['anamnesa'][\App\Support\RekonsiliasiObat::STATUS_KEY] ?? null) }}
                 <table class="w-full border-collapse mt-0.5 text-[10px]">
                     <thead>
                         <tr class="bg-gray-100">
@@ -203,11 +203,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td class="border border-gray-500 px-1 py-0.5">&nbsp;</td>
-                                <td class="border border-gray-500 px-1 py-0.5">&nbsp;</td>
-                                <td class="border border-gray-500 px-1 py-0.5">&nbsp;</td>
-                                <td class="border border-gray-500 px-1 py-0.5">&nbsp;</td>
-                                <td class="border border-gray-500 px-1 py-0.5">&nbsp;</td>
+                                <td class="border border-gray-500 px-1 py-0.5" colspan="5">{{ \App\Support\RekonsiliasiObat::teksDaftarKosong($dataDaftarTxn['anamnesa'][\App\Support\RekonsiliasiObat::STATUS_KEY] ?? null) }}</td>
                             </tr>
                         @endforelse
                     </tbody>

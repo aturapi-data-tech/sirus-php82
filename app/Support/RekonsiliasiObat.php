@@ -147,6 +147,101 @@ final class RekonsiliasiObat
         return array_values($hasil);
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Ceklis "sudah direkonsiliasi Apoteker" — node SEBELAH daftar
+    |--------------------------------------------------------------------------
+    | Disimpan di key STATUS_KEY, bersebelahan dgn `rekonsiliasiObat`, bukan di
+    | dalam daftar: daftar tetap array polos sehingga semua pembaca lama (cetak,
+    | merge tiga arah, prefill UGD->RI) tidak perlu tahu.
+    |
+    | Daftar kosong itu AMBIGU — pasien memang tak memakai obat apa pun, atau
+    | apoteker belum mengkaji. Ceklis inilah yang membedakannya:
+    |   - belum diceklis, daftar kosong -> "Belum ada riwayat pemakaian obat."
+    |   - sudah diceklis, daftar kosong -> "Tidak ada riwayat pemakaian obat."
+    |
+    | Hanya pintu Farmasi (modal titik-3 RI/UGD) yang boleh mengubahnya; form EMR
+    | menampilkannya saja dan WAJIB mempertahankan nilai DB saat menimpa node
+    | induk (lihat pertahankanStatus()).
+    */
+
+    public const STATUS_KEY = 'rekonsiliasiObatStatus';
+
+    /** Ceklis DICENTANG oleh user yang sedang login, jam sekarang. */
+    public static function statusDicentang(): array
+    {
+        return [
+            'sudahDirekonsiliasi' => 'Ya',
+            'tglRekonsiliasi' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
+            'petugasRekonsiliasi' => auth()->user()?->myuser_name ?? '',
+            'petugasRekonsiliasiCode' => auth()->user()?->myuser_code ?? '',
+        ];
+    }
+
+    /** Ceklis dibatalkan — key tetap ada supaya pembaca tak perlu cek isset. */
+    public static function statusKosong(): array
+    {
+        return ['sudahDirekonsiliasi' => '', 'tglRekonsiliasi' => '', 'petugasRekonsiliasi' => '', 'petugasRekonsiliasiCode' => ''];
+    }
+
+    /** Seragamkan node status dari sumber mana pun (record lama = kosong). */
+    public static function normalkanStatus(mixed $status): array
+    {
+        $status = is_array($status) ? $status : [];
+
+        return [
+            'sudahDirekonsiliasi' => self::yaAtauTidak($status['sudahDirekonsiliasi'] ?? null) === 'Ya' ? 'Ya' : '',
+            'tglRekonsiliasi' => (string) ($status['tglRekonsiliasi'] ?? ''),
+            'petugasRekonsiliasi' => (string) ($status['petugasRekonsiliasi'] ?? ''),
+            'petugasRekonsiliasiCode' => (string) ($status['petugasRekonsiliasiCode'] ?? ''),
+        ];
+    }
+
+    public static function sudahDirekonsiliasi(mixed $status): bool
+    {
+        return self::normalkanStatus($status)['sudahDirekonsiliasi'] === 'Ya';
+    }
+
+    /** Teks baris kosong tabel — dibedakan menurut ceklis apoteker. */
+    public static function teksDaftarKosong(mixed $status): string
+    {
+        return self::sudahDirekonsiliasi($status) ? 'Tidak ada riwayat pemakaian obat.' : 'Belum ada riwayat pemakaian obat.';
+    }
+
+    /**
+     * Teks status untuk tampilan/cetak: "Sudah — nama, tgl" atau "Belum".
+     * Petugas ikut karena ceklis adalah pernyataan klinis yang harus ada penanggungnya.
+     */
+    public static function teksStatus(mixed $status): string
+    {
+        $status = self::normalkanStatus($status);
+        if ($status['sudahDirekonsiliasi'] !== 'Ya') {
+            return 'Belum direkonsiliasi Apoteker';
+        }
+
+        $jejak = collect([$status['petugasRekonsiliasi'], $status['tglRekonsiliasi']])->filter(fn($isi) => $isi !== '')->implode(', ');
+
+        return 'Sudah direkonsiliasi Apoteker' . ($jejak !== '' ? ' (' . $jejak . ')' : '');
+    }
+
+    /**
+     * Form EMR menimpa SELURUH node induk (anamnesa / pengkajianDokter) dengan
+     * salinan layar yang bisa berumur belasan menit. Ceklis apoteker yang dibuat
+     * lewat modal Farmasi selagi form terbuka akan ikut tertimpa — jadi nilai DB
+     * yang dipakai, bukan salinan layar. Form EMR memang tidak pernah mengubahnya.
+     *
+     * @param array $nodeInduk  node yang sudah ditimpa salinan layar (by-ref)
+     * @param mixed $statusDb   nilai STATUS_KEY dari DB, DIAMBIL SEBELUM ditimpa
+     */
+    public static function pertahankanStatus(array &$nodeInduk, mixed $statusDb): void
+    {
+        if (is_array($statusDb)) {
+            $nodeInduk[self::STATUS_KEY] = $statusDb;
+        } else {
+            unset($nodeInduk[self::STATUS_KEY]);
+        }
+    }
+
     private static function yaAtauTidak(?string $nilai): string
     {
         return $nilai === 'Ya' ? 'Ya' : 'Tidak';

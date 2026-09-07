@@ -74,6 +74,7 @@
     $daftarRekonsiliasiObat = RekonsiliasiObat::normalkanDaftar(
         data_get($ri, 'pengkajianDokter.anamnesa.rekonsiliasiObat', []),
     );
+    $statusRekonsiliasiObat = data_get($ri, 'pengkajianDokter.anamnesa.' . RekonsiliasiObat::STATUS_KEY);
 
     /* ========= 4) Pemeriksaan Fisik Awal ========= */
     $tandaVital = (array) data_get($ri, 'pengkajianAwalPasienRawatInap.bagian4PemeriksaanFisik.tandaVital', []);
@@ -279,7 +280,7 @@
          .rekonsiliasiObat. Baris lama (sebelum kolom petugas ada) tercetak '-'. --}}
     <table class="w-full mt-2 border border-collapse border-black table-auto">
         <tr class="font-semibold bg-gray-100">
-            <th colspan="5" class="px-2 py-1 text-left">REKONSILIASI OBAT</th>
+            <th colspan="5" class="px-2 py-1 text-left">REKONSILIASI OBAT <span class="font-normal">&mdash; {{ RekonsiliasiObat::teksStatus($statusRekonsiliasiObat) }}</span></th>
         </tr>
         <tr class="bg-gray-50">
             <th class="px-2 py-1 text-left border border-black" style="width:30%">Nama Obat</th>
@@ -304,7 +305,7 @@
             </tr>
         @empty
             <tr>
-                <td class="px-2 py-1 border border-black" colspan="5">Tidak ada riwayat pemakaian obat.</td>
+                <td class="px-2 py-1 border border-black" colspan="5">{{ RekonsiliasiObat::teksDaftarKosong($statusRekonsiliasiObat) }}</td>
             </tr>
         @endforelse
     </table>

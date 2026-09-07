@@ -414,7 +414,9 @@ new class extends Component {
                                     class="text-body dark:text-gray-300">{{ \App\Support\Terminologi\AlergiSnomed::untukCetak($dataDaftarTxn['anamnesa']['alergi'] ?? []) }}</span>
                             </p>
                             <div>
-                                <p class="mb-1.5 text-base text-muted">Rekonsiliasi Obat :</p>
+                                <p class="mb-1.5 text-base text-muted">Rekonsiliasi Obat :
+                                    <span class="text-body dark:text-gray-300">{{ \App\Support\RekonsiliasiObat::teksStatus($dataDaftarTxn['anamnesa'][\App\Support\RekonsiliasiObat::STATUS_KEY] ?? null) }}</span>
+                                </p>
                                 <table class="w-full text-sm border-collapse">
                                     <thead>
                                         <tr class="bg-surface-soft dark:bg-gray-800">
@@ -470,7 +472,7 @@ new class extends Component {
                                             <tr>
                                                 <td colspan="5"
                                                     class="px-2.5 py-1.5 text-center text-muted-soft border border-hairline dark:border-gray-700">
-                                                    Tidak ada data</td>
+                                                    {{ \App\Support\RekonsiliasiObat::teksDaftarKosong($dataDaftarTxn['anamnesa'][\App\Support\RekonsiliasiObat::STATUS_KEY] ?? null) }}</td>
                                             </tr>
                                         @endforelse
                                     </tbody>
