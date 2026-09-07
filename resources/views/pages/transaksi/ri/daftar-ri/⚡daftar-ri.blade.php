@@ -723,197 +723,153 @@ new class extends Component {
                                                         <x-list.identitas-aksi :regNo="$row->reg_no" :nama="$row->reg_name" :sex="$row->sex"
                                                             jalur="Rawat Inap" />
 
-                                                        <div class="grid grid-cols-2 gap-1">
+                                                        <div class="grid grid-cols-2 gap-1 items-stretch">
 
-                                                            {{-- Pendaftaran Ubah — Mr, Admin, Supervisor Tu --}}
-                                                            @hasanyrole(['Mr', 'Admin', 'Supervisor Tu'])
-                                                                <x-dropdown-link href="#"
-                                                                    wire:click.prevent="openEdit('{{ $row->rihdr_no }}')"
-                                                                    class="px-3 py-2 text-sm rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20">
-                                                                    <div class="flex items-start gap-2">
-                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0"
-                                                                            fill="none" stroke="currentColor"
-                                                                            viewBox="0 0 24 24" stroke-width="2">
-                                                                            <path stroke-linecap="round"
-                                                                                stroke-linejoin="round"
-                                                                                d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2.5 2.5 0 113.536 3.536L12.536 16.536a4 4 0 01-1.414.95L7 19l1.514-4.122A4 4 0 019 13z" />
-                                                                        </svg>
-                                                                        <span>Pendaftaran Ubah
-                                                                        </span>
-                                                                    </div>
-                                                                </x-dropdown-link>
-                                                            @endhasanyrole
+                                                        @hasanyrole(['Mr', 'Admin', 'Supervisor Tu'])
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openEdit('{{ $row->rihdr_no }}')"
+                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2.5 2.5 0 113.536 3.536L12.536 16.536a4 4 0 01-1.414.95L7 19l1.514-4.122A4 4 0 019 13z" />
+                                                                    </svg>
+                                                                    <span class="min-w-0">
+                                                                        <span class="block font-semibold">Pendaftaran Ubah</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">Ubah data pendaftaran</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+                                                        @endhasanyrole
 
-                                                            {{-- Rekam Medis RI — Perawat, Dokter, Admin, Casemix, Apoteker, Gizi, Laboratorium (Casemix untuk verifikasi koding; Apoteker & Gizi untuk isi CPPT, lihat Pengkajian Dokter/Perawat; Laboratorium & Radiologi view-only konteks klinis order penunjang). MR cek kelengkapan via tombol info ⓘ di row, bukan via EMR. --}}
-                                                            @hasanyrole('Perawat|Dokter|Admin|Casemix|Apoteker|Gizi|Laboratorium|Radiologi')
-                                                                <x-dropdown-link href="#"
-                                                                    wire:click.prevent="openRekamMedis('{{ $row->rihdr_no }}')"
-                                                                    class="px-3 py-2 text-sm rounded-lg bg-green-50 hover:bg-green-100 dark:bg-green-900/20">
-                                                                    <div class="flex items-start gap-2">
-                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0"
-                                                                            fill="none" stroke="currentColor"
-                                                                            viewBox="0 0 24 24" stroke-width="2">
-                                                                            <path stroke-linecap="round"
-                                                                                stroke-linejoin="round"
-                                                                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                                                        </svg>
-                                                                        <span>Rekam Medis RI
-                                                                        </span>
-                                                                    </div>
-                                                                </x-dropdown-link>
-                                                            @endhasanyrole
+                                                        @hasanyrole('Perawat|Dokter|Admin|Casemix|Apoteker|Gizi|Laboratorium|Radiologi')
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openRekamMedis('{{ $row->rihdr_no }}')"
+                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-green-50 hover:bg-green-100 dark:bg-green-900/20">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                                                    </svg>
+                                                                    <span class="min-w-0">
+                                                                        <span class="block font-semibold">Rekam Medis RI</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">EMR &amp; rekam medis</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+                                                        @endhasanyrole
 
-                                                            {{-- Modul Dokumen — Admin, Perawat, Dokter, Casemix, Mr, Gizi + penunjang
-                                                                 (Laboratorium/Radiologi: edukasi pasien & form pindah antar ruang) --}}
-                                                            @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr|Gizi|Laboratorium|Radiologi')
-                                                                <x-dropdown-link href="#"
-                                                                    wire:click.prevent="openModulDokumen('{{ $row->rihdr_no }}')"
-                                                                    class="px-3 py-2 text-sm rounded-lg bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20">
-                                                                    <div class="flex items-start gap-2">
-                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0"
-                                                                            fill="none" stroke="currentColor"
-                                                                            viewBox="0 0 24 24" stroke-width="2">
-                                                                            <path stroke-linecap="round"
-                                                                                stroke-linejoin="round"
-                                                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                                        </svg>
-                                                                        <span>Modul Dokumen<br>
-                                                                            <span class="font-semibold">Formulir &amp;
-                                                                                Consent Pasien</span>
-                                                                        </span>
-                                                                    </div>
-                                                                </x-dropdown-link>
-                                                            @endhasanyrole
+                                                        @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr|Gizi|Laboratorium|Radiologi')
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openModulDokumen('{{ $row->rihdr_no }}')"
+                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                    </svg>
+                                                                    <span class="min-w-0">
+                                                                        <span class="block font-semibold">Modul Dokumen</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">Formulir &amp; Consent Pasien</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+                                                        @endhasanyrole
 
-                                                            {{-- Administrasi — Admin, Perawat, Casemix, Tu, Gizi --}}
-                                                            @hasanyrole('Admin|Perawat|Casemix|Tu|Gizi')
-                                                                <x-dropdown-link href="#"
-                                                                    wire:click.prevent="openAdministrasiPasien('{{ $row->rihdr_no }}')"
-                                                                    class="px-3 py-2 text-sm rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20">
-                                                                    <div class="flex items-start gap-2">
-                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0"
-                                                                            fill="none" stroke="currentColor"
-                                                                            viewBox="0 0 24 24" stroke-width="2">
-                                                                            <path stroke-linecap="round"
-                                                                                stroke-linejoin="round"
-                                                                                d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
-                                                                        </svg>
-                                                                        <span>Administrasi
-                                                                        </span>
-                                                                    </div>
-                                                                </x-dropdown-link>
-                                                            @endhasanyrole
+                                                        @hasanyrole('Admin|Perawat|Casemix|Tu|Gizi')
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openAdministrasiPasien('{{ $row->rihdr_no }}')"
+                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
+                                                                    </svg>
+                                                                    <span class="min-w-0">
+                                                                        <span class="block font-semibold">Administrasi</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">Tarif &amp; biaya pasien</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+                                                        @endhasanyrole
 
-                                                            {{-- Rekonsiliasi Obat — pintu FARMASI (Apoteker/Admin/Manager).
-                                                                 Menulis node yang sama dgn EMR RI → Pengkajian Dokter,
-                                                                 tanpa membuka form dokternya. --}}
-                                                            @can('rekonsiliasi.obat')
-                                                                <x-dropdown-link href="#"
-                                                                    wire:click.prevent="openRekonsiliasiObat('{{ $row->rihdr_no }}')"
-                                                                    class="px-3 py-2 text-sm rounded-lg bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/20">
-                                                                    <div class="flex items-start gap-2">
-                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor"
-                                                                            viewBox="0 0 24 24" stroke-width="2">
-                                                                            <path stroke-linecap="round"
-                                                                                stroke-linejoin="round"
-                                                                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                                                        </svg>
-                                                                        <span>Rekonsiliasi Obat<br>
-                                                                            <span class="font-semibold">Obat Bawaan
-                                                                                Pasien</span>
-                                                                        </span>
-                                                                    </div>
-                                                                </x-dropdown-link>
-                                                            @endcan
+                                                        @can('rekonsiliasi.obat')
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openRekonsiliasiObat('{{ $row->rihdr_no }}')"
+                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/20">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                                                    </svg>
+                                                                    <span class="min-w-0">
+                                                                        <span class="block font-semibold">Rekonsiliasi Obat</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">Obat Bawaan Pasien</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+                                                        @endcan
 
-                                                            @can('ri.pindahKamar')
-                                                                <x-dropdown-link href="#"
-                                                                    wire:click.prevent="openPindahKamar('{{ $row->rihdr_no }}')"
-                                                                    class="px-3 py-2 text-sm rounded-lg bg-orange-50 hover:bg-orange-100 dark:bg-orange-900/20">
-                                                                    <div class="flex items-start gap-2">
-                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0"
-                                                                            fill="none" stroke="currentColor"
-                                                                            viewBox="0 0 24 24" stroke-width="2">
-                                                                            <path stroke-linecap="round"
-                                                                                stroke-linejoin="round"
-                                                                                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                                                        </svg>
-                                                                        <span>Pindah Kamar<br>
-                                                                            <span class="font-semibold">
-                                                                                {{ $row->room_name ?? '-' }}
-                                                                            </span>
-                                                                        </span>
-                                                                    </div>
-                                                                </x-dropdown-link>
-                                                            @endcan
+                                                        @can('ri.pindahKamar')
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openPindahKamar('{{ $row->rihdr_no }}')"
+                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-orange-50 hover:bg-orange-100 dark:bg-orange-900/20">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                                                    </svg>
+                                                                    <span class="min-w-0">
+                                                                        <span class="block font-semibold">Pindah Kamar</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">{{ $row->room_name ?? '-' }}</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+                                                        @endcan
 
-                                                            {{-- Kirim iDRG — Admin, Casemix, Tu; BPJS + ri_status=Pulang --}}
-                                                            @can('idrg.kirim')
-                                                                @if (($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM') && $row->ri_status === 'P')
-                                                                    <x-dropdown-link href="#"
-                                                                        wire:click.prevent="openIdrg('{{ $row->rihdr_no }}')"
-                                                                        class="px-3 py-2 text-sm rounded-lg bg-brand/5 hover:bg-brand/10 dark:bg-brand-lime/10 dark:hover:bg-brand-lime/20">
-                                                                        <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-brand dark:text-brand-lime"
-                                                                                fill="none" stroke="currentColor"
-                                                                                viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round"
-                                                                                    stroke-linejoin="round"
-                                                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                                            </svg>
-                                                                            <span
-                                                                                class="text-brand dark:text-brand-lime font-semibold">Kirim
-                                                                                iDRG / INACBG<br>
-                                                                                <span
-                                                                                    class="text-xs font-normal opacity-80">E-Klaim
-                                                                                    Kemenkes</span>
-                                                                            </span>
-                                                                        </div>
-                                                                    </x-dropdown-link>
-                                                                @endif
-                                                            @endcan
+                                                        @can('idrg.kirim')
+                                                            @if (($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM') && $row->ri_status === 'P')
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openIdrg('{{ $row->rihdr_no }}')"
+                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-brand/5 hover:bg-brand/10 dark:bg-brand-lime/10 dark:hover:bg-brand-lime/20">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0 text-brand dark:text-brand-lime" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                    </svg>
+                                                                    <span class="min-w-0">
+                                                                        <span class="block font-semibold text-brand dark:text-brand-lime">Kirim iDRG / INACBG</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">E-Klaim Kemenkes</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+                                                            @endif
+                                                        @endcan
 
-                                                            {{-- Berkas BPJS — Admin/Casemix/Tu/Mr --}}
-                                                            @hasanyrole('Admin|Casemix|Tu|Mr')
-                                                                <x-dropdown-link href="#"
-                                                                    wire:click.prevent="openBerkasBpjs({{ $row->rihdr_no }})"
-                                                                    class="px-3 py-2 text-sm rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/40">
-                                                                    <div class="flex items-start gap-2">
-                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0 text-amber-700"
-                                                                            fill="none" stroke="currentColor"
-                                                                            viewBox="0 0 24 24" stroke-width="2">
-                                                                            <path stroke-linecap="round"
-                                                                                stroke-linejoin="round"
-                                                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                                        </svg>
-                                                                        <span>
-                                                                            Berkas BPJS<br>
-                                                                            <span class="font-semibold">SEP / Klaim / RM / SKDP / Lain</span>
-                                                                        </span>
-                                                                    </div>
-                                                                </x-dropdown-link>
-                                                            @endhasanyrole
+                                                        @hasanyrole('Admin|Casemix|Tu|Mr')
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openBerkasBpjs({{ $row->rihdr_no }})"
+                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/40">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                    </svg>
+                                                                    <span class="min-w-0">
+                                                                        <span class="block font-semibold">Berkas BPJS</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">SEP / Klaim / RM / SKDP / Lain</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+                                                        @endhasanyrole
 
-                                                            {{-- Kirim Satu Sehat — Admin, Mr --}}
-                                                            @can('satusehat.kirim')
-                                                                <x-dropdown-link href="#"
-                                                                    wire:click.prevent="openSatuSehat('{{ $row->rihdr_no }}')"
-                                                                    class="px-3 py-2 text-sm rounded-lg bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40">
-                                                                    <div class="flex items-start gap-2">
-                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0 text-teal-600 dark:text-teal-400"
-                                                                            fill="none" stroke="currentColor"
-                                                                            viewBox="0 0 24 24" stroke-width="2">
-                                                                            <path stroke-linecap="round"
-                                                                                stroke-linejoin="round"
-                                                                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                                                        </svg>
-                                                                        <span>
-                                                                            Kirim Satu Sehat<br>
-                                                                            <span class="text-xs font-normal opacity-80">Encounter RI (IMP) &amp; resource</span>
-                                                                        </span>
-                                                                    </div>
-                                                                </x-dropdown-link>
-                                                            @endcan
+                                                        @can('satusehat.kirim')
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openSatuSehat('{{ $row->rihdr_no }}')"
+                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0 text-teal-600 dark:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                                                    </svg>
+                                                                    <span class="min-w-0">
+                                                                        <span class="block font-semibold">Kirim Satu Sehat</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">Encounter RI (IMP) &amp; resource</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+                                                        @endcan
 
                                                         </div>
 

@@ -541,72 +541,59 @@ new class extends Component {
                                                             jalur="Rawat Inap" />
 
                                                         {{-- GRID 2 KOLOM --}}
-                                                        <div class="grid grid-cols-2 gap-1">
+                                                        <div class="grid grid-cols-2 gap-1 items-stretch">
 
-                                                            {{-- Kirim iDRG — Admin, Casemix, Tu; BPJS + ri_status=Pulang (P) --}}
-                                                            @can('idrg.kirim')
-                                                                @if (($r->klaim_status === 'BPJS' || $r->klaim_id === 'JM') && $r->ri_status === 'P')
-                                                                    <x-dropdown-link href="#"
-                                                                        wire:click.prevent="openIdrg('{{ $r->rihdr_no }}')"
-                                                                        class="px-3 py-2 text-sm rounded-lg bg-brand/5 hover:bg-brand/10 dark:bg-brand-lime/10 dark:hover:bg-brand-lime/20">
-                                                                        <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0"
-                                                                                fill="none" stroke="currentColor"
-                                                                                viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round"
-                                                                                    stroke-linejoin="round"
-                                                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                                            </svg>
-                                                                            <span>
-                                                                                Kirim iDRG / INACBG
-                                                                            </span>
-                                                                        </div>
-                                                                    </x-dropdown-link>
-                                                                @endif
-                                                            @endcan
+                                                        @can('idrg.kirim')
+                                                            @if (($r->klaim_status === 'BPJS' || $r->klaim_id === 'JM') && $r->ri_status === 'P')
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openIdrg('{{ $r->rihdr_no }}')"
+                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-brand/5 hover:bg-brand/10 dark:bg-brand-lime/10 dark:hover:bg-brand-lime/20">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                    </svg>
+                                                                    <span class="min-w-0">
+                                                                        <span class="block font-semibold">Kirim iDRG / INACBG</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">E-Klaim Kemenkes</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+                                                            @endif
+                                                        @endcan
 
-                                                            {{-- Administrasi (View-only) — Admin/Casemix/Tu; status=Pulang (P) --}}
-                                                            @hasanyrole('Admin|Casemix|Tu')
-                                                                @if ($r->ri_status === 'P')
-                                                                    <x-dropdown-link href="#"
-                                                                        wire:click.prevent="openAdministrasi({{ $r->rihdr_no }})"
-                                                                        class="px-3 py-2 text-sm rounded-lg bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 dark:hover:bg-sky-900/40">
-                                                                        <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-sky-700"
-                                                                                fill="none" stroke="currentColor"
-                                                                                viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                                                    d="M9 17v-2a4 4 0 014-4h6m0 0l-3-3m3 3l-3 3M3 6a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V6z" />
-                                                                            </svg>
-                                                                            <span>
-                                                                                Administrasi <br>
-                                                                                <span class="font-semibold">Lihat Tagihan (Read-only)</span>
-                                                                            </span>
-                                                                        </div>
-                                                                    </x-dropdown-link>
-                                                                @endif
-                                                            @endhasanyrole
+                                                        @hasanyrole('Admin|Casemix|Tu')
+                                                            @if ($r->ri_status === 'P')
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openAdministrasi({{ $r->rihdr_no }})"
+                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 dark:hover:bg-sky-900/40">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0 text-sky-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2a4 4 0 014-4h6m0 0l-3-3m3 3l-3 3M3 6a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V6z" />
+                                                                    </svg>
+                                                                    <span class="min-w-0">
+                                                                        <span class="block font-semibold">Administrasi</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">Lihat Tagihan (Read-only)</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+                                                            @endif
+                                                        @endhasanyrole
 
-                                                            {{-- Berkas BPJS — Admin/Casemix/Tu --}}
-                                                            @hasanyrole('Admin|Casemix|Tu')
-                                                                <x-dropdown-link href="#"
-                                                                    wire:click.prevent="openBerkasBpjs({{ $r->rihdr_no }})"
-                                                                    class="px-3 py-2 text-sm rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/40">
-                                                                    <div class="flex items-start gap-2">
-                                                                        <svg class="w-5 h-5 mt-0.5 shrink-0 text-amber-700"
-                                                                            fill="none" stroke="currentColor"
-                                                                            viewBox="0 0 24 24" stroke-width="2">
-                                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                                        </svg>
-                                                                        <span>
-                                                                            Berkas BPJS <br>
-                                                                            <span class="font-semibold">SEP / Klaim / RM / SKDP / Lain</span>
-                                                                        </span>
-                                                                    </div>
-                                                                </x-dropdown-link>
-                                                            @endhasanyrole
-                                                        </div>
+                                                        @hasanyrole('Admin|Casemix|Tu')
+                                                            <x-dropdown-link href="#"
+                                                                wire:click.prevent="openBerkasBpjs({{ $r->rihdr_no }})"
+                                                                class="px-3 py-2 text-sm rounded-lg h-full bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/40">
+                                                                <div class="flex items-start gap-2">
+                                                                    <svg class="w-5 h-5 mt-0.5 shrink-0 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                    </svg>
+                                                                    <span class="min-w-0">
+                                                                        <span class="block font-semibold">Berkas BPJS</span>
+                                                                        <span class="block text-xs font-normal text-muted dark:text-gray-400">SEP / Klaim / RM / SKDP / Lain</span>
+                                                                    </span>
+                                                                </div>
+                                                            </x-dropdown-link>
+                                                        @endhasanyrole
 
                                                     </div>
                                                 </x-slot>

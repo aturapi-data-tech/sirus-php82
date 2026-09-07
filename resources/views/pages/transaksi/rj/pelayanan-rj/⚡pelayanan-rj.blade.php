@@ -967,112 +967,88 @@ new class extends Component {
                                                             @endhasanyrole
 
                                                             {{-- GRID 2 KOLOM --}}
-                                                            <div class="grid grid-cols-2 gap-1">
+                                                            <div class="grid grid-cols-2 gap-1 items-stretch">
 
-                                                                {{-- Rekam Medis — Perawat, Dokter, Admin, Casemix, Mr (view) --}}
                                                                 @hasanyrole('Perawat|Dokter|Admin|Casemix|Mr')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openRekamMedis('{{ $row->rj_no }}')"
-                                                                        class="px-3 py-2 text-sm rounded-lg bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40">
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40">
                                                                         <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0"
-                                                                                fill="none" stroke="currentColor"
-                                                                                viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round"
-                                                                                    stroke-linejoin="round"
-                                                                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                                                                             </svg>
-                                                                            <span>
-                                                                                Rekam Medis <br>
-                                                                                <span class="font-semibold">Pasien</span>
+                                                                            <span class="min-w-0">
+                                                                                <span class="block font-semibold">Rekam Medis</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">Pasien</span>
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
 
-                                                                {{-- Pengkajian Medis — pakai-ulang & review (Akreditasi PP 1.2 poin e) --}}
                                                                 @hasanyrole('Perawat|Dokter|Admin|Mr')
                                                                     <x-dropdown-link href="#"
                                                                         x-on:click.prevent="$dispatch('pelayanan-rj.pengkajian-medis.open', { rjNo: {{ $row->rj_no }} })"
-                                                                        class="px-3 py-2 text-sm rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/40">
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/40">
                                                                         <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-emerald-700"
-                                                                                fill="none" stroke="currentColor"
-                                                                                viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                                             </svg>
-                                                                            <span>
-                                                                                Pengkajian Medis <br>
-                                                                                <span class="font-semibold">Review &amp; Pakai Ulang</span>
+                                                                            <span class="min-w-0">
+                                                                                <span class="block font-semibold">Pengkajian Medis</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">Review &amp; Pakai Ulang</span>
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
 
-                                                                {{-- PRMRJ — Profil Ringkas Medis Rawat Jalan (RM.06) --}}
                                                                 @hasanyrole('Perawat|Dokter|Admin|Mr')
                                                                     <x-dropdown-link href="#"
                                                                         x-on:click.prevent="$dispatch('pelayanan-rj.prmrj.open', { rjNo: {{ $row->rj_no }} })"
-                                                                        class="px-3 py-2 text-sm rounded-lg bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 dark:hover:bg-sky-900/40">
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 dark:hover:bg-sky-900/40">
                                                                         <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-sky-700"
-                                                                                fill="none" stroke="currentColor"
-                                                                                viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0 text-sky-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                                             </svg>
-                                                                            <span>
-                                                                                Profil Ringkas Medis <br>
-                                                                                <span class="font-semibold">PRMRJ</span>
+                                                                            <span class="min-w-0">
+                                                                                <span class="block font-semibold">Profil Ringkas Medis</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">PRMRJ</span>
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
 
-                                                                {{-- Modul Dokumen — Admin, Perawat, Dokter, Casemix, Mr --}}
                                                                 @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openModulDokumen('{{ $row->rj_no }}')"
-                                                                        class="px-3 py-2 text-sm rounded-lg bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/40">
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/40">
                                                                         <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0"
-                                                                                fill="none" stroke="currentColor"
-                                                                                viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round"
-                                                                                    stroke-linejoin="round"
-                                                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                                             </svg>
-                                                                            <span>
-                                                                                Modul Dokumen <br>
-                                                                                <span class="font-semibold">Formulir &amp;
-                                                                                    Consent Pasien</span>
+                                                                            <span class="min-w-0">
+                                                                                <span class="block font-semibold">Modul Dokumen</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">Formulir &amp; Consent Pasien</span>
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
 
-                                                                {{-- Administrasi — Admin, Perawat, Casemix, Tu --}}
                                                                 @hasanyrole('Admin|Perawat|Casemix|Tu')
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="openAdministrasiPasien('{{ $row->rj_no }}')"
-                                                                        class="px-3 py-2 text-sm rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40">
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40">
                                                                         <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0"
-                                                                                fill="none" stroke="currentColor"
-                                                                                viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round"
-                                                                                    stroke-linejoin="round"
-                                                                                    d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2 8h20v12a1 1 0 01-1 1H3a1 1 0 01-1-1V8zm0 0V6a1 1 0 011-1h18a1 1 0 011 1v2M12 14a2 2 0 100-4 2 2 0 000 4z" />
                                                                             </svg>
-                                                                            <span>
-                                                                                Administrasi
+                                                                            <span class="min-w-0">
+                                                                                <span class="block font-semibold">Administrasi</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">Tarif &amp; biaya pasien</span>
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
 
-                                                                {{-- Transfer ke UGD — disabled (tak bisa diklik) bila bukan status Antrian (rj_status='A') --}}
                                                                 @hasanyrole('Admin|Tu|Perawat|Manager Umum|Supervisor Tu')
                                                                     @php
                                                                         $canTransferUgd = $row->rj_status === 'A';
@@ -1083,17 +1059,14 @@ new class extends Component {
                                                                     <x-dropdown-link href="#"
                                                                         wire:click.prevent="$dispatch('open-transfer-rj-ke-ugd', { rjNo: {{ $row->rj_no }} })"
                                                                         title="{{ $canTransferUgd ? 'Transfer pasien ke UGD' : 'Hanya bisa saat status Antrian' }}"
-                                                                        class="px-3 py-2 text-sm rounded-lg {{ $trfUgdClass }}">
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full {{ $trfUgdClass }}">
                                                                         <div class="flex items-start gap-2">
-                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0"
-                                                                                fill="none" stroke="currentColor"
-                                                                                viewBox="0 0 24 24" stroke-width="2">
-                                                                                <path stroke-linecap="round"
-                                                                                    stroke-linejoin="round"
-                                                                                    d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                                                             </svg>
-                                                                            <span>
-                                                                                Transfer ke UGD
+                                                                            <span class="min-w-0">
+                                                                                <span class="block font-semibold">Transfer ke UGD</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">Unit Gawat Darurat</span>
                                                                             </span>
                                                                         </div>
                                                                     </x-dropdown-link>
