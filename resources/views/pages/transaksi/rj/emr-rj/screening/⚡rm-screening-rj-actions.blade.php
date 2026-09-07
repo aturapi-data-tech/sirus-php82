@@ -11,6 +11,9 @@ new class extends Component {
     use EmrRJTrait, WithRenderVersioningTrait, WithValidationToastTrait;
 
     public bool $isFormLocked = false;
+    // true hanya selama modal screening terbuka — guard @if isi modal (rendering() selalu
+    // mengisi dataDaftar*[screening], jadi array itu tidak bisa dipakai sebagai penanda).
+    public bool $screeningTerbuka = false;
     public bool $isEmrLocked = false;   // kunci EMR-level (kunjungan selesai) — tak bisa dibuka dari sini
     public ?int $rjNo = null;
     public array $dataDaftarPoliRJ = [];
@@ -82,6 +85,7 @@ new class extends Component {
         $this->alatBantu = $screening['alatBantu'] ?? '';
         $this->batuk = $screening['batuk'] ?? '';
 
+        $this->screeningTerbuka = true;
         $this->incrementVersion('modal-screening-rj');
         $this->dispatch('open-modal', name: 'rm-screening-rj-actions');
     }
@@ -386,6 +390,7 @@ new class extends Component {
     protected function resetForm(): void
     {
         $this->resetVersion();
+        $this->screeningTerbuka = false;
         $this->isFormLocked = false;
         $this->isEmrLocked = false;
         $this->dataDaftarPoliRJ = [];
@@ -401,6 +406,10 @@ new class extends Component {
 
 <div>
     <x-modal name="rm-screening-rj-actions" size="full" height="full" focusable>
+        {{-- Isi modal hanya ada saat screening benar-benar dibuka (flag $screeningTerbuka, BUKAN $rjNo:
+             rjNo sudah terisi lewat prop begitu EMR induk dibuka). Tertutup = nol anak
+             (display-pasien tidak ikut di-mount), tutup = dihapus tanpa mount ulang. --}}
+        @if ($screeningTerbuka)
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
             wire:key="{{ $this->renderKey('modal-screening-rj', [$rjNo ?? 'new']) }}">
 
@@ -716,5 +725,6 @@ new class extends Component {
             </div>
 
         </div>
+        @endif
     </x-modal>
 </div>

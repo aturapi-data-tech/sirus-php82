@@ -49,9 +49,18 @@ new class extends Component {
     /* ===============================
      | MOUNT
      =============================== */
-    public function mount(): void
+    /**
+     * rjNo datang lewat PROP dari induk modul dokumen (anak lahir di dalam @if($rjNo)),
+     * bukan lagi lewat event open-rm-*: satu kali baca CLOB, tidak ada race urutan event.
+     * Handler #[On] tetap dipertahankan untuk pemanggil dari luar modal.
+     */
+    public function mount(?int $rjNo = null): void
     {
         $this->registerAreas(['modal-trf-ugd-ri']);
+
+        if (filled($rjNo)) {
+            $this->openTrfUgdRi($rjNo);
+        }
     }
 
     public function rendering(): void

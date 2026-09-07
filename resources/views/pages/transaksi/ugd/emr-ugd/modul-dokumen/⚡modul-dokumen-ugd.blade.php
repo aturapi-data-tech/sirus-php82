@@ -55,9 +55,8 @@ new class extends Component {
         }
 
         $this->dispatch('open-modal', name: 'modul-dokumen-ugd');
-        $this->dispatch('open-rm-suket-ugd', $rjNo);
-        $this->dispatch('open-rm-form-trf-ugd-ri', $rjNo);
-        $this->dispatch('open-rm-form-penjaminan', $rjNo);
+        // Anak memuat datanya sendiri di mount dari prop rjNo (isi modal dibungkus @if($rjNo)),
+        // jadi tidak perlu lagi memancarkan open-rm-suket-ugd / form-trf-ugd-ri / form-penjaminan.
     }
 
     public function closeModal(): void
@@ -97,6 +96,9 @@ new class extends Component {
 
 <div>
     <x-modal name="modul-dokumen-ugd" size="full" height="full" focusable>
+        {{-- Anak hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali (baca CLOB
+             dari prop rjNo di mount masing-masing), tutup = dihapus. Tidak ada event open-rm-* lagi. --}}
+        @if ($rjNo)
         <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal', [$rjNo ?? 'new']) }}">
 
             {{-- HEADER --}}
@@ -451,5 +453,6 @@ new class extends Component {
             </div>
 
         </div>
+        @endif
     </x-modal>
 </div>
