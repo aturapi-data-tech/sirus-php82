@@ -83,10 +83,10 @@ new class extends Component {
             'ri_status'    => $row->ri_status,
         ];
 
-        $hdrs = is_array($data) ? ($data['eresepHdr'] ?? []) : [];
+        $resepHdrList = is_array($data) ? ($data['eresepHdr'] ?? []) : [];
 
         // Status apotek untuk semua slsNo
-        $slsNos = collect($hdrs)->pluck('slsNo')->filter()->values()->all();
+        $slsNos = collect($resepHdrList)->pluck('slsNo')->filter()->values()->all();
         $apotekStatuses = [];
         if (! empty($slsNos)) {
             $apotekStatuses = DB::table('imtxn_slshdrs')
@@ -96,11 +96,11 @@ new class extends Component {
         }
 
         // Normalisasi resep (terbaru di atas) + kumpulkan obat aktif
-        $list = [];
+        $resepList = [];
         $aktif = [];
-        foreach ($hdrs as $h) {
-            $slsNo = $h['slsNo'] ?? null;
-            $hasTTD = ! empty($h['tandaTanganDokter']['dokterPeresep'] ?? null);
+        foreach ($resepHdrList as $resepHdr) {
+            $slsNo = $resepHdr['slsNo'] ?? null;
+            $hasTTD = ! empty($resepHdr['tandaTanganDokter']['dokterPeresep'] ?? null);
             $apotekStatus = $slsNo ? ($apotekStatuses[$slsNo] ?? null) : null;
 
             if ($apotekStatus === 'L') {
@@ -115,21 +115,21 @@ new class extends Component {
 
             // Non-racikan
             $obat = [];
-            foreach ($h['eresep'] ?? [] as $it) {
-                $signa = trim(($it['signaX'] ?? '') . ' dd ' . ($it['signaHari'] ?? ''), ' d');
+            foreach ($resepHdr['eresep'] ?? [] as $obatItem) {
+                $signa = trim(($obatItem['signaX'] ?? '') . ' dd ' . ($obatItem['signaHari'] ?? ''), ' d');
                 $obat[] = [
-                    'productId'   => $it['productId'] ?? null,
-                    'productName' => $it['productName'] ?? '-',
-                    'qty'         => $it['qty'] ?? null,
+                    'productId'   => $obatItem['productId'] ?? null,
+                    'productName' => $obatItem['productName'] ?? '-',
+                    'qty'         => $obatItem['qty'] ?? null,
                     'signa'       => $signa !== '' ? 'S ' . $signa : '-',
-                    'catatan'     => $it['catatanKhusus'] ?? null,
+                    'catatan'     => $obatItem['catatanKhusus'] ?? null,
                 ];
 
-                if (($hasTTD || $slsNo) && ! empty($it['productId'])) {
-                    $aktif[$it['productId']] = [
-                        'productName' => $it['productName'] ?? '-',
+                if (($hasTTD || $slsNo) && ! empty($obatItem['productId'])) {
+                    $aktif[$obatItem['productId']] = [
+                        'productName' => $obatItem['productName'] ?? '-',
                         'signa'       => $signa !== '' ? 'S ' . $signa : '-',
-                        'resepNo'     => $h['resepNo'] ?? null,
+                        'resepNo'     => $resepHdr['resepNo'] ?? null,
                         'jenis'       => 'Non-Racikan',
                     ];
                 }
@@ -137,22 +137,22 @@ new class extends Component {
 
             // Racikan
             $racikan = [];
-            foreach ($h['eresepRacikan'] ?? [] as $it) {
+            foreach ($resepHdr['eresepRacikan'] ?? [] as $racikanItem) {
                 $racikan[] = [
-                    'noRacikan'    => $it['noRacikan'] ?? null,
-                    'productName'  => $it['productName'] ?? '-',
-                    'dosis'        => $it['dosis'] ?? null,
-                    'qty'          => $it['qty'] ?? null,
-                    'catatan'      => $it['catatan'] ?? null,
-                    'catatanKhusus'=> $it['catatanKhusus'] ?? null,
+                    'noRacikan'    => $racikanItem['noRacikan'] ?? null,
+                    'productName'  => $racikanItem['productName'] ?? '-',
+                    'dosis'        => $racikanItem['dosis'] ?? null,
+                    'qty'          => $racikanItem['qty'] ?? null,
+                    'catatan'      => $racikanItem['catatan'] ?? null,
+                    'catatanKhusus'=> $racikanItem['catatanKhusus'] ?? null,
                 ];
             }
 
-            $list[] = [
-                'resepNo'   => $h['resepNo'] ?? '-',
-                'resepDate' => $h['resepDate'] ?? '-',
-                'cito'      => ($h['cito'] ?? '0') === '1',
-                'dokter'    => $h['tandaTanganDokter']['dokterPeresep'] ?? null,
+            $resepList[] = [
+                'resepNo'   => $resepHdr['resepNo'] ?? '-',
+                'resepDate' => $resepHdr['resepDate'] ?? '-',
+                'cito'      => ($resepHdr['cito'] ?? '0') === '1',
+                'dokter'    => $resepHdr['tandaTanganDokter']['dokterPeresep'] ?? null,
                 'slsNo'     => $slsNo,
                 'status'    => $status,
                 'obat'      => $obat,
@@ -161,7 +161,7 @@ new class extends Component {
         }
 
         // Terbaru di atas
-        $this->resepList = array_reverse($list);
+        $this->resepList = array_reverse($resepList);
         $this->obatAktif = array_values($aktif);
     }
 };
@@ -246,12 +246,12 @@ new class extends Component {
                             </svg>
                         </button>
                         <div x-show="open" x-collapse class="divide-y divide-hairline-soft dark:divide-gray-800">
-                            @foreach ($obatAktif as $o)
+                            @foreach ($obatAktif as $obatItem)
                                 <div class="flex items-center justify-between gap-3 px-4 py-2 text-sm">
-                                    <span class="font-medium text-ink dark:text-gray-100">{{ $o['productName'] }}</span>
+                                    <span class="font-medium text-ink dark:text-gray-100">{{ $obatItem['productName'] }}</span>
                                     <span class="flex items-center gap-2 text-sm text-muted dark:text-gray-400 shrink-0">
-                                        <span class="font-mono">{{ $o['signa'] }}</span>
-                                        <span class="px-1.5 py-0.5 rounded bg-surface-soft dark:bg-gray-800">Resep #{{ $o['resepNo'] }}</span>
+                                        <span class="font-mono">{{ $obatItem['signa'] }}</span>
+                                        <span class="px-1.5 py-0.5 rounded bg-surface-soft dark:bg-gray-800">Resep #{{ $obatItem['resepNo'] }}</span>
                                     </span>
                                 </div>
                             @endforeach
@@ -260,41 +260,41 @@ new class extends Component {
                 @endif
 
                 {{-- Daftar resep (terbaru di atas) --}}
-                @forelse ($resepList as $r)
+                @forelse ($resepList as $resep)
                     <div class="border border-hairline dark:border-gray-700 rounded-xl overflow-hidden">
                         {{-- Header resep --}}
                         <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-surface-soft dark:bg-gray-800/60 border-b border-hairline dark:border-gray-700">
                             <div class="flex items-center gap-3">
-                                <span class="text-base font-semibold text-ink dark:text-gray-100">Resep #{{ $r['resepNo'] }}</span>
-                                <span class="text-sm text-muted dark:text-gray-400">{{ $r['resepDate'] }}</span>
-                                @if ($r['cito'])
+                                <span class="text-base font-semibold text-ink dark:text-gray-100">Resep #{{ $resep['resepNo'] }}</span>
+                                <span class="text-sm text-muted dark:text-gray-400">{{ $resep['resepDate'] }}</span>
+                                @if ($resep['cito'])
                                     <x-badge variant="danger" class="font-bold">CITO</x-badge>
                                 @endif
                             </div>
                             <div class="flex items-center gap-2">
-                                @if ($r['slsNo'])
-                                    <span class="text-sm font-mono text-muted-soft">SLS#{{ $r['slsNo'] }}</span>
+                                @if ($resep['slsNo'])
+                                    <span class="text-sm font-mono text-muted-soft">SLS#{{ $resep['slsNo'] }}</span>
                                 @endif
-                                <x-badge :variant="$r['status']['variant']">{{ $r['status']['label'] }}</x-badge>
+                                <x-badge :variant="$resep['status']['variant']">{{ $resep['status']['label'] }}</x-badge>
                             </div>
                         </div>
 
-                        @if ($r['dokter'])
-                            <div class="px-4 pt-2 text-sm text-muted dark:text-gray-400">Peresep: {{ $r['dokter'] }}</div>
+                        @if ($resep['dokter'])
+                            <div class="px-4 pt-2 text-sm text-muted dark:text-gray-400">Peresep: {{ $resep['dokter'] }}</div>
                         @endif
 
                         {{-- Obat non-racikan — gaya baris resep "R/" (selaras racikan) --}}
-                        @if (! empty($r['obat']))
+                        @if (! empty($resep['obat']))
                             <div class="px-4 py-3">
                                 <div class="text-sm uppercase tracking-wider text-muted-soft dark:text-gray-500 font-semibold mb-1">Non-Racikan</div>
                                 <div class="space-y-1">
-                                @foreach ($r['obat'] as $o)
+                                @foreach ($resep['obat'] as $obatItem)
                                     <div class="text-sm text-body dark:text-gray-200">
                                         <span class="font-mono text-muted-soft">R/</span>
-                                        <span class="font-semibold text-ink dark:text-gray-100">{{ $o['productName'] }}</span>
-                                        <span class="text-sm text-body dark:text-gray-300">| No. {{ $o['qty'] ?? '-' }}</span>
-                                        <span class="text-sm font-mono text-body dark:text-gray-300">| {{ $o['signa'] }}</span>
-                                        @if ($o['catatan']) <span class="text-sm text-body dark:text-gray-300 italic">({{ $o['catatan'] }})</span> @endif
+                                        <span class="font-semibold text-ink dark:text-gray-100">{{ $obatItem['productName'] }}</span>
+                                        <span class="text-sm text-body dark:text-gray-300">| No. {{ $obatItem['qty'] ?? '-' }}</span>
+                                        <span class="text-sm font-mono text-body dark:text-gray-300">| {{ $obatItem['signa'] }}</span>
+                                        @if ($obatItem['catatan']) <span class="text-sm text-body dark:text-gray-300 italic">({{ $obatItem['catatan'] }})</span> @endif
                                     </div>
                                 @endforeach
                                 </div>
@@ -302,24 +302,24 @@ new class extends Component {
                         @endif
 
                         {{-- Racikan --}}
-                        @if (! empty($r['racikan']))
-                            <div class="px-4 pb-3 {{ empty($r['obat']) ? 'pt-3' : '' }}">
+                        @if (! empty($resep['racikan']))
+                            <div class="px-4 pb-3 {{ empty($resep['obat']) ? 'pt-3' : '' }}">
                                 <div class="text-sm uppercase tracking-wider text-muted-soft dark:text-gray-500 font-semibold mb-1">Racikan</div>
                                 <div class="space-y-1">
-                                    @foreach ($r['racikan'] as $rc)
+                                    @foreach ($resep['racikan'] as $racikanItem)
                                         <div class="text-sm text-body dark:text-gray-200">
-                                            <span class="font-mono text-muted-soft">{{ $rc['noRacikan'] }}/</span>
-                                            <span class="font-semibold text-ink dark:text-gray-100">{{ $rc['productName'] }}</span>
-                                            @if ($rc['dosis']) <span class="text-body dark:text-gray-300">— {{ $rc['dosis'] }}</span> @endif
-                                            @if ($rc['qty']) <span class="text-sm text-body dark:text-gray-300">| Jml {{ $rc['qty'] }}</span> @endif
-                                            @if ($rc['catatanKhusus']) <span class="text-sm text-body dark:text-gray-300 italic">| S {{ $rc['catatanKhusus'] }}</span> @endif
+                                            <span class="font-mono text-muted-soft">{{ $racikanItem['noRacikan'] }}/</span>
+                                            <span class="font-semibold text-ink dark:text-gray-100">{{ $racikanItem['productName'] }}</span>
+                                            @if ($racikanItem['dosis']) <span class="text-body dark:text-gray-300">— {{ $racikanItem['dosis'] }}</span> @endif
+                                            @if ($racikanItem['qty']) <span class="text-sm text-body dark:text-gray-300">| Jml {{ $racikanItem['qty'] }}</span> @endif
+                                            @if ($racikanItem['catatanKhusus']) <span class="text-sm text-body dark:text-gray-300 italic">| S {{ $racikanItem['catatanKhusus'] }}</span> @endif
                                         </div>
                                     @endforeach
                                 </div>
                             </div>
                         @endif
 
-                        @if (empty($r['obat']) && empty($r['racikan']))
+                        @if (empty($resep['obat']) && empty($resep['racikan']))
                             <div class="px-4 py-3 text-sm text-muted-soft italic">Tidak ada item obat pada resep ini.</div>
                         @endif
                     </div>

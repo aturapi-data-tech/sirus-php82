@@ -433,26 +433,26 @@ new class extends Component {
     /* ===============================
      | COPY RESEP (hanya yg sudah TTD)
      =============================== */
-    public function copyResepHdr(int $srcIndex): void
+    public function copyResepHdr(int $sumberIndex): void
     {
         if ($this->isFormLocked) {
             $this->dispatch('toast', type: 'error', message: 'Form terkunci.');
             return;
         }
 
-        $srcHdr = $this->dataDaftarRI['eresepHdr'][$srcIndex] ?? null;
-        if (!$srcHdr) {
+        $resepHdrSumber = $this->dataDaftarRI['eresepHdr'][$sumberIndex] ?? null;
+        if (!$resepHdrSumber) {
             $this->dispatch('toast', type: 'error', message: 'Resep sumber tidak ditemukan.');
             return;
         }
 
-        if (empty($srcHdr['tandaTanganDokter']['dokterPeresep'] ?? null)) {
+        if (empty($resepHdrSumber['tandaTanganDokter']['dokterPeresep'] ?? null)) {
             $this->dispatch('toast', type: 'warning', message: 'Resep belum ditandatangani, tidak dapat dicopy.');
             return;
         }
 
         try {
-            DB::transaction(function () use ($srcHdr) {
+            DB::transaction(function () use ($resepHdrSumber) {
                 $this->lockRIRow($this->riHdrNo);
 
                 $data = $this->findDataRI($this->riHdrNo) ?? [];
@@ -468,11 +468,11 @@ new class extends Component {
                 $data['eresepHdr'][] = [
                     'resepNo' => $newResepNo,
                     'resepDate' => $now,
-                    'cito' => ($srcHdr['cito'] ?? '0') === '1' ? '1' : '0',
-                    'regNo' => $srcHdr['regNo'],
+                    'cito' => ($resepHdrSumber['cito'] ?? '0') === '1' ? '1' : '0',
+                    'regNo' => $resepHdrSumber['regNo'],
                     'riHdrNo' => $this->riHdrNo,
-                    'eresep' => $srcHdr['eresep'] ?? [],
-                    'eresepRacikan' => $srcHdr['eresepRacikan'] ?? [],
+                    'eresep' => $resepHdrSumber['eresep'] ?? [],
+                    'eresepRacikan' => $resepHdrSumber['eresepRacikan'] ?? [],
                 ];
 
                 $this->updateJsonRI($this->riHdrNo, $data);
@@ -720,12 +720,12 @@ new class extends Component {
 
                             {{-- List Resep — urutan terbaru di atas (key asli dipertahankan untuk selectResep/removeResepHdr/setDokterPeresep) --}}
                             <div wire:key="{{ $this->renderKey('hdr-list', [$riHdrNo ?? 'new']) }}" class="space-y-2">
-                                @forelse (array_reverse($dataDaftarRI['eresepHdr'] ?? [], true) as $idx => $hdr)
+                                @forelse (array_reverse($dataDaftarRI['eresepHdr'] ?? [], true) as $resepIndex => $hdr)
                                     <div
-                                        class="p-4 text-sm border rounded-lg cursor-pointer {{ $activeResepIndex === $idx ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-hairline bg-surface-soft hover:bg-surface-soft dark:border-gray-700 dark:bg-gray-800/50' }}">
+                                        class="p-4 text-sm border rounded-lg cursor-pointer {{ $activeResepIndex === $resepIndex ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-hairline bg-surface-soft hover:bg-surface-soft dark:border-gray-700 dark:bg-gray-800/50' }}">
 
                                         {{-- Resep info --}}
-                                        <div wire:click="selectResep({{ $idx }})" class="space-y-1">
+                                        <div wire:click="selectResep({{ $resepIndex }})" class="space-y-1">
                                             <div class="text-base font-semibold text-ink dark:text-gray-200">
                                                 Resep #{{ $hdr['resepNo'] }}
                                             </div>
@@ -772,7 +772,7 @@ new class extends Component {
                                         </div>
 
                                         {{-- Action buttons (hanya tampil saat card aktif) --}}
-                                        @if ($activeResepIndex === $idx)
+                                        @if ($activeResepIndex === $resepIndex)
                                             <div class="mt-3 space-y-2">
 
                                                 {{-- ── DRAFT: belum TTD ── --}}
@@ -780,11 +780,11 @@ new class extends Component {
                                                     @role(['Dokter', 'Admin'])
                                                         {{-- Prioritas CITO masih bisa diubah selama draft --}}
                                                         <x-toggle :current="$hdr['cito'] ?? '0'" trueValue="1" falseValue="0" onColor="bg-error"
-                                                            wireClick="toggleCitoResep({{ $idx }})" label="CITO — didahulukan apotek" />
+                                                            wireClick="toggleCitoResep({{ $resepIndex }})" label="CITO — didahulukan apotek" />
 
                                                         {{-- TTD & Kirim ke Apotek --}}
                                                         <x-primary-button
-                                                            wire:click="setDokterPeresep({{ $idx }})"
+                                                            wire:click="setDokterPeresep({{ $resepIndex }})"
                                                             class="!py-2 !px-3 !text-sm w-full justify-center !bg-emerald-600 hover:!bg-emerald-700 !text-white focus:!ring-emerald-300 dark:!bg-emerald-600 dark:!text-white dark:hover:!bg-emerald-700 dark:focus:!ring-emerald-900"
                                                             wire:loading.attr="disabled"
                                                             title="Tanda tangani resep ini dan kirimkan ke apotek">
@@ -796,7 +796,7 @@ new class extends Component {
 
                                                         {{-- Hapus Draft --}}
                                                         <x-outline-button type="button"
-                                                            wire:click.prevent="removeResepHdr({{ $idx }})"
+                                                            wire:click.prevent="removeResepHdr({{ $resepIndex }})"
                                                             wire:confirm="Hapus resep draft ini? Tindakan tidak dapat dibatalkan."
                                                             wire:loading.attr="disabled"
                                                             class="!w-full !text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300"
@@ -826,7 +826,7 @@ new class extends Component {
                                                                 {{-- Edit Resep (batalkan TTD, status masih A) --}}
                                                                 <div>
                                                                     <x-primary-button
-                                                                        wire:click="batalTTD({{ $idx }})"
+                                                                        wire:click="batalTTD({{ $resepIndex }})"
                                                                         class="!py-2 !px-3 !text-sm w-full justify-center !bg-amber-500 hover:!bg-amber-600 !text-white focus:!ring-amber-300 dark:!bg-amber-500 dark:!text-white dark:hover:!bg-amber-600 dark:focus:!ring-amber-900"
                                                                         wire:loading.attr="disabled"
                                                                         wire:confirm="Batalkan TTD resep ini untuk diedit ulang? Data di apotek akan dihapus dan resep kembali ke draft."
@@ -846,7 +846,7 @@ new class extends Component {
 
                                                             {{-- Salin ke Resep Baru (tetap bisa meski locked) --}}
                                                             <x-primary-button
-                                                                wire:click="copyResepHdr({{ $idx }})"
+                                                                wire:click="copyResepHdr({{ $resepIndex }})"
                                                                 class="!py-2 !px-3 !text-sm w-full justify-center !bg-indigo-600 hover:!bg-indigo-700 !text-white focus:!ring-indigo-300 dark:!bg-indigo-600 dark:!text-white dark:hover:!bg-indigo-700 dark:focus:!ring-indigo-900"
                                                                 title="Buat resep baru dengan isi obat yang sama (tanpa TTD)">
                                                                 <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -859,7 +859,7 @@ new class extends Component {
 
                                                     {{-- Kirim ke Plan CPPT --}}
                                                     <x-primary-button
-                                                        wire:click="simpanPlanCppt({{ $idx }})"
+                                                        wire:click="simpanPlanCppt({{ $resepIndex }})"
                                                         class="!py-2 !px-3 !text-sm w-full justify-center !bg-teal-600 hover:!bg-teal-700 !text-white focus:!ring-teal-300 dark:!bg-teal-600 dark:!text-white dark:hover:!bg-teal-700 dark:focus:!ring-teal-900"
                                                         title="Salin ringkasan obat resep ini ke kolom Plan di form CPPT">
                                                         <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -871,7 +871,7 @@ new class extends Component {
                                                     {{-- Cetak e-Resep (PDF) — muncul jika sudah dikirim ke apotek --}}
                                                     @if ($hasSlsNo)
                                                         <x-primary-button
-                                                            wire:click="cetakEresep({{ $idx }})"
+                                                            wire:click="cetakEresep({{ $resepIndex }})"
                                                             wire:loading.attr="disabled" wire:target="cetakEresep"
                                                             class="!py-2 !px-3 !text-sm w-full justify-center"
                                                             title="Cetak e-Resep ke PDF">

@@ -172,15 +172,15 @@ new class extends Component {
 
         // Sort 4-level:
         //   1. hasAntrian (0 = punya no_antrian → atas, 1 = belum)
-        //   2. no_antrian desc (terbesar dulu) — dalam group "ada antrian" (pakai -no)
+        //   2. no_antrian desc (terbesar dulu) — dalam group "ada antrian" (pakai -noAntrian)
         //   3. tanpaResep (0 = punya e-resep → atas, 1 = tanpa resep → bawah)
         //   4. sls_date asc (timestamp resep dibuat, FIFO; empty = last)
         $all = $query->get();
 
         $sorted = $all
             ->sortBy(function ($row) {
-                $no = (int) ($row->no_antrian ?? 0);
-                $hasAntrian = $no > 0 ? 0 : 1;
+                $noAntrian = (int) ($row->no_antrian ?? 0);
+                $hasAntrian = $noAntrian > 0 ? 0 : 1;
 
                 // Tanpa resep (tidak ada e-resep utk slsNo ini) → taruh di urutan bawah.
                 // CITO (ditandai dokter di e-resep) → paling atas selama belum selesai (status A).
@@ -189,10 +189,10 @@ new class extends Component {
                 try {
                     $data = ($jsonRaw = OracleLob::read($row->datadaftarri_json ?? null, 'rstxn_rihdrs', 'rihdr_no', $row->rihdr_no, 'datadaftarri_json')) !== '' ? json_decode($jsonRaw, true) : null;
                     if (is_array($data)) {
-                        foreach ($data['eresepHdr'] ?? [] as $h) {
-                            if ((int) ($h['slsNo'] ?? 0) === (int) $row->sls_no) {
-                                $cito = ($h['cito'] ?? '0') === '1' ? 1 : 0;
-                                $hasEresep = !empty($h['eresep']) ? 1 : 0;
+                        foreach ($data['eresepHdr'] ?? [] as $entriResep) {
+                            if ((int) ($entriResep['slsNo'] ?? 0) === (int) $row->sls_no) {
+                                $cito = ($entriResep['cito'] ?? '0') === '1' ? 1 : 0;
+                                $hasEresep = !empty($entriResep['eresep']) ? 1 : 0;
                                 break;
                             }
                         }
@@ -204,9 +204,9 @@ new class extends Component {
                 $citoAktif = $cito && strtoupper($row->status ?? 'A') !== 'L' ? 0 : 1;
 
                 $slsDate = $row->sls_date_display ?? '';
-                $ts = $slsDate !== '' ? strtotime(str_replace('/', '-', $slsDate)) : PHP_INT_MAX;
+                $slsTimestamp = $slsDate !== '' ? strtotime(str_replace('/', '-', $slsDate)) : PHP_INT_MAX;
 
-                return [$citoAktif, $hasAntrian, -$no, $tanpaResep, $ts];
+                return [$citoAktif, $hasAntrian, -$noAntrian, $tanpaResep, $slsTimestamp];
             })
             ->values();
 
@@ -228,15 +228,15 @@ new class extends Component {
             try {
                 $data = ($jsonRaw = OracleLob::read($row->datadaftarri_json ?? null, 'rstxn_rihdrs', 'rihdr_no', $row->rihdr_no, 'datadaftarri_json')) !== '' ? json_decode($jsonRaw, true) : null;
                 if (is_array($data)) {
-                    foreach ($data['eresepHdr'] ?? [] as $h) {
-                        if ((int) ($h['slsNo'] ?? 0) === (int) $row->sls_no) {
-                            $eresepHdr = $h;
+                    foreach ($data['eresepHdr'] ?? [] as $entriResep) {
+                        if ((int) ($entriResep['slsNo'] ?? 0) === (int) $row->sls_no) {
+                            $eresepHdr = $entriResep;
                             break;
                         }
                     }
-                    foreach ($data['apotekHdr'] ?? [] as $h) {
-                        if ((int) ($h['slsNo'] ?? 0) === (int) $row->sls_no) {
-                            $apotekHdr = $h;
+                    foreach ($data['apotekHdr'] ?? [] as $entriApotek) {
+                        if ((int) ($entriApotek['slsNo'] ?? 0) === (int) $row->sls_no) {
+                            $apotekHdr = $entriApotek;
                             break;
                         }
                     }

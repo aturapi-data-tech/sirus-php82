@@ -79,39 +79,39 @@ new #[Layout('layouts.app-fullscreen')] class extends Component {
             ->where('klaim_id', '!=', 'KR')
             ->where(DB::raw("to_char(rj_date,'dd/mm/yyyy')"), '=', $refDate)
             ->get()
-            ->map(function ($r) {
+            ->map(function ($row) {
                 $raw = '';
-                foreach (['j1', 'j2', 'j3', 'j4', 'j5', 'j6', 'j7', 'j8'] as $k) {
-                    $part = $r->$k ?? '';
+                foreach (['j1', 'j2', 'j3', 'j4', 'j5', 'j6', 'j7', 'j8'] as $kolom) {
+                    $part = $row->$kolom ?? '';
                     if ($part === '' || $part === null) break;
                     $raw .= $part;
                 }
-                $j = json_decode($raw !== '' ? $raw : '[]', true, 512, JSON_PARTIAL_OUTPUT_ON_ERROR) ?? [];
-                $antrian = (int) ($j['noAntrianApotek']['noAntrian'] ?? 0);
+                $json = json_decode($raw !== '' ? $raw : '[]', true, 512, JSON_PARTIAL_OUTPUT_ON_ERROR) ?? [];
+                $antrian = (int) ($json['noAntrianApotek']['noAntrian'] ?? 0);
 
                 return (object) [
-                    'rj_status' => (string) ($r->rj_status ?? 'A'),
-                    'reg_name' => (string) ($r->reg_name ?? '-'),
-                    'dr_name' => (string) ($r->dr_name ?? ''),
+                    'rj_status' => (string) ($row->rj_status ?? 'A'),
+                    'reg_name' => (string) ($row->reg_name ?? '-'),
+                    'dr_name' => (string) ($row->dr_name ?? ''),
                     'antrian' => $antrian,
-                    'has_eresep' => isset($j['eresep']),
-                    'racikan' => !empty($j['eresepRacikan'] ?? []),
-                    'cito' => ($j['eresepCito'] ?? '0') === '1',
+                    'has_eresep' => isset($json['eresep']),
+                    'racikan' => !empty($json['eresepRacikan'] ?? []),
+                    'cito' => ($json['eresepCito'] ?? '0') === '1',
                     '_q' => $antrian > 0 ? 1 : 0,
-                    '_admin' => isset($j['AdministrasiUgd']) ? 1 : 0,
+                    '_admin' => isset($json['AdministrasiUgd']) ? 1 : 0,
                 ];
             });
 
-        $sorter = fn($r) => [
-            $r->_q,
-            $r->_q ? $r->antrian : 1000,
-            $r->_q ? 0 : ($r->has_eresep ? 1 : 0),
-            $r->_q ? 0 : $r->_admin,
+        $sorter = fn($row) => [
+            $row->_q,
+            $row->_q ? $row->antrian : 1000,
+            $row->_q ? 0 : ($row->has_eresep ? 1 : 0),
+            $row->_q ? 0 : $row->_admin,
         ];
 
         return [
-            'rowsAntri' => $rows->filter(fn($r) => $r->rj_status === 'A')->sortBy($sorter)->values(),
-            'rowsLunas' => $rows->filter(fn($r) => $r->rj_status === 'L')->sortByDesc($sorter)->values(),
+            'rowsAntri' => $rows->filter(fn($row) => $row->rj_status === 'A')->sortBy($sorter)->values(),
+            'rowsLunas' => $rows->filter(fn($row) => $row->rj_status === 'L')->sortByDesc($sorter)->values(),
             'refDateTime' => Carbon::now(env('APP_TIMEZONE'))->format('d-m-Y H:i:s'),
         ];
     }

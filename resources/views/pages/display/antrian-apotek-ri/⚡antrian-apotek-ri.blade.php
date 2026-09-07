@@ -97,39 +97,39 @@ new #[Layout('layouts.app-fullscreen')] class extends Component {
                 DB::raw('DBMS_LOB.SUBSTR(r.datadaftarri_json, 4000, 28001) AS j8'),
             ])
             ->get()
-            ->map(function ($r) {
+            ->map(function ($row) {
                 $raw = '';
-                foreach (['j1', 'j2', 'j3', 'j4', 'j5', 'j6', 'j7', 'j8'] as $k) {
-                    $part = $r->$k ?? '';
+                foreach (['j1', 'j2', 'j3', 'j4', 'j5', 'j6', 'j7', 'j8'] as $kolom) {
+                    $part = $row->$kolom ?? '';
                     if ($part === '' || $part === null) break;
                     $raw .= $part;
                 }
-                $j = json_decode($raw !== '' ? $raw : '{}', true, 512, JSON_PARTIAL_OUTPUT_ON_ERROR) ?? [];
+                $json = json_decode($raw !== '' ? $raw : '{}', true, 512, JSON_PARTIAL_OUTPUT_ON_ERROR) ?? [];
 
                 $racikan = false;
                 $hasResep = false;
                 $cito = false;
-                foreach ($j['eresepHdr'] ?? [] as $h) {
-                    if ((int) ($h['slsNo'] ?? 0) === (int) $r->sls_no) {
+                foreach ($json['eresepHdr'] ?? [] as $resepHdr) {
+                    if ((int) ($resepHdr['slsNo'] ?? 0) === (int) $row->sls_no) {
                         $hasResep = true;
-                        $racikan = (bool) ($h['isRacikan'] ?? false) || !empty($h['eresepRacikan'] ?? []);
-                        $cito = ($h['cito'] ?? '0') === '1';
+                        $racikan = (bool) ($resepHdr['isRacikan'] ?? false) || !empty($resepHdr['eresepRacikan'] ?? []);
+                        $cito = ($resepHdr['cito'] ?? '0') === '1';
                         break;
                     }
                 }
-                if (!$hasResep && !empty($j['eresepRacikan'])) {
+                if (!$hasResep && !empty($json['eresepRacikan'])) {
                     $racikan = true;
                     $hasResep = true;
                 }
-                $noAntrian = (int) ($r->no_antrian ?? 0);
+                $noAntrian = (int) ($row->no_antrian ?? 0);
 
                 // DTO bersih — JSON dibuang.
                 return (object) [
-                    'status' => strtoupper((string) ($r->status ?? 'A')),
-                    'reg_name' => (string) ($r->reg_name ?? '-'),
-                    'dr_name' => (string) ($r->dr_name ?? ''),
-                    'room_name' => (string) ($r->room_name ?? ''),
-                    'bangsal_name' => (string) ($r->bangsal_name ?? ''),
+                    'status' => strtoupper((string) ($row->status ?? 'A')),
+                    'reg_name' => (string) ($row->reg_name ?? '-'),
+                    'dr_name' => (string) ($row->dr_name ?? ''),
+                    'room_name' => (string) ($row->room_name ?? ''),
+                    'bangsal_name' => (string) ($row->bangsal_name ?? ''),
                     'no_antrian' => $noAntrian,
                     'has_resep' => $hasResep,
                     'racikan' => $racikan,
@@ -137,11 +137,11 @@ new #[Layout('layouts.app-fullscreen')] class extends Component {
                 ];
             });
 
-        $sorter = fn($r) => [$r->no_antrian > 0 ? 0 : 1, $r->no_antrian];
+        $sorter = fn($row) => [$row->no_antrian > 0 ? 0 : 1, $row->no_antrian];
 
         return [
-            'rowsAntri' => $rows->filter(fn($r) => $r->status === 'A')->sortBy($sorter)->values(),
-            'rowsLunas' => $rows->filter(fn($r) => $r->status === 'L')->sortByDesc($sorter)->values(),
+            'rowsAntri' => $rows->filter(fn($row) => $row->status === 'A')->sortBy($sorter)->values(),
+            'rowsLunas' => $rows->filter(fn($row) => $row->status === 'L')->sortByDesc($sorter)->values(),
             'refDateTime' => Carbon::now(env('APP_TIMEZONE'))->format('d-m-Y H:i:s'),
         ];
     }

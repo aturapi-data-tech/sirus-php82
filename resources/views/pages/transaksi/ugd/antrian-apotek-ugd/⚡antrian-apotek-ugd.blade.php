@@ -181,12 +181,12 @@ new class extends Component {
                 $tanpaResep = isset($json['eresep']) || isset($json['eresepRacikan']) ? 0 : 1;
 
                 $taskId6 = $json['taskIdPelayanan']['taskId6'] ?? '';
-                $t6 = $taskId6 !== '' ? strtotime(str_replace('/', '-', $taskId6)) : PHP_INT_MAX;
+                $taskId6Timestamp = $taskId6 !== '' ? strtotime(str_replace('/', '-', $taskId6)) : PHP_INT_MAX;
 
                 // CITO (ditandai dokter di e-resep) → paling atas selama pasien masih antri (rj_status A)
                 $citoAktif = ($json['eresepCito'] ?? '0') === '1' && ($row->rj_status ?? '') === 'A' ? 0 : 1;
 
-                return [$citoAktif, $hasAntrian, -$noAntrian, $tanpaResep, $t6];
+                return [$citoAktif, $hasAntrian, -$noAntrian, $tanpaResep, $taskId6Timestamp];
             })
             ->values();
 
