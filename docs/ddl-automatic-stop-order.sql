@@ -68,7 +68,7 @@ CREATE TABLE RSMST_STOP_ORDER_GOLONGANS (
 
 COMMENT ON TABLE  RSMST_STOP_ORDER_GOLONGANS IS 'Master golongan Automatic Stop Order: batas hari order per golongan obat + keterangan kebijakan.';
 COMMENT ON COLUMN RSMST_STOP_ORDER_GOLONGANS.BATAS_HARI IS 'Order obat golongan ini berhenti otomatis setelah N hari kecuali dokter mengkaji ulang.';
-COMMENT ON COLUMN RSMST_STOP_ORDER_GOLONGANS.BATAS_MINIMAL_HARI IS 'Opsional. Lama pemberian minimal (hari) sebelum obat boleh dikaji/dihentikan; NULL = tidak ada batas minimal.';
+COMMENT ON COLUMN RSMST_STOP_ORDER_GOLONGANS.BATAS_MINIMAL_HARI IS 'Opsional. Lama pemberian minimal (hari) sebelum obat boleh dikaji/dihentikan. NULL = tidak ada batas minimal.';
 
 -- -------------------------------------------------------------
 -- 2. PEMETAAN OBAT — obat mana masuk golongan mana. Satu obat = satu golongan
@@ -92,7 +92,7 @@ CREATE INDEX IDX_STOP_ORDER_PRODUCTS_GOL ON RSMST_STOP_ORDER_PRODUCTS (GOLONGAN_
 -- Tambahan 2026-09-07 untuk DB yang sudah memasang versi tanpa BATAS_MINIMAL_HARI:
 --   ALTER TABLE RSMST_STOP_ORDER_GOLONGANS ADD (BATAS_MINIMAL_HARI NUMBER(3));
 --   ALTER TABLE RSMST_STOP_ORDER_GOLONGANS ADD CONSTRAINT CK_STOP_ORDER_MINIMAL CHECK (BATAS_MINIMAL_HARI IS NULL OR (BATAS_MINIMAL_HARI > 0 AND BATAS_MINIMAL_HARI <= BATAS_HARI));
---   COMMENT ON COLUMN RSMST_STOP_ORDER_GOLONGANS.BATAS_MINIMAL_HARI IS 'Opsional. Lama pemberian minimal (hari) sebelum obat boleh dikaji/dihentikan; NULL = tidak ada batas minimal.';
+--   COMMENT ON COLUMN RSMST_STOP_ORDER_GOLONGANS.BATAS_MINIMAL_HARI IS 'Opsional. Lama pemberian minimal (hari) sebelum obat boleh dikaji/dihentikan. NULL = tidak ada batas minimal.';
 
 -- Environment yang sempat memasang nama lama (RSMST_ASO_*, GOL_ID, BATAS_MIN_HARI)
 -- pada 2026-09-07 diubah namanya, bukan dibuat ulang:
