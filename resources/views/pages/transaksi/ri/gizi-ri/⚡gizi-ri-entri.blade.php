@@ -207,8 +207,11 @@ new class extends Component {
 
                     {{-- TAB — PENILAIAN GIZI (default) — komponen yang sama dgn tab EMR RI --}}
                     <div x-show="activeTab === 'gizi'" x-transition.opacity.duration.200ms>
+                        {{-- riHdrNo lewat PROP + key per pasien (pola sama tab Penilaian EMR RI), bukan
+                             hanya event: pembungkus ini berganti wire:key saat pasien dibuka, jadi form
+                             di-mount ulang — prop menjamin nomor RI terisi apa pun urutan event-nya. --}}
                         <livewire:pages::transaksi.ri.emr-ri.penilaian-ri.gizi-ri.rm-penilaian-gizi-ri-actions
-                            wire:key="gizi-worklist-form" />
+                            :riHdrNo="$riHdrNo" wire:key="gizi-worklist-form-{{ $riHdrNo ?? 'new' }}" />
                     </div>
 
                     @if ($riHdrNo)

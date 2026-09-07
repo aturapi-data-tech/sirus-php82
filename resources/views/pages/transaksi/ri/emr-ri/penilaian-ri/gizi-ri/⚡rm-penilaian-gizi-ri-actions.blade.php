@@ -49,9 +49,32 @@ new class extends Component {
         'penyakit' => [['penyakit' => 'Tidak ada', 'score' => 0], ['penyakit' => 'Ringan', 'score' => 1], ['penyakit' => 'Berat', 'score' => 2]],
     ];
 
-    public function mount(): void
+    /**
+     * riHdrNo boleh datang lewat PROP (worklist Gizi & tab Penilaian EMR RI) maupun
+     * event open-rm-penilaian-gizi-ri. Dulu worklist Gizi hanya mengandalkan event,
+     * sementara pembungkusnya berganti wire:key saat pasien dibuka sehingga komponen
+     * ini di-mount ulang pada respons yang sama — bila event tiba sebelum instance
+     * baru siap, riHdrNo kosong dan Simpan gagal "Data RI # tidak ditemukan untuk
+     * di-lock". Memuat dari prop membuatnya tidak bergantung urutan event.
+     */
+    public function mount(?string $riHdrNo = null): void
     {
         $this->registerAreas(['modal-penilaian-gizi-ri']);
+
+        if (filled($riHdrNo)) {
+            $this->open($riHdrNo);
+        }
+    }
+
+    /** Guard sebelum menulis: tanpa nomor RI, lockRIRow melempar pesan yang membingungkan. */
+    private function pasienSiap(): bool
+    {
+        if (empty($this->riHdrNo)) {
+            $this->dispatch('toast', type: 'error', message: 'Data pasien belum termuat. Tutup lalu buka ulang pasien ini.');
+            return false;
+        }
+
+        return true;
     }
 
     #[On('open-rm-penilaian-gizi-ri')]
@@ -135,6 +158,9 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang.');
             return;
         }
+        if (!$this->pasienSiap()) {
+            return;
+        }
 
         $this->formEntryGizi['petugasPenilai'] = auth()->user()->myuser_name;
         $this->formEntryGizi['petugasPenilaiCode'] = auth()->user()->myuser_code;
@@ -184,7 +210,7 @@ new class extends Component {
 
     public function removeAssessmentGizi(int $index): void
     {
-        if ($this->isFormLocked) {
+        if ($this->isFormLocked || !$this->pasienSiap()) {
             return;
         }
 
