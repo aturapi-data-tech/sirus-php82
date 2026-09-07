@@ -134,6 +134,9 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/master/ews', 'pages::master.master-ews.master-ews')
         ->name('master.ews');
 
+    Route::livewire('/master/automatic-stop-order', 'pages::master.master-automatic-stop-order.master-automatic-stop-order')
+        ->name('master.automatic-stop-order');
+
     Route::livewire('/master/jasa-medis', 'pages::master.master-jasa-medis.jasa-medis.master-jasa-medis')
         ->name('master.jasa-medis');
 
