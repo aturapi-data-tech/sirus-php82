@@ -109,6 +109,38 @@ Badge header baku: `Rawat Inap` · `{{ count($daftar) }} tersimpan` · `Read Onl
 dalam `<div class="flex items-center gap-1.5 ml-auto shrink-0">` **sebelum** tombol ✕. Lima modul
 Surveilans HAIs sempat tanpa badge sama sekali.
 
+### Tabel daftar: acuan Edukasi Terintegrasi (BAKU sejak 2026-09-08)
+
+Layar daftar setiap modul multi-entri memakai satu bentuk tabel, acuannya
+`edukasi-terintegrasi-ri`. Disapu ke 63 modul dua layar pada 2026-09-08 (commit 81f60f88,
+eab5fdbe, 8a941775). Kalau membuat modul baru, salin dari sana; jangan bikin varian.
+
+```
+[▸] Tanggal | <ringkasan khas modul, 1–2 kolom> | Petugas (TTD) | Status | Aksi
+    ↳ baris rincian <dl> 2 kolom (terbuka saat baris diklik; kolom Aksi @click.stop)
+```
+
+- **Tanpa kolom No** — nomor urut tak bermakna karena daftar diurut ulang (§2c).
+- **Kolom pertama = panah rincian**: `<tbody wire:key x-data="{ open: false }">` per entri,
+  `<tr @click="open = !open">` dengan `<svg :class="{ 'rotate-90': open }">`, lalu
+  `<tr x-show="open" x-cloak><td colspan="N"><dl class="grid … md:grid-cols-2">`.
+  Semua baris mulai TERTUTUP. Isi `<dl>` = ringkasan isian yang tidak muat di kolom,
+  bukan seluruh formulir.
+- **Tanggal** `font-mono`; **Petugas (TTD)** = nama petugas, atau badge merah `Belum TTD`;
+  **Status** = badge `Terkunci` (info) / `Draft` (warning); kolom teks lain `text-muted`.
+- **Aksi, dua baris**: atas `[Lanjutkan Pengisian (primary, draft)] [Lihat (secondary,
+  terkunci)] [Cetak (secondary, ikon printer)]`; bawah `[Buka Kunci (x-confirm-button,
+  @can dokumen.bukaKunci)] [hapus ikon tong sampah (x-outline-button merah, @can
+  dokumen.hapus)]`. **Cetak tidak boleh `x-info-button`/`x-primary-button`** — biru solid
+  membuatnya tampak seperti aksi utama.
+- Modul tanpa draft (Identifikasi Bayi): tombol atas `TTD Saya` (primary) menggantikan
+  Lanjutkan Pengisian; Status `Terkunci` / `Belum TTD`.
+- **Keterangan footer layar daftar** (kiri, `mr-auto`): "Setiap entri berdiri sendiri —
+  **Isi Formulir Baru** untuk entri baru, **Lanjutkan Pengisian** untuk melanjutkan draft."
+  Kata kedua harus sama dengan label tombolnya (dulu "Edit").
+- Daftar kartu-baris (`<div class="flex … justify-between">` per entri) **tidak dipakai lagi**;
+  Surveilans HAIs ×5 dan Identifikasi Bayi sudah dikonversi.
+
 ### Penamaan
 
 Kalimat utuh, bukan singkatan: "Lanjutkan Pengisian" (bukan "Lanjut Isi"), "Isi Formulir
@@ -124,7 +156,9 @@ php .claude/skills/modul-dokumen/periksa-tampilan.php <berkas…>  # sebagian
 ```
 
 Membaca HTML hasil render (bukan isi berkas): keseimbangan tag di kedua layar, posisi tombol
-tutup lewat DOM, kelengkapan tombol footer, dan keterangan tabel saat kosong. EXIT 0 = lolos.
+tutup lewat DOM, kelengkapan tombol footer, dan keterangan tabel saat kosong. Sejak 2026-09-08
+juga memeriksa bentuk tabel daftar: kolom No, panah rincian, Cetak bukan info/primary, label
+"Lanjutkan" tanpa "Pengisian", dan keterangan footer. EXIT 0 = lolos.
 
 ### Jebakan yang sudah menggigit (jangan diulang)
 

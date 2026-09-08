@@ -1177,6 +1177,12 @@ new class extends Component {
                 </div>
                 @else
                     <div class="flex flex-wrap items-center justify-end gap-2">
+                        <p class="flex items-center gap-1.5 mr-auto text-sm text-muted dark:text-gray-400">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Setiap entri berdiri sendiri — <strong>Isi Formulir Baru</strong> untuk entri baru, <strong>Lanjutkan Pengisian</strong> untuk melanjutkan draft.</span>
+                        </p>
                         <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
                         @unless ($isFormLocked)
                             <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"

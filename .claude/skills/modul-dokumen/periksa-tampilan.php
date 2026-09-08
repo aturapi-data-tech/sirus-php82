@@ -14,6 +14,9 @@
  *   5. display pasien ikut tampil di layar daftar (penjaga @if diForm salah tempat)
  *   6. layar daftar polos & full width: tanpa judul "… Tersimpan", tanpa "Klik baris …", tanpa max-w-5xl
  *   7. tabel entri tidak lagi memakai array_reverse() (lihat docs §2c)
+ *   8. bentuk tabel daftar = Edukasi Terintegrasi (docs §2a "Tabel daftar"): tanpa kolom No,
+ *      ada panah rincian, Cetak bukan x-info/x-primary, label "Lanjutkan Pengisian" utuh,
+ *      keterangan footer "Setiap entri berdiri sendiri" di layar daftar
  */
 require __DIR__ . '/../../../vendor/autoload.php';
 $app = require __DIR__ . '/../../../bootstrap/app.php';
@@ -63,7 +66,9 @@ foreach ($berkas as $path) {
         if ($s = saldoTag($daftar)) $catatan[] = 'tag layar daftar timpang: ' . json_encode($s);
         if ($e = tutupMepetKanan($daftar)) $catatan[] = $e;
 
-        $sumber = file_get_contents($path);
+        // Partial daftar (mis. pengkajian-pre-op *-daftar-tersimpan) ikut dibaca sebagai sumber.
+        $sumber = file_get_contents($path)
+            . implode('', array_map('file_get_contents', glob(dirname($path) . '/*-daftar-tersimpan.blade.php')));
 
         // Display pasien WAJIB ikut tampil di layar daftar. Kalau berkasnya memasang
         // <livewire:…display-pasien…> tapi HTML-nya tak memuatnya, biasanya
@@ -79,8 +84,21 @@ foreach ($berkas as $path) {
         // Urutan tabel entri: terbaru di atas, bukan urutan simpan.
         if (str_contains($sumber, 'array_reverse(')) $catatan[] = 'masih array_reverse() — pakai collect()->sortByDesc(strtotime(strtr(…)))';
 
+
+        // Bentuk tabel daftar (docs §2a "Tabel daftar", BAKU 2026-09-08).
+        // Kolom No: hanya <thead> PERTAMA di blok daftar (tabel di baris rincian/formulir boleh bernomor).
+        if (($posUnless = strrpos($sumber, '@unless ($this->diForm())')) !== false
+            && preg_match('/<thead.*?<\/thead>/s', substr($sumber, $posUnless), $theadDaftar)
+            && preg_match('/<th[^>]*>\s*No\.?\s*<\/th>/i', $theadDaftar[0]))
+            $catatan[] = 'tabel daftar masih punya kolom No';
+        if (preg_match('/<x-(info|primary)-button[^>]*wire:click="cetak/', $sumber))
+            $catatan[] = 'Cetak memakai x-info/x-primary-button (harus x-secondary-button)';
+        if (preg_match('/>\s*Lanjutkan\s*<\//', $sumber)) $catatan[] = 'label "Lanjutkan" harus "Lanjutkan Pengisian"';
+
         $duaLayar = str_contains($sumber, 'this->diForm()');
         if ($duaLayar) {
+            if (!str_contains($sumber, 'rotate-90')) $catatan[] = 'tabel daftar tanpa panah rincian (baris expand)';
+            if (!str_contains($daftar, 'Setiap entri berdiri sendiri')) $catatan[] = 'layar daftar tanpa keterangan footer "Setiap entri berdiri sendiri"';
             if (!preg_match('/>\s*Tutup\s*</', $daftar)) $catatan[] = 'layar daftar tanpa tombol Tutup';
             if (!str_contains($daftar, 'wire:click="tambahEntri"')) $catatan[] = 'layar daftar tanpa Isi Formulir Baru';
             if (str_contains($daftar, '<table') && !str_contains($daftar, 'Belum ada data'))
