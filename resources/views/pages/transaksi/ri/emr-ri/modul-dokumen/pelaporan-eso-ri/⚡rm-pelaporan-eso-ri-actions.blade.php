@@ -756,7 +756,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse (array_slice(collect($dataDaftarRi['pelaporanEsoRI'] ?? [])->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all(), 0, 3) as $indexEntri => $entri)
+                        @forelse (array_slice(collect($dataDaftarRi['pelaporanEsoRI'] ?? [])->sortByDesc(fn($entri) => strtotime(strtr((data_get($entri, 'form.tglLaporan') ?: ($entri['created_at'] ?? '')), '/', '-')))->values()->all(), 0, 3) as $indexEntri => $entri)
                             @php
                                 $idEntri = $entri['id'] ?? null;
                                 $isFinal = (bool) ($entri['finalized'] ?? false);
@@ -1340,7 +1340,6 @@ new class extends Component {
                         <table class="ds-table">
                             <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
                                 <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                                    <th class="whitespace-nowrap ds-c w-10 bg-surface-card dark:bg-gray-800">No</th>
                                     <th class="whitespace-nowrap bg-surface-card dark:bg-gray-800">Tgl. Laporan</th>
                                     <th class="whitespace-nowrap bg-surface-card dark:bg-gray-800">Manifestasi ESO</th>
                                     <th class="whitespace-nowrap ds-c w-24 bg-surface-card dark:bg-gray-800">Jml Obat</th>
@@ -1350,7 +1349,7 @@ new class extends Component {
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse ($dataDaftarRi['pelaporanEsoRI'] ?? [] as $indexEntri => $entri)
+                                @forelse (collect($dataDaftarRi['pelaporanEsoRI'] ?? [])->sortByDesc(fn($entri) => strtotime(strtr((data_get($entri, 'form.tglLaporan') ?: ($entri['created_at'] ?? '')), '/', '-')))->values()->all() as $indexEntri => $entri)
                                     @php
                                         $idEntri = $entri['id'] ?? null;
                                         $isFinal = (bool) ($entri['finalized'] ?? false);
@@ -1361,7 +1360,6 @@ new class extends Component {
                                             ->count();
                                     @endphp
                                     <tr wire:key="eso-entri-{{ $riHdrNo ?? 'new' }}-{{ $idEntri ?? $indexEntri }}">
-                                        <td class="ds-c ds-td-meta">{{ $indexEntri + 1 }}</td>
                                         <td class="ds-td-strong">{{ data_get($entri, 'form.tglLaporan', '-') }}</td>
                                         <td>
                                             <div class="max-w-md truncate">{{ $manifestasi !== '' ? $manifestasi : '-' }}</div>
@@ -1397,7 +1395,7 @@ new class extends Component {
                                                             title="Lihat entri terkunci">Lihat</x-secondary-button>
                                                     @endif
                                                     @if ($idEntri)
-                                                        <x-info-button type="button" wire:click="cetak('{{ $idEntri }}')"
+                                                        <x-secondary-button type="button" wire:click="cetak('{{ $idEntri }}')"
                                                             wire:loading.attr="disabled"
                                                             wire:target="cetak('{{ $idEntri }}')" class="gap-1.5"
                                                             title="Cetak laporan ESO">
@@ -1406,7 +1404,7 @@ new class extends Component {
                                                             <span wire:loading wire:target="cetak('{{ $idEntri }}')"
                                                                 class="flex items-center gap-1.5"><x-loading class="w-5 h-5" />
                                                                 Mencetak...</span>
-                                                        </x-info-button>
+                                                        </x-secondary-button>
                                                     @endif
                                                 </div>
 
@@ -1447,7 +1445,7 @@ new class extends Component {
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="italic ds-c text-muted-soft">
+                                        <td colspan="6" class="italic ds-c text-muted-soft">
                                             Belum ada laporan efek samping obat.
                                         </td>
                                     </tr>
@@ -1478,7 +1476,13 @@ new class extends Component {
                             @endunless
                         @endif
                     @else
-                            <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
+                            <p class="flex items-center gap-1.5 mr-auto text-sm text-muted dark:text-gray-400">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Setiap entri berdiri sendiri — <strong>Isi Formulir Baru</strong> untuk entri baru, <strong>Lanjutkan Pengisian</strong> untuk melanjutkan draft.</span>
+                        </p>
+                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
                                 @unless ($isFormLocked)
                                     <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
                                         wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">

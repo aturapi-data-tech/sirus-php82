@@ -1035,7 +1035,7 @@ new class extends Component {
                                                     Lihat
                                                 </x-secondary-button>
                                             @endif
-                                            <x-primary-button wire:click="cetakFormA('{{ $rowKey }}')" type="button" wire:loading.attr="disabled" wire:target="cetakFormA('{{ $rowKey }}')" title="Cetak">
+                                            <x-secondary-button wire:click="cetakFormA('{{ $rowKey }}')" type="button" wire:loading.attr="disabled" wire:target="cetakFormA('{{ $rowKey }}')" title="Cetak">
                                                 <span wire:loading.remove wire:target="cetakFormA('{{ $rowKey }}')" class="flex items-center gap-1">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -1043,7 +1043,7 @@ new class extends Component {
                                                     Cetak
                                                 </span>
                                                 <span wire:loading wire:target="cetakFormA('{{ $rowKey }}')" class="flex items-center gap-1"><x-loading /> ...</span>
-                                            </x-primary-button>
+                                            </x-secondary-button>
                                             </div>
 
                                             {{-- Baris bawah: aksi destruktif (Hapus) --}}
@@ -1148,12 +1148,12 @@ new class extends Component {
                                                                             Lihat
                                                                         </x-secondary-button>
                                                                     @endif
-                                                                    <x-primary-button type="button" wire:click="cetakFormB('{{ $fbKey }}')" wire:loading.attr="disabled" wire:target="cetakFormB('{{ $fbKey }}')" class="!px-2.5 !py-1 gap-1" title="Cetak Form B">
+                                                                    <x-secondary-button type="button" wire:click="cetakFormB('{{ $fbKey }}')" wire:loading.attr="disabled" wire:target="cetakFormB('{{ $fbKey }}')" class="!px-2.5 !py-1 gap-1" title="Cetak Form B">
                                                                         <span wire:loading.remove wire:target="cetakFormB('{{ $fbKey }}')" class="flex items-center gap-1">
                                                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                                                                         </span>
                                                                         <span wire:loading wire:target="cetakFormB('{{ $fbKey }}')" class="flex items-center gap-1"><x-loading class="w-4 h-4" /></span>
-                                                                    </x-primary-button>
+                                                                    </x-secondary-button>
                                                                     </div>
 
                                                                     {{-- Baris bawah: aksi destruktif (Hapus) --}}
@@ -1187,6 +1187,12 @@ new class extends Component {
             @endif
         </div>
         <div class="flex flex-wrap items-center justify-end gap-2 mt-4">
+            <p class="flex items-center gap-1.5 mr-auto text-sm text-muted dark:text-gray-400">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Setiap entri berdiri sendiri — <strong>Isi Formulir Baru</strong> untuk entri baru, <strong>Lanjutkan Pengisian</strong> untuk melanjutkan draft.</span>
+            </p>
             <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
             @unless ($isFormLocked)
                 <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
