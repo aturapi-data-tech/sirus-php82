@@ -56,6 +56,9 @@
                 $kapita = in_array($barisKomponen->first()['group_doc'], $grupKapita, true);
                 $subtotal = $barisKomponen->sum('nominal');
                 $pasien = $barisKomponen->sum('pasien');
+                // Komponen besar dilipat: ribuan baris tidak ikut HTML sampai diminta.
+                $kunciKomponen = $header->dr_id . '|' . $descDoc;
+                $dilipat = $barisKomponen->count() > ($batasLipat ?? 300) && !in_array($kunciKomponen, $komponenTerbuka ?? [], true);
             @endphp
 
             <div class="border-b border-hairline dark:border-gray-700">
@@ -68,11 +71,29 @@
                             </span>
                         @endif
                     </div>
-                    <div class="text-xs text-muted dark:text-gray-400">
-                        {{ $pasien }} pasien &middot;
-                        <span class="font-semibold tabular-nums text-body dark:text-gray-200">{{ $rupiah($subtotal) }}</span>
+                    <div class="flex items-center gap-3 text-xs text-muted dark:text-gray-400">
+                        <span>
+                            {{ $pasien }} pasien &middot;
+                            <span class="font-semibold tabular-nums text-body dark:text-gray-200">{{ $rupiah($subtotal) }}</span>
+                        </span>
+                        @if ($barisKomponen->count() > ($batasLipat ?? 300))
+                            <x-secondary-button type="button" wire:click="toggleKomponen('{{ $kunciKomponen }}')"
+                                wire:loading.attr="disabled" wire:target="toggleKomponen('{{ $kunciKomponen }}')" class="gap-1.5 whitespace-nowrap">
+                                <span wire:loading.remove wire:target="toggleKomponen('{{ $kunciKomponen }}')">
+                                    {{ $dilipat ? 'Tampilkan ' . $barisKomponen->count() . ' baris' : 'Sembunyikan baris' }}
+                                </span>
+                                <span wire:loading wire:target="toggleKomponen('{{ $kunciKomponen }}')" class="inline-flex items-center gap-1.5">
+                                    <x-loading class="w-4 h-4" /> Memuat...
+                                </span>
+                            </x-secondary-button>
+                        @endif
                     </div>
                 </div>
+                @if ($dilipat)
+                    <div class="px-4 py-2 text-xs italic text-muted dark:text-gray-400">
+                        {{ $barisKomponen->count() }} baris dilipat supaya lampiran cepat dibuka &mdash; subtotal di atas sudah menghitung semuanya. Unduh Excel tetap memuat seluruh baris.
+                    </div>
+                @else
 
                 @if ($kapita)
                     <div class="px-4 py-1.5 text-xs border-b border-hairline bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-200 dark:border-gray-700">
@@ -146,6 +167,7 @@
                         </tbody>
                     </table>
                 </div>
+                @endif
             </div>
         @endforeach
 

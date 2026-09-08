@@ -19,7 +19,9 @@
 use Livewire\Component;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use App\Support\GajiDokter\GajiDokterLampiran;
 
 new class extends Component {
@@ -32,6 +34,26 @@ new class extends Component {
 
     /** Judul modal ikut berubah supaya jelas sedang melihat satu atau semua. */
     public bool $modeSemua = false;
+
+    /**
+     * Kunci cache hasil barisMassal() selama modal terbuka. Kueri view
+     * penggajian makan 1-2 detik dan hasilnya (ribuan baris) terlalu besar
+     * untuk properti Livewire, jadi disimpan di cache BERKAS — bukan store
+     * bawaan (database/Oracle) — lalu dibuang saat modal ditutup. Tiap buka
+     * dapat kunci baru sehingga data selalu segar saat dibuka.
+     */
+    public string $cacheKey = '';
+
+    /**
+     * Komponen (dr_id|desc_doc) yang barisnya sengaja ditampilkan walau
+     * melebihi BATAS_LIPAT. Komponen besar dilipat dulu supaya HTML awal
+     * tidak berisi ribuan baris — dr. Predito Agustus 2026: 1.870 baris uang
+     * periksa bernominal 0 yang tak seorang pun membacanya.
+     */
+    public array $komponenTerbuka = [];
+
+    /** Komponen dengan baris lebih dari ini dilipat sampai diminta. */
+    public const BATAS_LIPAT = 300;
 
     #[On('gaji.dokter.openLampiran')]
     public function openLampiran(int $gajidoctorNo): void
@@ -47,14 +69,19 @@ new class extends Component {
 
     protected function siapkan(array $gajidoctorNoList, bool $modeSemua): void
     {
+        $this->lupakanCache();
         $this->gajidoctorNoList = array_values(array_filter(array_map('intval', $gajidoctorNoList)));
         $this->modeSemua = $modeSemua;
+        $this->komponenTerbuka = [];
+        $this->cacheKey = 'gaji-dokter-lampiran:' . Str::uuid();
 
         // Computed di-cache satu request; tanpa dibuang, membuka dokter kedua
         // akan menampilkan data dokter pertama.
         unset($this->dataLampiran);
 
         if ($this->dataLampiran->isEmpty()) {
+            $this->lupakanCache();
+            $this->gajidoctorNoList = [];
             $this->dispatch('toast', type: 'warning', message: 'Tidak ada transaksi pasien pada periode ini.');
             return;
         }
@@ -62,9 +89,35 @@ new class extends Component {
         $this->dispatch('open-modal', name: 'gaji-dokter-lampiran');
     }
 
+    /**
+     * Tutup = kosongkan daftar slip, bukan sekadar menyembunyikan modal.
+     * Dulu daftar dibiarkan terisi, sehingga request tutup mengulang kueri
+     * view 1-2 detik dan merender ulang ribuan baris yang tidak akan dilihat.
+     */
     public function closeModal(): void
     {
+        $this->lupakanCache();
+        $this->gajidoctorNoList = [];
+        $this->komponenTerbuka = [];
+        unset($this->dataLampiran);
         $this->dispatch('close-modal', name: 'gaji-dokter-lampiran');
+    }
+
+    public function toggleKomponen(string $kunci): void
+    {
+        if (in_array($kunci, $this->komponenTerbuka, true)) {
+            $this->komponenTerbuka = array_values(array_diff($this->komponenTerbuka, [$kunci]));
+        } else {
+            $this->komponenTerbuka[] = $kunci;
+        }
+    }
+
+    protected function lupakanCache(): void
+    {
+        if ($this->cacheKey !== '') {
+            Cache::store('file')->forget($this->cacheKey);
+            $this->cacheKey = '';
+        }
     }
 
     /**
@@ -189,6 +242,26 @@ new class extends Component {
             return collect();
         }
 
+        if ($this->cacheKey !== '') {
+            $tersimpan = Cache::store('file')->get($this->cacheKey);
+            if ($tersimpan !== null) {
+                return $tersimpan;
+            }
+        }
+
+        $data = $this->susunLampiran();
+
+        if ($this->cacheKey !== '' && $data->isNotEmpty()) {
+            Cache::store('file')->put($this->cacheKey, $data, now()->addMinutes(30));
+        }
+
+        return $data;
+    }
+
+    /** Tarik dari database — dipanggil sekali per buka modal, sisanya dari cache. */
+    protected function susunLampiran()
+    {
+
         $headerList = DB::table('rstxn_gajidoctorhdrs as h')
             ->join('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
             ->whereIn('h.gajidoctor_no', $this->gajidoctorNoList)
@@ -272,9 +345,14 @@ new class extends Component {
 
             {{-- BODY --}}
             <div class="flex-1 px-4 pt-2 pb-4 overflow-y-auto bg-surface-soft dark:bg-gray-950/20">
-                @include('pages.components.manajemen.gaji-dokter-lampiran.isi-lampiran-layar', [
-                    'dataLampiran' => $this->dataLampiran,
-                ])
+                {{-- Tertutup = tidak merender apa pun (daftar slip dikosongkan di closeModal). --}}
+                @if ($gajidoctorNoList)
+                    @include('pages.components.manajemen.gaji-dokter-lampiran.isi-lampiran-layar', [
+                        'dataLampiran' => $this->dataLampiran,
+                        'komponenTerbuka' => $komponenTerbuka,
+                        'batasLipat' => self::BATAS_LIPAT,
+                    ])
+                @endif
             </div>
 
             {{-- FOOTER --}}
