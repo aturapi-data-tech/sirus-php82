@@ -49,6 +49,13 @@ class GajiDokterLampiran
     protected const BATAS_IN = 1000;
 
     /**
+     * Keterangan untuk komponen yang satu nomornya memuat beberapa jasa
+     * (klinik, transfer): jasa pertama + jumlah sisanya. Oracle 10g tidak
+     * punya LISTAGG, dan menyambung semua nama pun tidak muat di kolom.
+     */
+    protected const GABUNG_JASA = "CASE WHEN COUNT(*) > 1 THEN MIN(m.accdoc_desc) || ' (+' || TO_CHAR(COUNT(*) - 1) || ' jasa lain)' ELSE MIN(m.accdoc_desc) END";
+
+    /**
      * Daftar transaksi satu dokter untuk satu periode jasa.
      *
      * @return Collection<int, array{desc_doc:string,group_doc:string,label:string,seq:int,txn_no:string,tgl:string,tgl_sort:string,reg_no:string,nama:string,nominal:float,pasien:int}>
@@ -154,7 +161,8 @@ class GajiDokterLampiran
                     'klaim' => trim((string) ($klaim->klaim_desc ?? $baris->klaim_id)),
                     'klaim_status' => trim((string) ($klaim->klaim_status ?? '')),
                     'no_sep' => trim((string) ($sumber->no_sep ?? '')),
-                    // Terisi hanya untuk komponen radiologi (nama pemeriksaan).
+                    // Nama jasa/tindakan/pemeriksaan/kasus operasi; kosong untuk
+                    // uang periksa, visite, konsul.
                     'keterangan' => trim((string) ($sumber->keterangan ?? '')),
                 ];
             })
@@ -331,10 +339,16 @@ class GajiDokterLampiran
                 'h.rj_no', 'h.rj_date', $nomorTransaksiList,
             ),
 
+            // Jasa dokter: satu baris = satu jasa (RSMST_ACCDOCS.accdoc_desc),
+            // jadi nama jasanya ikut sebagai keterangan — tanpa ini pembaca
+            // tidak tahu baris "Jasa Dokter" itu konsultasi, tindakan, atau
+            // apa (permintaan user 2026-09-08).
             'JD RJ' => self::bentuk(
                 DB::table('rstxn_rjaccdocs as x')
-                    ->join('rstxn_rjhdrs as h', 'h.rj_no', '=', 'x.rj_no'),
+                    ->join('rstxn_rjhdrs as h', 'h.rj_no', '=', 'x.rj_no')
+                    ->leftJoin('rsmst_accdocs as m', 'm.accdoc_id', '=', 'x.accdoc_id'),
                 'x.rjhn_dtl', 'h.rj_date', $nomorTransaksiList,
+                ekspresiKeterangan: 'MIN(m.accdoc_desc)',
             ),
 
             'UP UGD' => self::bentuk(
@@ -344,28 +358,52 @@ class GajiDokterLampiran
 
             'JD UGD' => self::bentuk(
                 DB::table('rstxn_ugdaccdocs as x')
-                    ->join('rstxn_ugdhdrs as h', 'h.rj_no', '=', 'x.rj_no'),
+                    ->join('rstxn_ugdhdrs as h', 'h.rj_no', '=', 'x.rj_no')
+                    ->leftJoin('rsmst_accdocs as m', 'm.accdoc_id', '=', 'x.accdoc_id'),
                 'x.rjhn_dtl', 'h.rj_date', $nomorTransaksiList,
+                ekspresiKeterangan: 'MIN(m.accdoc_desc)',
             ),
 
             // Pasien transfer: TXN_NO-nya RIHDR_NO, tapi jasanya lahir dari
             // kunjungan RJ/UGD SEBELUM transfer — tanggal layanannya di sana,
             // dijangkau lewat RSTXN_RITEMPADMINS. Nilai penanda ditulis literal,
             // bukan binding, supaya urutan binding tidak bergeser oleh JOIN.
-            'UP RJTRF', 'JD RJTRF' => self::bentuk(
+            'UP RJTRF' => self::bentuk(
                 DB::table('rstxn_ritempadmins as t')
                     ->join('rstxn_rihdrs as h', 'h.rihdr_no', '=', 't.rihdr_no')
                     ->join('rstxn_rjhdrs as a', 'a.rj_no', '=', 't.tempadm_ref')
                     ->whereRaw("t.tempadm_flag = 'RJ'"),
                 't.rihdr_no', 'a.rj_date', $nomorTransaksiList,
             ),
+            // JD transfer ber-TXN_NO RIHDR_NO yang menampung beberapa jasa
+            // sekaligus → jasa pertama + jumlah sisanya (lihat GABUNG_JASA).
+            'JD RJTRF' => self::bentuk(
+                DB::table('rstxn_ritempadmins as t')
+                    ->join('rstxn_rihdrs as h', 'h.rihdr_no', '=', 't.rihdr_no')
+                    ->join('rstxn_rjhdrs as a', 'a.rj_no', '=', 't.tempadm_ref')
+                    ->join('rstxn_rjaccdocs as e', 'e.rj_no', '=', 'a.rj_no')
+                    ->leftJoin('rsmst_accdocs as m', 'm.accdoc_id', '=', 'e.accdoc_id')
+                    ->whereRaw("t.tempadm_flag = 'RJ'"),
+                't.rihdr_no', 'a.rj_date', $nomorTransaksiList,
+                ekspresiKeterangan: self::GABUNG_JASA,
+            ),
 
-            'UP UGDTRF', 'JD UGDTRF' => self::bentuk(
+            'UP UGDTRF' => self::bentuk(
                 DB::table('rstxn_ritempadmins as t')
                     ->join('rstxn_rihdrs as h', 'h.rihdr_no', '=', 't.rihdr_no')
                     ->join('rstxn_ugdhdrs as a', 'a.rj_no', '=', 't.tempadm_ref')
                     ->whereRaw("t.tempadm_flag = 'UGD'"),
                 't.rihdr_no', 'a.rj_date', $nomorTransaksiList,
+            ),
+            'JD UGDTRF' => self::bentuk(
+                DB::table('rstxn_ritempadmins as t')
+                    ->join('rstxn_rihdrs as h', 'h.rihdr_no', '=', 't.rihdr_no')
+                    ->join('rstxn_ugdhdrs as a', 'a.rj_no', '=', 't.tempadm_ref')
+                    ->join('rstxn_ugdaccdocs as e', 'e.rj_no', '=', 'a.rj_no')
+                    ->leftJoin('rsmst_accdocs as m', 'm.accdoc_id', '=', 'e.accdoc_id')
+                    ->whereRaw("t.tempadm_flag = 'UGD'"),
+                't.rihdr_no', 'a.rj_date', $nomorTransaksiList,
+                ekspresiKeterangan: self::GABUNG_JASA,
             ),
 
             'VISIT' => self::bentuk(
@@ -380,42 +418,64 @@ class GajiDokterLampiran
                 'x.konsul_no', 'x.konsul_date', $nomorTransaksiList,
             ),
 
+            // Tindakan RI: nama jasa + ACTD_KET (catatan bebas petugas) bila ada.
             'JD RI' => self::bentuk(
                 DB::table('rstxn_riactdocs as x')
-                    ->join('rstxn_rihdrs as h', 'h.rihdr_no', '=', 'x.rihdr_no'),
+                    ->join('rstxn_rihdrs as h', 'h.rihdr_no', '=', 'x.rihdr_no')
+                    ->leftJoin('rsmst_accdocs as m', 'm.accdoc_id', '=', 'x.accdoc_id'),
                 'x.actd_no', 'x.actd_date', $nomorTransaksiList,
+                ekspresiKeterangan: "MIN(CASE WHEN x.actd_ket IS NOT NULL THEN m.accdoc_desc || ' - ' || x.actd_ket ELSE m.accdoc_desc END)",
             ),
 
+            // Kamar operasi: nama tindakan dari RSTXN_OKACTS → RSMST_ACCDOCS (satu
+            // operasi bisa beberapa tindakan → jasa pertama + sisanya). CASE_ID/
+            // RSMST_OKCASES tidak dipakai: isinya kosong & masternya cuma sewa alat.
             'OPERATOR', 'ANASTESI' => self::bentuk(
                 DB::table('rstxn_oks as x')
-                    ->join('rstxn_rihdrs as h', 'h.rihdr_no', '=', 'x.rihdr_no'),
+                    ->join('rstxn_rihdrs as h', 'h.rihdr_no', '=', 'x.rihdr_no')
+                    ->leftJoin('rstxn_okacts as e', 'e.ok_reg', '=', 'x.ok_reg')
+                    ->leftJoin('rsmst_accdocs as m', 'm.accdoc_id', '=', 'e.accdoc_id'),
                 'x.ok_reg', 'x.ok_date', $nomorTransaksiList,
+                ekspresiKeterangan: self::GABUNG_JASA,
             ),
 
             'OPERATOR RJ', 'ANASTESI RJ' => self::bentuk(
                 DB::table('rstxn_oks as x')
                     ->join('rstxn_rjhdrs as h', 'h.rj_no', '=', 'x.ref_no')
+                    ->leftJoin('rstxn_okacts as e', 'e.ok_reg', '=', 'x.ok_reg')
+                    ->leftJoin('rsmst_accdocs as m', 'm.accdoc_id', '=', 'e.accdoc_id')
                     ->whereRaw("x.status_rjri = 'RJ'"),
                 'x.ok_reg', 'x.ok_date', $nomorTransaksiList,
+                ekspresiKeterangan: self::GABUNG_JASA,
             ),
 
             'OPERATOR UGD', 'ANASTESI UGD' => self::bentuk(
                 DB::table('rstxn_oks as x')
                     ->join('rstxn_ugdhdrs as h', 'h.rj_no', '=', 'x.ref_no')
+                    ->leftJoin('rstxn_okacts as e', 'e.ok_reg', '=', 'x.ok_reg')
+                    ->leftJoin('rsmst_accdocs as m', 'm.accdoc_id', '=', 'e.accdoc_id')
                     ->whereRaw("x.status_rjri = 'UGD'"),
                 'x.ok_reg', 'x.ok_date', $nomorTransaksiList,
+                ekspresiKeterangan: self::GABUNG_JASA,
             ),
 
             // Klinik: kedua komponennya ber-TXN_NO nomor header yang sama.
-            'UP KLINIK', 'JD KLINIK' => self::bentuk(
+            'UP KLINIK' => self::bentuk(
                 DB::table('rstxn_rjhdrks as h'),
                 'h.rj_no', 'h.rj_date', $nomorTransaksiList,
                 adaSep: false,
             ),
+            // JD klinik: satu RJ_NO menampung beberapa jasa → jasa pertama + sisanya.
+            'JD KLINIK' => self::bentuk(
+                DB::table('rstxn_rjhdrks as h')
+                    ->join('rstxn_rjaccdocks as e', 'e.rj_no', '=', 'h.rj_no')
+                    ->leftJoin('rsmst_accdocs as m', 'm.accdoc_id', '=', 'e.accdoc_id'),
+                'h.rj_no', 'h.rj_date', $nomorTransaksiList,
+                adaSep: false,
+                ekspresiKeterangan: self::GABUNG_JASA,
+            ),
 
-            // Radiologi: satu baris = satu pemeriksaan, jadi nama pemeriksaannya
-            // (RSMST_RADIOLOGIS.rad_desc) bisa ikut ditarik dan ditampilkan di
-            // bawah nama pasien. Komponen lain tidak punya padanan sedetail ini.
+            // Radiologi: satu baris = satu pemeriksaan (RSMST_RADIOLOGIS.rad_desc).
             'RAD RJ' => self::bentuk(
                 DB::table('rstxn_rjrads as x')
                     ->join('rstxn_rjhdrs as h', 'h.rj_no', '=', 'x.rj_no')
@@ -469,9 +529,10 @@ class GajiDokterLampiran
         // tipe kolomnya saat cabang ini digabungkan di sisi PHP.
         $ekspresiSep = $adaSep ? 'MIN(h.vno_sep)' : "CAST(NULL AS VARCHAR2(30))";
 
-        // Keterangan layanan hanya ada pada komponen tertentu (radiologi punya
-        // nama pemeriksaan; visite/uang periksa tidak punya padanannya). NULL
-        // di-cast supaya Oracle tahu tipenya saat semua cabang digabung di PHP.
+        // Keterangan layanan = nama jasa/tindakan/pemeriksaan/kasus operasi.
+        // Uang periksa, visite, dan konsul tidak punya padanannya (komponennya
+        // sendiri sudah menjelaskan). NULL di-cast supaya Oracle tahu tipenya
+        // saat semua cabang digabung di PHP.
         $ekspresiKeterangan ??= "CAST(NULL AS VARCHAR2(200))";
 
         return $kueri

@@ -116,10 +116,10 @@
                                     <td class="px-2 py-1.5 text-right tabular-nums text-muted dark:text-gray-400">{{ $loop->iteration }}</td>
                                     <td class="px-2 py-1.5 whitespace-nowrap tabular-nums">{{ $baris['tgl'] }}</td>
                                     <td class="px-2 py-1.5 whitespace-nowrap tabular-nums">{{ $baris['reg_no'] !== '' ? $baris['reg_no'] : '—' }}</td>
-                                    {{-- Keterangan hanya terisi untuk komponen radiologi (nama
-                                         pemeriksaan). Ditumpuk di bawah nama, bukan jadi kolom
-                                         sendiri: kolom baru akan kosong di hampir semua komponen
-                                         dan memakan lebar kolom nama di SEMUA baris. --}}
+                                    {{-- Keterangan = nama jasa/tindakan/pemeriksaan/kasus operasi
+                                         (kosong untuk uang periksa, visite, konsul). Ditumpuk di
+                                         bawah nama, bukan jadi kolom sendiri, supaya kolom nama
+                                         tidak menyempit di semua baris. --}}
                                     <td class="px-3 py-1.5 text-ink dark:text-gray-100" title="{{ $baris['nama'] }}{{ $baris['keterangan'] !== '' ? ' — ' . $baris['keterangan'] : '' }}">
                                         <span class="block truncate">{{ $baris['nama'] !== '' ? $baris['nama'] : '—' }}</span>
                                         @if ($baris['keterangan'] !== '')
