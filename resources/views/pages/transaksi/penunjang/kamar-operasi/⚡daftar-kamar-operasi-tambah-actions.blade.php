@@ -327,7 +327,7 @@ new class extends Component {
                                             </td>
                                             <td class="px-4 py-2 text-ink dark:text-gray-200">{{ $pasien->unit_name ?? '-' }}</td>
                                             <td class="px-4 py-2 text-center">
-                                                <x-primary-button type="button" wire:click="pilihPasien({{ $pasien->ref_no }})" class="text-xs">
+                                                <x-primary-button type="button" wire:click="pilihPasien({{ $pasien->ref_no }})">
                                                     Pilih
                                                 </x-primary-button>
                                             </td>

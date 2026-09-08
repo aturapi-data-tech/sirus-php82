@@ -789,8 +789,7 @@ new class extends Component {
 
                                         @if (!empty($info['file']))
                                             <x-outline-button type="button"
-                                                wire:click="openViewPDF({{ json_encode($info['file']) }}, {{ json_encode($info['label'] ?? 'Lihat Berkas BPJS') }})"
-                                                class="text-xs">Lihat</x-outline-button>
+                                                wire:click="openViewPDF({{ json_encode($info['file']) }}, {{ json_encode($info['label'] ?? 'Lihat Berkas BPJS') }})">Lihat</x-outline-button>
                                         @endif
 
                                         {{-- Generate auto:

@@ -1100,7 +1100,7 @@ new class extends Component {
                                                     <td><x-text-input wire:model="bayiLain" wire:keydown.enter.prevent="tambahBayi" :error="$errors->has('bayiLain')" class="w-full px-2" /></td>
                                                     <td class="ds-td-meta">{{ auth()->user()->myuser_name ?? '-' }}</td>
                                                     <td class="ds-c">
-                                                        <x-primary-button type="button" wire:click="tambahBayi" wire:loading.attr="disabled" wire:target="tambahBayi" class="justify-center gap-1 w-full px-2 py-1.5 text-sm">
+                                                        <x-primary-button type="button" wire:click="tambahBayi" wire:loading.attr="disabled" wire:target="tambahBayi" class="justify-center gap-1 w-full">
                                                             <span wire:loading.remove wire:target="tambahBayi" class="flex items-center gap-1">
                                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
                                                                 Tambah
@@ -1133,11 +1133,7 @@ new class extends Component {
                                                     <td class="ds-td-meta">{{ ($baris['petugas'] ?? '') ?: '-' }}</td>
                                                     <td class="ds-c">
                                                         @if (!$formReadOnly)
-                                                            <x-confirm-button variant="danger-soft" :action="'hapusBayi(' . $nomor . ')'"
-                                                                title="Hapus Bayi" :message="'Yakin hapus data bayi ke-' . ($nomor + 1) . ' dari laporan ini?'"
-                                                                confirmText="Ya, hapus" cancelText="Batal" class="px-2 py-1">
-                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                            </x-confirm-button>
+                                                            <x-hapus-button :action="'hapusBayi(' . $nomor . ')'" title="Hapus Bayi" :message="'Yakin hapus data bayi ke-' . ($nomor + 1) . ' dari laporan ini?'" />
                                                         @else
                                                             <span class="text-muted-soft">—</span>
                                                         @endif

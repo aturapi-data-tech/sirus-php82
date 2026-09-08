@@ -304,7 +304,7 @@ new class extends Component {
                                             @hasanyrole('Admin|Tu|Manager Umum|Supervisor Tu')
                                                 <x-secondary-button
                                                     wire:click="openAdministrasiPasien('{{ $row->rihdr_no }}')"
-                                                    class="text-xs whitespace-nowrap justify-center !bg-purple-600 !text-white !border-purple-700 hover:!bg-purple-700 dark:!bg-purple-600 dark:!text-white dark:!border-purple-700 dark:hover:!bg-purple-700">
+                                                    class="whitespace-nowrap justify-center !bg-purple-600 !text-white !border-purple-700 hover:!bg-purple-700 dark:!bg-purple-600 dark:!text-white dark:!border-purple-700 dark:hover:!bg-purple-700">
                                                     <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
                                                         viewBox="0 0 24 24" stroke-width="2">
                                                         <path stroke-linecap="round" stroke-linejoin="round"

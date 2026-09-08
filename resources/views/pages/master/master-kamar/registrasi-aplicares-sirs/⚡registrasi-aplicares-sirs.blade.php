@@ -1093,8 +1093,7 @@ new class extends Component {
                                                             :action="'samakanKapasitasAplicares(\'' . $kodekelas . '\', \'' . $koderuang . '\')'"
                                                             title="Samakan Kapasitas"
                                                             :message="'Samakan kapasitas ruangan ' . $koderuang . ' di Aplicares dari ' . $kapasitasOnline . ' menjadi ' . $kapasitasLokal . ' (sesuai rsmst_beds)?'"
-                                                            confirmText="Ya, samakan" cancelText="Batal"
-                                                            class="text-xs">
+                                                            confirmText="Ya, samakan" cancelText="Batal">
                                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.001 7.001 0 0112 5c2.276 0 4.293.965 5.71 2.5M19.418 15A7.001 7.001 0 0112 19c-2.276 0-4.293-.965-5.71-2.5"/></svg>
                                                             Samakan
                                                         </x-confirm-button>
@@ -1481,18 +1480,7 @@ new class extends Component {
                                             <td class="px-4 py-3 text-xs text-muted-soft dark:text-gray-500 whitespace-nowrap">{{ $sirs['tglupdate'] ?? '-' }}</td>
                                             <td class="px-4 py-3 text-center">
                                                 @if ($idTTt !== '')
-                                                    <x-confirm-button variant="danger"
-                                                        :action="'hapusTempatTidurDariSirs(\'' . $idTTt . '\')'"
-                                                        title="Hapus Data SIRS"
-                                                        :message="'Hapus data TT ' . $idTTt . ' dari SIRS Kemenkes?'"
-                                                        confirmText="Ya, hapus" cancelText="Batal"
-                                                        class="text-xs">
-                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                        Hapus
-                                                    </x-confirm-button>
+                                                    <x-hapus-button :action="'hapusTempatTidurDariSirs(\'' . $idTTt . '\')'" title="Hapus Data SIRS" :message="'Hapus data TT ' . $idTTt . ' dari SIRS Kemenkes?'" />
                                                 @else
                                                     <span class="text-[10px] text-muted-soft dark:text-gray-500 italic">Belum terdaftar</span>
                                                 @endif

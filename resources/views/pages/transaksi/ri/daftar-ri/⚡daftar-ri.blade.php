@@ -694,7 +694,7 @@ new class extends Component {
 
                                             <x-dropdown position="left" width="w-[440px]">
                                                 <x-slot name="trigger">
-                                                    <x-secondary-button type="button" class="p-2">
+                                                    <x-secondary-button type="button" class="p-2.5">
                                                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                                             <path
                                                                 d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />

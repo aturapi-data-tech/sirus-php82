@@ -574,7 +574,7 @@ new class extends Component {
                                                      via #[On]. Nol komponen Livewire per baris. Redup dari $row->task_id6/7. --}}
                                                 <x-success-button type="button"
                                                     wire:click="$dispatch('task-id-apotek-proses-ri', { slsNo: {{ $row->sls_no }}, aksi: '6' })"
-                                                    class="!px-4 !py-2 text-sm {{ $row->task_id6 ? '!opacity-60' : '' }}"
+                                                    class="!px-4 {{ $row->task_id6 ? '!opacity-60' : '' }}"
                                                     title="{{ $row->task_id6 ? 'Sudah dijalankan, klik untuk update' : 'Klik untuk mencatat TaskId6 (Masuk Apotek)' }}">
                                                     TaskId6
                                                 </x-success-button>

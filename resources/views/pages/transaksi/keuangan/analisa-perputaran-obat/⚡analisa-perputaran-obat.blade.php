@@ -395,7 +395,7 @@ new class extends Component {
                                     <td class="ds-c">
                                         <x-secondary-button type="button"
                                             wire:click="openDetail('{{ $row->product_id }}')"
-                                            class="px-2 py-1 text-xs whitespace-nowrap"
+                                            class="whitespace-nowrap"
                                             title="Evaluasi menyeluruh: belanja, usulan order & harga jual">
                                             Evaluasi
                                         </x-secondary-button>

@@ -542,3 +542,22 @@ Combobox lewat `enter-action`, input biasa lewat `wire:keydown.enter.prevent`.
 6. **Close X selalu `<x-icon-button color="gray">`**
 7. **Body modal selalu `px-4 py-4 bg-gray-50/70`** — jangan variasikan padding
 8. **Jangan tulis blok TTD "TTD Saya" inline** — pakai `<x-signature.ttd-petugas>`
+
+
+## Tombol aksi per entri di tabel (BAKU 2026-09-08)
+
+Tinggi semua tombol aksi = **40px**: tombol berteks (`x-primary/secondary/outline/confirm-button`)
+memakai padding bawaan `px-5 py-2.5`; tombol ikon memakai `p-2.5` + ikon `w-5 h-5`.
+**Jangan** menambah `px-2 py-1 text-xs` atau `!py-1` pada tombol aksi baris tabel.
+
+| Aksi | Komponen | Catatan |
+|---|---|---|
+| Cetak per entri | `<x-cetak-button wire:click="cetak(…)" />` | ikon printer biru; `label="…"` bila perlu teks (Cetak E-Resep, Etiket) |
+| Hapus per entri | `<x-hapus-button wire:click.prevent="hapus(…)" confirm="…" />` | dialog browser (wire:confirm) |
+| Hapus, dialog modal | `<x-hapus-button :action="'removeBaris(' . $i . ')'" title="…" :message="…" />` | dirender lewat `x-confirm-button` varian danger-soft |
+| Buka Kunci / konfirmasi lain | `<x-confirm-button action="…">` | ukuran bawaan; teks tak patah baris (`whitespace-nowrap` bawaan) |
+| Menu titik-3 | `<x-secondary-button class="p-2.5">` + ikon 20px | dulu `p-2` = 36px |
+
+Sel `<td>` Aksi diberi `whitespace-nowrap` supaya "Lanjutkan Pengisian"/"Buka Kunci" tidak patah dua baris.
+Yang sengaja di luar aturan ini: chip toggle (`x-ghost-button` `!py-0.5`), tanda × pembuang kode iDRG,
+baris edit-inline administrasi (Lain-lain RJ/UGD), dan X penutup header modal (`x-icon-button` bawaan).

@@ -201,19 +201,11 @@ new class extends Component {
                                     <td class="px-4 py-3">
                                         <div class="flex items-center justify-center gap-1">
                                             <x-secondary-button type="button"
-                                                wire:click="openEdit('{{ $row->tucashk_no }}')"
-                                                class="px-2 py-1 text-xs">
+                                                wire:click="openEdit('{{ $row->tucashk_no }}')">
                                                 Edit
                                             </x-secondary-button>
                                             @hasanyrole('Admin|Tu')
-                                                <x-confirm-button variant="danger"
-                                                    :action="'requestDelete(\'' . $row->tucashk_no . '\')'"
-                                                    title="Hapus Transaksi"
-                                                    message="Yakin ingin menghapus transaksi #{{ $row->tucashk_no }}?"
-                                                    confirmText="Ya, hapus" cancelText="Batal"
-                                                    class="px-2 py-1 text-xs">
-                                                    Hapus
-                                                </x-confirm-button>
+                                                <x-hapus-button :action="'requestDelete(\'' . $row->tucashk_no . '\')'" title="Hapus Transaksi" message="Yakin ingin menghapus transaksi #{{ $row->tucashk_no }}?" />
                                             @endhasanyrole
                                         </div>
                                     </td>

@@ -512,8 +512,7 @@ new class extends Component {
                                         <div class="flex flex-wrap justify-end gap-2 mb-3" wire:click.stop>
                                             {{-- Struktur Gaji — modal terpisah dari Edit; lihat openPenggajian() --}}
                                             <x-secondary-button type="button"
-                                                wire:click="openPenggajian('{{ $row->dr_id }}')"
-                                                class="px-2.5 py-1.5 text-sm" title="Struktur Gaji">
+                                                wire:click="openPenggajian('{{ $row->dr_id }}')" title="Struktur Gaji">
                                                 {{-- Lembar uang — sengaja bukan ikon dolar, mata uangnya rupiah --}}
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24" stroke-width="1.8">

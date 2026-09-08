@@ -468,3 +468,10 @@ Perilaku:
 
 Jangan bikin tombol refresh/reset manual lagi — ikon reload HANYA untuk refresh,
 panah balik HANYA untuk reset (jangan tertukar).
+
+## Tombol aksi per entri (2026-09-08)
+
+Cetak dan hapus per entri di tabel **wajib** komponen: `<x-cetak-button>` dan `<x-hapus-button>`
+(ikon 40px, sekelas tombol berteks). Rincian, mode dialog modal, dan pengecualian: lihat
+`docs/standar-ui-komponen.md` bagian "Tombol aksi per entri di tabel".
+

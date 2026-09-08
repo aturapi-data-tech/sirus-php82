@@ -476,7 +476,7 @@ new class extends Component {
                                                 @if ($row->status === 'L')
                                                     <x-success-button
                                                         wire:click="openAdministrasi({{ $row->sls_no }}, 'kasir')"
-                                                        class="text-xs whitespace-nowrap justify-center">
+                                                        class="whitespace-nowrap justify-center">
                                                         <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
                                                             viewBox="0 0 24 24" stroke-width="2">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -487,7 +487,7 @@ new class extends Component {
                                                 @else
                                                     <x-secondary-button
                                                         wire:click="openAdministrasi({{ $row->sls_no }}, 'obat')"
-                                                        class="text-xs whitespace-nowrap justify-center !bg-purple-600 !text-white !border-purple-700 hover:!bg-purple-700 dark:!bg-purple-600 dark:!text-white dark:!border-purple-700 dark:hover:!bg-purple-700">
+                                                        class="whitespace-nowrap justify-center !bg-purple-600 !text-white !border-purple-700 hover:!bg-purple-700 dark:!bg-purple-600 dark:!text-white dark:!border-purple-700 dark:hover:!bg-purple-700">
                                                         <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor"
                                                             viewBox="0 0 24 24" stroke-width="2">
                                                             <path stroke-linecap="round" stroke-linejoin="round"

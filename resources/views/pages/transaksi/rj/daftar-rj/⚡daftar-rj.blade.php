@@ -1204,7 +1204,7 @@ new class extends Component {
                                                 {{-- Dropdown Aksi (titik-tiga) --}}
                                                 <x-dropdown position="left" width="w-[500px]">
                                                     <x-slot name="trigger">
-                                                        <x-secondary-button type="button" class="p-2">
+                                                        <x-secondary-button type="button" class="p-2.5">
                                                             <svg class="w-5 h-5" fill="currentColor"
                                                                 viewBox="0 0 20 20">
                                                                 <path

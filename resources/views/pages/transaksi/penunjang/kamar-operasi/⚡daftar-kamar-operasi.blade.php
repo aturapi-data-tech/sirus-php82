@@ -632,7 +632,7 @@ new class extends Component {
                                             @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr|Gizi')
                                                 <x-dropdown align="right" width="w-72">
                                                 <x-slot name="trigger">
-                                                    <x-secondary-button type="button" class="p-2">
+                                                    <x-secondary-button type="button" class="p-2.5">
                                                         <span class="sr-only">Menu lainnya</span>
                                                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                                             <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />

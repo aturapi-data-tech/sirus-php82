@@ -758,7 +758,7 @@ new class extends Component {
                                             Hari Libur
                                         </span>
                                     @else
-                                        <x-primary-button type="button" class="px-2 py-1 text-sm"
+                                        <x-primary-button type="button"
                                             wire:click="syncJadwal('{{ $entriJadwal['kodepoli'] }}','{{ $entriJadwal['kodedokter'] }}','{{ addslashes($entriJadwal['namadokter']) }}',{{ (int)$entriJadwal['hari'] }},'{{ $entriJadwal['jadwal'] }}',{{ (int)$entriJadwal['kapasitaspasien'] }})">
                                             Terapkan
                                         </x-primary-button>

@@ -262,22 +262,19 @@ new class extends Component {
                                         <div class="flex flex-wrap gap-2">
                                             @if ($editable)
                                                 <x-outline-button type="button"
-                                                    wire:click="openEdit({{ $row->trf_no }})"
-                                                    class="px-2 py-1 text-xs">
+                                                    wire:click="openEdit({{ $row->trf_no }})">
                                                     Edit / Proses
                                                 </x-outline-button>
                                                 <x-confirm-button variant="danger"
                                                     :action="'requestBatal(' . $row->trf_no . ')'"
                                                     title="Hapus Transfer"
                                                     message="Yakin hapus transfer #{{ $row->trf_no }}? Header & detail akan dihapus permanen — hanya draft yang bisa dihapus."
-                                                    confirmText="Ya, hapus" cancelText="Tidak"
-                                                    class="px-2 py-1 text-xs">
+                                                    confirmText="Ya, hapus" cancelText="Tidak">
                                                     Hapus
                                                 </x-confirm-button>
                                             @else
                                                 <x-secondary-button type="button"
-                                                    wire:click="openEdit({{ $row->trf_no }})"
-                                                    class="px-2 py-1 text-xs">
+                                                    wire:click="openEdit({{ $row->trf_no }})">
                                                     Lihat
                                                 </x-secondary-button>
                                             @endif

@@ -713,12 +713,7 @@ new class extends Component {
                                         <td class="px-3 py-2">{{ $d['exp_date'] ?? '-' }}</td>
                                         @unless ($this->isReadonly)
                                             <td class="px-3 py-2">
-                                                <x-confirm-button variant="danger" :action="'removeDetail(' . $idx . ')'"
-                                                    title="Hapus Baris" message="Hapus obat ini dari daftar?"
-                                                    confirmText="Ya, hapus" cancelText="Batal"
-                                                    class="px-2 py-1 text-xs">
-                                                    Hapus
-                                                </x-confirm-button>
+                                                <x-hapus-button :action="'removeDetail(' . $idx . ')'" title="Hapus Baris" message="Hapus obat ini dari daftar?" />
                                             </td>
                                         @endunless
                                     </tr>
