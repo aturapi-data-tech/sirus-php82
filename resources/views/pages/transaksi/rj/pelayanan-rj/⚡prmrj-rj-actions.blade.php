@@ -14,6 +14,7 @@
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
@@ -210,9 +211,9 @@ new class extends Component {
 
     /**
      * TTD = aksi TERAKHIR yang sekaligus MENGUNCI (pola modul dokumen).
-     * Stempelnya dipasang DI DALAM simpan(), sesudah formulir terbukti sah —
-     * kalau dipasang di sini, validasi gagal meninggalkan TTD menempel di layar
-     * padahal tak ada yang tersimpan.
+     * Stempelnya dipasang DI DALAM simpan() dan DICABUT LAGI bila validasi gagal —
+     * kalau tidak, TTD menempel di layar padahal tak ada yang tersimpan, tombol TTD
+     * hilang, dan Simpan Draft membawa stempel itu.
      */
     public function ttdDokter(): void
     {
@@ -278,11 +279,22 @@ new class extends Component {
         $sekarang = Carbon::now(config('app.timezone'));
 
         if ($kunci) {
+            // Stempel dipasang sebelum validasi (rules mewajibkan ttdPrmrj); bila validasi gagal
+            // stempel dikembalikan supaya tombol TTD tetap ada & draft tak tampak ber-TTD.
+            $stempelSebelumnya = array_intersect_key($this->form, array_flip(['ttdPrmrj', 'ttdPrmrjCode', 'ttdPrmrjDate']));
             $this->form['ttdPrmrj'] = auth()->user()->myuser_name ?? auth()->user()->name ?? '';
             $this->form['ttdPrmrjCode'] = auth()->user()->myuser_code ?? '';
             $this->form['ttdPrmrjDate'] = $sekarang->format('d/m/Y H:i:s');
 
-            $this->validateWithToast();
+            try {
+                $this->validateWithToast();
+            } catch (ValidationException $exception) {
+                $this->form = array_replace($this->form, $stempelSebelumnya);
+                throw $exception;
+            }
+        } else {
+            // Draft = belum ditandatangani DPJP.
+            $this->form['ttdPrmrj'] = $this->form['ttdPrmrjCode'] = $this->form['ttdPrmrjDate'] = '';
         }
 
         $isiJson = [

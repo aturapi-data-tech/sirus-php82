@@ -12,6 +12,7 @@ use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -275,6 +276,9 @@ new class extends Component {
             return;
         }
 
+        // Draft = belum ditandatangani; stempel hanya diberikan kunciFormA() saat kunci.
+        $this->formA['tandaTanganPetugas'] = ['petugasCode' => '', 'petugasName' => '', 'jabatan' => 'MPP'];
+
         $key = $this->editingKeyA ?: (string) Str::uuid();
 
         try {
@@ -304,6 +308,9 @@ new class extends Component {
             return;
         }
 
+        // Draft = belum ditandatangani; stempel hanya diberikan kunciFormB() saat kunci.
+        $this->formB['tandaTanganPetugas'] = ['petugasCode' => '', 'petugasName' => '', 'jabatan' => 'MPP'];
+
         $key = $this->editingKeyB ?: (string) Str::uuid();
 
         try {
@@ -329,30 +336,38 @@ new class extends Component {
         }
 
         // Stempel TTD petugas = user login (nama, tanpa gambar), jabatan MPP.
+        // Stempel dipasang SEBELUM validasi (rules mewajibkan petugasCode/Name); bila validasi
+        // gagal, stempel WAJIB dikembalikan — kalau tidak tombol TTD hilang & draft tampak ber-TTD.
+        $stempelSebelumnya = $this->formA['tandaTanganPetugas'] ?? ['petugasCode' => '', 'petugasName' => '', 'jabatan' => 'MPP'];
         $this->formA['tandaTanganPetugas'] = [
             'petugasCode' => auth()->user()->myuser_code ?? '',
             'petugasName' => auth()->user()->myuser_name ?? '',
             'jabatan' => 'MPP',
         ];
 
-        $this->validateWithToast(
-            [
-                'formA.tanggal' => 'required|date_format:d/m/Y H:i:s',
-                'formA.indentifikasiKasus' => 'required|string',
-                'formA.assessment' => 'required|string',
-                'formA.perencanaan' => 'required|string',
-                'formA.tandaTanganPetugas.petugasCode' => 'required|string|max:50',
-                'formA.tandaTanganPetugas.petugasName' => 'required|string|max:150',
-            ],
-            [
-                'formA.tanggal.required' => 'Tanggal wajib diisi.',
-                'formA.indentifikasiKasus.required' => 'Identifikasi Kasus wajib diisi.',
-                'formA.assessment.required' => 'Assessment wajib diisi.',
-                'formA.perencanaan.required' => 'Perencanaan wajib diisi.',
-                'formA.tandaTanganPetugas.petugasCode.required' => 'Kode petugas wajib diisi.',
-                'formA.tandaTanganPetugas.petugasName.required' => 'Nama petugas wajib diisi.',
-            ],
-        );
+        try {
+            $this->validateWithToast(
+                [
+                    'formA.tanggal' => 'required|date_format:d/m/Y H:i:s',
+                    'formA.indentifikasiKasus' => 'required|string',
+                    'formA.assessment' => 'required|string',
+                    'formA.perencanaan' => 'required|string',
+                    'formA.tandaTanganPetugas.petugasCode' => 'required|string|max:50',
+                    'formA.tandaTanganPetugas.petugasName' => 'required|string|max:150',
+                ],
+                [
+                    'formA.tanggal.required' => 'Tanggal wajib diisi.',
+                    'formA.indentifikasiKasus.required' => 'Identifikasi Kasus wajib diisi.',
+                    'formA.assessment.required' => 'Assessment wajib diisi.',
+                    'formA.perencanaan.required' => 'Perencanaan wajib diisi.',
+                    'formA.tandaTanganPetugas.petugasCode.required' => 'Kode petugas wajib diisi.',
+                    'formA.tandaTanganPetugas.petugasName.required' => 'Nama petugas wajib diisi.',
+                ],
+            );
+        } catch (ValidationException $exception) {
+            $this->formA['tandaTanganPetugas'] = $stempelSebelumnya;
+            throw $exception;
+        }
 
         $key = $this->editingKeyA ?: (string) Str::uuid();
 
@@ -377,32 +392,40 @@ new class extends Component {
             return;
         }
 
+        // Stempel dipasang SEBELUM validasi (rules mewajibkan petugasCode/Name); bila validasi
+        // gagal, stempel WAJIB dikembalikan — kalau tidak tombol TTD hilang & draft tampak ber-TTD.
+        $stempelSebelumnya = $this->formB['tandaTanganPetugas'] ?? ['petugasCode' => '', 'petugasName' => '', 'jabatan' => 'MPP'];
         $this->formB['tandaTanganPetugas'] = [
             'petugasCode' => auth()->user()->myuser_code ?? '',
             'petugasName' => auth()->user()->myuser_name ?? '',
             'jabatan' => 'MPP',
         ];
 
-        $this->validateWithToast(
-            [
-                'formB.formA_id' => 'required|string',
-                'formB.tanggal' => 'required|date_format:d/m/Y H:i:s',
-                'formB.pelaksanaanMonitoring' => 'required|string',
-                'formB.advokasiKolaborasi' => 'required|string',
-                'formB.terminasi' => 'required|string',
-                'formB.tandaTanganPetugas.petugasCode' => 'required|string|max:50',
-                'formB.tandaTanganPetugas.petugasName' => 'required|string|max:150',
-            ],
-            [
-                'formB.formA_id.required' => 'Referensi Form A wajib dipilih.',
-                'formB.tanggal.required' => 'Tanggal wajib diisi.',
-                'formB.pelaksanaanMonitoring.required' => 'Pelaksanaan & Monitoring wajib diisi.',
-                'formB.advokasiKolaborasi.required' => 'Advokasi / Kolaborasi wajib diisi.',
-                'formB.terminasi.required' => 'Terminasi wajib diisi.',
-                'formB.tandaTanganPetugas.petugasCode.required' => 'Kode petugas wajib diisi.',
-                'formB.tandaTanganPetugas.petugasName.required' => 'Nama petugas wajib diisi.',
-            ],
-        );
+        try {
+            $this->validateWithToast(
+                [
+                    'formB.formA_id' => 'required|string',
+                    'formB.tanggal' => 'required|date_format:d/m/Y H:i:s',
+                    'formB.pelaksanaanMonitoring' => 'required|string',
+                    'formB.advokasiKolaborasi' => 'required|string',
+                    'formB.terminasi' => 'required|string',
+                    'formB.tandaTanganPetugas.petugasCode' => 'required|string|max:50',
+                    'formB.tandaTanganPetugas.petugasName' => 'required|string|max:150',
+                ],
+                [
+                    'formB.formA_id.required' => 'Referensi Form A wajib dipilih.',
+                    'formB.tanggal.required' => 'Tanggal wajib diisi.',
+                    'formB.pelaksanaanMonitoring.required' => 'Pelaksanaan & Monitoring wajib diisi.',
+                    'formB.advokasiKolaborasi.required' => 'Advokasi / Kolaborasi wajib diisi.',
+                    'formB.terminasi.required' => 'Terminasi wajib diisi.',
+                    'formB.tandaTanganPetugas.petugasCode.required' => 'Kode petugas wajib diisi.',
+                    'formB.tandaTanganPetugas.petugasName.required' => 'Nama petugas wajib diisi.',
+                ],
+            );
+        } catch (ValidationException $exception) {
+            $this->formB['tandaTanganPetugas'] = $stempelSebelumnya;
+            throw $exception;
+        }
 
         $key = $this->editingKeyB ?: (string) Str::uuid();
 
@@ -457,6 +480,10 @@ new class extends Component {
                 'jabatan' => data_get($entry, 'tandaTanganPetugas.jabatan', 'MPP'),
             ],
         ];
+        if (!$this->entryIsFinal($entry)) {
+            // Draft tidak boleh membawa stempel (data lama dari bug stempel-sebelum-validasi).
+            $this->formA['tandaTanganPetugas'] = ['petugasCode' => '', 'petugasName' => '', 'jabatan' => 'MPP'];
+        }
         $this->editingKeyA = $key;
         $this->resetValidation();
         $this->incrementVersion('modal-case-manager-ri');
@@ -478,6 +505,10 @@ new class extends Component {
                 'jabatan' => data_get($entry, 'tandaTanganPetugas.jabatan', 'MPP'),
             ],
         ];
+        if (!$this->entryIsFinal($entry)) {
+            // Draft tidak boleh membawa stempel (data lama dari bug stempel-sebelum-validasi).
+            $this->formB['tandaTanganPetugas'] = ['petugasCode' => '', 'petugasName' => '', 'jabatan' => 'MPP'];
+        }
         $this->editingKeyB = $key;
         $this->resetValidation();
         $this->incrementVersion('modal-case-manager-ri');
