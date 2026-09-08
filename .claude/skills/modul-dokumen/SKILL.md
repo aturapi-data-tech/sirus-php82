@@ -71,7 +71,8 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
    tanpa kolom No; kolom pertama panah rincian (`<tbody x-data="{ open: false }">`,
    `<tr @click="open = !open">`, `<tr x-show="open">` berisi `<dl>` ringkasan); kolom
    `Tanggal · ringkasan khas · Petugas (TTD) · Status · Aksi`; Aksi dua baris: Lanjutkan
-   Pengisian (primary) / Lihat (secondary) / Cetak (**secondary**, bukan info/primary),
+   Pengisian (primary) / Lihat (secondary) / Cetak = **`<x-cetak-button>` ikon saja** (bukan
+   tombol berteks, bukan info/primary),
    lalu Buka Kunci + hapus ikon; footer layar daftar berkalimat "Setiap entri berdiri
    sendiri — Isi Formulir Baru … Lanjutkan Pengisian …". Daftar kartu-baris `<div>` per
    entri dilarang. Salin dari `edukasi-terintegrasi-ri`, jangan bikin varian. Doc: §2a

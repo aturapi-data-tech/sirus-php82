@@ -129,10 +129,12 @@ eab5fdbe, 8a941775). Kalau membuat modul baru, salin dari sana; jangan bikin var
 - **Tanggal** `font-mono`; **Petugas (TTD)** = nama petugas, atau badge merah `Belum TTD`;
   **Status** = badge `Terkunci` (info) / `Draft` (warning); kolom teks lain `text-muted`.
 - **Aksi, dua baris**: atas `[Lanjutkan Pengisian (primary, draft)] [Lihat (secondary,
-  terkunci)] [Cetak (secondary, ikon printer)]`; bawah `[Buka Kunci (x-confirm-button,
-  @can dokumen.bukaKunci)] [hapus ikon tong sampah (x-outline-button merah, @can
-  dokumen.hapus)]`. **Cetak tidak boleh `x-info-button`/`x-primary-button`** — biru solid
-  membuatnya tampak seperti aksi utama.
+  terkunci)] [Cetak = <x-cetak-button> ikon printer saja]`; bawah `[Buka Kunci
+  (x-confirm-button, @can dokumen.bukaKunci)] [hapus ikon tong sampah (x-outline-button
+  merah, @can dokumen.hapus)]`. **Cetak wajib komponen `<x-cetak-button wire:click="cetak(…)"
+  title="…" />`** (`resources/views/components/cetak-button.blade.php`, ikon-saja biru meniru
+  tabel Slip Gaji Dokter; wire:target & spinner otomatis) — jangan tulis tombol sekunder
+  berteks "Cetak" lagi, jangan `x-info-button`/`x-primary-button`.
 - Modul tanpa draft (Identifikasi Bayi): tombol atas `TTD Saya` (primary) menggantikan
   Lanjutkan Pengisian; Status `Terkunci` / `Belum TTD`.
 - **Keterangan footer layar daftar** (kiri, `mr-auto`): "Setiap entri berdiri sendiri —

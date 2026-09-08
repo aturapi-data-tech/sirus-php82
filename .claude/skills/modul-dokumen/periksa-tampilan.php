@@ -15,7 +15,7 @@
  *   6. layar daftar polos & full width: tanpa judul "… Tersimpan", tanpa "Klik baris …", tanpa max-w-5xl
  *   7. tabel entri tidak lagi memakai array_reverse() (lihat docs §2c)
  *   8. bentuk tabel daftar = Edukasi Terintegrasi (docs §2a "Tabel daftar"): tanpa kolom No,
- *      ada panah rincian, Cetak bukan x-info/x-primary, label "Lanjutkan Pengisian" utuh,
+ *      ada panah rincian, Cetak = <x-cetak-button> ikon saja, label "Lanjutkan Pengisian" utuh,
  *      keterangan footer "Setiap entri berdiri sendiri" di layar daftar
  */
 require __DIR__ . '/../../../vendor/autoload.php';
@@ -91,8 +91,8 @@ foreach ($berkas as $path) {
             && preg_match('/<thead.*?<\/thead>/s', substr($sumber, $posUnless), $theadDaftar)
             && preg_match('/<th[^>]*>\s*No\.?\s*<\/th>/i', $theadDaftar[0]))
             $catatan[] = 'tabel daftar masih punya kolom No';
-        if (preg_match('/<x-(info|primary)-button[^>]*wire:click="cetak/', $sumber))
-            $catatan[] = 'Cetak memakai x-info/x-primary-button (harus x-secondary-button)';
+        if (preg_match('/<x-(info|primary|secondary|outline)-button[^>]*wire:click="cetak[A-Za-z]*\(/', substr($sumber, (int) strrpos($sumber, '@unless ($this->diForm())'))))  // cetak(…)/cetakFormA(…) per entri; cetakSemua tanpa kurung = cetak seluruh catatan, boleh berteks
+            $catatan[] = 'Cetak di tabel daftar masih tombol berteks (harus <x-cetak-button> ikon saja)';
         if (preg_match('/>\s*Lanjutkan\s*<\//', $sumber)) $catatan[] = 'label "Lanjutkan" harus "Lanjutkan Pengisian"';
 
         $duaLayar = str_contains($sumber, 'this->diForm()');
