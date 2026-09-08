@@ -246,21 +246,9 @@ new class extends Component {
                         </x-select-input>
                     </div>
 
-                    <x-outline-button type="button" wire:click="cetakKategori" wire:loading.attr="disabled"
-                        wire:target="cetakKategori">
-                        <span wire:loading.remove wire:target="cetakKategori">Unduh PDF kategori ini</span>
-                        <span wire:loading wire:target="cetakKategori" class="inline-flex items-center gap-1.5">
-                            <x-loading /> Menyiapkan PDF...
-                        </span>
-                    </x-outline-button>
+                    <x-cetak-button wire:click="cetakKategori" label="Unduh PDF kategori ini" />
 
-                    <x-primary-button type="button" wire:click="cetakSemua" wire:loading.attr="disabled"
-                        wire:target="cetakSemua">
-                        <span wire:loading.remove wire:target="cetakSemua">Unduh PDF semua kategori</span>
-                        <span wire:loading wire:target="cetakSemua" class="inline-flex items-center gap-1.5">
-                            <x-loading /> Menyiapkan PDF...
-                        </span>
-                    </x-primary-button>
+                    <x-cetak-button wire:click="cetakSemua" label="Unduh PDF semua kategori" />
                 </div>
             </div>
 

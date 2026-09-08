@@ -134,7 +134,10 @@ eab5fdbe, 8a941775). Kalau membuat modul baru, salin dari sana; jangan bikin var
   merah, @can dokumen.hapus)]`. **Cetak wajib komponen `<x-cetak-button wire:click="cetak(…)"
   title="…" />`** (`resources/views/components/cetak-button.blade.php`, ikon-saja biru meniru
   tabel Slip Gaji Dokter; wire:target & spinner otomatis) — jangan tulis tombol sekunder
-  berteks "Cetak" lagi, jangan `x-info-button`/`x-primary-button`.
+  berteks "Cetak" lagi, jangan `x-info-button`/`x-primary-button`. Komponen yang sama
+  berlaku untuk SEMUA tombol cetak di repo (86 titik, 2026-09-08): butuh keterangan →
+  `label="Cetak E-Resep"` atau isi slot; etiket obat → `label="Etiket"`; aksi per entri →
+  tanpa label. Kelas tata letak (`ml-auto`, `w-full`, `min-w-[…]`) boleh ditambah lewat `class`.
 - Modul tanpa draft (Identifikasi Bayi): tombol atas `TTD Saya` (primary) menggantikan
   Lanjutkan Pengisian; Status `Terkunci` / `Belum TTD`.
 - **Keterangan footer layar daftar** (kiri, `mr-auto`): "Setiap entri berdiri sendiri —

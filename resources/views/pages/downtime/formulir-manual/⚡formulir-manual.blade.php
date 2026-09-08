@@ -271,11 +271,7 @@ new class extends Component {
                                     class="flex-1">
                                     Lihat
                                 </x-outline-button>
-                                <x-primary-button type="button" wire:click="cetak('{{ $formulir['kode'] }}')"
-                                    wire:loading.attr="disabled" wire:target="cetak('{{ $formulir['kode'] }}')"
-                                    class="flex-1">
-                                    Unduh PDF
-                                </x-primary-button>
+                                <x-cetak-button wire:click="cetak('{{ $formulir['kode'] }}')" class="flex-1" label="Unduh PDF" />
                             </div>
                         </div>
                     @endforeach

@@ -142,11 +142,7 @@ new class extends Component {
                 <span wire:loading.remove wire:target="getStatus">Cek Status</span>
                 <span wire:loading wire:target="getStatus"><x-loading />...</span>
             </button>
-            <x-primary-button type="button" wire:click="print" wire:loading.attr="disabled" :disabled="!$klaimFinal"
-                class="!bg-brand hover:!bg-brand/90 min-w-[160px] {{ !empty($pdfBase64) ? '!bg-emerald-600' : '' }}">
-                <span wire:loading.remove wire:target="print">{{ !empty($pdfBase64) ? 'Cetak Ulang' : 'Cetak Klaim' }}</span>
-                <span wire:loading wire:target="print"><x-loading />...</span>
-            </x-primary-button>
+            <x-cetak-button wire:click="print" :disabled="!$klaimFinal" class="min-w-[160px] {{ !empty($pdfBase64) ? '!bg-emerald-600' : '' }}" label="{{ !empty($pdfBase64) ? 'Cetak Ulang' : 'Cetak Klaim' }}" />
         </div>
     </div>
 
