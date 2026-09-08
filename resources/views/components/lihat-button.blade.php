@@ -3,7 +3,7 @@
     ikon mata abu-abu, tinggi 40px (p-2.5 + ikon w-5 h-5).
 
         <x-lihat-button wire:click="viewEntry('{{ $rowKey }}')" />
-        <x-lihat-button wire:click="lihat('{{ $id }}')" label="Lihat PDF" />   {{-- ikon + teks bila perlu --}}
+        <x-lihat-button wire:click="lihat('{{ $id }}')" label="Lihat PDF" />   (ikon + teks bila perlu)
 
     wire:target + spinner otomatis dari wire:click. title default = label, atau "Lihat".
 --}}
