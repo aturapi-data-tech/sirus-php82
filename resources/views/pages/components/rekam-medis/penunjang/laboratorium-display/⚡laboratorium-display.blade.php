@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Support\PenanggungJawabPenunjang;
 
 new class extends Component {
     use WithPagination, WithRenderVersioningTrait;
@@ -34,6 +35,8 @@ new class extends Component {
     public array $detailTxn = [];
     public array $detailTxnLuar = [];
     public array $detailHeader = [];
+    /** Dokter PJ laboratorium (poli 22) utk stempel TTD di layar — sumber sama dgn cetak. */
+    public array $dokterPenanggungJawabLab = [];
 
     /* =======================
      | Mount
@@ -241,6 +244,7 @@ new class extends Component {
         )->first();
 
         $this->detailHeader = collect($header)->toArray();
+        $this->dokterPenanggungJawabLab = (array) (PenanggungJawabPenunjang::dokter(PenanggungJawabPenunjang::POLI_LABORATORIUM) ?? []);
 
         $this->detailTxn = DB::select(
             "
@@ -997,6 +1001,26 @@ new class extends Component {
                                 @endforeach
                             </tbody>
                         </table>
+                    </div>
+                @endif
+
+                {{-- TTD (meniru footer cetak): Selesai | Petugas Laboratorium (emp_id) | Dokter Penanggung Jawab Lab --}}
+                @if (!empty($detailHeader) && (!empty($detailTxn) || !empty($detailTxnLuar)))
+                    <div class="grid grid-cols-3 gap-4 p-4 mt-2 border rounded-lg bg-canvas dark:bg-gray-800 border-hairline dark:border-gray-700">
+                        <div class="text-sm">
+                            <p class="text-muted">Selesai Pemeriksaan</p>
+                            <p class="font-semibold text-ink dark:text-gray-200">{{ $detailHeader['waktu_selesai_pelayanan'] ?? '-' }}</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="mb-2 text-sm text-muted">Petugas Laboratorium</p>
+                            <x-signature.ttd-gambar :empId="(string) ($detailHeader['emp_id'] ?? '')" :name="$detailHeader['emp_name'] ?? ''" class="mb-2" />
+                            <p class="pt-1 text-sm font-semibold border-t text-ink border-hairline dark:text-gray-200 dark:border-gray-700">{{ strtoupper($detailHeader['emp_name'] ?? '-') }}</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="mb-2 text-sm text-muted">Dokter Penanggung Jawab</p>
+                            <x-signature.ttd-gambar :code="(string) ($dokterPenanggungJawabLab['dr_id'] ?? '')" :name="$dokterPenanggungJawabLab['dr_name'] ?? ''" class="mb-2" />
+                            <p class="pt-1 text-sm font-semibold border-t text-ink border-hairline dark:text-gray-200 dark:border-gray-700">{{ $dokterPenanggungJawabLab['dr_name'] ?? '-' }}</p>
+                        </div>
                     </div>
                 @endif
 

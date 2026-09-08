@@ -259,15 +259,9 @@
     {{-- FOOTER: PETUGAS & DOKTER PENANGGUNG JAWAB                          --}}
     {{-- ================================================================ --}}
     @php
-        // Dokter Penanggung Jawab Lab — sementara hardcode ambil dari master
-        // dokter Poli LABORATORIUM (poli_id=22), aktif, urut alfabetik nama.
-        // Kalau lebih dari satu dokter lab, ambil yang pertama; sesuaikan
-        // logic ini saat ada mekanisme penunjukan PJ Lab yang lebih spesifik.
-        $drJawabLab = \DB::table('rsmst_doctors')
-            ->where('poli_id', 22)
-            ->where('active_status', '1')
-            ->orderBy('dr_name', 'asc')
-            ->first(['dr_id', 'dr_name']);
+        // Dokter Penanggung Jawab Lab — satu sumber dgn layar display & SATUSEHAT
+        // performer: dokter aktif pertama Poli LABORATORIUM (App\Support\PenanggungJawabPenunjang).
+        $drJawabLab = \App\Support\PenanggungJawabPenunjang::dokter(\App\Support\PenanggungJawabPenunjang::POLI_LABORATORIUM);
 
         $ttdDrJawab = !empty($drJawabLab->dr_id)
             ? \App\Models\User::where('myuser_code', $drJawabLab->dr_id)->value('myuser_ttd_image')

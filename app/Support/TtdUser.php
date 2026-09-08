@@ -82,12 +82,29 @@ class TtdUser
         return ($pathBerkas !== null && file_exists($pathBerkas)) ? self::url($nilai) : '';
     }
 
+    /**
+     * URL gambar TTD dari emp_id karyawan (users.emp_id) — petugas laboratorium
+     * di lbtxn_checkuphdrs dicatat sebagai emp_id, bukan myuser_code.
+     */
+    public static function urlDariEmpId(?string $empId): string
+    {
+        $nilai = self::nilaiKolom('emp_id', $empId);
+        $pathBerkas = self::pathBerkas($nilai);
+        return ($pathBerkas !== null && file_exists($pathBerkas)) ? self::url($nilai) : '';
+    }
+
     /** Nilai mentah kolom myuser_ttd_image dari kode user; null bila kode kosong. */
     private static function nilaiKolomDariKode(?string $kode): ?string
     {
-        if (empty($kode)) {
+        return self::nilaiKolom('myuser_code', $kode);
+    }
+
+    /** Nilai mentah kolom myuser_ttd_image lewat kolom pencari tertentu di tabel users. */
+    private static function nilaiKolom(string $kolomPencari, ?string $nilaiPencari): ?string
+    {
+        if (empty($nilaiPencari)) {
             return null;
         }
-        return DB::table('users')->where('myuser_code', $kode)->value('myuser_ttd_image');
+        return DB::table('users')->where($kolomPencari, $nilaiPencari)->value('myuser_ttd_image');
     }
 }

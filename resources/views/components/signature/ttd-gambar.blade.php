@@ -3,11 +3,16 @@
     // lewat App\Support\TtdUser (dua format kolom). Tidak render apa pun bila kode kosong,
     // user tak punya TTD, atau berkasnya hilang.
     'code' => '',
+    // Alternatif: emp_id karyawan (users.emp_id) — dipakai petugas laboratorium yang
+    // dicatat per emp_id, bukan myuser_code. Diabaikan bila 'code' terisi.
+    'empId' => '',
     // Nama penanda-tangan — hanya untuk alt text.
     'name' => '',
 ])
 
-@php $ttdImageUrl = \App\Support\TtdUser::urlDariKode($code); @endphp
+@php
+    $ttdImageUrl = $code !== '' ? \App\Support\TtdUser::urlDariKode($code) : \App\Support\TtdUser::urlDariEmpId($empId);
+@endphp
 
 {{-- Gambar TTD user untuk stempel petugas di layar (pasangan x-signature.ttd-petugas &
      blok stempel bespoke di inform consent / penolakan / penundaan / second opinion / dll).
