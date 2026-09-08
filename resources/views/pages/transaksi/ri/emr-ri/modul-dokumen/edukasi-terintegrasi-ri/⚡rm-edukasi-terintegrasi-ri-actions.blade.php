@@ -899,9 +899,11 @@ new class extends Component {
                                 $entriForm  = $entri['form'] ?? [];
                                 $edukasiId    = $entri['id'] ?? null;
                                 $tglEdukasi   = $entriForm['tglEdukasi'] ?? '-';
-                                $petugasName = data_get($entriForm, 'pemberiInformasi.petugasName', '-') ?: '-';
-                                $pasienNama  = data_get($entriForm, 'ttd.pasienKeluargaNama', '-') ?: '-';
                                 $isFinal     = $this->entryIsFinal($entri);
+                                // Nama petugas hanya sah bila entri terkunci; draft lama bisa membawa
+                                // stempel tertinggal (bug stempel-sebelum-validasi) → tampilkan "Belum TTD".
+                                $petugasName = $isFinal ? (data_get($entriForm, 'pemberiInformasi.petugasName', '-') ?: '-') : '-';
+                                $pasienNama  = data_get($entriForm, 'ttd.pasienKeluargaNama', '-') ?: '-';
                                 $hasTtd      = !empty(data_get($entriForm, 'ttd.pasienKeluargaTTD'));
 
                                 $hambatanEmosionalAda = data_get($entriForm, 'evaluasiAwal.hambatanEmosional.ada');
@@ -1486,9 +1488,10 @@ new class extends Component {
                         $entriForm  = $entri['form'] ?? [];
                         $edukasiId    = $entri['id'] ?? null;
                         $tglEdukasi   = $entriForm['tglEdukasi'] ?? '-';
-                        $petugasName = data_get($entriForm, 'pemberiInformasi.petugasName', '-') ?: '-';
-                        $pasienNama  = data_get($entriForm, 'ttd.pasienKeluargaNama', '-') ?: '-';
                         $isFinal     = $this->entryIsFinal($entri);
+                        // Nama petugas hanya sah bila entri terkunci (draft lama bisa membawa stempel tertinggal).
+                        $petugasName = $isFinal ? (data_get($entriForm, 'pemberiInformasi.petugasName', '-') ?: '-') : '-';
+                        $pasienNama  = data_get($entriForm, 'ttd.pasienKeluargaNama', '-') ?: '-';
                         $hasTtd      = !empty(data_get($entriForm, 'ttd.pasienKeluargaTTD'));
 
                         $hambatanEmosionalAda = data_get($entriForm, 'evaluasiAwal.hambatanEmosional.ada');

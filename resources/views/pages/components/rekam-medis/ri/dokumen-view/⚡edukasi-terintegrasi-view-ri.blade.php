@@ -93,7 +93,7 @@ new class extends Component {
         @forelse (collect($list)->filter(fn($entri) => filled(data_get($entri, 'id')))->values() as $entri)
             <x-rm.doc-list-row :id="data_get($entri, 'id')" :title="$this->judulTujuan($entri) ?: 'Edukasi Terintegrasi'"
                 :date="data_get($entri, 'form.tglEdukasi')"
-                :sub="filled(data_get($entri, 'form.pemberiInformasi.petugasName')) ? 'Petugas: ' . data_get($entri, 'form.pemberiInformasi.petugasName') : null" />
+                :sub="!empty(data_get($entri, 'finalized')) && filled(data_get($entri, 'form.pemberiInformasi.petugasName')) ? 'Petugas: ' . data_get($entri, 'form.pemberiInformasi.petugasName') : 'Draft — belum TTD petugas'" />
         @empty
             <x-rm.doc-empty />
         @endforelse
