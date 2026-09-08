@@ -541,6 +541,48 @@ new class extends Component {
     }
 
     /* ===============================
+     | BUKA KUNCI — cabut TTD petugas, entri kembali Draft (Gate dokumen.bukaKunci)
+     =============================== */
+    public function bukaKunci(string $signatureDate): void
+    {
+        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+        try {
+            DB::transaction(function () use ($signatureDate) {
+                $this->lockRIRow($this->riHdrNo);
+                $data = $this->findDataRI($this->riHdrNo);
+                $list = is_array($data['penundaanPelayananRI'] ?? null) ? $data['penundaanPelayananRI'] : [];
+                $index = collect($list)->search(fn($item) => ($item['signatureDate'] ?? '') === $signatureDate);
+                if ($index === false) {
+                    throw new \RuntimeException('Entri tidak ditemukan.');
+                }
+                $list[$index]['finalized'] = false;
+                $list[$index]['pemberiInfo'] = '';
+                $list[$index]['pemberiInfoCode'] = '';
+                $list[$index]['pemberiInfoDate'] = '';
+                $data['penundaanPelayananRI'] = array_values($list);
+                $this->updateJsonRI((int) $this->riHdrNo, $data);
+                $this->dataDaftarRi = $data;
+                $this->penundaanList = $data['penundaanPelayananRI'];
+                $pembukaKunci = auth()->user()->myuser_name ?? '-';
+                $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Pemberitahuan Penundaan Pelayanan (' . $signatureDate . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut, entri kembali draft', 'MR');
+            });
+            $this->incrementVersion('modal-penundaan-pelayanan-ri');
+            $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — TTD petugas dicabut, entri kembali Draft.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
      | RESET
      =============================== */
     private function resetNewForm(): void
@@ -1027,6 +1069,16 @@ new class extends Component {
                                                         {{-- Baris bawah: aksi destruktif (Hapus) --}}
                                                         @if (!$isFormLocked)
                                                             <div class="flex items-center justify-center gap-2">
+                                                            @if ($isFinal)
+                                                                @can('dokumen.bukaKunci')
+                                                                    <x-confirm-button action="bukaKunci('{{ $rowKey }}')" title="Buka Kunci Pemberitahuan Penundaan Pelayanan"
+                                                                        message="TTD petugas akan dicabut & entri kembali menjadi draft untuk dikoreksi. Lanjutkan?"
+                                                                        confirmText="Ya, Buka Kunci" class="gap-1.5">
+                                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg>
+                                                                        Buka Kunci
+                                                                    </x-confirm-button>
+                                                                @endcan
+                                                            @endif
                                                             @can('dokumen.hapus')
                                                             <x-outline-button type="button" wire:click.prevent="hapus('{{ $rowKey }}')" wire:confirm="Yakin hapus pemberitahuan ini?"
                                                                 wire:loading.attr="disabled"

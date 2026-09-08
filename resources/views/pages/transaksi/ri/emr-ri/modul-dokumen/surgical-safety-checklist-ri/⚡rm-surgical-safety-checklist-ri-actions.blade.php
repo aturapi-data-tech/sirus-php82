@@ -1148,10 +1148,12 @@ new class extends Component {
                                                                 @endcan
                                                                 @if ($isFinal)
                                                                     @can('dokumen.bukaKunci')
-                                                                    <x-outline-button type="button" wire:click="bukaKunci('{{ $rowKey }}')" wire:confirm="Yakin buka kunci? Ketiga TTD akan dicabut." wire:loading.attr="disabled"
-                                                                        class="!text-amber-600 !bg-amber-50 !border-amber-200 hover:!bg-amber-100 hover:!text-amber-700 hover:!border-amber-300 dark:!text-amber-400 dark:!bg-amber-900/20 dark:!border-amber-800/30 dark:hover:!bg-amber-900/30 dark:hover:!text-amber-300" title="Buka Kunci">
-                                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
-                                                                    </x-outline-button>
+                                                                    <x-confirm-button action="bukaKunci('{{ $rowKey }}')" title="Buka Kunci Surgical Safety Checklist"
+                                                                        message="KETIGA TTD (Dokter Anestesi, Perawat Instrumen, Operator) akan dicabut & entri kembali menjadi draft untuk dikoreksi. Lanjutkan?"
+                                                                        confirmText="Ya, Buka Kunci" class="gap-1.5">
+                                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg>
+                                                                        Buka Kunci
+                                                                    </x-confirm-button>
                                                                     @endcan
                                                                 @endif
                                                                 </div>

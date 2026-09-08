@@ -688,6 +688,53 @@ new class extends Component {
     }
 
     /* ===============================
+     | BUKA KUNCI Form A / Form B — cabut TTD MPP, entri kembali Draft (Gate dokumen.bukaKunci)
+     =============================== */
+    public function bukaKunciForm(string $tipe, string $id): void
+    {
+        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang.');
+            return;
+        }
+        try {
+            DB::transaction(function () use ($tipe, $id) {
+                $this->lockRIRow($this->riHdrNo);
+                $fresh = $this->findDataRI($this->riHdrNo) ?: [];
+                $list = $fresh['formMPP'][$tipe] ?? [];
+                $index = collect($list)->search(fn($e) => ($e[$tipe . '_id'] ?? null) === $id);
+                if ($index === false) {
+                    throw new \RuntimeException('Entri tidak ditemukan.');
+                }
+                $list[$index]['finalized'] = false;
+                $list[$index]['tandaTanganPetugas']['petugasCode'] = '';
+                $list[$index]['tandaTanganPetugas']['petugasName'] = '';
+                $fresh['formMPP'][$tipe] = array_values($list);
+                $this->updateJsonRI((int) $this->riHdrNo, $fresh);
+                $this->dataDaftarRi = $fresh;
+                $formLabel = $tipe === 'formA' ? 'Form A (Skrining MPP)' : 'Form B (Pelaksanaan MPP)';
+                $pembukaKunci = auth()->user()->myuser_name ?? '-';
+                $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci ' . $formLabel . ' — entri ' . ($list[$index]['tanggal'] ?? '-') . ' oleh ' . $pembukaKunci . ' — TTD MPP dicabut, entri kembali draft', 'MR');
+            });
+            if ($tipe === 'formA' && $this->editingKeyA === $id) {
+                $this->cancelEditA();
+            }
+            if ($tipe === 'formB' && $this->editingKeyB === $id) {
+                $this->cancelEditB();
+            }
+            $this->incrementVersion('modal-case-manager-ri');
+            $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — TTD MPP dicabut, entri kembali Draft.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
      | CETAK per-entri
      =============================== */
     public function cetakFormA(string $id)
@@ -1049,6 +1096,16 @@ new class extends Component {
                                             {{-- Baris bawah: aksi destruktif (Hapus) --}}
                                             @if (!$isFormLocked)
                                                 <div class="flex flex-wrap items-center justify-center gap-2">
+                                                @if ($isFinal)
+                                                    @can('dokumen.bukaKunci')
+                                                        <x-confirm-button action="bukaKunciForm('formA','{{ $rowKey }}')" title="Buka Kunci Case Manager Form A"
+                                                            message="TTD petugas akan dicabut & entri kembali menjadi draft untuk dikoreksi. Lanjutkan?"
+                                                            confirmText="Ya, Buka Kunci" class="gap-1.5">
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg>
+                                                            Buka Kunci
+                                                        </x-confirm-button>
+                                                    @endcan
+                                                @endif
                                                 @can('dokumen.hapus')
                                                 <x-outline-button type="button" wire:click.prevent="hapusForm('formA','{{ $rowKey }}')" wire:confirm="Hapus Form A ini?" wire:loading.attr="disabled"
                                                     class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300"
@@ -1159,6 +1216,16 @@ new class extends Component {
                                                                     {{-- Baris bawah: aksi destruktif (Hapus) --}}
                                                                     @if (!$isFormLocked)
                                                                         <div class="flex flex-wrap items-center justify-end gap-1.5">
+                                                                        @if ($fbFinal)
+                                                                            @can('dokumen.bukaKunci')
+                                                                                <x-confirm-button action="bukaKunciForm('formB','{{ $fbKey }}')" title="Buka Kunci Case Manager Form B"
+                                                                                    message="TTD petugas akan dicabut & entri kembali menjadi draft untuk dikoreksi. Lanjutkan?"
+                                                                                    confirmText="Ya, Buka Kunci" class="gap-1.5">
+                                                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg>
+                                                                                    Buka Kunci
+                                                                                </x-confirm-button>
+                                                                            @endcan
+                                                                        @endif
                                                                         @can('dokumen.hapus')
                                                                         <x-outline-button type="button" wire:click.prevent="hapusForm('formB','{{ $fbKey }}')" wire:confirm="Hapus Form B ini?"
                                                                             class="!px-2.5 !py-1 !text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30" title="Hapus Form B">

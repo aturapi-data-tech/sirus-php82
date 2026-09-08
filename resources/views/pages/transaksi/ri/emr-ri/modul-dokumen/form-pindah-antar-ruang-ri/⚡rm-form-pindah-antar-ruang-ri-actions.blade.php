@@ -495,6 +495,47 @@ new class extends Component {
     }
 
     /* ===============================
+     | BUKA KUNCI — cabut TTD penerima, entri kembali Transit (Gate dokumen.bukaKunci)
+     =============================== */
+    public function bukaKunci(string $tglPindah): void
+    {
+        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berwenang membuka kunci.');
+            return;
+        }
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'Form read-only.');
+            return;
+        }
+        try {
+            DB::transaction(function () use ($tglPindah) {
+                $this->lockRIRow($this->riHdrNo);
+                $data = $this->findDataRI($this->riHdrNo);
+                $list = is_array($data['formPindahAntarRuangRI'] ?? null) ? $data['formPindahAntarRuangRI'] : [];
+                $index = collect($list)->search(fn($item) => ($item['tglPindah'] ?? '') === $tglPindah);
+                if ($index === false) {
+                    throw new \RuntimeException('Entri tidak ditemukan.');
+                }
+                $list[$index]['petugasPenerima'] = '';
+                $list[$index]['petugasPenerimaCode'] = '';
+                $list[$index]['petugasPenerimaDate'] = '';
+                $data['formPindahAntarRuangRI'] = array_values($list);
+                $this->updateJsonRI((int) $this->riHdrNo, $data);
+                $this->dataDaftarRi = $data;
+                $this->listPindah = $data['formPindahAntarRuangRI'];
+                $pembukaKunci = auth()->user()->myuser_name ?? '-';
+                $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Form Pindah Antar Ruang (' . ($tglPindah ?: '-') . ') oleh ' . $pembukaKunci . ' — TTD penerima dicabut, entri kembali Transit', 'MR');
+            });
+            $this->incrementVersion('modal-form-pindah-ri');
+            $this->dispatch('toast', type: 'success', message: 'Kunci dibuka — TTD penerima dicabut, entri kembali Transit.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $e->getMessage());
+        }
+    }
+
+    /* ===============================
      | RESET HELPERS
      =============================== */
     private function resetNewPindah(): void
@@ -1158,6 +1199,19 @@ new class extends Component {
                                                         </x-secondary-button>
                                                     </div>
 
+                                                    {{-- Buka kunci: hanya saat kedua TTD sudah ada (Selesai) --}}
+                                                    @if ($rowLocked && !$isFormLocked)
+                                                        <div class="flex items-center justify-center gap-2">
+                                                            @can('dokumen.bukaKunci')
+                                                                <x-confirm-button action="bukaKunci('{{ $kunciPindah }}')" title="Buka Kunci Form Pindah Antar Ruang"
+                                                                    message="TTD petugas penerima akan dicabut & entri kembali Transit untuk dikoreksi. Lanjutkan?"
+                                                                    confirmText="Ya, Buka Kunci" class="gap-1.5">
+                                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg>
+                                                                    Buka Kunci
+                                                                </x-confirm-button>
+                                                            @endcan
+                                                        </div>
+                                                    @endif
                                                     {{-- Baris bawah: aksi destruktif (Hapus) --}}
                                                     @if (!$rowLocked && !$isFormLocked)
                                                         <div class="flex items-center justify-center gap-2">
