@@ -130,9 +130,12 @@ eab5fdbe, 8a941775). Kalau membuat modul baru, salin dari sana; jangan bikin var
   **Status** = badge `Terkunci` (info) / `Draft` (warning); kolom teks lain `text-muted`.
 - **Aksi, dua baris**: atas `[Lanjutkan Pengisian (primary, draft)] [Lihat (secondary,
   terkunci)] [Cetak = <x-cetak-button> ikon printer saja]`; bawah `[Buka Kunci
-  (x-confirm-button, @can dokumen.bukaKunci)] [hapus ikon tong sampah (x-outline-button
-  merah, @can dokumen.hapus)]`. **Cetak wajib komponen `<x-cetak-button wire:click="cetak(…)"
-  title="…" />`** (`resources/views/components/cetak-button.blade.php`, ikon-saja biru meniru
+  (x-confirm-button, @can dokumen.bukaKunci)] [<x-hapus-button> ikon tong sampah, @can
+  dokumen.hapus]`. Sel Aksi `whitespace-nowrap` supaya teks tombol tidak patah dua baris
+  (x-confirm-button sudah nowrap bawaan sejak 2026-09-08). **Cetak wajib komponen `<x-cetak-button wire:click="cetak(…)"
+  title="…" />`** dan **hapus wajib `<x-hapus-button wire:click.prevent="hapus(…)" confirm="…" />`**
+  (ikon tong sampah merah, tinggi 40px sama dengan tombol berteks — jangan `x-outline-button`
+  merah manual ber-`!px-2 !py-1` lagi). Cetak (`resources/views/components/cetak-button.blade.php`, ikon-saja biru meniru
   tabel Slip Gaji Dokter; wire:target & spinner otomatis) — jangan tulis tombol sekunder
   berteks "Cetak" lagi, jangan `x-info-button`/`x-primary-button`. Komponen yang sama
   berlaku untuk SEMUA tombol cetak di repo (86 titik, 2026-09-08): butuh keterangan →

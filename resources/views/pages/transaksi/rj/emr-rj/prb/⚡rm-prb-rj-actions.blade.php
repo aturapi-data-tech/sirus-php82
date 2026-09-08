@@ -647,7 +647,7 @@ new class extends Component {
                                                     <td class="px-2 py-1 text-center">{{ $obat['jmlObat'] ?? '' }}</td>
                                                     @if (!$isFormLocked)
                                                         <td class="px-2 py-1 text-center">
-                                                            <x-outline-button type="button" wire:click="hapusObat({{ $idx }})" wire:confirm="Hapus obat ini?" wire:loading.attr="disabled" class="!px-3 !py-1 !text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300" title="Hapus">Hapus</x-outline-button>
+                                                            <x-hapus-button wire:click="hapusObat({{ $idx }})" confirm="Hapus obat ini?" />
                                                         </td>
                                                     @endif
                                                 </tr>
@@ -788,11 +788,7 @@ new class extends Component {
                                 @if (!$isFormLocked)
                                     <div class="flex gap-2">
                                         @if (!empty($formPRB['noSrb']))
-                                            <x-danger-button type="button" wire:click="hapusPRB" wire:loading.attr="disabled"
-                                                wire:confirm="Yakin hapus PRB {{ $formPRB['noSrb'] }} dari BPJS?">
-                                                <span wire:loading.remove wire:target="hapusPRB">Hapus PRB</span>
-                                                <span wire:loading wire:target="hapusPRB"><x-loading /> Menghapus...</span>
-                                            </x-danger-button>
+                                            <x-hapus-button wire:click="hapusPRB" confirm="Yakin hapus PRB {{ $formPRB['noSrb'] }} dari BPJS?" label="Hapus PRB" />
                                         @endif
 
                                         <x-success-button type="button" wire:click="save" wire:loading.attr="disabled">

@@ -854,8 +854,7 @@ new class extends Component {
                                                 <span wire:loading.remove wire:target="uploadBerkasForSlot,uploadFile">Replace</span>
                                                 <span wire:loading wire:target="uploadBerkasForSlot,uploadFile">...</span>
                                             </x-secondary-button>
-                                            <x-danger-button type="button" wire:click="hapusBerkas({{ $slot }})"
-                                                wire:confirm="Yakin hapus berkas {{ $info['label'] }}?" class="text-xs">Hapus</x-danger-button>
+                                            <x-hapus-button wire:click="hapusBerkas({{ $slot }})" confirm="Yakin hapus berkas {{ $info['label'] }}?" />
                                         @else
                                             <x-primary-button type="button"
                                                 x-on:click="$refs.uploadInput{{ $slot }}.click()"

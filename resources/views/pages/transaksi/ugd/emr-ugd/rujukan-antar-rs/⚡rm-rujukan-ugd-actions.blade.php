@@ -610,11 +610,7 @@ new class extends Component {
                     @if ($isBPJS)
                         <div class="flex items-center justify-end gap-2 pt-2">
                             @if (!empty($dataDaftarUGD['rujukanAntarRS']['noRujukan']))
-                                <x-danger-button type="button" wire:click="hapusRujukan" wire:loading.attr="disabled"
-                                    wire:confirm="Yakin hapus rujukan {{ $dataDaftarUGD['rujukanAntarRS']['noRujukan'] }} dari BPJS?">
-                                    <span wire:loading.remove wire:target="hapusRujukan">Hapus Rujukan BPJS</span>
-                                    <span wire:loading wire:target="hapusRujukan"><x-loading /> Menghapus...</span>
-                                </x-danger-button>
+                                <x-hapus-button wire:click="hapusRujukan" confirm="Yakin hapus rujukan {{ $dataDaftarUGD['rujukanAntarRS']['noRujukan'] }} dari BPJS?" label="Hapus Rujukan BPJS" />
                             @endif
 
                             <x-success-button type="button" wire:click="kirimBPJS" wire:loading.attr="disabled">

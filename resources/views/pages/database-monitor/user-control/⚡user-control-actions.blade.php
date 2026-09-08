@@ -522,10 +522,7 @@ new class extends Component {
                 <div class="flex justify-between">
                     <div>
                         @if ($formMode === 'edit' && !$isFormLocked)
-                            <x-danger-button wire:click="hapus"
-                                wire:confirm="Yakin ingin menghapus user ini? Semua data terkait termasuk akses kas akan dihapus.">
-                                Hapus User
-                            </x-danger-button>
+                            <x-hapus-button wire:click="hapus" confirm="Yakin ingin menghapus user ini? Semua data terkait termasuk akses kas akan dihapus." label="Hapus User" />
                         @endif
                     </div>
                     <div class="flex gap-3">

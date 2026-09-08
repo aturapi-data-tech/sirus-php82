@@ -19,7 +19,7 @@
     $loadingTarget = $wireTarget ?? \Illuminate\Support\Str::before($action, '(');
 
     // class trigger button — disesuaikan dengan komponen button standar
-    $base = 'inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150';
+    $base = 'inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors duration-150';
 
     $triggerButtonClass = match ($variant) {
         'primary'

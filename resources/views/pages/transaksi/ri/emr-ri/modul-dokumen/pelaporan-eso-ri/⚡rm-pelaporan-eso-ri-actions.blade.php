@@ -1375,7 +1375,7 @@ new class extends Component {
                                                 <x-badge variant="warning">Draft</x-badge>
                                             @endif
                                         </td>
-                                        <td class="ds-c" @click.stop>
+                                        <td class="ds-c whitespace-nowrap" @click.stop>
                                             <div class="flex flex-wrap items-center justify-center gap-1.5">
                                                 {{-- Baris atas: aksi non-destruktif --}}
                                                 <div class="flex items-center justify-center gap-2">
@@ -1412,19 +1412,7 @@ new class extends Component {
                                                         @endif
                                                         @if ($idEntri)
                                                             @can('dokumen.hapus')
-                                                                <x-outline-button type="button"
-                                                                    wire:click.prevent="removeEntry('{{ $idEntri }}')"
-                                                                    wire:confirm="Hapus laporan ESO ini?"
-                                                                    wire:loading.attr="disabled"
-                                                                    class="!px-2 !py-1 !text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30"
-                                                                    title="Hapus laporan">
-                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                                        viewBox="0 0 24 24">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                                            stroke-width="2"
-                                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                                    </svg>
-                                                                </x-outline-button>
+                                                                <x-hapus-button wire:click.prevent="removeEntry('{{ $idEntri }}')" confirm="Hapus laporan ESO ini?" title="Hapus laporan" />
                                                             @endcan
                                                         @endif
                                                     </div>

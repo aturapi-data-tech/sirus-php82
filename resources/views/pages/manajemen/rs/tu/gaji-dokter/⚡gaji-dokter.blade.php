@@ -995,24 +995,7 @@ new class extends Component {
                                              tombol pertama berkelompok di kiri, Hapus terdorong ke tepi
                                              kanan supaya jaraknya jauh dari tombol yang sering diklik. --}}
                                         @if ($row->gaji_status !== 'F')
-                                                <x-icon-button color="red" type="button"
-                                                    class="!p-2.5 shrink-0"
-                                                    wire:click="hapus({{ $row->gajidoctor_no }})"
-                                                    wire:loading.attr="disabled"
-                                                    wire:target="hapus({{ $row->gajidoctor_no }})"
-                                                    wire:confirm="Hapus slip draft {{ $row->dr_name }}?"
-                                                    title="Hapus slip draft">
-                                                    <span wire:loading.remove wire:target="hapus({{ $row->gajidoctor_no }})">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                                            stroke-width="1.8">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                    </span>
-                                                    <span wire:loading wire:target="hapus({{ $row->gajidoctor_no }})">
-                                                        <x-loading size="md" />
-                                                    </span>
-                                                </x-icon-button>
+                                                <x-hapus-button wire:click="hapus({{ $row->gajidoctor_no }})" confirm="Hapus slip draft {{ $row->dr_name }}?" title="Hapus slip draft" />
                                         @endif
                                     </div>
                                 </td>

@@ -876,7 +876,7 @@ new class extends Component {
                                             @endif
                                         </td>
                                         <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-muted dark:text-gray-300">{{ data_get($rf, 'ttd.dokterNama') ?: '-' }}</td>
-                                        <td class="px-3 py-2 text-center align-middle border-b border-hairline dark:border-gray-700" @click.stop>
+                                        <td class="px-3 py-2 text-center align-middle border-b border-hairline dark:border-gray-700 whitespace-nowrap" @click.stop>
                                             <div class="flex flex-wrap items-center justify-center gap-1.5">
                                                 {{-- Baris atas: aksi non-destruktif (Lanjut/Lihat/Cetak) --}}
                                                 <div class="flex items-center justify-center gap-2">
@@ -925,15 +925,7 @@ new class extends Component {
                                                 @endif
                                                 @if (!$isFormLocked && $rid)
                                                     @can('dokumen.hapus')
-                                                        <x-outline-button type="button" wire:click.prevent="hapusEntri('{{ $rid }}')"
-                                                            wire:confirm="Hapus permintaan darah ini?" wire:loading.attr="disabled"
-                                                            class="!px-2 !py-1 !text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300"
-                                                            title="Hapus permintaan darah">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                            </svg>
-                                                        </x-outline-button>
+                                                        <x-hapus-button wire:click.prevent="hapusEntri('{{ $rid }}')" confirm="Hapus permintaan darah ini?" title="Hapus permintaan darah" />
                                                     @endcan
                                                 @endif
                                                 </div>

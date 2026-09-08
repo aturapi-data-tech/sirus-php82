@@ -15,7 +15,7 @@
  *   6. layar daftar polos & full width: tanpa judul "… Tersimpan", tanpa "Klik baris …", tanpa max-w-5xl
  *   7. tabel entri tidak lagi memakai array_reverse() (lihat docs §2c)
  *   8. bentuk tabel daftar = Edukasi Terintegrasi (docs §2a "Tabel daftar"): tanpa kolom No,
- *      ada panah rincian, Cetak = <x-cetak-button> ikon saja, label "Lanjutkan Pengisian" utuh,
+ *      ada panah rincian, Cetak = <x-cetak-button>, hapus = <x-hapus-button>, label "Lanjutkan Pengisian" utuh,
  *      keterangan footer "Setiap entri berdiri sendiri" di layar daftar
  */
 require __DIR__ . '/../../../vendor/autoload.php';
@@ -94,6 +94,8 @@ foreach ($berkas as $path) {
         if (preg_match('/<x-(info|primary|secondary|outline)-button[^>]*wire:click="cetak[A-Za-z]*\(/', substr($sumber, (int) strrpos($sumber, '@unless ($this->diForm())'))))  // cetak(…)/cetakFormA(…) per entri; cetakSemua tanpa kurung = cetak seluruh catatan, boleh berteks
             $catatan[] = 'Cetak di tabel daftar masih tombol berteks (harus <x-cetak-button> ikon saja)';
         if (preg_match('/>\s*Lanjutkan\s*<\//', $sumber)) $catatan[] = 'label "Lanjutkan" harus "Lanjutkan Pengisian"';
+        if (preg_match('/<x-(outline|danger|icon)-button[^>]*wire:click(\.prevent)?="(hapus|remove|delete)/', substr($sumber, (int) strrpos($sumber, '@unless ($this->diForm())'))))
+            $catatan[] = 'hapus di tabel daftar masih tombol manual (harus <x-hapus-button>)';
 
         $duaLayar = str_contains($sumber, 'this->diForm()');
         if ($duaLayar) {
