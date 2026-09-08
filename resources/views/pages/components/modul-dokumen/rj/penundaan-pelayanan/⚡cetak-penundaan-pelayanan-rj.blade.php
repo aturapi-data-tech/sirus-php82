@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRJTrait, MasterPasienTrait;
@@ -72,8 +73,8 @@ new class extends Component {
         $pemberiCode = $form['pemberiInfoCode'] ?? null;
         if ($pemberiCode) {
             $ttdPath = DB::table('users')->where('myuser_code', $pemberiCode)->value('myuser_ttd_image');
-            if (!empty($ttdPath) && file_exists(public_path('storage/' . $ttdPath))) {
-                $ttdPemberiPath = public_path('storage/' . $ttdPath);
+            if (!empty($ttdPath) && file_exists(TtdUser::pathBerkas($ttdPath))) {
+                $ttdPemberiPath = TtdUser::pathBerkas($ttdPath);
             }
         }
 

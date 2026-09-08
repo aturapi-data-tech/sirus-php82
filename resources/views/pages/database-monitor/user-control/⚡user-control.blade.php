@@ -362,9 +362,9 @@ new class extends Component {
                                                 <div class="pt-3 ds-caption text-muted-soft">Dibuat {{ $row->created_at ?? '-' }}</div>
                                             </div>
 
-                                            {{-- TTD (besar, di samping) — legacy 'UserTtd/abc.jpg' vs filename saja → prepend 'UserTtd/'. --}}
+                                            {{-- TTD (besar, di samping) — dua format kolom diselesaikan App\Support\TtdUser. --}}
                                             @if ($row->myuser_ttd_image)
-                                                <img src="{{ asset(str_contains($row->myuser_ttd_image, '/') ? 'storage/' . $row->myuser_ttd_image : 'storage/UserTtd/' . $row->myuser_ttd_image) }}"
+                                                <img src="{{ \App\Support\TtdUser::url($row->myuser_ttd_image) }}"
                                                     class="self-start w-auto border rounded-lg h-16 border-hairline dark:border-gray-600 shrink-0 bg-white" alt="TTD">
                                             @endif
                                         </div>

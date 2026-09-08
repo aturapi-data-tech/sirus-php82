@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRJTrait, MasterPasienTrait;
@@ -68,8 +69,8 @@ new class extends Component {
         $ttdDokterPath = null;
         if (!empty($consent['dokterCode'])) {
             $ttdPath = DB::table('users')->where('myuser_code', $consent['dokterCode'])->value('myuser_ttd_image');
-            if (!empty($ttdPath) && file_exists(public_path('storage/' . $ttdPath))) {
-                $ttdDokterPath = public_path('storage/' . $ttdPath);
+            if (!empty($ttdPath) && file_exists(TtdUser::pathBerkas($ttdPath))) {
+                $ttdDokterPath = TtdUser::pathBerkas($ttdPath);
             }
         }
 
@@ -80,8 +81,8 @@ new class extends Component {
             $userRow = DB::table('users')->where('myuser_code', $consent['petugasPemeriksaCode'])->first(['myuser_ttd_image', 'myuser_name']);
             if ($userRow) {
                 $dokterTindakanName = $userRow->myuser_name ?? null;
-                if (!empty($userRow->myuser_ttd_image) && file_exists(public_path('storage/' . $userRow->myuser_ttd_image))) {
-                    $ttdDokterTindakanPath = public_path('storage/' . $userRow->myuser_ttd_image);
+                if (!empty($userRow->myuser_ttd_image) && file_exists(TtdUser::pathBerkas($userRow->myuser_ttd_image))) {
+                    $ttdDokterTindakanPath = TtdUser::pathBerkas($userRow->myuser_ttd_image);
                 }
             }
             if (empty($dokterTindakanName)) {

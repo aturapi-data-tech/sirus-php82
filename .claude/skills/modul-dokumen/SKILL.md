@@ -92,7 +92,7 @@ Folder/file UGD/RJ **buang sufiks** `-ri`, tapi modal-name/renderArea/nama PDF *
 ## Viewer rekam-medis: payload seragam vs bespoke
 
 - **Seragam** (dataRi/form/ttd): pakai `DokumenViewSupportTrait::previewDokumenRi()/streamCetakDokumenRi()` langsung.
-- **Bespoke** (cetak butuh `entry`+`opsiLabel`+`clause`, mis. Akhir Hayat): viewer **self-contained** — `dvPasien/dvTtdPath/dvIdentitasRs/renderDokumenPreview` + `buildData()` yang meniru `cetak()`; `opsiLabel` dari `App\Support\<Dok>Options::labels()`.
+- **Bespoke** (cetak butuh `entry`+`opsiLabel`+`clause`, mis. Akhir Hayat): viewer **self-contained** — `pasienDokumen/identitasRsDokumen/renderDokumenPreview` + `TtdUser::pathBerkasDariKode` + `buildData()` yang meniru `cetak()`; `opsiLabel` dari `App\Support\<Dok>Options::labels()`.
 
 ## Verifikasi (WAJIB sebelum lapor selesai)
 

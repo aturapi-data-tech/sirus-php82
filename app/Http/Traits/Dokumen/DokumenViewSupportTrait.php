@@ -2,6 +2,7 @@
 
 namespace App\Http\Traits\Dokumen;
 
+use App\Support\TtdUser;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -10,7 +11,8 @@ use Illuminate\Support\Facades\DB;
  * Helper bersama untuk komponen viewer dokumen di display Rekam Medis (RI/RJ/UGD).
  *
  * Menyediakan:
- * - dvPasien()/dvTtdPath()/dvIdentitasRs() — dipakai semua modul (cetak bespoke RJ/UGD).
+ * - pasienDokumen()/identitasRsDokumen() — dipakai semua modul (cetak bespoke RJ/UGD);
+ *   path gambar TTD petugas lewat App\Support\TtdUser::pathBerkasDariKode().
  * - streamCetakDokumenRi() — pintasan cetak untuk dokumen RI yg payload-nya seragam
  *   (dataRi/form/identitasRs/ttd*), identik dgn aksi cetak di komponen EMR modul-dokumen.
  *
@@ -70,7 +72,7 @@ trait DokumenViewSupportTrait
     }
 
     /** Data pasien (findDataMasterPasien) + hitung umur ($pasien['thn']). */
-    protected function dvPasien(?string $regNo): array
+    protected function pasienDokumen(?string $regNo): array
     {
         $pasien = $this->findDataMasterPasien($regNo ?? '')['pasien'] ?? [];
         if (!empty($pasien['tglLahir'])) {
@@ -84,20 +86,8 @@ trait DokumenViewSupportTrait
         return $pasien;
     }
 
-    /** Path TTD dari myuser_code (null bila tak ada / file hilang). */
-    protected function dvTtdPath(?string $code): ?string
-    {
-        if (empty($code)) {
-            return null;
-        }
-        $ttdPath = DB::table('users')->where('myuser_code', $code)->value('myuser_ttd_image');
-        return (!empty($ttdPath) && file_exists(public_path('storage/' . $ttdPath)))
-            ? public_path('storage/' . $ttdPath)
-            : null;
-    }
-
     /** Identitas RS untuk kop cetak. */
-    protected function dvIdentitasRs()
+    protected function identitasRsDokumen()
     {
         return DB::table('rsmst_identitases')
             ->select('int_name', 'int_phone1', 'int_phone2', 'int_fax', 'int_address', 'int_city')
@@ -161,13 +151,13 @@ trait DokumenViewSupportTrait
     protected function dataDokumenRi(array $entry, string $ttdKey, ?string $ttdCodeField, array $extra = []): array
     {
         $dataRi = $this->riHdrNo ? ($this->findDataRI($this->riHdrNo) ?: []) : [];
-        $pasien = $this->dvPasien($dataRi['regNo'] ?? '');
+        $pasien = $this->pasienDokumen($dataRi['regNo'] ?? '');
 
         return array_merge($pasien, [
             'dataRi' => $dataRi,
             'form' => $entry,
-            'identitasRs' => $this->dvIdentitasRs(),
-            $ttdKey => $ttdCodeField ? $this->dvTtdPath($entry[$ttdCodeField] ?? null) : null,
+            'identitasRs' => $this->identitasRsDokumen(),
+            $ttdKey => $ttdCodeField ? TtdUser::pathBerkasDariKode($entry[$ttdCodeField] ?? null) : null,
             'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
         ], $extra);
     }
@@ -205,13 +195,13 @@ trait DokumenViewSupportTrait
     /** Bangun payload cetak dokumen jalur RJ/UGD (payload seragam). */
     protected function dataDokumenTxn(array $entry, string $ttdKey, ?string $ttdCodeField, array $dataTxn, array $extra = []): array
     {
-        $pasien = $this->dvPasien($dataTxn['regNo'] ?? '');
+        $pasien = $this->pasienDokumen($dataTxn['regNo'] ?? '');
 
         return array_merge($pasien, [
             'dataRi' => $dataTxn,
             'form' => $entry,
-            'identitasRs' => $this->dvIdentitasRs(),
-            $ttdKey => $ttdCodeField ? $this->dvTtdPath($entry[$ttdCodeField] ?? null) : null,
+            'identitasRs' => $this->identitasRsDokumen(),
+            $ttdKey => $ttdCodeField ? TtdUser::pathBerkasDariKode($entry[$ttdCodeField] ?? null) : null,
             'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
         ], $extra);
     }

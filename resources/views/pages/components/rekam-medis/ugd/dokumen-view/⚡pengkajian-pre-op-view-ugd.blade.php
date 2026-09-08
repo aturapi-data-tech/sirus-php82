@@ -8,6 +8,7 @@ use App\Http\Traits\Dokumen\DokumenViewSupportTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrUGDTrait, MasterPasienTrait, DokumenViewSupportTrait;
@@ -30,17 +31,17 @@ new class extends Component {
     private function buildData(array $entry): array
     {
         $dataUgd = $this->rjNo ? ($this->findDataUGD($this->rjNo) ?: []) : [];
-        $pasien = $this->dvPasien($dataUgd['regNo'] ?? '');
+        $pasien = $this->pasienDokumen($dataUgd['regNo'] ?? '');
 
         $ttdPaths = [];
         foreach (['ttdPerawatRuangan', 'ttdPerawatKamarBedah', 'ttdDokterOperator'] as $ttdField) {
-            $ttdPaths[$ttdField . 'Path'] = $this->dvTtdPath($entry[$ttdField . 'Code'] ?? null);
+            $ttdPaths[$ttdField . 'Path'] = TtdUser::pathBerkasDariKode($entry[$ttdField . 'Code'] ?? null);
         }
 
         return array_merge($pasien, $ttdPaths, [
             'dataRi' => $dataUgd,
             'form' => $entry,
-            'identitasRs' => $this->dvIdentitasRs(),
+            'identitasRs' => $this->identitasRsDokumen(),
             'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
         ]);
     }

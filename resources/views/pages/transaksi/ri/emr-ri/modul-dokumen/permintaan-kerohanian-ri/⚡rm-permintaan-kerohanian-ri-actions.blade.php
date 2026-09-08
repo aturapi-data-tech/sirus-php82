@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Support\Clause\KerohanianClause;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -442,8 +443,8 @@ new class extends Component {
             $petugasCode = $entry['petugasCode'] ?? null;
             if ($petugasCode) {
                 $ttdPath = DB::table('users')->where('myuser_code', $petugasCode)->value('myuser_ttd_image');
-                if (!empty($ttdPath) && file_exists(public_path('storage/' . $ttdPath))) {
-                    $ttdPetugasPath = public_path('storage/' . $ttdPath);
+                if (!empty($ttdPath) && file_exists(TtdUser::pathBerkas($ttdPath))) {
+                    $ttdPetugasPath = TtdUser::pathBerkas($ttdPath);
                 }
             }
 

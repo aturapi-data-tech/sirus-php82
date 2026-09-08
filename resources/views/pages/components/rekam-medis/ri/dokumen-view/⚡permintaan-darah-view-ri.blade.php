@@ -9,6 +9,7 @@ use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Support\Options\PermintaanDarahOptions;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait, DokumenViewSupportTrait;
@@ -30,13 +31,13 @@ new class extends Component {
     private function buildData(array $entry): array
     {
         $dataRi = $this->riHdrNo ? ($this->findDataRI($this->riHdrNo) ?: []) : [];
-        $pasien = $this->dvPasien($dataRi['regNo'] ?? '');
+        $pasien = $this->pasienDokumen($dataRi['regNo'] ?? '');
 
         return array_merge($pasien, [
             'dataRi' => $dataRi,
             'entry' => $entry,
-            'identitasRs' => $this->dvIdentitasRs(),
-            'ttdDokterPath' => $this->dvTtdPath(data_get($entry, 'form.ttd.dokterCode')),
+            'identitasRs' => $this->identitasRsDokumen(),
+            'ttdDokterPath' => TtdUser::pathBerkasDariKode(data_get($entry, 'form.ttd.dokterCode')),
             'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
             'opsiLabel' => PermintaanDarahOptions::labels(),
         ]);

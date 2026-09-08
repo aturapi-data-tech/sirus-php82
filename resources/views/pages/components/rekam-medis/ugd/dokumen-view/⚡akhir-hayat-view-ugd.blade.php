@@ -10,6 +10,7 @@ use App\Support\Clause\AkhirHayatClause;
 use App\Support\Options\AkhirHayatOptions;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrUGDTrait, MasterPasienTrait, DokumenViewSupportTrait;
@@ -32,14 +33,14 @@ new class extends Component {
     private function buildData(array $entry): array
     {
         $dataUgd = $this->rjNo ? ($this->findDataUGD($this->rjNo) ?: []) : [];
-        $pasien = $this->dvPasien($dataUgd['regNo'] ?? '');
+        $pasien = $this->pasienDokumen($dataUgd['regNo'] ?? '');
         $petugasCode = data_get($entry, 'form.ttd.petugasCode') ?: data_get($entry, 'created_by.code');
 
         return array_merge($pasien, [
             'dataRi' => $dataUgd,
             'entry' => $entry,
-            'identitasRs' => $this->dvIdentitasRs(),
-            'ttdPetugasPath' => $this->dvTtdPath($petugasCode),
+            'identitasRs' => $this->identitasRsDokumen(),
+            'ttdPetugasPath' => TtdUser::pathBerkasDariKode($petugasCode),
             'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
             'clause' => AkhirHayatClause::get(data_get($entry, 'form.ttd.clauseVersion')),
             'opsiLabel' => AkhirHayatOptions::labels(),

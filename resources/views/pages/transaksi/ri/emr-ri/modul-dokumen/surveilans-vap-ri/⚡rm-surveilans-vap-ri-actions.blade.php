@@ -14,6 +14,7 @@ use App\Support\Options\SurveilansHaisOptions;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -639,8 +640,8 @@ new class extends Component {
             $ttdPath = null;
             if (!empty($entri['ttdCode'])) {
                 $ttdImg = DB::table('users')->where('myuser_code', $entri['ttdCode'])->value('myuser_ttd_image');
-                if (!empty($ttdImg) && file_exists(public_path('storage/' . $ttdImg))) {
-                    $ttdPath = public_path('storage/' . $ttdImg);
+                if (!empty($ttdImg) && file_exists(TtdUser::pathBerkas($ttdImg))) {
+                    $ttdPath = TtdUser::pathBerkas($ttdImg);
                 }
             }
 

@@ -7,6 +7,7 @@ use Carbon\Carbon;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Dokumen\DokumenViewSupportTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait, DokumenViewSupportTrait;
@@ -96,12 +97,12 @@ new class extends Component {
             return null;
         }
 
-        $pasien = $this->dvPasien($dataRi['regNo'] ?? '');
+        $pasien = $this->pasienDokumen($dataRi['regNo'] ?? '');
         return array_merge($pasien, [
             'dataRi' => $dataRi,
             'entry' => $entry,
-            'identitasRs' => $this->dvIdentitasRs(),
-            'ttdPetugasPath' => $this->dvTtdPath($entry['petugasEdukasiCode'] ?? null),
+            'identitasRs' => $this->identitasRsDokumen(),
+            'ttdPetugasPath' => TtdUser::pathBerkasDariKode($entry['petugasEdukasiCode'] ?? null),
             'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
         ]);
     }

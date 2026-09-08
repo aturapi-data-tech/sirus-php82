@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRJTrait, MasterPasienTrait;
@@ -54,8 +55,8 @@ new class extends Component {
         $ttdDokterPath = null;
         if ($drId) {
             $ttdPath = DB::table('users')->where('myuser_code', $drId)->value('myuser_ttd_image');
-            if (!empty($ttdPath) && file_exists(public_path('storage/' . $ttdPath))) {
-                $ttdDokterPath = public_path('storage/' . $ttdPath);
+            if (!empty($ttdPath) && file_exists(TtdUser::pathBerkas($ttdPath))) {
+                $ttdDokterPath = TtdUser::pathBerkas($ttdPath);
             }
         }
 

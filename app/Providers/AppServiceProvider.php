@@ -61,14 +61,12 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('sistem.pemantauanRuangServer.hapus', fn ($user) => $user->hasAnyRole(AksiRole::SISTEM_PEMANTAUAN_RUANG_SERVER_HAPUS));
         Gate::define('sistem.pemantauanRuangServer.bukaKunci', fn ($user) => $user->hasAnyRole(AksiRole::SISTEM_PEMANTAUAN_RUANG_SERVER_BUKA_KUNCI));
 
-        // Blade directive untuk render path TTD user.
-        // - Standar baru: DB simpan filename saja (mis: 08052026081302.png)
-        //   → prepend 'storage/UserTtd/'
-        // - Legacy: DB simpan full path (mis: 'UserTtd/abc.png')
-        //   → pakai apa adanya dengan prefix 'storage/'
+        // Blade directive untuk render path TTD user (dua format kolom
+        // myuser_ttd_image: filename saja vs legacy 'UserTtd/abc.png') —
+        // logikanya terpusat di App\Support\TtdUser.
         // Pemakaian: <img src="@ttdSrc($user->myuser_ttd_image)" />
         Blade::directive('ttdSrc', function ($expression) {
-            return "<?php echo (function (\$v) { return empty(\$v) ? '' : 'storage/' . (str_contains(\$v, '/') ? \$v : 'UserTtd/' . \$v); })($expression); ?>";
+            return "<?php echo \\App\\Support\\TtdUser::pathWeb($expression); ?>";
         });
 
         // Share $sidebarMenus (grouped + filtered by user role) ke sidebar layout.

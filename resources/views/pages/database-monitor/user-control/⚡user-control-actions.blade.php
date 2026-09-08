@@ -479,11 +479,7 @@ new class extends Component {
                                     :show-error="false"
                                 />
                                 @if ($existing_ttd_image)
-                                    @php
-                                        $existingTtdSrc = str_contains($existing_ttd_image, '/')
-                                            ? asset('storage/' . $existing_ttd_image)
-                                            : asset('storage/UserTtd/' . $existing_ttd_image);
-                                    @endphp
+                                    @php $existingTtdSrc = \App\Support\TtdUser::url($existing_ttd_image); @endphp
                                     <div class="mt-2">
                                         <img src="{{ $existingTtdSrc }}"
                                             class="h-16 border rounded" alt="TTD existing">

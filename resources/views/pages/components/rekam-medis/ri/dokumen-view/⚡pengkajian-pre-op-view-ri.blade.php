@@ -5,6 +5,7 @@ use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Dokumen\DokumenViewSupportTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait, DokumenViewSupportTrait;
@@ -26,7 +27,7 @@ new class extends Component {
     {
         $extra = [];
         foreach (['ttdPerawatRuangan', 'ttdPerawatKamarBedah', 'ttdDokterOperator'] as $field) {
-            $extra[$field . 'Path'] = $this->dvTtdPath($entry[$field . 'Code'] ?? null);
+            $extra[$field . 'Path'] = TtdUser::pathBerkasDariKode($entry[$field . 'Code'] ?? null);
         }
         return $extra;
     }

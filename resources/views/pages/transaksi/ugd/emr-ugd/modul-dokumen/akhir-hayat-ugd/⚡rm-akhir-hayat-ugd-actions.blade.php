@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -814,8 +815,8 @@ new class extends Component {
             $petugasCode = data_get($entry, 'form.ttd.petugasCode') ?: data_get($entry, 'created_by.code');
             if ($petugasCode) {
                 $ttdPath = DB::table('users')->where('myuser_code', $petugasCode)->value('myuser_ttd_image');
-                if (!empty($ttdPath) && file_exists(public_path('storage/' . $ttdPath))) {
-                    $ttdPetugasPath = public_path('storage/' . $ttdPath);
+                if (!empty($ttdPath) && file_exists(TtdUser::pathBerkas($ttdPath))) {
+                    $ttdPetugasPath = TtdUser::pathBerkas($ttdPath);
                 }
             }
 

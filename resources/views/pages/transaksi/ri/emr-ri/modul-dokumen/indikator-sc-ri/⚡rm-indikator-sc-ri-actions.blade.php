@@ -13,6 +13,7 @@ use App\Http\Traits\Concerns\WithValidationToastTrait;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -568,8 +569,8 @@ new class extends Component {
             $ttdCode = $entry['ttdCode'] ?? null;
             if ($ttdCode) {
                 $ttdImg = DB::table('users')->where('myuser_code', $ttdCode)->value('myuser_ttd_image');
-                if (!empty($ttdImg) && file_exists(public_path('storage/' . $ttdImg))) {
-                    $ttdPath = public_path('storage/' . $ttdImg);
+                if (!empty($ttdImg) && file_exists(TtdUser::pathBerkas($ttdImg))) {
+                    $ttdPath = TtdUser::pathBerkas($ttdImg);
                 }
             }
 

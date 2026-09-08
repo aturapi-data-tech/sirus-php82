@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrUGDTrait, MasterPasienTrait;
@@ -59,8 +60,8 @@ new class extends Component {
         $dokterCode = $form['dokterPenerangCode'] ?? null;
         if ($dokterCode) {
             $ttdPath = DB::table('users')->where('myuser_code', $dokterCode)->value('myuser_ttd_image');
-            if (!empty($ttdPath) && file_exists(public_path('storage/' . $ttdPath))) {
-                $ttdDokterPath = public_path('storage/' . $ttdPath);
+            if (!empty($ttdPath) && file_exists(TtdUser::pathBerkas($ttdPath))) {
+                $ttdDokterPath = TtdUser::pathBerkas($ttdPath);
             }
         }
 

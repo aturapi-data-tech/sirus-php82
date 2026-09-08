@@ -56,11 +56,11 @@ new class extends Component {
             return null;
         }
 
-        $pasien = $this->dvPasien($dataRi['regNo'] ?? '');
+        $pasien = $this->pasienDokumen($dataRi['regNo'] ?? '');
         return array_merge($pasien, [
             'pindah' => $pindah,
             'dataRI' => $dataRi,
-            'identitasRs' => $this->dvIdentitasRs(),
+            'identitasRs' => $this->identitasRsDokumen(),
             'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
         ]);
     }

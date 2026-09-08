@@ -53,13 +53,13 @@ new class extends Component {
             return null;
         }
 
-        $pasien = $this->dvPasien($dataUGD['regNo'] ?? '');
+        $pasien = $this->pasienDokumen($dataUGD['regNo'] ?? '');
         $dokter = DB::table('rsmst_doctors')->where('dr_id', $dataUGD['drId'] ?? '')->select('dr_name')->first();
 
         return array_merge($pasien, [
             'trfUgd' => $dataUGD['trfUgd'] ?? [],
             'dataUGD' => $dataUGD,
-            'identitasRs' => $this->dvIdentitasRs(),
+            'identitasRs' => $this->identitasRsDokumen(),
             'namaDokter' => $dokter->dr_name ?? null,
             'strDokter' => $dokter->dr_str ?? null,
             'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),

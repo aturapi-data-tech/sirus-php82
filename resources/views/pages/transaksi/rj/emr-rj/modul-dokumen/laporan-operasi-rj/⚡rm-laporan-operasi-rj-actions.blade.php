@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRJTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -480,8 +481,8 @@ new class extends Component {
             $operatorCode = $entry['operatorTtdCode'] ?? null;
             if ($operatorCode) {
                 $ttdPath = DB::table('users')->where('myuser_code', $operatorCode)->value('myuser_ttd_image');
-                if (!empty($ttdPath) && file_exists(public_path('storage/' . $ttdPath))) {
-                    $ttdOperatorPath = public_path('storage/' . $ttdPath);
+                if (!empty($ttdPath) && file_exists(TtdUser::pathBerkas($ttdPath))) {
+                    $ttdOperatorPath = TtdUser::pathBerkas($ttdPath);
                 }
             }
 

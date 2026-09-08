@@ -68,7 +68,7 @@
         if (!empty($form['kodePetugas'])) {
             $user = App\Models\User::where('myuser_code', $form['kodePetugas'])->first();
             if ($user && $user->myuser_ttd_image) {
-                $path = public_path('storage/' . $user->myuser_ttd_image);
+                $path = \App\Support\TtdUser::pathBerkas($user->myuser_ttd_image);
                 if (file_exists($path)) {
                     $mime = mime_content_type($path);
                     $ttdPetugasBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($path));

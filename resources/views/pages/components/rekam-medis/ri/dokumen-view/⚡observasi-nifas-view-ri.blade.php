@@ -11,6 +11,7 @@ use App\Http\Traits\Dokumen\DokumenViewSupportTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait, DokumenViewSupportTrait;
@@ -56,15 +57,15 @@ new class extends Component {
     private function buildData(array $entry): array
     {
         $dataRi = $this->riHdrNo ? ($this->findDataRI($this->riHdrNo) ?: []) : [];
-        $pasien = $this->dvPasien($dataRi['regNo'] ?? '');
+        $pasien = $this->pasienDokumen($dataRi['regNo'] ?? '');
 
         return array_merge($pasien, [
-            'ttdPath' => $this->dvTtdPath($entry['ttdCode'] ?? null),
+            'ttdPath' => TtdUser::pathBerkasDariKode($entry['ttdCode'] ?? null),
             'dataRi' => $dataRi,
             'rows' => $this->barisLembar($entry),
             'ttd' => $entry['ttd'] ?? '',
             'ttdDate' => $entry['ttdDate'] ?? '',
-            'identitasRs' => $this->dvIdentitasRs(),
+            'identitasRs' => $this->identitasRsDokumen(),
             'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
         ]);
     }

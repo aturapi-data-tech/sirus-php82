@@ -223,18 +223,31 @@ Behavior:
 - Output: relative path `storage/UserTtd/...` atau `storage/...` yang di-resolve DomPDF ke `public/storage/...`.
 - Output empty string kalau input kosong (img dengan src kosong → tidak render).
 
-Jangan inline build path manual via `public_path('storage/' . $ttd)` — pakai `@ttdSrc()` supaya konsisten.
+Jangan inline build path manual via `public_path('storage/' . $ttd)` — pakai `@ttdSrc()` (tampilan)
+atau `App\Support\TtdUser` (path absolut untuk DomPDF) supaya konsisten.
 
-### Lookup TTD dari User
+### Lookup TTD dari User — WAJIB lewat `App\Support\TtdUser`
 
-Pola umum sebelum render:
+Kolom `users.myuser_ttd_image` menyimpan DUA format: nama file saja (standar baru Kelola User,
+berkas di `storage/app/public/UserTtd/`) dan legacy path relatif `UserTtd/abc.jpg`. Menyusun
+path sendiri (`public_path('storage/' . $nilai)`) benar untuk legacy tetapi GAGAL untuk format
+baru → `file_exists` false → TTD dokter/petugas kosong di PDF (kasus 2026-09-08: ±80 titik cetak
+modul dokumen RJ/UGD/RI terdampak, sementara cetak rekam medis RJ yang pakai `@ttdSrc` aman).
 
 ```php
-$ttdDokter = \App\Models\User::where('myuser_code', $drId ?? '')
-    ->value('myuser_ttd_image');
+use App\Support\TtdUser;
+
+// Paling ringkas: dari kode user langsung jadi path absolut (null bila tak ada/berkas hilang)
+$ttdPath = TtdUser::pathBerkasDariKode($entry['ttdCode'] ?? null);
+
+// Bila nilai kolom sudah di tangan
+$pathBerkas = TtdUser::pathBerkas($user->myuser_ttd_image); // public_path(...) — untuk DomPDF & file_exists()
+$url        = TtdUser::url($user->myuser_ttd_image);        // asset(...) — untuk <img> di browser
+$pathWeb    = TtdUser::pathWeb($user->myuser_ttd_image);    // 'storage/UserTtd/x.png' — dipakai @ttdSrc
 ```
 
-`myuser_ttd_image` adalah kolom string di tabel `users` berisi nama file. Lookup pakai `myuser_code` (kode user dari Oracle Dev 6i) yang biasanya sama dengan `dr_id` di transaksi.
+Viewer rekam medis (`DokumenViewSupportTrait::dataDokumenRi/Txn`) sudah memanggil `TtdUser::pathBerkasDariKode`.
+Lookup pakai `myuser_code` (kode user dari Oracle Dev 6i) yang biasanya sama dengan `dr_id` di transaksi.
 
 ---
 
@@ -291,7 +304,7 @@ Untuk TTD area, **selalu pakai `h-16` (native)** — bukan `h-[64px]`. `h-16` = 
 - [ ] Wrapper img/fallback di-bungkus `<div class="text-center">` block sendiri (bukan langsung di parent flex/grid).
 - [ ] Label nama di bawah pakai struktur `<span class="inline-block min-w-[150px] border-t border-black pt-0.5">{{ $nama }}</span>`.
 - [ ] Kalau punya 2+ kolom TTD, **setiap cell punya 3 line struktur sama** (tanggal/placeholder + TTD area + underline+label) supaya bottom sejajar.
-- [ ] Lookup TTD pakai `\App\Models\User::where('myuser_code', $code)->value('myuser_ttd_image')` + render via `@ttdSrc()`.
+- [ ] Lookup TTD lewat `App\Support\TtdUser::pathBerkasDariKode($code)` (DomPDF) atau `@ttdSrc()` (tampilan) — JANGAN `public_path('storage/' . $nilai)` sendiri.
 - [ ] Setelah edit, kalau ada bracket class baru → `npm run build`.
 
 ---

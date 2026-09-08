@@ -24,6 +24,7 @@ use App\Http\Traits\Concerns\WithValidationToastTrait;
 use App\Http\Traits\Txn\Pengkajian\PengkajianReviewTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRJTrait, WithValidationToastTrait, PengkajianReviewTrait, MasterPasienTrait;
@@ -230,8 +231,8 @@ new class extends Component {
             if (filled($kodeTtd)) {
                 $berkasTtd = DB::table('users')->where('myuser_code', $kodeTtd)->value('myuser_ttd_image');
 
-                if (! empty($berkasTtd) && file_exists(public_path('storage/' . $berkasTtd))) {
-                    $ttdPetugasPath = public_path('storage/' . $berkasTtd);
+                if (! empty($berkasTtd) && file_exists(TtdUser::pathBerkas($berkasTtd))) {
+                    $ttdPetugasPath = TtdUser::pathBerkas($berkasTtd);
                 }
             }
 

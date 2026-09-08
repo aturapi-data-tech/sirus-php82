@@ -21,6 +21,7 @@ use App\Http\Traits\Txn\Prmrj\PrmrjTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
 use App\Support\Options\PrmrjOptions;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRJTrait, PrmrjTrait, MasterPasienTrait, WithValidationToastTrait;
@@ -481,8 +482,8 @@ new class extends Component {
                 if (filled($kode)) {
                     $berkas = DB::table('users')->where('myuser_code', $kode)->value('myuser_ttd_image');
 
-                    if (! empty($berkas) && file_exists(public_path('storage/' . $berkas))) {
-                        $baris['ttdPath'] = public_path('storage/' . $berkas);
+                    if (! empty($berkas) && file_exists(TtdUser::pathBerkas($berkas))) {
+                        $baris['ttdPath'] = TtdUser::pathBerkas($berkas);
                     }
                 }
 

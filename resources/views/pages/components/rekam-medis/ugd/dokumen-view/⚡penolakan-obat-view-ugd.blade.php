@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Dokumen\DokumenViewSupportTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrUGDTrait, MasterPasienTrait, DokumenViewSupportTrait;
@@ -37,13 +38,13 @@ new class extends Component {
         }
 
         $dataUGD = $this->rjNo ? ($this->findDataUGD($this->rjNo) ?: []) : [];
-        $pasien = $this->dvPasien($dataUGD['regNo'] ?? '');
+        $pasien = $this->pasienDokumen($dataUGD['regNo'] ?? '');
 
         return array_merge($pasien, [
             'dataUGD' => $dataUGD,
             'form' => $entry,
-            'identitasRs' => $this->dvIdentitasRs(),
-            'ttdPetugasPath' => $this->dvTtdPath($entry['petugasCode'] ?? null),
+            'identitasRs' => $this->identitasRsDokumen(),
+            'ttdPetugasPath' => TtdUser::pathBerkasDariKode($entry['petugasCode'] ?? null),
             'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
         ]);
     }

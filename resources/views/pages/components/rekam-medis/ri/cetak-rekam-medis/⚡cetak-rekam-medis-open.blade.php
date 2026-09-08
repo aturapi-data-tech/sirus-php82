@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Support\Options\NyeriOptions;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait;
@@ -195,8 +196,8 @@ new class extends Component {
             return null;
         }
         $ttdPath = DB::table('users')->where('myuser_code', $code)->value('myuser_ttd_image');
-        return (!empty($ttdPath) && file_exists(public_path('storage/' . $ttdPath)))
-            ? public_path('storage/' . $ttdPath)
+        return (!empty($ttdPath) && file_exists(TtdUser::pathBerkas($ttdPath)))
+            ? TtdUser::pathBerkas($ttdPath)
             : null;
     }
 

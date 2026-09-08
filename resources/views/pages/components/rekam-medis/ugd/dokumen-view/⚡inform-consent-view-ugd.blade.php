@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Dokumen\DokumenViewSupportTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrUGDTrait, MasterPasienTrait, DokumenViewSupportTrait;
@@ -57,7 +58,7 @@ new class extends Component {
             return null;
         }
 
-        $pasien = $this->dvPasien($dataUGD['regNo'] ?? '');
+        $pasien = $this->pasienDokumen($dataUGD['regNo'] ?? '');
 
         $dokterTindakanName = null;
         if (!empty($consent['petugasPemeriksaCode'])) {
@@ -71,8 +72,8 @@ new class extends Component {
         return array_merge($pasien, [
             'dataUGD' => $dataUGD,
             'consent' => $consent,
-            'identitasRs' => $this->dvIdentitasRs(),
-            'ttdDokterPath' => $this->dvTtdPath($consent['dokterCode'] ?? null),
+            'identitasRs' => $this->identitasRsDokumen(),
+            'ttdDokterPath' => TtdUser::pathBerkasDariKode($consent['dokterCode'] ?? null),
             'dokterTindakanName' => $dokterTindakanName ?? ($consent['petugasPemeriksa'] ?? null),
             'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
         ]);

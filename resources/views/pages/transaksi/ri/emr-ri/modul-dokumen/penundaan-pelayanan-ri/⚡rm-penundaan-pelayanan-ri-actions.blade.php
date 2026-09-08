@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -473,8 +474,8 @@ new class extends Component {
             $pemberiCode = $entry['pemberiInfoCode'] ?? null;
             if ($pemberiCode) {
                 $ttdPath = DB::table('users')->where('myuser_code', $pemberiCode)->value('myuser_ttd_image');
-                if (!empty($ttdPath) && file_exists(public_path('storage/' . $ttdPath))) {
-                    $ttdPemberiPath = public_path('storage/' . $ttdPath);
+                if (!empty($ttdPath) && file_exists(TtdUser::pathBerkas($ttdPath))) {
+                    $ttdPemberiPath = TtdUser::pathBerkas($ttdPath);
                 }
             }
 

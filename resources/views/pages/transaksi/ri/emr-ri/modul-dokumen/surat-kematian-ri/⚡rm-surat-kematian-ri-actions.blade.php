@@ -11,6 +11,7 @@ use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
 use App\Support\Clause\SuratKematianClause;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -293,8 +294,8 @@ new class extends Component {
         $ttdDokterPath = null;
         if (!empty($form['dokterPenerangCode'])) {
             $ttdPath = DB::table('users')->where('myuser_code', $form['dokterPenerangCode'])->value('myuser_ttd_image');
-            if (!empty($ttdPath) && file_exists(public_path('storage/' . $ttdPath))) {
-                $ttdDokterPath = public_path('storage/' . $ttdPath);
+            if (!empty($ttdPath) && file_exists(TtdUser::pathBerkas($ttdPath))) {
+                $ttdDokterPath = TtdUser::pathBerkas($ttdPath);
             }
         }
 

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Dokumen\DokumenViewSupportTrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRJTrait, MasterPasienTrait, DokumenViewSupportTrait;
@@ -57,7 +58,7 @@ new class extends Component {
             return null;
         }
 
-        $pasien = $this->dvPasien($dataRJ['regNo'] ?? '');
+        $pasien = $this->pasienDokumen($dataRJ['regNo'] ?? '');
 
         $ttdDokterTindakanPath = null;
         $dokterTindakanName = null;
@@ -65,8 +66,8 @@ new class extends Component {
             $userRow = DB::table('users')->where('myuser_code', $consent['petugasPemeriksaCode'])->first(['myuser_ttd_image', 'myuser_name']);
             if ($userRow) {
                 $dokterTindakanName = $userRow->myuser_name ?? null;
-                if (!empty($userRow->myuser_ttd_image) && file_exists(public_path('storage/' . $userRow->myuser_ttd_image))) {
-                    $ttdDokterTindakanPath = public_path('storage/' . $userRow->myuser_ttd_image);
+                if (!empty($userRow->myuser_ttd_image) && file_exists(TtdUser::pathBerkas($userRow->myuser_ttd_image))) {
+                    $ttdDokterTindakanPath = TtdUser::pathBerkas($userRow->myuser_ttd_image);
                 }
             }
             if (empty($dokterTindakanName)) {
@@ -77,8 +78,8 @@ new class extends Component {
         return array_merge($pasien, [
             'dataRJ' => $dataRJ,
             'consent' => $consent,
-            'identitasRs' => $this->dvIdentitasRs(),
-            'ttdDokterPath' => $this->dvTtdPath($consent['dokterCode'] ?? null),
+            'identitasRs' => $this->identitasRsDokumen(),
+            'ttdDokterPath' => TtdUser::pathBerkasDariKode($consent['dokterCode'] ?? null),
             'ttdDokterTindakanPath' => $ttdDokterTindakanPath,
             'dokterTindakanName' => $dokterTindakanName ?? ($consent['petugasPemeriksa'] ?? null),
             'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),

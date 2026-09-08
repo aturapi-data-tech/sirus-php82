@@ -13,9 +13,9 @@ Gunakan pola ini kalau: sudah ada blade cetak (DomPDF) untuk suatu dokumen, dan 
 ## Komponen shared
 
 ### Trait `App\Http\Traits\Dokumen\DokumenViewSupportTrait`
-- `dvPasien($regNo)` — data pasien + umur (`thn`).
-- `dvTtdPath($code)` — path TTD dari `myuser_code` (null jika hilang).
-- `dvIdentitasRs()` — kop RS.
+- `pasienDokumen($regNo)` — data pasien + umur (`thn`).
+- `App\Support\TtdUser::pathBerkasDariKode($code)` — path TTD dari `myuser_code` (null jika hilang); bukan method trait.
+- `identitasRsDokumen()` — kop RS.
 - `renderDokumenPreview($view, $data)` — **kunci**: `view($view,['data'=>$data])->render()` lalu:
   - `str_replace(public_path(), '', $html)` → ubah path filesystem absolut (logo/TTD `public_path(...)` yg dibutuhkan DomPDF) jadi path web-relatif (`/images/...`, `/storage/...`) supaya **muncul di iframe browser** (kalau tidak → 404).
   - inject `<style>body{zoom:1.4}</style>` sebelum `</head>` → perbesar preview **tanpa** menyentuh blade cetak. Cetak PDF tetap pakai HTML asli.

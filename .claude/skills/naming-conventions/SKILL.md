@@ -41,6 +41,11 @@ Varian per-form di Case Manager: `$formRO_A`/`$formRO_B`→`$formReadOnlyA`/`$fo
 Nama Inggris dipertahankan di sini — tetangganya (`$isFormLocked`, `$viewOnly`) memang Inggris,
 dan "read only" itu status UI, bukan istilah domain klinis.
 
+Prefix singkatan pada method trait juga ditolak (keputusan user 2026-09-08): `dvPasien`/
+`dvTtdPath`/`dvIdentitasRs` ("dv" = dokumen view) di `DokumenViewSupportTrait` → `pasienDokumen`/
+`identitasRsDokumen`; `dvTtdPath` dibuang karena hanya membungkus `App\Support\TtdUser::pathBerkasDariKode`.
+Bila butuh pembeda anti-tabrakan antar trait, pakai KATA penuh sebagai sufiks (`…Dokumen`), bukan prefix 2 huruf.
+
 ## 2. `use` import vs FQCN di file Volt
 
 File Volt SFC punya 2 zona PHP yang **dikompilasi terpisah**:

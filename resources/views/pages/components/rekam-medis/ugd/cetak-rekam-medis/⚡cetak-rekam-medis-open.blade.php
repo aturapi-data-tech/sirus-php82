@@ -768,7 +768,7 @@ new class extends Component {
                                         @php $ttdPerawat = App\Models\User::where('myuser_code', $dataDaftarTxn['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'])->value('myuser_ttd_image'); @endphp
                                         @if (!empty($ttdPerawat))
                                             <img class="object-contain h-16 mx-auto"
-                                                src="{{ asset('storage/' . $ttdPerawat) }}" alt="TTD Perawat">
+                                                src="{{ \App\Support\TtdUser::url($ttdPerawat) }}" alt="TTD Perawat">
                                         @endif
                                     @endif
                                 @endisset
@@ -787,7 +787,7 @@ new class extends Component {
                                         @php $ttdDokter = App\Models\User::where('myuser_code', $dataDaftarTxn['drId'] ?? '')->value('myuser_ttd_image'); @endphp
                                         @if (!empty($ttdDokter))
                                             <img class="object-contain h-16 mx-auto"
-                                                src="{{ asset('storage/' . $ttdDokter) }}" alt="TTD Dokter">
+                                                src="{{ \App\Support\TtdUser::url($ttdDokter) }}" alt="TTD Dokter">
                                         @endif
                                     @endif
                                 @endisset

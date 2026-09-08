@@ -668,7 +668,7 @@ Pola viewer read-only (Lihat = render blade cetak ke iframe) ada di
 3. Dokumen dgn cetak **payload seragam** (dataRi/form/ttd) → pakai
    `DokumenViewSupportTrait::previewDokumenRi()/streamCetakDokumenRi()` langsung.
 4. Dokumen dgn cetak **payload bespoke** (butuh `entry` + `opsiLabel` + `clause`, mis. Akhir Hayat)
-   → viewer **self-contained**: pakai `dvPasien/dvTtdPath/dvIdentitasRs/renderDokumenPreview`
+   → viewer **self-contained**: pakai `pasienDokumen/identitasRsDokumen/renderDokumenPreview` + `TtdUser::pathBerkasDariKode`
    + `buildData()` yang meniru `cetak()` komponen EMR. Taruh peta label di
    `App\Support\<Dok>Options::labels()` supaya satu sumber untuk semua jalur.
 
