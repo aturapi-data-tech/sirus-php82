@@ -8,6 +8,7 @@ use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
 use App\Support\Options\EdukasiTerintegrasiOptions;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -411,6 +412,9 @@ new class extends Component {
             $this->form['tglEdukasi'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
         }
 
+        // Draft = belum ditandatangani petugas; stempel hanya diberikan oleh ttdPetugas() saat kunci.
+        $this->form['pemberiInformasi'] = ['petugasCode' => '', 'petugasName' => ''];
+
         $edukasiId = $this->editingKey ?: (string) Str::uuid();
 
         try {
@@ -447,14 +451,24 @@ new class extends Component {
             $this->form['ttd']['pasienKeluargaTTD'] = $this->sasaranEdukasiSignature;
         }
 
-        // Stempel TTD petugas = user login.
+        // Stempel TTD petugas = user login. Rules mewajibkan petugasCode/Name, jadi stempel
+        // harus ada SEBELUM validasi — tetapi bila validasi gagal, stempel WAJIB dicabut lagi.
+        // Kalau tidak: form menyimpan stempel tanpa finalized, tombol "TTD Petugas & Kunci"
+        // hilang (komponen menganggap sudah TTD), dan "Simpan Draft" menyimpan entri yang
+        // tampak bertanda tangan tetapi berstatus Draft (laporan user 2026-09-08).
+        $stempelSebelumnya = $this->form['pemberiInformasi'];
         $this->form['pemberiInformasi']['petugasName'] = auth()->user()->myuser_name ?? '';
         $this->form['pemberiInformasi']['petugasCode'] = auth()->user()->myuser_code ?? '';
 
         $this->normalizeBooleansOnForm();
 
         [$rules, $messages, $attributes] = $this->edukasiRules();
-        $this->validateWithToast($rules, $messages, $attributes);
+        try {
+            $this->validateWithToast($rules, $messages, $attributes);
+        } catch (ValidationException $exception) {
+            $this->form['pemberiInformasi'] = $stempelSebelumnya;
+            throw $exception;
+        }
 
         $edukasiId = $this->editingKey ?: (string) Str::uuid();
 
@@ -529,6 +543,10 @@ new class extends Component {
     {
         // array_replace_recursive menjaga agar key nested yang hilang di data lama tetap ada
         $this->form = array_replace_recursive($this->defaultForm(), $entri['form'] ?? []);
+        if (!$this->entryIsFinal($entri)) {
+            // Draft tidak boleh membawa stempel petugas (data lama dari bug stempel-sebelum-validasi).
+            $this->form['pemberiInformasi'] = ['petugasCode' => '', 'petugasName' => ''];
+        }
         $this->pisahBahasaPendidikanLegacy();
         $this->sasaranEdukasiSignature = (string) data_get($entri, 'form.ttd.pasienKeluargaTTD', '');
         $this->editingKey = $entri['id'] ?? null;

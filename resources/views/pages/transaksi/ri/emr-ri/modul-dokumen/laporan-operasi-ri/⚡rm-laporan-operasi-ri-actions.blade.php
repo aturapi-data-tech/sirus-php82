@@ -12,6 +12,7 @@ use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -330,6 +331,9 @@ new class extends Component {
         }
 
         // Stempel TTD operator = user login (jadikan operator bila belum diisi).
+        // Bila validasi gagal, stempel dikembalikan — jangan tersisa di form lalu ikut
+        // tersimpan sebagai draft yang tampak bertanda tangan.
+        $stempelSebelumnya = array_intersect_key($this->newForm, array_flip(['operatorTtd', 'operatorTtdCode', 'operatorTtdDate', 'namaOperator']));
         $this->newForm['operatorTtd'] = auth()->user()->myuser_name ?? '';
         $this->newForm['operatorTtdCode'] = auth()->user()->myuser_code ?? '';
         $this->newForm['operatorTtdDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
@@ -338,7 +342,12 @@ new class extends Component {
         }
 
         // Validasi lengkap sebelum kunci (throw ValidationException → hentikan bila gagal).
-        $this->validateWithToast();
+        try {
+            $this->validateWithToast();
+        } catch (ValidationException $exception) {
+            $this->newForm = array_replace($this->newForm, $stempelSebelumnya);
+            throw $exception;
+        }
 
         $key = $this->editingKey ?: Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
 
