@@ -80,6 +80,23 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
    entri dilarang. Salin dari `edukasi-terintegrasi-ri`, jangan bikin varian. Doc: §2a
    "Tabel daftar".
 
+12. **Tanda tangan (keputusan 2026-09-08)** —
+   (a) **Saksi WAJIB saat kunci** di SEMUA dokumen ber-saksi (`saksiNama`/`saksi` + `signatureSaksi`
+   `required`): inform consent RJ/UGD/RI, penolakan obat & resusitasi, pulang APS, akhir hayat,
+   form penjaminan; identifikasi bayi RI nama saksi perawat `required`. Jangan `nullable`.
+   (b) **Stempel petugas di layar = `x-signature.ttd-petugas`** (`:framed="false"` + `:locked="true"`
+   pada keadaan sudah TTD) — kotak putih gambar TTD rata atas + field nama readonly sejajar
+   kolom pasien/saksi. **Kartu stempel bespoke** (div nama/Kode/tanggal rata tengah) DILARANG;
+   14 modul sudah diganti. Gambar TTD user lewat `x-signature.ttd-gambar :code` /
+   `:empId`, sumber `App\Support\TtdUser` (dua format kolom `myuser_ttd_image`).
+   (c) **Cetak/viewer**: path gambar TTD WAJIB `TtdUser::pathBerkasDariKode($kode)` — jangan
+   `public_path('storage/' . $nilai)` sendiri (format baru nama-file-saja gagal `file_exists`).
+   (d) **Kolom "Petugas (TTD)" di tabel & viewer hanya menampilkan nama bila `entryIsFinal()`**;
+   draft → badge "Belum TTD" walau data lama membawa stempel tertinggal.
+   (e) **Model kunci tetap Model 1** (TTD petugas = aksi terakhir + kunci; pasien/saksi = isian
+   pad). Model 2 (multi-PPA, tiap TTD tersimpan langsung, kunci otomatis saat lengkap:
+   Surgical Safety Checklist, Pra-Anestesi) hanya untuk dokumen yang memang butuh urutan bebas.
+
 ## Port ke jalur lain (RI ⇄ UGD ⇄ RJ)
 
 Salin actions + cetak, ganti token **per-string** (bukan `RI→UGD` global). Tabel lengkap di
