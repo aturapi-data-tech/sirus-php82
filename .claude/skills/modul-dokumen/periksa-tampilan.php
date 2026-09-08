@@ -105,7 +105,7 @@ foreach ($berkas as $path) {
             if (!str_contains($daftar, 'Setiap entri berdiri sendiri')) $catatan[] = 'layar daftar tanpa keterangan footer "Setiap entri berdiri sendiri"';
             if (!preg_match('/>\s*Tutup\s*</', $daftar)) $catatan[] = 'layar daftar tanpa tombol Tutup';
             if (!str_contains($daftar, 'wire:click="tambahEntri"')) $catatan[] = 'layar daftar tanpa Isi Formulir Baru';
-            if (str_contains($daftar, '<table') && !str_contains($daftar, 'Belum ada data'))
+            if (str_contains($daftar, '<table') && !str_contains($daftar, 'Belum ada'))
                 $catatan[] = 'tabel tanpa keterangan saat kosong';
             try {
                 $t->call('tambahEntri');

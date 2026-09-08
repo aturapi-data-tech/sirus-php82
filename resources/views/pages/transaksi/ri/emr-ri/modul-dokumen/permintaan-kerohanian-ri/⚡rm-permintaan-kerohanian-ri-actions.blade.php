@@ -980,7 +980,7 @@ new class extends Component {
                                                     @endif
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-center whitespace-nowrap" @click.stop>
-                                                    <div class="flex items-center justify-center gap-2">
+                                                    <div class="flex items-center justify-end gap-2">
                                                         @if (!$isFinal && !$isFormLocked)
                                                             <x-primary-button type="button" wire:click="editEntry('{{ $rowKey }}')" wire:loading.attr="disabled" wire:target="editEntry('{{ $rowKey }}')" class="gap-1.5" title="Lanjutkan mengisi entri ini">
                                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -995,7 +995,7 @@ new class extends Component {
                                                         @endif
                                                         @if ($isFinal && !$isFormLocked)
                                                             @can('dokumen.bukaKunci')
-                                                                <x-confirm-button action="bukaKunci('{{ $rowKey }}')" title="Buka Kunci Permintaan Pelayanan Kerohanian"
+                                                                <x-confirm-button variant="warning-soft" action="bukaKunci('{{ $rowKey }}')" title="Buka Kunci Permintaan Pelayanan Kerohanian"
                                                                     message="TTD petugas akan dicabut & entri kembali menjadi draft untuk dikoreksi. Lanjutkan?"
                                                                     confirmText="Ya, Buka Kunci" class="gap-1.5">
                                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg>

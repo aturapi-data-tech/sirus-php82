@@ -877,7 +877,7 @@ new class extends Component {
                                         </td>
                                         <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-muted dark:text-gray-300">{{ data_get($rf, 'ttd.dokterNama') ?: '-' }}</td>
                                         <td class="px-3 py-2 text-center align-middle border-b border-hairline dark:border-gray-700 whitespace-nowrap" @click.stop>
-                                            <div class="flex flex-wrap items-center justify-center gap-1.5">
+                                            <div class="flex items-center justify-end gap-2">
                                                 {{-- Baris atas: aksi non-destruktif (Lanjut/Lihat/Cetak) --}}
                                                 <div class="flex items-center justify-center gap-2">
                                                 @if (!$final && !$isFormLocked && $rid)
@@ -899,11 +899,11 @@ new class extends Component {
                                                 </div>
 
                                                 {{-- Baris bawah: aksi terkunci/destruktif (Buka Kunci + Hapus) --}}
-                                                @if (!$isFormLocked)
-                                                <div class="flex items-center justify-center gap-2">
+                                                @if (!$isFormLocked && (auth()->user()?->can('dokumen.bukaKunci') || auth()->user()?->can('dokumen.hapus')))
+                                                <div class="flex items-center gap-2 pl-3 ml-1 border-l border-hairline dark:border-gray-700">
                                                 @if ($final && $rid && !$isFormLocked)
                                                     @can('dokumen.bukaKunci')
-                                                        <x-confirm-button action="bukaKunci('{{ $rid }}')"
+                                                        <x-confirm-button variant="warning-soft" action="bukaKunci('{{ $rid }}')"
                                                             title="Buka Kunci Permintaan Darah"
                                                             message="TTD dokter akan dicabut & entri kembali menjadi draft untuk dikoreksi. Lanjutkan?"
                                                             confirmText="Ya, Buka Kunci" class="gap-1.5">

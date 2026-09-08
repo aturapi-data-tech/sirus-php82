@@ -128,11 +128,15 @@ eab5fdbe, 8a941775). Kalau membuat modul baru, salin dari sana; jangan bikin var
   bukan seluruh formulir.
 - **Tanggal** `font-mono`; **Petugas (TTD)** = nama petugas, atau badge merah `Belum TTD`;
   **Status** = badge `Terkunci` (info) / `Draft` (warning); kolom teks lain `text-muted`.
-- **Aksi, dua baris**: atas `[Lanjutkan Pengisian (primary, draft)] [Lihat = <x-lihat-button>
-  ikon mata saja, terkunci] [Cetak = <x-cetak-button> ikon printer saja]`; bawah `[Buka Kunci
-  (x-confirm-button, @can dokumen.bukaKunci)] [<x-hapus-button> ikon tong sampah, @can
-  dokumen.hapus]`. Sel Aksi `whitespace-nowrap` supaya teks tombol tidak patah dua baris
-  (x-confirm-button sudah nowrap bawaan sejak 2026-09-08). **Cetak wajib komponen `<x-cetak-button wire:click="cetak(…)"
+- **Aksi, SATU baris rata kanan** (BAKU 2026-09-08, permintaan user — dua baris lama membuat
+  Buka Kunci & hapus berdempetan dan rawan salah klik):
+  `[Lanjutkan Pengisian (primary, draft) | <x-lihat-button> (terkunci)] [<x-cetak-button>]  │
+  [Buka Kunci = x-confirm-button variant="warning-soft" (kuning), @can dokumen.bukaKunci]  │
+  [<x-hapus-button>, @can dokumen.hapus]` — pembungkus `flex items-center justify-end gap-2`;
+  kelompok berisiko dalam `<div class="flex items-center gap-2 pl-3 ml-1 border-l border-hairline
+  dark:border-gray-700">` yang hanya dirender bila `!$isFormLocked` DAN user punya salah satu hak
+  (supaya tak menyisakan garis kosong). Hapus selalu paling kanan; Buka Kunci kuning, bukan merah.
+  Sel Aksi `whitespace-nowrap` supaya teks tombol tidak patah dua baris. **Cetak wajib komponen `<x-cetak-button wire:click="cetak(…)"
   title="…" />`** dan **hapus wajib `<x-hapus-button wire:click.prevent="hapus(…)" confirm="…" />`**
   (ikon tong sampah merah, tinggi 40px sama dengan tombol berteks — jangan `x-outline-button`
   merah manual ber-`!px-2 !py-1` lagi). Cetak (`resources/views/components/cetak-button.blade.php`, ikon-saja biru meniru

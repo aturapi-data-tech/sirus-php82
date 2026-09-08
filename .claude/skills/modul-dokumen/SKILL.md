@@ -73,8 +73,9 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
    `Tanggal · ringkasan khas · Petugas (TTD) · Status · Aksi`; Aksi dua baris: Lanjutkan
    Pengisian (primary) / Lihat = **`<x-lihat-button>` ikon saja** / Cetak = **`<x-cetak-button>` ikon saja** (bukan
    tombol berteks, bukan info/primary),
-   lalu Buka Kunci + **`<x-hapus-button>`** (ikon tong sampah 40px, bukan outline merah manual);
-   sel Aksi `whitespace-nowrap`; footer layar daftar berkalimat "Setiap entri berdiri
+   lalu **garis pemisah** `│` Buka Kunci (`x-confirm-button variant="warning-soft"`, kuning) `│`
+   **`<x-hapus-button>`** paling kanan — SATU baris rata kanan (`justify-end`), kelompok berisiko
+   `pl-3 ml-1 border-l` hanya dirender bila user berhak; sel Aksi `whitespace-nowrap`; footer layar daftar berkalimat "Setiap entri berdiri
    sendiri — Isi Formulir Baru … Lanjutkan Pengisian …". Daftar kartu-baris `<div>` per
    entri dilarang. Salin dari `edukasi-terintegrasi-ri`, jangan bikin varian. Doc: §2a
    "Tabel daftar".

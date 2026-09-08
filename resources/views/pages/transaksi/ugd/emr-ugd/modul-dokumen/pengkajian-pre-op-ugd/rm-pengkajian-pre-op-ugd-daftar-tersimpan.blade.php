@@ -43,7 +43,7 @@
                                                         @endif
                                                     </td>
                                                     <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
-                                                        <div class="flex flex-col items-center gap-2">
+                                                        <div class="flex items-center justify-end gap-2">
                                                             <div class="flex items-center justify-center gap-2">
                                                             @if (!$isFinal && !$isFormLocked)
                                                                 <x-primary-button type="button" wire:click="editEntry('{{ $rowKey }}')" wire:loading.attr="disabled" wire:target="editEntry('{{ $rowKey }}')" class="gap-1.5" title="Lanjutkan mengisi entri ini">
@@ -58,11 +58,11 @@
                                                             @endif
                                                             <x-cetak-button wire:click="cetak('{{ $rowKey }}')" title="Cetak" />
                                                             </div>
-                                                            @if (!$isFormLocked)
-                                                                <div class="flex items-center justify-center gap-2">
+                                                            @if (!$isFormLocked && (auth()->user()?->can('dokumen.bukaKunci') || auth()->user()?->can('dokumen.hapus')))
+                                                                <div class="flex items-center gap-2 pl-3 ml-1 border-l border-hairline dark:border-gray-700">
                                                                 @if ($isFinal)
                                                                     @can('dokumen.bukaKunci')
-                                                                        <x-confirm-button action="bukaKunci('{{ $rowKey }}')"
+                                                                        <x-confirm-button variant="warning-soft" action="bukaKunci('{{ $rowKey }}')"
                                                                             title="Buka Kunci Pengkajian Pre Operasi"
                                                                             message="KETIGA TTD (Perawat Ruangan, Perawat Kamar Bedah, Dokter Operator) akan dicabut & entri kembali menjadi Draft — proses TTD diulang dari awal. Lanjutkan?"
                                                                             confirmText="Ya, Buka Kunci" class="gap-1.5">

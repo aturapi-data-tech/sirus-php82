@@ -1004,7 +1004,7 @@ new class extends Component {
                                                     @endif
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-center whitespace-nowrap" @click.stop>
-                                                    <div class="flex flex-wrap items-center justify-center gap-1.5">
+                                                    <div class="flex items-center justify-end gap-2">
                                                         {{-- Baris atas: aksi non-destruktif (Lanjut/Lihat/Cetak) --}}
                                                         <div class="flex items-center justify-center gap-2">
                                                         @if (!$isFinal && !$isFormLocked)
@@ -1022,11 +1022,11 @@ new class extends Component {
                                                         </div>
 
                                                         {{-- Baris bawah: Hapus --}}
-                                                        @if (!$isFormLocked)
-                                                            <div class="flex items-center justify-center gap-2">
+                                                        @if (!$isFormLocked && (auth()->user()?->can('dokumen.bukaKunci') || auth()->user()?->can('dokumen.hapus')))
+                                                            <div class="flex items-center gap-2 pl-3 ml-1 border-l border-hairline dark:border-gray-700">
                                                             @if ($isFinal)
                                                                 @can('dokumen.bukaKunci')
-                                                                    <x-confirm-button action="bukaKunci('{{ $rowKey }}')" title="Buka Kunci Pemberitahuan Penundaan Pelayanan"
+                                                                    <x-confirm-button variant="warning-soft" action="bukaKunci('{{ $rowKey }}')" title="Buka Kunci Pemberitahuan Penundaan Pelayanan"
                                                                         message="TTD petugas akan dicabut & entri kembali menjadi draft untuk dikoreksi. Lanjutkan?"
                                                                         confirmText="Ya, Buka Kunci" class="gap-1.5">
                                                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg>

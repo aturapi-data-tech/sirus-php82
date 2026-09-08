@@ -1172,7 +1172,7 @@ new class extends Component {
                                                 @endif
                                             </td>
                                             <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
-                                                <div class="flex flex-wrap items-center justify-center gap-1.5">
+                                                <div class="flex items-center justify-end gap-2">
                                                     {{-- Baris atas: aksi non-destruktif (Lanjut/Cetak) --}}
                                                     <div class="flex items-center justify-center gap-2">
                                                         @if (!$rowLocked && !$isFormLocked)
@@ -1189,10 +1189,10 @@ new class extends Component {
                                                     </div>
 
                                                     {{-- Buka kunci: hanya saat kedua TTD sudah ada (Selesai) --}}
-                                                    @if ($rowLocked && !$isFormLocked)
-                                                        <div class="flex items-center justify-center gap-2">
+                                                    @if ($rowLocked && !$isFormLocked && (auth()->user()?->can('dokumen.bukaKunci') || auth()->user()?->can('dokumen.hapus')))
+                                                        <div class="flex items-center gap-2 pl-3 ml-1 border-l border-hairline dark:border-gray-700">
                                                             @can('dokumen.bukaKunci')
-                                                                <x-confirm-button action="bukaKunci('{{ $kunciPindah }}')" title="Buka Kunci Form Pindah Antar Ruang"
+                                                                <x-confirm-button variant="warning-soft" action="bukaKunci('{{ $kunciPindah }}')" title="Buka Kunci Form Pindah Antar Ruang"
                                                                     message="TTD petugas penerima akan dicabut & entri kembali Transit untuk dikoreksi. Lanjutkan?"
                                                                     confirmText="Ya, Buka Kunci" class="gap-1.5">
                                                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg>
@@ -1202,8 +1202,8 @@ new class extends Component {
                                                         </div>
                                                     @endif
                                                     {{-- Baris bawah: aksi destruktif (Hapus) --}}
-                                                    @if (!$rowLocked && !$isFormLocked)
-                                                        <div class="flex items-center justify-center gap-2">
+                                                    @if (!$rowLocked && !$isFormLocked && (auth()->user()?->can('dokumen.bukaKunci') || auth()->user()?->can('dokumen.hapus')))
+                                                        <div class="flex items-center gap-2 pl-3 ml-1 border-l border-hairline dark:border-gray-700">
                                                             @can('dokumen.hapus')
                                                                 <x-hapus-button wire:click.prevent="hapus('{{ $kunciPindah }}')" confirm="Yakin hapus catatan pindah ini?" />
                                                             @endcan

@@ -1656,7 +1656,7 @@ new class extends Component {
                                             </div>
                                         </td>
                                         <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
-                                            <div class="flex flex-wrap items-center justify-center gap-1.5">
+                                            <div class="flex items-center justify-end gap-2">
                                                 {{-- Baris atas: aksi non-destruktif (Lanjut/Lihat/Cetak) --}}
                                                 <div class="flex items-center justify-center gap-2">
                                                 @if (!$isFinal && !$isFormLocked && $id)
@@ -1678,11 +1678,11 @@ new class extends Component {
                                                 </div>
 
                                                 {{-- Baris bawah: Buka Kunci + Hapus --}}
-                                                @if (!$isFormLocked)
-                                                    <div class="flex items-center justify-center gap-2">
+                                                @if (!$isFormLocked && (auth()->user()?->can('dokumen.bukaKunci') || auth()->user()?->can('dokumen.hapus')))
+                                                    <div class="flex items-center gap-2 pl-3 ml-1 border-l border-hairline dark:border-gray-700">
                                                 @if ($isFinal && $id && !$isFormLocked)
                                                     @can('dokumen.bukaKunci')
-                                                        <x-confirm-button action="bukaKunci('{{ $id }}')"
+                                                        <x-confirm-button variant="warning-soft" action="bukaKunci('{{ $id }}')"
                                                             title="Buka Kunci Pengkajian Akhir Hayat"
                                                             message="TTD petugas akan dicabut & entri kembali menjadi draft untuk dikoreksi. TTD pasien/keluarga & saksi tetap. Lanjutkan?"
                                                             confirmText="Ya, Buka Kunci" class="gap-1.5">
