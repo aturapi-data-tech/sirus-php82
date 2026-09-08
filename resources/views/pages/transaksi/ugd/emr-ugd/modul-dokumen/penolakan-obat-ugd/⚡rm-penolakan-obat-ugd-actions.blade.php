@@ -960,20 +960,9 @@ new class extends Component {
                                                 ditandatangani.</p>
                                         @endif
                                     @else
-                                        <div
-                                            class="flex flex-col items-center justify-center flex-1 p-4 border border-hairline bg-surface-soft rounded-xl dark:bg-gray-800 dark:border-gray-700">
-                                            <div class="font-semibold text-center text-ink dark:text-gray-200">
-                                                {{ $newForm['petugas'] }}
-                                            </div>
-                                            @if (!empty($newForm['petugasCode']))
-                                                <div class="text-sm text-muted mt-0.5">
-                                                    Kode: {{ $newForm['petugasCode'] }}
-                                                </div>
-                                            @endif
-                                            <div class="mt-1 text-sm text-muted">
-                                                {{ $newForm['petugasDate'] ?? '-' }}
-                                            </div>
-                                        </div>
+                                        {{-- Stempel petugas: gambar TTD + field nama readonly + kode/waktu — seragam dgn kolom pasien/saksi --}}
+                                        <x-signature.ttd-petugas :framed="false" :ttd="$newForm['petugas']" :code="$newForm['petugasCode'] ?? ''"
+                                            :date="$newForm['petugasDate'] ?? ''" :locked="true" nameLabel="Nama Petugas" />
                                     @endif
                                 </div>
                             </div>

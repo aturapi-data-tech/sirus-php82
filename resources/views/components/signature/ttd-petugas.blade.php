@@ -4,8 +4,8 @@
     'ttd' => '',
     // Waktu/jam TTD; string ditampilkan apa adanya (mis. "07/07/2026 09:00:00").
     'date' => '',
-    // Kode user penanda-tangan (myuser_code). Jika diisi: tampil "Kode: xxx" & dipakai
-    // me-resolve gambar myuser_ttd_image saat cetak.
+    // Kode user penanda-tangan (myuser_code). Jika diisi: tampil "Kode: xxx", gambar TTD
+    // user (myuser_ttd_image) ditampilkan di layar, & dipakai me-resolve gambar saat cetak.
     'code' => '',
 
     // ══ Kontrol kemunculan tombol ══
@@ -68,6 +68,11 @@
                 @endif
 
                 <div class="space-y-2">
+                    {{-- Gambar TTD penanda-tangan (bila user punya myuser_ttd_image) --}}
+                    @if ($signed)
+                        <x-signature.ttd-gambar :code="$code" :name="$ttd" class="mb-1" />
+                    @endif
+
                     {{-- Nama penanda-tangan: label + input box (readonly) --}}
                     <div>
                         <x-input-label :value="$nameLabel" />

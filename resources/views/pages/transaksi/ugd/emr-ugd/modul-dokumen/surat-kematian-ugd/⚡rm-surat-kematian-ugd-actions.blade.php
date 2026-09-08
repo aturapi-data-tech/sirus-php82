@@ -453,6 +453,7 @@ new class extends Component {
                     @if (!empty($newForm['dokterPenerang']))
                         <div
                             class="px-3 py-2 mt-1 text-base border rounded-lg bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200">
+                            <x-signature.ttd-gambar :code="$newForm['dokterPenerangCode'] ?? ''" :name="$newForm['dokterPenerang']" class="mb-2" />
                             <strong>{{ $newForm['dokterPenerang'] }}</strong>
                             @if (!empty($newForm['dokterPenerangCode']))
                                 (Kode: {{ $newForm['dokterPenerangCode'] }})

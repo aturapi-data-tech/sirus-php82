@@ -67,11 +67,27 @@ class TtdUser
      */
     public static function pathBerkasDariKode(?string $kode): ?string
     {
+        $pathBerkas = self::pathBerkas(self::nilaiKolomDariKode($kode));
+        return ($pathBerkas !== null && file_exists($pathBerkas)) ? $pathBerkas : null;
+    }
+
+    /**
+     * URL gambar TTD dari kode user untuk <img> di layar (komponen ttd-petugas),
+     * '' bila user tak punya TTD atau berkasnya hilang.
+     */
+    public static function urlDariKode(?string $kode): string
+    {
+        $nilai = self::nilaiKolomDariKode($kode);
+        $pathBerkas = self::pathBerkas($nilai);
+        return ($pathBerkas !== null && file_exists($pathBerkas)) ? self::url($nilai) : '';
+    }
+
+    /** Nilai mentah kolom myuser_ttd_image dari kode user; null bila kode kosong. */
+    private static function nilaiKolomDariKode(?string $kode): ?string
+    {
         if (empty($kode)) {
             return null;
         }
-        $nilai = DB::table('users')->where('myuser_code', $kode)->value('myuser_ttd_image');
-        $pathBerkas = self::pathBerkas($nilai);
-        return ($pathBerkas !== null && file_exists($pathBerkas)) ? $pathBerkas : null;
+        return DB::table('users')->where('myuser_code', $kode)->value('myuser_ttd_image');
     }
 }

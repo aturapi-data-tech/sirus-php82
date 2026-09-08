@@ -1278,20 +1278,9 @@ new class extends Component {
                                                 ditandatangani.</p>
                                         @endif
                                     @else
-                                        <div
-                                            class="flex flex-col items-center justify-center flex-1 p-4 border border-hairline bg-surface-soft rounded-xl dark:bg-gray-800 dark:border-gray-700">
-                                            <div class="font-semibold text-center text-ink dark:text-gray-200">
-                                                {{ $newConsent['dokter'] }}
-                                            </div>
-                                            @if (!empty($newConsent['dokterCode']))
-                                                <div class="text-sm text-muted mt-0.5">
-                                                    Kode: {{ $newConsent['dokterCode'] }}
-                                                </div>
-                                            @endif
-                                            <div class="mt-1 text-sm text-muted">
-                                                {{ $newConsent['dokterDate'] ?? '-' }}
-                                            </div>
-                                        </div>
+                                        {{-- Stempel petugas: gambar TTD + field nama readonly + kode/waktu — seragam dgn kolom pasien/saksi --}}
+                                        <x-signature.ttd-petugas :framed="false" :ttd="$newConsent['dokter']" :code="$newConsent['dokterCode'] ?? ''"
+                                            :date="$newConsent['dokterDate'] ?? ''" :locked="true" nameLabel="Nama Pemberi Informasi" />
                                     @endif
                                 </div>
                             </div>

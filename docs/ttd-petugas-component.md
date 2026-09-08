@@ -4,7 +4,12 @@ Komponen reusable untuk **tanda tangan petugas di form entry** (bukan cetak).
 **Model tampilan = gaya EMR**: dua field readonly bersanding — *Petugas* (nama) &
 *Waktu/Jam TTD* — plus tombol "TTD Saya" yang men-stamp nama user login + kode +
 timestamp; setelah TTD tombol jadi *Ganti / Hapus* (bila `allowClear`). Kode tetap
-disimpan (`:code`) untuk stempel cetak.
+disimpan (`:code`) untuk stempel cetak. Sejak 2026-09-08, bila `:code` terisi dan user punya
+`myuser_ttd_image`, **gambar TTD-nya ditampilkan di atas field nama** (via
+sub-komponen `x-signature.ttd-gambar :code :name`) — berlaku otomatis di 64 pemakai komponen.
+Blok stempel bespoke (inform consent, penolakan obat/resusitasi, pulang APS, penundaan
+pelayanan, second opinion, permintaan kerohanian, surat kematian; 16 modul) memakai
+`<x-signature.ttd-gambar>` yang sama di atas nama petugas.
 
 > Diseragamkan dari pola lama "kartu general-consent" (kotak dashed → kartu) ke
 > gaya EMR (field berlabel). Semua pemakaian lama otomatis ikut gaya baru.
@@ -49,7 +54,7 @@ jadi method cukup ada di induk.
 |---|---|---|
 | `:ttd` | `''` | nilai nama TTD (lempar `$newForm['ttd']`) |
 | `:date` | `''` | tgl/jam TTD (`$newForm['ttdDate']`) |
-| `:code` | `''` | kode penanda-tangan; kalau diisi tampil "Kode: xxx" |
+| `:code` | `''` | kode penanda-tangan; kalau diisi tampil "Kode: xxx" + gambar TTD user (bila ada) |
 | `:locked` | `false` | sembunyikan tombol saat form terkunci (`$isFormLocked`) |
 | `:canSign` | `true` | `false` → tombol TTD/Hapus disembunyikan walau form tak terkunci (mis. role tak berwenang). Field readonly tetap terlihat. Pasangkan dgn cek role: `:canSign="auth()->user()?->hasAnyRole(['Perawat','Admin'])"` |
 | `sign` | `ttdSaya` | nama method Livewire stamp TTD |
