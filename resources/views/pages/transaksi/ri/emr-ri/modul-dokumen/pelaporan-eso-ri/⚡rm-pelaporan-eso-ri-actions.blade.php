@@ -351,7 +351,6 @@ new class extends Component {
                 'form.eso.tglKesudahanEso' => ['nullable', 'date_format:d/m/Y', 'after_or_equal:form.eso.tglMulaTerjadi'],
                 'form.tglPemeriksaanLab' => ['nullable', 'date_format:d/m/Y'],
                 'form.obat' => ['required', 'array', 'min:1'],
-                'form.pengirim.nama' => ['required', 'string', 'max:150'],
             ],
             [
                 'form.obat.required' => 'Minimal satu obat harus diisi — laporan ESO tanpa obat tidak bisa dievaluasi.',
@@ -372,7 +371,6 @@ new class extends Component {
                 'form.eso.tglMulaTerjadi' => 'Saat / Tanggal Mula Terjadi',
                 'form.eso.tglKesudahanEso' => 'Tgl. Kesudahan ESO',
                 'form.tglPemeriksaanLab' => 'Tgl. Pemeriksaan Lab',
-                'form.pengirim.nama' => 'Nama Pengirim',
             ],
         ];
     }
@@ -470,6 +468,10 @@ new class extends Component {
         $this->form['ttd']['petugasName'] = auth()->user()->myuser_name ?? '';
         $this->form['ttd']['petugasCode'] = auth()->user()->myuser_code ?? '';
         $this->form['ttd']['petugasDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+        // Pengirim di Form Kuning MESO = petugas yang menandatangani: nama & keahlian ikut akun TTD,
+        // tidak perlu divalidasi terpisah; instansi/alamat/telepon dari identitas RS (prefillDariEmr).
+        $this->form['pengirim']['nama'] = $this->form['ttd']['petugasName'];
+        $this->form['pengirim']['keahlian'] = ($this->form['pengirim']['keahlian'] ?? '') ?: (auth()->user()->myuser_profesi ?? '');
 
         $this->snapshotIdentitasPenderita();
 
@@ -506,6 +508,8 @@ new class extends Component {
         }
 
         $this->hydrateFormFromEntry($entri);
+        // Draft lama yang tersimpan dengan pengirim kosong: lengkapi field yang masih kosong saja.
+        $this->prefillDariEmr();
         $this->editingKey = $id;
         $this->viewOnly = false;
         $this->resetValidation();
@@ -547,6 +551,9 @@ new class extends Component {
             return;
         }
         $this->cancelEdit();     // kosongkan formulir (sekaligus balik ke daftar)…
+        // resetFormEso() mengosongkan pengirim/tgl laporan/identitas yang diisi saat modal
+        // dibuka; isi ulang di sini — tanpa ini TTD menolak "Nama pengirim tidak terbaca".
+        $this->prefillDariEmr();
         $this->layar = 'form';   // …lalu naikkan formulirnya
     }
 
@@ -1263,23 +1270,10 @@ new class extends Component {
                 <x-border-form title="Keterangan Tambahan & Laboratorium" align="start"
                     bgcolor="bg-surface-soft" :collapsible="true" :open="false">
                     <div class="mt-3">
-                        {{-- Blok PENGIRIM tidak ditampilkan: nama & keahlian diambil dari user
-                             yang login, instansi/alamat/telepon dari identitas RS. Tetap
+                        {{-- Blok PENGIRIM tidak ditampilkan: nama & keahlian = petugas yang TTD
+                             (diisi saat kunci), instansi/alamat/telepon dari identitas RS. Tetap
                              dipotret ke entri lewat prefillDariEmr() supaya lembar cetak untuk
                              Pusat MESO tetap lengkap. --}}
-                        @if ($errors->has('form.pengirim.nama'))
-                            <div
-                                class="flex items-start gap-2 px-4 py-2.5 mb-3 text-sm border rounded-lg bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300">
-                                <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                                </svg>
-                                <span>Nama pengirim tidak terbaca dari akun Anda. Hubungi Admin untuk melengkapi
-                                    data user, laporan belum bisa ditandatangani.</span>
-                            </div>
-                        @endif
-
                         {{-- Tiga kolom sebaris; lebar dibagi menurut panjang isi:
                              keterangan 6 · laboratorium 4 · tanggal 2. --}}
                         <div class="grid grid-cols-1 gap-4 lg:grid-cols-12">
