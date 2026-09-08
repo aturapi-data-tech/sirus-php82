@@ -128,8 +128,8 @@ eab5fdbe, 8a941775). Kalau membuat modul baru, salin dari sana; jangan bikin var
   bukan seluruh formulir.
 - **Tanggal** `font-mono`; **Petugas (TTD)** = nama petugas, atau badge merah `Belum TTD`;
   **Status** = badge `Terkunci` (info) / `Draft` (warning); kolom teks lain `text-muted`.
-- **Aksi, dua baris**: atas `[Lanjutkan Pengisian (primary, draft)] [Lihat (secondary,
-  terkunci)] [Cetak = <x-cetak-button> ikon printer saja]`; bawah `[Buka Kunci
+- **Aksi, dua baris**: atas `[Lanjutkan Pengisian (primary, draft)] [Lihat = <x-lihat-button>
+  ikon mata saja, terkunci] [Cetak = <x-cetak-button> ikon printer saja]`; bawah `[Buka Kunci
   (x-confirm-button, @can dokumen.bukaKunci)] [<x-hapus-button> ikon tong sampah, @can
   dokumen.hapus]`. Sel Aksi `whitespace-nowrap` supaya teks tombol tidak patah dua baris
   (x-confirm-button sudah nowrap bawaan sejak 2026-09-08). **Cetak wajib komponen `<x-cetak-button wire:click="cetak(…)"

@@ -71,7 +71,7 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
    tanpa kolom No; kolom pertama panah rincian (`<tbody x-data="{ open: false }">`,
    `<tr @click="open = !open">`, `<tr x-show="open">` berisi `<dl>` ringkasan); kolom
    `Tanggal · ringkasan khas · Petugas (TTD) · Status · Aksi`; Aksi dua baris: Lanjutkan
-   Pengisian (primary) / Lihat (secondary) / Cetak = **`<x-cetak-button>` ikon saja** (bukan
+   Pengisian (primary) / Lihat = **`<x-lihat-button>` ikon saja** / Cetak = **`<x-cetak-button>` ikon saja** (bukan
    tombol berteks, bukan info/primary),
    lalu Buka Kunci + **`<x-hapus-button>`** (ikon tong sampah 40px, bukan outline merah manual);
    sel Aksi `whitespace-nowrap`; footer layar daftar berkalimat "Setiap entri berdiri

@@ -552,6 +552,7 @@ memakai padding bawaan `px-5 py-2.5`; tombol ikon memakai `p-2.5` + ikon `w-5 h-
 
 | Aksi | Komponen | Catatan |
 |---|---|---|
+| Lihat per entri | `<x-lihat-button wire:click="viewEntry(…)" />` | ikon mata abu-abu; `label="…"` bila perlu teks |
 | Cetak per entri | `<x-cetak-button wire:click="cetak(…)" />` | ikon printer biru; `label="…"` bila perlu teks (Cetak E-Resep, Etiket) |
 | Hapus per entri | `<x-hapus-button wire:click.prevent="hapus(…)" confirm="…" />` | dialog browser (wire:confirm) |
 | Hapus, dialog modal | `<x-hapus-button :action="'removeBaris(' . $i . ')'" title="…" :message="…" />` | dirender lewat `x-confirm-button` varian danger-soft |
