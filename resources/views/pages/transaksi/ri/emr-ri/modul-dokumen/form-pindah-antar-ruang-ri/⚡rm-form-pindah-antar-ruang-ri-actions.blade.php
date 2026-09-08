@@ -1053,131 +1053,176 @@ new class extends Component {
                     @endif
                     {{-- ══ DAFTAR RIWAYAT PINDAH ══ --}}
                     @unless ($this->diForm())
-                        <div
-                            class="p-6 space-y-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-                            <div class="overflow-x-auto">
-                                <table
-                                    class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
-                                    <thead class="bg-surface-soft dark:bg-gray-800">
-                                        <tr class="text-left text-muted dark:text-gray-300">
-                                            <th class="px-3 py-2 border-b">Status</th>
-                                            <th class="px-3 py-2 border-b">Tgl Kirim</th>
-                                            <th class="px-3 py-2 border-b">Dari → Ke</th>
-                                            <th class="px-3 py-2 border-b">Pengirim</th>
-                                            <th class="px-3 py-2 border-b">Penerima</th>
-                                            <th class="px-3 py-2 border-b text-center">Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse ($listPindah as $pindah)
-                                            @php
-                                                $rowLocked =
-                                                    !empty($pindah['petugasPengirim']) &&
-                                                    !empty($pindah['petugasPenerima']);
-                                            @endphp
-                                            <tr
-                                                class="border-b border-hairline dark:border-gray-700 hover:bg-surface-soft dark:hover:bg-gray-800">
-                                                <td class="px-3 py-2">
-                                                    @if ($rowLocked)
-                                                        <x-badge variant="success">Selesai</x-badge>
-                                                    @else
-                                                        <x-badge variant="warning">Transit</x-badge>
-                    @endunless
-                                                </td>
-                                                <td class="px-3 py-2 text-muted dark:text-gray-400">
-                                                    {{ $pindah['tglPindah'] ?? '-' }}
-                                                </td>
-                                                <td class="px-3 py-2">
-                                                    <div class="font-medium">
-                                                        {{ $pindah['dariRoomDesc'] ?? '-' }}
-                                                        <span class="text-muted-soft">→</span>
-                                                        {{ $pindah['keRoomDesc'] ?? '-' }}
-                                                    </div>
-                                                    @if (!empty($pindah['alasanPindah']))
-                                                        <div class="text-xs text-muted mt-0.5">
-                                                            {{ Str::limit($pindah['alasanPindah'], 60) }}
-                                                        </div>
-                                                    @endif
-                                                </td>
-                                                <td class="px-3 py-2 text-muted dark:text-gray-400">
-                                                    {{ $pindah['petugasPengirim'] ?? '-' }}
+                        <div class="overflow-x-auto rounded-2xl">
+                            <table class="min-w-full text-sm">
+                                <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
+                                    <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                                        <th class="whitespace-nowrap w-8 px-2 py-3 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800"></th>
+                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Tgl Kirim</th>
+                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Dari → Ke</th>
+                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Pengirim (TTD)</th>
+                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Penerima (TTD)</th>
+                                        <th class="whitespace-nowrap text-center px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Status</th>
+                                        <th class="whitespace-nowrap text-center w-64 px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Aksi</th>
+                                    </tr>
+                                </thead>
+                                @forelse (collect($listPindah)->sortByDesc(fn($entri) => strtotime(strtr($entri['tglPindah'] ?? '', '/', '-')))->values()->all() as $pindah)
+                                    @php
+                                        $rowLocked = !empty($pindah['petugasPengirim']) && !empty($pindah['petugasPenerima']);
+                                        $kunciPindah = $pindah['tglPindah'] ?? '';
+                                        // Ringkasan kondisi (TTV + GCS + keadaan) satu baris; bagian kosong dilewati.
+                                        $ringkasKondisi = function (array $kondisi): string {
+                                            $tekananDarah = trim(($kondisi['sistolik'] ?? '') . '/' . ($kondisi['diastolik'] ?? ''), '/');
+                                            return collect([
+                                                $tekananDarah !== '' ? "TD {$tekananDarah} mmHg" : null,
+                                                filled($kondisi['frekuensiNadi'] ?? null) ? "Nadi {$kondisi['frekuensiNadi']}x/mnt" : null,
+                                                filled($kondisi['frekuensiNafas'] ?? null) ? "RR {$kondisi['frekuensiNafas']}x/mnt" : null,
+                                                filled($kondisi['suhu'] ?? null) ? "Suhu {$kondisi['suhu']} C" : null,
+                                                filled($kondisi['spo2'] ?? null) ? "SpO2 {$kondisi['spo2']}%" : null,
+                                                filled($kondisi['gda'] ?? null) ? "GDA {$kondisi['gda']}" : null,
+                                                filled($kondisi['gcs'] ?? null) ? "GCS {$kondisi['gcs']}" : null,
+                                                filled($kondisi['keadaanPasien'] ?? null) ? $kondisi['keadaanPasien'] : null,
+                                            ])->filter()->implode(' · ');
+                                        };
+                                        $kondisiKirimTeks = $ringkasKondisi((array) ($pindah['kondisiKirim'] ?? []));
+                                        $kondisiTerimaTeks = $ringkasKondisi((array) ($pindah['kondisiTerima'] ?? []));
+                                    @endphp
+
+                                    <tbody wire:key="pindah-{{ $kunciPindah ?: $loop->index }}" x-data="{ open: false }"
+                                        class="border-b border-hairline dark:border-gray-700">
+                                        <tr @click="open = !open"
+                                            class="cursor-pointer align-top hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                            <td class="px-2 py-3 text-center align-middle">
+                                                <svg class="w-4 h-4 mx-auto text-muted transition-transform" :class="{ 'rotate-90': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </td>
+                                            <td class="px-4 py-3 font-mono text-muted whitespace-nowrap align-middle dark:text-gray-300">{{ $kunciPindah ?: '-' }}</td>
+                                            <td class="px-4 py-3 font-medium text-ink align-middle dark:text-white">
+                                                {{ $pindah['dariRoomDesc'] ?? '-' }}
+                                                <span class="text-muted-soft">→</span>
+                                                {{ $pindah['keRoomDesc'] ?? '-' }}
+                                            </td>
+                                            <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                @if (!empty($pindah['petugasPengirim']))
+                                                    <span class="font-medium text-ink dark:text-gray-200">{{ $pindah['petugasPengirim'] }}</span>
                                                     @if (!empty($pindah['petugasPengirimDate']))
-                                                        <div class="text-xs text-muted-soft mt-0.5">
-                                                            {{ $pindah['petugasPengirimDate'] }}
-                                                        </div>
+                                                        <div class="text-xs text-muted-soft mt-0.5">{{ $pindah['petugasPengirimDate'] }}</div>
                                                     @endif
-                                                </td>
-                                                <td class="px-3 py-2 text-muted dark:text-gray-400">
-                                                    {{ $pindah['petugasPenerima'] ?? '—' }}
+                                                @else
+                                                    <x-badge variant="danger">Belum TTD</x-badge>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                @if (!empty($pindah['petugasPenerima']))
+                                                    <span class="font-medium text-ink dark:text-gray-200">{{ $pindah['petugasPenerima'] }}</span>
                                                     @if (!empty($pindah['petugasPenerimaDate']))
-                                                        <div class="text-xs text-muted-soft mt-0.5">
-                                                            {{ $pindah['petugasPenerimaDate'] }}
+                                                        <div class="text-xs text-muted-soft mt-0.5">{{ $pindah['petugasPenerimaDate'] }}</div>
+                                                    @endif
+                                                @else
+                                                    <x-badge variant="danger">Belum TTD</x-badge>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-3 text-center align-middle">
+                                                @if ($rowLocked)
+                                                    <x-badge variant="info">Selesai</x-badge>
+                                                @else
+                                                    <x-badge variant="warning">Transit</x-badge>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
+                                                <div class="flex flex-wrap items-center justify-center gap-1.5">
+                                                    {{-- Baris atas: aksi non-destruktif (Lanjut/Cetak) --}}
+                                                    <div class="flex items-center justify-center gap-2">
+                                                        @if (!$rowLocked && !$isFormLocked)
+                                                            <x-primary-button type="button" wire:click="editPindah('{{ $kunciPindah }}')"
+                                                                wire:loading.attr="disabled" wire:target="editPindah('{{ $kunciPindah }}')"
+                                                                class="gap-1.5 whitespace-nowrap" title="Lanjutkan mengisi entri ini">
+                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                                </svg>
+                                                                Lanjutkan Pengisian
+                                                            </x-primary-button>
+                                                        @endif
+                                                        <x-secondary-button type="button" wire:click="cetakPindahRi('{{ $kunciPindah }}')"
+                                                            wire:loading.attr="disabled" wire:target="cetakPindahRi('{{ $kunciPindah }}')" class="gap-1.5">
+                                                            <span wire:loading.remove wire:target="cetakPindahRi('{{ $kunciPindah }}')" class="flex items-center gap-1.5">
+                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                                </svg>
+                                                                Cetak
+                                                            </span>
+                                                            <span wire:loading wire:target="cetakPindahRi('{{ $kunciPindah }}')" class="flex items-center gap-1.5">
+                                                                <x-loading class="w-4 h-4" /> Mencetak...
+                                                            </span>
+                                                        </x-secondary-button>
+                                                    </div>
+
+                                                    {{-- Baris bawah: aksi destruktif (Hapus) --}}
+                                                    @if (!$rowLocked && !$isFormLocked)
+                                                        <div class="flex items-center justify-center gap-2">
+                                                            @can('dokumen.hapus')
+                                                                <x-outline-button type="button"
+                                                                    wire:click.prevent="hapus('{{ $kunciPindah }}')"
+                                                                    wire:confirm="Yakin hapus catatan pindah ini?"
+                                                                    wire:loading.attr="disabled"
+                                                                    class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300 !px-2 !py-1"
+                                                                    title="Hapus">
+                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                    </svg>
+                                                                </x-outline-button>
+                                                            @endcan
                                                         </div>
                                                     @endif
-                                                </td>
-                                                <td class="px-3 py-2 text-center space-x-1 whitespace-nowrap">
-                                                    <div class="flex flex-col items-center gap-2">
-                                                    <div class="flex items-center justify-center gap-2">
-                                                    <x-secondary-button
-                                                        wire:click="cetakPindahRi('{{ $pindah['tglPindah'] }}')"
-                                                        wire:loading.attr="disabled" wire:target="cetakPindahRi"
-                                                        class="text-xs py-1 px-2">
-                                                        <span wire:loading.remove wire:target="cetakPindahRi"
-                                                            class="flex items-center gap-1">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                                viewBox="0 0 24 24" stroke-width="2">
-                                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                                            </svg>
-                                                            Cetak
-                                                        </span>
-                                                        <span wire:loading wire:target="cetakPindahRi"
-                                                            class="flex items-center gap-1">
-                                                            <x-loading /> Mencetak...
-                                                        </span>
-                                                    </x-secondary-button>
-                                                    @if (!$rowLocked && !$isFormLocked)
-                                                        <x-secondary-button
-                                                            wire:click="editPindah('{{ $pindah['tglPindah'] }}')"
-                                                            class="text-xs py-1 px-2">
-                                                            Lanjutkan
-                                                        </x-secondary-button>
-                                                    @endif
+                                                </div>
+                                            </td>
+                                        </tr>
+
+                                        {{-- DETAIL (expand) --}}
+                                        <tr x-show="open" x-cloak>
+                                            <td colspan="7" class="px-4 py-4 bg-surface-soft/60 dark:bg-gray-950/30">
+                                                <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
+                                                    <div class="md:col-span-2">
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Alasan Pindah</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200 whitespace-pre-line">{{ $pindah['alasanPindah'] ?? '-' }}</dd>
                                                     </div>
-                                                    @if (!$rowLocked && !$isFormLocked)
-                                                    <div class="flex items-center justify-center gap-2">
-                                                        @can('dokumen.hapus')
-                                                        <x-outline-button type="button"
-                                                            wire:click.prevent="hapus('{{ $pindah['tglPindah'] }}')"
-                                                            wire:confirm="Yakin hapus catatan pindah ini?"
-                                                            wire:loading.attr="disabled"
-                                                            class="!text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300 !px-2 !py-1"
-                                                            title="Hapus">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                                viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                                    stroke-width="2"
-                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                            </svg>
-                                                        </x-outline-button>
-                                                        @endcan
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Dari Ruang / Bed</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $pindah['dariRoomDesc'] ?? '-' }}@if (!empty($pindah['dariBedNo'])) <span class="text-muted">· Bed {{ $pindah['dariBedNo'] }}</span>@endif</dd>
                                                     </div>
-                                                    @endif
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Ke Ruang / Bed</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $pindah['keRoomDesc'] ?? '-' }}@if (!empty($pindah['keBedNo'])) <span class="text-muted">· Bed {{ $pindah['keBedNo'] }}</span>@endif</dd>
                                                     </div>
-                                                </td>
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="6" class="px-3 py-6 text-sm text-center text-muted-soft">
-                                                    Belum ada data tersimpan
-                                                </td>
-                                            </tr>
-                                        @endforelse
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Kondisi Saat Dikirim</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">{{ $kondisiKirimTeks ?: '-' }}</dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Kondisi Saat Diterima</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $kondisiTerimaTeks ?: '-' }}
+                                                            @if (!empty($pindah['tglTerima']))
+                                                                <span class="text-muted">({{ $pindah['tglTerima'] }})</span>
+                                                            @endif
+                                                        </dd>
+                                                    </div>
+                                                </dl>
+                                            </td>
+                                        </tr>
                                     </tbody>
-                                </table>
-                            </div>
+                                @empty
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="7" class="px-4 py-8 text-center text-muted-soft">Belum ada data tersimpan</td>
+                                        </tr>
+                                    </tbody>
+                                @endforelse
+                            </table>
                         </div>
-                    @endif
+                    @endunless
                 </div>
             </div>
 

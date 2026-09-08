@@ -1340,6 +1340,7 @@ new class extends Component {
                         <table class="ds-table">
                             <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
                                 <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                                    <th class="whitespace-nowrap ds-c w-8 bg-surface-card dark:bg-gray-800"></th>
                                     <th class="whitespace-nowrap bg-surface-card dark:bg-gray-800">Tgl. Laporan</th>
                                     <th class="whitespace-nowrap bg-surface-card dark:bg-gray-800">Manifestasi ESO</th>
                                     <th class="whitespace-nowrap ds-c w-24 bg-surface-card dark:bg-gray-800">Jml Obat</th>
@@ -1348,7 +1349,6 @@ new class extends Component {
                                     <th class="whitespace-nowrap ds-c w-56 bg-surface-card dark:bg-gray-800">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody>
                                 @forelse (collect($dataDaftarRi['pelaporanEsoRI'] ?? [])->sortByDesc(fn($entri) => strtotime(strtr((data_get($entri, 'form.tglLaporan') ?: ($entri['created_at'] ?? '')), '/', '-')))->values()->all() as $indexEntri => $entri)
                                     @php
                                         $idEntri = $entri['id'] ?? null;
@@ -1359,7 +1359,13 @@ new class extends Component {
                                             ->filter(fn($baris) => ($baris['dicurigai'] ?? 'Tidak') === 'Ya')
                                             ->count();
                                     @endphp
-                                    <tr wire:key="eso-entri-{{ $riHdrNo ?? 'new' }}-{{ $idEntri ?? $indexEntri }}">
+                                    <tbody wire:key="eso-entri-{{ $riHdrNo ?? 'new' }}-{{ $idEntri ?? $indexEntri }}" x-data="{ open: false }" class="border-b border-hairline dark:border-gray-700">
+                                        <tr @click="open = !open" class="cursor-pointer align-top hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                            <td class="px-2 py-3 text-center align-middle">
+                                                <svg class="w-4 h-4 mx-auto text-muted transition-transform" :class="{ 'rotate-90': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </td>
                                         <td class="ds-td-strong">{{ data_get($entri, 'form.tglLaporan', '-') }}</td>
                                         <td>
                                             <div class="max-w-md truncate">{{ $manifestasi !== '' ? $manifestasi : '-' }}</div>
@@ -1378,7 +1384,7 @@ new class extends Component {
                                                 <x-badge variant="warning">Draft</x-badge>
                                             @endif
                                         </td>
-                                        <td class="ds-c">
+                                        <td class="ds-c" @click.stop>
                                             <div class="flex flex-wrap items-center justify-center gap-1.5">
                                                 {{-- Baris atas: aksi non-destruktif --}}
                                                 <div class="flex items-center justify-center gap-2">
@@ -1442,15 +1448,99 @@ new class extends Component {
                                                 @endif
                                             </div>
                                         </td>
-                                    </tr>
+                                        </tr>
+
+                                        {{-- DETAIL (expand) --}}
+                                        <tr x-show="open" x-cloak>
+                                            <td colspan="7" class="px-4 py-4 bg-surface-soft/60 dark:bg-gray-950/30">
+                                                <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
+                                                    <div class="md:col-span-2">
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Manifestasi ESO</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            <span class="whitespace-pre-line">{{ $manifestasi !== '' ? $manifestasi : '-' }}</span>
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Mula Terjadi</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ data_get($entri, 'form.eso.tglMulaTerjadi') ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Kesudahan ESO</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ data_get($entri, 'form.eso.kesudahanEso') ?: '-' }}
+                                                            @if (filled(data_get($entri, 'form.eso.tglKesudahanEso')))
+                                                                <span class="text-muted">({{ data_get($entri, 'form.eso.tglKesudahanEso') }})</span>
+                                                            @endif
+                                                        </dd>
+                                                    </div>
+                                                    <div class="md:col-span-2">
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Obat yang Digunakan</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            @forelse ((array) data_get($entri, 'form.obat', []) as $barisObat)
+                                                                @php
+                                                                    $ringkasObat = collect([$barisObat['bentukSediaan'] ?? null, $barisObat['cara'] ?? null, $barisObat['dosisWaktu'] ?? null])
+                                                                        ->filter(fn($bagian) => filled($bagian))
+                                                                        ->implode(' · ');
+                                                                @endphp
+                                                                <div class="flex flex-wrap items-center gap-2">
+                                                                    <span class="font-medium">{{ $barisObat['namaObat'] ?? '-' }}</span>
+                                                                    @if (($barisObat['dicurigai'] ?? 'Tidak') === 'Ya')
+                                                                        <x-badge variant="danger">Dicurigai</x-badge>
+                                                                    @endif
+                                                                    @if ($ringkasObat)
+                                                                        <span class="text-muted dark:text-gray-400">{{ $ringkasObat }}</span>
+                                                                    @endif
+                                                                </div>
+                                                            @empty
+                                                                -
+                                                            @endforelse
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Riwayat ESO</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            <span class="whitespace-pre-line">{{ data_get($entri, 'form.eso.riwayatEso') ?: '-' }}</span>
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Data Laboratorium</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ data_get($entri, 'form.dataLaboratorium') ?: '-' }}
+                                                            @if (filled(data_get($entri, 'form.tglPemeriksaanLab')))
+                                                                <span class="text-muted">({{ data_get($entri, 'form.tglPemeriksaanLab') }})</span>
+                                                            @endif
+                                                        </dd>
+                                                    </div>
+                                                    <div class="md:col-span-2">
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Keterangan Tambahan</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            <span class="whitespace-pre-line">{{ data_get($entri, 'form.keteranganTambahan') ?: '-' }}</span>
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Pelapor</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ data_get($entri, 'form.ttd.petugasName') ?: '-' }}
+                                                            @if (filled(data_get($entri, 'form.ttd.petugasDate')))
+                                                                <span class="text-muted">({{ data_get($entri, 'form.ttd.petugasDate') }})</span>
+                                                            @endif
+                                                        </dd>
+                                                    </div>
+                                                </dl>
+                                            </td>
+                                        </tr>
+                                    </tbody>
                                 @empty
-                                    <tr>
-                                        <td colspan="6" class="italic ds-c text-muted-soft">
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="7" class="italic ds-c text-muted-soft">
                                             Belum ada laporan efek samping obat.
-                                        </td>
-                                    </tr>
+                                            </td>
+                                        </tr>
+                                    </tbody>
                                 @endforelse
-                            </tbody>
                         </table>
                     </div>
                 </x-border-form>

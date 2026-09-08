@@ -844,6 +844,7 @@ new class extends Component {
                         <table class="w-full text-sm">
                             <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
                                 <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                                    <th class="whitespace-nowrap w-8 px-2 py-2 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800"></th>
                                     <th class="whitespace-nowrap px-3 py-2 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Tanggal</th>
                                     <th class="whitespace-nowrap px-3 py-2 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Jenis</th>
                                     <th class="whitespace-nowrap px-3 py-2 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Status</th>
@@ -851,7 +852,6 @@ new class extends Component {
                                     <th class="whitespace-nowrap px-3 py-2 text-center border-b border-hairline dark:border-gray-700 w-72 bg-surface-card dark:bg-gray-800">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody>
                                 @forelse ($list as $row)
                                     @php
                                         $rid = $row['id'] ?? '';
@@ -859,7 +859,13 @@ new class extends Component {
                                         $final = array_key_exists('finalized', $row) ? (bool) $row['finalized'] : filled(data_get($rf, 'ttd.dokterNama'));
                                         $jenisRingkas = collect($jenisOptions)->filter(fn($l, $k) => !empty(data_get($rf, "jenisDarah.$k.pilih")))->values()->implode(', ');
                                     @endphp
-                                    <tr wire:key="row-darah-{{ $rid }}">
+                                    <tbody wire:key="row-darah-{{ $rid }}" x-data="{ open: false }">
+                                        <tr @click="open = !open" class="cursor-pointer align-top hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                            <td class="px-2 py-2 border-b border-hairline dark:border-gray-700 text-center align-middle">
+                                                <svg class="w-4 h-4 mx-auto text-muted transition-transform" :class="{ 'rotate-90': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </td>
                                         <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-ink dark:text-gray-200">{{ data_get($rf, 'tglPermintaan', '-') ?: '-' }}</td>
                                         <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-muted dark:text-gray-300">{{ $jenisRingkas ?: '-' }}</td>
                                         <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700">
@@ -870,7 +876,7 @@ new class extends Component {
                                             @endif
                                         </td>
                                         <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-muted dark:text-gray-300">{{ data_get($rf, 'ttd.dokterNama') ?: '-' }}</td>
-                                        <td class="px-3 py-2 text-center align-middle border-b border-hairline dark:border-gray-700">
+                                        <td class="px-3 py-2 text-center align-middle border-b border-hairline dark:border-gray-700" @click.stop>
                                             <div class="flex flex-wrap items-center justify-center gap-1.5">
                                                 {{-- Baris atas: aksi non-destruktif (Lanjut/Lihat/Cetak) --}}
                                                 <div class="flex items-center justify-center gap-2">
@@ -944,13 +950,84 @@ new class extends Component {
                                                 @endif
                                             </div>
                                         </td>
-                                    </tr>
+                                        </tr>
+
+                                        {{-- DETAIL (expand) --}}
+                                        <tr x-show="open" x-cloak>
+                                            <td colspan="6" class="px-4 py-4 bg-surface-soft/60 dark:bg-gray-950/30">
+                                                <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Diagnosa Sementara</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ data_get($rf, 'diagnosaSementara') ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Transfusi Sebelumnya</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $transfusiOptions[data_get($rf, 'transfusiSebelumnya')] ?? '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div class="md:col-span-2">
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Indikasi Transfusi</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            <span class="whitespace-pre-line">{{ data_get($rf, 'indikasiTransfusi') ?: '-' }}</span>
+                                                        </dd>
+                                                    </div>
+                                                    <div class="md:col-span-2">
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Darah yang Diminta</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            @php $adaJenis = false; @endphp
+                                                            @foreach ($jenisOptions as $kodeJenis => $labelJenis)
+                                                                @continue(empty(data_get($rf, "jenisDarah.$kodeJenis.pilih")))
+                                                                @php
+                                                                    $adaJenis = true;
+                                                                    $barisJenis = (array) data_get($rf, "jenisDarah.$kodeJenis", []);
+                                                                    $golonganRhesus = trim(($barisJenis['golongan'] ?? '') . ' ' . ($barisJenis['rhesus'] ?? ''));
+                                                                    $jumlahSatuan = trim(($barisJenis['jumlah'] ?? '') . ' ' . ($barisJenis['satuan'] ?? ''));
+                                                                    $keteranganLainnya = collect([$barisJenis['ket1'] ?? null, $barisJenis['ket2'] ?? null])->filter(fn($bagian) => filled($bagian))->implode(' · ');
+                                                                @endphp
+                                                                <div class="flex flex-wrap items-center gap-2">
+                                                                    <span class="font-medium">{{ $labelJenis }}</span>
+                                                                    @if ($keteranganLainnya)
+                                                                        <span class="text-muted dark:text-gray-400">{{ $keteranganLainnya }}</span>
+                                                                    @endif
+                                                                    @if ($golonganRhesus !== '')
+                                                                        <span>Gol. {{ $golonganRhesus }}</span>
+                                                                    @endif
+                                                                    @if ($jumlahSatuan !== '')
+                                                                        <span>{{ $jumlahSatuan }}</span>
+                                                                    @endif
+                                                                    @if (filled($barisJenis['diperlukan'] ?? null))
+                                                                        <span class="text-muted dark:text-gray-400">diperlukan {{ $barisJenis['diperlukan'] }}</span>
+                                                                    @endif
+                                                                </div>
+                                                            @endforeach
+                                                            @unless ($adaJenis)
+                                                                -
+                                                            @endunless
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Dokter Peminta</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ data_get($rf, 'ttd.dokterNama') ?: '-' }}
+                                                            @if (filled(data_get($rf, 'ttd.dokterDate')))
+                                                                <span class="text-muted">({{ data_get($rf, 'ttd.dokterDate') }})</span>
+                                                            @endif
+                                                        </dd>
+                                                    </div>
+                                                </dl>
+                                            </td>
+                                        </tr>
+                                    </tbody>
                                 @empty
-                                    <tr>
-                                        <td colspan="5" class="px-3 py-6 text-center text-muted-soft">Belum ada permintaan darah.</td>
-                                    </tr>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="6" class="px-3 py-6 text-center text-muted-soft">Belum ada permintaan darah.</td>
+                                        </tr>
+                                    </tbody>
                                 @endforelse
-                            </tbody>
                         </table>
                     </div>
                 </x-border-form>
