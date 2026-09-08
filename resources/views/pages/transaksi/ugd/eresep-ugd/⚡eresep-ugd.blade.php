@@ -136,6 +136,10 @@ new class extends Component {
             // 5. Dispatch — di luar transaksi. Silent: tutup modal + reopen rekam medis
             //    sudah jadi feedback visual; tak perlu toast.
             $this->dispatch('emr-ugd.rekam-medis.open', $this->rjNo);
+            // EMR masih terbuka untuk rjNo yang sama: wire:key-nya tidak berubah sehingga seksi
+            // Perencanaan tidak di-mount ulang dari prop. Muat ulang seksi itu saja agar tab Terapi
+            // menampilkan hasil salinan (handler #[On] di seksi masih ada).
+            $this->dispatch('open-rm-perencanaan-ugd', $this->rjNo);
             $this->closeModal();
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());

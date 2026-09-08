@@ -260,6 +260,10 @@ new class extends Component {
 
             // Silent: tutup modal + reopen rekam medis sudah jadi feedback visual; tak perlu toast.
             $this->dispatch('emr-rj.rekam-medis.open', $this->rjNo);
+            // EMR masih terbuka untuk rjNo yang sama: wire:key-nya tidak berubah sehingga seksi
+            // Perencanaan tidak di-mount ulang dari prop. Muat ulang seksi itu saja agar tab Terapi
+            // menampilkan hasil salinan (handler #[On] di seksi masih ada).
+            $this->dispatch('open-rm-perencanaan-rj', $this->rjNo);
             $this->closeModal();
         } catch (\RuntimeException $e) {
             // lockRJRow() throws RuntimeException jika row tidak ditemukan
