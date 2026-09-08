@@ -44,7 +44,7 @@ new class extends Component {
     ];
 
     public string $signature = ''; // TTD pembuat pernyataan untuk entri baru
-    public string $signatureSaksi = ''; // TTD saksi (opsional, pola inform-consent)
+    public string $signatureSaksi = ''; // TTD saksi (wajib saat kunci, pola inform-consent)
 
     public array $apsList = [];
 
@@ -149,9 +149,9 @@ new class extends Component {
             'newForm.alasanPulang' => 'required|string|max:500',
             'newForm.keterangan' => 'nullable|string|max:500',
             'newForm.risikoDijelaskan' => 'nullable|string|max:1000',
-            'newForm.saksiNama' => 'nullable|string|max:200',
+            'newForm.saksiNama' => 'required|string|max:200',
             'signature' => 'required|string',
-            'signatureSaksi' => 'nullable|string',
+            'signatureSaksi' => 'required|string',
         ];
     }
 

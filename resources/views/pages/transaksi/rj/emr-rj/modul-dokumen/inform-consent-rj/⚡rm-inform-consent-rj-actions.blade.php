@@ -150,10 +150,10 @@ new class extends Component {
             'newConsent.dokter' => 'nullable|string',
             'newConsent.wali' => 'required|string|max:200',
             'newConsent.waliHubungan' => 'required|string|max:50',
-            'newConsent.saksi' => 'nullable|string|max:200',
+            'newConsent.saksi' => 'required|string|max:200',
             'newConsent.agreement' => 'required|in:0,1',
             'signature' => 'required|string',
-            'signatureSaksi' => 'nullable|string',
+            'signatureSaksi' => 'required|string',
         ];
     }
 

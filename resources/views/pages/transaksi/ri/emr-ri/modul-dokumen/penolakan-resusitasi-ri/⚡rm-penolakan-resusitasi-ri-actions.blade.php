@@ -50,7 +50,7 @@ new class extends Component {
     ];
 
     public string $signature = ''; // TTD pembuat pernyataan untuk entri baru
-    public string $signatureSaksi = ''; // TTD saksi (opsional, pola inform-consent)
+    public string $signatureSaksi = ''; // TTD saksi (wajib saat kunci, pola inform-consent)
 
     public array $penolakanList = [];
 
@@ -159,9 +159,9 @@ new class extends Component {
             'newForm.risikoDijelaskan' => 'nullable|string|max:1000',
             'newForm.dokterNama' => 'required|string|max:200',
             'newForm.mulaiBerlaku' => 'required|string|max:30',
-            'newForm.saksiNama' => 'nullable|string|max:200',
+            'newForm.saksiNama' => 'required|string|max:200',
             'signature' => 'required|string',
-            'signatureSaksi' => 'nullable|string',
+            'signatureSaksi' => 'required|string',
         ];
     }
 

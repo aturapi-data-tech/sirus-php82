@@ -70,6 +70,7 @@ new class extends Component {
     {
         return [
             'newForm.namaBayi' => 'required|string',
+            'newForm.saksiPerawat' => 'required|string|max:200',
         ];
     }
 
@@ -77,6 +78,7 @@ new class extends Component {
     {
         return [
             'newForm.namaBayi.required' => 'Nama bayi harus diisi.',
+            'newForm.saksiPerawat.required' => 'Nama saksi (perawat/bidan) harus diisi.',
         ];
     }
 
@@ -578,7 +580,11 @@ new class extends Component {
                                         placeholder="Pernyataan serah terima bayi kepada orang tua saat pulang" />
                                 </div>
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                    <div><x-input-label value="Saksi (Perawat/Bidan)" /><x-text-input wire:model="newForm.saksiPerawat" class="w-full mt-1" placeholder="Nama" /></div>
+                                    <div>
+                                        <x-input-label value="Saksi (Perawat/Bidan)" />
+                                        <x-text-input wire:model="newForm.saksiPerawat" :error="$errors->has('newForm.saksiPerawat')" class="w-full mt-1" placeholder="Nama" />
+                                        <x-input-error :messages="$errors->get('newForm.saksiPerawat')" class="mt-1" />
+                                    </div>
                                     <div><x-input-label value="Orang Tua Bayi" /><x-text-input wire:model="newForm.orangTuaBayi" class="w-full mt-1" placeholder="Nama" /></div>
                                 </div>
                             </div>

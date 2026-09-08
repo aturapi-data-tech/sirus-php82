@@ -475,7 +475,7 @@ Aturan yang mengikat:
 | Pihak | Cara | Wajib? |
 |---|---|---|
 | Pasien / keluarga | `x-signature.signature-pad` → `signature-result` bila sudah ada | wajib |
-| Saksi | idem | opsional (`nullable`) — tampilkan langsung, jangan sembunyikan di balik tombol |
+| Saksi | idem | umumnya opsional (`nullable`) — tampilkan langsung, jangan sembunyikan di balik tombol. **Inform Consent tindakan RJ/UGD/RI: nama + TTD saksi `required` saat kunci** (keputusan 2026-09-08) |
 | Petugas | `x-signature.ttd-petugas` (`:framed=false`, `:allowClear=false`) | wajib; menstempel nama+kode+jam user login |
 
 - TTD ikut `rules()` (`'signature' => 'required|string'`) supaya error tampil **merah di
