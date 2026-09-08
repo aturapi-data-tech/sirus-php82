@@ -147,7 +147,6 @@ new class extends Component {
             'tglPemeriksaanLab' => '',
 
             'pengirim' => [
-                'nama' => '',
                 'keahlian' => '',
                 'instansi' => '',
                 'alamat' => '',
@@ -225,7 +224,6 @@ new class extends Component {
 
         // Pengirim = petugas yang membuat laporan + identitas RS
         $identitasRs = DB::table('rsmst_identitases')->select('int_name', 'int_address', 'int_city', 'int_phone1')->first();
-        $isiJikaKosong('pengirim.nama', (string) (auth()->user()->myuser_name ?? ''));
         $isiJikaKosong('pengirim.keahlian', (string) (auth()->user()->myuser_profesi ?? ''));
         $isiJikaKosong('pengirim.instansi', (string) ($identitasRs->int_name ?? ''));
         $isiJikaKosong('pengirim.alamat', trim(($identitasRs->int_address ?? '') . ' ' . ($identitasRs->int_city ?? '')));
@@ -468,9 +466,8 @@ new class extends Component {
         $this->form['ttd']['petugasName'] = auth()->user()->myuser_name ?? '';
         $this->form['ttd']['petugasCode'] = auth()->user()->myuser_code ?? '';
         $this->form['ttd']['petugasDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
-        // Pengirim di Form Kuning MESO = petugas yang menandatangani: nama & keahlian ikut akun TTD,
-        // tidak perlu divalidasi terpisah; instansi/alamat/telepon dari identitas RS (prefillDariEmr).
-        $this->form['pengirim']['nama'] = $this->form['ttd']['petugasName'];
+        // Pengirim di Form Kuning MESO = petugas yang menandatangani: nama dibaca cetakan langsung dari
+        // ttd.petugasName, keahlian ikut profesi akun; instansi/alamat/telepon dari identitas RS (prefillDariEmr).
         $this->form['pengirim']['keahlian'] = ($this->form['pengirim']['keahlian'] ?? '') ?: (auth()->user()->myuser_profesi ?? '');
 
         $this->snapshotIdentitasPenderita();

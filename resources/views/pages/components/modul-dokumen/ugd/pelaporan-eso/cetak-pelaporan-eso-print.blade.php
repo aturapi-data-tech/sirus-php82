@@ -206,7 +206,7 @@
             <td style="border:1px solid #000; padding:4px; vertical-align:top; width:55%;">
                 <strong>PENGIRIM :</strong>
                 <table style="width:100%; margin-top:2px;" class="text-[10px]">
-                    @foreach ([['Nama', 'pengirim.nama'], ['Keahlian', 'pengirim.keahlian'], ['Instansi', 'pengirim.instansi'], ['Alamat', 'pengirim.alamat'], ['Nomor Telepon', 'pengirim.telepon']] as [$labelPengirim, $pathPengirim])
+                    @foreach ([['Nama', 'ttd.petugasName'], ['Keahlian', 'pengirim.keahlian'], ['Instansi', 'pengirim.instansi'], ['Alamat', 'pengirim.alamat'], ['Nomor Telepon', 'pengirim.telepon']] as [$labelPengirim, $pathPengirim])
                         <tr>
                             <td style="width:32%;">{{ $labelPengirim }}</td>
                             <td style="width:3%;">:</td>
