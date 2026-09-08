@@ -597,60 +597,186 @@ new class extends Component {
                     {{-- ── DAFTAR ENTRI TERSIMPAN ── --}}
                     @unless ($this->diForm())
                     <x-border-form padding="p-0">
-                        @forelse ($entriList as $entri)
-                            <div wire:key="entri-{{ $entri['createdAt'] }}" class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border rounded-lg border-hairline dark:border-gray-700">
-                                <div class="text-sm">
-                                    <span class="font-semibold text-ink dark:text-gray-100">{{ $entri['createdAt'] }}</span>
-                                    <span class="ml-2 text-muted">· {{ $entri['namaBayi'] ?? '-' }}</span>
-                                    <span class="ml-2 text-muted">· {{ $entri['jenisKelamin'] ?? '-' }}</span>
-                                    <div class="text-xs text-muted dark:text-gray-400">Gelang: {{ $entri['warnaGelang'] ?? '-' }} · BB {{ $entri['bb'] ?? '-' }} gr · PB {{ $entri['pb'] ?? '-' }} cm</div>
-                                    <div class="mt-0.5 text-xs">
-                                        @if (!empty($entri['ttd']))
-                                            <span class="text-muted dark:text-gray-400">TTD: {{ $entri['ttd'] }}{{ !empty($entri['ttdDate']) ? ' · ' . $entri['ttdDate'] : '' }}</span>
-                                        @else
-                                            <x-badge variant="danger">Belum TTD</x-badge>
-                                        @endif
-                                    </div>
-                                </div>
-                                <div class="flex flex-col items-center gap-2">
-                                    <div class="flex items-center gap-2">
-                                    @if (empty($entri['ttd']) && !$isFormLocked)
-                                        <x-primary-button type="button" wire:click="ttdEntry('{{ $entri['createdAt'] }}')" wire:loading.attr="disabled" wire:target="ttdEntry('{{ $entri['createdAt'] }}')" class="px-3 py-1.5 text-sm">
-                                            TTD Saya
-                                        </x-primary-button>
-                                    @endif
-                                    <x-secondary-button type="button" wire:click="cetak('{{ $entri['createdAt'] }}')" wire:loading.attr="disabled" wire:target="cetak('{{ $entri['createdAt'] }}')" class="px-3 py-1.5 text-sm">
-                                        <span wire:loading.remove wire:target="cetak('{{ $entri['createdAt'] }}')" class="flex items-center gap-1.5">Cetak</span>
-                                        <span wire:loading wire:target="cetak('{{ $entri['createdAt'] }}')" class="flex items-center gap-1.5"><x-loading class="w-5 h-5" /> Mencetak...</span>
-                                    </x-secondary-button>
-                                    </div>
-                                    @unless ($isFormLocked)
-                                        <div class="flex items-center gap-2">
-                                        @if (!empty($entri['ttd']))
-                                            @can('dokumen.bukaKunci')
-                                                <x-confirm-button action="bukaKunci('{{ $entri['createdAt'] }}')"
-                                                    title="Buka Kunci Identifikasi Bayi"
-                                                    message="TTD petugas akan dicabut dari entri ini — proses TTD diulang dari awal. Lanjutkan?"
-                                                    confirmText="Ya, Buka Kunci" class="gap-1.5 px-3 py-1.5 text-sm">
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                            d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" />
-                                                    </svg>
-                                                    Buka Kunci
-                                                </x-confirm-button>
-                                            @endcan
-                                        @endif
-                                        @can('dokumen.hapus')
-                                        <x-danger-button type="button" wire:click="hapus('{{ $entri['createdAt'] }}')"
-                                            wire:confirm="Hapus entri identifikasi bayi ini?" class="px-3 py-1.5 text-sm">Hapus</x-danger-button>
-                                        @endcan
-                                        </div>
-                                    @endunless
-                                </div>
-                            </div>
-                        @empty
-                            <p class="text-sm text-muted dark:text-gray-400">Belum ada identifikasi bayi tersimpan.</p>
-                        @endforelse
+                        <div class="overflow-x-auto rounded-2xl">
+                            <table class="min-w-full text-sm">
+                                <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
+                                    <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                                        <th class="whitespace-nowrap w-8 px-2 py-3 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800"></th>
+                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Tgl / Jam Lahir</th>
+                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Nama Bayi</th>
+                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Kelamin · Gelang</th>
+                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Petugas (TTD)</th>
+                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800 text-center">Status</th>
+                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800 text-center w-64">Aksi</th>
+                                    </tr>
+                                </thead>
+                                @forelse (collect($entriList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tglLahir'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entri)
+                                    @php
+                                        $rowKey = $entri['createdAt'] ?? '';
+                                        $rowFinal = filled($entri['ttd'] ?? null);
+                                    @endphp
+
+                                    <tbody wire:key="bayi-entri-{{ $rowKey ?: $loop->index }}" x-data="{ open: false }"
+                                        class="border-b border-hairline dark:border-gray-700">
+                                        <tr @click="open = !open"
+                                            class="cursor-pointer align-top hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                            <td class="px-2 py-3 text-center align-middle">
+                                                <svg class="w-4 h-4 mx-auto text-muted transition-transform" :class="{ 'rotate-90': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </td>
+                                            <td class="px-4 py-3 font-mono text-muted whitespace-nowrap align-middle dark:text-gray-300">
+                                                {{ $entri['tglLahir'] ?: $rowKey }}
+                                            </td>
+                                            <td class="px-4 py-3 font-medium text-ink align-middle dark:text-white">
+                                                {{ $entri['namaBayi'] ?? '-' }}
+                                            </td>
+                                            <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                {{ $entri['jenisKelamin'] ?: '-' }}
+                                                <span class="text-muted-soft">·</span> Gelang {{ $entri['warnaGelang'] ?: '-' }}
+                                                <div class="text-xs text-muted-soft mt-0.5">BB {{ $entri['bb'] ?: '-' }} g <span class="text-muted-soft">·</span> PB {{ $entri['pb'] ?: '-' }} cm</div>
+                                            </td>
+                                            <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                @if (filled($entri['ttd'] ?? ''))
+                                                    <span class="font-medium text-ink dark:text-gray-200">{{ $entri['ttd'] ?? '' }}</span>
+                                                @else
+                                                    <x-badge variant="danger">Belum TTD</x-badge>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-3 text-center align-middle">
+                                                @if ($rowFinal)
+                                                    <x-badge variant="info">Terkunci</x-badge>
+                                                @else
+                                                    <x-badge variant="warning">Belum TTD</x-badge>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
+                                                <div class="flex flex-wrap items-center justify-center gap-1.5">
+                                                    {{-- Baris atas: aksi non-destruktif --}}
+                                                    <div class="flex items-center justify-center gap-2">
+                                                        @if (!$rowFinal && !$isFormLocked)
+                                                            <x-primary-button type="button" wire:click="ttdEntry('{{ $rowKey }}')" wire:loading.attr="disabled"
+                                                                wire:target="ttdEntry('{{ $rowKey }}')" class="gap-1.5 whitespace-nowrap" title="Tanda tangani entri ini">
+                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                                                TTD Saya
+                                                            </x-primary-button>
+                                                        @endif
+                                                        <x-secondary-button type="button" wire:click="cetak('{{ $rowKey }}')" wire:loading.attr="disabled"
+                                                            wire:target="cetak('{{ $rowKey }}')" class="gap-1.5" title="Cetak">
+                                                            <span wire:loading.remove wire:target="cetak('{{ $rowKey }}')" class="flex items-center gap-1.5">
+                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                                                Cetak
+                                                            </span>
+                                                            <span wire:loading wire:target="cetak('{{ $rowKey }}')" class="flex items-center gap-1.5">
+                                                                <x-loading class="w-4 h-4" /> Mencetak...
+                                                            </span>
+                                                        </x-secondary-button>
+                                                    </div>
+                                                    {{-- Baris bawah: aksi terkunci/destruktif --}}
+                                                    @unless ($isFormLocked)
+                                                        <div class="flex items-center justify-center gap-2">
+                                                            @if ($rowFinal)
+                                                                @can('dokumen.bukaKunci')
+                                                                    <x-confirm-button action="bukaKunci('{{ $rowKey }}')" title="Buka Kunci Identifikasi Bayi"
+                                                                        message="TTD petugas akan dicabut dari entri ini — proses TTD diulang dari awal. Lanjutkan?" confirmText="Ya, Buka Kunci" class="gap-1.5">
+                                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg>
+                                                                        Buka Kunci
+                                                                    </x-confirm-button>
+                                                                @endcan
+                                                            @endif
+                                                            @can('dokumen.hapus')
+                                                                <x-outline-button type="button" wire:click.prevent="hapus('{{ $rowKey }}')" wire:confirm="Hapus entri identifikasi bayi ini?"
+                                                                    wire:loading.attr="disabled" title="Hapus entri"
+                                                                    class="!px-2 !py-1 !text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300">
+                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                                </x-outline-button>
+                                                            @endcan
+                                                        </div>
+                                                    @endunless
+                                                </div>
+                                            </td>
+                                        </tr>
+
+                                        {{-- DETAIL (expand) --}}
+                                        <tr x-show="open" x-cloak>
+                                            <td colspan="7" class="px-4 py-4 bg-surface-soft/60 dark:bg-gray-950/30">
+                                                <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Nama Ibu / Ayah</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['namaIbu'] ?: '-' }} <span class="text-muted-soft">/</span> {{ $entri['namaAyah'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">No. Register Ibu / Bayi</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['noRegisterIbu'] ?: '-' }} <span class="text-muted-soft">/</span> {{ $entri['noRegisterBayi'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">APGAR</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['apgar'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Penolong Persalinan</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['penolongPersalinan'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Pemasang Gelang</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['pemasangGelang'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Cap Identifikasi</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['capDilakukan'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Yang Menyerahkan / Menerima</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['yangMenyerahkan'] ?: '-' }} <span class="text-muted-soft">/</span> {{ $entri['yangMenerima'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Serah Terima Pulang</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['serahTerimaPulang'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Saksi Perawat / Orang Tua</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['saksiPerawat'] ?: '-' }} <span class="text-muted-soft">/</span> {{ $entri['orangTuaBayi'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Petugas (TTD)</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['ttd'] ?: '-' }}
+                                                            @if (filled($entri['ttdDate']))
+                                                                <span class="text-muted">({{ $entri['ttdDate'] }})</span>
+                                                            @endif
+                                                        </dd>
+                                                    </div>
+                                                </dl>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                @empty
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="7" class="px-4 py-8 text-center text-muted-soft">Belum ada identifikasi bayi tersimpan.</td>
+                                        </tr>
+                                    </tbody>
+                                @endforelse
+                            </table>
+                        </div>
                     </x-border-form>
                     @endunless
 

@@ -1075,65 +1075,232 @@ new class extends Component {
                     @endif
                     @unless ($this->diForm())
                     <x-border-form padding="p-0">
-                        @forelse ($entriList as $entri)
-                            @php
-                                $rowKey = $entri['createdAt'] ?? '';
-                                $rowFinal = $this->entryIsFinal($entri);
-                            @endphp
-                            <div wire:key="entri-{{ $rowKey }}"
-                                class="flex flex-wrap items-center justify-between gap-3 px-3 py-2 mb-2 border rounded-lg border-hairline dark:border-gray-700">
-                                <div class="text-sm">
-                                    <div class="flex items-center gap-2">
-                                        <span class="font-semibold text-ink dark:text-gray-100">{{ $entri['tanggalOperasi'] ?: ($entri['tanggal'] ?: $rowKey) }}</span>
-                                        @if ($rowFinal)
-                                            <x-badge variant="success">Terkunci</x-badge>
-                                        @else
-                                            <x-badge variant="warning">Draft</x-badge>
-                                        @endif
-                                    </div>
-                                    <div class="text-xs text-muted dark:text-gray-400">
-                                        {{ $entri['tindakanOperasi'] ?: '-' }}
-                                        · {{ $opsiJenisOperasi[$entri['jenisOperasi'] ?? ''] ?? '-' }}
-                                        · Operator: {{ $entri['dokterOperator'] ?: '-' }}
-                                        · Petugas: {{ $entri['ttd'] ?: '-' }}
-                                    </div>
-                                </div>
-                                <div class="flex flex-wrap items-center justify-center gap-1.5">
-                                    <div class="flex items-center justify-center gap-2">
-                                        @if ($rowFinal)
-                                            <x-secondary-button type="button" wire:click="viewEntry('{{ $rowKey }}')" class="px-3 py-1.5 text-sm">Lihat</x-secondary-button>
-                                        @else
-                                            <x-secondary-button type="button" wire:click="editEntry('{{ $rowKey }}')" class="px-3 py-1.5 text-sm">Lanjutkan Pengisian</x-secondary-button>
-                                        @endif
-                                        <x-secondary-button type="button" wire:click="cetak('{{ $rowKey }}')" wire:loading.attr="disabled"
-                                            wire:target="cetak('{{ $rowKey }}')" class="px-3 py-1.5 text-sm">
-                                            <span wire:loading.remove wire:target="cetak('{{ $rowKey }}')">Cetak</span>
-                                            <span wire:loading wire:target="cetak('{{ $rowKey }}')" class="flex items-center gap-1.5"><x-loading class="w-4 h-4" /> Mencetak...</span>
-                                        </x-secondary-button>
-                                    </div>
-                                    @unless ($isFormLocked)
-                                        <div class="flex items-center justify-center gap-2">
-                                            @if ($rowFinal)
-                                                @can('dokumen.bukaKunci')
-                                                    <x-confirm-button action="bukaKunci('{{ $rowKey }}')"
-                                                        message="Buka kunci entri surveilans ini? TTD petugas akan dicabut."
-                                                        class="px-3 py-1.5 text-sm">Buka Kunci</x-confirm-button>
-                                                @endcan
-                                            @endif
-                                            @can('dokumen.hapus')
-                                                <x-outline-button type="button" wire:click.prevent="hapus('{{ $rowKey }}')"
-                                                    wire:confirm="Yakin hapus entri surveilans ini?" class="px-3 py-1.5 text-sm !text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30">Hapus</x-outline-button>
-                                            @endcan
-                                        </div>
-                                    @endunless
-                                </div>
-                            </div>
-                        @empty
-                            <div class="flex flex-col items-center justify-center gap-3 px-6 py-12">
-                                <svg class="w-12 h-12 text-muted-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
-                                <p class="text-base font-medium text-muted dark:text-gray-400">Belum ada entri surveilans infeksi luka operasi.</p>
-                            </div>
-                        @endforelse
+                        <div class="overflow-x-auto rounded-2xl">
+                            <table class="min-w-full text-sm">
+                                <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
+                                    <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                                        <th class="whitespace-nowrap w-8 px-2 py-3 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800"></th>
+                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Tanggal</th>
+                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Operasi</th>
+                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Dokter yang Merawat</th>
+                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Petugas (TTD)</th>
+                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800 text-center">Status</th>
+                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800 text-center w-64">Aksi</th>
+                                    </tr>
+                                </thead>
+                                @forelse (collect($entriList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entri)
+                                    @php
+                                        $rowKey = $entri['createdAt'] ?? '';
+                                        $rowFinal = $this->entryIsFinal($entri);
+                                    @endphp
+
+                                    <tbody wire:key="surv-entri-{{ $rowKey ?: $loop->index }}" x-data="{ open: false }"
+                                        class="border-b border-hairline dark:border-gray-700">
+                                        <tr @click="open = !open"
+                                            class="cursor-pointer align-top hover:bg-surface-soft dark:hover:bg-gray-800/60">
+                                            <td class="px-2 py-3 text-center align-middle">
+                                                <svg class="w-4 h-4 mx-auto text-muted transition-transform" :class="{ 'rotate-90': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </td>
+                                            <td class="px-4 py-3 font-mono text-muted whitespace-nowrap align-middle dark:text-gray-300">
+                                                {{ $entri['tanggal'] ?: $rowKey }}
+                                            </td>
+                                            <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                {{ $entri['tindakanOperasi'] ?: '-' }}
+                                                <span class="text-muted-soft">·</span> {{ \App\Support\Options\SurveilansHaisOptions::JENIS_OPERASI[$entri['jenisOperasi'] ?? ''] ?? '-' }}
+                                                <div class="text-xs text-muted-soft mt-0.5">Operator: {{ $entri['dokterOperator'] ?: '-' }}</div>
+                                            </td>
+                                            <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                {{ $entri['dokterMerawat'] ?: '-' }}
+                                            </td>
+                                            <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
+                                                @if (filled($entri['ttd'] ?? ''))
+                                                    <span class="font-medium text-ink dark:text-gray-200">{{ $entri['ttd'] ?? '' }}</span>
+                                                @else
+                                                    <x-badge variant="danger">Belum TTD</x-badge>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-3 text-center align-middle">
+                                                @if ($rowFinal)
+                                                    <x-badge variant="info">Terkunci</x-badge>
+                                                @else
+                                                    <x-badge variant="warning">Draft</x-badge>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
+                                                <div class="flex flex-wrap items-center justify-center gap-1.5">
+                                                    {{-- Baris atas: aksi non-destruktif --}}
+                                                    <div class="flex items-center justify-center gap-2">
+                                                        @if (!$rowFinal && !$isFormLocked)
+                                                            <x-primary-button type="button" wire:click="editEntry('{{ $rowKey }}')" wire:loading.attr="disabled"
+                                                                wire:target="editEntry('{{ $rowKey }}')" class="gap-1.5 whitespace-nowrap" title="Lanjutkan mengisi entri ini">
+                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                                                Lanjutkan Pengisian
+                                                            </x-primary-button>
+                                                        @endif
+                                                        @if ($rowFinal)
+                                                            <x-secondary-button type="button" wire:click="viewEntry('{{ $rowKey }}')" wire:loading.attr="disabled"
+                                                                wire:target="viewEntry('{{ $rowKey }}')" class="gap-1.5" title="Lihat entri terkunci">
+                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                                Lihat
+                                                            </x-secondary-button>
+                                                        @endif
+                                                        <x-secondary-button type="button" wire:click="cetak('{{ $rowKey }}')" wire:loading.attr="disabled"
+                                                            wire:target="cetak('{{ $rowKey }}')" class="gap-1.5" title="Cetak">
+                                                            <span wire:loading.remove wire:target="cetak('{{ $rowKey }}')" class="flex items-center gap-1.5">
+                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                                                Cetak
+                                                            </span>
+                                                            <span wire:loading wire:target="cetak('{{ $rowKey }}')" class="flex items-center gap-1.5">
+                                                                <x-loading class="w-4 h-4" /> Mencetak...
+                                                            </span>
+                                                        </x-secondary-button>
+                                                    </div>
+                                                    {{-- Baris bawah: aksi terkunci/destruktif --}}
+                                                    @unless ($isFormLocked)
+                                                        <div class="flex items-center justify-center gap-2">
+                                                            @if ($rowFinal)
+                                                                @can('dokumen.bukaKunci')
+                                                                    <x-confirm-button action="bukaKunci('{{ $rowKey }}')" title="Buka Kunci Surveilans ILO"
+                                                                        message="Buka kunci entri surveilans ini? TTD petugas akan dicabut." confirmText="Ya, Buka Kunci" class="gap-1.5">
+                                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg>
+                                                                        Buka Kunci
+                                                                    </x-confirm-button>
+                                                                @endcan
+                                                            @endif
+                                                            @can('dokumen.hapus')
+                                                                <x-outline-button type="button" wire:click.prevent="hapus('{{ $rowKey }}')" wire:confirm="Yakin hapus entri surveilans ini?"
+                                                                    wire:loading.attr="disabled" title="Hapus entri"
+                                                                    class="!px-2 !py-1 !text-red-600 !bg-red-50 !border-red-200 hover:!bg-red-100 hover:!text-red-700 hover:!border-red-300 dark:!text-red-400 dark:!bg-red-900/20 dark:!border-red-800/30 dark:hover:!bg-red-900/30 dark:hover:!text-red-300">
+                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                                </x-outline-button>
+                                                            @endcan
+                                                        </div>
+                                                    @endunless
+                                                </div>
+                                            </td>
+                                        </tr>
+
+                                        {{-- DETAIL (expand) --}}
+                                        <tr x-show="open" x-cloak>
+                                            <td colspan="7" class="px-4 py-4 bg-surface-soft/60 dark:bg-gray-950/30">
+                                                <dl class="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Diagnosis Akhir</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['diagnosisAkhir'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Faktor Risiko</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ collect((array) ($entri['faktorRisiko'] ?? []))->filter()->keys()->map(fn($kunci) => \App\Support\Options\SurveilansHaisOptions::FAKTOR_RISIKO[$kunci] ?? $kunci)->implode(', ') ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tanggal Operasi</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['tanggalOperasi'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Jenis Operasi</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ \App\Support\Options\SurveilansHaisOptions::JENIS_OPERASI[$entri['jenisOperasi'] ?? ''] ?? '-' }}@if (filled($entri['emergensi'] ?? null)) <span class="text-muted">· Emergensi: {{ $entri['emergensi'] }}</span>@endif
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Dokter Operator / Konsultan</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['dokterOperator'] ?: '-' }} <span class="text-muted-soft">/</span> {{ $entri['dokterKonsultan'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Anestesi Umum / Kamar / Ronde</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['anestesiUmum'] ?: '-' }} <span class="text-muted-soft">/</span> {{ $entri['kamarOperasi'] ?: '-' }} <span class="text-muted-soft">/</span> {{ $entri['rondeKe'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Lama Operasi / ASA</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['lamaOperasiJam'] ?: '0' }} jam {{ $entri['lamaOperasiMenit'] ?: '0' }} menit <span class="text-muted-soft">/</span> ASA {{ $entri['asaScore'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Implan / Trauma / Endoskopi / Multipel</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['implan'] ?: '-' }} / {{ $entri['trauma'] ?: '-' }} / {{ $entri['pendekatanEndoskopi'] ?: '-' }} / {{ $entri['prosedurMultipel'] ?: '-' }}
+                                                        </dd>
+                                                    </div>
+                                                    <div class="md:col-span-2">
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Tanda Infeksi Luka (hari pemantauan)</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            @php
+                                                                $hariBertanda = collect((array) ($entri['pemantauan'] ?? []))
+                                                                    ->map(fn($param, $indeks) => collect((array) $param)->filter()->keys()->map(fn($kunci) => \App\Support\Options\SurveilansHaisOptions::PARAM_PEMANTAUAN_ILO[$kunci] ?? $kunci)->implode(', '))
+                                                                    ->filter()
+                                                                    ->map(fn($teks, $indeks) => 'Hari ' . ($indeks + 1) . ': ' . $teks);
+                                                            @endphp
+                                                            @forelse ($hariBertanda as $teksHari)
+                                                                <div>{{ $teksHari }}</div>
+                                                            @empty
+                                                                -
+                                                            @endforelse
+                                                        </dd>
+                                                    </div>
+                                                    <div class="md:col-span-2">
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Antibiotik</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            @forelse ((array) ($entri['antibiotik'] ?? []) as $barisAntibiotik)
+                                                                @php
+                                                                    $ringkasAntibiotik = collect([
+                                                                        $barisAntibiotik['dosis'] ?? null,
+                                                                        \App\Support\Options\SurveilansHaisOptions::RUTE_ANTIBIOTIK[$barisAntibiotik['rute'] ?? ''] ?? ($barisAntibiotik['rute'] ?? null),
+                                                                        collect([$barisAntibiotik['tglMulai'] ?? null, $barisAntibiotik['tglSelesai'] ?? null])->filter(fn($bagian) => filled($bagian))->implode(' s/d '),
+                                                                        \App\Support\Options\SurveilansHaisOptions::INDIKASI_ANTIBIOTIK[$barisAntibiotik['indikasi'] ?? ''] ?? ($barisAntibiotik['indikasi'] ?? null),
+                                                                    ])->filter(fn($bagian) => filled($bagian))->implode(' · ');
+                                                                @endphp
+                                                                <div class="flex flex-wrap items-center gap-2">
+                                                                    <span class="font-medium">{{ $barisAntibiotik['namaObat'] ?? '-' }}</span>
+                                                                    @if ($ringkasAntibiotik)
+                                                                        <span class="text-muted dark:text-gray-400">{{ $ringkasAntibiotik }}</span>
+                                                                    @endif
+                                                                </div>
+                                                            @empty
+                                                                -
+                                                            @endforelse
+                                                        </dd>
+                                                    </div>
+                                                    <div class="md:col-span-2">
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Catatan</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            <span class="whitespace-pre-line">{{ $entri['catatan'] ?: '-' }}</span>
+                                                        </dd>
+                                                    </div>
+                                                    <div>
+                                                        <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Petugas (TTD)</dt>
+                                                        <dd class="mt-0.5 text-ink dark:text-gray-200">
+                                                            {{ $entri['ttd'] ?: '-' }}
+                                                            @if (filled($entri['ttdDate']))
+                                                                <span class="text-muted">({{ $entri['ttdDate'] }})</span>
+                                                            @endif
+                                                        </dd>
+                                                    </div>
+                                                </dl>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                @empty
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="7" class="px-4 py-8 text-center text-muted-soft">Belum ada entri surveilans infeksi luka operasi.</td>
+                                        </tr>
+                                    </tbody>
+                                @endforelse
+                            </table>
+                        </div>
                     </x-border-form>
                     @endunless
 

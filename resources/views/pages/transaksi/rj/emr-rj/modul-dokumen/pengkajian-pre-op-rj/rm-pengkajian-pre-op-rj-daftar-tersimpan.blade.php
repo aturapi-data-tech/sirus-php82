@@ -1,19 +1,18 @@
                         {{-- ══ DAFTAR PENGKAJIAN TERSIMPAN (expandable) ══ --}}
-                        @if (count($preOpList ?? []))
-                            <div class="mt-6">
-                                <div class="overflow-x-auto">
-                                    <table class="min-w-full text-base border border-hairline rounded-lg dark:border-gray-700">
-                                        <thead class="bg-surface-soft dark:bg-gray-800">
-                                            <tr class="text-left text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-300">
-                                                <th class="w-8 px-2 py-3 border-b"></th>
-                                                <th class="px-4 py-3 border-b">Tanggal</th>
-                                                <th class="px-4 py-3 border-b">Rencana Operasi</th>
-                                                <th class="px-4 py-3 border-b">TTD (3 Pihak)</th>
-                                                <th class="px-4 py-3 text-center border-b">Status</th>
-                                                <th class="px-4 py-3 text-center border-b">Aksi</th>
+                        <x-border-form padding="p-0">
+                            <div class="overflow-x-auto rounded-2xl">
+                                <table class="min-w-full text-sm">
+                                    <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
+                                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                                            <th class="whitespace-nowrap w-8 px-2 py-3 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800"></th>
+                                            <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Tanggal</th>
+                                            <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Rencana Operasi</th>
+                                            <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">TTD (3 Pihak)</th>
+                                            <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800 text-center">Status</th>
+                                            <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800 text-center w-64">Aksi</th>
                                             </tr>
                                         </thead>
-                                        @foreach (collect($preOpList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
+                                        @forelse (collect($preOpList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
                                             @php
                                                 $isFinal = $this->entryIsFinal($entry);
                                                 $rowKey = $entry['createdAt'] ?? '';
@@ -263,8 +262,13 @@
                                                     </td>
                                                 </tr>
                                             </tbody>
-                                        @endforeach
+                                        @empty
+                                            <tbody>
+                                                <tr>
+                                                    <td colspan="6" class="px-4 py-8 text-center text-muted-soft">Belum ada pengkajian pre operasi tersimpan.</td>
+                                                </tr>
+                                            </tbody>
+                                        @endforelse
                                     </table>
                                 </div>
-                            </div>
-                        @endif
+                            </x-border-form>
