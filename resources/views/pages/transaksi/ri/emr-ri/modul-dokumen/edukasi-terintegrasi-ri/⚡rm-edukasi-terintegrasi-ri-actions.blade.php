@@ -1538,7 +1538,7 @@ new class extends Component {
                                 </div>
                             </td>
                             <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
-                                <div class="flex flex-wrap items-center justify-center gap-1.5">
+                                <div class="flex items-center justify-end gap-2">
                                     {{-- Baris atas: aksi non-destruktif (Lanjut/Lihat/Cetak) --}}
                                     <div class="flex items-center justify-center gap-2">
                                     @if (!$isFinal && !$isFormLocked && $edukasiId)
@@ -1560,11 +1560,13 @@ new class extends Component {
                                     </div>
 
                                     {{-- Baris bawah: aksi terkunci/destruktif (Buka Kunci + Hapus) --}}
-                                    @if (!$isFormLocked && $edukasiId)
-                                        <div class="flex items-center justify-center gap-2">
+                                    {{-- Kelompok berisiko dipisah garis; hanya dirender bila user punya salah satu haknya,
+                                         supaya tidak menyisakan garis kosong. --}}
+                                    @if (!$isFormLocked && $edukasiId && (auth()->user()?->can('dokumen.bukaKunci') || auth()->user()?->can('dokumen.hapus')))
+                                        <div class="flex items-center gap-2 pl-3 ml-1 border-l border-hairline dark:border-gray-700">
                                         @if ($isFinal)
                                             @can('dokumen.bukaKunci')
-                                                <x-confirm-button action="bukaKunci('{{ $edukasiId }}')"
+                                                <x-confirm-button variant="warning-soft" action="bukaKunci('{{ $edukasiId }}')"
                                                     title="Buka Kunci Edukasi Terintegrasi"
                                                     message="TTD petugas akan dicabut & entri kembali menjadi draft untuk dikoreksi. TTD pasien/keluarga tetap. Lanjutkan?"
                                                     confirmText="Ya, Buka Kunci" class="gap-1.5 whitespace-nowrap">

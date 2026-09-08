@@ -1,5 +1,5 @@
 @props([
-    'variant' => 'danger', // danger|danger-soft|primary|secondary|outline
+    'variant' => 'danger', // danger|danger-soft|warning-soft|primary|secondary|outline
     'action', // contoh: "delete(10)" atau "delete('10')"
     'title' => 'Konfirmasi',
     'message' => 'Apakah Anda yakin?',
@@ -31,6 +31,10 @@
         // Merah bertint (bukan solid) — tampilan tombol hapus ikon di dalam tabel/form,
         // seperti di e-resep. Dibuat jadi VARIAN supaya pemakai tak perlu override
         // `!important` (dilarang Aturan Umum standar-ui-komponen.md).
+        // Kuning lembut — aksi KOREKSI (Buka Kunci, batal proses): berbeda dari merah hapus supaya
+        // dua tombol berisiko di satu sel tidak tampak sama.
+        'warning-soft'
+            => $base . ' text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 hover:text-amber-700 hover:border-amber-300 focus:outline-none focus:ring-4 focus:ring-amber-200 dark:text-amber-400 dark:bg-amber-900/20 dark:border-amber-800/30 dark:hover:bg-amber-900/30 dark:hover:text-amber-300 dark:focus:ring-amber-900',
         'danger-soft'
             => $base . ' text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 hover:text-red-700 hover:border-red-300 focus:outline-none focus:ring-4 focus:ring-red-200 dark:text-red-400 dark:bg-red-900/20 dark:border-red-800/30 dark:hover:bg-red-900/30 dark:hover:text-red-300 dark:focus:ring-red-900',
         default
