@@ -35,7 +35,7 @@ new class extends Component {
     {
         $dataUgd = $this->rjNo ? ($this->findDataUGD($this->rjNo) ?: []) : [];
         $pasien = $this->pasienDokumen($dataUgd['regNo'] ?? '');
-        $petugasCode = data_get($entry, 'form.ttd.petugasCode') ?: data_get($entry, 'created_by.code');
+        $petugasCode = data_get($entry, 'form.ttd.petugasCode'); // hanya stempel pelapor, bukan pembuat draft
 
         return array_merge($pasien, [
             'dataUgd' => $dataUgd,

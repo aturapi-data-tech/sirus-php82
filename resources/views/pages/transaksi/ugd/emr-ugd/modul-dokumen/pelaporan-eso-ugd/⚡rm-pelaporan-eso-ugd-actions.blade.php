@@ -677,14 +677,9 @@ new class extends Component {
             $identitasRs = DB::table('rsmst_identitases')->select('int_name', 'int_phone1', 'int_phone2', 'int_fax', 'int_address', 'int_city')->first();
             $pasien = $this->findDataMasterPasien($this->regNo ?? '')['pasien'] ?? [];
 
-            $ttdPetugasPath = null;
-            $petugasCode = data_get($entry, 'form.ttd.petugasCode') ?: data_get($entry, 'created_by.code');
-            if ($petugasCode) {
-                $ttdRelativePath = DB::table('users')->where('myuser_code', $petugasCode)->value('myuser_ttd_image');
-                if (!empty($ttdRelativePath) && file_exists(TtdUser::pathBerkas($ttdRelativePath))) {
-                    $ttdPetugasPath = TtdUser::pathBerkas($ttdRelativePath);
-                }
-            }
+            // Gambar TTD hanya dari stempel pelapor yang benar-benar TTD — JANGAN jatuh ke
+            // created_by (pembuat draft): draft yang belum ditandatangani tercetak bertanda tangan.
+            $ttdPetugasPath = TtdUser::pathBerkasDariKode(data_get($entry, 'form.ttd.petugasCode'));
 
             $data = array_merge($pasien, [
                 'dataUgd' => $this->dataDaftarUGD,
@@ -786,7 +781,14 @@ new class extends Component {
                                         <div class="text-muted dark:text-gray-400">{{ $obatDicurigai }} dicurigai</div>
                                     @endif
                                 </td>
-                                <td>{{ data_get($entri, 'form.ttd.petugasName') ?: data_get($entri, 'created_by.name', '-') }}</td>
+                                <td>
+                                    @if ($isFinal && filled(data_get($entri, 'form.ttd.petugasName')))
+                                        {{ data_get($entri, 'form.ttd.petugasName') }}
+                                    @else
+                                        <x-badge variant="danger">Belum TTD</x-badge>
+                                        <span class="block text-xs text-muted-soft">dibuat: {{ data_get($entri, 'created_by.name', '-') }}</span>
+                                    @endif
+                                </td>
                                 <td class="ds-c">
                                     @if ($isFinal)
                                         <x-badge variant="success">Terkunci</x-badge>
@@ -1362,7 +1364,14 @@ new class extends Component {
                                                 <div class="text-muted dark:text-gray-400">{{ $obatDicurigai }} dicurigai</div>
                                             @endif
                                         </td>
-                                        <td>{{ data_get($entri, 'form.ttd.petugasName') ?: data_get($entri, 'created_by.name', '-') }}</td>
+                                        <td>
+                                    @if ($isFinal && filled(data_get($entri, 'form.ttd.petugasName')))
+                                        {{ data_get($entri, 'form.ttd.petugasName') }}
+                                    @else
+                                        <x-badge variant="danger">Belum TTD</x-badge>
+                                        <span class="block text-xs text-muted-soft">dibuat: {{ data_get($entri, 'created_by.name', '-') }}</span>
+                                    @endif
+                                </td>
                                         <td class="ds-c">
                                             @if ($isFinal)
                                                 <x-badge variant="success">Terkunci</x-badge>
