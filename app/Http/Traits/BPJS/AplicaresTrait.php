@@ -5,6 +5,7 @@ namespace App\Http\Traits\BPJS;
 use Carbon\Carbon;
 
 use Illuminate\Support\Facades\Http;
+use App\Support\Bpjs\BpjsHttp;
 use Illuminate\Support\Facades\Validator;
 
 use Illuminate\Support\Facades\DB;
@@ -139,7 +140,7 @@ trait AplicaresTrait
         try {
             $url      = env('APLICARES_URL') . "rest/ref/kelas";
             $signature = self::signature();
-            $response  = Http::timeout(8)->connectTimeout(3)->withHeaders($signature)->get($url);
+            $response  = BpjsHttp::mulai()->withHeaders($signature)->get($url);
 
             return self::response_no_decrypt($response);
         } catch (Exception $e) {
@@ -174,7 +175,7 @@ trait AplicaresTrait
         try {
             $url      = env('APLICARES_URL') . "rest/bed/read/" . env('APLICARES_PPKRS') . "/{$start}/{$limit}";
             $signature = self::signature();
-            $response  = Http::timeout(8)->connectTimeout(3)->withHeaders($signature)->get($url);
+            $response  = BpjsHttp::mulai()->withHeaders($signature)->get($url);
 
             return self::response_no_decrypt($response);
         } catch (Exception $e) {
@@ -246,7 +247,7 @@ trait AplicaresTrait
         try {
             $url      = env('APLICARES_URL') . "rest/bed/create/" . env('APLICARES_PPKRS');
             $signature = self::signature();
-            $response  = Http::timeout(8)->connectTimeout(3)
+            $response  = BpjsHttp::mulai()
                 ->withHeaders($signature)
                 ->send('POST', $url, ['body' => json_encode($r)]);
 
@@ -289,7 +290,7 @@ trait AplicaresTrait
         try {
             $url      = env('APLICARES_URL') . "rest/bed/delete/" . env('APLICARES_PPKRS');
             $signature = self::signature();
-            $response  = Http::timeout(8)->connectTimeout(3)
+            $response  = BpjsHttp::mulai()
                 ->withHeaders($signature)
                 ->send('POST', $url, ['body' => json_encode($r)]);
 
@@ -363,7 +364,7 @@ trait AplicaresTrait
         try {
             $url      = env('APLICARES_URL') . "rest/bed/update/" . env('APLICARES_PPKRS');
             $signature = self::signature();
-            $response  = Http::timeout(8)->connectTimeout(3)
+            $response  = BpjsHttp::mulai()
                 ->withHeaders($signature)
                 ->send('POST', $url, ['body' => json_encode($r)]);
 
