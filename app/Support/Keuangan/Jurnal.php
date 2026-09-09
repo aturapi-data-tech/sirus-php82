@@ -138,6 +138,31 @@ final class Jurnal
             ->addBinding($bindings, 'from');
     }
 
+    /**
+     * Saldo awal tahun (tktxn_saldoawalakuns) untuk sekumpulan akun:
+     * [acc_id => ['debit' => sa_acc_d, 'kredit' => sa_acc_k]], akun tanpa baris = nol.
+     */
+    public static function saldoAwalPerAkun(array $accIds, int $tahun): array
+    {
+        $accIds    = array_values(array_unique(array_map('strval', $accIds)));
+        $saldoList = array_fill_keys($accIds, ['debit' => 0.0, 'kredit' => 0.0]);
+
+        foreach (array_chunk($accIds, 900) as $kelompokAkun) {
+            $rows = DB::table('tktxn_saldoawalakuns')
+                ->whereIn('acc_id', $kelompokAkun)
+                ->where('sa_year', (string) $tahun)
+                ->get();
+            foreach ($rows as $baris) {
+                $saldoList[(string) $baris->acc_id] = [
+                    'debit'  => (float) ($baris->sa_acc_d ?? 0),
+                    'kredit' => (float) ($baris->sa_acc_k ?? 0),
+                ];
+            }
+        }
+
+        return $saldoList;
+    }
+
     /** Nama akun untuk kumpulan acc_id (query kecil terpisah; jangan join di atas jurnal). */
     public static function namaAkun(iterable $accIds): array
     {

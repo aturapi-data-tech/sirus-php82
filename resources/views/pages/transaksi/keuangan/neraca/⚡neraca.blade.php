@@ -3,7 +3,19 @@
 use Livewire\Component;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
+use App\Support\Keuangan\Jurnal;
 
+/**
+ * Laporan Neraca per tanggal cutoff — disusun dari GRUP AKUN master (tkacc_gr_accountses:
+ * 1 AKTIVA, 2 HUTANG, 3 EKUITAS) dan sub-grup acmst_accgroups, bukan template N1/NWEB yang
+ * di data hanya berisi 2–4 baris. Nilai dari App\Support\Keuangan\Jurnal (tabel transaksi langsung).
+ *
+ * Saldo akun = saldo awal tahun (tktxn_saldoawalakuns, kedua sisi) + arus 1 Januari s/d tanggal,
+ * bertanda natural menurut D/K grup: AKTIVA = D − K, HUTANG/EKUITAS = K − D.
+ * Laba (Rugi) Tahun Berjalan = Σ (K − D) arus YTD seluruh akun grup PENDAPATAN & BEBAN
+ * (padanan view TKVIEW_ACCOUNTS_NERACA2 yang memasukkannya ke akun konfigurasi LRB),
+ * ditampilkan sebagai baris tersendiri di Ekuitas.
+ */
 new class extends Component {
     public string $tanggal = '';
 
@@ -12,205 +24,161 @@ new class extends Component {
         $this->tanggal = now()->toDateString();
     }
 
-    public function updatedTanggal(): void { /* recompute */ }
-
-    /**
-     * Saldo per akun per tanggal — generic.
-     * D-acc: sa_acc_d + Σ(D−K) | K-acc: sa_acc_k + Σ(K−D)
-     */
-    private function saldoAkun(string $accId, string $dkStatus, string $tanggal): float
+    #[Computed]
+    public function tahun(): int
     {
-        $tahun = (int) substr($tanggal, 0, 4);
+        return (int) substr($this->tanggal, 0, 4);
+    }
 
-        $sa = DB::table('tktxn_saldoawalakuns')
-            ->where('acc_id', $accId)
-            ->where('sa_year', (string) $tahun)
-            ->first();
-
-        $saldoAwalTahun = $dkStatus === 'K'
-            ? (float) ($sa->sa_acc_k ?? 0)
-            : (float) ($sa->sa_acc_d ?? 0);
-
-        $expr = $dkStatus === 'K'
-            ? 'NVL(txn_k,0) - NVL(txn_d,0)'
-            : 'NVL(txn_d,0) - NVL(txn_k,0)';
-
-        $arus = (float) DB::table('tkview_accounts')
-            ->where('txn_acc', $accId)
-            ->whereBetween(DB::raw("TO_CHAR(txn_date,'YYYY-MM-DD')"), [
-                sprintf('%04d-01-01', $tahun), $tanggal,
-            ])
-            ->sum(DB::raw($expr));
-
-        return $saldoAwalTahun + $arus;
+    #[Computed]
+    public function awalTahun(): string
+    {
+        return sprintf('%04d-01-01', $this->tahun);
     }
 
     /**
-     * Mutasi (natural sign) dlm rentang — dipakai utk hitung laba tahun berjalan dari section LR.
-     */
-    private function arusAkun(string $accId, string $dkStatus, string $dari, string $sampai): float
-    {
-        $expr = $dkStatus === 'K'
-            ? 'NVL(txn_k,0) - NVL(txn_d,0)'
-            : 'NVL(txn_d,0) - NVL(txn_k,0)';
-
-        return (float) DB::table('tkview_accounts')
-            ->where('txn_acc', $accId)
-            ->whereBetween(DB::raw("TO_CHAR(txn_date,'YYYY-MM-DD')"), [$dari, $sampai])
-            ->sum(DB::raw($expr));
-    }
-
-    /**
-     * Render section N1 (AKTIVA, HUTANG, EKUITAS) — saldo per akun per tanggal cutoff.
+     * Laporan lengkap:
+     * [
+     *   'aktiva'  => ['subgrupList' => [...], 'total' => float],
+     *   'hutang'  => [...], 'ekuitas' => [...],
+     *   'labaBerjalan' => float, 'totalPasiva' => float, 'selisih' => float,
+     * ]
+     * subgrup = ['id', 'desc', 'akunList' => [['acc_id','acc_name','aktif','saldoAwal','arusDebit','arusKredit','saldo']], 'total']
      */
     #[Computed]
-    public function sections(): array
+    public function laporan(): array
     {
-        if ($this->tanggal === '') return [];
+        $kosong = ['subgrupList' => [], 'total' => 0.0];
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $this->tanggal)) {
+            return ['aktiva' => $kosong, 'hutang' => $kosong, 'ekuitas' => $kosong,
+                    'labaBerjalan' => 0.0, 'totalPasiva' => 0.0, 'selisih' => 0.0];
+        }
 
-        $sections = DB::table('tkacc_temlabarugineracadtls')
-            ->where('temp_id', 'N1')
-            ->orderBy('temp_dtl_seq')
+        $grupAkunList  = DB::table('tkacc_gr_accountses')->get()->keyBy('gra_id');
+        $subgrupNama   = DB::table('acmst_accgroups')->pluck('acc_name', 'acc_group')->map(fn ($nama) => (string) $nama)->all();
+
+        $akunNeracaRows = DB::table('acmst_accounts')
+            ->whereIn('gra_id', ['1', '2', '3'])
+            ->orderBy('acc_id')
             ->get();
+        $accIdNeraca = $akunNeracaRows->pluck('acc_id')->map(fn ($accId) => (string) $accId)->all();
 
-        $result = [];
-        foreach ($sections as $sec) {
-            $accounts = DB::table('tkacc_temaccountes as t')
-                ->leftJoin('acmst_accounts as a', 'a.acc_id', '=', 't.acc_id')
-                ->where('t.temp_dtl', $sec->temp_dtl)
-                ->select('t.acc_id', 'a.acc_name', 'a.acc_dk_status')
-                ->orderBy('t.acc_id')
-                ->get();
+        $saldoAwal = Jurnal::saldoAwalPerAkun($accIdNeraca, $this->tahun);
+        $arus      = Jurnal::arusPerAkun($accIdNeraca, $this->awalTahun, $this->tanggal);
 
-            $items = [];
-            $total = 0.0;
+        $sisi = ['1' => 'aktiva', '2' => 'hutang', '3' => 'ekuitas'];
+        $neraca = ['aktiva' => $kosong, 'hutang' => $kosong, 'ekuitas' => $kosong];
 
-            foreach ($accounts as $acc) {
-                $dk    = (string) ($acc->acc_dk_status ?? 'D');
-                $saldo = $this->saldoAkun((string) $acc->acc_id, $dk, $this->tanggal);
+        foreach ($akunNeracaRows as $akun) {
+            $accId    = (string) $akun->acc_id;
+            $graId    = (string) $akun->gra_id;
+            $dkStatus = (string) ($grupAkunList[$graId]->dk_status ?? 'D');
+            $saldoAwalAkun     = $saldoAwal[$accId] ?? ['debit' => 0.0, 'kredit' => 0.0];
+            $mutasi   = $arus[$accId]      ?? ['debit' => 0.0, 'kredit' => 0.0];
 
-                $items[] = [
-                    'acc_id'   => (string) $acc->acc_id,
-                    'acc_name' => (string) ($acc->acc_name ?? ''),
-                    'dk'       => $dk,
-                    'saldo'    => $saldo,
+            $saldoAwalNatural = $dkStatus === 'K' ? $saldoAwalAkun['kredit'] - $saldoAwalAkun['debit'] : $saldoAwalAkun['debit'] - $saldoAwalAkun['kredit'];
+            $mutasiNatural    = $dkStatus === 'K' ? $mutasi['kredit'] - $mutasi['debit'] : $mutasi['debit'] - $mutasi['kredit'];
+            $saldo            = $saldoAwalNatural + $mutasiNatural;
+            $aktif            = (string) ($akun->active_status ?? '1') === '1';
+
+            // Akun nonaktif tanpa saldo dan tanpa mutasi tidak perlu tampil.
+            if (!$aktif && abs($saldo) < 0.5 && abs($mutasi['debit']) < 0.5 && abs($mutasi['kredit']) < 0.5) {
+                continue;
+            }
+
+            $subgrupId = (string) ($akun->acc_group ?? '');
+            $kunciSisi = $sisi[$graId];
+            if (!isset($neraca[$kunciSisi]['subgrupList'][$subgrupId])) {
+                $neraca[$kunciSisi]['subgrupList'][$subgrupId] = [
+                    'id'       => $subgrupId,
+                    'desc'     => $subgrupNama[$subgrupId] ?? ($subgrupId === '' ? 'TANPA SUB-GRUP' : "GRUP {$subgrupId}"),
+                    'akunList' => [],
+                    'total'    => 0.0,
                 ];
-                $total += $saldo;
             }
-
-            $result[] = [
-                'temp_dtl' => (string) $sec->temp_dtl,
-                'desc'     => (string) $sec->temp_dtl_desc,
-                'gra_id'   => (string) ($sec->gra_id ?? ''),
-                'accounts' => $items,
-                'total'    => $total,
+            $neraca[$kunciSisi]['subgrupList'][$subgrupId]['akunList'][] = [
+                'acc_id'     => $accId,
+                'acc_name'   => (string) ($akun->acc_name ?? ''),
+                'aktif'      => $aktif,
+                'saldoAwal'  => $saldoAwalNatural,
+                'arusDebit'  => $mutasi['debit'],
+                'arusKredit' => $mutasi['kredit'],
+                'saldo'      => $saldo,
             ];
+            $neraca[$kunciSisi]['subgrupList'][$subgrupId]['total'] += $saldo;
+            $neraca[$kunciSisi]['total'] += $saldo;
         }
+        foreach ($neraca as &$sisiNeraca) {
+            $sisiNeraca['subgrupList'] = array_values($sisiNeraca['subgrupList']);
+        }
+        unset($sisiNeraca);
 
-        return $result;
+        $neraca['labaBerjalan'] = $this->hitungLabaBerjalan();
+        $neraca['totalPasiva']  = $neraca['hutang']['total'] + $neraca['ekuitas']['total'] + $neraca['labaBerjalan'];
+        $neraca['selisih']      = $neraca['aktiva']['total'] - $neraca['totalPasiva'];
+
+        return $neraca;
     }
 
-    private function totalSection(string $tempDtl): float
+    /** Σ (K − D) arus YTD semua akun grup PENDAPATAN (4) & BEBAN (5) — padanan NERACA2 / akun LRB. */
+    private function hitungLabaBerjalan(): float
     {
-        foreach ($this->sections as $sec) {
-            if ($sec['temp_dtl'] === $tempDtl) return (float) $sec['total'];
-        }
-        return 0;
-    }
+        $accIdLabaRugi = DB::table('acmst_accounts')
+            ->whereIn('gra_id', ['4', '5'])
+            ->pluck('acc_id')
+            ->map(fn ($accId) => (string) $accId)
+            ->all();
 
-    /**
-     * Laba Tahun Berjalan = LR YTD = Penjualan(L1.1) − HPP(L1.2) − Biaya(L1.3)
-     * dari Jan 1 sd tanggal cutoff.
-     */
-    #[Computed]
-    public function labaTahunBerjalan(): float
-    {
-        if ($this->tanggal === '') return 0;
-
-        $tahun     = (int) substr($this->tanggal, 0, 4);
-        $ytdStart  = sprintf('%04d-01-01', $tahun);
-        $ytdEnd    = $this->tanggal;
-
-        $totalPerSection = [];
-        foreach (['1', '2', '3'] as $dtl) {
-            $accs = DB::table('tkacc_temaccountes as t')
-                ->leftJoin('acmst_accounts as a', 'a.acc_id', '=', 't.acc_id')
-                ->where('t.temp_dtl', $dtl)
-                ->select('t.acc_id', 'a.acc_dk_status')->get();
-
-            $sum = 0.0;
-            foreach ($accs as $acc) {
-                $sum += $this->arusAkun(
-                    (string) $acc->acc_id,
-                    (string) ($acc->acc_dk_status ?? 'D'),
-                    $ytdStart, $ytdEnd
-                );
-            }
-            $totalPerSection[$dtl] = $sum;
+        $laba = 0.0;
+        foreach (Jurnal::arusPerAkun($accIdLabaRugi, $this->awalTahun, $this->tanggal) as $arus) {
+            $laba += $arus['kredit'] - $arus['debit'];
         }
 
-        // Penjualan − HPP − Biaya
-        return ($totalPerSection['1'] ?? 0) - ($totalPerSection['2'] ?? 0) - ($totalPerSection['3'] ?? 0);
+        return $laba;
     }
 
     #[Computed]
     public function totalAktiva(): float
     {
-        return $this->totalSection('4');
-    }
-
-    #[Computed]
-    public function totalHutang(): float
-    {
-        return $this->totalSection('5');
-    }
-
-    /** Ekuitas dari saldo akun + Laba Tahun Berjalan. */
-    #[Computed]
-    public function totalEkuitas(): float
-    {
-        return $this->totalSection('6') + $this->labaTahunBerjalan;
+        return (float) $this->laporan['aktiva']['total'];
     }
 
     #[Computed]
     public function totalPasiva(): float
     {
-        return $this->totalHutang + $this->totalEkuitas;
+        return (float) $this->laporan['totalPasiva'];
     }
 
     #[Computed]
     public function selisih(): float
     {
-        return $this->totalAktiva - $this->totalPasiva;
+        return (float) $this->laporan['selisih'];
     }
 
     #[Computed]
     public function isBalanced(): bool
     {
-        return abs($this->selisih) < 0.5; // toleransi pembulatan
+        return abs($this->selisih) < 0.5;
     }
 };
 ?>
 
-<div>
+<div x-data="{ tampilkanRincian: false }">
     <x-page-title
-        title="Laporan Neraca Beta · Masa Pengembangan"
-        subtitle="Posisi keuangan per tanggal cutoff. Aktiva harus seimbang dengan Hutang + Ekuitas + Laba Tahun Berjalan. Susunan section mengikuti template N1." />
+        title="Laporan Neraca"
+        subtitle="Posisi keuangan per tanggal cutoff: Aktiva berbanding Hutang + Ekuitas + Laba Tahun Berjalan. Disusun dari grup akun master, nilai dibaca langsung dari tabel transaksi." />
 
     <div class="w-full h-[calc(100vh-5rem)] flex flex-col bg-surface-soft dark:bg-gray-800">
         <div class="flex flex-col flex-1 min-h-0 px-6 pt-4 pb-6">
-            {{-- Notice masa pengembangan --}}
             <div class="p-4 mb-4 border rounded-lg border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700">
                 <div class="flex items-start gap-3">
                     <span class="text-xl leading-none">⚠️</span>
                     <div class="flex-1 text-sm text-amber-900 dark:text-amber-100">
-                        <p class="font-semibold">Laporan ini masih dalam masa pengembangan — verifikasi manual sebelum dipakai.</p>
+                        <p class="font-semibold">Verifikasi manual sebelum dipakai sebagai laporan resmi.</p>
                         <ul class="mt-2 ml-5 space-y-0.5 text-xs list-disc">
-                            <li><strong>Saldo awal tahun di <span class="font-mono">tktxn_saldoawalakuns</span> belum lengkap</strong> — banyak akun (Modal, Persediaan, Piutang awal, dll) masih nol. Akibatnya Aktiva ≠ Pasiva. Update via menu <em>Saldo Kas → Edit Saldo</em> (admin) atau jurnal modal awal.</li>
-                            <li><strong>Laba Tahun Berjalan</strong> diambil dari Laba-Rugi YTD (Penjualan − HPP − Biaya). Jika HPP otomatis belum akurat (stock opname belum rutin), Laba bisa salah → Ekuitas ikut salah.</li>
-                            <li><strong>Persediaan barang (akun 1141, dll)</strong> mengikuti pergerakan stok — masih ada potensi selisih akibat human error input penerimaan / pengeluaran (penamaan produk mirip).</li>
-                            <li>Validasi <em>"Selisih ⚠"</em> di kanan atas akan flag kalau tidak balance — pakai itu sebagai pemandu mencari root cause data yang masih kurang.</li>
-                            <li>Sumber data: <span class="font-mono">tkview_accounts_neraca</span> + <span class="font-mono">tktxn_saldoawalakuns</span>. Mapping section: template <span class="font-mono">N1</span>.</li>
+                            <li><strong>Saldo awal tahun</strong> diambil dari <span class="font-mono">tktxn_saldoawalakuns</span> tahun {{ $this->tahun }} (kedua sisi D dan K). Bila belum lengkap, neraca tidak akan seimbang.</li>
+                            <li><strong>Laba Tahun Berjalan</strong> = seluruh akun grup Pendapatan dan Beban s/d tanggal (termasuk HPP otomatis dari stok), bukan dari template Laba Rugi — bisa sedikit berbeda dari halaman Laba Rugi bila template tidak memuat semua akun.</li>
+                            <li>Susunan: grup akun master (Aktiva / Hutang / Ekuitas) dan sub-grup <span class="font-mono">acmst_accgroups</span>; template <span class="font-mono">N1</span>/<span class="font-mono">NWEB</span> tidak dipakai karena isinya hanya beberapa baris. Sumber data: <span class="font-mono">App\Support\Keuangan\Jurnal</span>.</li>
                         </ul>
                     </div>
                 </div>
@@ -218,162 +186,121 @@ new class extends Component {
 
             <div class="sticky z-30 px-4 py-3 bg-surface-soft border-b border-hairline top-20 dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                    <div class="w-full sm:w-52">
-                        <x-input-label for="tanggal" value="Tanggal Cutoff" class="mb-1 text-xs font-medium text-muted dark:text-gray-400" />
-                        <x-text-input id="tanggal" type="date" wire:model.live="tanggal" class="block w-full" />
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div class="w-48">
+                            <x-input-label for="tanggal" value="Per Tanggal" class="mb-1 text-xs font-medium text-muted dark:text-gray-400" />
+                            <x-text-input id="tanggal" type="date" wire:model.live="tanggal" class="block w-full" />
+                        </div>
+                        <label class="flex items-center gap-2 pb-2 text-sm cursor-pointer select-none text-body dark:text-gray-200">
+                            <input type="checkbox" x-model="tampilkanRincian" class="w-4 h-4 rounded border-gray-300 text-brand-green focus:ring-brand-green/40 dark:border-gray-600 dark:bg-gray-900">
+                            Tampilkan saldo awal &amp; mutasi
+                        </label>
                     </div>
 
-                    @if ($tanggal !== '')
-                        <div class="grid grid-cols-3 gap-3 text-right">
-                            <div class="px-3 py-2 border rounded-lg bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
-                                <div class="text-[10px] tracking-wider text-blue-700 uppercase dark:text-blue-300">Total Aktiva</div>
-                                <div class="font-mono text-sm font-bold text-blue-800 dark:text-blue-200">
-                                    {{ number_format($this->totalAktiva, 0, ',', '.') }}
-                                </div>
+                    <div class="grid grid-cols-3 gap-3 text-right">
+                        <div class="px-3 py-2 border rounded-lg bg-surface-soft border-hairline dark:bg-gray-800/40 dark:border-gray-700">
+                            <div class="text-[10px] tracking-wider text-muted uppercase">Total Aktiva</div>
+                            <div class="font-mono text-sm font-bold text-body dark:text-gray-100">{{ number_format($this->totalAktiva, 0, ',', '.') }}</div>
+                        </div>
+                        <div class="px-3 py-2 border rounded-lg bg-surface-soft border-hairline dark:bg-gray-800/40 dark:border-gray-700">
+                            <div class="text-[10px] tracking-wider text-muted uppercase">Total Pasiva</div>
+                            <div class="font-mono text-sm font-bold text-body dark:text-gray-100">{{ number_format($this->totalPasiva, 0, ',', '.') }}</div>
+                        </div>
+                        <div class="px-3 py-2 border rounded-lg {{ $this->isBalanced ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 'bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800' }}">
+                            <div class="text-[10px] tracking-wider uppercase {{ $this->isBalanced ? 'text-emerald-700 dark:text-emerald-300' : 'text-error dark:text-rose-300' }}">
+                                {{ $this->isBalanced ? 'Seimbang' : 'Selisih' }}
                             </div>
-                            <div class="px-3 py-2 border rounded-lg bg-purple-50 border-purple-200 dark:bg-purple-900/20 dark:border-purple-800">
-                                <div class="text-[10px] tracking-wider text-purple-700 uppercase dark:text-purple-300">Total Pasiva</div>
-                                <div class="font-mono text-sm font-bold text-purple-800 dark:text-purple-200">
-                                    {{ number_format($this->totalPasiva, 0, ',', '.') }}
-                                </div>
-                            </div>
-                            <div class="px-3 py-2 border rounded-lg {{ $this->isBalanced ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 'bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800' }}">
-                                <div class="text-[10px] tracking-wider uppercase {{ $this->isBalanced ? 'text-emerald-700 dark:text-emerald-300' : 'text-error dark:text-rose-300' }}">
-                                    {{ $this->isBalanced ? 'Balanced' : 'Selisih' }}
-                                </div>
-                                <div class="font-mono text-sm font-bold {{ $this->isBalanced ? 'text-emerald-800 dark:text-emerald-200' : 'text-rose-800 dark:text-rose-200' }}">
-                                    @if ($this->isBalanced)
-                                        ✓ {{ number_format(0, 0) }}
-                                    @else
-                                        {{ number_format($this->selisih, 0, ',', '.') }}
-                                    @endif
-                                </div>
+                            <div class="font-mono text-sm font-bold {{ $this->isBalanced ? 'text-emerald-800 dark:text-emerald-200' : 'text-rose-800 dark:text-rose-200' }}">
+                                {{ $this->isBalanced ? '✓' : number_format($this->selisih, 0, ',', '.') }}
                             </div>
                         </div>
-                    @endif
+                    </div>
                 </div>
             </div>
 
             <div class="mt-4 flex flex-col flex-1 min-h-0 bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
-                <div class="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-t-2xl">
+                <div class="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-t-2xl" wire:loading.class="opacity-50">
                     <table class="min-w-full text-sm">
                         <thead class="sticky top-0 z-10 text-muted bg-surface-soft dark:bg-gray-800 dark:text-gray-200">
                             <tr class="text-left">
                                 <th class="px-3 py-2 font-semibold w-28">KODE</th>
                                 <th class="px-3 py-2 font-semibold">URAIAN</th>
-                                <th class="px-3 py-2 font-semibold w-48 text-right">SALDO</th>
+                                <th class="px-3 py-2 font-semibold w-40 text-right" x-show="tampilkanRincian">SALDO AWAL</th>
+                                <th class="px-3 py-2 font-semibold w-36 text-right" x-show="tampilkanRincian">DEBIT YTD</th>
+                                <th class="px-3 py-2 font-semibold w-36 text-right" x-show="tampilkanRincian">KREDIT YTD</th>
+                                <th class="px-3 py-2 font-semibold w-44 text-right">SALDO</th>
                             </tr>
                         </thead>
                         <tbody class="text-body divide-y divide-hairline dark:divide-gray-700 dark:text-gray-200">
-                            @if ($tanggal === '')
-                                <tr><td colspan="3" class="px-4 py-12 text-center text-muted dark:text-gray-400">
-                                    Atur tanggal cutoff untuk menampilkan neraca.
-                                </td></tr>
-                            @else
-                                @foreach ($this->sections as $sec)
-                                    @php
-                                        $isAktiva = $sec['temp_dtl'] === '4';
-                                        $isHutang = $sec['temp_dtl'] === '5';
-                                        $isEkuitas = $sec['temp_dtl'] === '6';
-                                        $secColor = $isAktiva ? 'bg-blue-100 dark:bg-blue-900/30'
-                                            : ($isHutang ? 'bg-amber-100 dark:bg-amber-900/30'
-                                            : 'bg-purple-100 dark:bg-purple-900/30');
-                                    @endphp
-                                    <tr wire:key="neraca-sec-{{ $sec['temp_dtl'] ?? $loop->index }}" class="{{ $secColor }}">
-                                        <td colspan="2" class="px-3 py-2 text-xs font-bold tracking-wider uppercase">
-                                            {{ $sec['desc'] }}
-                                        </td>
-                                        <td class="px-3 py-2"></td>
+                            @foreach ([['kunci' => 'aktiva', 'judul' => 'AKTIVA'], ['kunci' => 'hutang', 'judul' => 'HUTANG'], ['kunci' => 'ekuitas', 'judul' => 'EKUITAS']] as $sisi)
+                                @php $sisiNeraca = $this->laporan[$sisi['kunci']]; @endphp
+                                <tr wire:key="nrc-sisi-{{ $sisi['kunci'] }}" class="bg-surface-soft dark:bg-gray-800">
+                                    <td colspan="6" class="px-3 py-2 text-xs font-bold tracking-wider uppercase">{{ $sisi['judul'] }}</td>
+                                </tr>
+                                @forelse ($sisiNeraca['subgrupList'] as $subgrup)
+                                    <tr wire:key="nrc-sub-{{ $sisi['kunci'] }}-{{ $subgrup['id'] }}" class="bg-surface-soft/60 dark:bg-gray-800/60">
+                                        <td colspan="6" class="px-3 py-1.5 pl-6 text-xs font-semibold uppercase">{{ $subgrup['desc'] }}</td>
                                     </tr>
-                                    @forelse ($sec['accounts'] as $acc)
-                                        <tr wire:key="neraca-acc-{{ $sec['temp_dtl'] ?? '' }}-{{ $acc['acc_id'] ?? $loop->index }}" class="hover:bg-surface-soft dark:hover:bg-gray-800/60">
-                                            <td class="px-3 py-1.5 font-mono text-xs">{{ $acc['acc_id'] }}</td>
-                                            <td class="px-3 py-1.5 text-xs">
-                                                {{ $acc['acc_name'] ?: '—' }}
-                                                @if ($acc['dk'] === 'D')
-                                                    <span class="px-1 ml-1 text-[9px] rounded bg-blue-100 text-blue-700">D</span>
-                                                @elseif ($acc['dk'] === 'K')
-                                                    <span class="px-1 ml-1 text-[9px] rounded bg-purple-100 text-purple-700">K</span>
-                                                @endif
+                                    @foreach ($subgrup['akunList'] as $akun)
+                                        <tr wire:key="nrc-acc-{{ $akun['acc_id'] }}" class="hover:bg-surface-soft dark:hover:bg-gray-800/60 {{ $akun['aktif'] ? '' : 'text-muted' }}">
+                                            <td class="px-3 py-1.5 font-mono text-xs">{{ $akun['acc_id'] }}</td>
+                                            <td class="px-3 py-1.5 pl-9 text-sm">
+                                                {{ $akun['acc_name'] ?: '—' }}
+                                                @unless ($akun['aktif']) <span class="px-1 ml-1 text-[9px] rounded bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300">nonaktif</span> @endunless
                                             </td>
-                                            <td class="px-3 py-1.5 font-mono text-sm text-right {{ $acc['saldo'] < 0 ? 'text-red-600' : '' }}">
-                                                @if (abs($acc['saldo']) > 0.001)
-                                                    {{ number_format($acc['saldo'], 0, ',', '.') }}
-                                                @else
-                                                    <span class="text-gray-300">—</span>
-                                                @endif
+                                            <td class="px-3 py-1.5 font-mono text-xs text-right text-muted" x-show="tampilkanRincian">{{ number_format($akun['saldoAwal'], 0, ',', '.') }}</td>
+                                            <td class="px-3 py-1.5 font-mono text-xs text-right text-muted" x-show="tampilkanRincian">{{ number_format($akun['arusDebit'], 0, ',', '.') }}</td>
+                                            <td class="px-3 py-1.5 font-mono text-xs text-right text-muted" x-show="tampilkanRincian">{{ number_format($akun['arusKredit'], 0, ',', '.') }}</td>
+                                            <td class="px-3 py-1.5 font-mono text-sm text-right {{ $akun['saldo'] < 0 ? 'text-error dark:text-rose-300' : '' }}">
+                                                @if (abs($akun['saldo']) > 0.001) {{ number_format($akun['saldo'], 0, ',', '.') }} @else <span class="text-gray-300">—</span> @endif
                                             </td>
                                         </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="3" class="px-3 py-2 text-xs italic text-muted-soft">
-                                                (Tidak ada akun di section ini)
-                                            </td>
-                                        </tr>
-                                    @endforelse
-                                    <tr class="font-semibold bg-surface-soft dark:bg-gray-800/40">
-                                        <td colspan="2" class="px-3 py-1.5 text-xs uppercase">
-                                            Subtotal {{ $sec['desc'] }}
-                                        </td>
-                                        <td class="px-3 py-1.5 font-mono text-sm text-right">
-                                            {{ number_format($sec['total'], 0, ',', '.') }}
-                                        </td>
+                                    @endforeach
+                                    <tr wire:key="nrc-subtotal-{{ $sisi['kunci'] }}-{{ $subgrup['id'] }}" class="font-semibold bg-surface-soft/40 dark:bg-gray-800/40">
+                                        <td></td>
+                                        <td class="px-3 py-1.5 pl-6 text-xs uppercase">Subtotal {{ $subgrup['desc'] }}</td>
+                                        <td colspan="3" x-show="tampilkanRincian"></td>
+                                        <td class="px-3 py-1.5 font-mono text-sm text-right">{{ number_format($subgrup['total'], 0, ',', '.') }}</td>
                                     </tr>
+                                @empty
+                                    <tr wire:key="nrc-kosong-{{ $sisi['kunci'] }}">
+                                        <td colspan="6" class="px-3 py-2 pl-6 text-xs italic text-muted-soft">(Tidak ada akun)</td>
+                                    </tr>
+                                @endforelse
 
-                                    @if ($isEkuitas)
-                                        <tr class="hover:bg-surface-soft dark:hover:bg-gray-800/60">
-                                            <td class="px-3 py-1.5 text-xs italic text-muted"></td>
-                                            <td class="px-3 py-1.5 text-xs italic text-muted dark:text-gray-300">
-                                                Laba Tahun Berjalan
-                                                <span class="ml-1 text-[10px] text-muted-soft">(YTD dari Laba Rugi)</span>
-                                            </td>
-                                            <td class="px-3 py-1.5 font-mono text-sm text-right {{ $this->labaTahunBerjalan < 0 ? 'text-red-600' : '' }}">
-                                                {{ number_format($this->labaTahunBerjalan, 0, ',', '.') }}
-                                            </td>
-                                        </tr>
-                                        <tr class="font-bold bg-purple-50 dark:bg-purple-900/20">
-                                            <td colspan="2" class="px-3 py-1.5 text-sm uppercase">
-                                                Total Ekuitas (incl. Laba Tahun Berjalan)
-                                            </td>
-                                            <td class="px-3 py-1.5 font-mono text-sm text-right text-purple-800 dark:text-purple-200">
-                                                {{ number_format($this->totalEkuitas, 0, ',', '.') }}
-                                            </td>
-                                        </tr>
-                                    @endif
-                                @endforeach
+                                @if ($sisi['kunci'] === 'ekuitas')
+                                    <tr class="font-semibold bg-blue-50/60 dark:bg-blue-900/10">
+                                        <td class="px-3 py-1.5 font-mono text-xs text-muted-soft">LRB</td>
+                                        <td class="px-3 py-1.5 pl-6 text-sm">Laba (Rugi) Tahun Berjalan s/d {{ \Carbon\Carbon::parse($tanggal)->format('d/m/Y') }}</td>
+                                        <td colspan="3" x-show="tampilkanRincian"></td>
+                                        <td class="px-3 py-1.5 font-mono text-sm text-right {{ $this->laporan['labaBerjalan'] < 0 ? 'text-error dark:text-rose-300' : 'text-blue-800 dark:text-blue-200' }}">{{ number_format($this->laporan['labaBerjalan'], 0, ',', '.') }}</td>
+                                    </tr>
+                                @endif
 
-                                {{-- Grand totals --}}
-                                <tr><td colspan="3" class="h-2"></td></tr>
-                                <tr class="font-bold bg-blue-100 dark:bg-blue-900/30">
-                                    <td colspan="2" class="px-3 py-2 text-sm uppercase">
-                                        Total Aktiva
-                                    </td>
-                                    <td class="px-3 py-2 font-mono text-base text-right text-blue-800 dark:text-blue-200">
-                                        {{ number_format($this->totalAktiva, 0, ',', '.') }}
+                                <tr class="font-bold bg-blue-50 dark:bg-blue-900/20">
+                                    <td></td>
+                                    <td class="px-3 py-2 text-sm uppercase">Total {{ $sisi['judul'] }}@if ($sisi['kunci'] === 'ekuitas') <span class="text-[10px] font-normal normal-case text-muted">termasuk laba tahun berjalan</span>@endif</td>
+                                    <td colspan="3" x-show="tampilkanRincian"></td>
+                                    <td class="px-3 py-2 font-mono text-sm text-right text-blue-800 dark:text-blue-200">
+                                        {{ number_format($sisiNeraca['total'] + ($sisi['kunci'] === 'ekuitas' ? $this->laporan['labaBerjalan'] : 0), 0, ',', '.') }}
                                     </td>
                                 </tr>
-                                <tr class="font-bold bg-purple-100 dark:bg-purple-900/30">
-                                    <td colspan="2" class="px-3 py-2 text-sm uppercase">
-                                        Total Pasiva (Hutang + Ekuitas)
-                                    </td>
-                                    <td class="px-3 py-2 font-mono text-base text-right text-purple-800 dark:text-purple-200">
-                                        {{ number_format($this->totalPasiva, 0, ',', '.') }}
-                                    </td>
+                            @endforeach
+
+                            <tr class="font-bold {{ $this->isBalanced ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-rose-50 dark:bg-rose-900/20' }}">
+                                <td></td>
+                                <td class="px-3 py-2 text-sm uppercase">Total Pasiva (Hutang + Ekuitas)</td>
+                                <td colspan="3" x-show="tampilkanRincian"></td>
+                                <td class="px-3 py-2 font-mono text-base text-right">{{ number_format($this->totalPasiva, 0, ',', '.') }}</td>
+                            </tr>
+                            @unless ($this->isBalanced)
+                                <tr class="italic bg-rose-50/60 dark:bg-rose-900/10">
+                                    <td></td>
+                                    <td class="px-3 py-2 text-xs text-error dark:text-rose-300">Selisih Aktiva − Pasiva (periksa saldo awal tahun dan akun tanpa grup)</td>
+                                    <td colspan="3" x-show="tampilkanRincian"></td>
+                                    <td class="px-3 py-2 font-mono text-sm text-right text-error dark:text-rose-300">{{ number_format($this->selisih, 0, ',', '.') }}</td>
                                 </tr>
-                                @unless ($this->isBalanced)
-                                    <tr class="font-bold bg-rose-100 dark:bg-rose-900/30">
-                                        <td colspan="2" class="px-3 py-2 text-sm uppercase">
-                                            Selisih (Aktiva − Pasiva)
-                                            <span class="ml-2 text-[10px] font-normal text-error dark:text-rose-300">
-                                                ⚠ Neraca tidak balance — cek jurnal yg belum berimbang.
-                                            </span>
-                                        </td>
-                                        <td class="px-3 py-2 font-mono text-base text-right text-rose-800 dark:text-rose-200">
-                                            {{ number_format($this->selisih, 0, ',', '.') }}
-                                        </td>
-                                    </tr>
-                                @endunless
-                            @endif
+                            @endunless
                         </tbody>
                     </table>
                 </div>
