@@ -66,13 +66,13 @@ new class extends Component {
     public function cekSinkron(): array
     {
         $didokumentasikan = collect($this->katalog())
-            ->flatMap(fn($k) => collect($k[1])->pluck(0))
+            ->flatMap(fn($bab) => collect($bab[1])->pluck(0))
             ->all();
 
         $adaDiTrait = [];
-        foreach ((new ReflectionClass(\App\Http\Traits\BPJS\ApotekTrait::class))->getMethods() as $m) {
-            if (str_starts_with($m->getName(), 'apotek_')) {
-                $adaDiTrait[] = $m->getName();
+        foreach ((new ReflectionClass(\App\Http\Traits\BPJS\ApotekTrait::class))->getMethods() as $method) {
+            if (str_starts_with($method->getName(), 'apotek_')) {
+                $adaDiTrait[] = $method->getName();
             }
         }
 
@@ -185,8 +185,8 @@ new class extends Component {
 
         $dipakai = array_keys($this->dipakai());
         $out = [];
-        foreach ((new ReflectionClass(\App\Http\Traits\BPJS\ApotekTrait::class))->getMethods() as $m) {
-            $nama = $m->getName();
+        foreach ((new ReflectionClass(\App\Http\Traits\BPJS\ApotekTrait::class))->getMethods() as $method) {
+            $nama = $method->getName();
             if (! str_starts_with($nama, 'apotek_') || in_array($nama, $dipakai, true)) {
                 continue;
             }
@@ -195,7 +195,7 @@ new class extends Component {
 
         // Urutkan mengikuti urutan alasan di atas supaya pengelompokan logis, sisanya di belakang.
         $urutan = array_flip(array_keys($alasan));
-        usort($out, fn($a, $b) => ($urutan[$a[0]] ?? 999) <=> ($urutan[$b[0]] ?? 999));
+        usort($out, fn($kiri, $kanan) => ($urutan[$kiri[0]] ?? 999) <=> ($urutan[$kanan[0]] ?? 999));
 
         return $out;
     }
@@ -499,9 +499,9 @@ new class extends Component {
                         </p>
 
                         <div style="display:flex;flex-direction:column;gap:14px">
-                            @foreach ($alur as [$no, $judul, $method, $catatan])
+                            @foreach ($alur as [$nomor, $judul, $method, $catatan])
                                 <div class="ds-card-outline" style="display:flex;gap:16px;align-items:flex-start">
-                                    <span class="ds-display-lg" style="color:var(--primary);line-height:1;min-width:28px">{{ $no }}</span>
+                                    <span class="ds-display-lg" style="color:var(--primary);line-height:1;min-width:28px">{{ $nomor }}</span>
                                     <div style="flex:1">
                                         <div class="ds-title-sm" style="color:var(--ink)">{{ $judul }}</div>
                                         <code class="ds-code" style="display:inline-block;margin:6px 0;color:var(--primary)">{{ $method }}</code>
