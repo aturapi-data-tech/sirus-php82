@@ -351,12 +351,7 @@ new class extends Component {
                                     <td class="px-3 py-2"><x-text-input wire:model.blur="bahanList.{{ $indeks }}.jho" class="w-14 !py-1" :disabled="$isFormLocked" /></td>
                                     @unless ($isFormLocked)
                                         <td class="px-3 py-2">
-                                            <button type="button" wire:click="removeProduct({{ $indeks }})"
-                                                class="text-error-deep hover:text-red-700 dark:text-red-300" title="Hapus bahan">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
+                                            <x-hapus-button wire:click="removeProduct({{ $indeks }})" title="Hapus obat" confirm="Hapus obat ini dari klaim?" />
                                         </td>
                                     @endunless
                                 </tr>
