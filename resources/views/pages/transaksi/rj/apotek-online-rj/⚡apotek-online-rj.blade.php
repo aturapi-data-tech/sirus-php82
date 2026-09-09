@@ -689,5 +689,5 @@ new class extends Component {
     </div>
 
     {{-- Modal Daftarkan & Kirim (Langkah 2) --}}
-    <livewire:pages::transaksi.rj.apotek-online-rj.apotek-online-rj-actions />
+    <livewire:pages::transaksi.rj.apotek-online-rj.apotek-online-rj-actions wire:key="apotek-online-rj-actions" />
 </div>

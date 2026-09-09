@@ -72,14 +72,14 @@ new class extends Component {
     public function tarikData(): void
     {
         try {
-            $d = Carbon::createFromFormat('m/Y', trim($this->periode));
+            $tanggalPeriode = Carbon::createFromFormat('m/Y', trim($this->periode));
         } catch (\Throwable) {
             $this->dispatch('toast', type: 'error', message: 'Periode harus format mm/yyyy.');
             return;
         }
 
-        $bulan = (int) $d->format('m');
-        $tahun = $d->format('Y');
+        $bulan = (int) $tanggalPeriode->format('m');
+        $tahun = $tanggalPeriode->format('Y');
 
         $hasil = $this->apotek_monitoring_klaim($bulan, $tahun, $this->jenisObat, $this->status);
         $body = $hasil->getData(true);
@@ -108,17 +108,17 @@ new class extends Component {
     /** Baris tampil sesudah filter pencarian di memori (data sudah di tangan). */
     public function barisTampil(): array
     {
-        $kw = trim(mb_strtolower($this->cari));
-        if ($kw === '') {
+        $keyword = trim(mb_strtolower($this->cari));
+        if ($keyword === '') {
             return $this->listSep;
         }
 
-        return array_values(array_filter($this->listSep, function ($b) use ($kw) {
+        return array_values(array_filter($this->listSep, function ($klaim) use ($keyword) {
             $gabung = mb_strtolower(implode(' ', [
-                $b['namapeserta'] ?? '', $b['nokartu'] ?? '',
-                $b['noresep'] ?? '', $b['nosepapotek'] ?? '', $b['nosepaasal'] ?? '',
+                $klaim['namapeserta'] ?? '', $klaim['nokartu'] ?? '',
+                $klaim['noresep'] ?? '', $klaim['nosepapotek'] ?? '', $klaim['nosepaasal'] ?? '',
             ]));
-            return str_contains($gabung, $kw);
+            return str_contains($gabung, $keyword);
         }));
     }
 
@@ -140,7 +140,7 @@ new class extends Component {
         return response()->streamDownload(function () use ($baris, $rekap, $periode, $jenis, $statusTeks) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM agar Excel membaca UTF-8
-            $tulis = fn(array $k) => fputcsv($out, $k, ';');
+            $tulis = fn(array $kolom) => fputcsv($out, $kolom, ';');
             $kosong = fn() => fputcsv($out, [], ';');
 
             $tulis(['Laporan Klaim Apotek Online']);
@@ -150,11 +150,11 @@ new class extends Component {
             $tulis(['Total Biaya Disetujui', $rekap['totalbiayasetuju'] ?? 0]);
             $kosong();
             $tulis(['No SEP Apotek', 'No SEP Asal', 'No Kartu', 'Nama Peserta', 'No Resep', 'Jenis Obat', 'Tgl Pelayanan', 'Biaya Pengajuan', 'Biaya Disetujui']);
-            foreach ($baris as $b) {
+            foreach ($baris as $klaim) {
                 $tulis([
-                    $b['nosepapotek'] ?? '', $b['nosepaasal'] ?? '', $b['nokartu'] ?? '',
-                    $b['namapeserta'] ?? '', $b['noresep'] ?? '', $b['jnsobat'] ?? '',
-                    $b['tglpelayanan'] ?? '', $b['biayapengajuan'] ?? 0, $b['biayasetuju'] ?? 0,
+                    $klaim['nosepapotek'] ?? '', $klaim['nosepaasal'] ?? '', $klaim['nokartu'] ?? '',
+                    $klaim['namapeserta'] ?? '', $klaim['noresep'] ?? '', $klaim['jnsobat'] ?? '',
+                    $klaim['tglpelayanan'] ?? '', $klaim['biayapengajuan'] ?? 0, $klaim['biayasetuju'] ?? 0,
                 ]);
             }
             fclose($out);
@@ -275,26 +275,26 @@ new class extends Component {
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ($this->barisTampil() as $b)
+                            @forelse ($this->barisTampil() as $klaim)
                                 <tr class="border-b border-hairline last:border-0 dark:border-gray-800">
                                     <td class="px-4 py-3">
-                                        <div class="font-medium text-ink dark:text-gray-100">{{ $b['namapeserta'] ?? '-' }}</div>
-                                        <div class="font-mono text-xs text-muted dark:text-gray-400">{{ $b['nokartu'] ?? '-' }}</div>
+                                        <div class="font-medium text-ink dark:text-gray-100">{{ $klaim['namapeserta'] ?? '-' }}</div>
+                                        <div class="font-mono text-xs text-muted dark:text-gray-400">{{ $klaim['nokartu'] ?? '-' }}</div>
                                     </td>
                                     <td class="px-4 py-3 font-mono text-xs">
-                                        <div class="text-ink dark:text-gray-200">{{ $b['nosepapotek'] ?? '-' }}</div>
-                                        <div class="text-muted-soft">← {{ $b['nosepaasal'] ?? '-' }}</div>
+                                        <div class="text-ink dark:text-gray-200">{{ $klaim['nosepapotek'] ?? '-' }}</div>
+                                        <div class="text-muted-soft">← {{ $klaim['nosepaasal'] ?? '-' }}</div>
                                     </td>
-                                    <td class="px-4 py-3">{{ $b['noresep'] ?? '-' }}</td>
+                                    <td class="px-4 py-3">{{ $klaim['noresep'] ?? '-' }}</td>
                                     <td class="px-4 py-3">
-                                        <div class="text-body dark:text-gray-200">{{ $b['jnsobat'] ?? '-' }}</div>
-                                        <div class="text-xs text-muted-soft">{{ $b['tglpelayanan'] ?? '-' }}</div>
+                                        <div class="text-body dark:text-gray-200">{{ $klaim['jnsobat'] ?? '-' }}</div>
+                                        <div class="text-xs text-muted-soft">{{ $klaim['tglpelayanan'] ?? '-' }}</div>
                                     </td>
                                     <td class="px-4 py-3 font-mono text-right text-body dark:text-gray-200">
-                                        Rp{{ number_format((float) ($b['biayapengajuan'] ?? 0), 0, ',', '.') }}
+                                        Rp{{ number_format((float) ($klaim['biayapengajuan'] ?? 0), 0, ',', '.') }}
                                     </td>
-                                    <td class="px-4 py-3 font-mono text-right {{ (float) ($b['biayasetuju'] ?? 0) > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted-soft' }}">
-                                        Rp{{ number_format((float) ($b['biayasetuju'] ?? 0), 0, ',', '.') }}
+                                    <td class="px-4 py-3 font-mono text-right {{ (float) ($klaim['biayasetuju'] ?? 0) > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted-soft' }}">
+                                        Rp{{ number_format((float) ($klaim['biayasetuju'] ?? 0), 0, ',', '.') }}
                                     </td>
                                 </tr>
                             @empty
