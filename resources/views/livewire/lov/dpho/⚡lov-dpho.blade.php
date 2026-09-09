@@ -119,12 +119,12 @@ new class extends Component {
             return;
         }
 
-        $up = mb_strtoupper($keyword);
+        $keywordUpper = mb_strtoupper($keyword);
         $cocok = [];
         foreach ($katalog as $obat) {
             $kode = (string) ($obat['kodeobat'] ?? '');
             $nama = (string) ($obat['namaobat'] ?? '');
-            if (mb_strpos(mb_strtoupper($kode . ' ' . $nama), $up) === false) {
+            if (mb_strpos(mb_strtoupper($kode . ' ' . $nama), $keywordUpper) === false) {
                 continue;
             }
 
