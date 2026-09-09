@@ -365,7 +365,8 @@ TXT,
 // calculateRICosts() pernah lolos persis karena itu.
 //
 // SALDO KAS AMAN dari perubahan pos biaya: akun kas hanya muncul di cabang BAYAR
-// (rumus halaman Cek Saldo Kas = txn_acc_k = akun, SUM(K - D)). Yang bergeser
+// (rumus halaman Cek Saldo Kas = rumus form 6i via App\Support\Keuangan\SaldoKas:
+// select langsung 12 cabang tabel ber-kas, txn_acc = akun, SUM(D - K), dipotong per shift). Yang bergeser
 // adalah sisi PENDAPATAN & PIUTANG.
 //
 // Cabang jurnal baru WAJIB memakai EXISTS ke tabel sumbernya — cabang lama

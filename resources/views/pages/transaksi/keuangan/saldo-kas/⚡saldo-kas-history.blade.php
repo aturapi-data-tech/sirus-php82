@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Support\Keuangan\SaldoKas;
 
 new class extends Component {
     use WithRenderVersioningTrait;
@@ -172,36 +173,11 @@ new class extends Component {
     }
 
     /**
-     * Saldo per tanggal (sama formula dgn parent).
+     * Saldo per tanggal (seluruh shift) — rumus 6i, sama dengan induk (App\Support\Keuangan\SaldoKas).
      */
     private function hitungSaldoTanggal(string $tanggal): float
     {
-        $tahun = (int) substr($tanggal, 0, 4);
-
-        $sa = DB::table('tktxn_saldoawalakuns')
-            ->where('acc_id', $this->accId)->where('sa_year', (string) $tahun)->first();
-
-        $saldoAwalTahun = $this->accDkStatus === 'D'
-            ? (float) ($sa->sa_acc_d ?? 0)
-            : (float) ($sa->sa_acc_k ?? 0);
-
-        if ($this->accDkStatus === 'D') {
-            $arus = (float) DB::table('tkview_accounts')
-                ->where('txn_acc_k', $this->accId)
-                ->whereBetween(DB::raw("TO_CHAR(txn_date,'YYYY-MM-DD')"), [
-                    sprintf('%04d-01-01', $tahun), $tanggal,
-                ])
-                ->sum(DB::raw('NVL(txn_k,0) - NVL(txn_d,0)'));
-        } else {
-            $arus = (float) DB::table('tkview_accounts')
-                ->where('txn_acc', $this->accId)
-                ->whereBetween(DB::raw("TO_CHAR(txn_date,'YYYY-MM-DD')"), [
-                    sprintf('%04d-01-01', $tahun), $tanggal,
-                ])
-                ->sum(DB::raw('NVL(txn_d,0) - NVL(txn_k,0)'));
-        }
-
-        return $saldoAwalTahun + $arus;
+        return SaldoKas::hitung($this->accId, $this->accDkStatus, $tanggal);
     }
 
     /**
@@ -288,35 +264,26 @@ new class extends Component {
             return collect();
         }
 
-        // Untuk D-acc: filter txn_acc_k = acc, "counter row" → txn_acc = lawan, txn_d = lawan didebit (kita dikredit), txn_k = lawan dikredit (kita didebit)
-        // Untuk K-acc: filter txn_acc = acc, langsung "row tentang akun kita".
-        if ($this->accDkStatus === 'D') {
-            $q = DB::table('tkview_accounts as v')
-                ->leftJoin('acmst_accounts as a', 'a.acc_id', '=', 'v.txn_acc')
-                ->select(
-                    'v.txn_date', 'v.txn_name',
-                    'v.txn_acc as lawan_acc_id', 'a.acc_name as lawan_acc_name',
-                    DB::raw('NVL(v.txn_k,0) AS debit_kita'),
-                    DB::raw('NVL(v.txn_d,0) AS kredit_kita'),
-                )
-                ->where('v.txn_acc_k', $this->accId);
-        } else {
-            $q = DB::table('tkview_accounts as v')
-                ->leftJoin('acmst_accounts as a', 'a.acc_id', '=', 'v.txn_acc_k')
-                ->select(
-                    'v.txn_date', 'v.txn_name',
-                    'v.txn_acc_k as lawan_acc_id', 'a.acc_name as lawan_acc_name',
-                    DB::raw('NVL(v.txn_d,0) AS debit_kita'),
-                    DB::raw('NVL(v.txn_k,0) AS kredit_kita'),
-                )
-                ->where('v.txn_acc', $this->accId);
-        }
+        // Sisi 6i (SaldoKas::sisi): akun D dibaca dari baris txn_acc (debit kita = txn_d),
+        // akun K dari baris txn_acc_k (debit kita = txn_k). Lawan = kolom akun satunya.
+        $sisi = SaldoKas::sisi($this->accDkStatus);
 
-        $rows = $q->whereBetween(DB::raw("TO_CHAR(v.txn_date,'YYYY-MM-DD')"), [
-                    $this->dariTanggal, $this->sampaiTanggal,
-                ])
-                ->orderBy('v.txn_date')
-                ->get();
+        // Tanpa JOIN ke acmst_accounts: view berlapis ini sudah sangat besar, join di atasnya
+        // memicu ORA-04031 (shared pool). Nama akun lawan diambil terpisah lewat satu query kecil.
+        $rows = SaldoKas::query($this->accId, $this->accDkStatus, $this->dariTanggal, $this->sampaiTanggal)
+            ->select(
+                'txn_date', 'txn_name', 'shift',
+                $sisi['lawan'] . ' as lawan_acc_id',
+                DB::raw("NVL({$sisi['debit']},0) AS debit_kita"),
+                DB::raw("NVL({$sisi['kredit']},0) AS kredit_kita"),
+            )
+            ->orderBy('txn_date')
+            ->get();
+
+        $namaLawan = DB::table('acmst_accounts')
+            ->whereIn('acc_id', $rows->pluck('lawan_acc_id')->filter()->unique()->values()->all() ?: ['-'])
+            ->pluck('acc_name', 'acc_id');
+        $rows->each(fn ($r) => $r->lawan_acc_name = $namaLawan[$r->lawan_acc_id] ?? null);
 
         // Hitung running saldo
         $saldo = $this->saldoAwalPeriode;
@@ -341,45 +308,40 @@ new class extends Component {
             ->get();
     }
 
-    /** Resolve nomor shift dari jam transaksi (mirror `time BETWEEN shift_start AND shift_end`, fallback '1'). */
-    private function resolveShift(string $txnDate): string
-    {
-        $jam = Carbon::parse($txnDate)->format('H:i:s');
-        foreach ($this->shiftDefs as $def) {
-            $mulai   = (string) $def->shift_start;
-            $selesai = (string) $def->shift_end;
-            $cocok = $mulai <= $selesai
-                ? ($jam >= $mulai && $jam <= $selesai)          // rentang normal
-                : ($jam >= $mulai || $jam <= $selesai);         // rentang melewati tengah malam
-            if ($cocok) {
-                return (string) $def->shift;
-            }
-        }
-        return '1';
-    }
-
     /**
      * Kelompokkan transaksi harian per shift (urut kemunculan/kronologis), dengan subtotal & saldo per shift.
      * Dipakai tampilan mode 'shift' & cetak rekap per shift.
+     * Shift diambil dari KOLOM shift jurnal (yang dicatat saat transaksi), bukan dari jam transaksi —
+     * sama dengan potongan `yyyymmdd||shift` di form 6i dan filter "s/d Shift" di halaman induk.
      */
     private function susunKelompokShift(): array
     {
         $perShift = [];
         foreach ($this->rows as $row) {
-            $perShift[$this->resolveShift($row->txn_date)][] = $row;
+            $perShift[(string) ($row->shift ?: '1')][] = $row;
         }
+        // Urut nomor shift, bukan urutan kemunculan: baris berkolom shift 1 yang dicatat malam hari
+        // tetap masuk shift 1, sehingga saldo akhir shift N = saldo awal + seluruh baris shift <= N
+        // (persis angka "s/d Shift N" di halaman induk / form 6i).
+        ksort($perShift, SORT_NATURAL);
 
         $kelompok = [];
         $saldoAwalShift = $this->saldoAwalPeriode;
-        foreach ($perShift as $shift => $items) {
+        foreach ($perShift as $shift => $rows) {
             $def = $this->shiftDefs->first(fn($d) => (string) $d->shift === (string) $shift);
             $subtotalDebit = 0.0;
             $subtotalKredit = 0.0;
-            foreach ($items as $item) {
+            $saldo = $saldoAwalShift;
+            $items = [];
+            foreach ($rows as $row) {
+                $item = clone $row;                       // running saldo per shift, jangan menimpa mode harian
                 $subtotalDebit  += (float) $item->debit_kita;
                 $subtotalKredit += (float) $item->kredit_kita;
+                $saldo += (float) $item->mutasi;
+                $item->saldo_berjalan = $saldo;
+                $items[] = $item;
             }
-            $saldoAkhirShift = (float) end($items)->saldo_berjalan;
+            $saldoAkhirShift = $saldo;
 
             $kelompok[] = (object) [
                 'shift'          => (string) $shift,

@@ -4,10 +4,14 @@ use Livewire\Component;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
+use App\Support\Keuangan\SaldoKas;
 
 new class extends Component {
     public string $tanggal = '';
     public string $searchKeyword = '';
+
+    /** Shift terakhir yang dihitung pada tanggal terpilih ('' = seluruh hari), meniru form 6i. */
+    public string $shift = '';
 
     /** Saat di-embed dalam modal (mis. tombol Cek Saldo Kasir/Apotek): sembunyikan page-title
      *  & sesuaikan tinggi/sticky agar tak menimpa header modal. */
@@ -17,15 +21,18 @@ new class extends Component {
     {
         $this->embedded = $embedded;
         $this->tanggal = now()->toDateString();
+        $this->shift   = SaldoKas::shiftSekarang();
     }
 
     public function updatedTanggal(): void { /* recompute saldo */ }
+    public function updatedShift(): void { /* recompute saldo */ }
     public function updatedSearchKeyword(): void { /* refilter */ }
 
     /** Reset filter ke kondisi awal (dipakai tombol Reset toolbar standar). */
     public function resetFilters(): void
     {
         $this->tanggal = now()->toDateString();
+        $this->shift   = SaldoKas::shiftSekarang();
         $this->searchKeyword = '';
     }
 
@@ -35,7 +42,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Hanya Manager ke atas yang bisa mengedit saldo.');
             return;
         }
-        $this->dispatch('keuangan.saldo-kas.openEdit', accId: $accId, tanggal: $this->tanggal);
+        $this->dispatch('keuangan.saldo-kas.openEdit', accId: $accId, tanggal: $this->tanggal, shift: $this->shift);
     }
 
     public function openHistory(string $accId): void
@@ -52,44 +59,13 @@ new class extends Component {
     }
 
     /**
-     * Saldo per tanggal untuk D-natured account.
-     * Logic dari legacy: saldo = saldo_awal_tahun + sum(txn_k - txn_d) dari Jan 1 s/d tanggal,
-     * filter txn_acc_k = acc_id (rumus "counter row" di tkview_accounts).
+     * Saldo per tanggal — rumus Oracle Forms 6i (App\Support\Keuangan\SaldoKas):
+     * select langsung 12 cabang tabel transaksi ber-kas (bukan view), akun D dari baris
+     * txn_acc (D-K), dipotong s/d shift terpilih.
      */
     private function hitungSaldoTanggal(string $accId, string $dkStatus, string $tanggal): float
     {
-        $tahun = (int) substr($tanggal, 0, 4);
-
-        $sa = DB::table('tktxn_saldoawalakuns')
-            ->where('acc_id', $accId)
-            ->where('sa_year', (string) $tahun)
-            ->first();
-
-        $saldoAwalTahun = $dkStatus === 'D'
-            ? (float) ($sa->sa_acc_d ?? 0)
-            : (float) ($sa->sa_acc_k ?? 0);
-
-        // Untuk akun D-natured (kas/bank): filter txn_acc_k = acc, sum (K - D)
-        // Untuk akun K-natured: filter txn_acc = acc, sum (D - K) — tidak terjadi di cara-bayar tapi disediakan.
-        if ($dkStatus === 'D') {
-            $arus = (float) DB::table('tkview_accounts')
-                ->where('txn_acc_k', $accId)
-                ->whereBetween(DB::raw("TO_CHAR(txn_date,'YYYY-MM-DD')"), [
-                    sprintf('%04d-01-01', $tahun),
-                    $tanggal,
-                ])
-                ->sum(DB::raw('NVL(txn_k,0) - NVL(txn_d,0)'));
-        } else {
-            $arus = (float) DB::table('tkview_accounts')
-                ->where('txn_acc', $accId)
-                ->whereBetween(DB::raw("TO_CHAR(txn_date,'YYYY-MM-DD')"), [
-                    sprintf('%04d-01-01', $tahun),
-                    $tanggal,
-                ])
-                ->sum(DB::raw('NVL(txn_d,0) - NVL(txn_k,0)'));
-        }
-
-        return $saldoAwalTahun + $arus;
+        return SaldoKas::hitung($accId, $dkStatus, $tanggal, $this->shift !== '' ? $this->shift : null);
     }
 
     #[Computed]
@@ -123,6 +99,12 @@ new class extends Component {
     }
 
     #[Computed]
+    public function daftarShift(): array
+    {
+        return SaldoKas::daftarShift();
+    }
+
+    #[Computed]
     public function totalSaldo(): float
     {
         return (float) $this->rows->sum('saldo');
@@ -133,7 +115,7 @@ new class extends Component {
 <div>
     @unless ($embedded)
         @php
-            $saldoKasSubtitle = 'Posisi saldo kas/bank per tanggal yang dipilih (otomatis dari arus jurnal).'
+            $saldoKasSubtitle = 'Posisi saldo kas/bank per tanggal & shift yang dipilih (rumus sama dengan Arus Kas Oracle Forms 6i).'
                 . ($this->canEditSaldo() ? '' : ' Mode tampilan saja — edit saldo hanya untuk Manager ke atas.');
         @endphp
         <x-page-title
@@ -152,6 +134,15 @@ new class extends Component {
                             <x-text-input id="tanggal" type="date"
                                 wire:model.live="tanggal"
                                 class="block w-full" />
+                        </div>
+                        <div class="w-full sm:w-36">
+                            <x-input-label for="shift" value="s/d Shift" class="mb-1 text-xs font-medium text-muted dark:text-gray-400" />
+                            <x-select-input id="shift" wire:model.live="shift" class="block w-full">
+                                <option value="">Seluruh hari</option>
+                                @foreach ($this->daftarShift as $s)
+                                    <option value="{{ $s }}">Shift {{ $s }}</option>
+                                @endforeach
+                            </x-select-input>
                         </div>
                         <div class="w-full sm:w-72">
                             <x-input-label for="searchKeyword" value="Cari" class="mb-1 text-xs font-medium text-muted dark:text-gray-400" />
@@ -183,13 +174,13 @@ new class extends Component {
                                 <th class="px-4 py-3 font-semibold w-28">ACC ID</th>
                                 <th class="px-4 py-3 font-semibold">AKUN KAS</th>
                                 <th class="px-4 py-3 font-semibold w-24 text-center">D/K</th>
-                                <th class="px-4 py-3 font-semibold w-60 text-right">SALDO PER {{ \Carbon\Carbon::parse($tanggal)->format('d/m/Y') }}</th>
+                                <th class="px-4 py-3 font-semibold w-60 text-right">SALDO PER {{ \Carbon\Carbon::parse($tanggal)->format('d/m/Y') }}{{ $shift !== '' ? ' / SHIFT ' . $shift : '' }}</th>
                                 <th class="px-4 py-3 font-semibold {{ $this->canEditSaldo() ? 'w-56' : 'w-32' }}">AKSI</th>
                             </tr>
                         </thead>
                         <tbody class="text-body divide-y divide-hairline dark:divide-gray-700 dark:text-gray-200">
                             @forelse ($this->rows as $row)
-                                <tr wire:key="saldo-{{ $row->acc_id }}-{{ $tanggal }}"
+                                <tr wire:key="saldo-{{ $row->acc_id }}-{{ $tanggal }}-{{ $shift }}"
                                     class="hover:bg-surface-soft dark:hover:bg-gray-800/60">
                                     <td class="px-4 py-3 font-mono text-xs align-middle">{{ $row->acc_id }}</td>
                                     <td class="px-4 py-3 align-middle">

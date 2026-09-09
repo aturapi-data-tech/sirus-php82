@@ -368,7 +368,7 @@ Kwitansi RI memakai `calculateRICosts()` — pos `ok` (operasi RI sendiri) dan `
 ### Jurnal & arus kas — `TKVIEW_ACCOUNTS`
 
 **Saldo kas tidak terpengaruh** pos biaya mana pun. Halaman Cek Saldo Kas
-(`transaksi/keuangan/saldo-kas`) memakai rumus `txn_acc_k = akun, SUM(K − D)`, dan akun kas
+(`transaksi/keuangan/saldo-kas`) memakai rumus form 6i (`App\Support\Keuangan\SaldoKas`: select langsung 12 cabang tabel ber-kas tanpa view, `txn_acc = akun, SUM(D − K)`, dipotong per shift), dan akun kas
 hanya muncul di cabang **BAYAR** — yaitu uang yang benar-benar diterima.
 
 Yang menuntut penyesuaian adalah sisi **pendapatan**. Tiap pos biaya punya sepasang cabang

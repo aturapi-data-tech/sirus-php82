@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
+use App\Support\Keuangan\SaldoKas;
 
 new class extends Component {
     use WithRenderVersioningTrait;
@@ -12,6 +13,8 @@ new class extends Component {
     public string $accDesc      = '';
     public string $accDkStatus  = 'D';
     public string $tanggal      = '';
+    /** Shift terakhir yang dihitung pada tanggal ('' = seluruh hari) — ikut induk. */
+    public string $shift        = '';
     public string $tahun        = '';
     public string $saldoCurrent = '0';
     public string $saldoTarget  = '0';
@@ -25,7 +28,7 @@ new class extends Component {
     }
 
     #[On('keuangan.saldo-kas.openEdit')]
-    public function openEdit(string $accId, string $tanggal): void
+    public function openEdit(string $accId, string $tanggal, string $shift = ''): void
     {
         if (!auth()->user()?->hasAnyRole(['Admin', 'Manager Umum', 'Manager Medis'])) {
             $this->dispatch('toast', type: 'error', message: 'Hanya Manager ke atas yang bisa mengedit saldo.');
@@ -46,46 +49,15 @@ new class extends Component {
         $this->accDesc     = (string) ($row->acc_name ?? '');
         $this->accDkStatus = (string) ($row->acc_dk_status ?? 'D');
         $this->tanggal     = $tanggal;
+        $this->shift       = $shift;
         $this->tahun       = substr($tanggal, 0, 4);
 
-        $this->saldoCurrent = (string) $this->hitungSaldoTanggal($this->accId, $this->accDkStatus, $tanggal);
+        // Rumus 6i (SaldoKas), termasuk potongan shift, agar sama dengan angka di tabel induk.
+        $this->saldoCurrent = (string) SaldoKas::hitung($this->accId, $this->accDkStatus, $tanggal, $shift !== '' ? $shift : null);
         $this->saldoTarget  = $this->saldoCurrent;
 
         $this->incrementVersion('modal');
         $this->dispatch('open-modal', name: 'saldo-kas-actions');
-    }
-
-    /**
-     * Saldo current — sama formula dgn parent.
-     */
-    private function hitungSaldoTanggal(string $accId, string $dkStatus, string $tanggal): float
-    {
-        $tahun = (int) substr($tanggal, 0, 4);
-
-        $sa = DB::table('tktxn_saldoawalakuns')
-            ->where('acc_id', $accId)->where('sa_year', (string) $tahun)->first();
-
-        $saldoAwalTahun = $dkStatus === 'D'
-            ? (float) ($sa->sa_acc_d ?? 0)
-            : (float) ($sa->sa_acc_k ?? 0);
-
-        if ($dkStatus === 'D') {
-            $arus = (float) DB::table('tkview_accounts')
-                ->where('txn_acc_k', $accId)
-                ->whereBetween(DB::raw("TO_CHAR(txn_date,'YYYY-MM-DD')"), [
-                    sprintf('%04d-01-01', $tahun), $tanggal,
-                ])
-                ->sum(DB::raw('NVL(txn_k,0) - NVL(txn_d,0)'));
-        } else {
-            $arus = (float) DB::table('tkview_accounts')
-                ->where('txn_acc', $accId)
-                ->whereBetween(DB::raw("TO_CHAR(txn_date,'YYYY-MM-DD')"), [
-                    sprintf('%04d-01-01', $tahun), $tanggal,
-                ])
-                ->sum(DB::raw('NVL(txn_d,0) - NVL(txn_k,0)'));
-        }
-
-        return $saldoAwalTahun + $arus;
     }
 
     public function save(): void
@@ -105,15 +77,12 @@ new class extends Component {
         $target = (float) $this->saldoTarget;
         $tahun  = (int) $this->tahun;
 
-        // Mengikuti legacy: arus_year = sum total tahun ini (Jan–Des).
+        // Mengikuti legacy: arus_year = sum total tahun ini (Jan–Des), rumus 6i (SaldoKas).
         // updatesaldo = target_saldo - arus_year → simpan ke saldo_awal_tahun.
-        if ($this->accDkStatus === 'D') {
-            $arusYear = (float) DB::table('tkview_accounts')
-                ->where('txn_acc_k', $this->accId)
-                ->whereRaw("TO_CHAR(txn_date,'YYYY') = ?", [(string) $tahun])
-                ->sum(DB::raw('NVL(txn_k,0) - NVL(txn_d,0)'));
+        $arusYear    = SaldoKas::arusTahun($this->accId, $this->accDkStatus, $tahun);
+        $updateSaldo = $target - $arusYear;
 
-            $updateSaldo = $target - $arusYear;
+        if ($this->accDkStatus === 'D') {
 
             $exists = DB::table('tktxn_saldoawalakuns')
                 ->where('acc_id', $this->accId)->where('sa_year', (string) $tahun)->exists();
@@ -131,13 +100,6 @@ new class extends Component {
                 ]);
             }
         } else {
-            $arusYear = (float) DB::table('tkview_accounts')
-                ->where('txn_acc', $this->accId)
-                ->whereRaw("TO_CHAR(txn_date,'YYYY') = ?", [(string) $tahun])
-                ->sum(DB::raw('NVL(txn_d,0) - NVL(txn_k,0)'));
-
-            $updateSaldo = $target - $arusYear;
-
             $exists = DB::table('tktxn_saldoawalakuns')
                 ->where('acc_id', $this->accId)->where('sa_year', (string) $tahun)->exists();
 
@@ -164,7 +126,7 @@ new class extends Component {
     public function closeModal(): void
     {
         $this->reset(['accId', 'accDesc', 'accDkStatus',
-                      'tanggal', 'tahun', 'saldoCurrent', 'saldoTarget']);
+                      'tanggal', 'shift', 'tahun', 'saldoCurrent', 'saldoTarget']);
         $this->resetValidation();
         $this->dispatch('close-modal', name: 'saldo-kas-actions');
         $this->resetVersion();
@@ -183,7 +145,7 @@ new class extends Component {
                 </h2>
                 <p class="mt-1 text-sm text-muted dark:text-gray-400">
                     Sistem akan back-calc saldo awal tahun {{ $tahun }} agar saldo per
-                    {{ $tanggal ? \Carbon\Carbon::parse($tanggal)->format('d/m/Y') : '' }}
+                    {{ $tanggal ? \Carbon\Carbon::parse($tanggal)->format('d/m/Y') : '' }}{{ $shift !== '' ? ' shift ' . $shift : '' }}
                     sama dengan target yang Anda tentukan.
                 </p>
             </div>
