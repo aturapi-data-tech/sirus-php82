@@ -632,9 +632,7 @@ new class extends Component {
                                         </td>
 
                                         <td class="px-6 py-4 text-center rounded-r-2xl">
-                                            <x-outline-button type="button" wire:click="bukaDetail({{ $indeks }})">
-                                                Lihat Detail
-                                            </x-outline-button>
+                                            <x-lihat-button wire:click="bukaDetail({{ $indeks }})" title="Lihat Detail" />
                                         </td>
                                     </tr>
                                 @empty

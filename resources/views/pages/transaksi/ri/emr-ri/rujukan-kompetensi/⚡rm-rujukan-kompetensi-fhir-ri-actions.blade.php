@@ -1104,11 +1104,7 @@ new class extends Component {
             {{-- Surat Pengantar Rujukan + Resume Klinis — format Kemkes (calon Kepmenkes),
                  wajib untuk SEMUA rujukan. Komponen cetaknya headless di halaman EMR. --}}
             <div class="pt-2">
-                <x-outline-button type="button" wire:click="cetakSuratRujukan"
-                    wire:loading.attr="disabled" wire:target="cetakSuratRujukan">
-                    <span wire:loading.remove wire:target="cetakSuratRujukan">Cetak Surat Rujukan</span>
-                    <span wire:loading wire:target="cetakSuratRujukan">Menyiapkan...</span>
-                </x-outline-button>
+                <x-cetak-button wire:click="cetakSuratRujukan" label="Cetak Surat Rujukan" />
             </div>
         </div>
     @else
