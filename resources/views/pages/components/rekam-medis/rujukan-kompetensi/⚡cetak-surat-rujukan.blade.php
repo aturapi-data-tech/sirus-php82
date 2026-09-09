@@ -9,7 +9,7 @@ use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
-use App\Support\Options\RujukanOptions;
+use App\Support\Options\RujukanKompetensiOptions;
 
 /**
  * Cetak Surat Pengantar Rujukan + Resume Klinis Pasien Rujukan.
@@ -282,13 +282,13 @@ new class extends Component {
             return collect($rujukan['kriteriaIgd'] ?? [])
                 ->filter(fn ($dicentang) => $dicentang === true)
                 ->keys()
-                ->map(fn ($linkId) => RujukanOptions::PERTANYAAN_IGD[$linkId] ?? (string) $linkId)
+                ->map(fn ($linkId) => RujukanKompetensiOptions::PERTANYAAN_IGD[$linkId] ?? (string) $linkId)
                 ->values()->all();
         }
 
         // Jalur FHIR ke ranap: satu pilihan terapi / tindakan / upaya diagnosis.
         if (($rujukan['jalur'] ?? '') === 'ranap') {
-            $teks = RujukanOptions::KRITERIA_RANAP[$rujukan['kriteriaPilih'] ?? ''] ?? '';
+            $teks = RujukanKompetensiOptions::KRITERIA_RANAP[$rujukan['kriteriaPilih'] ?? ''] ?? '';
             return $teks === '' ? [] : [$teks . $keteranganIcd9];
         }
 

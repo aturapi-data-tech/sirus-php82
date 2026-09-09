@@ -9,7 +9,7 @@ namespace App\Support;
  * lewat SatuSehatRujukanTrait, Rawat Jalan lewat SisruteTrait. Menyalin
  * logikanya ke dua tempat berarti satuan & ambangnya bisa berbeda diam-diam.
  */
-final class RujukanTampil
+final class RujukanKompetensiTampil
 {
     /** Setengah keliling bumi — jarak di atas ini mustahil untuk rujukan pasien. */
     private const BATAS_KM = 20015.0;

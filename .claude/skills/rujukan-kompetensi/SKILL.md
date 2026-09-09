@@ -120,7 +120,7 @@ TC02–TC05 semuanya bergantung padanya. Detail: `docs/rujukan-kompetensi.md` §
 
 ## 2c. Jalur FHIR Ranap/IGD — aturan Playbook v6.1 (21 Agu 2026)
 
-Acuan: `docs/rujukan-kompetensi.md` §7. Sumber tunggal terminologi: `App\Support\Options\RujukanOptions`.
+Acuan: `docs/rujukan-kompetensi.md` §7. Sumber tunggal terminologi: `App\Support\Options\RujukanKompetensiOptions`.
 
 1. **`CarePlan.contributor` = Fasyankes PERUJUK** (kita), bukan tujuan. Ini perubahan v6.1;
    v6.0 dulu menyebut Fasyankes Rujukan. Kode kita sudah benar — jangan "diperbaiki" balik.
@@ -137,7 +137,7 @@ Acuan: `docs/rujukan-kompetensi.md` §7. Sumber tunggal terminologi: `App\Suppor
 5. **`performerType` belum bisa dipetakan penuh** — sheet "HealthcareProfessional ECL" belum
    dibagikan; satu-satunya kode terbukti diterima `39677007 Internal medicine specialist`.
    JANGAN menebak kode SNOMED occupation lain (edisi SATUSEHAT tertinggal + risiko salah
-   catat tenaga kesehatan). Lengkapi `RujukanOptions::PERFORMER_TYPE` setelah sheet didapat.
+   catat tenaga kesehatan). Lengkapi `RujukanKompetensiOptions::PERFORMER_TYPE` setelah sheet didapat.
 6. **Rawat Jalan TIDAK punya accept/reject** — hanya IGD & Ranap (konfirmasi grup 22/08/26).
 7. `PUT ServiceRequest` didukung untuk revisi rujukan terkirim (belum dipakai di repo).
 8. **Tugas Rujukan ≠ Rujukan.** Bundle Task+CarePlan hanya MENANYAKAN kesediaan; ServiceRequest

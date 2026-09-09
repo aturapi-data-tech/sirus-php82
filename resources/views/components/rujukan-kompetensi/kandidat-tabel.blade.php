@@ -31,7 +31,7 @@
     'action' => 'pilihKandidat',
 ])
 
-@use('App\Support\RujukanTampil')
+@use('App\Support\RujukanKompetensiTampil')
 
 @if (!empty($rows))
     <div class="mt-2 overflow-x-auto border bg-canvas rounded-2xl border-hairline dark:border-gray-700">
@@ -46,7 +46,7 @@
             <tbody>
                 @foreach ($rows as $indexKandidat => $kandidatMentah)
                     @php
-                        $kandidat = RujukanTampil::kandidatBaris($kandidatMentah);
+                        $kandidat = RujukanKompetensiTampil::kandidatBaris($kandidatMentah);
                         $terpilih = $selectedIndex === $indexKandidat;
                         $tanpaBpjs = $requireBpjs && $kandidat['bpjs'] === '';
                     @endphp
@@ -78,9 +78,9 @@
                                 @if (filled($kandidat['kelas']))
                                     <span>· Kelas {{ $kandidat['kelas'] }}</span>
                                 @endif
-                                <span class="tabular-nums">· {{ RujukanTampil::jarak($kandidat['jarak']) }}</span>
-                                @if (RujukanTampil::waktu($kandidat['estimasi']) !== '—')
-                                    <span class="tabular-nums">· {{ RujukanTampil::waktu($kandidat['estimasi']) }}</span>
+                                <span class="tabular-nums">· {{ RujukanKompetensiTampil::jarak($kandidat['jarak']) }}</span>
+                                @if (RujukanKompetensiTampil::waktu($kandidat['estimasi']) !== '—')
+                                    <span class="tabular-nums">· {{ RujukanKompetensiTampil::waktu($kandidat['estimasi']) }}</span>
                                 @endif
                                 @if (filled($kandidat['beban']))
                                     <span class="tabular-nums" title="Rujukan masuk / kapasitas">· beban {{ $kandidat['beban'] }}</span>

@@ -6,7 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\BPJS\SisruteTrait;
-use App\Support\RujukanTampil;
+use App\Support\RujukanKompetensiTampil;
 use App\Http\Traits\SATUSEHAT\EncounterTrait;
 
 new class extends Component {
@@ -731,7 +731,7 @@ new class extends Component {
         }
 
         $this->formRujukan['kandidatIdx'] = $index;
-        $this->infoKandidat = RujukanTampil::infoTujuan($kandidat);
+        $this->infoKandidat = RujukanKompetensiTampil::infoTujuan($kandidat);
     }
 
     /* ═══════════════════════════════════════
