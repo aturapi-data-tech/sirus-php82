@@ -6,8 +6,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\SATUSEHAT\SatuSehatRujukanTrait;
-use App\Support\RujukanTampil;
-use App\Support\Options\RujukanOptions;
+use App\Support\RujukanKompetensiTampil;
+use App\Support\Options\RujukanKompetensiOptions;
 
 new class extends Component {
     private const SPECIALITY_MANUAL = '__manual__';
@@ -124,7 +124,7 @@ new class extends Component {
             'specialityCode' => '',
             'specialityDisplay' => '',
             // Kelompok Layanan & Jenis Tenaga Kesehatan Pelaksana — variabel
-            // playbook v6.0; keduanya OPSIONAL, lihat App\Support\Options\RujukanOptions.
+            // playbook v6.0; keduanya OPSIONAL, lihat App\Support\Options\RujukanKompetensiOptions.
             'kelompokLayananKode' => '',
             'performerTypeKode' => '',
             // Rencana kunjungan di faskes tujuan → ServiceRequest.occurrenceDateTime
@@ -225,7 +225,7 @@ new class extends Component {
 
     public function specialityOptions(): array
     {
-        return RujukanOptions::CLINICAL_SPECIALITY;
+        return RujukanKompetensiOptions::CLINICAL_SPECIALITY;
     }
 
     /**
@@ -258,7 +258,7 @@ new class extends Component {
 
     public function pertanyaanIgd(): array
     {
-        return RujukanOptions::PERTANYAAN_IGD;
+        return RujukanKompetensiOptions::PERTANYAAN_IGD;
     }
 
     /** Ganti tujuan = kriteria & kandidat lama tidak berlaku lagi. */
@@ -345,18 +345,18 @@ new class extends Component {
     }
 
     /**
-     * Opsi terminologi dibaca lewat method komponen, BUKAN RujukanOptions:: langsung
+     * Opsi terminologi dibaca lewat method komponen, BUKAN RujukanKompetensiOptions:: langsung
      * di template — blok <?php SFC dan template Volt dikompilasi terpisah, jadi
      * `use` di atas tidak menjangkau zona template (skill naming-conventions §2).
      */
     public function kelompokLayananOptions(): array
     {
-        return RujukanOptions::KELOMPOK_LAYANAN;
+        return RujukanKompetensiOptions::KELOMPOK_LAYANAN;
     }
 
     public function performerTypeOptions(): array
     {
-        return RujukanOptions::PERFORMER_TYPE;
+        return RujukanKompetensiOptions::PERFORMER_TYPE;
     }
 
     /* ═══════════════════════════════════════
@@ -564,7 +564,7 @@ new class extends Component {
         }
 
         $this->formRujukan['kandidatIdx'] = $index;
-        $this->infoKandidat = RujukanTampil::infoTujuan($kandidat);
+        $this->infoKandidat = RujukanKompetensiTampil::infoTujuan($kandidat);
     }
 
     /* ═══════════════════════════════════════

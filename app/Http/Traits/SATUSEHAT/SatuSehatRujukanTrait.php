@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use App\Support\Options\RujukanOptions;
+use App\Support\Options\RujukanKompetensiOptions;
 
 /**
  * SATUSEHAT Rujukan (SRBK) — jalur FHIR LANGSUNG untuk Rawat Inap & Rawat Darurat.
@@ -354,7 +354,7 @@ trait SatuSehatRujukanTrait
                 'valueCoding' => [
                     'system' => 'http://terminology.kemkes.go.id',
                     'code' => $konteks['kelompokLayananKode'],
-                    'display' => RujukanOptions::kelompokLayananDisplay($konteks['kelompokLayananKode']),
+                    'display' => RujukanKompetensiOptions::kelompokLayananDisplay($konteks['kelompokLayananKode']),
                 ],
             ];
         }
@@ -722,12 +722,12 @@ trait SatuSehatRujukanTrait
         ];
 
         // Jenis Tenaga Kesehatan Pelaksana Rujukan (playbook v6.0). Opsional —
-        // lihat RujukanOptions::PERFORMER_TYPE kenapa daftarnya belum lengkap.
+        // lihat RujukanKompetensiOptions::PERFORMER_TYPE kenapa daftarnya belum lengkap.
         if (!empty($konteks['performerTypeKode'])) {
             $serviceRequest['performerType'] = ['coding' => [[
                 'system' => 'http://snomed.info/sct',
                 'code' => $konteks['performerTypeKode'],
-                'display' => RujukanOptions::PERFORMER_TYPE[$konteks['performerTypeKode']] ?? '',
+                'display' => RujukanKompetensiOptions::PERFORMER_TYPE[$konteks['performerTypeKode']] ?? '',
             ]]];
         }
 

@@ -372,8 +372,8 @@ direaktivasi). Penanganan: koordinasi dengan **TI BPJS kantor wilayah setempat**
    ke sel nama, yang satu memberi jarak kolom sendiri dan tak menampilkan alamat sama sekali; angka yang sama pun
    bernama lain ("PPK/SATUSEHAT" vs "Org ID"). Bentuk bakunya sekarang: **No | Faskes Tujuan | Pilih**, dengan
    nama, alamat·kota, lalu meta `Kode BPJS · Org ID · Kelas · jarak · estimasi · beban · bed` — keterangan yang
-   tak dipunyai suatu sumber sekadar tak tampil. Peratanya `App\Support\RujukanTampil::kandidatBaris()`
-   (menerima bentuk SISRUTE maupun FHIR) dan baris "Tujuan: …" memakai `RujukanTampil::infoTujuan()` supaya
+   tak dipunyai suatu sumber sekadar tak tampil. Peratanya `App\Support\RujukanKompetensiTampil::kandidatBaris()`
+   (menerima bentuk SISRUTE maupun FHIR) dan baris "Tujuan: …" memakai `RujukanKompetensiTampil::infoTujuan()` supaya
    sebutannya sama dengan tabelnya. Kandidat tanpa kode BPJS hanya dikunci di jalur SISRUTE (`:requireBpjs="true"`)
    — di jalur FHIR kode BPJS boleh kosong.
 
@@ -403,7 +403,7 @@ Ketiganya **opsional**: kalau petugas tidak mengisi, field-nya tidak dikirim sam
 
 | Variabel | Diisi dari | Catatan |
 |---|---|---|
-| `Task.input` `TK000562` **Kelompok Layanan** | dropdown 24 kelompok (`RujukanOptions::KELOMPOK_LAYANAN`, Lampiran 4) | menyaring kandidat; salah pilih = kandidat keliru tanpa pesan error, jadi default kosong |
+| `Task.input` `TK000562` **Kelompok Layanan** | dropdown 24 kelompok (`RujukanKompetensiOptions::KELOMPOK_LAYANAN`, Lampiran 4) | menyaring kandidat; salah pilih = kandidat keliru tanpa pesan error, jadi default kosong |
 | `ServiceRequest.performerType` | dropdown Jenis Tenaga Kesehatan Pelaksana | **daftar kode masih 1 entri** — lihat §7.4 |
 | `ServiceRequest.reasonReference` | `satusehat.conditionIds` kunjungan | Diagnosis Rujukan; kosong bila modul Condition belum dijalankan (jangan mengarang reference → `reference_not_found`) |
 
@@ -422,7 +422,7 @@ Occupation SNOMED) yang **tidak ikut dibagikan di grup**. Satu-satunya kode yang
 adalah `39677007 Internal medicine specialist` (dipakai 3 contoh Postman resmi + payload faskes lain
 yang berhasil). Menebak kode lain berisiko dua arah: ditolak validator (edisi SNOMED SATUSEHAT
 tertinggal) atau lolos tapi mencatat jenis tenaga kesehatan yang KELIRU. **Minta sheet-nya ke grup**,
-lalu lengkapi `RujukanOptions::PERFORMER_TYPE`.
+lalu lengkapi `RujukanKompetensiOptions::PERFORMER_TYPE`.
 
 ### 7.4b Penjagaan persetujuan sebelum ServiceRequest
 Alurnya dua langkah terpisah (playbook §2.3 lalu §2.4): **Tugas Rujukan** (Bundle Task+CarePlan)
@@ -469,7 +469,7 @@ Sumber isi (dinormalkan di `normalkan()`), jalur-agnostik:
 | Bagian | SISRUTE (`rujukanKompetensi`) | FHIR (`rujukanKompetensiFhir`) |
 |---|---|---|
 | Diagnosa Sementara (hal. 1) & IV Diagnosa (hal. 2) | EMR `diagnosis[]`; bila kosong → `kodeDiagnosa`+`diagnosaDesc` rujukan | sama |
-| V Kriteria Rujukan | item `kriteriaList` yang `linkId`-nya = `kriteriaPilih` (+ ICD-9 bila Tindakan Medis) | IGD: pertanyaan `kriteriaIgd` yang dicentang (`RujukanOptions::PERTANYAAN_IGD`); ranap: `RujukanOptions::KRITERIA_RANAP[kriteriaPilih]` (+ ICD-9) |
+| V Kriteria Rujukan | item `kriteriaList` yang `linkId`-nya = `kriteriaPilih` (+ ICD-9 bila Tindakan Medis) | IGD: pertanyaan `kriteriaIgd` yang dicentang (`RujukanKompetensiOptions::PERTANYAAN_IGD`); ranap: `RujukanKompetensiOptions::KRITERIA_RANAP[kriteriaPilih]` (+ ICD-9) |
 | VIII Alasan Merujuk | `catatan` | `deskripsi` (= CarePlan.description) |
 | II, III (keluhan, KU, GCS/kesadaran, TTV, fisik) | `anamnesa.keluhanUtama.keluhanUtama`, `pemeriksaan.tandaVital.*`, `pemeriksaan.fisik` — path sama di RJ/UGD/RI | sama |
 | VI Tindakan / VII Terapi | `procedure[]` / `eresep[]` (fallback teks `perencanaan.terapi.terapi`) | sama |
@@ -478,4 +478,4 @@ Sumber isi (dinormalkan di `normalkan()`), jalur-agnostik:
 Catatan verifikasi lokal 2026-09-09 (UGD 203859, FHIR IGD): PDF 2 halaman terbentuk ±10 detik; enam
 peringatan `DOMXPath::query(): Invalid expression` berasal dari `x-pdf.layout-a4` (dipakai 89 cetakan lain),
 bukan dari blade ini. Halaman 2 kosong bila EMR memang belum diisi — bukan salah pemetaan.
-Teks pertanyaan IGD kini SATU sumber di `RujukanOptions::PERTANYAAN_IGD` (dulu disalin di tiga panel).
+Teks pertanyaan IGD kini SATU sumber di `RujukanKompetensiOptions::PERTANYAAN_IGD` (dulu disalin di tiga panel).

@@ -10,7 +10,7 @@ namespace App\Support\Options;
  * ACUAN: Buku Panduan SATUSEHAT "Rujukan Pasien — Rawat Jalan, Rawat Inap, dan
  * Rawat Darurat" versi 6.1 (21 Agustus 2026).
  */
-final class RujukanOptions
+final class RujukanKompetensiOptions
 {
     /**
      * Lima pertanyaan kriteria GAWAT DARURAT (Questionnaire Q100, linkId 000001–000005) —
