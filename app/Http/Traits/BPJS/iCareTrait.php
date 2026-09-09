@@ -4,6 +4,7 @@ namespace App\Http\Traits\BPJS;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
+use App\Support\Bpjs\BpjsHttp;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 
@@ -169,7 +170,7 @@ trait iCareTrait
             $data = $r;
 
             $start = microtime(true);
-            $response = Http::timeout(8)->connectTimeout(3)
+            $response = BpjsHttp::mulai()
                 ->withHeaders($signature)
                 // ->send('POST', $url, [
                 //     'body' => json_encode($data)

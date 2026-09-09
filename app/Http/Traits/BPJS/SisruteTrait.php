@@ -4,6 +4,7 @@ namespace App\Http\Traits\BPJS;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
+use App\Support\Bpjs\BpjsHttp;
 use Illuminate\Support\Facades\Validator;
 
 use Illuminate\Support\Facades\DB;
@@ -185,7 +186,7 @@ trait SisruteTrait
             }
 
             $signature = self::signature();
-            $response = Http::timeout(8)->connectTimeout(3)
+            $response = BpjsHttp::mulai()
                 ->withHeaders($signature)
                 ->post($url, $body);
 
@@ -242,7 +243,7 @@ trait SisruteTrait
             $url = env('SISRUTE_URL') . "/Rujukan/GetFaskesRujukan";
 
             $signature = self::signature();
-            $response = Http::timeout(8)->connectTimeout(3)
+            $response = BpjsHttp::mulai()
                 ->withHeaders($signature)
                 ->post($url, $payload);
 
@@ -307,7 +308,7 @@ trait SisruteTrait
             $url = env('SISRUTE_URL') . "/Rujukan/Insert";
 
             $signature = self::signature();
-            $response = Http::timeout(8)->connectTimeout(3)
+            $response = BpjsHttp::mulai()
                 ->withHeaders($signature)
                 ->post($url, [
                     'request' => [
@@ -369,7 +370,7 @@ trait SisruteTrait
             $url = env('SISRUTE_URL') . "/Rujukan/Delete";
 
             $signature = self::signature();
-            $response = Http::timeout(8)->connectTimeout(3)
+            $response = BpjsHttp::mulai()
                 ->withHeaders($signature)
                 ->delete($url, [
                     'request' => [
@@ -401,7 +402,7 @@ trait SisruteTrait
             $url = env('SISRUTE_URL') . "/Rujukan/GetSpesialistik";
 
             $signature = self::signature();
-            $response = Http::timeout(8)->connectTimeout(3)
+            $response = BpjsHttp::mulai()
                 ->withHeaders($signature)
                 ->get($url);
 

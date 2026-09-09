@@ -66,6 +66,10 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/panduan-dev/rujukan-kompetensi', 'pages::panduan-dev.rujukan-kompetensi.rujukan-kompetensi')
         ->name('panduan-dev.rujukan-kompetensi');
 
+    // Tutorial whitelist IP BPJS — forward proxy Squid di VPS + BpjsHttp, dari nol sampai produksi
+    Route::livewire('/panduan-dev/bpjs-proxy', 'pages::panduan-dev.bpjs-proxy.bpjs-proxy')
+        ->name('panduan-dev.bpjs-proxy');
+
     // ===========================================
     // DOWN TIME — FORMULIR MANUAL WAKTU HENTI SIMRS
     // ===========================================
