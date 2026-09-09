@@ -929,7 +929,7 @@ new class extends Component {
                         <x-border-form title="Observasi Nifas (Titik-Waktu)">
                             <div class="space-y-2">
                                 <div class="overflow-x-auto bg-canvas border rounded-2xl border-hairline dark:border-gray-700">
-                                    <table class="ds-table min-w-[1840px]">
+                                    <table class="ds-table ds-table-entri min-w-[1840px]">
                                         <thead>
                                             <tr>
                                                 <th class="ds-c w-10">No</th>

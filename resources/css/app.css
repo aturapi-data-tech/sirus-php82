@@ -178,6 +178,15 @@
 .ds-table-foot { @apply font-sans text-caption; padding:13px 24px; color:var(--muted);
     border-top:1px solid var(--hairline-soft); }
 
+/* Tabel ENTRI: baris input menyatu dengan tabel (Observasi Persalinan/Nifas, Laporan Persalinan,
+   Riwayat Obstetri VK). Padding sel 24px pada .ds-table memakan kolom sempit (w-16/w-20) sampai
+   input tinggal belasan piksel — di sini sel dipadatkan dan spinner input angka disembunyikan. */
+.ds-table-entri thead th { padding:10px 10px; }
+.ds-table-entri tbody td { padding:8px 10px; }
+.ds-table-entri input[type=number] { -moz-appearance:textfield; appearance:textfield; }
+.ds-table-entri input[type=number]::-webkit-inner-spin-button,
+.ds-table-entri input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+
 /* Tombol pagination ber-tema (style guide) */
 .ds-page-btn { @apply font-sans font-medium text-sm; display:inline-flex; align-items:center;
     justify-content:center; min-width:38px; height:36px; padding:0 13px; color:var(--body);

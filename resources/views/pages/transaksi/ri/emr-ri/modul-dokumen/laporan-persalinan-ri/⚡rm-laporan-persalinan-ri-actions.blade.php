@@ -1030,7 +1030,7 @@ new class extends Component {
                         <x-border-form title="2. Bayi">
                             <div class="space-y-3">
                                 <div class="overflow-x-auto bg-canvas border rounded-2xl border-hairline dark:border-gray-700">
-                                    <table class="ds-table min-w-[1900px]">
+                                    <table class="ds-table ds-table-entri min-w-[1900px]">
                                         <thead>
                                             <tr>
                                                 <th class="ds-c w-10">No</th>
