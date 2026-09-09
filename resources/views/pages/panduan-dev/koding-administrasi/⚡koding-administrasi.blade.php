@@ -365,9 +365,14 @@ TXT,
 // calculateRICosts() pernah lolos persis karena itu.
 //
 // SALDO KAS AMAN dari perubahan pos biaya: akun kas hanya muncul di cabang BAYAR
-// (rumus halaman Cek Saldo Kas = rumus form 6i via App\Support\Keuangan\SaldoKas:
-// select langsung 12 cabang tabel ber-kas, txn_acc = akun, SUM(D - K), dipotong per shift). Yang bergeser
+// (rumus halaman Cek Saldo Kas = rumus form 6i via App\Support\Keuangan\SaldoKas di atas
+// App\Support\Keuangan\Jurnal: jurnal dibaca LANGSUNG dari tabel transaksi lewat katalog
+// JurnalCabang yang dibangkitkan dari DDL view ini — txn_acc = akun, SUM(D - K), dipotong per
+// shift; untuk akun kas hanya 12 cabang ber-kolom kas yang terbaca). Yang bergeser
 // adalah sisi PENDAPATAN & PIUTANG.
+//
+// Setiap DDL view berubah, JALANKAN python3 database/sql/tools/gen-jurnal-cabang.py
+// agar JurnalCabang.php (Buku Besar & Saldo Kas) ikut — lihat docs/jurnal-keuangan.md.
 //
 // Cabang jurnal baru WAJIB memakai EXISTS ke tabel sumbernya — cabang lama
 // menerbitkan 1 baris per kunjungan walau nol; menirunya membengkakkan

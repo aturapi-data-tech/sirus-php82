@@ -4,6 +4,7 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\DB;
+use App\Support\Keuangan\Jurnal;
 
 new class extends Component {
     public string $accId        = '';
@@ -72,7 +73,8 @@ new class extends Component {
 
     /**
      * Saldo akun per tanggal — generic untuk D-acc maupun K-acc.
-     * Filter "rows about this account": txn_acc = acc_id.
+     * Sumber: App\Support\Keuangan\Jurnal (jurnal dibaca LANGSUNG dari tabel transaksi,
+     * bukan view TKVIEW_ACCOUNTS). Filter "rows about this account": txn_acc = acc_id.
      * D-acc: saldo bertambah saat didebit  → mutasi = D − K
      * K-acc: saldo bertambah saat dikredit → mutasi = K − D
      */
@@ -95,11 +97,7 @@ new class extends Component {
             ? 'NVL(txn_k,0) - NVL(txn_d,0)'
             : 'NVL(txn_d,0) - NVL(txn_k,0)';
 
-        $arus = (float) DB::table('tkview_accounts')
-            ->where('txn_acc', $this->accId)
-            ->whereBetween(DB::raw("TO_CHAR(txn_date,'YYYY-MM-DD')"), [
-                sprintf('%04d-01-01', $tahun), $tanggal,
-            ])
+        $arus = (float) Jurnal::query($this->accId, Jurnal::SISI_ACC, sprintf('%04d-01-01', $tahun), $tanggal)
             ->sum(DB::raw($expr));
 
         return $saldoAwalTahun + $arus;
@@ -118,21 +116,19 @@ new class extends Component {
     {
         if ($this->accId === '' || $this->periode === '') return collect();
 
-        $rows = DB::table('tkview_accounts as v')
-            ->leftJoin('acmst_accounts as a', 'a.acc_id', '=', 'v.txn_acc_k')
+        // Tanpa JOIN nama akun di atas jurnal: nama lawan diambil terpisah lewat satu query kecil.
+        $rows = Jurnal::query($this->accId, Jurnal::SISI_ACC, $this->dariTanggal, $this->sampaiTanggal)
             ->select(
-                'v.txn_date', 'v.txn_name',
-                'v.txn_acc_k as lawan_acc_id',
-                'a.acc_name as lawan_acc_name',
-                DB::raw('NVL(v.txn_d,0) AS debit'),
-                DB::raw('NVL(v.txn_k,0) AS kredit'),
+                'txn_date', 'txn_name',
+                'txn_acc_k as lawan_acc_id',
+                DB::raw('NVL(txn_d,0) AS debit'),
+                DB::raw('NVL(txn_k,0) AS kredit'),
             )
-            ->where('v.txn_acc', $this->accId)
-            ->whereBetween(DB::raw("TO_CHAR(v.txn_date,'YYYY-MM-DD')"), [
-                $this->dariTanggal, $this->sampaiTanggal,
-            ])
-            ->orderBy('v.txn_date')
+            ->orderBy('txn_date')
             ->get();
+
+        $namaLawan = Jurnal::namaAkun($rows->pluck('lawan_acc_id'));
+        $rows->each(fn ($r) => $r->lawan_acc_name = $namaLawan[$r->lawan_acc_id] ?? null);
 
         // Running saldo (sign tergantung D/K nature)
         $saldo = $this->saldoAwalPeriode;
