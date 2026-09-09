@@ -1055,24 +1055,11 @@ new class extends Component {
             {{-- Surat Pengantar Rujukan + Resume Klinis — format Kemkes (calon Kepmenkes),
                  wajib untuk SEMUA rujukan. Komponen cetaknya headless di halaman EMR. --}}
             <div class="pt-2">
-                <x-outline-button type="button" wire:click="cetakSuratRujukan"
-                    wire:loading.attr="disabled" wire:target="cetakSuratRujukan">
-                    <span wire:loading.remove wire:target="cetakSuratRujukan">Cetak Surat Rujukan</span>
-                    <span wire:loading wire:target="cetakSuratRujukan">Menyiapkan...</span>
-                </x-outline-button>
+                <x-cetak-button wire:click="cetakSuratRujukan" label="Cetak Surat Rujukan" />
             </div>
             @if (!$isFormLocked)
                 <div class="pt-2">
-                    <x-danger-button type="button" wire:click="hapusRujukan" wire:confirm="Batalkan/hapus rujukan ini di BPJS & SATUSEHAT?"
-                        wire:loading.attr="disabled" wire:target="hapusRujukan">
-                        <span wire:loading.remove wire:target="hapusRujukan" class="inline-flex items-center gap-2">
-                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                            </svg>
-                            Batalkan Rujukan
-                        </span>
-                        <span wire:loading wire:target="hapusRujukan" class="inline-flex items-center gap-1"><x-loading /> Membatalkan...</span>
-                    </x-danger-button>
+                    <x-hapus-button wire:click="hapusRujukan" confirm="Batalkan/hapus rujukan ini di BPJS & SATUSEHAT?" label="Batalkan Rujukan" />
                 </div>
             @endif
             @if ($infoKirim !== '')
