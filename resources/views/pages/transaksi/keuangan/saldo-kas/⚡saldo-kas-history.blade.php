@@ -98,11 +98,11 @@ new class extends Component {
     public function updatedPeriodeInput(string $value): void
     {
         $value = trim($value);
-        if (!preg_match('/^(0[1-9]|1[0-2])\/(\d{4})$/', $value, $m)) {
+        if (!preg_match('/^(0[1-9]|1[0-2])\/(\d{4})$/', $value, $cocok)) {
             $this->periode = '';
             return;
         }
-        [$_, $bulan, $tahun] = $m;
+        [, $bulan, $tahun] = $cocok;
         $this->periode = "{$tahun}-{$bulan}";
     }
 
@@ -117,29 +117,29 @@ new class extends Component {
             return;
         }
         try {
-            $tgl = Carbon::createFromFormat('d/m/Y', $value)->startOfDay();
+            $tanggalDipilih = Carbon::createFromFormat('d/m/Y', $value)->startOfDay();
         } catch (\Throwable) {
             return;
         }
         // tolak overflow (mis. 32/01/2026 → Carbon normalisasi jadi 01/02)
-        if ($tgl->format('d/m/Y') !== $value) {
+        if ($tanggalDipilih->format('d/m/Y') !== $value) {
             return;
         }
-        $this->tanggalHarian = $tgl->format('Y-m-d');
+        $this->tanggalHarian = $tanggalDipilih->format('Y-m-d');
         $this->setPeriode(substr($this->tanggalHarian, 0, 7));
     }
 
-    private function setPeriode(string $ym): void
+    private function setPeriode(string $tahunBulan): void
     {
-        $this->periode = $ym;
-        $this->periodeInput = Carbon::parse($ym . '-01')->format('m/Y');
+        $this->periode = $tahunBulan;
+        $this->periodeInput = Carbon::parse($tahunBulan . '-01')->format('m/Y');
     }
 
-    private function setTanggalHarian(string $ymd): void
+    private function setTanggalHarian(string $tanggal): void
     {
-        $this->tanggalHarian = $ymd;
-        $this->tanggalHarianInput = Carbon::parse($ymd)->format('d/m/Y');
-        $this->setPeriode(substr($ymd, 0, 7));
+        $this->tanggalHarian = $tanggal;
+        $this->tanggalHarianInput = Carbon::parse($tanggal)->format('d/m/Y');
+        $this->setPeriode(substr($tanggal, 0, 7));
     }
 
     public function mount(): void
@@ -187,8 +187,8 @@ new class extends Component {
     public function saldoAwalPeriode(): float
     {
         if ($this->dariTanggal === '') return 0;
-        $prev = Carbon::parse($this->dariTanggal)->subDay()->toDateString();
-        return $this->hitungSaldoTanggal($prev);
+        $tanggalSebelum = Carbon::parse($this->dariTanggal)->subDay()->toDateString();
+        return $this->hitungSaldoTanggal($tanggalSebelum);
     }
 
     #[Computed]
@@ -216,8 +216,8 @@ new class extends Component {
     private function rekapJenisDari($rows)
     {
         return collect($rows)
-            ->groupBy(function ($r) {
-                $name = trim((string) $r->txn_name);
+            ->groupBy(function ($baris) {
+                $name = trim((string) $baris->txn_name);
                 $pos = strpos($name, '(');
                 $jenis = $pos !== false ? trim(substr($name, 0, $pos)) : $name;
                 return $jenis === '' ? '-' : $jenis;
@@ -225,7 +225,7 @@ new class extends Component {
             ->map(fn($grup, $jenis) => (object) [
                 'jenis'   => $jenis,
                 'count'   => $grup->count(),
-                'nominal' => (float) $grup->sum(fn($r) => (float) $r->debit_kita + (float) $r->kredit_kita),
+                'nominal' => (float) $grup->sum(fn($baris) => (float) $baris->debit_kita + (float) $baris->kredit_kita),
             ])
             ->sortByDesc('nominal')
             ->values();
@@ -283,16 +283,16 @@ new class extends Component {
         $namaLawan = DB::table('acmst_accounts')
             ->whereIn('acc_id', $rows->pluck('lawan_acc_id')->filter()->unique()->values()->all() ?: ['-'])
             ->pluck('acc_name', 'acc_id');
-        $rows->each(fn ($r) => $r->lawan_acc_name = $namaLawan[$r->lawan_acc_id] ?? null);
+        $rows->each(fn ($baris) => $baris->lawan_acc_name = $namaLawan[$baris->lawan_acc_id] ?? null);
 
         // Hitung running saldo
         $saldo = $this->saldoAwalPeriode;
-        return $rows->map(function ($r) use (&$saldo) {
-            $mutasi = (float) $r->debit_kita - (float) $r->kredit_kita;
+        return $rows->map(function ($baris) use (&$saldo) {
+            $mutasi = (float) $baris->debit_kita - (float) $baris->kredit_kita;
             $saldo += $mutasi;
-            $r->saldo_berjalan = $saldo;
-            $r->mutasi = $mutasi;
-            return $r;
+            $baris->saldo_berjalan = $saldo;
+            $baris->mutasi = $mutasi;
+            return $baris;
         });
     }
 
@@ -328,7 +328,7 @@ new class extends Component {
         $kelompok = [];
         $saldoAwalShift = $this->saldoAwalPeriode;
         foreach ($perShift as $shift => $rows) {
-            $def = $this->shiftDefs->first(fn($d) => (string) $d->shift === (string) $shift);
+            $definisiShift = $this->shiftDefs->first(fn($definisi) => (string) $definisi->shift === (string) $shift);
             $subtotalDebit = 0.0;
             $subtotalKredit = 0.0;
             $saldo = $saldoAwalShift;
@@ -345,7 +345,7 @@ new class extends Component {
 
             $kelompok[] = (object) [
                 'shift'          => (string) $shift,
-                'range'          => $def ? substr((string) $def->shift_start, 0, 5) . '–' . substr((string) $def->shift_end, 0, 5) : null,
+                'range'          => $definisiShift ? substr((string) $definisiShift->shift_start, 0, 5) . '–' . substr((string) $definisiShift->shift_end, 0, 5) : null,
                 'items'          => $items,
                 'subtotalDebit'  => $subtotalDebit,
                 'subtotalKredit' => $subtotalKredit,

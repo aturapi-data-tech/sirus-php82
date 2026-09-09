@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
  * Jurnal umum dibaca LANGSUNG dari tabel transaksi — pengganti view TKVIEW_ACCOUNTS
  * (dan turunannya _LABARUGI / _NERACA1) untuk laporan keuangan.
  *
- * Katalog cabangnya (JurnalCabang) dibangkitkan dari DDL view, jadi bentuk barisnya
+ * Katalog cabangnya (JurnalCabang, dirawat di PHP; diturunkan dari DDL view) berbentuk
  * SAMA dengan view: TXN_NAME, TXN_ACC, TXN_ACC_K, SHIFT, TXN_DATE, TXN_D, TXN_K, termasuk
  * baris cermin tiap transaksi. Bedanya, query dibangun PER AKUN:
  *   - cabang yang akunnya akun konfigurasi (tkacc_confacctxns) dan bukan akun yang diminta
@@ -33,18 +33,18 @@ final class Jurnal
     {
         return self::$konfigurasi ??= DB::table('tkacc_confacctxns')
             ->pluck('acc_id', 'conf_id')
-            ->map(fn ($v) => (string) $v)
+            ->map(fn ($accId) => (string) $accId)
             ->all();
     }
 
-    private static function isKonfigurasi(string $expr): bool
+    private static function isKonfigurasi(string $ekspresi): bool
     {
-        return str_starts_with($expr, 'conf:');
+        return str_starts_with($ekspresi, 'conf:');
     }
 
-    private static function akunKonfigurasi(string $expr, array $konf): ?string
+    private static function akunKonfigurasi(string $ekspresi, array $petaKonfigurasi): ?string
     {
-        return $konf[substr($expr, 5)] ?? null;
+        return $petaKonfigurasi[substr($ekspresi, 5)] ?? null;
     }
 
     /**
@@ -54,60 +54,97 @@ final class Jurnal
      */
     public static function query(string $accId, string $sisi, string $dari, string $sampai): Builder
     {
-        $konf  = self::konfigurasiAkun();
-        $parts = [];
-        $bind  = [];
+        return self::queryBanyak([$accId], $sisi, $dari, $sampai);
+    }
 
-        foreach (JurnalCabang::semua() as $c) {
-            $utama = $sisi === self::SISI_ACCK ? $c['accK'] : $c['acc'];
+    /**
+     * Arus D/K per akun untuk SEKUMPULAN akun sekaligus (satu pemindaian, bukan satu query per akun) —
+     * dipakai laporan ber-template (Laba Rugi, Neraca). Hasil: [acc_id => ['debit' => float, 'kredit' => float]],
+     * akun tanpa transaksi tetap ada dengan nol.
+     */
+    public static function arusPerAkun(array $accIds, string $dari, string $sampai): array
+    {
+        $accIds = array_values(array_unique(array_map('strval', $accIds)));
+        $arusList = array_fill_keys($accIds, ['debit' => 0.0, 'kredit' => 0.0]);
 
-            if (self::isKonfigurasi($utama) && self::akunKonfigurasi($utama, $konf) !== $accId) {
-                continue; // akun konfigurasi cabang ini bukan akun yang diminta
+        foreach (array_chunk($accIds, 900) as $kelompokAkun) {   // batas IN-list Oracle 1000
+            $rows = self::queryBanyak($kelompokAkun, self::SISI_ACC, $dari, $sampai)
+                ->selectRaw('txn_acc, sum(nvl(txn_d,0)) debit, sum(nvl(txn_k,0)) kredit')
+                ->groupBy('txn_acc')
+                ->get();
+            foreach ($rows as $baris) {
+                if (isset($arusList[(string) $baris->txn_acc])) {
+                    $arusList[(string) $baris->txn_acc] = ['debit' => (float) $baris->debit, 'kredit' => (float) $baris->kredit];
+                }
+            }
+        }
+
+        return $arusList;
+    }
+
+    /**
+     * Baris jurnal sekumpulan akun (lihat query()). Cabang ber-akun konfigurasi ikut hanya bila akunnya
+     * ada di daftar; cabang ber-kolom akun mendapat predikat `kolom IN (...)`.
+     */
+    public static function queryBanyak(array $accIds, string $sisi, string $dari, string $sampai): Builder
+    {
+        $accIds = array_values(array_unique(array_map('strval', $accIds)));
+        $petaKonfigurasi = self::konfigurasiAkun();
+        $cabangSql       = [];
+        $bindings        = [];
+
+        foreach (JurnalCabang::semua() as $cabang) {
+            $akunSisi = $sisi === self::SISI_ACCK ? $cabang['akunLawan'] : $cabang['akun'];
+
+            if (self::isKonfigurasi($akunSisi) && !in_array(self::akunKonfigurasi($akunSisi, $petaKonfigurasi), $accIds, true)) {
+                continue; // akun konfigurasi cabang ini tidak diminta
             }
 
             // Ekspresi akun di select-list: konfigurasi → binding literal, kolom → apa adanya.
-            $selBind = [];
-            $accSql  = $c['acc'];
-            if (self::isKonfigurasi($accSql)) { $selBind[] = self::akunKonfigurasi($accSql, $konf); $accSql = '?'; }
-            $accKSql = $c['accK'];
-            if (self::isKonfigurasi($accKSql)) { $selBind[] = self::akunKonfigurasi($accKSql, $konf); $accKSql = '?'; }
+            $bindingSelect = [];
+            $akunSql       = $cabang['akun'];
+            if (self::isKonfigurasi($akunSql)) { $bindingSelect[] = self::akunKonfigurasi($akunSql, $petaKonfigurasi); $akunSql = '?'; }
+            $akunLawanSql = $cabang['akunLawan'];
+            if (self::isKonfigurasi($akunLawanSql)) { $bindingSelect[] = self::akunKonfigurasi($akunLawanSql, $petaKonfigurasi); $akunLawanSql = '?'; }
 
-            $where     = [];
-            $whereBind = [];
-            if (!self::isKonfigurasi($utama)) {
-                $where[]     = "{$utama} = ?";
-                $whereBind[] = $accId;
+            $where        = [];
+            $bindingWhere = [];
+            if (!self::isKonfigurasi($akunSisi)) {
+                $where[]   = count($accIds) === 1
+                    ? "{$akunSisi} = ?"
+                    : "{$akunSisi} in (" . implode(',', array_fill(0, count($accIds), '?')) . ")";
+                array_push($bindingWhere, ...$accIds);
             }
-            $where[]     = "{$c['date']} >= TO_DATE(?,'YYYY-MM-DD') and {$c['date']} < TO_DATE(?,'YYYY-MM-DD') + 1";
-            $whereBind[] = $dari;
-            $whereBind[] = $sampai;
-            if ($c['where'] !== '') {
-                $where[] = "({$c['where']})";
+            $where[]        = "{$cabang['tanggal']} >= TO_DATE(?,'YYYY-MM-DD') and {$cabang['tanggal']} < TO_DATE(?,'YYYY-MM-DD') + 1";
+            $bindingWhere[] = $dari;
+            $bindingWhere[] = $sampai;
+            if ($cabang['where'] !== '') {
+                $where[] = "({$cabang['where']})";
             }
 
-            $parts[] = "select {$c['name']} txn_name, {$accSql} txn_acc, {$accKSql} txn_acc_k, {$c['shift']} shift, "
-                . "{$c['date']} txn_date, {$c['d']} txn_d, {$c['k']} txn_k from {$c['from']} where " . implode(' and ', $where);
+            $cabangSql[] = "select {$cabang['label']} txn_name, {$akunSql} txn_acc, {$akunLawanSql} txn_acc_k, {$cabang['shift']} shift, "
+                . "{$cabang['tanggal']} txn_date, {$cabang['debit']} txn_d, {$cabang['kredit']} txn_k from {$cabang['from']} where " . implode(' and ', $where);
 
-            array_push($bind, ...$selBind, ...$whereBind);
+            array_push($bindings, ...$bindingSelect, ...$bindingWhere);
         }
 
-        if ($parts === []) {
+        if ($cabangSql === []) {
             // Akun tidak pernah muncul di jurnal → query kosong yang tetap sah.
-            $parts[] = "select null txn_name, null txn_acc, null txn_acc_k, null shift, "
+            $cabangSql[] = "select null txn_name, null txn_acc, null txn_acc_k, null shift, "
                 . "cast(null as date) txn_date, 0 txn_d, 0 txn_k from dual where 1 = 0";
         }
 
-        return DB::table(DB::raw('(' . implode("\nunion all\n", $parts) . ') j'))
-            ->addBinding($bind, 'from');
+        return DB::table(DB::raw('(' . implode("\nunion all\n", $cabangSql) . ') j'))
+            ->addBinding($bindings, 'from');
     }
 
     /** Nama akun untuk kumpulan acc_id (query kecil terpisah; jangan join di atas jurnal). */
     public static function namaAkun(iterable $accIds): array
     {
-        $ids = collect($accIds)->filter()->unique()->values()->all();
+        $accIdList = collect($accIds)->filter()->unique()->values()->all();
 
-        return $ids === [] ? [] : DB::table('acmst_accounts')
-            ->whereIn('acc_id', $ids)
+        return $accIdList === [] ? [] : DB::table('acmst_accounts')
+            ->whereIn('acc_id', $accIdList)
             ->pluck('acc_name', 'acc_id')
             ->all();
     }

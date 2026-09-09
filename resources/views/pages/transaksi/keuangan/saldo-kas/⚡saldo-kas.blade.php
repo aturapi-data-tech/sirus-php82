@@ -71,30 +71,30 @@ new class extends Component {
     #[Computed]
     public function rows()
     {
-        $q = DB::table('acmst_accounts as a')
+        $query = DB::table('acmst_accounts as a')
             ->join('acmst_kases as b', 'a.acc_id', '=', 'b.acc_id')
             ->select('a.acc_id', 'a.acc_name', 'a.acc_dk_status', 'a.active_status')
             ->where('a.active_status', '1')
             ->whereIn(
                 'a.acc_id',
-                fn($sub) => $sub->select('acc_id')->from('user_kas')->where('user_id', auth()->id()),
+                fn($subQuery) => $subQuery->select('acc_id')->from('user_kas')->where('user_id', auth()->id()),
             );
 
         if (trim($this->searchKeyword) !== '') {
-            $kw = mb_strtoupper(trim($this->searchKeyword));
-            $q->where(function ($w) use ($kw) {
-                $w->whereRaw('UPPER(a.acc_id) LIKE ?', ["%{$kw}%"])
-                  ->orWhereRaw('UPPER(a.acc_name) LIKE ?', ["%{$kw}%"]);
+            $keyword = mb_strtoupper(trim($this->searchKeyword));
+            $query->where(function ($subQuery) use ($keyword) {
+                $subQuery->whereRaw('UPPER(a.acc_id) LIKE ?', ["%{$keyword}%"])
+                  ->orWhereRaw('UPPER(a.acc_name) LIKE ?', ["%{$keyword}%"]);
             });
         }
 
-        return $q->orderBy('a.acc_name')->get()->map(function ($r) {
-            $r->saldo = $this->hitungSaldoTanggal(
-                (string) $r->acc_id,
-                (string) ($r->acc_dk_status ?? 'D'),
+        return $query->orderBy('a.acc_name')->get()->map(function ($akunKas) {
+            $akunKas->saldo = $this->hitungSaldoTanggal(
+                (string) $akunKas->acc_id,
+                (string) ($akunKas->acc_dk_status ?? 'D'),
                 $this->tanggal
             );
-            return $r;
+            return $akunKas;
         });
     }
 
@@ -139,8 +139,8 @@ new class extends Component {
                             <x-input-label for="shift" value="s/d Shift" class="mb-1 text-xs font-medium text-muted dark:text-gray-400" />
                             <x-select-input id="shift" wire:model.live="shift" class="block w-full">
                                 <option value="">Seluruh hari</option>
-                                @foreach ($this->daftarShift as $s)
-                                    <option value="{{ $s }}">Shift {{ $s }}</option>
+                                @foreach ($this->daftarShift as $nomorShift)
+                                    <option value="{{ $nomorShift }}">Shift {{ $nomorShift }}</option>
                                 @endforeach
                             </x-select-input>
                         </div>

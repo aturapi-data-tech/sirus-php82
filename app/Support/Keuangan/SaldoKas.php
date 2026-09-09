@@ -24,60 +24,60 @@ use Illuminate\Support\Facades\DB;
  */
 final class SaldoKas
 {
-    public static function saldoAwalTahun(string $accId, string $dk, int $tahun): float
+    public static function saldoAwalTahun(string $accId, string $dkStatus, int $tahun): float
     {
-        $sa = DB::table('tktxn_saldoawalakuns')
+        $saldoAwal = DB::table('tktxn_saldoawalakuns')
             ->where('acc_id', $accId)
             ->where('sa_year', (string) $tahun)
             ->first();
 
-        return $dk === 'D'
-            ? (float) ($sa->sa_acc_d ?? 0)
-            : (float) ($sa->sa_acc_k ?? 0);
+        return $dkStatus === 'D'
+            ? (float) ($saldoAwal->sa_acc_d ?? 0)
+            : (float) ($saldoAwal->sa_acc_k ?? 0);
     }
 
     /** Kolom sisi 6i: akun D dibaca dari baris txn_acc, akun K dari baris txn_acc_k. */
-    public static function sisi(string $dk): array
+    public static function sisi(string $dkStatus): array
     {
-        return $dk === 'D'
+        return $dkStatus === 'D'
             ? ['filter' => Jurnal::SISI_ACC,  'lawan' => Jurnal::SISI_ACCK, 'debit' => 'txn_d', 'kredit' => 'txn_k']
             : ['filter' => Jurnal::SISI_ACCK, 'lawan' => Jurnal::SISI_ACC,  'debit' => 'txn_k', 'kredit' => 'txn_d'];
     }
 
     /** Query dasar: baris akun ini pada rentang tanggal (inklusif); hari terakhir dipotong per shift bila diminta. */
-    public static function query(string $accId, string $dk, string $dari, string $sampai, ?string $shift = null): Builder
+    public static function query(string $accId, string $dkStatus, string $dari, string $sampai, ?string $shift = null): Builder
     {
-        $q = Jurnal::query($accId, self::sisi($dk)['filter'], $dari, $sampai);
+        $query = Jurnal::query($accId, self::sisi($dkStatus)['filter'], $dari, $sampai);
 
         if ($shift !== null && $shift !== '') {
-            $q->whereRaw("(txn_date < TO_DATE(?,'YYYY-MM-DD') OR shift <= ?)", [$sampai, $shift]);
+            $query->whereRaw("(txn_date < TO_DATE(?,'YYYY-MM-DD') OR shift <= ?)", [$sampai, $shift]);
         }
 
-        return $q;
+        return $query;
     }
 
     /** Arus (mutasi bersih) akun pada rentang tanggal. */
-    public static function arus(string $accId, string $dk, string $dari, string $sampai, ?string $shift = null): float
+    public static function arus(string $accId, string $dkStatus, string $dari, string $sampai, ?string $shift = null): float
     {
-        $sisi = self::sisi($dk);
+        $sisi = self::sisi($dkStatus);
 
-        return (float) self::query($accId, $dk, $dari, $sampai, $shift)
+        return (float) self::query($accId, $dkStatus, $dari, $sampai, $shift)
             ->sum(DB::raw("NVL({$sisi['debit']},0) - NVL({$sisi['kredit']},0)"));
     }
 
     /** Saldo per tanggal (s/d shift tertentu bila diminta) — padanan hitung_saldo_tanggal 6i. */
-    public static function hitung(string $accId, string $dk, string $tanggal, ?string $shift = null): float
+    public static function hitung(string $accId, string $dkStatus, string $tanggal, ?string $shift = null): float
     {
         $tahun = (int) substr($tanggal, 0, 4);
 
-        return self::saldoAwalTahun($accId, $dk, $tahun)
-            + self::arus($accId, $dk, sprintf('%04d-01-01', $tahun), $tanggal, $shift);
+        return self::saldoAwalTahun($accId, $dkStatus, $tahun)
+            + self::arus($accId, $dkStatus, sprintf('%04d-01-01', $tahun), $tanggal, $shift);
     }
 
     /** Arus satu tahun penuh (Jan–Des), dipakai back-calc Edit Saldo. */
-    public static function arusTahun(string $accId, string $dk, int $tahun): float
+    public static function arusTahun(string $accId, string $dkStatus, int $tahun): float
     {
-        return self::arus($accId, $dk, sprintf('%04d-01-01', $tahun), sprintf('%04d-12-31', $tahun));
+        return self::arus($accId, $dkStatus, sprintf('%04d-01-01', $tahun), sprintf('%04d-12-31', $tahun));
     }
 
     /** Nomor shift sesuai jam sekarang (rstxn_shiftctls), fallback '1'. */
@@ -101,7 +101,7 @@ final class SaldoKas
             ->whereNotNull('shift_end')
             ->orderBy('shift_start')
             ->pluck('shift')
-            ->map(fn ($s) => (string) $s)
+            ->map(fn ($nomorShift) => (string) $nomorShift)
             ->unique()
             ->values()
             ->all();

@@ -32,18 +32,18 @@ new class extends Component {
     public function updatedPeriodeInput(string $value): void
     {
         $value = trim($value);
-        if (!preg_match('/^(0[1-9]|1[0-2])\/(\d{4})$/', $value, $m)) {
+        if (!preg_match('/^(0[1-9]|1[0-2])\/(\d{4})$/', $value, $cocok)) {
             $this->periode = '';
             return;
         }
-        [$_, $bulan, $tahun] = $m;
+        [, $bulan, $tahun] = $cocok;
         $this->periode = "{$tahun}-{$bulan}";
     }
 
-    private function setPeriode(string $ym): void
+    private function setPeriode(string $tahunBulan): void
     {
-        $this->periode = $ym;
-        $this->periodeInput = \Carbon\Carbon::parse("{$ym}-01")->format('m/Y');
+        $this->periode = $tahunBulan;
+        $this->periodeInput = \Carbon\Carbon::parse("{$tahunBulan}-01")->format('m/Y');
     }
 
     public function prevMonth(): void
@@ -84,21 +84,21 @@ new class extends Component {
 
         $tahun = (int) substr($tanggal, 0, 4);
 
-        $sa = DB::table('tktxn_saldoawalakuns')
+        $saldoAwal = DB::table('tktxn_saldoawalakuns')
             ->where('acc_id', $this->accId)
             ->where('sa_year', (string) $tahun)
             ->first();
 
         $saldoAwalTahun = $this->accDkStatus === 'K'
-            ? (float) ($sa->sa_acc_k ?? 0)
-            : (float) ($sa->sa_acc_d ?? 0);
+            ? (float) ($saldoAwal->sa_acc_k ?? 0)
+            : (float) ($saldoAwal->sa_acc_d ?? 0);
 
-        $expr = $this->accDkStatus === 'K'
+        $rumusMutasi = $this->accDkStatus === 'K'
             ? 'NVL(txn_k,0) - NVL(txn_d,0)'
             : 'NVL(txn_d,0) - NVL(txn_k,0)';
 
         $arus = (float) Jurnal::query($this->accId, Jurnal::SISI_ACC, sprintf('%04d-01-01', $tahun), $tanggal)
-            ->sum(DB::raw($expr));
+            ->sum(DB::raw($rumusMutasi));
 
         return $saldoAwalTahun + $arus;
     }
@@ -107,8 +107,8 @@ new class extends Component {
     public function saldoAwalPeriode(): float
     {
         if ($this->dariTanggal === '') return 0;
-        $prev = \Carbon\Carbon::parse($this->dariTanggal)->subDay()->toDateString();
-        return $this->hitungSaldoTanggal($prev);
+        $tanggalSebelum = \Carbon\Carbon::parse($this->dariTanggal)->subDay()->toDateString();
+        return $this->hitungSaldoTanggal($tanggalSebelum);
     }
 
     #[Computed]
@@ -128,20 +128,20 @@ new class extends Component {
             ->get();
 
         $namaLawan = Jurnal::namaAkun($rows->pluck('lawan_acc_id'));
-        $rows->each(fn ($r) => $r->lawan_acc_name = $namaLawan[$r->lawan_acc_id] ?? null);
+        $rows->each(fn ($baris) => $baris->lawan_acc_name = $namaLawan[$baris->lawan_acc_id] ?? null);
 
         // Running saldo (sign tergantung D/K nature)
         $saldo = $this->saldoAwalPeriode;
-        $isK = $this->accDkStatus === 'K';
+        $akunKredit = $this->accDkStatus === 'K';
 
-        return $rows->map(function ($r) use (&$saldo, $isK) {
-            $mutasi = $isK
-                ? ((float) $r->kredit - (float) $r->debit)
-                : ((float) $r->debit - (float) $r->kredit);
+        return $rows->map(function ($baris) use (&$saldo, $akunKredit) {
+            $mutasi = $akunKredit
+                ? ((float) $baris->kredit - (float) $baris->debit)
+                : ((float) $baris->debit - (float) $baris->kredit);
             $saldo += $mutasi;
-            $r->saldo_berjalan = $saldo;
-            $r->mutasi = $mutasi;
-            return $r;
+            $baris->saldo_berjalan = $saldo;
+            $baris->mutasi = $mutasi;
+            return $baris;
         });
     }
 
@@ -160,8 +160,8 @@ new class extends Component {
     #[Computed]
     public function saldoAkhir(): float
     {
-        $isK = $this->accDkStatus === 'K';
-        $netMutasi = $isK
+        $akunKredit = $this->accDkStatus === 'K';
+        $netMutasi = $akunKredit
             ? ($this->totalKredit - $this->totalDebit)
             : ($this->totalDebit - $this->totalKredit);
         return $this->saldoAwalPeriode + $netMutasi;

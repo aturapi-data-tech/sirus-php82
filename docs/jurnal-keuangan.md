@@ -19,11 +19,19 @@ membaca jurnal LANGSUNG dari tabel transaksi, bukan lewat view `TKVIEW_ACCOUNTS`
 
 | Berkas | Peran |
 |---|---|
-| `database/sql/2026_08_01_view_tkview_accounts_ok_rj_ugd.sql` | DDL view — tetap satu-satunya **sumber definisi** cabang jurnal |
-| `database/sql/tools/gen-jurnal-cabang.py` | Pembangkit: parse DDL → `JurnalCabang.php`. **Jalankan ulang setiap DDL berubah**, commit hasilnya |
-| `app/Support/Keuangan/JurnalCabang.php` | Katalog 188 cabang (dibangkitkan, jangan diedit manual): `name, acc, accK, shift, date, d, k, from, where`; akun konfigurasi ditulis `conf:RJ1` dst. |
-| `app/Support/Keuangan/Jurnal.php` | `query($accId, $sisi, $dari, $sampai)` → Builder berbentuk kolom view (`txn_name, txn_acc, txn_acc_k, shift, txn_date, txn_d, txn_k`); `namaAkun()` lookup nama terpisah |
+| `app/Support/Keuangan/JurnalCabang.php` | **Sumber kebenaran** 200 cabang jurnal, dirawat langsung di PHP: `sumber, label, akun, akunLawan, shift, tanggal, debit, kredit, from, where`; akun konfigurasi ditulis `conf:RJ1` dst. Diturunkan 2026-09-09 dari DDL view TKVIEW_ACCOUNTS (188, sumber `ACCOUNTS`) + cabang HPP TKVIEW_ACCOUNTS_LABARUGI (12, sumber `LABARUGI`); sejak itu view hanya untuk form 6i |
+| `database/sql/2026_08_01_view_tkview_accounts_ok_rj_ugd.sql` | Skrip migrasi DDL `TKVIEW_ACCOUNTS` (kamar operasi RJ/UGD, sudah dijalankan di prod) — referensi sejarah, bukan sumber katalog |
+| `app/Support/Keuangan/Jurnal.php` | `query($accId, $sisi, $dari, $sampai)` → Builder berbentuk kolom view (`txn_name, txn_acc, txn_acc_k, shift, txn_date, txn_d, txn_k`); `queryBanyak([...])` untuk sekumpulan akun; `arusPerAkun([...], $dari, $sampai)` → `[acc_id => [debit, kredit]]` satu pemindaian untuk laporan ber-template; `namaAkun()` lookup nama terpisah |
 | `app/Support/Keuangan/SaldoKas.php` | Rumus 6i `hitung_saldo_tanggal` (saldo awal tahun + arus, potong shift) di atas `Jurnal` |
+
+## Pemakai
+
+| Halaman | Cara pakai |
+|---|---|
+| Cek Saldo Kas | `SaldoKas::hitung` (sisi 6i, potong shift) |
+| Buku Besar | `Jurnal::query($acc, SISI_ACC, …)` per akun; nama lawan `namaAkun()` |
+| Laba Rugi | template `tkacc_temlabarugineracahdrs` (status L: `L1` = form 6i, `LWEB` = ringkas web) → `_l2s` → `_l1s` → `_dtls` → `tkacc_temaccountes`; nilai `Jurnal::arusPerAkun` bulan & YTD; tanda pos = `dk_status` grup akun (`tkacc_gr_accountses`) baris DTL, **bukan** `acc_dk_status` master yang sering kosong; laba = Σ pendapatan − Σ beban |
+| Neraca | **belum dipindah** — masih baca `tkview_accounts` + `temp_id` di tabel DTL yang tidak ada (ORA-00904); template `N1`/`NWEB`; `TKVIEW_ACCOUNTS_NERACA2` menambah baris "LABARUGI BERJALAN" (Σ gra 4/5 status L per tahun ke akun `conf:LRB`) — perlu ditiru saat porting |
 
 ## Cara `Jurnal::query` bekerja
 
@@ -43,13 +51,16 @@ berdampak. Bereskan sebelum SaldoKas dipakai akun K.
 
 ## Aturan
 
-- **Jangan** edit `JurnalCabang.php` manual; ubah DDL view, jalankan pembangkit, commit keduanya.
+- Cabang baru/ubah: edit `JurnalCabang.php` (sepasang cabang cermin akun ↔ lawan), dan ubah view di DB
+  hanya bila form 6i masih memerlukannya. Uji seperti di bawah.
 - **Jangan** join tabel lain di atas hasil `Jurnal::query`; ambil nama akun lewat `Jurnal::namaAkun`.
-- Cabang baru di DDL wajib punya filter selektif (EXISTS/status) — lihat catatan di panduan
-  koding administrasi; katalog hanya menyalin, tidak memperbaiki.
-- Verifikasi setelah regenerasi: bandingkan `Jurnal::query` vs view per akun **pada tingkat baris**
+- Cabang baru wajib punya filter selektif (EXISTS/status) — lihat catatan di panduan koding administrasi.
+- Verifikasi setelah mengubah katalog: bandingkan `Jurnal::query` vs view per akun **pada tingkat baris**
   (bukan agregat, karena agregat view di 10g tidak stabil) untuk rentang tanggal pendek, plus
   `Livewire::test` Buku Besar dan tiga komponen Saldo Kas. Skrip contoh ada di riwayat sesi
   2026-09-09 (`verif.php`, `diag3.php`).
-- Laporan baru (laba rugi, neraca) memakai `Jurnal::query` per akun; cabang HPP yang dulu
-  ditambahkan di `_LABARUGI` belum ada di katalog — tambahkan ke DDL view dulu bila diperlukan.
+- Laporan ber-template pakai `Jurnal::arusPerAkun` (satu pemindaian per rentang), bukan `query` per akun:
+  81 akun template L1 = 4 detik per rentang, per akun akan 2×81 query.
+- Cabang HPP sudah di katalog (sumber `LABARUGI`).
+- Struktur template lama di komponen (`temp_id` di DTLS, section '1'/'2'/'3') SALAH — tabel DTLS hanya punya
+  `temp_idl1`; hirarki sebenarnya HDRS(temp_id) → L2S → L1S → DTLS → TEMACCOUNTES.

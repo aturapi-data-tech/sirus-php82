@@ -3,399 +3,2636 @@
 namespace App\Support\Keuangan;
 
 /**
- * KATALOG CABANG JURNAL — DIBANGKITKAN OTOMATIS, JANGAN DIEDIT MANUAL.
+ * KATALOG CABANG JURNAL — SUMBER KEBENARAN definisi jurnal untuk laporan keuangan web.
  *
- * Sumber : database/sql/2026_08_01_view_tkview_accounts_ok_rj_ugd.sql (definisi TKVIEW_ACCOUNTS).
- * Pembangkit: database/sql/tools/gen-jurnal-cabang.py  (jalankan ulang setiap DDL view berubah).
+ * Diturunkan 2026-09-09 dari DDL view TKVIEW_ACCOUNTS (188 cabang, sumber ACCOUNTS) dan cabang HPP
+ * TKVIEW_ACCOUNTS_LABARUGI (12 cabang, sumber LABARUGI), lalu dirawat DI SINI. View-view itu kini
+ * hanya dipakai form Oracle 6i; halaman web (Cek Saldo Kas, Buku Besar, Laba Rugi) membaca tabel
+ * transaksi langsung lewat App\Support\Keuangan\Jurnal berdasarkan katalog ini.
  *
- * Tiap entri = satu cabang UNION ALL view, kolom persis urutan view:
- *   name  : ekspresi TXN_NAME      acc : TXN_ACC      accK : TXN_ACC_K
- *   shift : ekspresi SHIFT         date: TXN_DATE     d/k  : TXN_D / TXN_K
- *   from  : klausa FROM            where: klausa WHERE (boleh kosong)
- * Ekspresi akun 'conf:XXX' = akun konfigurasi tkacc_confacctxns.conf_id = XXX;
- * selain itu kolom akun tabel sumber (a.acc_id, acc_id_kas, ...).
+ * Menambah/mengubah cabang: edit di sini (dan di view bila 6i masih memerlukannya), lalu uji
+ * per docs/jurnal-keuangan.md. Tiap cabang = satu SELECT ber-7 kolom, urutan sama dengan view:
+ *   sumber        : ACCOUNTS | LABARUGI (asal cabang, informatif)
+ *   label         : ekspresi TXN_NAME (label baris; prefiks sebelum '(' dipakai rekap per jenis)
+ *   akun          : TXN_ACC   — akun pemilik baris (debit/kredit = D/K akun ini)
+ *   akunLawan     : TXN_ACC_K — akun lawan
+ *   shift         : ekspresi SHIFT       tanggal : ekspresi TXN_DATE (kolom tanggal tabel sumber)
+ *   debit / kredit: ekspresi TXN_D/TXN_K from    : klausa FROM   where : klausa WHERE (boleh kosong)
+ * Akun ditulis 'conf:XXX' = akun konfigurasi tkacc_confacctxns.conf_id = XXX (dipangkas di PHP bila
+ * bukan akun yang diminta), atau kolom akun tabel sumber (a.acc_id, acc_id_kas, …) yang diberi predikat.
+ * Tiap transaksi hadir sebagai SEPASANG cabang cermin (akun ↔ lawan).
  */
 final class JurnalCabang
 {
     public static function semua(): array
     {
         return [
-            // #0
-            ['name' => '\'CI\'||\' \'||tucashk_desc||\'(\'||tucashk_no||\')\'', 'acc' => 'acc_id_kas', 'accK' => 'acc_id', 'shift' => 'nvl(shift,\'1\')', 'date' => 'tucashk_date', 'd' => 'tucashk_nominal', 'k' => '0', 'from' => 'RSTXN_TUCASHDS a', 'where' => 'tucashk_status=\'L\''],
-            // #1
-            ['name' => '\'CI\'||\' \'||tucashk_desc||\'(\'||tucashk_no||\')\'', 'acc' => 'acc_id', 'accK' => 'acc_id_kas', 'shift' => 'nvl(shift,\'1\')', 'date' => 'tucashk_date', 'd' => '0', 'k' => 'tucashk_nominal', 'from' => 'RSTXN_TUCASHDS a', 'where' => 'tucashk_status=\'L\''],
-            // #2
-            ['name' => '\'CO\'||\' \'||tucashk_desc||\'(\'||tucashk_no||\')\'', 'acc' => 'acc_id_kas', 'accK' => 'acc_id', 'shift' => 'nvl(shift,\'1\')', 'date' => 'tucashk_date', 'd' => '0', 'k' => 'tucashk_nominal', 'from' => 'RSTXN_TUCASHKS a', 'where' => 'tucashk_status=\'L\''],
-            // #3
-            ['name' => '\'CO\'||\' \'||tucashk_desc||\'(\'||tucashk_no||\')\'', 'acc' => 'acc_id', 'accK' => 'acc_id_kas', 'shift' => 'nvl(shift,\'1\')', 'date' => 'tucashk_date', 'd' => 'tucashk_nominal', 'k' => '0', 'from' => 'RSTXN_TUCASHKS a', 'where' => 'tucashk_status=\'L\''],
-            // #4
-            ['name' => '\'RJ_ADMIN (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:RJ3', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => 'rj_admin', 'k' => '0', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #5
-            ['name' => '\'RJ_ADMIN (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ3', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => 'rj_admin', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #6
-            ['name' => '\'RS_ADMIN (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:RJ2', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => 'rs_admin', 'k' => '0', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #7
-            ['name' => '\'RS_ADMIN (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ2', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => 'rs_admin', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #8
-            ['name' => '\'UP (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:RJ11', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => 'poli_price', 'k' => '0', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #9
-            ['name' => '\'UP (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ11', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => 'poli_price', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #10
-            ['name' => '\'JD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:RJ4', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select sum(accdoc_price) from RSTXN_RJACCDOCS G where G.rj_no=a.rj_no)', 'k' => '0', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #11
-            ['name' => '\'JD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ4', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select sum(accdoc_price) from RSTXN_RJACCDOCS G where G.rj_no=a.rj_no)', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #12
-            ['name' => '\'JM (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:RJ5', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select sum(pact_price) from RSTXN_RJACTPARAMS G where G.rj_no=a.rj_no)', 'k' => '0', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #13
-            ['name' => '\'JM (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ5', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select sum(pact_price) from RSTXN_RJACTPARAMS G where G.rj_no=a.rj_no)', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #14
-            ['name' => '\'JK (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:RJ6', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select sum(acte_price) from RSTXN_RJACTEMPS G where G.rj_no=a.rj_no)', 'k' => '0', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #15
-            ['name' => '\'JK (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ6', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select sum(acte_price) from RSTXN_RJACTEMPS G where G.rj_no=a.rj_no)', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #16
-            ['name' => '\'OBAT (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:RJ9', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select sum((NVL(qty,0)*NVL(price,0))) from RSTXN_RJOBATS G where G.rj_no=a.rj_no)', 'k' => '0', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #17
-            ['name' => '\'OBAT (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ9', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select sum((NVL(qty,0)*NVL(price,0))) from RSTXN_RJOBATS G where G.rj_no=a.rj_no)', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #18
-            ['name' => '\'LAB (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:RJ7', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select sum(lab_price) from RSTXN_RJLABS G where G.rj_no=a.rj_no)', 'k' => '0', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #19
-            ['name' => '\'LAB (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ7', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select sum(lab_price) from RSTXN_RJLABS G where G.rj_no=a.rj_no)', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #20
-            ['name' => '\'RAD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:RJ10', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select sum(rad_price) from RSTXN_RJRADS G where G.rj_no=a.rj_no)', 'k' => '0', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #21
-            ['name' => '\'RAD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ10', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select sum(rad_price) from RSTXN_RJRADS G where G.rj_no=a.rj_no)', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #22
-            ['name' => '\'LAIN (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:RJ8', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select sum(other_price) from RSTXN_RJOTHERS G where G.rj_no=a.rj_no)', 'k' => '0', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #23
-            ['name' => '\'LAIN (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ8', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select sum(other_price) from RSTXN_RJOTHERS G where G.rj_no=a.rj_no)', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #24
-            ['name' => '\'RJ_DISKON (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ12', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => 'rj_diskon', 'k' => '0', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #25
-            ['name' => '\'RJ_DISKON (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:RJ12', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => 'rj_diskon', 'from' => 'RSTXN_RJHDRS a', 'where' => 'rj_status not in(\'A\',\'F\')'],
-            // #26
-            ['name' => '\'BAYAR_RJ (\'||a.rjc_desc||\')\'', 'acc' => 'a.acc_id', 'accK' => 'conf:RJ1', 'shift' => 'nvl(a.shift,\'1\')', 'date' => 'rjc_date', 'd' => 'rjc_nominal', 'k' => '0', 'from' => 'RSTXN_RJCASHINS a,rstxn_rjhdrs b', 'where' => 'a.rj_no=b.rj_no and rj_status not in(\'A\',\'F\')'],
-            // #27
-            ['name' => '\'BAYAR_RJ (\'||a.rjc_desc||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'a.acc_id', 'shift' => 'nvl(a.shift,\'1\')', 'date' => 'rjc_date', 'd' => '0', 'k' => 'rjc_nominal', 'from' => 'RSTXN_RJCASHINS a,rstxn_rjhdrs b', 'where' => 'a.rj_no=b.rj_no and rj_status not in(\'A\',\'F\')'],
-            // #28
-            ['name' => '\'UGD_ADMIN (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:UGD3', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => 'RJ_admin', 'k' => '0', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #29
-            ['name' => '\'UGD_ADMIN (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD3', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '0', 'k' => 'RJ_admin', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #30
-            ['name' => '\'RS_ADMIN (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:UGD2', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => 'rs_admin', 'k' => '0', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #31
-            ['name' => '\'RS_ADMIN (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD2', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '0', 'k' => 'rs_admin', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #32
-            ['name' => '\'UP (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:UGD11', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => 'poli_price', 'k' => '0', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #33
-            ['name' => '\'UP (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD11', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '0', 'k' => 'poli_price', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #34
-            ['name' => '\'JD (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:UGD4', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '(select sum(accdoc_price) from RSTXN_UGDACCDOCS G where G.RJ_no=a.RJ_no)', 'k' => '0', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #35
-            ['name' => '\'JD (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD4', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '0', 'k' => '(select sum(accdoc_price) from RSTXN_UGDACCDOCS G where G.RJ_no=a.RJ_no)', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #36
-            ['name' => '\'JM (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:UGD5', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '(select sum(pact_price) from RSTXN_UGDACTPARAMS G where G.RJ_no=a.RJ_no)', 'k' => '0', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #37
-            ['name' => '\'JM (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD5', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '0', 'k' => '(select sum(pact_price) from RSTXN_UGDACTPARAMS G where G.RJ_no=a.RJ_no)', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #38
-            ['name' => '\'JK (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:UGD6', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '(select sum(acte_price) from RSTXN_UGDACTEMPS G where G.RJ_no=a.RJ_no)', 'k' => '0', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #39
-            ['name' => '\'JK (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD6', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '0', 'k' => '(select sum(acte_price) from RSTXN_UGDACTEMPS G where G.RJ_no=a.RJ_no)', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #40
-            ['name' => '\'OBAT (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:UGD9', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '(select sum((NVL(qty,0)*NVL(price,0))) from RSTXN_UGDOBATS G where G.RJ_no=a.RJ_no)', 'k' => '0', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #41
-            ['name' => '\'OBAT (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD9', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '0', 'k' => '(select sum((NVL(qty,0)*NVL(price,0))) from RSTXN_UGDOBATS G where G.RJ_no=a.RJ_no)', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #42
-            ['name' => '\'LAB (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:UGD7', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '(select sum(lab_price) from RSTXN_UGDLABS G where G.RJ_no=a.RJ_no)', 'k' => '0', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #43
-            ['name' => '\'LAB (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD7', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '0', 'k' => '(select sum(lab_price) from RSTXN_UGDLABS G where G.RJ_no=a.RJ_no)', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #44
-            ['name' => '\'RAD (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:UGD10', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '(select sum(rad_price) from RSTXN_UGDRADS G where G.RJ_no=a.RJ_no)', 'k' => '0', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #45
-            ['name' => '\'RAD (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD10', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '0', 'k' => '(select sum(rad_price) from RSTXN_UGDRADS G where G.RJ_no=a.RJ_no)', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #46
-            ['name' => '\'LAIN (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:UGD8', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '(select sum(other_price) from RSTXN_UGDOTHERS G where G.RJ_no=a.RJ_no)', 'k' => '0', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #47
-            ['name' => '\'LAIN (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD8', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '0', 'k' => '(select sum(other_price) from RSTXN_UGDOTHERS G where G.RJ_no=a.RJ_no)', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #48
-            ['name' => '\'UGD_DISKON (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD12', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => 'RJ_diskon', 'k' => '0', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #49
-            ['name' => '\'UGD_DISKON (\'||a.RJ_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:UGD12', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RJ_date', 'd' => '0', 'k' => 'RJ_diskon', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #50
-            ['name' => '\'BAYAR_UGD (\'||a.RJc_desc||\')\'', 'acc' => 'a.acc_id', 'accK' => 'conf:UGD1', 'shift' => 'nvl(a.shift,\'1\')', 'date' => 'rjc_date', 'd' => 'rjc_nominal', 'k' => '0', 'from' => 'RSTXN_UGDCASHINS a,rstxn_UGDhdrs b', 'where' => 'a.RJ_no=b.RJ_no and RJ_status not in(\'A\',\'F\')'],
-            // #51
-            ['name' => '\'BAYAR_UGD (\'||a.RJC_desc||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'a.acc_id', 'shift' => 'nvl(a.shift,\'1\')', 'date' => 'RJc_date', 'd' => '0', 'k' => 'RJc_nominal', 'from' => 'RSTXN_UGDCASHINS a,rstxn_UGDhdrs b', 'where' => 'a.RJ_no=b.RJ_no and RJ_status not in(\'A\',\'F\')'],
-            // #52
-            ['name' => '\'RESEP JK (\'||a.sls_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RESEP1', 'accK' => 'conf:RESEP2', 'shift' => 'nvl(shift,\'1\')', 'date' => 'sls_date', 'd' => 'acte_price', 'k' => '0', 'from' => 'IMTXN_SLSHDRS a', 'where' => 'status =\'L\''],
-            // #53
-            ['name' => '\'RESEP JK (\'||a.sls_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RESEP2', 'accK' => 'conf:RESEP1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'sls_date', 'd' => '0', 'k' => 'acte_price', 'from' => 'IMTXN_SLSHDRS a', 'where' => 'status =\'L\''],
-            // #54
-            ['name' => '\'RESEP OBAT (\'||a.sls_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RESEP1', 'accK' => 'conf:RESEP3', 'shift' => 'nvl(shift,\'1\')', 'date' => 'sls_date', 'd' => '(select sum(nvl(qty,0)*nvl(sales_price,0)) from IMTXN_SLSDTLS where sls_no=a.sls_no)', 'k' => '0', 'from' => 'IMTXN_SLSHDRS a', 'where' => 'status =\'L\''],
-            // #55
-            ['name' => '\'RESEP OBAT (\'||a.sls_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RESEP3', 'accK' => 'conf:RESEP1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'sls_date', 'd' => '0', 'k' => '(select sum(nvl(qty,0)*nvl(sales_price,0)) from IMTXN_SLSDTLS where sls_no=a.sls_no)', 'from' => 'IMTXN_SLSHDRS a', 'where' => 'status =\'L\''],
-            // #56
-            ['name' => '\'BAYAR_RESEP (\'||a.sls_no||\' \'||a.reg_no||\')\'', 'acc' => 'a.acc_id', 'accK' => 'conf:RESEP1', 'shift' => 'nvl(a.shift,\'1\')', 'date' => 'sls_date', 'd' => 'sls_bayar', 'k' => '0', 'from' => 'IMTXN_SLSHDRS a', 'where' => 'status =\'L\''],
-            // #57
-            ['name' => '\'BAYAR_RESEP (\'||a.sls_no||\' \'||a.reg_no||\')\'', 'acc' => 'conf:RESEP1', 'accK' => 'a.acc_id', 'shift' => 'nvl(a.shift,\'1\')', 'date' => 'sls_date', 'd' => '0', 'k' => 'sls_bayar', 'from' => 'IMTXN_SLSHDRS a', 'where' => 'status =\'L\''],
-            // #58
-            ['name' => '\'TRF PIUTANG RESEP ke INAP (\'||(select string_agg(sls_no||\' \'||reg_no) from imtxn_slshdrs where rihdr_no=a.rihdr_no)||\')\'', 'acc' => 'conf:RESEPTRFINAP', 'accK' => 'conf:RESEP1', 'shift' => 'nvl(a.shift,\'1\')', 'date' => 'exit_date', 'd' => '(select sum(nvl(ribon_price,0)) from RSTXN_RIBONOBATS where rihdr_no=a.rihdr_no)', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status =\'P\''],
-            // #59
-            ['name' => '\'TRF PIUTANG RESEP ke INAP (\'||(select string_agg(sls_no||\' \'||reg_no) from imtxn_slshdrs where rihdr_no=a.rihdr_no)||\')\'', 'acc' => 'conf:RESEP1', 'accK' => 'conf:RESEPTRFINAP', 'shift' => 'nvl(a.shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select sum(nvl(ribon_price,0)) from RSTXN_RIBONOBATS where rihdr_no=a.rihdr_no)', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status =\'P\''],
-            // #60
-            ['name' => '\'TRF PIUTANG UGD ke INAP (\'||(select string_agg(sls_no||\' \'||reg_no) from imtxn_slshdrs where rihdr_no=a.rihdr_no)||\')\'', 'acc' => 'conf:UGDTRFINAP', 'accK' => 'conf:UGD1', 'shift' => 'nvl(a.shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(nvl(rj_admin,0)+ nvl(poli_PRICE,0)+ nvl(acte_price,0)+ nvl(actp_price,0)+ nvl(actd_price,0)+ nvl(obat,0)+ nvl(rad,0)+ nvl(lab,0)+ nvl(other,0)+nvl(rs_admin,0)),0) from RSTXN_RITEMPADMINS where rihdr_no=a.rihdr_no)', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status =\'P\''],
-            // #61
-            ['name' => '\'TRF PIUTANG UGD ke INAP (\'||(select string_agg(sls_no||\' \'||reg_no) from imtxn_slshdrs where rihdr_no=a.rihdr_no)||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:UGDTRFINAP', 'shift' => 'nvl(a.shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(nvl(rj_admin,0)+ nvl(poli_PRICE,0)+ nvl(acte_price,0)+ nvl(actp_price,0)+ nvl(actd_price,0)+ nvl(obat,0)+ nvl(rad,0)+ nvl(lab,0)+ nvl(other,0)+nvl(rs_admin,0)),0) from RSTXN_RITEMPADMINS where rihdr_no=a.rihdr_no)', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status =\'P\''],
-            // #62
-            ['name' => '\'TRF PIUTANG RJ ke UGD (\'||(select rj_no||\' \'||reg_no from RSTXN_UGDBIAYASELAMADIRJS where rj_no_rsugd=a.rj_no)||\')\'', 'acc' => 'conf:RJTRFUGD', 'accK' => 'conf:RJ1', 'shift' => 'nvl(a.shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(total_biayarj),0) from RSTXN_UGDBIAYASELAMADIRJS where rj_no_rsugd=a.rj_no)', 'k' => '0', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #63
-            ['name' => '\'TRF PIUTANG RJ ke UGD (\'||(select rj_no||\' \'||reg_no from RSTXN_UGDBIAYASELAMADIRJS where rj_no_rsugd=a.rj_no)||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:RJTRFUGD', 'shift' => 'nvl(a.shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(total_biayarj),0) from RSTXN_UGDBIAYASELAMADIRJS where rj_no_rsugd=a.rj_no)', 'from' => 'RSTXN_UGDHDRS a', 'where' => 'RJ_status not in(\'A\',\'F\')'],
-            // #64
-            ['name' => '\'RI ADMIN AGE (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:RI2', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => 'admin_age', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #65
-            ['name' => '\'RI ADMIN AGE (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI2', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => 'admin_age', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #66
-            ['name' => '\'RI ADMIN STATUS (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:RI3', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => 'admin_status', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #67
-            ['name' => '\'RI ADMIN STATUS (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI3', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => 'admin_status', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #68
-            ['name' => '\'RI JD (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:RI4', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(actd_price*actd_qty),0) from rstxn_riactdocs where rihdr_no=a.rihdr_no)', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #69
-            ['name' => '\'RI JD (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI4', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(actd_price*actd_qty),0) from rstxn_riactdocs where rihdr_no=a.rihdr_no)', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #70
-            ['name' => '\'RI JM (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:RI5', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(actp_price*actp_qty),0) from rstxn_riactparams where rihdr_no=a.rihdr_no)', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #71
-            ['name' => '\'RI JM (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI5', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(actp_price*actp_qty),0) from rstxn_riactparams where rihdr_no=a.rihdr_no)', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #72
-            ['name' => '\'RI VISIT (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:RI6', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(visit_price),0) from rstxn_rivisits where rihdr_no=a.rihdr_no)', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #73
-            ['name' => '\'RI VISIT (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI6', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(visit_price),0) from rstxn_rivisits where rihdr_no=a.rihdr_no)', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #74
-            ['name' => '\'RI KONSUL (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:RI7', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(konsul_price),0) from rstxn_rikonsuls where rihdr_no=a.rihdr_no)', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #75
-            ['name' => '\'RI KONSUL (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI7', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(konsul_price),0) from rstxn_rikonsuls where rihdr_no=a.rihdr_no)', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #76
-            ['name' => '\'RI LAB (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:RI8', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(lab_price),0) from rstxn_rilabs where rihdr_no=a.rihdr_no)', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #77
-            ['name' => '\'RI LAB (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI8', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(lab_price),0) from rstxn_rilabs where rihdr_no=a.rihdr_no)', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #78
-            ['name' => '\'RI RAD (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:RI9', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(rirad_price),0) from rstxn_riradiologs where rihdr_no=a.rihdr_no)', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #79
-            ['name' => '\'RI RAD (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI9', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(rirad_price),0) from rstxn_riradiologs where rihdr_no=a.rihdr_no)', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #80
-            ['name' => '\'RI OBAT (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:RI10', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(riobat_qty*riobat_price),0) from rstxn_riobats where rihdr_no=a.rihdr_no)', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #81
-            ['name' => '\'RI OBAT (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI10', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(riobat_qty*riobat_price),0) from rstxn_riobats where rihdr_no=a.rihdr_no)', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #82
-            ['name' => '\'RI PERAWATAN (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:RI11', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select sum(nvl(perawatan_price,0)*nvl(DAY, ceil(decode((nvl(end_date,sysdate)-start_date),0,1,(nvl(end_date,sysdate)-start_date)))) ) from rsmst_trfrooms where rihdr_no=a.rihdr_no)', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #83
-            ['name' => '\'RI PERAWATAN (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI11', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select sum(nvl(perawatan_price,0)*nvl(DAY, ceil(decode((nvl(end_date,sysdate)-start_date),0,1,(nvl(end_date,sysdate)-start_date)))) ) from rsmst_trfrooms where rihdr_no=a.rihdr_no)', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #84
-            ['name' => '\'RI KAMAR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:RI12', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select sum(nvl(room_price,0)*nvl(DAY, ceil(decode((nvl(end_date,sysdate)-start_date),0,1,(nvl(end_date,sysdate)-start_date)))) ) from rsmst_trfrooms where rihdr_no=a.rihdr_no)', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #85
-            ['name' => '\'RI KAMAR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI12', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select sum(nvl(room_price,0)*nvl(DAY, ceil(decode((nvl(end_date,sysdate)-start_date),0,1,(nvl(end_date,sysdate)-start_date)))) ) from rsmst_trfrooms where rihdr_no=a.rihdr_no)', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #86
-            ['name' => '\'RI PELAYANAN UMUM (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:RI13', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select sum(nvl(common_service,0)*nvl(DAY, ceil(decode((nvl(end_date,sysdate)-start_date),0,1,(nvl(end_date,sysdate)-start_date)))) ) from rsmst_trfrooms where rihdr_no=a.rihdr_no)', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #87
-            ['name' => '\'RI PELAYANAN UMUM (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI13', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select sum(nvl(common_service,0)*nvl(DAY, ceil(decode((nvl(end_date,sysdate)-start_date),0,1,(nvl(end_date,sysdate)-start_date)))) ) from rsmst_trfrooms where rihdr_no=a.rihdr_no)', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #88
-            ['name' => '\'RI LAIN (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:RI14', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(OTHER_PRICE),0) from RSTXN_RIOTHERS where rihdr_no=a.rihdr_no)', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #89
-            ['name' => '\'RI LAIN (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI14', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(OTHER_PRICE),0) from RSTXN_RIOTHERS where rihdr_no=a.rihdr_no)', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #90
-            ['name' => '\'SUBSIDI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI16', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => 'ri_diskon', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #91
-            ['name' => '\'SUBSIDI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:RI16', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => 'ri_diskon', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #92
-            ['name' => '\'OPERATOR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:OK1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(oprdoc_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #93
-            ['name' => '\'OPERATOR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK1', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(oprdoc_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #94
-            ['name' => '\'ASIS OPERATOR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:OK2', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(asistopr_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #95
-            ['name' => '\'ASIS OPERATOR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK2', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(asistopr_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #96
-            ['name' => '\'ANASTESI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:OK3', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(anesdoc_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #97
-            ['name' => '\'ANASTESI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK3', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(anesdoc_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #98
-            ['name' => '\'PENG ANASTESI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:OK4', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(changeanesdoc_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #99
-            ['name' => '\'PENG ANASTESI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK4', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(changeanesdoc_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #100
-            ['name' => '\'ASIS ANASTESI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:OK5', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(asistanes_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #101
-            ['name' => '\'ASIS ANASTESI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK5', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(asistanes_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #102
-            ['name' => '\'INSTRUMENT (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:OK6', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(instrument_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #103
-            ['name' => '\'INSTRUMENT (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK6', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(instrument_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #104
-            ['name' => '\'OMLOP (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:OK7', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(omlop_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #105
-            ['name' => '\'OMLOP (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK7', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(omlop_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #106
-            ['name' => '\'RR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:OK8', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(rr_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #107
-            ['name' => '\'RR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK8', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(rr_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #108
-            ['name' => '\'OK FEE (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:OK9', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(ok_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #109
-            ['name' => '\'OK FEE (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK9', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(ok_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #110
-            ['name' => '\'BAHAN (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:OK10', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(equipment_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #111
-            ['name' => '\'BAHAN (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK10', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(equipment_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #112
-            ['name' => '\'OPERATOR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:OK11', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(rentequipment_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #113
-            ['name' => '\'SEWA ALAT (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK11', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(rentequipment_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #114
-            ['name' => '\'BAYAR_RI (\'||(select reg_name||\' / \'||x.reg_no||\'\' from rsmst_pasiens x where x.reg_no=b.reg_no)||\')\'', 'acc' => 'a.acc_id', 'accK' => 'conf:RI1', 'shift' => 'nvl(a.shift,\'1\')', 'date' => 'ripay_date', 'd' => 'ripay_bayar', 'k' => '0', 'from' => 'RSTXN_RIPAYMENTPDTLS a,RSTXN_RIHDRS b', 'where' => 'a.Rihdr_no=b.Rihdr_no and ri_status=\'P\''],
-            // #115
-            ['name' => '\'BAYAR_RI (\'||(select reg_name||\' / \'||x.reg_no||\'\' from rsmst_pasiens x where x.reg_no=b.reg_no)||\')\'', 'acc' => 'conf:RI1', 'accK' => 'a.acc_id', 'shift' => 'nvl(a.shift,\'1\')', 'date' => 'ripay_date', 'd' => '0', 'k' => 'ripay_bayar', 'from' => 'RSTXN_RIPAYMENTPDTLS a,RSTXN_RIHDRS b', 'where' => 'a.Rihdr_no=b.Rihdr_no and ri_status=\'P\''],
-            // #116
-            ['name' => '\'ANGSURAN AWAL (\'||a.RIhdr_no||\')\'', 'acc' => 'acc_id', 'accK' => 'conf:RIANGAWAL', 'shift' => 'nvl(shift,\'1\')', 'date' => 'ripay_date', 'd' => 'ripay_bayar', 'k' => '0', 'from' => 'RSTXN_RIPAYMENTDTLS a', 'where' => ''],
-            // #117
-            ['name' => '\'ANGSURAN AWAL (\'||a.RIhdr_no||\')\'', 'acc' => 'conf:RIANGAWAL', 'accK' => 'acc_id', 'shift' => 'nvl(shift,\'1\')', 'date' => 'ripay_date', 'd' => '0', 'k' => 'ripay_bayar', 'from' => 'RSTXN_RIPAYMENTDTLS a', 'where' => ''],
-            // #118
-            ['name' => '\'PENGEMBALIAN ANGSURAN AWAL (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RIANGAWAL', 'accK' => 'acc_id', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(ripay_bayar),0) from RSTXN_RIPAYMENTDTLS where rihdr_no=a.rihdr_no)', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #119
-            ['name' => '\'PENGEMBALIAN ANGSURAN AWAL (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'acc_id', 'accK' => 'conf:RIANGAWAL', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(ripay_bayar),0) from RSTXN_RIPAYMENTDTLS where rihdr_no=a.rihdr_no)', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #120
-            ['name' => '\'PENGEMBALIAN ANGSURAN AWAL P (\'||a.RIhdr_no||\')\'', 'acc' => 'conf:R1', 'accK' => 'b.acc_id', 'shift' => 'nvl(b.shift,\'1\')', 'date' => 'ripay_date', 'd' => 'nvl(ripay_bayar,0)', 'k' => '0', 'from' => 'RSTXN_RIHDRS a,RSTXN_RIPAYMENTPKDTLS b', 'where' => 'a.rihdr_no=b.rihdr_no and ri_status=\'P\''],
-            // #121
-            ['name' => '\'PENGEMBALIAN ANGSURAN AWAL P (\'||a.RIhdr_no||\')\'', 'acc' => 'b.acc_id', 'accK' => 'conf:R1', 'shift' => 'nvl(b.shift,\'1\')', 'date' => 'ripay_date', 'd' => '0', 'k' => 'nvl(ripay_bayar,0)', 'from' => 'RSTXN_RIHDRS a,RSTXN_RIPAYMENTPKDTLS b', 'where' => 'a.rihdr_no=b.rihdr_no and ri_status=\'P\''],
-            // #122
-            ['name' => '\'BAYAR PBF / \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)', 'acc' => 'a.acc_id', 'accK' => 'conf:RCV1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'cashout_date', 'd' => '0', 'k' => 'cashout_value', 'from' => 'IMTXN_CASHOUTHDRS a', 'where' => 'nvl(cashout_value,0)>0'],
-            // #123
-            ['name' => '\'BAYAR PBF / \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)', 'acc' => 'conf:RCV1', 'accK' => 'a.acc_id', 'shift' => 'nvl(shift,\'1\')', 'date' => 'cashout_date', 'd' => 'cashout_value', 'k' => '0', 'from' => 'IMTXN_CASHOUTHDRS a', 'where' => 'nvl(cashout_value,0)>0'],
-            // #124
-            ['name' => '\'BAYAR PBF TOPUP/ \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)', 'acc' => 'conf:RCV6', 'accK' => 'conf:RCV1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'cashout_date', 'd' => '0', 'k' => 'cashout_value_topup', 'from' => 'IMTXN_CASHOUTHDRS a', 'where' => 'nvl(cashout_value_topup,0)>0'],
-            // #125
-            ['name' => '\'BAYAR PBF TOPUP/ \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)', 'acc' => 'conf:RCV1', 'accK' => 'conf:RCV6', 'shift' => 'nvl(shift,\'1\')', 'date' => 'cashout_date', 'd' => 'cashout_value_topup', 'k' => '0', 'from' => 'IMTXN_CASHOUTHDRS a', 'where' => 'nvl(cashout_value_topup,0)>0'],
-            // #126
-            ['name' => '\'BAYAR DIMUKA PBF / \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)', 'acc' => 'a.acc_id', 'accK' => 'conf:RCV6', 'shift' => 'nvl(shift,\'1\')', 'date' => 'cashout_date', 'd' => '0', 'k' => 'cashout_value', 'from' => 'IMTXN_CASHOUTHDRTOPUPS a', 'where' => ''],
-            // #127
-            ['name' => '\'BAYAR DIMUKA PBF / \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)', 'acc' => 'conf:RCV6', 'accK' => 'a.acc_id', 'shift' => 'nvl(shift,\'1\')', 'date' => 'cashout_date', 'd' => 'cashout_value', 'k' => '0', 'from' => 'IMTXN_CASHOUTHDRTOPUPS a', 'where' => ''],
-            // #128
-            ['name' => '\'RCV TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no', 'acc' => 'conf:RCV2', 'accK' => 'conf:RCV1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RCV_date', 'd' => '(select nvl(sum(nvl(qty,0)*nvl(cost_price,0)),0) from imtxn_receivedtls where RCV_no=a.RCV_no)', 'k' => '0', 'from' => 'imtxn_receiveHDRS a', 'where' => 'RCV_status in (\'H\',\'L\')'],
-            // #129
-            ['name' => '\'RCV TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no', 'acc' => 'conf:RCV1', 'accK' => 'conf:RCV2', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RCV_date', 'd' => '0', 'k' => '(select nvl(sum(nvl(qty,0)*nvl(cost_price,0)),0) from imtxn_receivedtls where RCV_no=a.RCV_no)', 'from' => 'imtxn_receiveHDRS a', 'where' => 'RCV_status in (\'H\',\'L\')'],
-            // #130
-            ['name' => '\'RCV DISKON ITEM TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no', 'acc' => 'conf:RCV3', 'accK' => 'conf:RCV1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RCV_date', 'd' => '0', 'k' => '(select sum(nvl(qty,0)*nvl(cost_price,0))- sum( /*persen1*/(nvl(qty,0)*nvl(cost_price,0))/**/-/**/((nvl(qty,0)*nvl(cost_price,0))*nvl(dtl_persen,0)/100)/**/-/**/nvl(dtl_diskon,0)- /*persen2*/(((nvl(qty,0)*nvl(cost_price,0))/**/-/**/((nvl(qty,0)*nvl(cost_price,0))*nvl(dtl_persen,0)/100)/**/-/**/nvl(dtl_diskon,0))* (nvl(dtl_persen1,0)/100))-/**/nvl(dtl_diskon1,0)) from imtxn_receivedtls where RCV_no=a.RCV_no)', 'from' => 'imtxn_receiveHDRS a', 'where' => 'RCV_status in (\'H\',\'L\')'],
-            // #131
-            ['name' => '\'RCV DISKON ITEM TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no', 'acc' => 'conf:RCV1', 'accK' => 'conf:RCV3', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RCV_date', 'd' => '(select sum(nvl(qty,0)*nvl(cost_price,0))- sum( /*persen1*/(nvl(qty,0)*nvl(cost_price,0))/**/-/**/((nvl(qty,0)*nvl(cost_price,0))*nvl(dtl_persen,0)/100)/**/-/**/nvl(dtl_diskon,0)- /*persen2*/(((nvl(qty,0)*nvl(cost_price,0))/**/-/**/((nvl(qty,0)*nvl(cost_price,0))*nvl(dtl_persen,0)/100)/**/-/**/nvl(dtl_diskon,0))* (nvl(dtl_persen1,0)/100))-/**/nvl(dtl_diskon1,0)) from imtxn_receivedtls where RCV_no=a.RCV_no)', 'k' => '0', 'from' => 'imtxn_receiveHDRS a', 'where' => 'RCV_status in (\'H\',\'L\')'],
-            // #132
-            ['name' => '\'RCV DISKON TOTAL TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no', 'acc' => 'conf:RCV3', 'accK' => 'conf:RCV1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RCV_date', 'd' => '0', 'k' => 'nvl(RCV_diskon,0)', 'from' => 'imtxn_receiveHDRS a', 'where' => 'RCV_status in (\'H\',\'L\')'],
-            // #133
-            ['name' => '\'RCV DISKON TOTAL TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no', 'acc' => 'conf:RCV1', 'accK' => 'conf:RCV3', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RCV_date', 'd' => 'nvl(RCV_diskon,0)', 'k' => '0', 'from' => 'imtxn_receiveHDRS a', 'where' => 'RCV_status in (\'H\',\'L\') and nvl(RCV_diskon,0)>0'],
-            // #134
-            ['name' => '\'RCV MATERAI TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no', 'acc' => 'conf:RCV1', 'accK' => 'conf:RCV5', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RCV_date', 'd' => '0', 'k' => 'nvl(RCV_materai,0)', 'from' => 'imtxn_receiveHDRS a', 'where' => 'RCV_status in (\'H\',\'L\')'],
-            // #135
-            ['name' => '\'RCV MATERAI TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no', 'acc' => 'conf:RCV5', 'accK' => 'conf:RCV1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RCV_date', 'd' => 'nvl(RCV_materai,0)', 'k' => '0', 'from' => 'imtxn_receiveHDRS a', 'where' => 'RCV_status in (\'H\',\'L\') and nvl(RCV_materai,0)>0'],
-            // #136
-            ['name' => '\'RCV PPN TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no', 'acc' => 'conf:RCV1', 'accK' => 'conf:RCV4', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RCV_date', 'd' => '0', 'k' => 'nvl(totalppn,0)', 'from' => 'TKVIEW_RCVHDRS a', 'where' => 'RCV_status in (\'H\',\'L\')'],
-            // #137
-            ['name' => '\'RCV PPN TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no', 'acc' => 'conf:RCV4', 'accK' => 'conf:RCV1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'RCV_date', 'd' => 'nvl(totalppn,0)', 'k' => '0', 'from' => 'TKVIEW_RCVHDRS a', 'where' => 'RCV_status in (\'H\',\'L\') and nvl(totalppn,0)>0'],
-            // #138
-            ['name' => '\'RTN RJ (\'||a.rtn_desc||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:PAPOTEK', 'accK' => 'acc_id', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rtn_date', 'd' => '(select nvl(sum(qty*rtn_prise),0) from IMTXN_RTNDTLS where rtn_no=a.rtn_no)', 'k' => '0', 'from' => 'IMTXN_RTNHDRS a', 'where' => 'rtn_status=\'L\''],
-            // #139
-            ['name' => '\'RTN OBAT (\'||a.rtn_desc||\'/\'||a.reg_no||\')\'', 'acc' => 'acc_id', 'accK' => 'conf:PAPOTEK', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rtn_date', 'd' => '0', 'k' => '(select nvl(sum(qty*rtn_prise),0) from IMTXN_RTNDTLS where rtn_no=a.rtn_no)', 'from' => 'IMTXN_RTNHDRS a', 'where' => 'rtn_status=\'L\''],
-            // #140
-            ['name' => '\'RTN RJ (\'||a.rtn_desc||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ13', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rtn_date', 'd' => '(select nvl(sum(qty*rtn_prise),0) from IMTXN_RTNDTLS where rtn_no=a.rtn_no)', 'k' => '0', 'from' => 'IMTXN_RTNHDRS a', 'where' => 'rtn_status=\'L\''],
-            // #141
-            ['name' => '\'RTN OBAT (\'||a.rtn_desc||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:RJ13', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rtn_date', 'd' => '0', 'k' => '(select nvl(sum(qty*rtn_prise),0) from IMTXN_RTNDTLS where rtn_no=a.rtn_no)', 'from' => 'IMTXN_RTNHDRS a', 'where' => 'rtn_status=\'L\''],
-            // #142
-            ['name' => '\'RTN RI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI15', 'accK' => 'conf:RI1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '(select nvl(sum(riobat_qty*riobat_price),0) from rstxn_riobatrtns where rihdr_no=a.rihdr_no)', 'k' => '0', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #143
-            ['name' => '\'RTN OBAT (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RI1', 'accK' => 'conf:RI15', 'shift' => 'nvl(shift,\'1\')', 'date' => 'exit_date', 'd' => '0', 'k' => '(select nvl(sum(riobat_qty*riobat_price),0) from rstxn_riobatrtns where rihdr_no=a.rihdr_no)', 'from' => 'RSTXN_RIHDRS a', 'where' => 'ri_status=\'P\''],
-            // #144
-            ['name' => '\'OPERATOR RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:OK1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(oprdoc_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #145
-            ['name' => '\'OPERATOR RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK1', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(oprdoc_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #146
-            ['name' => '\'ASIS OPERATOR RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:OK2', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(asistopr_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #147
-            ['name' => '\'ASIS OPERATOR RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK2', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(asistopr_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #148
-            ['name' => '\'ANASTESI RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:OK3', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(anesdoc_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #149
-            ['name' => '\'ANASTESI RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK3', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(anesdoc_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #150
-            ['name' => '\'PENG ANASTESI RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:OK4', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(changeanesdoc_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #151
-            ['name' => '\'PENG ANASTESI RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK4', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(changeanesdoc_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #152
-            ['name' => '\'ASIS ANASTESI RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:OK5', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(asistanes_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #153
-            ['name' => '\'ASIS ANASTESI RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK5', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(asistanes_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #154
-            ['name' => '\'INSTRUMENT RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:OK6', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(instrument_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #155
-            ['name' => '\'INSTRUMENT RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK6', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(instrument_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #156
-            ['name' => '\'OMLOP RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:OK7', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(omlop_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #157
-            ['name' => '\'OMLOP RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK7', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(omlop_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #158
-            ['name' => '\'RR RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:OK8', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(rr_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #159
-            ['name' => '\'RR RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK8', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(rr_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #160
-            ['name' => '\'OK FEE RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:OK9', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(ok_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #161
-            ['name' => '\'OK FEE RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK9', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(ok_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #162
-            ['name' => '\'BAHAN RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:OK10', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(equipment_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #163
-            ['name' => '\'BAHAN RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK10', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(equipment_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #164
-            ['name' => '\'SEWA ALAT RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:RJ1', 'accK' => 'conf:OK11', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(rentequipment_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #165
-            ['name' => '\'SEWA ALAT RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK11', 'accK' => 'conf:RJ1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(rentequipment_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_rjhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #166
-            ['name' => '\'OPERATOR UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:OK1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(oprdoc_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #167
-            ['name' => '\'OPERATOR UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK1', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(oprdoc_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #168
-            ['name' => '\'ASIS OPERATOR UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:OK2', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(asistopr_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #169
-            ['name' => '\'ASIS OPERATOR UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK2', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(asistopr_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #170
-            ['name' => '\'ANASTESI UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:OK3', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(anesdoc_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #171
-            ['name' => '\'ANASTESI UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK3', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(anesdoc_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #172
-            ['name' => '\'PENG ANASTESI UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:OK4', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(changeanesdoc_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #173
-            ['name' => '\'PENG ANASTESI UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK4', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(changeanesdoc_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #174
-            ['name' => '\'ASIS ANASTESI UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:OK5', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(asistanes_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #175
-            ['name' => '\'ASIS ANASTESI UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK5', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(asistanes_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #176
-            ['name' => '\'INSTRUMENT UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:OK6', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(instrument_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #177
-            ['name' => '\'INSTRUMENT UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK6', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(instrument_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #178
-            ['name' => '\'OMLOP UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:OK7', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(omlop_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #179
-            ['name' => '\'OMLOP UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK7', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(omlop_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #180
-            ['name' => '\'RR UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:OK8', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(rr_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #181
-            ['name' => '\'RR UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK8', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(rr_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #182
-            ['name' => '\'OK FEE UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:OK9', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(ok_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #183
-            ['name' => '\'OK FEE UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK9', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(ok_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #184
-            ['name' => '\'BAHAN UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:OK10', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(equipment_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #185
-            ['name' => '\'BAHAN UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK10', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(equipment_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #186
-            ['name' => '\'SEWA ALAT UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:UGD1', 'accK' => 'conf:OK11', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '(select nvl(sum(rentequipment_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'k' => '0', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
-            // #187
-            ['name' => '\'SEWA ALAT UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'', 'acc' => 'conf:OK11', 'accK' => 'conf:UGD1', 'shift' => 'nvl(shift,\'1\')', 'date' => 'rj_date', 'd' => '0', 'k' => '(select nvl(sum(rentequipment_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')', 'from' => 'rstxn_ugdhdrs a', 'where' => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')'],
+
+            // ── CI (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'CI\'||\' \'||tucashk_desc||\'(\'||tucashk_no||\')\'',
+                'akun'       => 'acc_id_kas',
+                'akunLawan'  => 'acc_id',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'tucashk_date',
+                'debit'      => 'tucashk_nominal',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_TUCASHDS a',
+                'where'      => 'tucashk_status=\'L\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'CI\'||\' \'||tucashk_desc||\'(\'||tucashk_no||\')\'',
+                'akun'       => 'acc_id',
+                'akunLawan'  => 'acc_id_kas',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'tucashk_date',
+                'debit'      => '0',
+                'kredit'     => 'tucashk_nominal',
+                'from'       => 'RSTXN_TUCASHDS a',
+                'where'      => 'tucashk_status=\'L\'',
+            ],
+
+            // ── CO (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'CO\'||\' \'||tucashk_desc||\'(\'||tucashk_no||\')\'',
+                'akun'       => 'acc_id_kas',
+                'akunLawan'  => 'acc_id',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'tucashk_date',
+                'debit'      => '0',
+                'kredit'     => 'tucashk_nominal',
+                'from'       => 'RSTXN_TUCASHKS a',
+                'where'      => 'tucashk_status=\'L\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'CO\'||\' \'||tucashk_desc||\'(\'||tucashk_no||\')\'',
+                'akun'       => 'acc_id',
+                'akunLawan'  => 'acc_id_kas',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'tucashk_date',
+                'debit'      => 'tucashk_nominal',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_TUCASHKS a',
+                'where'      => 'tucashk_status=\'L\'',
+            ],
+
+            // ── RJ_ADMIN (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RJ_ADMIN (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:RJ3',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => 'rj_admin',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RJ_ADMIN (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ3',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => 'rj_admin',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+
+            // ── RS_ADMIN (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RS_ADMIN (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:RJ2',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => 'rs_admin',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RS_ADMIN (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ2',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => 'rs_admin',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+
+            // ── UP (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'UP (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:RJ11',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => 'poli_price',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'UP (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ11',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => 'poli_price',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+
+            // ── JD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'JD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:RJ4',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select sum(accdoc_price) from RSTXN_RJACCDOCS G where G.rj_no=a.rj_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'JD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ4',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(accdoc_price) from RSTXN_RJACCDOCS G where G.rj_no=a.rj_no)',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+
+            // ── JM (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'JM (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:RJ5',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select sum(pact_price) from RSTXN_RJACTPARAMS G where G.rj_no=a.rj_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'JM (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ5',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(pact_price) from RSTXN_RJACTPARAMS G where G.rj_no=a.rj_no)',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+
+            // ── JK (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'JK (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:RJ6',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select sum(acte_price) from RSTXN_RJACTEMPS G where G.rj_no=a.rj_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'JK (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ6',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(acte_price) from RSTXN_RJACTEMPS G where G.rj_no=a.rj_no)',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+
+            // ── OBAT (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OBAT (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:RJ9',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select sum((NVL(qty,0)*NVL(price,0))) from RSTXN_RJOBATS G where G.rj_no=a.rj_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OBAT (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ9',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum((NVL(qty,0)*NVL(price,0))) from RSTXN_RJOBATS G where G.rj_no=a.rj_no)',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+
+            // ── LAB (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'LAB (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:RJ7',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select sum(lab_price) from RSTXN_RJLABS G where G.rj_no=a.rj_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'LAB (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ7',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(lab_price) from RSTXN_RJLABS G where G.rj_no=a.rj_no)',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+
+            // ── RAD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RAD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:RJ10',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select sum(rad_price) from RSTXN_RJRADS G where G.rj_no=a.rj_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RAD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ10',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(rad_price) from RSTXN_RJRADS G where G.rj_no=a.rj_no)',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+
+            // ── LAIN (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'LAIN (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:RJ8',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select sum(other_price) from RSTXN_RJOTHERS G where G.rj_no=a.rj_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'LAIN (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ8',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(other_price) from RSTXN_RJOTHERS G where G.rj_no=a.rj_no)',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+
+            // ── RJ_DISKON (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RJ_DISKON (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ12',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => 'rj_diskon',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RJ_DISKON (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:RJ12',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => 'rj_diskon',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+
+            // ── BAYAR_RJ (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAYAR_RJ (\'||a.rjc_desc||\')\'',
+                'akun'       => 'a.acc_id',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(a.shift,\'1\')',
+                'tanggal'    => 'rjc_date',
+                'debit'      => 'rjc_nominal',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RJCASHINS a,rstxn_rjhdrs b',
+                'where'      => 'a.rj_no=b.rj_no and rj_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAYAR_RJ (\'||a.rjc_desc||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'a.acc_id',
+                'shift'      => 'nvl(a.shift,\'1\')',
+                'tanggal'    => 'rjc_date',
+                'debit'      => '0',
+                'kredit'     => 'rjc_nominal',
+                'from'       => 'RSTXN_RJCASHINS a,rstxn_rjhdrs b',
+                'where'      => 'a.rj_no=b.rj_no and rj_status not in(\'A\',\'F\')',
+            ],
+
+            // ── UGD_ADMIN (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'UGD_ADMIN (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:UGD3',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => 'RJ_admin',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'UGD_ADMIN (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD3',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '0',
+                'kredit'     => 'RJ_admin',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+
+            // ── RS_ADMIN (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RS_ADMIN (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:UGD2',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => 'rs_admin',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RS_ADMIN (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD2',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '0',
+                'kredit'     => 'rs_admin',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+
+            // ── UP (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'UP (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:UGD11',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => 'poli_price',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'UP (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD11',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '0',
+                'kredit'     => 'poli_price',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+
+            // ── JD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'JD (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:UGD4',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '(select sum(accdoc_price) from RSTXN_UGDACCDOCS G where G.RJ_no=a.RJ_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'JD (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD4',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(accdoc_price) from RSTXN_UGDACCDOCS G where G.RJ_no=a.RJ_no)',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+
+            // ── JM (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'JM (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:UGD5',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '(select sum(pact_price) from RSTXN_UGDACTPARAMS G where G.RJ_no=a.RJ_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'JM (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD5',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(pact_price) from RSTXN_UGDACTPARAMS G where G.RJ_no=a.RJ_no)',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+
+            // ── JK (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'JK (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:UGD6',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '(select sum(acte_price) from RSTXN_UGDACTEMPS G where G.RJ_no=a.RJ_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'JK (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD6',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(acte_price) from RSTXN_UGDACTEMPS G where G.RJ_no=a.RJ_no)',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+
+            // ── OBAT (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OBAT (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:UGD9',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '(select sum((NVL(qty,0)*NVL(price,0))) from RSTXN_UGDOBATS G where G.RJ_no=a.RJ_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OBAT (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD9',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum((NVL(qty,0)*NVL(price,0))) from RSTXN_UGDOBATS G where G.RJ_no=a.RJ_no)',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+
+            // ── LAB (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'LAB (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:UGD7',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '(select sum(lab_price) from RSTXN_UGDLABS G where G.RJ_no=a.RJ_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'LAB (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD7',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(lab_price) from RSTXN_UGDLABS G where G.RJ_no=a.RJ_no)',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+
+            // ── RAD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RAD (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:UGD10',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '(select sum(rad_price) from RSTXN_UGDRADS G where G.RJ_no=a.RJ_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RAD (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD10',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(rad_price) from RSTXN_UGDRADS G where G.RJ_no=a.RJ_no)',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+
+            // ── LAIN (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'LAIN (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:UGD8',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '(select sum(other_price) from RSTXN_UGDOTHERS G where G.RJ_no=a.RJ_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'LAIN (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD8',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(other_price) from RSTXN_UGDOTHERS G where G.RJ_no=a.RJ_no)',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+
+            // ── UGD_DISKON (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'UGD_DISKON (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD12',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => 'RJ_diskon',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'UGD_DISKON (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:UGD12',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '0',
+                'kredit'     => 'RJ_diskon',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+
+            // ── BAYAR_UGD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAYAR_UGD (\'||a.RJc_desc||\')\'',
+                'akun'       => 'a.acc_id',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(a.shift,\'1\')',
+                'tanggal'    => 'rjc_date',
+                'debit'      => 'rjc_nominal',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_UGDCASHINS a,rstxn_UGDhdrs b',
+                'where'      => 'a.RJ_no=b.RJ_no and RJ_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAYAR_UGD (\'||a.RJC_desc||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'a.acc_id',
+                'shift'      => 'nvl(a.shift,\'1\')',
+                'tanggal'    => 'RJc_date',
+                'debit'      => '0',
+                'kredit'     => 'RJc_nominal',
+                'from'       => 'RSTXN_UGDCASHINS a,rstxn_UGDhdrs b',
+                'where'      => 'a.RJ_no=b.RJ_no and RJ_status not in(\'A\',\'F\')',
+            ],
+
+            // ── RESEP JK (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RESEP JK (\'||a.sls_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RESEP1',
+                'akunLawan'  => 'conf:RESEP2',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'sls_date',
+                'debit'      => 'acte_price',
+                'kredit'     => '0',
+                'from'       => 'IMTXN_SLSHDRS a',
+                'where'      => 'status =\'L\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RESEP JK (\'||a.sls_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RESEP2',
+                'akunLawan'  => 'conf:RESEP1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'sls_date',
+                'debit'      => '0',
+                'kredit'     => 'acte_price',
+                'from'       => 'IMTXN_SLSHDRS a',
+                'where'      => 'status =\'L\'',
+            ],
+
+            // ── RESEP OBAT (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RESEP OBAT (\'||a.sls_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RESEP1',
+                'akunLawan'  => 'conf:RESEP3',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'sls_date',
+                'debit'      => '(select sum(nvl(qty,0)*nvl(sales_price,0)) from IMTXN_SLSDTLS where sls_no=a.sls_no)',
+                'kredit'     => '0',
+                'from'       => 'IMTXN_SLSHDRS a',
+                'where'      => 'status =\'L\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RESEP OBAT (\'||a.sls_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RESEP3',
+                'akunLawan'  => 'conf:RESEP1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'sls_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(nvl(qty,0)*nvl(sales_price,0)) from IMTXN_SLSDTLS where sls_no=a.sls_no)',
+                'from'       => 'IMTXN_SLSHDRS a',
+                'where'      => 'status =\'L\'',
+            ],
+
+            // ── BAYAR_RESEP (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAYAR_RESEP (\'||a.sls_no||\' \'||a.reg_no||\')\'',
+                'akun'       => 'a.acc_id',
+                'akunLawan'  => 'conf:RESEP1',
+                'shift'      => 'nvl(a.shift,\'1\')',
+                'tanggal'    => 'sls_date',
+                'debit'      => 'sls_bayar',
+                'kredit'     => '0',
+                'from'       => 'IMTXN_SLSHDRS a',
+                'where'      => 'status =\'L\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAYAR_RESEP (\'||a.sls_no||\' \'||a.reg_no||\')\'',
+                'akun'       => 'conf:RESEP1',
+                'akunLawan'  => 'a.acc_id',
+                'shift'      => 'nvl(a.shift,\'1\')',
+                'tanggal'    => 'sls_date',
+                'debit'      => '0',
+                'kredit'     => 'sls_bayar',
+                'from'       => 'IMTXN_SLSHDRS a',
+                'where'      => 'status =\'L\'',
+            ],
+
+            // ── TRF PIUTANG RESEP ke INAP (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'TRF PIUTANG RESEP ke INAP (\'||(select string_agg(sls_no||\' \'||reg_no) from imtxn_slshdrs where rihdr_no=a.rihdr_no)||\')\'',
+                'akun'       => 'conf:RESEPTRFINAP',
+                'akunLawan'  => 'conf:RESEP1',
+                'shift'      => 'nvl(a.shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select sum(nvl(ribon_price,0)) from RSTXN_RIBONOBATS where rihdr_no=a.rihdr_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status =\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'TRF PIUTANG RESEP ke INAP (\'||(select string_agg(sls_no||\' \'||reg_no) from imtxn_slshdrs where rihdr_no=a.rihdr_no)||\')\'',
+                'akun'       => 'conf:RESEP1',
+                'akunLawan'  => 'conf:RESEPTRFINAP',
+                'shift'      => 'nvl(a.shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(nvl(ribon_price,0)) from RSTXN_RIBONOBATS where rihdr_no=a.rihdr_no)',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status =\'P\'',
+            ],
+
+            // ── TRF PIUTANG UGD ke INAP (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'TRF PIUTANG UGD ke INAP (\'||(select string_agg(sls_no||\' \'||reg_no) from imtxn_slshdrs where rihdr_no=a.rihdr_no)||\')\'',
+                'akun'       => 'conf:UGDTRFINAP',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(a.shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(nvl(rj_admin,0)+ nvl(poli_PRICE,0)+ nvl(acte_price,0)+ nvl(actp_price,0)+ nvl(actd_price,0)+ nvl(obat,0)+ nvl(rad,0)+ nvl(lab,0)+ nvl(other,0)+nvl(rs_admin,0)),0) from RSTXN_RITEMPADMINS where rihdr_no=a.rihdr_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status =\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'TRF PIUTANG UGD ke INAP (\'||(select string_agg(sls_no||\' \'||reg_no) from imtxn_slshdrs where rihdr_no=a.rihdr_no)||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:UGDTRFINAP',
+                'shift'      => 'nvl(a.shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(nvl(rj_admin,0)+ nvl(poli_PRICE,0)+ nvl(acte_price,0)+ nvl(actp_price,0)+ nvl(actd_price,0)+ nvl(obat,0)+ nvl(rad,0)+ nvl(lab,0)+ nvl(other,0)+nvl(rs_admin,0)),0) from RSTXN_RITEMPADMINS where rihdr_no=a.rihdr_no)',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status =\'P\'',
+            ],
+
+            // ── TRF PIUTANG RJ ke UGD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'TRF PIUTANG RJ ke UGD (\'||(select rj_no||\' \'||reg_no from RSTXN_UGDBIAYASELAMADIRJS where rj_no_rsugd=a.rj_no)||\')\'',
+                'akun'       => 'conf:RJTRFUGD',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(a.shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(total_biayarj),0) from RSTXN_UGDBIAYASELAMADIRJS where rj_no_rsugd=a.rj_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'TRF PIUTANG RJ ke UGD (\'||(select rj_no||\' \'||reg_no from RSTXN_UGDBIAYASELAMADIRJS where rj_no_rsugd=a.rj_no)||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:RJTRFUGD',
+                'shift'      => 'nvl(a.shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(total_biayarj),0) from RSTXN_UGDBIAYASELAMADIRJS where rj_no_rsugd=a.rj_no)',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+
+            // ── RI ADMIN AGE (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI ADMIN AGE (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:RI2',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => 'admin_age',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI ADMIN AGE (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI2',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => 'admin_age',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── RI ADMIN STATUS (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI ADMIN STATUS (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:RI3',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => 'admin_status',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI ADMIN STATUS (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI3',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => 'admin_status',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── RI JD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI JD (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:RI4',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(actd_price*actd_qty),0) from rstxn_riactdocs where rihdr_no=a.rihdr_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI JD (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI4',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(actd_price*actd_qty),0) from rstxn_riactdocs where rihdr_no=a.rihdr_no)',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── RI JM (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI JM (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:RI5',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(actp_price*actp_qty),0) from rstxn_riactparams where rihdr_no=a.rihdr_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI JM (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI5',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(actp_price*actp_qty),0) from rstxn_riactparams where rihdr_no=a.rihdr_no)',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── RI VISIT (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI VISIT (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:RI6',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(visit_price),0) from rstxn_rivisits where rihdr_no=a.rihdr_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI VISIT (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI6',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(visit_price),0) from rstxn_rivisits where rihdr_no=a.rihdr_no)',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── RI KONSUL (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI KONSUL (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:RI7',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(konsul_price),0) from rstxn_rikonsuls where rihdr_no=a.rihdr_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI KONSUL (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI7',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(konsul_price),0) from rstxn_rikonsuls where rihdr_no=a.rihdr_no)',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── RI LAB (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI LAB (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:RI8',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(lab_price),0) from rstxn_rilabs where rihdr_no=a.rihdr_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI LAB (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI8',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(lab_price),0) from rstxn_rilabs where rihdr_no=a.rihdr_no)',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── RI RAD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI RAD (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:RI9',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(rirad_price),0) from rstxn_riradiologs where rihdr_no=a.rihdr_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI RAD (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI9',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(rirad_price),0) from rstxn_riradiologs where rihdr_no=a.rihdr_no)',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── RI OBAT (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI OBAT (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:RI10',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(riobat_qty*riobat_price),0) from rstxn_riobats where rihdr_no=a.rihdr_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI OBAT (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI10',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(riobat_qty*riobat_price),0) from rstxn_riobats where rihdr_no=a.rihdr_no)',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── RI PERAWATAN (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI PERAWATAN (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:RI11',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select sum(nvl(perawatan_price,0)*nvl(DAY, ceil(decode((nvl(end_date,sysdate)-start_date),0,1,(nvl(end_date,sysdate)-start_date)))) ) from rsmst_trfrooms where rihdr_no=a.rihdr_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI PERAWATAN (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI11',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(nvl(perawatan_price,0)*nvl(DAY, ceil(decode((nvl(end_date,sysdate)-start_date),0,1,(nvl(end_date,sysdate)-start_date)))) ) from rsmst_trfrooms where rihdr_no=a.rihdr_no)',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── RI KAMAR (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI KAMAR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:RI12',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select sum(nvl(room_price,0)*nvl(DAY, ceil(decode((nvl(end_date,sysdate)-start_date),0,1,(nvl(end_date,sysdate)-start_date)))) ) from rsmst_trfrooms where rihdr_no=a.rihdr_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI KAMAR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI12',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(nvl(room_price,0)*nvl(DAY, ceil(decode((nvl(end_date,sysdate)-start_date),0,1,(nvl(end_date,sysdate)-start_date)))) ) from rsmst_trfrooms where rihdr_no=a.rihdr_no)',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── RI PELAYANAN UMUM (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI PELAYANAN UMUM (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:RI13',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select sum(nvl(common_service,0)*nvl(DAY, ceil(decode((nvl(end_date,sysdate)-start_date),0,1,(nvl(end_date,sysdate)-start_date)))) ) from rsmst_trfrooms where rihdr_no=a.rihdr_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI PELAYANAN UMUM (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI13',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(nvl(common_service,0)*nvl(DAY, ceil(decode((nvl(end_date,sysdate)-start_date),0,1,(nvl(end_date,sysdate)-start_date)))) ) from rsmst_trfrooms where rihdr_no=a.rihdr_no)',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── RI LAIN (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI LAIN (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:RI14',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(OTHER_PRICE),0) from RSTXN_RIOTHERS where rihdr_no=a.rihdr_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RI LAIN (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI14',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(OTHER_PRICE),0) from RSTXN_RIOTHERS where rihdr_no=a.rihdr_no)',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── SUBSIDI (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'SUBSIDI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI16',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => 'ri_diskon',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'SUBSIDI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:RI16',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => 'ri_diskon',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── OPERATOR (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OPERATOR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:OK1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(oprdoc_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OPERATOR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK1',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(oprdoc_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── ASIS OPERATOR (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ASIS OPERATOR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:OK2',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(asistopr_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ASIS OPERATOR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK2',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(asistopr_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── ANASTESI (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ANASTESI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:OK3',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(anesdoc_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ANASTESI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK3',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(anesdoc_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── PENG ANASTESI (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'PENG ANASTESI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:OK4',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(changeanesdoc_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'PENG ANASTESI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK4',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(changeanesdoc_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── ASIS ANASTESI (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ASIS ANASTESI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:OK5',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(asistanes_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ASIS ANASTESI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK5',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(asistanes_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── INSTRUMENT (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'INSTRUMENT (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:OK6',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(instrument_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'INSTRUMENT (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK6',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(instrument_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── OMLOP (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OMLOP (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:OK7',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(omlop_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OMLOP (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK7',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(omlop_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── RR (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:OK8',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(rr_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK8',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(rr_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── OK FEE (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OK FEE (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:OK9',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(ok_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OK FEE (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK9',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(ok_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── BAHAN (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAHAN (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:OK10',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(equipment_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAHAN (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK10',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(equipment_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── OPERATOR (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OPERATOR (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:OK11',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(rentequipment_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── SEWA ALAT (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'SEWA ALAT (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK11',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(rentequipment_fee),0) from RSTXN_OKS where rihdr_no=a.rihdr_no and ok_status=\'L\')',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── BAYAR_RI (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAYAR_RI (\'||(select reg_name||\' / \'||x.reg_no||\'\' from rsmst_pasiens x where x.reg_no=b.reg_no)||\')\'',
+                'akun'       => 'a.acc_id',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(a.shift,\'1\')',
+                'tanggal'    => 'ripay_date',
+                'debit'      => 'ripay_bayar',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIPAYMENTPDTLS a,RSTXN_RIHDRS b',
+                'where'      => 'a.Rihdr_no=b.Rihdr_no and ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAYAR_RI (\'||(select reg_name||\' / \'||x.reg_no||\'\' from rsmst_pasiens x where x.reg_no=b.reg_no)||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'a.acc_id',
+                'shift'      => 'nvl(a.shift,\'1\')',
+                'tanggal'    => 'ripay_date',
+                'debit'      => '0',
+                'kredit'     => 'ripay_bayar',
+                'from'       => 'RSTXN_RIPAYMENTPDTLS a,RSTXN_RIHDRS b',
+                'where'      => 'a.Rihdr_no=b.Rihdr_no and ri_status=\'P\'',
+            ],
+
+            // ── ANGSURAN AWAL (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ANGSURAN AWAL (\'||a.RIhdr_no||\')\'',
+                'akun'       => 'acc_id',
+                'akunLawan'  => 'conf:RIANGAWAL',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'ripay_date',
+                'debit'      => 'ripay_bayar',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIPAYMENTDTLS a',
+                'where'      => '',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ANGSURAN AWAL (\'||a.RIhdr_no||\')\'',
+                'akun'       => 'conf:RIANGAWAL',
+                'akunLawan'  => 'acc_id',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'ripay_date',
+                'debit'      => '0',
+                'kredit'     => 'ripay_bayar',
+                'from'       => 'RSTXN_RIPAYMENTDTLS a',
+                'where'      => '',
+            ],
+
+            // ── PENGEMBALIAN ANGSURAN AWAL (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'PENGEMBALIAN ANGSURAN AWAL (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RIANGAWAL',
+                'akunLawan'  => 'acc_id',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(ripay_bayar),0) from RSTXN_RIPAYMENTDTLS where rihdr_no=a.rihdr_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'PENGEMBALIAN ANGSURAN AWAL (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'acc_id',
+                'akunLawan'  => 'conf:RIANGAWAL',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(ripay_bayar),0) from RSTXN_RIPAYMENTDTLS where rihdr_no=a.rihdr_no)',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── PENGEMBALIAN ANGSURAN AWAL P (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'PENGEMBALIAN ANGSURAN AWAL P (\'||a.RIhdr_no||\')\'',
+                'akun'       => 'conf:R1',
+                'akunLawan'  => 'b.acc_id',
+                'shift'      => 'nvl(b.shift,\'1\')',
+                'tanggal'    => 'ripay_date',
+                'debit'      => 'nvl(ripay_bayar,0)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a,RSTXN_RIPAYMENTPKDTLS b',
+                'where'      => 'a.rihdr_no=b.rihdr_no and ri_status=\'P\'',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'PENGEMBALIAN ANGSURAN AWAL P (\'||a.RIhdr_no||\')\'',
+                'akun'       => 'b.acc_id',
+                'akunLawan'  => 'conf:R1',
+                'shift'      => 'nvl(b.shift,\'1\')',
+                'tanggal'    => 'ripay_date',
+                'debit'      => '0',
+                'kredit'     => 'nvl(ripay_bayar,0)',
+                'from'       => 'RSTXN_RIHDRS a,RSTXN_RIPAYMENTPKDTLS b',
+                'where'      => 'a.rihdr_no=b.rihdr_no and ri_status=\'P\'',
+            ],
+
+            // ── BAYAR PBF / (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAYAR PBF / \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)',
+                'akun'       => 'a.acc_id',
+                'akunLawan'  => 'conf:RCV1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'cashout_date',
+                'debit'      => '0',
+                'kredit'     => 'cashout_value',
+                'from'       => 'IMTXN_CASHOUTHDRS a',
+                'where'      => 'nvl(cashout_value,0)>0',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAYAR PBF / \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)',
+                'akun'       => 'conf:RCV1',
+                'akunLawan'  => 'a.acc_id',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'cashout_date',
+                'debit'      => 'cashout_value',
+                'kredit'     => '0',
+                'from'       => 'IMTXN_CASHOUTHDRS a',
+                'where'      => 'nvl(cashout_value,0)>0',
+            ],
+
+            // ── BAYAR PBF TOPUP/ (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAYAR PBF TOPUP/ \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)',
+                'akun'       => 'conf:RCV6',
+                'akunLawan'  => 'conf:RCV1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'cashout_date',
+                'debit'      => '0',
+                'kredit'     => 'cashout_value_topup',
+                'from'       => 'IMTXN_CASHOUTHDRS a',
+                'where'      => 'nvl(cashout_value_topup,0)>0',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAYAR PBF TOPUP/ \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)',
+                'akun'       => 'conf:RCV1',
+                'akunLawan'  => 'conf:RCV6',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'cashout_date',
+                'debit'      => 'cashout_value_topup',
+                'kredit'     => '0',
+                'from'       => 'IMTXN_CASHOUTHDRS a',
+                'where'      => 'nvl(cashout_value_topup,0)>0',
+            ],
+
+            // ── BAYAR DIMUKA PBF / (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAYAR DIMUKA PBF / \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)',
+                'akun'       => 'a.acc_id',
+                'akunLawan'  => 'conf:RCV6',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'cashout_date',
+                'debit'      => '0',
+                'kredit'     => 'cashout_value',
+                'from'       => 'IMTXN_CASHOUTHDRTOPUPS a',
+                'where'      => '',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAYAR DIMUKA PBF / \'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)',
+                'akun'       => 'conf:RCV6',
+                'akunLawan'  => 'a.acc_id',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'cashout_date',
+                'debit'      => 'cashout_value',
+                'kredit'     => '0',
+                'from'       => 'IMTXN_CASHOUTHDRTOPUPS a',
+                'where'      => '',
+            ],
+
+            // ── RCV TRANSAKSI (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RCV TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no',
+                'akun'       => 'conf:RCV2',
+                'akunLawan'  => 'conf:RCV1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RCV_date',
+                'debit'      => '(select nvl(sum(nvl(qty,0)*nvl(cost_price,0)),0) from imtxn_receivedtls where RCV_no=a.RCV_no)',
+                'kredit'     => '0',
+                'from'       => 'imtxn_receiveHDRS a',
+                'where'      => 'RCV_status in (\'H\',\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RCV TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no',
+                'akun'       => 'conf:RCV1',
+                'akunLawan'  => 'conf:RCV2',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RCV_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(nvl(qty,0)*nvl(cost_price,0)),0) from imtxn_receivedtls where RCV_no=a.RCV_no)',
+                'from'       => 'imtxn_receiveHDRS a',
+                'where'      => 'RCV_status in (\'H\',\'L\')',
+            ],
+
+            // ── RCV DISKON ITEM TRANSAKSI (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RCV DISKON ITEM TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no',
+                'akun'       => 'conf:RCV3',
+                'akunLawan'  => 'conf:RCV1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RCV_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(nvl(qty,0)*nvl(cost_price,0))- sum( (nvl(qty,0)*nvl(cost_price,0))/**/-/**/((nvl(qty,0)*nvl(cost_price,0))*nvl(dtl_persen,0)/100)/**/-/**/nvl(dtl_diskon,0)- (((nvl(qty,0)*nvl(cost_price,0))/**/-/**/((nvl(qty,0)*nvl(cost_price,0))*nvl(dtl_persen,0)/100)/**/-/**/nvl(dtl_diskon,0))* (nvl(dtl_persen1,0)/100))-/**/nvl(dtl_diskon1,0)) from imtxn_receivedtls where RCV_no=a.RCV_no)',
+                'from'       => 'imtxn_receiveHDRS a',
+                'where'      => 'RCV_status in (\'H\',\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RCV DISKON ITEM TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no',
+                'akun'       => 'conf:RCV1',
+                'akunLawan'  => 'conf:RCV3',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RCV_date',
+                'debit'      => '(select sum(nvl(qty,0)*nvl(cost_price,0))- sum( (nvl(qty,0)*nvl(cost_price,0))/**/-/**/((nvl(qty,0)*nvl(cost_price,0))*nvl(dtl_persen,0)/100)/**/-/**/nvl(dtl_diskon,0)- (((nvl(qty,0)*nvl(cost_price,0))/**/-/**/((nvl(qty,0)*nvl(cost_price,0))*nvl(dtl_persen,0)/100)/**/-/**/nvl(dtl_diskon,0))* (nvl(dtl_persen1,0)/100))-/**/nvl(dtl_diskon1,0)) from imtxn_receivedtls where RCV_no=a.RCV_no)',
+                'kredit'     => '0',
+                'from'       => 'imtxn_receiveHDRS a',
+                'where'      => 'RCV_status in (\'H\',\'L\')',
+            ],
+
+            // ── RCV DISKON TOTAL TRANSAKSI (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RCV DISKON TOTAL TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no',
+                'akun'       => 'conf:RCV3',
+                'akunLawan'  => 'conf:RCV1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RCV_date',
+                'debit'      => '0',
+                'kredit'     => 'nvl(RCV_diskon,0)',
+                'from'       => 'imtxn_receiveHDRS a',
+                'where'      => 'RCV_status in (\'H\',\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RCV DISKON TOTAL TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no',
+                'akun'       => 'conf:RCV1',
+                'akunLawan'  => 'conf:RCV3',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RCV_date',
+                'debit'      => 'nvl(RCV_diskon,0)',
+                'kredit'     => '0',
+                'from'       => 'imtxn_receiveHDRS a',
+                'where'      => 'RCV_status in (\'H\',\'L\') and nvl(RCV_diskon,0)>0',
+            ],
+
+            // ── RCV MATERAI TRANSAKSI (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RCV MATERAI TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no',
+                'akun'       => 'conf:RCV1',
+                'akunLawan'  => 'conf:RCV5',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RCV_date',
+                'debit'      => '0',
+                'kredit'     => 'nvl(RCV_materai,0)',
+                'from'       => 'imtxn_receiveHDRS a',
+                'where'      => 'RCV_status in (\'H\',\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RCV MATERAI TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no',
+                'akun'       => 'conf:RCV5',
+                'akunLawan'  => 'conf:RCV1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RCV_date',
+                'debit'      => 'nvl(RCV_materai,0)',
+                'kredit'     => '0',
+                'from'       => 'imtxn_receiveHDRS a',
+                'where'      => 'RCV_status in (\'H\',\'L\') and nvl(RCV_materai,0)>0',
+            ],
+
+            // ── RCV PPN TRANSAKSI (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RCV PPN TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no',
+                'akun'       => 'conf:RCV1',
+                'akunLawan'  => 'conf:RCV4',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RCV_date',
+                'debit'      => '0',
+                'kredit'     => 'nvl(totalppn,0)',
+                'from'       => 'TKVIEW_RCVHDRS a',
+                'where'      => 'RCV_status in (\'H\',\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RCV PPN TRANSAKSI\'||(select supp_name from immst_suppliers x where x.supp_id=a.supp_id)||\' \'||a.rcv_no',
+                'akun'       => 'conf:RCV4',
+                'akunLawan'  => 'conf:RCV1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'RCV_date',
+                'debit'      => 'nvl(totalppn,0)',
+                'kredit'     => '0',
+                'from'       => 'TKVIEW_RCVHDRS a',
+                'where'      => 'RCV_status in (\'H\',\'L\') and nvl(totalppn,0)>0',
+            ],
+
+            // ── RTN RJ (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RTN RJ (\'||a.rtn_desc||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:PAPOTEK',
+                'akunLawan'  => 'acc_id',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rtn_date',
+                'debit'      => '(select nvl(sum(qty*rtn_prise),0) from IMTXN_RTNDTLS where rtn_no=a.rtn_no)',
+                'kredit'     => '0',
+                'from'       => 'IMTXN_RTNHDRS a',
+                'where'      => 'rtn_status=\'L\'',
+            ],
+
+            // ── RTN OBAT (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RTN OBAT (\'||a.rtn_desc||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'acc_id',
+                'akunLawan'  => 'conf:PAPOTEK',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rtn_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(qty*rtn_prise),0) from IMTXN_RTNDTLS where rtn_no=a.rtn_no)',
+                'from'       => 'IMTXN_RTNHDRS a',
+                'where'      => 'rtn_status=\'L\'',
+            ],
+
+            // ── RTN RJ (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RTN RJ (\'||a.rtn_desc||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ13',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rtn_date',
+                'debit'      => '(select nvl(sum(qty*rtn_prise),0) from IMTXN_RTNDTLS where rtn_no=a.rtn_no)',
+                'kredit'     => '0',
+                'from'       => 'IMTXN_RTNHDRS a',
+                'where'      => 'rtn_status=\'L\'',
+            ],
+
+            // ── RTN OBAT (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RTN OBAT (\'||a.rtn_desc||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:RJ13',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rtn_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(qty*rtn_prise),0) from IMTXN_RTNDTLS where rtn_no=a.rtn_no)',
+                'from'       => 'IMTXN_RTNHDRS a',
+                'where'      => 'rtn_status=\'L\'',
+            ],
+
+            // ── RTN RI (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RTN RI (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI15',
+                'akunLawan'  => 'conf:RI1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '(select nvl(sum(riobat_qty*riobat_price),0) from rstxn_riobatrtns where rihdr_no=a.rihdr_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── RTN OBAT (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RTN OBAT (\'||a.RIhdr_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RI1',
+                'akunLawan'  => 'conf:RI15',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'exit_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(riobat_qty*riobat_price),0) from rstxn_riobatrtns where rihdr_no=a.rihdr_no)',
+                'from'       => 'RSTXN_RIHDRS a',
+                'where'      => 'ri_status=\'P\'',
+            ],
+
+            // ── OPERATOR RJ (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OPERATOR RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:OK1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(oprdoc_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OPERATOR RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK1',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(oprdoc_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── ASIS OPERATOR RJ (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ASIS OPERATOR RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:OK2',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(asistopr_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ASIS OPERATOR RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK2',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(asistopr_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── ANASTESI RJ (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ANASTESI RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:OK3',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(anesdoc_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ANASTESI RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK3',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(anesdoc_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── PENG ANASTESI RJ (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'PENG ANASTESI RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:OK4',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(changeanesdoc_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'PENG ANASTESI RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK4',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(changeanesdoc_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── ASIS ANASTESI RJ (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ASIS ANASTESI RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:OK5',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(asistanes_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ASIS ANASTESI RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK5',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(asistanes_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── INSTRUMENT RJ (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'INSTRUMENT RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:OK6',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(instrument_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'INSTRUMENT RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK6',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(instrument_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── OMLOP RJ (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OMLOP RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:OK7',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(omlop_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OMLOP RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK7',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(omlop_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── RR RJ (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RR RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:OK8',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(rr_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RR RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK8',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(rr_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── OK FEE RJ (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OK FEE RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:OK9',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(ok_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OK FEE RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK9',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(ok_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── BAHAN RJ (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAHAN RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:OK10',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(equipment_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAHAN RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK10',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(equipment_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── SEWA ALAT RJ (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'SEWA ALAT RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:RJ1',
+                'akunLawan'  => 'conf:OK11',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(rentequipment_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'SEWA ALAT RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK11',
+                'akunLawan'  => 'conf:RJ1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(rentequipment_fee),0) from RSTXN_OKS where status_rjri=\'RJ\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_rjhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'RJ\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── OPERATOR UGD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OPERATOR UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:OK1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(oprdoc_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OPERATOR UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK1',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(oprdoc_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── ASIS OPERATOR UGD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ASIS OPERATOR UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:OK2',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(asistopr_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ASIS OPERATOR UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK2',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(asistopr_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── ANASTESI UGD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ANASTESI UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:OK3',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(anesdoc_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ANASTESI UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK3',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(anesdoc_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── PENG ANASTESI UGD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'PENG ANASTESI UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:OK4',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(changeanesdoc_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'PENG ANASTESI UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK4',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(changeanesdoc_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── ASIS ANASTESI UGD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ASIS ANASTESI UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:OK5',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(asistanes_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'ASIS ANASTESI UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK5',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(asistanes_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── INSTRUMENT UGD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'INSTRUMENT UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:OK6',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(instrument_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'INSTRUMENT UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK6',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(instrument_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── OMLOP UGD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OMLOP UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:OK7',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(omlop_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OMLOP UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK7',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(omlop_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── RR UGD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RR UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:OK8',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(rr_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'RR UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK8',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(rr_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── OK FEE UGD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OK FEE UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:OK9',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(ok_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'OK FEE UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK9',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(ok_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── BAHAN UGD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAHAN UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:OK10',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(equipment_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'BAHAN UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK10',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(equipment_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── SEWA ALAT UGD (ACCOUNTS)
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'SEWA ALAT UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:UGD1',
+                'akunLawan'  => 'conf:OK11',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select nvl(sum(rentequipment_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'kredit'     => '0',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+            [
+                'sumber'     => 'ACCOUNTS',
+                'label'      => '\'SEWA ALAT UGD (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:OK11',
+                'akunLawan'  => 'conf:UGD1',
+                'shift'      => 'nvl(shift,\'1\')',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select nvl(sum(rentequipment_fee),0) from RSTXN_OKS where status_rjri=\'UGD\' and ref_no=a.rj_no and ok_status=\'L\')',
+                'from'       => 'rstxn_ugdhdrs a',
+                'where'      => 'rj_status not in(\'A\',\'F\') and exists (select 1 from RSTXN_OKS x where x.status_rjri=\'UGD\' and x.ref_no=a.rj_no and x.ok_status=\'L\')',
+            ],
+
+            // ── TRF RUANGAN (LABARUGI)
+            [
+                'sumber'     => 'LABARUGI',
+                'label'      => '\'TRF RUANGAN (\'||(select sl_name from immst_stocklocations where sl_code=SL_CODEFROM)||\' ke \'||(select sl_name from immst_stocklocations where sl_code=SL_CODEto)||\')\'',
+                'akun'       => 'conf:OPSROOMMDS',
+                'akunLawan'  => 'conf:PGUDANG',
+                'shift'      => '\'1\'',
+                'tanggal'    => 'trf_date',
+                'debit'      => '(select sum( nvl((select hpp_product from TKTXN_SALDOAWALSTOCKS u where u.product_id=x.product_id and sa_year=to_char(trf_date,\'yyyy\')),0)*nvl(qty,0)) from imtxn_trfdtls x where x.trf_no=a.trf_no )',
+                'kredit'     => '0',
+                'from'       => 'IMTXN_TRFHDRS a',
+                'where'      => 'trf_status=\'L\' and sl_codefrom=\'04\' and sl_codeto!=\'02\'',
+            ],
+            [
+                'sumber'     => 'LABARUGI',
+                'label'      => '\'TRF RUANGAN (\'||(select sl_name from immst_stocklocations where sl_code=SL_CODEFROM)||\' ke \'||(select sl_name from immst_stocklocations where sl_code=SL_CODEto)||\')\'',
+                'akun'       => 'conf:PGUDANG',
+                'akunLawan'  => 'conf:OPSROOMMDS',
+                'shift'      => '\'1\'',
+                'tanggal'    => 'trf_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum( nvl((select hpp_product from TKTXN_SALDOAWALSTOCKS u where u.product_id=x.product_id and sa_year=to_char(trf_date,\'yyyy\')),0)*nvl(qty,0)) from imtxn_trfdtls x where x.trf_no=a.trf_no )',
+                'from'       => 'IMTXN_TRFHDRS a',
+                'where'      => 'trf_status=\'L\' and sl_codefrom=\'04\' and sl_codeto!=\'02\'',
+            ],
+            [
+                'sumber'     => 'LABARUGI',
+                'label'      => '\'TRF RUANGAN (\'||(select sl_name from immst_stocklocations where sl_code=SL_CODEFROM)||\' ke \'||(select sl_name from immst_stocklocations where sl_code=SL_CODEto)||\')\'',
+                'akun'       => 'conf:PAPOTEK',
+                'akunLawan'  => 'conf:PGUDANG',
+                'shift'      => '\'1\'',
+                'tanggal'    => 'trf_date',
+                'debit'      => '(select sum( nvl((select hpp_product from TKTXN_SALDOAWALSTOCKS u where u.product_id=x.product_id and sa_year=to_char(trf_date,\'yyyy\')),0)*nvl(qty,0)) from imtxn_trfdtls x where x.trf_no=a.trf_no )',
+                'kredit'     => '0',
+                'from'       => 'IMTXN_TRFHDRS a',
+                'where'      => 'trf_status=\'L\' and sl_codefrom=\'04\' and sl_codeto=\'02\'',
+            ],
+            [
+                'sumber'     => 'LABARUGI',
+                'label'      => '\'TRF RUANGAN (\'||(select sl_name from immst_stocklocations where sl_code=SL_CODEFROM)||\' ke \'||(select sl_name from immst_stocklocations where sl_code=SL_CODEto)||\')\'',
+                'akun'       => 'conf:PGUDANG',
+                'akunLawan'  => 'conf:PAPOTEK',
+                'shift'      => '\'1\'',
+                'tanggal'    => 'trf_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum( nvl((select hpp_product from TKTXN_SALDOAWALSTOCKS u where u.product_id=x.product_id and sa_year=to_char(trf_date,\'yyyy\')),0)*nvl(qty,0)) from imtxn_trfdtls x where x.trf_no=a.trf_no )',
+                'from'       => 'IMTXN_TRFHDRS a',
+                'where'      => 'trf_status=\'L\' and sl_codefrom=\'04\' and sl_codeto=\'02\'',
+            ],
+
+            // ── OPS RUANGAN (LABARUGI)
+            [
+                'sumber'     => 'LABARUGI',
+                'label'      => '\'OPS RUANGAN (\'||(select sl_name from immst_stocklocations where sl_code=SL_CODEFROM)||\' ke \'||(select sl_name from immst_stocklocations where sl_code=SL_CODEto)||\')\'',
+                'akun'       => 'conf:PGUDANG',
+                'akunLawan'  => 'conf:PAPOTEK',
+                'shift'      => '\'1\'',
+                'tanggal'    => 'trf_date',
+                'debit'      => '(select sum( nvl((select hpp_product from TKTXN_SALDOAWALSTOCKS u where u.product_id=x.product_id and sa_year=to_char(trf_date,\'yyyy\')),0)*nvl(qty,0)) from imtxn_trfdtls x where x.trf_no=a.trf_no )',
+                'kredit'     => '0',
+                'from'       => 'IMTXN_TRFHDRS a',
+                'where'      => 'trf_status=\'L\' and sl_codefrom=\'02\' and sl_codeto=\'04\'',
+            ],
+            [
+                'sumber'     => 'LABARUGI',
+                'label'      => '\'OPS RUANGAN (\'||(select sl_name from immst_stocklocations where sl_code=SL_CODEFROM)||\' ke \'||(select sl_name from immst_stocklocations where sl_code=SL_CODEto)||\')\'',
+                'akun'       => 'conf:PAPOTEK',
+                'akunLawan'  => 'conf:PGUDANG',
+                'shift'      => '\'1\'',
+                'tanggal'    => 'trf_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum( nvl((select hpp_product from TKTXN_SALDOAWALSTOCKS u where u.product_id=x.product_id and sa_year=to_char(trf_date,\'yyyy\')),0)*nvl(qty,0)) from imtxn_trfdtls x where x.trf_no=a.trf_no )',
+                'from'       => 'IMTXN_TRFHDRS a',
+                'where'      => 'trf_status=\'L\' and sl_codefrom=\'02\' and sl_codeto=\'04\'',
+            ],
+
+            // ── OBAT RJ (LABARUGI)
+            [
+                'sumber'     => 'LABARUGI',
+                'label'      => '\'OBAT RJ (\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:HPPRJ1',
+                'akunLawan'  => 'conf:HPPRJ2',
+                'shift'      => 'shift',
+                'tanggal'    => 'rj_date',
+                'debit'      => '(select sum((NVL(qty,0)* nvl((select hpp_product from TKTXN_SALDOAWALSTOCKS u where u.product_id=x.product_id and sa_year=to_char(rj_date,\'yyyy\')),0))) from RSTXN_RJOBATS x where x.rj_no=a.rj_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'LABARUGI',
+                'label'      => '\'OBAT RJ(\'||a.rj_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:HPPRJ2',
+                'akunLawan'  => 'conf:HPPRJ1',
+                'shift'      => 'shift',
+                'tanggal'    => 'rj_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum((NVL(qty,0)* nvl((select hpp_product from TKTXN_SALDOAWALSTOCKS u where u.product_id=x.product_id and sa_year=to_char(rj_date,\'yyyy\')),0))) from RSTXN_RJOBATS x where x.rj_no=a.rj_no)',
+                'from'       => 'RSTXN_RJHDRS a',
+                'where'      => 'rj_status not in(\'A\',\'F\')',
+            ],
+
+            // ── OBAT UGD (LABARUGI)
+            [
+                'sumber'     => 'LABARUGI',
+                'label'      => '\'OBAT UGD (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:HPPRJ1',
+                'akunLawan'  => 'conf:HPPRJ2',
+                'shift'      => 'shift',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '(select sum((NVL(qty,0)* nvl((select hpp_product from TKTXN_SALDOAWALSTOCKS u where u.product_id=x.product_id and sa_year=to_char(rj_date,\'yyyy\')),0))) from RSTXN_UGDOBATS x where x.rj_no=a.rj_no)',
+                'kredit'     => '0',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+            [
+                'sumber'     => 'LABARUGI',
+                'label'      => '\'OBAT UGD (\'||a.RJ_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:HPPRJ2',
+                'akunLawan'  => 'conf:HPPRJ1',
+                'shift'      => 'shift',
+                'tanggal'    => 'RJ_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum((NVL(qty,0)* nvl((select hpp_product from TKTXN_SALDOAWALSTOCKS u where u.product_id=x.product_id and sa_year=to_char(rj_date,\'yyyy\')),0))) from RSTXN_UGDOBATS x where x.rj_no=a.rj_no)',
+                'from'       => 'RSTXN_UGDHDRS a',
+                'where'      => 'RJ_status not in(\'A\',\'F\')',
+            ],
+
+            // ── RESEP OBAT (LABARUGI)
+            [
+                'sumber'     => 'LABARUGI',
+                'label'      => '\'RESEP OBAT (\'||a.sls_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:HPPRJ1',
+                'akunLawan'  => 'conf:HPPRJ2',
+                'shift'      => '\'1\'',
+                'tanggal'    => 'sls_date',
+                'debit'      => '(select sum(nvl(qty,0)* nvl((select hpp_product from TKTXN_SALDOAWALSTOCKS u where u.product_id=x.product_id and sa_year=to_char(sls_date,\'yyyy\')),0)) from IMTXN_SLSDTLS x where x.sls_no=a.sls_no)',
+                'kredit'     => '0',
+                'from'       => 'IMTXN_SLSHDRS a',
+                'where'      => 'status =\'L\'',
+            ],
+            [
+                'sumber'     => 'LABARUGI',
+                'label'      => '\'RESEP OBAT (\'||a.sls_no||\'/\'||a.reg_no||\')\'',
+                'akun'       => 'conf:HPPRJ2',
+                'akunLawan'  => 'conf:HPPRJ1',
+                'shift'      => '\'1\'',
+                'tanggal'    => 'sls_date',
+                'debit'      => '0',
+                'kredit'     => '(select sum(nvl(qty,0)* nvl((select hpp_product from TKTXN_SALDOAWALSTOCKS u where u.product_id=x.product_id and sa_year=to_char(sls_date,\'yyyy\')),0)) from IMTXN_SLSDTLS x where x.sls_no=a.sls_no)',
+                'from'       => 'IMTXN_SLSHDRS a',
+                'where'      => 'status =\'L\'',
+            ],
         ];
     }
 }
