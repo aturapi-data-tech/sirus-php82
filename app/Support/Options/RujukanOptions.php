@@ -13,6 +13,26 @@ namespace App\Support\Options;
 final class RujukanOptions
 {
     /**
+     * Lima pertanyaan kriteria GAWAT DARURAT (Questionnaire Q100, linkId 000001–000005) —
+     * dicentang minimal satu saat merujuk ke IGD; IGD tidak memvalidasi ICD-9/10.
+     * Dipakai ketiga panel FHIR (RJ/UGD/RI) dan cetak Surat Pengantar Rujukan.
+     */
+    public const PERTANYAAN_IGD = [
+        '000001' => 'Mengancam nyawa, membahayakan diri dan orang lain/lingkungan',
+        '000002' => 'Adanya gangguan pada jalan nafas, pernafasan, dan sirkulasi',
+        '000003' => 'Adanya penurunan kesadaran',
+        '000004' => 'Adanya gangguan hemodinamik',
+        '000005' => 'Memerlukan tindakan segera',
+    ];
+
+    /** Kriteria rujukan RANAP (tepat satu) — kunci = nilai formRujukan.kriteriaPilih jalur FHIR. */
+    public const KRITERIA_RANAP = [
+        'terapi'   => 'Terapi/Pengobatan',
+        'tindakan' => 'Tindakan Medis (ICD-9-CM)',
+        'upaya'    => 'Upaya Diagnosis',
+    ];
+
+    /**
      * Kelompok Layanan — Task.input.valueCoding pada Task Pencarian Kandidat
      * Fasyankes Rujukan (playbook v6.0, Lampiran 4).
      *

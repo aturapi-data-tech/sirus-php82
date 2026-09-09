@@ -456,3 +456,26 @@ Aturan di panel kita:
   di folder export (yang ada FKTL & FKTP ver 1.0).
 
 ---
+
+## 8. Cetak Surat Pengantar Rujukan + Resume Klinis (format Kepmenkes)
+
+Satu komponen headless untuk KEENAM panel: `pages/components/rekam-medis/rujukan-kompetensi/⚡cetak-surat-rujukan`
+(+ blade `cetak-surat-rujukan-print`, dua halaman A4 lewat `page-break-before`). Dipicu tombol
+`x-cetak-button` "Cetak Surat Rujukan" di panel → `dispatch('cetak-surat-rujukan.open', jalur, noKunjungan, node)`.
+Hanya boleh dicetak bila `hasil.noRujukanSatuSehat` terisi (penanda sukses sejati, aturan payload no. 8).
+
+Sumber isi (dinormalkan di `normalkan()`), jalur-agnostik:
+
+| Bagian | SISRUTE (`rujukanKompetensi`) | FHIR (`rujukanKompetensiFhir`) |
+|---|---|---|
+| Diagnosa Sementara (hal. 1) & IV Diagnosa (hal. 2) | EMR `diagnosis[]`; bila kosong → `kodeDiagnosa`+`diagnosaDesc` rujukan | sama |
+| V Kriteria Rujukan | item `kriteriaList` yang `linkId`-nya = `kriteriaPilih` (+ ICD-9 bila Tindakan Medis) | IGD: pertanyaan `kriteriaIgd` yang dicentang (`RujukanOptions::PERTANYAAN_IGD`); ranap: `RujukanOptions::KRITERIA_RANAP[kriteriaPilih]` (+ ICD-9) |
+| VIII Alasan Merujuk | `catatan` | `deskripsi` (= CarePlan.description) |
+| II, III (keluhan, KU, GCS/kesadaran, TTV, fisik) | `anamnesa.keluhanUtama.keluhanUtama`, `pemeriksaan.tandaVital.*`, `pemeriksaan.fisik` — path sama di RJ/UGD/RI | sama |
+| VI Tindakan / VII Terapi | `procedure[]` / `eresep[]` (fallback teks `perencanaan.terapi.terapi`) | sama |
+| Tanggal surat | `hasil.tglRujukan` (yyyy-mm-dd) | `hasil.dikirimPada` (dd/mm/yyyy H:i:s) |
+
+Catatan verifikasi lokal 2026-09-09 (UGD 203859, FHIR IGD): PDF 2 halaman terbentuk ±10 detik; enam
+peringatan `DOMXPath::query(): Invalid expression` berasal dari `x-pdf.layout-a4` (dipakai 89 cetakan lain),
+bukan dari blade ini. Halaman 2 kosong bila EMR memang belum diisi — bukan salah pemetaan.
+Teks pertanyaan IGD kini SATU sumber di `RujukanOptions::PERTANYAAN_IGD` (dulu disalin di tiga panel).
