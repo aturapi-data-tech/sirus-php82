@@ -167,13 +167,7 @@ new class extends Component {
 
     public function pertanyaanIgd(): array
     {
-        return [
-            '000001' => 'Mengancam nyawa, membahayakan diri dan orang lain/lingkungan',
-            '000002' => 'Adanya gangguan pada jalan nafas, pernafasan, dan sirkulasi',
-            '000003' => 'Adanya penurunan kesadaran',
-            '000004' => 'Adanya gangguan hemodinamik',
-            '000005' => 'Memerlukan tindakan segera',
-        ];
+        return RujukanOptions::PERTANYAAN_IGD;
     }
 
 

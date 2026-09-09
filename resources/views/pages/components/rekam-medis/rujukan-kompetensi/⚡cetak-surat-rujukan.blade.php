@@ -9,6 +9,7 @@ use App\Http\Traits\Txn\Rj\EmrRJTrait;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
+use App\Support\Options\RujukanOptions;
 
 /**
  * Cetak Surat Pengantar Rujukan + Resume Klinis Pasien Rujukan.
@@ -135,11 +136,12 @@ new class extends Component {
                     'spo2' => $this->satuan($tandaVital['spo2'] ?? '', '%'),
                 ],
                 'kelainan' => trim((string) ($kunjungan['pemeriksaan']['fisik'] ?? '')),
-                'diagnosa' => $this->daftarDiagnosa($kunjungan),
+                'diagnosa' => $this->daftarDiagnosa($kunjungan, $rujukan),
                 'kriteria' => $this->daftarKriteria($rujukan),
                 'tindakan' => $this->daftarTindakan($kunjungan),
                 'terapi' => $this->daftarTerapi($kunjungan),
-                'alasan' => trim((string) ($rujukan['catatan'] ?? '')),
+                // SISRUTE menyimpan 'catatan', jalur FHIR menyimpan 'deskripsi' (CarePlan.description).
+                'alasan' => trim((string) (($rujukan['catatan'] ?? '') ?: ($rujukan['deskripsi'] ?? ''))),
             ],
         ];
     }
@@ -198,16 +200,28 @@ new class extends Component {
         return $nilai === '' ? '' : $nilai . ' ' . $satuan;
     }
 
-    /** Diagnosa EMR: icdX bila ada, jatuh ke diagId (lihat skill diagnosa-flow). */
-    private function daftarDiagnosa(array $kunjungan): array
+    /**
+     * Diagnosa EMR: icdX bila ada, jatuh ke diagId (lihat skill diagnosa-flow).
+     * Bila EMR belum mencatat diagnosa, pakai diagnosa yang dikirim bersama rujukan —
+     * halaman 1 (Diagnosa Sementara) dan halaman 2 (IV Diagnosa) harus sejalan.
+     */
+    private function daftarDiagnosa(array $kunjungan, array $rujukan): array
     {
-        return collect($kunjungan['diagnosis'] ?? [])
+        $daftar = collect($kunjungan['diagnosis'] ?? [])
             ->map(function ($baris) {
                 $kode = trim((string) ($baris['icdX'] ?? ($baris['diagId'] ?? '')));
                 $desc = trim((string) ($baris['diagDesc'] ?? ''));
                 return trim($kode . ' ' . $desc);
             })
             ->filter()->values()->all();
+
+        if ($daftar !== []) {
+            return $daftar;
+        }
+
+        $diagnosaRujukan = trim(trim((string) ($rujukan['kodeDiagnosa'] ?? '')) . ' ' . trim((string) ($rujukan['diagnosaDesc'] ?? '')));
+
+        return $diagnosaRujukan === '' ? [] : [$diagnosaRujukan];
     }
 
     private function daftarTindakan(array $kunjungan): array
@@ -259,22 +273,32 @@ new class extends Component {
      */
     private function daftarKriteria(array $rujukan): array
     {
+        $icd9 = trim((string) ($rujukan['kriteriaIcd9'] ?? ''));
+        $icd9Desc = trim((string) ($rujukan['kriteriaIcd9Desc'] ?? ''));
+        $keteranganIcd9 = $icd9 !== '' ? ' — ' . trim($icd9 . ' ' . $icd9Desc) : '';
+
+        // Jalur FHIR ke IGD: lima pertanyaan gawat darurat, tercetak yang dicentang.
+        if (($rujukan['jalur'] ?? '') === 'igd') {
+            return collect($rujukan['kriteriaIgd'] ?? [])
+                ->filter(fn ($dicentang) => $dicentang === true)
+                ->keys()
+                ->map(fn ($linkId) => RujukanOptions::PERTANYAAN_IGD[$linkId] ?? (string) $linkId)
+                ->values()->all();
+        }
+
+        // Jalur FHIR ke ranap: satu pilihan terapi / tindakan / upaya diagnosis.
+        if (($rujukan['jalur'] ?? '') === 'ranap') {
+            $teks = RujukanOptions::KRITERIA_RANAP[$rujukan['kriteriaPilih'] ?? ''] ?? '';
+            return $teks === '' ? [] : [$teks . $keteranganIcd9];
+        }
+
+        // Jalur SISRUTE: satu item terpilih dari kriteriaList (linkId dinamis per ICD-10).
         $terpilih = collect($rujukan['kriteriaList'] ?? [])
             ->firstWhere('linkId', $rujukan['kriteriaPilih'] ?? null);
 
-        if (empty($terpilih)) {
-            return [];
-        }
-
         $teks = trim((string) ($terpilih['text'] ?? ''));
-        $icd9 = trim((string) ($rujukan['kriteriaIcd9'] ?? ''));
-        $icd9Desc = trim((string) ($rujukan['kriteriaIcd9Desc'] ?? ''));
 
-        if ($icd9 !== '') {
-            $teks = trim($teks . ' — ' . trim($icd9 . ' ' . $icd9Desc));
-        }
-
-        return $teks === '' ? [] : [$teks];
+        return $teks === '' ? [] : [$teks . $keteranganIcd9];
     }
 
     private function terapiTeks(array $kunjungan): string
