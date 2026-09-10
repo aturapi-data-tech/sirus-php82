@@ -742,7 +742,8 @@ new class extends Component {
                                                             </x-dropdown-link>
                                                         @endhasanyrole
 
-                                                        @hasanyrole('Admin|Perawat|Dokter|Casemix|Mr|Gizi|Laboratorium|Radiologi')
+                                                        {{-- Modul Dokumen — admisi (Mr/Tu) mengisi General Consent saat pendaftaran (host default tab generalConsent) --}}
+                                                        @hasanyrole('Admin|Mr|Supervisor Tu|Tu|Casemix|Perawat|Dokter|Gizi|Laboratorium|Radiologi')
                                                             <x-dropdown-link href="#"
                                                                 wire:click.prevent="openModulDokumen('{{ $row->rihdr_no }}')"
                                                                 class="px-3 py-2 text-sm rounded-lg h-full bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20">

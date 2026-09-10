@@ -83,6 +83,12 @@ new class extends Component {
         $this->dispatch('berkas-bpjs.open', rjNo: $rjNo);
     }
 
+    /** Modul Dokumen dari daftar pendaftaran — admisi langsung ke tab General Consent. */
+    public function openModulDokumen(int $rjNo): void
+    {
+        $this->dispatch('emr-ugd.modul-dokumen.open', rjNo: $rjNo, tab: 'general-consent');
+    }
+
 
     public function requestDelete(string $rjNo): void
     {
@@ -734,6 +740,23 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
 
+                                                                {{-- Modul Dokumen — admisi (Mr/Tu) mengisi General Consent saat pendaftaran; buka langsung ke tab itu --}}
+                                                                @hasanyrole('Admin|Mr|Supervisor Tu|Tu|Casemix|Perawat|Dokter')
+                                                                    <x-dropdown-link href="#"
+                                                                        wire:click.prevent="openModulDokumen({{ $row->rj_no }})"
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/40">
+                                                                        <div class="flex items-start gap-2">
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                            </svg>
+                                                                            <span class="min-w-0">
+                                                                                <span class="block font-semibold">Modul Dokumen</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">General Consent &amp; formulir UGD</span>
+                                                                            </span>
+                                                                        </div>
+                                                                    </x-dropdown-link>
+                                                                @endhasanyrole
+
                                                                 @hasanyrole('Admin|Casemix|Mr|Dokter')
                                                                     <x-dropdown-link href="#"
                                                                         x-on:click.prevent="$dispatch('daftar-ugd.diagnosa.open', { rjNo: {{ $row->rj_no }} })"
@@ -874,7 +897,8 @@ new class extends Component {
 
             </div>
 
-            {{-- Child components — pendaftaran-only (EMR/Modul Dokumen/Administrasi/iDRG pindah ke pelayanan-ugd / bulanan) --}}
+            {{-- Child components — pendaftaran-only (EMR/Administrasi/iDRG pindah ke pelayanan-ugd / bulanan;
+                 Modul Dokumen ikut dimuat di sini supaya admisi bisa mengisi General Consent) --}}
             <livewire:pages::transaksi.ugd.daftar-ugd.daftar-ugd-actions wire:key="daftar-ugd-actions" />
             <livewire:pages::components.rekam-medis.etiket.cetak-etiket wire:key="cetak-etiket-ugd" />
             <livewire:pages::transaksi.ugd.daftar-ugd-bulanan.berkas-bpjs-ugd-actions wire:key="berkas-bpjs-ugd-actions" />
@@ -887,6 +911,9 @@ new class extends Component {
 
             {{-- Kirim Satu Sehat UGD — modal 9 kartu (listen: daftar-ugd.satu-sehat.open) --}}
             <livewire:pages::transaksi.ugd.daftar-ugd.satu-sehat-ugd-actions wire:key="satu-sehat-ugd-actions" />
+
+            {{-- Modul Dokumen UGD (General Consent dll.) — admisi mengisi dari daftar (listen: emr-ugd.modul-dokumen.open) --}}
+            <livewire:pages::transaksi.ugd.emr-ugd.modul-dokumen.modul-dokumen-ugd wire:key="modul-dokumen-ugd" />
 
         </div>
     </div>

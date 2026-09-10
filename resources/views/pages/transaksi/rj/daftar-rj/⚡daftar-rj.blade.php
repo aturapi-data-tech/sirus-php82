@@ -106,6 +106,12 @@ new class extends Component {
         $this->dispatch('daftar-rj.satu-sehat.open', rjNo: $rjNo);
     }
 
+    /** Modul Dokumen dari daftar pendaftaran — admisi langsung ke tab General Consent. */
+    public function openModulDokumen(int $rjNo): void
+    {
+        $this->dispatch('emr-rj.modul-dokumen.open', rjNo: $rjNo, tab: 'general-consent');
+    }
+
 
     /* -------------------------
      | Generate berkas BPJS inline (langsung dari list, tanpa modal)
@@ -1239,6 +1245,23 @@ new class extends Component {
                                                                     </x-dropdown-link>
                                                                 @endhasanyrole
 
+                                                                {{-- Modul Dokumen — admisi (Mr/Tu) mengisi General Consent saat pendaftaran; buka langsung ke tab itu --}}
+                                                                @hasanyrole('Admin|Mr|Supervisor Tu|Tu|Casemix|Perawat|Dokter')
+                                                                    <x-dropdown-link href="#"
+                                                                        wire:click.prevent="openModulDokumen({{ $row->rj_no }})"
+                                                                        class="px-3 py-2 text-sm rounded-lg h-full bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/40">
+                                                                        <div class="flex items-start gap-2">
+                                                                            <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                            </svg>
+                                                                            <span class="min-w-0">
+                                                                                <span class="block font-semibold">Modul Dokumen</span>
+                                                                                <span class="block text-xs font-normal text-muted dark:text-gray-400">General Consent &amp; formulir RJ</span>
+                                                                            </span>
+                                                                        </div>
+                                                                    </x-dropdown-link>
+                                                                @endhasanyrole
+
                                                                 @hasanyrole('Admin|Mr|Tu|Casemix')
                                                                     <x-dropdown-link href="#"
                                                                         x-on:click.prevent="$dispatch('riwayat-kontrol.open', { regNo: '{{ $row->reg_no }}', regName: '{{ addslashes($row->reg_name) }}' })"
@@ -1399,6 +1422,9 @@ new class extends Component {
 
             {{-- EMR RJ khusus Diagnosa — komponen modal terpisah (listen: daftar-rj.diagnosa.open) --}}
             <livewire:pages::transaksi.rj.daftar-rj.diagnosa-rj-actions wire:key="diagnosa-rj-actions" />
+
+            {{-- Modul Dokumen RJ (General Consent dll.) — admisi mengisi dari daftar (listen: emr-rj.modul-dokumen.open) --}}
+            <livewire:pages::transaksi.rj.emr-rj.modul-dokumen.modul-dokumen-rj wire:key="modul-dokumen-rj" />
 
         </div>
     </div>
