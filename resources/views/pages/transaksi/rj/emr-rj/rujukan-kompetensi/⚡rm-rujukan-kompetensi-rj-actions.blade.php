@@ -1168,7 +1168,7 @@ new class extends Component {
             @if (!empty($formRujukan['kriteriaList']))
                 <div class="space-y-2">
                     <x-input-label value="Kriteria Rujukan" class="mb-1" />
-                    <p class="text-xs text-muted-soft">Pilih <b>tepat satu</b> kriteria (aturan BPJS sejak Juli 2026):</p>
+                    <p class="text-xs text-muted-soft">Pilih <b>tepat satu</b> kriteria:</p>
                     {{-- satu kolom: kartu radio ini kini tinggal 1/3 lebar layar --}}
                     <div class="grid grid-cols-1 gap-2">
                         @foreach ($formRujukan['kriteriaList'] as $kriteria)
