@@ -249,7 +249,7 @@ new class extends Component {
                                 <li><strong>Encounter SATUSEHAT</strong> episode berjalan sudah terkirim (menu Satu Sehat → Encounter).</li>
                                 <li><strong>IHS Pasien</strong> (<span class="ds-code">rsmst_pasiens.patient_uuid</span>) dan <strong>IHS Dokter</strong> (<span class="ds-code">rsmst_doctors.dr_uuid</span>) terisi.</li>
                                 <li>Jalur RJ: <strong>SEP</strong> sudah terbit; diagnosa EMR terisi.</li>
-                                <li>Diagnosa <strong>ICD-10 rinci 4-karakter ber-titik</strong> (A02.0) — kode induk 3 karakter DITOLAK.</li>
+                                <li>Diagnosa <strong>ICD-10 sespesifik mungkin</strong> (A02.0); kode induk 3 karakter (N40) juga diterima sejak 2026-09-11.</li>
                             </ul>
                         </div>
                     </section>

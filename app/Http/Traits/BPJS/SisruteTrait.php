@@ -144,7 +144,7 @@ trait SisruteTrait
         // 1. Custom error messages
         $messages = [
             'required' => ':attribute wajib diisi.',
-            'regex' => ':attribute harus ICD-10 rinci ber-titik (contoh A02.0) — kode induk 3 karakter ditolak SATUSEHAT.',
+            'regex' => ':attribute harus format ICD-10 (contoh N40 atau A02.0).',
         ];
 
         // 2. Attributes (nama field yang user-friendly)
@@ -161,7 +161,7 @@ trait SisruteTrait
 
         // 4. Rules validasi
         $rules = [
-            'kodeDiagnosa' => ['required', 'regex:/^[A-Z][0-9]{2}\.[0-9]{1,2}$/'],
+            'kodeDiagnosa' => ['required', 'regex:/^[A-Z][0-9]{2}(\.[0-9]{1,2})?$/'],
             'kodeFaskesSatuSehat' => 'required',
         ];
 
