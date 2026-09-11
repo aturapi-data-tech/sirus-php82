@@ -62,8 +62,9 @@
                                  disebut namanya, memakai sebutan yang sama dengan layar
                                  /rujukan/masuk & /rujukan/keluar.
 
-                                 Strata SENGAJA tidak ditampilkan: SATUSEHAT mengirim kunci
-                                 'strata' tanpa nilai untuk semua kandidat. --}}
+                                 Strata SATUSEHAT (Dasar/Madya/Utama/Paripurna) tampil sebagai
+                                 badge HANYA bila server mengisinya — di sampel grup ~40%
+                                 kandidat FHIR kosong, SISRUTE hampir selalu terisi. --}}
                             <span class="flex flex-wrap items-center mt-1 gap-x-2 gap-y-1 text-xs text-muted dark:text-gray-400">
                                 @if ($kandidat['bpjs'] === '')
                                     <x-badge variant="gray">non-BPJS</x-badge>
@@ -75,6 +76,9 @@
                                 <span title="Kode faskes di SATUSEHAT (Organization ID) — dipakai memasangkan faskes BPJS dengan SATUSEHAT">· Org ID
                                     <span class="font-mono text-ink dark:text-gray-200">{{ $kandidat['orgId'] ?: '—' }}</span>
                                 </span>
+                                @if (filled($kandidat['strata']))
+                                    <x-badge variant="info" title="Strata kompetensi faskes menurut SATUSEHAT">Strata {{ $kandidat['strata'] }}</x-badge>
+                                @endif
                                 @if (filled($kandidat['kelas']))
                                     <span>· Kelas {{ $kandidat['kelas'] }}</span>
                                 @endif
