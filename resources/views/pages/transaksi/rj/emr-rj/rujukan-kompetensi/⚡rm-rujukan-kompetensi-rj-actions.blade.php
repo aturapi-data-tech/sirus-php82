@@ -256,8 +256,8 @@ new class extends Component {
         $this->setDiagnosaRujukan($diagnosa['icdX'] ?? ($diagnosa['diagId'] ?? ''), $diagnosa['diagDesc'] ?? '');
     }
 
-    // LOV diagnosa (blockHeader default) — pencarian bebas, kode kategori 3-karakter
-    // otomatis terblokir sesuai aturan SATUSEHAT
+    // LOV diagnosa (:blockHeader=false) — kode induk 3-karakter IKUT boleh dipilih:
+    // 2026-09-11 N40 terbukti diterima SISRUTE, jadi blokir header dilepas sementara
     #[On('lov.selected.rujukanKompetensiDiagnosa')]
     public function onLovDiagnosaSelected(string $target, array $payload): void
     {
@@ -410,8 +410,8 @@ new class extends Component {
         $this->infoKriteria = '';
         $kode = trim($this->formRujukan['kodeDiagnosa'] ?? '');
 
-        if (!preg_match('/^[A-Z][0-9]{2}\.[0-9]{1,2}$/', $kode)) {
-            $this->dispatch('toast', type: 'error', message: "Kode diagnosa \"{$kode}\" bukan ICD-10 rinci ber-titik (contoh A02.0) — kode induk ditolak SATUSEHAT, pilih yang lebih spesifik lewat LOV.");
+        if (!preg_match('/^[A-Z][0-9]{2}(\.[0-9]{1,2})?$/', $kode)) {
+            $this->dispatch('toast', type: 'error', message: "Kode diagnosa \"{$kode}\" bukan format ICD-10 (contoh N40 atau A02.0) — pilih lewat LOV.");
             return;
         }
 
@@ -1104,13 +1104,13 @@ new class extends Component {
                 @endforelse
             </div>
 
-            {{-- LOV diagnosa — pencarian bebas; kode kategori 3-karakter terblokir otomatis --}}
+            {{-- LOV diagnosa — pencarian bebas; kode induk 3-karakter ikut boleh (N40 diterima SISRUTE 2026-09-11) --}}
             <div class="max-w-md">
-                <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosa Rujukan (ICD-10)"
+                <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosa Rujukan (ICD-10)" :blockHeader="false"
                     target="rujukanKompetensiDiagnosa"
                         :initialDiagnosaId="$formRujukan['kodeDiagnosa'] ?: null" :disabled="$isFormLocked"
                     wire:key="lov-diagnosa-rujukan-kompetensi-{{ $rjNo }}" />
-                    <p class="mt-1 text-xs text-muted-soft">Wajib ber-titik (A02.0) — kode induk ditolak SATUSEHAT. @if (filled($formRujukan['kodeDiagnosa'] ?? ''))<span class="font-mono font-semibold text-ink dark:text-gray-200">Kode terkirim: {{ $formRujukan['kodeDiagnosa'] }}</span>@endif</p>
+                    <p class="mt-1 text-xs text-muted-soft">Pilih kode paling spesifik; kode induk 3-karakter (mis. N40) juga diterima. @if (filled($formRujukan['kodeDiagnosa'] ?? ''))<span class="font-mono font-semibold text-ink dark:text-gray-200">Kode terkirim: {{ $formRujukan['kodeDiagnosa'] }}</span>@endif</p>
                 </div>
 
                 <div class="grid grid-cols-1 gap-3">

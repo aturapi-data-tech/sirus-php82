@@ -89,7 +89,7 @@ memakai kode `valid_code`=0, **83.559** sebenarnya punya baris valid (kasus kemb
 atas) dan **210.311** memakai kode kategori asli seperti `E11` / `K29` — yang benar
 adalah kode anaknya (`E11.9`, `K29.7`).
 
-**Setup di SELURUH pemakai LOV.** 12 call site, hasil audit langsung ke berkas
+**Setup di SELURUH pemakai LOV.** 18 call site, hasil audit langsung ke berkas
 (semua call site MENULIS ketiga prop eksplisit; cetak tebal = menutup / aktif):
 
 | # | Konsumen | File : baris | `target` | `blockHeader` | `blockIm` | `blockNonPrimary` |
@@ -106,10 +106,17 @@ adalah kode anaknya (`E11.9`, `K29.7`).
 | 10 | Coder INACBG | `transaksi/rj/idrg/⚡kirim-diagnosa-inacbg.blade.php` : 473 | `rjFormDiagnosaInacbgCoder` | false | false | false |
 | 11 | Coder INACBG | `transaksi/ugd/idrg/⚡kirim-diagnosa-inacbg.blade.php` : 473 | `ugdFormDiagnosaInacbgCoder` | false | false | false |
 | 12 | Coder INACBG | `transaksi/ri/idrg/⚡kirim-diagnosa-inacbg.blade.php` : 473 | `riFormDiagnosaInacbgCoder` | false | false | false |
+| 13 | Rujukan SISRUTE | `transaksi/rj/emr-rj/rujukan-kompetensi/⚡rm-rujukan-kompetensi-rj-actions.blade.php` : 1109 | `rujukanKompetensiDiagnosa` | false | false | false |
+| 14 | Rujukan SISRUTE | `transaksi/ugd/emr-ugd/rujukan-kompetensi/⚡rm-rujukan-kompetensi-ugd-actions.blade.php` : 1112 | `rujukanRajalDiagnosaUGD` | false | false | false |
+| 15 | Rujukan SISRUTE | `transaksi/ri/emr-ri/rujukan-kompetensi/⚡rm-rujukan-kompetensi-ri-actions.blade.php` : 1111 | `rujukanRajalDiagnosaRI` | false | false | false |
+| 16 | Rujukan FHIR | `transaksi/rj/emr-rj/rujukan-kompetensi/⚡rm-rujukan-kompetensi-fhir-rj-actions.blade.php` : 1180 | `rujukanKompetensiDiagnosaRJFhir` | false | false | false |
+| 17 | Rujukan FHIR | `transaksi/ugd/emr-ugd/rujukan-kompetensi/⚡rm-rujukan-kompetensi-fhir-ugd-actions.blade.php` : 1178 | `rujukanKompetensiDiagnosaUGD` | false | false | false |
+| 18 | Rujukan FHIR | `transaksi/ri/emr-ri/rujukan-kompetensi/⚡rm-rujukan-kompetensi-fhir-ri-actions.blade.php` : 1182 | `rujukanKompetensiDiagnosaRI` | false | false | false |
 
-Rekap: `blockHeader` menutup HANYA di 3 coder iDRG; DIBUKA di 9 lainnya (SEP/VClaim +
-coder INACBG + EMR diagnosis — dibuka 2026-09-11 atas keputusan user supaya dokter bisa
-memilih kode induk seperti N40/E11). `blockIm` aktif hanya di 3 coder iDRG.
+Rekap: `blockHeader` menutup HANYA di 3 coder iDRG; DIBUKA di 15 lainnya (SEP/VClaim +
+coder INACBG + EMR diagnosis + 6 panel rujukan kompetensi — EMR & rujukan dibuka
+2026-09-11 atas keputusan user: dokter bisa memilih kode induk seperti N40/E11, dan `N40`
+terbukti diterima SISRUTE; penilai akhir rujukan = SISRUTE/SATUSEHAT). `blockIm` aktif hanya di 3 coder iDRG.
 `blockNonPrimary` tidak aktif di mana pun — aturan primer ditegakkan server-side di tiap
 konsumen (§4).
 
@@ -121,6 +128,7 @@ konsumen (§4).
 | Coder INACBG | dibuka | `validcode` respons E-Klaim, tampil per baris di kolom Keterangan |
 | SEP / VClaim | dibuka | BPJS VClaim saat SEP dibuat; pesan penolakan muncul sebagai toast dari metadata respons. **Tidak ada** badge kevalidan per kode seperti di coder |
 | EMR diagnosis | dibuka (sejak 2026-09-11) | tidak dikirim ke luar; dokter bebas memilih kode induk, LOV tetap memberi badge KATEGORI sebagai peringatan |
+| Rujukan kompetensi | dibuka | SISRUTE (GetKriteriaRujukan) / SATUSEHAT; kode induk ber-anak berbalas "tidak mengandung kriteria" → petugas rinci |
 
 Cara memeriksa ulang kalau nanti ada call site baru:
 
