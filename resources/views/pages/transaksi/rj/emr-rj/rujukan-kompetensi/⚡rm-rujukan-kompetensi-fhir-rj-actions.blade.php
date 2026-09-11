@@ -453,8 +453,8 @@ new class extends Component {
         }
         $keRanap = $this->formRujukan['jalur'] === 'ranap';
         if ($keRanap) {
-            if (!preg_match('/^[A-Z][0-9]{2}\.[0-9]{1,2}$/', $this->formRujukan['kodeDiagnosa'] ?? '')) {
-                $this->dispatch('toast', type: 'error', message: 'Tujuan ranap: kode diagnosa harus ICD-10 rinci ber-titik (contoh I61.9).');
+            if (!preg_match('/^[A-Z][0-9]{2}(\.[0-9]{1,2})?$/', $this->formRujukan['kodeDiagnosa'] ?? '')) {
+                $this->dispatch('toast', type: 'error', message: 'Tujuan ranap: kode diagnosa harus format ICD-10 (contoh N40 atau I61.9).');
                 return;
             }
             if (!in_array($this->formRujukan['kriteriaPilih'], ['terapi', 'tindakan', 'upaya'], true)) {
@@ -1177,7 +1177,7 @@ new class extends Component {
                 </div>
 
                 <div class="max-w-md">
-                    <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosa Rujukan (ICD-10)"
+                    <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosa Rujukan (ICD-10)" :blockHeader="false"
                         target="rujukanKompetensiDiagnosaRJFhir"
                         :initialDiagnosaId="$formRujukan['kodeDiagnosa'] ?: null" :disabled="$isFormLocked"
                         wire:key="lov-diagnosa-rujukan-kompetensi-rj-fhir-{{ $rjNo }}" />

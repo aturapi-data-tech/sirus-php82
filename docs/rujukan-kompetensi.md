@@ -90,7 +90,7 @@ field yang ternyata wajib jauh lebih mahal daripada mengirim field yang ternyata
 Tanyakan ke BPJS saat UAT; kalau dipastikan tak dipakai, buang dari payload panel RJ.
 
 ### 2.4 Format field krusial
-- **ICD-10 wajib kode rinci 4-karakter** (`A02.0`); kode induk 3-karakter (`A02`) DITOLAK → LOV diagnosa harus memaksa pilih kode anak; fallback `.9` boleh tapi jangan kebanyakan. (Awas: master kita punya 288 icdx kembar — lihat skill diagnosa-flow.)
+- **ICD-10 pilih kode paling rinci** (`A02.0`). Aturan lama "kode induk 3-karakter DITOLAK" TIDAK mutlak: 2026-09-11 rujukan dengan `N40` terbukti diterima SISRUTE, jadi LOV diagnosa di 6 panel rujukan dipasang `:blockHeader="false"` dan regex panel menerima `A02` maupun `A02.0` (dilepas SEMENTARA atas keputusan user). Kode induk yang punya anak (mis. `E11`) tetap bisa berbalas "tidak mengandung kriteria" → pilih kode anak; fallback `.9` boleh tapi jangan kebanyakan. (Awas: master kita punya 288 icdx kembar — lihat skill diagnosa-flow.)
 - `kodeFaskesSatuSehat` = **kode numerik 9-digit production** (kita: `100027469`), bukan UUID, bukan org-id staging, dan harus konsisten dengan cons-id (faskes yang sama).
 - Kode wilayah tanpa titik: `3504` bukan `35.04`.
 - `authoredOn` dkk = string ISO, bukan objek.
@@ -364,7 +364,7 @@ direaktivasi). Penanganan: koordinasi dengan **TI BPJS kantor wilayah setempat**
 2. **Simpan payload & response mentah** tiap call (node JSON) — admin selalu minta bukti untuk Issue Tracker, dan jadi audit.
 3. **Kriteria selalu fresh** dari GetKriteriaRujukan (linkId dinamis); UI radio "tepat satu kriteria"; Tindakan Medis = LOV ICD-9-CM.
 4. **Pilihan tujuan dikunci ke list kandidat** (Insert tidak memvalidasi); simpan pasangan bpjs-code+kemkes-code, distance, strata; filter bpjs-code `"null"`.
-5. **LOV diagnosa memaksa ICD-10 4-karakter.**
+5. **LOV diagnosa TIDAK lagi memaksa 4-karakter** (`:blockHeader="false"`, sejak 2026-09-11; N40 diterima) — kode induk ber-anak tetap disarankan dirinci.
 6. **Nomor rujukan SATUSEHAT + BPJS wajib tersimpan di DB** (syarat UAT); verifikasi keberadaan identifier sebelum menyatakan sukses.
 7. Dua format tanggal berbeda dalam satu alur (dd-mm-yyyy vs yyyy-mm-dd) — helper terpusat.
 9. **Tabel kandidat = satu komponen untuk enam panel** — `resources/views/components/rujukan-kompetensi/kandidat-tabel.blade.php`.

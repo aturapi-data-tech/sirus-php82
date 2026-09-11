@@ -1,6 +1,6 @@
 ---
 name: rujukan-kompetensi
-description: Model integrasi & FAQ Rujukan Berbasis Kompetensi (SRBK/SISRUTE) — arsitektur RJ via vclaim-sisrute-rest vs RI/IGD langsung FHIR SATUSEHAT, urutan endpoint, aturan payload (kriteria tepat satu, linkId dinamis, ICD-10 4-karakter), dan katalog error→penanganan. WAJIB dibaca sebelum menulis/mengubah kode rujukan kompetensi (SisruteTrait, komponen EMR rujukan) atau saat call SISRUTE ditolak/error.
+description: Model integrasi & FAQ Rujukan Berbasis Kompetensi (SRBK/SISRUTE) — arsitektur RJ via vclaim-sisrute-rest vs RI/IGD langsung FHIR SATUSEHAT, urutan endpoint, aturan payload (kriteria tepat satu, linkId dinamis, ICD-10 3/4-karakter), dan katalog error→penanganan. WAJIB dibaca sebelum menulis/mengubah kode rujukan kompetensi (SisruteTrait, komponen EMR rujukan) atau saat call SISRUTE ditolak/error.
 ---
 
 # Rujukan Berbasis Kompetensi (SRBK)
@@ -62,8 +62,11 @@ dari cons-id vclaim biasa. Semua call wajib `timeout(8)->connectTimeout(3)` + tr
    berisi ICD-9-CM valid & sesuai diagnosa (menentukan kandidat!).
 2. **`linkId` kriteria DINAMIS per ICD-10** — selalu fetch ulang dari GetKriteriaRujukan,
    jangan hardcode/cache lintas diagnosa. Bisa berbentuk gabungan koma ("51947,69587").
-3. **ICD-10 wajib kode rinci 4-karakter** (`A02.0`); kode induk (`A02`) ditolak →
-   LOV diagnosa harus memaksa kode anak. Awas 288 icdx kembar (skill diagnosa-flow).
+3. **ICD-10 pilih kode paling rinci** (`A02.0`), tapi kode induk 3-karakter TIDAK
+   selalu ditolak: `N40` terbukti diterima SISRUTE 2026-09-11 → 6 panel rujukan pakai
+   `:blockHeader="false"` + regex `^[A-Z][0-9]{2}(\.[0-9]{1,2})?$` (dilepas SEMENTARA).
+   Kode induk ber-anak (E11) bisa berbalas "tidak mengandung kriteria" → rinci.
+   Awas 288 icdx kembar (skill diagnosa-flow).
 4. **Dua format tanggal dalam satu alur**: `estimasiRujuk` = `dd-mm-yyyy`;
    `tglRujukan`/`tglRencanaKunjungan` = `yyyy-mm-dd`. Estimasi boleh hari ini.
 5. `kodeFaskesSatuSehat` = kode numerik 9-digit **production** (bukan UUID, bukan staging),
