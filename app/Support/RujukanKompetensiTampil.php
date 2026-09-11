@@ -46,8 +46,8 @@ final class RujukanKompetensiTampil
      * menjadi satu bentuk baku untuk ditampilkan:
      *
      *   SISRUTE (BPJS)     kdppk, kodeFaskesSatuSehat, nmppk->nama, alamat, kota,
-     *                      kelas, distance, jmlRujuk/kapasitas
-     *   FHIR (SATUSEHAT)   bpjsCode, orgId, nama, distance, estimatedTime, bed
+     *                      kelas, strata (strataSatuSehat), distance, jmlRujuk/kapasitas
+     *   FHIR (SATUSEHAT)   bpjsCode, orgId, nama, strata, distance, estimatedTime, bed
      *
      * Dipusatkan di sini supaya keenam panel rujukan memakai sebutan yang sama
      * untuk angka yang sama — "Kode BPJS" dan "Org ID", bukan PPK/SATUSEHAT di
@@ -79,12 +79,23 @@ final class RujukanKompetensiTampil
             'bpjs' => $bpjs,
             'orgId' => trim((string) ($kandidat['kodeFaskesSatuSehat'] ?? ($kandidat['orgId'] ?? ''))),
             'kelas' => trim((string) ($kandidat['kelas'] ?? '')),
+            // Strata kompetensi versi SATUSEHAT (Dasar/Madya/Utama/Paripurna). Server
+            // mengirimnya tidak konsisten: sering kosong, dan huruf besar-kecilnya
+            // campur ("dasar"/"Dasar") — dinormalkan di sini, kosong tetap kosong.
+            'strata' => self::strata($kandidat['strata'] ?? ''),
             'jarak' => $kandidat['distance'] ?? '',
             'estimasi' => $kandidat['estimatedTime'] ?? '',
             // Beban hanya berarti kalau kapasitasnya diketahui — "0/" bukan informasi.
             'beban' => $jmlRujuk !== '' && $kapasitas !== '' ? $jmlRujuk . '/' . $kapasitas : '',
             'bed' => trim((string) ($kandidat['bed'] ?? '')),
         ];
+    }
+
+    /** "dasar" / "DASAR" / " Dasar " -> "Dasar"; kosong -> ''. */
+    public static function strata(mixed $nilai): string
+    {
+        $teks = trim((string) $nilai);
+        return $teks === '' ? '' : ucfirst(strtolower($teks));
     }
 
     /**
