@@ -6,10 +6,11 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Support\OracleLob;
 use App\Http\Traits\BPJS\VclaimTrait;
+use App\Http\Traits\BPJS\BiometrikSepTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
-    use VclaimTrait, WithRenderVersioningTrait;
+    use VclaimTrait, BiometrikSepTrait, WithRenderVersioningTrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal', 'lov-rujukan', 'form-sep', 'info-pasien'];
@@ -571,6 +572,10 @@ new class extends Component {
         }
 
         $this->validateSEPForm();
+        // Gerbang biometrik BPJS: status '0' tanpa lolos/lewati → blok pertanyaan acak dibuka, SEP ditunda.
+        if (!$this->biometrikSiap()) {
+            return;
+        }
         $request = $this->buildSEPRequest();
 
         $this->dispatch('sep-generated', reqSep: $request);
@@ -797,6 +802,7 @@ new class extends Component {
     {
         $this->dispatch('close-modal', name: 'vclaim-rj-actions');
         $this->resetForm();
+        $this->resetBiometrik();
         $this->resetVersion();
         $this->modalTerbuka = false; // isi modal (guard @if) dihapus, tidak di-mount ulang
     }
@@ -892,6 +898,9 @@ new class extends Component {
 
             {{-- BODY --}}
             <div class="flex-1 px-4 py-4 overflow-y-auto bg-surface-soft/70 dark:bg-gray-950/20">
+
+                {{-- Validasi biometrik BPJS (BiometrikSepTrait) — gerbang sebelum Buat SEP --}}
+                <x-vclaim.biometrik-panel :biometrik="$biometrik" :disabled="$isFormLocked" />
 
                 {{-- TOMBOL AKSI --}}
                 <div class="flex flex-wrap items-center gap-3 mb-4">
