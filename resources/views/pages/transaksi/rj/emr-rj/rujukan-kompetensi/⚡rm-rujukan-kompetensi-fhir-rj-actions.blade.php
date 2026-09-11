@@ -472,6 +472,7 @@ new class extends Component {
 
         // Identifier WAJIB unik SETIAP POST — termasuk retry
         $praPermintaan = $this->rujukanTaskPraPermintaan([
+            'jalur' => $keRanap ? 'ranap' : 'igd',
             'identifier' => (string) Str::uuid(),
             'encounterId' => $this->encounterUuid(),
             'diagnosaKode' => $this->formRujukan['kodeDiagnosa'],
