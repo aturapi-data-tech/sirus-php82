@@ -97,9 +97,9 @@ adalah kode anaknya (`E11.9`, `K29.7`).
 | 1 | SEP / VClaim | `transaksi/rj/daftar-rj/⚡vclaim-rj-actions.blade.php` : 1264 | `rjFormDiagnosaVclaim` | false | false | false |
 | 2 | SEP / VClaim | `transaksi/ugd/daftar-ugd/⚡vclaim-ugd-actions.blade.php` : 671 | `ugdFormDiagnosaVclaim` | false | false | false |
 | 3 | SEP / VClaim | `transaksi/ri/daftar-ri/⚡vclaim-ri-actions.blade.php` : 1380 | `riFormDiagnosaVclaim` | false | false | false |
-| 4 | EMR Diagnosis | `transaksi/rj/emr-rj/diagnosa/⚡rm-diagnosa-rj-actions.blade.php` : 485 | `rjFormDiagnosaRm` | **true** | false | false |
-| 5 | EMR Diagnosis | `transaksi/ugd/emr-ugd/diagnosa/⚡rm-diagnosa-ugd-actions.blade.php` : 422 | `ugdFormDiagnosaRm` | **true** | false | false |
-| 6 | EMR Diagnosis | `transaksi/ri/emr-ri/diagnosa-ri/⚡rm-diagnosa-ri-actions.blade.php` : 441 | `riFormDiagnosaRm` | **true** | false | false |
+| 4 | EMR Diagnosis | `transaksi/rj/emr-rj/diagnosa/⚡rm-diagnosa-rj-actions.blade.php` : 485 | `rjFormDiagnosaRm` | false | false | false |
+| 5 | EMR Diagnosis | `transaksi/ugd/emr-ugd/diagnosa/⚡rm-diagnosa-ugd-actions.blade.php` : 422 | `ugdFormDiagnosaRm` | false | false | false |
+| 6 | EMR Diagnosis | `transaksi/ri/emr-ri/diagnosa-ri/⚡rm-diagnosa-ri-actions.blade.php` : 441 | `riFormDiagnosaRm` | false | false | false |
 | 7 | Coder iDRG | `transaksi/rj/idrg/⚡kirim-diagnosa-idrg.blade.php` : 441 | `rjFormDiagnosaIdrgCoder` | **true** | **true** | false |
 | 8 | Coder iDRG | `transaksi/ugd/idrg/⚡kirim-diagnosa-idrg.blade.php` : 436 | `ugdFormDiagnosaIdrgCoder` | **true** | **true** | false |
 | 9 | Coder iDRG | `transaksi/ri/idrg/⚡kirim-diagnosa-idrg.blade.php` : 434 | `riFormDiagnosaIdrgCoder` | **true** | **true** | false |
@@ -107,8 +107,9 @@ adalah kode anaknya (`E11.9`, `K29.7`).
 | 11 | Coder INACBG | `transaksi/ugd/idrg/⚡kirim-diagnosa-inacbg.blade.php` : 473 | `ugdFormDiagnosaInacbgCoder` | false | false | false |
 | 12 | Coder INACBG | `transaksi/ri/idrg/⚡kirim-diagnosa-inacbg.blade.php` : 473 | `riFormDiagnosaInacbgCoder` | false | false | false |
 
-Rekap: `blockHeader` menutup di 6 call site (EMR diagnosis + coder iDRG) dan DIBUKA di
-6 lainnya (SEP/VClaim + coder INACBG). `blockIm` aktif hanya di 3 coder iDRG.
+Rekap: `blockHeader` menutup HANYA di 3 coder iDRG; DIBUKA di 9 lainnya (SEP/VClaim +
+coder INACBG + EMR diagnosis — dibuka 2026-09-11 atas keputusan user supaya dokter bisa
+memilih kode induk seperti N40/E11). `blockIm` aktif hanya di 3 coder iDRG.
 `blockNonPrimary` tidak aktif di mana pun — aturan primer ditegakkan server-side di tiap
 konsumen (§4).
 
@@ -119,7 +120,7 @@ konsumen (§4).
 | Coder iDRG | ketat (`blockHeader` + `blockIm`) | langkah koding utama — ditolak sejak pemilihan supaya tidak bolak-balik kirim klaim |
 | Coder INACBG | dibuka | `validcode` respons E-Klaim, tampil per baris di kolom Keterangan |
 | SEP / VClaim | dibuka | BPJS VClaim saat SEP dibuat; pesan penolakan muncul sebagai toast dari metadata respons. **Tidak ada** badge kevalidan per kode seperti di coder |
-| EMR diagnosis | ketat (`blockHeader`) | tidak dikirim ke luar; kode kategori ditutup supaya rekam medis tetap spesifik |
+| EMR diagnosis | dibuka (sejak 2026-09-11) | tidak dikirim ke luar; dokter bebas memilih kode induk, LOV tetap memberi badge KATEGORI sebagai peringatan |
 
 Cara memeriksa ulang kalau nanti ada call site baru:
 

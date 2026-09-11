@@ -459,7 +459,7 @@ new class extends Component {
                                 <livewire:lov.diagnosa.lov-diagnosa label="Cari Diagnosis" target="ugdFormDiagnosaRm"
                                     :initialDiagnosaId="$diagnosaId ?? null" :disabled="$isFormLocked"
                                     wire:key="lov-diagnosa-ugd-{{ $this->renderKey('modal-diagnosis-ugd') }}"
-                                    :blockHeader="true" :blockIm="false" :blockNonPrimary="false" />
+                                    :blockHeader="false" :blockIm="false" :blockNonPrimary="false" />
 
                                 <div>
                                     <x-input-label value="Free Text Diagnosis" />
