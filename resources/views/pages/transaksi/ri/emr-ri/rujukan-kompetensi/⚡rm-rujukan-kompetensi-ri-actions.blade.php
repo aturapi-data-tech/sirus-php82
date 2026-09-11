@@ -108,13 +108,12 @@ new class extends Component {
             'kriteriaPilih' => '',
             'kriteriaIcd9' => '',
             'kriteriaIcd9Desc' => '',
-            // Jejaring wilayah — opsi dari response GetKriteriaRujukan
-            'propinsiOptions' => [],
-            'kabupatenOptions' => [],
-            'kodePropinsi' => '',
-            'namaPropinsi' => '',
-            'kodeKabupaten' => '',
-            'namaKabupaten' => '',
+            // Jejaring wilayah — dipilih lewat LOV kabupaten (rsmst_kabupatens, kode BPS
+            // sama dengan administrative-area SATUSEHAT); bawaan wilayah kita sendiri
+            'kodePropinsi' => '35',
+            'namaPropinsi' => 'JAWA TIMUR',
+            'kodeKabupaten' => '3504',
+            'namaKabupaten' => 'TULUNGAGUNG',
             // Kandidat faskes
             'kandidatList' => [],
             'kandidatIdx' => null,
@@ -453,67 +452,39 @@ new class extends Component {
         $this->formRujukan['kriteriaIcd9'] = '';
         $this->formRujukan['kriteriaIcd9Desc'] = '';
 
-        $this->parseJejaringWilayah($data);
         $this->simpanDraft();
         $this->infoKriteria = '✓ Kriteria dimuat dari server (' . count($this->formRujukan['kriteriaList']) . ' item). Pilih TEPAT SATU.';
     }
 
-    // Opsi wilayah datang dari response; simpan versi ramping saja (jangan bengkakkan CLOB)
-    private function parseJejaringWilayah(array $data): void
+    /**
+     * Wilayah dipilih sekali lewat LOV kabupaten — propinsinya ikut terisi, jadi
+     * pasangan kode tak bisa tidak sinkron. rsmst_kabupatens memakai kode BPS tanpa
+     * titik ('3504'/'35'), persis bentuk codeJejaringWilayah yang diminta gateway.
+     */
+    #[On('lov.selected.rujukanRajalWilayahRI')]
+    public function onLovWilayahSelected(string $target, array $payload): void
     {
-        $grup = $data['JejaringWilayah'] ?? ($data['jejaringWilayah'] ?? []);
-        $items = collect(is_array($grup) ? $grup : [])->flatMap(fn($grupWilayah) => $grupWilayah['item'] ?? [])->values();
-
-        $keOpsi = fn($item) => collect($item['answerOption'] ?? [])
-            ->map(
-                fn($opsi) => [
-                    'code' => (string) ($opsi['valueCoding']['code'] ?? ''),
-                    'display' => (string) ($opsi['valueCoding']['display'] ?? ''),
-                ],
-            )
-            ->filter(fn($opsi) => $opsi['code'] !== '')
-            ->values()
-            ->all();
-
-        foreach ($items as $item) {
-            $teks = strtolower($item['text'] ?? '');
-            if (str_contains($teks, 'provinsi')) {
-                $this->formRujukan['propinsiOptions'] = $keOpsi($item);
-            } elseif (str_contains($teks, 'kabupaten')) {
-                $this->formRujukan['kabupatenOptions'] = $keOpsi($item);
-            }
+        if ($this->isFormLocked) {
+            return;
         }
 
-        // Default wilayah kita bila belum terisi — kab_id legacy: Tulungagung 3504 / prov 35
-        if ($this->formRujukan['kodePropinsi'] === '') {
-            $jatim = collect($this->formRujukan['propinsiOptions'])->firstWhere('code', '35');
-            $this->formRujukan['kodePropinsi'] = $jatim['code'] ?? '';
-            $this->formRujukan['namaPropinsi'] = $jatim['display'] ?? '';
+        $kodeKabupaten = trim((string) ($payload['kab_id'] ?? ''));
+        $kodePropinsi = trim((string) ($payload['prop_id'] ?? ''));
+        if ($kodeKabupaten === '' || $kodePropinsi === '') {
+            $this->dispatch('toast', type: 'error', message: 'Data wilayah tidak lengkap.');
+            return;
         }
-        if ($this->formRujukan['kodeKabupaten'] === '') {
-            $tulungagung = collect($this->formRujukan['kabupatenOptions'])->firstWhere('code', '3504');
-            $this->formRujukan['kodeKabupaten'] = $tulungagung['code'] ?? '';
-            $this->formRujukan['namaKabupaten'] = $tulungagung['display'] ?? '';
-        }
-        // Kabupaten hanya milik propinsi terpilih (kode kab berawalan kode prop)
-        $kodeProp = $this->formRujukan['kodePropinsi'];
-        if ($kodeProp !== '') {
-            $this->formRujukan['kabupatenOptions'] = collect($this->formRujukan['kabupatenOptions'])->filter(fn($opsi) => str_starts_with($opsi['code'], $kodeProp))->values()->all();
-        }
-    }
 
-    public function updatedFormRujukanKodePropinsi(string $value): void
-    {
-        $propinsi = collect($this->formRujukan['propinsiOptions'])->firstWhere('code', $value);
-        $this->formRujukan['namaPropinsi'] = $propinsi['display'] ?? '';
-        $this->formRujukan['kodeKabupaten'] = '';
-        $this->formRujukan['namaKabupaten'] = '';
-    }
+        $this->formRujukan['kodeKabupaten'] = $kodeKabupaten;
+        $this->formRujukan['namaKabupaten'] = trim((string) ($payload['kab_name'] ?? ''));
+        $this->formRujukan['kodePropinsi'] = $kodePropinsi;
+        $this->formRujukan['namaPropinsi'] = trim((string) ($payload['prop_name'] ?? ''));
 
-    public function updatedFormRujukanKodeKabupaten(string $value): void
-    {
-        $kabupaten = collect($this->formRujukan['kabupatenOptions'])->firstWhere('code', $value);
-        $this->formRujukan['namaKabupaten'] = $kabupaten['display'] ?? '';
+        // Wilayah ganti = kandidat lama dihitung dari wilayah lama; membiarkannya
+        // tampil justru menyesatkan (pola sama seperti ganti diagnosa/kriteria).
+        $this->formRujukan['kandidatList'] = [];
+        $this->formRujukan['kandidatIdx'] = null;
+        $this->infoKandidat = '';
     }
 
     /* ═══════════════════════════════════════
@@ -1198,6 +1169,7 @@ new class extends Component {
             {{-- Radio kriteria — TEPAT SATU --}}
             @if (!empty($formRujukan['kriteriaList']))
                 <div class="space-y-2">
+                    <x-input-label value="Kriteria Rujukan" class="mb-1" />
                     <p class="text-xs text-muted-soft">Pilih <b>tepat satu</b> kriteria (aturan BPJS sejak Juli 2026):</p>
                     {{-- satu kolom: kartu radio ini kini tinggal 1/3 lebar layar --}}
                     <div class="grid grid-cols-1 gap-2">
@@ -1228,26 +1200,20 @@ new class extends Component {
                     @endif
                 </div>
 
-                {{-- Wilayah rujukan (auto dari server, bisa diganti) --}}
-                <div class="grid grid-cols-1 gap-3">
-                    <div>
-                        <x-input-label value="Propinsi Jejaring" class="mb-1" />
-                        <x-select-input wire:model.live="formRujukan.kodePropinsi" :disabled="$isFormLocked" class="w-full">
-                            <option value="">Pilih propinsi</option>
-                            @foreach ($formRujukan['propinsiOptions'] as $opsi)
-                                <option value="{{ $opsi['code'] }}">{{ $opsi['code'] }} — {{ $opsi['display'] }}</option>
-                            @endforeach
-                        </x-select-input>
-                    </div>
-                    <div>
-                        <x-input-label value="Kabupaten/Kota" class="mb-1" />
-                        <x-select-input wire:model.live="formRujukan.kodeKabupaten" :disabled="$isFormLocked" class="w-full">
-                            <option value="">Semua (tidak dibatasi)</option>
-                            @foreach (collect($formRujukan['kabupatenOptions'])->filter(fn($opsi) => $formRujukan['kodePropinsi'] === '' || str_starts_with($opsi['code'], $formRujukan['kodePropinsi'])) as $opsi)
-                                <option value="{{ $opsi['code'] }}">{{ $opsi['code'] }} — {{ $opsi['display'] }}</option>
-                            @endforeach
-                        </x-select-input>
-                    </div>
+                {{-- Wilayah dipilih sekali lewat LOV kabupaten — propinsinya ikut
+                     terisi, jadi pasangan kode tak bisa lagi tidak sinkron. --}}
+                <div>
+                    <livewire:lov.kabupaten.lov-kabupaten label="Jejaring Wilayah Rujukan (Kab/Kota)"
+                        target="rujukanRajalWilayahRI" :initialKabId="$formRujukan['kodeKabupaten'] ?: null"
+                        :readonly="$isFormLocked"
+                        wire:key="lov-wilayah-rujukan-rajal-ri-{{ $riHdrNo }}" />
+                    <p class="mt-1 text-xs text-muted-soft">
+                        Terpilih:
+                        <strong>{{ $formRujukan['namaKabupaten'] ?: '-' }}</strong>
+                        ({{ $formRujukan['kodeKabupaten'] ?: '-' }})
+                        &middot; Prov. <strong>{{ $formRujukan['namaPropinsi'] ?: '-' }}</strong>
+                        ({{ $formRujukan['kodePropinsi'] ?: '-' }})
+                    </p>
                 </div>
             @endif
         </div>

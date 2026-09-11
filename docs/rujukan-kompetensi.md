@@ -33,7 +33,7 @@ Narasumber kunci: Septian & Hantoro (BPJS), Bofandra & Tricha (SATUSEHAT Rujukan
 ### 2.1 GetKriteriaRujukan (POST — GET ditolak "405 Method Not Allowed", terkonfirmasi live 11/08/26)
 Body JSON: `kodeDiagnosa` + `kodeFaskesSatuSehat` (+ `encounter.reference` bila sudah ada). Response berisi:
 - `kriteriaRujukan[]`: `{linkId, text, type: boolean|text}` — **linkId DINAMIS per ICD-10** (contoh I10: Terapi=49873, Tindakan Medis=24964, Upaya Diagnosis=55; bisa juga gabungan koma "51947,69587"). **JANGAN hardcode** — selalu ambil fresh untuk diagnosa yang sama.
-- `JejaringWilayah`: group Provinsi/Kabupaten dengan `answerOption[].valueCoding` (system `sys-ids.kemkes.go.id/administrative-area`) — sumber LOV wilayah.
+- `JejaringWilayah`: group Provinsi/Kabupaten dengan `answerOption[].valueCoding` (system `sys-ids.kemkes.go.id/administrative-area`) — daftar lengkap (34 prov / 508 kab), tapi UI TIDAK memakainya sebagai sumber dropdown: wilayah dipilih lewat LOV `rsmst_kabupatens` (kode BPS sama), bawaan 35/3504, seragam dengan panel FHIR.
 
 ### 2.2 GetFaskesRujukan (POST)
 - Body: `kodeFaskesSatuSehat`, `kodeSubSpesialis`/`kodeSpesialis`, `kodeSarana`, `kodeDiagnosa`, `estimasiRujuk` (**dd-mm-yyyy**!), `kriteriaRujukan.item[]`, `codeJejaringWilayah`, `encounter.reference` (`Encounter/<uuid>`).
