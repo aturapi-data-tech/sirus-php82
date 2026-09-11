@@ -82,6 +82,9 @@ trait SatuSehatRujukanTrait
             if (strtolower($method) === 'get') {
                 $response = $client->get($url);
             } else {
+                // display/text kosong dibuang: FHIR menolak string kosong, dan nilai
+                // ini diisi dinamis (nama kandidat/pasien/dokter) yang bisa kosong.
+                $data = is_array($data) ? $this->rujukanHapusTeksKosong($data) : $data;
                 $response = $client
                     ->withHeaders(['Content-Type' => $contentType])
                     ->withBody(json_encode($data), $contentType)
@@ -101,6 +104,23 @@ trait SatuSehatRujukanTrait
         );
 
         return ['code' => $response->status(), 'body' => $response->json() ?? $response->body()];
+    }
+
+    /**
+     * Buang kunci `display` dan `text` yang isinya string kosong/spasi, rekursif.
+     * Hanya dua kunci itu — keduanya opsional di semua resource FHIR yang kita
+     * kirim; kunci lain dibiarkan supaya kesalahan data tetap terlihat di validator.
+     */
+    protected function rujukanHapusTeksKosong(array $data): array
+    {
+        foreach ($data as $kunci => $nilai) {
+            if (is_array($nilai)) {
+                $data[$kunci] = $this->rujukanHapusTeksKosong($nilai);
+            } elseif (in_array($kunci, ['display', 'text'], true) && is_string($nilai) && trim($nilai) === '') {
+                unset($data[$kunci]);
+            }
+        }
+        return $data;
     }
 
     private function logRujukan(string $url, ?int $code, ?float $requestTransferTime, ?string $responseBody, ?string $payload): void
@@ -163,11 +183,42 @@ trait SatuSehatRujukanTrait
 
     /* ═══════════════════════════════════════
      | 1. TASK PRA PERMINTAAN RUJUKAN
-     | $konteks: identifier, encounterId, diagnosaKode, diagnosaDesc
+     | $konteks: jalur ('ranap'|'igd'), identifier, encounterId, diagnosaKode, diagnosaDesc
+     |
+     | Beda ranap vs IGD di Postman V30062026: jalur IGD menambah input
+     | "Management procedure" 119270007 → 385868005 Emergency treatment
+     | management SEBELUM primary-diagnosis; ranap hanya primary-diagnosis.
     ═══════════════════════════════════════ */
     protected function rujukanTaskPraPermintaan(array $konteks): array
     {
         $now = $this->rujukanNowIso();
+        $input = [];
+        if (($konteks['jalur'] ?? 'ranap') === 'igd') {
+            $input[] = [
+                'type' => ['coding' => [[
+                    'system' => 'http://snomed.info/sct',
+                    'code' => '119270007',
+                    'display' => 'Management procedure',
+                ]]],
+                'valueCoding' => [
+                    'system' => 'http://snomed.info/sct',
+                    'code' => '385868005',
+                    'display' => 'Emergency treatment management',
+                ],
+            ];
+        }
+        $input[] = [
+            'type' => ['coding' => [[
+                'system' => 'http://terminology.kemkes.go.id',
+                'code' => 'primary-diagnosis',
+                'display' => 'Primary Diagnosis',
+            ]]],
+            'valueCoding' => [
+                'system' => 'http://hl7.org/fhir/sid/icd-10',
+                'code' => $konteks['diagnosaKode'],
+                'display' => $konteks['diagnosaDesc'],
+            ],
+        ];
         $task = [
             'resourceType' => 'Task',
             'identifier' => [[
@@ -187,18 +238,7 @@ trait SatuSehatRujukanTrait
             'requester' => ['reference' => 'Organization/' . $this->rujukanOrgId()],
             'owner' => ['reference' => 'Organization/' . $this->rujukanOrgId()],
             'encounter' => ['reference' => 'Encounter/' . $konteks['encounterId']],
-            'input' => [[
-                'type' => ['coding' => [[
-                    'system' => 'http://terminology.kemkes.go.id',
-                    'code' => 'primary-diagnosis',
-                    'display' => 'Primary Diagnosis',
-                ]]],
-                'valueCoding' => [
-                    'system' => 'http://hl7.org/fhir/sid/icd-10',
-                    'code' => $konteks['diagnosaKode'],
-                    'display' => $konteks['diagnosaDesc'],
-                ],
-            ]],
+            'input' => $input,
         ];
 
         return $this->rujukanRequest('POST', 'Task', $task);
@@ -237,18 +277,22 @@ trait SatuSehatRujukanTrait
                 ])->values()->all(),
             ]];
         } else {
-            // Ranap: 3 item; satu yang terisi (linkId statis contoh Postman)
+            // Ranap: 3 item; satu yang terisi (linkId statis contoh Postman).
+            // Tindakan Medis: valueString "" TIDAK sah di FHIR (string wajib
+            // berisi) dan bisa terbaca "dua kriteria terisi" → kandidat kosong
+            // tanpa pesan. Kosong = item dikirim TANPA answer (bukan string kosong).
+            $tindakanIcd9 = trim((string) ($konteks['kriteria']['tindakanIcd9'] ?? ''));
+            $itemTindakan = ['linkId' => '3215', 'text' => 'Tindakan Medis'];
+            if ($tindakanIcd9 !== '') {
+                $itemTindakan['answer'] = [['valueString' => $tindakanIcd9]];
+            }
             $itemQ100 = [
                 [
                     'linkId' => '3216',
                     'text' => 'Terapi/Pengobatan',
                     'answer' => [['valueBoolean' => (bool) ($konteks['kriteria']['terapi'] ?? false)]],
                 ],
-                [
-                    'linkId' => '3215',
-                    'text' => 'Tindakan Medis',
-                    'answer' => [['valueString' => (string) ($konteks['kriteria']['tindakanIcd9'] ?? '')]],
-                ],
+                $itemTindakan,
                 [
                     'linkId' => '3214',
                     'text' => 'Upaya Diagnosis',
@@ -606,7 +650,7 @@ trait SatuSehatRujukanTrait
                                         'code' => $konteks['specialityCode'],
                                         'display' => $konteks['specialityDisplay'],
                                     ]],
-                                    'text' => 'Permintaan Layanan ' . $konteks['specialityDisplay'],
+                                    'text' => trim('Permintaan Layanan ' . ($konteks['specialityDisplay'] ?? '')),
                                 ],
                                 'status' => 'not-started',
                             ],

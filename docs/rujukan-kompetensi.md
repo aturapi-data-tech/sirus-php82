@@ -479,3 +479,33 @@ Catatan verifikasi lokal 2026-09-09 (UGD 203859, FHIR IGD): PDF 2 halaman terben
 peringatan `DOMXPath::query(): Invalid expression` berasal dari `x-pdf.layout-a4` (dipakai 89 cetakan lain),
 bukan dari blade ini. Halaman 2 kosong bila EMR memang belum diisi — bukan salah pemetaan.
 Teks pertanyaan IGD kini SATU sumber di `RujukanKompetensiOptions::PERTANYAAN_IGD` (dulu disalin di tiga panel).
+
+## 9. Audit kesesuaian vs Postman "30. Use Case - Rujukan Pasien V30062026" (2026-09-11)
+
+Pembandingan struktural per request (jalur Ranap & Darurat) — hasilnya:
+
+**Identik:** Task cancel (PATCH), Task respon accepted/rejected (PATCH), Bundle Task+CarePlan
+`referral-approval` (system/code/kategori/contributor v6.1), inti Pencarian Kandidat &
+ServiceRequest, `Encounter.basedOn` sisi tujuan (UGD).
+
+**Dibetulkan hari itu (`SatuSehatRujukanTrait`):**
+1. Q100 ranap: item *Tindakan Medis* dikirim **tanpa `answer`** bila kriteria bukan tindakan —
+   sebelumnya `valueString:""` (tak sah FHIR; bisa terbaca "dua kriteria terisi" → kandidat
+   kosong tanpa pesan, sejalan info grup UAT Kebon Jati: jawaban kosong tak dihitung terisi).
+2. Pra permintaan jalur IGD kini memuat `Task.input` *Management procedure* 119270007 →
+   385868005 (sebelum primary-diagnosis), persis contoh Darurat; fungsi menerima `jalur`,
+   ketiga panel FHIR mengirimnya.
+3. `rujukanRequest()` membuang kunci `display`/`text` berisi string kosong (rekursif) sebelum
+   POST/PUT — nama kandidat/pasien/dokter/spesialisasi diisi dinamis dan bisa kosong.
+
+**Sengaja TIDAK diikuti:** entry ke-5 bundle ranap "Task Rekomendasi" (meng-echo
+`providerAtribute` kandidat) — validator pernah menolak echo itu (§3), dan bundle tanpa entry ini
+sudah terbukti diterima & terbaca RS tujuan. Multi-kandidat (3 Task per bundle) tidak dipakai;
+kita satu Task per kandidat terpilih.
+
+**Belum ada contohnya di Postman:** POST ServiceRequest jalur **IGD** (berkas Darurat hanya
+GET). `ServiceRequest.code 385868005` kita = ekstrapolasi dari `Task.input` IGD.
+
+**Opsional bila ingin makin mirip:** `Task.reasonReference` + `CarePlan.addresses` dari
+`satusehat.conditionIds`; `ServiceRequest.identifier insurance-subscriber` (no. kartu BPJS);
+`secondary-diagnosis` (trait siap, panel belum mengisi).
