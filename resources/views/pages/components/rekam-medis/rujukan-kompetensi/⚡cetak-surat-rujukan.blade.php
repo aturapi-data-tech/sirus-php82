@@ -10,6 +10,7 @@ use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Support\Options\RujukanKompetensiOptions;
+use App\Http\Traits\SATUSEHAT\SatuSehatRujukanTrait;
 
 /**
  * Cetak Surat Pengantar Rujukan + Resume Klinis Pasien Rujukan.
@@ -23,7 +24,7 @@ use App\Support\Options\RujukanKompetensiOptions;
  *              jalur: 'rj'|'ugd'|'ri', noKunjungan: $rjNo, node: 'rujukanKompetensi');
  */
 new class extends Component {
-    use EmrRJTrait, EmrUGDTrait, EmrRITrait, MasterPasienTrait;
+    use EmrRJTrait, EmrUGDTrait, EmrRITrait, MasterPasienTrait, SatuSehatRujukanTrait;
 
     #[On('cetak-surat-rujukan.open')]
     public function open(string $jalur, string $noKunjungan, string $node = 'rujukanKompetensi'): mixed
@@ -98,7 +99,7 @@ new class extends Component {
             'tujuan' => [
                 'nama' => (string) ($hasil['tujuanNama'] ?? ''),
                 'kode' => $this->kodeRegisterTujuan($hasil),
-                'alamat' => '',
+                'alamat' => $this->alamatTujuan($hasil),
             ],
 
             'pasien' => [
@@ -176,6 +177,21 @@ new class extends Component {
             ->map(fn($kode) => trim((string) $kode))
             ->filter()
             ->implode(' / ');
+    }
+
+    /**
+     * Alamat tujuan disimpan ke hasil saat kirim (SISRUTE: alamatPpk kandidat; FHIR:
+     * Organization.address). Rujukan yang terbit sebelum kolom itu ada dilengkapi
+     * dari Organization SATUSEHAT bila org id-nya tersimpan.
+     */
+    private function alamatTujuan(array $hasil): string
+    {
+        $alamat = trim((string) ($hasil['tujuanAlamat'] ?? ''));
+        if ($alamat !== '') {
+            return $alamat;
+        }
+
+        return $this->rujukanAlamatOrganisasi(trim((string) ($hasil['tujuanOrgId'] ?? '')));
     }
 
     private function umur(array $pasien): string
