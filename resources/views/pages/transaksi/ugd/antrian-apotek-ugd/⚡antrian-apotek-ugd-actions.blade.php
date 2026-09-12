@@ -61,6 +61,12 @@ new class extends Component {
         $this->dispatch('open-modal', name: 'telaah-apotek-ugd');
     }
 
+    /** Satu tombol Simpan untuk kedua bagian (meniru Simpan EMR RJ) — setiap aksi memang menulis keduanya. */
+    public function saveTelaah(): void
+    {
+        $this->saveTelaahResep();
+    }
+
     public function saveTelaahResep(): void
     {
         if ($this->isFormLocked) {
@@ -78,14 +84,14 @@ new class extends Component {
                 }
 
                 $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->dataDaftarUGD['telaahResep'] ?? []);
+                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->dataDaftarUGD['telaahObat'] ?? []); // satu tampilan, satu simpan
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
-                $this->lengkapiDefaultTelaah();
+                $this->gantiStateDariDb($data, 'telaahObat');
             });
 
             $this->incrementVersion('modal-telaah-apotek-ugd');
-            $this->dispatch('toast', type: 'success', message: 'Telaah Resep berhasil disimpan.');
+            $this->dispatch('toast', type: 'success', message: 'Telaah resep & obat tersimpan.');
             $this->afterSave();
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
@@ -116,6 +122,7 @@ new class extends Component {
                 }
 
                 $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->dataDaftarUGD['telaahResep'] ?? []);
+                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->dataDaftarUGD['telaahObat'] ?? []); // satu tampilan, satu simpan
                 $data['telaahResep']['penanggungJawab'] = [
                     'userLog' => auth()->user()->myuser_name,
                     'userLogCode' => auth()->user()->myuser_code,
@@ -123,8 +130,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
-                $this->lengkapiDefaultTelaah();
+                $this->gantiStateDariDb($data, 'telaahObat');
             });
 
             $this->incrementVersion('modal-telaah-apotek-ugd');
@@ -153,11 +159,11 @@ new class extends Component {
                     throw new \RuntimeException('Data UGD tidak ditemukan.');
                 }
 
+                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->dataDaftarUGD['telaahResep'] ?? []); // satu tampilan, satu simpan
                 $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->dataDaftarUGD['telaahObat'] ?? []);
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
-                $this->lengkapiDefaultTelaah();
+                $this->gantiStateDariDb($data, 'telaahResep');
             });
 
             $this->incrementVersion('modal-telaah-apotek-ugd');
@@ -191,6 +197,7 @@ new class extends Component {
                     throw new \RuntimeException('Data UGD tidak ditemukan.');
                 }
 
+                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->dataDaftarUGD['telaahResep'] ?? []); // satu tampilan, satu simpan
                 $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->dataDaftarUGD['telaahObat'] ?? []);
                 $data['telaahObat']['penanggungJawab'] = [
                     'userLog' => auth()->user()->myuser_name,
@@ -199,8 +206,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
-                $this->lengkapiDefaultTelaah();
+                $this->gantiStateDariDb($data, 'telaahResep');
             });
 
             $this->incrementVersion('modal-telaah-apotek-ugd');
@@ -291,6 +297,21 @@ new class extends Component {
         foreach (['telaahResep' => $this->defaultTelaahResep(), 'telaahObat' => $this->defaultTelaahObat()] as $node => $default) {
             $this->dataDaftarUGD[$node] = array_replace($default, $this->dataDaftarUGD[$node] ?? []);
         }
+    }
+
+    /**
+     * Ganti state dengan isi DB sesudah simpan/TTD SATU bagian, tanpa membuang isian bagian
+     * lain yang baru diubah di layar (wire:model.live) tapi belum disimpan. Dulu isian itu
+     * ikut lenyap lalu tertimpa nilai bawaan saat bagian lain di-TTD.
+     */
+    private function gantiStateDariDb(array $data, string $nodeDipertahankan): void
+    {
+        $isianLayar = $this->dataDaftarUGD[$nodeDipertahankan] ?? null;
+        $this->dataDaftarUGD = $data;
+        if (is_array($isianLayar)) {
+            $this->dataDaftarUGD[$nodeDipertahankan] = $isianLayar;
+        }
+        $this->lengkapiDefaultTelaah();
     }
 
     private function loadData(string $rjNo): void
@@ -498,67 +519,6 @@ new class extends Component {
                         @endif
                     </div>
 
-                    <div
-                        class="sticky bottom-0 z-10 flex items-center justify-between gap-3 px-6 py-4 border-t border-hairline bg-surface-soft rounded-b-xl dark:border-gray-700 dark:bg-gray-900">
-                        <x-secondary-button wire:click="closeTelaah">Tutup</x-secondary-button>
-
-                        <div class="flex gap-2">
-                            @if (!isset($dataDaftarUGD['telaahResep']['penanggungJawab']))
-                                <x-outline-button wire:click="saveTelaahResep" wire:loading.attr="disabled">
-                                    <span wire:loading.remove wire:target="saveTelaahResep"
-                                        class="flex items-center gap-1.5">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                            stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                                        </svg>
-                                        Simpan
-                                    </span>
-                                    <span wire:loading wire:target="saveTelaahResep"
-                                        class="flex items-center gap-1.5">
-                                        <x-loading /> Menyimpan...
-                                    </span>
-                                </x-outline-button>
-
-                                @if (auth()->user()->hasRole('Apoteker'))
-                                    <x-success-button wire:click="ttdTelaahResep" wire:loading.attr="disabled">
-                                        <span wire:loading.remove wire:target="ttdTelaahResep"
-                                            class="flex items-center gap-1.5">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2.5 2.5 0 113.536 3.536L12.536 16.536a4 4 0 01-1.414.95L7 19l1.514-4.122A4 4 0 019 13z" />
-                                            </svg>
-                                            TTD-E & Selesai
-                                        </span>
-                                        <span wire:loading wire:target="ttdTelaahResep"
-                                            class="flex items-center gap-1.5">
-                                            <x-loading /> Proses TTD...
-                                        </span>
-                                    </x-success-button>
-                                @else
-                                    <div
-                                        class="px-3 py-2 text-xs text-amber-700 bg-amber-50 rounded-lg border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700">
-                                        TTD-E hanya untuk Apoteker
-                                    </div>
-                                @endif
-                            @else
-                                <div class="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300">
-                                    <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd"
-                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                            clip-rule="evenodd" />
-                                    </svg>
-                                    <span>
-                                        <strong>TTD-E</strong> oleh
-                                        {{ $dataDaftarUGD['telaahResep']['penanggungJawab']['userLog'] }}
-                                        pada
-                                        {{ $dataDaftarUGD['telaahResep']['penanggungJawab']['userLogDate'] }}
-                                    </span>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
                 </div>
 
                 {{-- ══════════════ KOLOM KANAN: TELAAH OBAT ══════════════ --}}
@@ -699,70 +659,66 @@ new class extends Component {
                         @endif
                     </div>
 
-                    <div
-                        class="sticky bottom-0 z-10 flex items-center justify-between gap-3 px-6 py-4 border-t border-hairline bg-surface-soft rounded-b-xl dark:border-gray-700 dark:bg-gray-900">
-                        <x-secondary-button wire:click="closeTelaah">Tutup</x-secondary-button>
-
-                        <div class="flex gap-2">
-                            @if (!isset($dataDaftarUGD['telaahObat']['penanggungJawab']))
-                                <x-outline-button wire:click="saveTelaahObat" wire:loading.attr="disabled">
-                                    <span wire:loading.remove wire:target="saveTelaahObat"
-                                        class="flex items-center gap-1.5">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                            stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                                        </svg>
-                                        Simpan
-                                    </span>
-                                    <span wire:loading wire:target="saveTelaahObat"
-                                        class="flex items-center gap-1.5">
-                                        <x-loading /> Menyimpan...
-                                    </span>
-                                </x-outline-button>
-
-                                @if (auth()->user()->hasRole('Apoteker'))
-                                    <x-info-button wire:click="ttdTelaahObat" wire:loading.attr="disabled">
-                                        <span wire:loading.remove wire:target="ttdTelaahObat"
-                                            class="flex items-center gap-1.5">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2.5 2.5 0 113.536 3.536L12.536 16.536a4 4 0 01-1.414.95L7 19l1.514-4.122A4 4 0 019 13z" />
-                                            </svg>
-                                            TTD-E & Selesai
-                                        </span>
-                                        <span wire:loading wire:target="ttdTelaahObat"
-                                            class="flex items-center gap-1.5">
-                                            <x-loading /> Proses TTD...
-                                        </span>
-                                    </x-info-button>
-                                @else
-                                    <div
-                                        class="px-3 py-2 text-xs text-amber-700 bg-amber-50 rounded-lg border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700">
-                                        TTD-E hanya untuk Apoteker
-                                    </div>
-                                @endif
-                            @else
-                                <div class="flex items-center gap-1.5 text-xs text-blue-700 dark:text-blue-300">
-                                    <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd"
-                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                            clip-rule="evenodd" />
-                                    </svg>
-                                    <span>
-                                        <strong>TTD-E</strong> oleh
-                                        {{ $dataDaftarUGD['telaahObat']['penanggungJawab']['userLog'] }}
-                                        pada
-                                        {{ $dataDaftarUGD['telaahObat']['penanggungJawab']['userLogDate'] }}
-                                    </span>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
                 </div>
 
             </div> {{-- /GRID --}}
+            {{-- FOOTER TUNGGAL — meniru EMR RJ (SOAP satu tampilan, satu Simpan): Simpan menulis telaah
+                 resep & obat sekaligus; TTD-E tetap per bagian karena penanggung jawabnya dicatat terpisah. --}}
+            @php
+                $ttdResep = $dataDaftarUGD['telaahResep']['penanggungJawab'] ?? null;
+                $ttdObat = $dataDaftarUGD['telaahObat']['penanggungJawab'] ?? null;
+            @endphp
+            <div
+                class="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-t border-hairline bg-surface-soft rounded-b-xl dark:border-gray-700 dark:bg-gray-900">
+                <x-secondary-button wire:click="closeTelaah">Tutup</x-secondary-button>
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    @if ($ttdResep)
+                        <span class="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300">
+                            <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                            <span>Resep: <strong>TTD-E</strong> {{ $ttdResep['userLog'] }} · {{ $ttdResep['userLogDate'] }}</span>
+                        </span>
+                    @endif
+                    @if ($ttdObat)
+                        <span class="flex items-center gap-1.5 text-xs text-blue-700 dark:text-blue-300">
+                            <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                            <span>Obat: <strong>TTD-E</strong> {{ $ttdObat['userLog'] }} · {{ $ttdObat['userLogDate'] }}</span>
+                        </span>
+                    @endif
+                    @if (!$ttdResep || !$ttdObat)
+                        <x-outline-button wire:click="saveTelaah" wire:loading.attr="disabled">
+                            <span wire:loading.remove wire:target="saveTelaah" class="flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                                Simpan Telaah
+                            </span>
+                            <span wire:loading wire:target="saveTelaah" class="flex items-center gap-1.5"><x-loading /> Menyimpan...</span>
+                        </x-outline-button>
+                        @if (auth()->user()->hasRole('Apoteker'))
+                            @if (!$ttdResep)
+                                <x-success-button wire:click="ttdTelaahResep" wire:loading.attr="disabled">
+                                    <span wire:loading.remove wire:target="ttdTelaahResep" class="flex items-center gap-1.5">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2.5 2.5 0 113.536 3.536L12.536 16.536a4 4 0 01-1.414.95L7 19l1.514-4.122A4 4 0 019 13z" /></svg>
+                                        TTD-E Telaah Resep
+                                    </span>
+                                    <span wire:loading wire:target="ttdTelaahResep" class="flex items-center gap-1.5"><x-loading /> Proses TTD...</span>
+                                </x-success-button>
+                            @endif
+                            @if (!$ttdObat)
+                                <x-info-button wire:click="ttdTelaahObat" wire:loading.attr="disabled">
+                                    <span wire:loading.remove wire:target="ttdTelaahObat" class="flex items-center gap-1.5">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.536-6.536a2.5 2.5 0 113.536 3.536L12.536 16.536a4 4 0 01-1.414.95L7 19l1.514-4.122A4 4 0 019 13z" /></svg>
+                                        TTD-E Telaah Obat &amp; Selesai
+                                    </span>
+                                    <span wire:loading wire:target="ttdTelaahObat" class="flex items-center gap-1.5"><x-loading /> Proses TTD...</span>
+                                </x-info-button>
+                            @endif
+                        @else
+                            <div class="px-3 py-2 text-xs text-amber-700 bg-amber-50 rounded-lg border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700">
+                                TTD-E hanya untuk Apoteker
+                            </div>
+                        @endif
+                    @endif
+                </div>
+            </div>
             @endif
 
             @if ($tabTelaah === 'resume')
