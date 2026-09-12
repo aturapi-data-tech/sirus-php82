@@ -129,8 +129,6 @@ new class extends Component {
                                 class="ds-btn ds-btn-secondary">Tutorial Koding Administrasi →</a>
                             <a href="{{ route('panduan-dev.alur-pelayanan') }}" wire:navigate
                                 class="ds-btn ds-btn-secondary">Tutorial Alur Pelayanan →</a>
-                            <a href="{{ route('panduan-dev.bpjs-proxy') }}" wire:navigate
-                                class="ds-btn ds-btn-secondary">Whitelist IP BPJS &amp; Proxy VPS →</a>
                             <a href="{{ route('panduan-dev.koding-skill') }}" wire:navigate
                                 class="ds-btn ds-btn-primary">Katalog Skill →</a>
                         </div>

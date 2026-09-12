@@ -4,7 +4,6 @@ namespace App\Http\Traits\BPJS;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
-use App\Support\Bpjs\BpjsHttp;
 use Illuminate\Support\Facades\Validator;
 
 use Illuminate\Support\Facades\DB;
@@ -165,7 +164,7 @@ trait VclaimTrait
             $url = env('VCLAIM_URL') . "Peserta/nokartu/" . $nomorKartu . "/tglSEP/" . $tanggal;
 
             $signature = self::signature();
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->get($url);
 
@@ -221,7 +220,7 @@ trait VclaimTrait
 
             $url = env('VCLAIM_URL') . "Peserta/nik/" . $nik . "/tglSEP/" . $tanggal;
             $signature = self::signature();
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->get($url);
 
@@ -275,7 +274,7 @@ trait VclaimTrait
 
             $url = env('VCLAIM_URL') . "referensi/poli/" . $poliklinik;
             $signature = self::signature();
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->get($url);
 
@@ -319,7 +318,7 @@ trait VclaimTrait
             $url = env('VCLAIM_URL') . "referensi/faskes/{$keyword}/{$jenisFaskes}";
             $signature = self::signature();
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->get($url);
 
@@ -385,7 +384,7 @@ trait VclaimTrait
             $signature['Content-Type'] = 'application/x-www-form-urlencoded';
             $data = $r;
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->post($url, $data);
 
@@ -457,7 +456,7 @@ trait VclaimTrait
             $data = $r;
 
             // VClaim "Update Rencana Kontrol" wajib HTTP PUT — pakai POST → 405 Method Not Allowed.
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->put($url, $data);
 
@@ -528,7 +527,7 @@ trait VclaimTrait
             $signature['Content-Type'] = 'application/x-www-form-urlencoded';
             $data = $r;
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->post($url, $data);
 
@@ -599,7 +598,7 @@ trait VclaimTrait
             $signature['Content-Type'] = 'application/x-www-form-urlencoded';
             $data = $r;
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->put($url, $r);
 
@@ -648,7 +647,7 @@ trait VclaimTrait
             $url = env('VCLAIM_URL') . "RencanaKontrol/noSuratKontrol/" . $noSPRI;
 
             $signature = self::signature();
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->get($url);
 
@@ -702,7 +701,7 @@ trait VclaimTrait
 
             $url = env('VCLAIM_URL') . "Rujukan/List/Peserta/" . $nomorKartu;
             $signature = self::signature();
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->get($url);
 
@@ -753,7 +752,7 @@ trait VclaimTrait
 
             $url = env('VCLAIM_URL') . "Rujukan/RS/List/Peserta/" . $nomorKartu;
             $signature = self::signature();
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->get($url);
 
@@ -854,7 +853,7 @@ trait VclaimTrait
             $signature = self::signature();
             $signature['Content-Type'] = 'application/x-www-form-urlencoded';
             $data = $SEPJsonReq;
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->post($url, $data);
             // dd($response->transferStats->getTransferTime()); Get Transfertime request
@@ -917,7 +916,7 @@ trait VclaimTrait
             $signature  = self::signature();
             $signature['Content-Type'] = 'application/x-www-form-urlencoded';
             $data = $SEPJsonReq;
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->put($url, $data);
 
@@ -983,7 +982,7 @@ trait VclaimTrait
                 ],
             ];
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->delete($url, $payload);
 
@@ -1046,7 +1045,7 @@ trait VclaimTrait
             $signature = self::signature();
             $signature['Content-Type'] = 'application/x-www-form-urlencoded';
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->get($url);
 
@@ -1154,7 +1153,7 @@ trait VclaimTrait
             $signature = self::signature();
             $signature['Content-Type'] = 'application/x-www-form-urlencoded';
             $data = $SEPJsonReq;
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->put($url, $data);
             // dd($response->transferStats->getTransferTime()); Get Transfertime request
@@ -1208,7 +1207,7 @@ trait VclaimTrait
             $signature = self::signature();
             $signature['Content-Type'] = 'application/x-www-form-urlencoded';
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->get($url);
 
@@ -1268,7 +1267,7 @@ trait VclaimTrait
             $signature = self::signature();
             $signature['Content-Type'] = 'application/x-www-form-urlencoded';
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->get($url);
 
@@ -1356,7 +1355,7 @@ trait VclaimTrait
             $signature = self::signature();
             $signature['Content-Type'] = 'application/x-www-form-urlencoded';
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->post($url, $r);
 
@@ -1429,7 +1428,7 @@ trait VclaimTrait
             $signature = self::signature();
             $signature['Content-Type'] = 'application/x-www-form-urlencoded';
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->put($url, $r);
 
@@ -1479,7 +1478,7 @@ trait VclaimTrait
             $signature = self::signature();
             $signature['Content-Type'] = 'application/x-www-form-urlencoded';
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->delete($url, $r);
 
@@ -1522,7 +1521,7 @@ trait VclaimTrait
             $signature = self::signature();
             $signature['Content-Type'] = 'application/x-www-form-urlencoded';
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->get($url);
 
@@ -1555,7 +1554,7 @@ trait VclaimTrait
             $signature = self::signature();
             $signature['Content-Type'] = 'application/x-www-form-urlencoded';
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->get($url);
 

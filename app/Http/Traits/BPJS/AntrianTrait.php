@@ -6,7 +6,6 @@ namespace App\Http\Traits\BPJS;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use App\Support\Bpjs\BpjsHttp;
 use Illuminate\Support\Facades\Validator;
 
 
@@ -189,7 +188,7 @@ trait AntrianTrait
 
             $url = env('ANTRIAN_URL') . "dashboard/waktutunggu/bulan/{$bulan}/tahun/{$tahun}/waktu/{$rs}";
             $signature = self::signature();
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->get($url);
 
@@ -237,7 +236,7 @@ trait AntrianTrait
             $url = env('ANTRIAN_URL') . "antrean/getlisttask";
             $signature = self::signature();
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->post(
                     $url,
@@ -305,7 +304,7 @@ trait AntrianTrait
             $url = env('ANTRIAN_URL') . "antrean/updatewaktu";
             $signature = self::signature();
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->post(
                     $url,
@@ -374,7 +373,7 @@ trait AntrianTrait
             $url = env('ANTRIAN_URL') . "antrean/farmasi/add";
             $signature = self::signature();
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->post(
                     $url,
@@ -484,7 +483,7 @@ trait AntrianTrait
             $url = env('ANTRIAN_URL') . "antrean/add";
             $signature = self::signature();
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->post(
                     $url,
@@ -566,7 +565,7 @@ trait AntrianTrait
             $url = env('ANTRIAN_URL') . "jadwaldokter/kodepoli/" . $kodePoli . "/tanggal/" . $tgl;
             $signature = self::signature();
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->get($url);
 
@@ -594,7 +593,7 @@ trait AntrianTrait
             $url       = env('ANTRIAN_URL') . 'ref/poli';
             $signature = self::signature();
 
-            $response = BpjsHttp::mulai()->withHeaders($signature)->get($url);
+            $response = Http::timeout(8)->connectTimeout(3)->withHeaders($signature)->get($url);
 
             return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
         } catch (Exception $e) {
@@ -611,7 +610,7 @@ trait AntrianTrait
             $url       = env('ANTRIAN_URL') . 'ref/dokter';
             $signature = self::signature();
 
-            $response = BpjsHttp::mulai()->withHeaders($signature)->get($url);
+            $response = Http::timeout(8)->connectTimeout(3)->withHeaders($signature)->get($url);
 
             return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
         } catch (Exception $e) {
@@ -628,7 +627,7 @@ trait AntrianTrait
             $url       = env('ANTRIAN_URL') . 'ref/poli/fp';
             $signature = self::signature();
 
-            $response = BpjsHttp::mulai()->withHeaders($signature)->get($url);
+            $response = Http::timeout(8)->connectTimeout(3)->withHeaders($signature)->get($url);
 
             return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
         } catch (Exception $e) {
@@ -665,7 +664,7 @@ trait AntrianTrait
             $url       = env('ANTRIAN_URL') . "ref/pasien/fp/identitas/{$jenisIdentitas}/noidentitas/{$noIdentitas}";
             $signature = self::signature();
 
-            $response = BpjsHttp::mulai()->withHeaders($signature)->get($url);
+            $response = Http::timeout(8)->connectTimeout(3)->withHeaders($signature)->get($url);
 
             return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
         } catch (Exception $e) {
@@ -711,7 +710,7 @@ trait AntrianTrait
             $url       = env('ANTRIAN_URL') . 'jadwaldokter/updatejadwaldokter';
             $signature = self::signature();
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->post($url, [
                     'kodepoli'         => $kodePoli,
@@ -760,7 +759,7 @@ trait AntrianTrait
             $url       = env('ANTRIAN_URL') . 'antrean/batal';
             $signature = self::signature();
 
-            $response = BpjsHttp::mulai()
+            $response = Http::timeout(8)->connectTimeout(3)
                 ->withHeaders($signature)
                 ->post($url, [
                     'kodebooking' => $kodebooking,
@@ -797,7 +796,7 @@ trait AntrianTrait
             $url       = env('ANTRIAN_URL') . "dashboard/waktutunggu/tanggal/{$tgl}/waktu/{$rs}";
             $signature = self::signature();
 
-            $response = BpjsHttp::mulai()->withHeaders($signature)->get($url);
+            $response = Http::timeout(8)->connectTimeout(3)->withHeaders($signature)->get($url);
 
             return self::response_no_decrypt($response, $url, $response->transferStats->getTransferTime());
         } catch (Exception $e) {
@@ -825,7 +824,7 @@ trait AntrianTrait
             $url       = env('ANTRIAN_URL') . "antrean/pendaftaran/tanggal/{$tanggal}";
             $signature = self::signature();
 
-            $response = BpjsHttp::mulai()->withHeaders($signature)->get($url);
+            $response = Http::timeout(8)->connectTimeout(3)->withHeaders($signature)->get($url);
 
             return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
         } catch (Exception $e) {
@@ -853,7 +852,7 @@ trait AntrianTrait
             $url       = env('ANTRIAN_URL') . "antrean/pendaftaran/kodebooking/{$kodebooking}";
             $signature = self::signature();
 
-            $response = BpjsHttp::mulai()->withHeaders($signature)->get($url);
+            $response = Http::timeout(8)->connectTimeout(3)->withHeaders($signature)->get($url);
 
             return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
         } catch (Exception $e) {
@@ -871,7 +870,7 @@ trait AntrianTrait
             $url       = env('ANTRIAN_URL') . 'antrean/pendaftaran/aktif';
             $signature = self::signature();
 
-            $response = BpjsHttp::mulai()->withHeaders($signature)->get($url);
+            $response = Http::timeout(8)->connectTimeout(3)->withHeaders($signature)->get($url);
 
             return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
         } catch (Exception $e) {
@@ -918,7 +917,7 @@ trait AntrianTrait
             $url        = env('ANTRIAN_URL') . "antrean/pendaftaran/kodepoli/{$kodePoli}/kodedokter/{$kodeDokter}/hari/{$hari}/jampraktek/{$jamEncoded}";
             $signature  = self::signature();
 
-            $response = BpjsHttp::mulai()->withHeaders($signature)->get($url);
+            $response = Http::timeout(8)->connectTimeout(3)->withHeaders($signature)->get($url);
 
             return self::response_decrypt($response, $signature, $url, $response->transferStats->getTransferTime());
         } catch (Exception $e) {
