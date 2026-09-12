@@ -583,11 +583,11 @@ new class extends Component {
      * simpan utama (pola sama persistSepNode daftar-rj). Baca fresh dari DB
      * lalu timpa hanya key sep — jangan replace penuh.
      */
-    private function persistSepNode(): void
+    private function persistSepNode(string $konteks = 'tercipta'): void
     {
         $rjNo = $this->dataDaftarUGD['rjNo'] ?? null;
         if (empty($rjNo)) {
-            $this->dispatch('toast', type: 'warning', message: 'SEP tercipta tapi No. UGD belum ada — noSep: ' . ($this->dataDaftarUGD['sep']['noSep'] ?? '-') . '. Simpan ulang pendaftaran.');
+            $this->dispatch('toast', type: 'warning', message: 'SEP ' . $konteks . ' tapi No. UGD belum ada — noSep: ' . ($this->dataDaftarUGD['sep']['noSep'] ?? '-') . '. Simpan ulang pendaftaran.');
             return;
         }
 
@@ -605,7 +605,7 @@ new class extends Component {
             });
         } catch (\Throwable $e) {
             // SEP sudah ada di BPJS — beri tahu noSep-nya supaya bisa dicatat manual.
-            $this->dispatch('toast', type: 'error', message: 'SEP ' . ($this->dataDaftarUGD['sep']['noSep'] ?? '-') . ' tercipta di BPJS tapi GAGAL tercatat lokal: ' . $e->getMessage() . ' — ulangi Simpan tanpa menutup form.', duration: 10000);
+            $this->dispatch('toast', type: 'error', message: 'SEP ' . ($this->dataDaftarUGD['sep']['noSep'] ?? '-') . ' ' . $konteks . ' di BPJS tapi GAGAL tercatat lokal: ' . $e->getMessage() . ' — ulangi Simpan tanpa menutup form.', duration: 10000);
         }
     }
 
@@ -673,6 +673,18 @@ new class extends Component {
         $this->recomputeAdminPrices();
 
         $this->incrementVersion('dokter');
+        $this->incrementVersion('modal');
+    }
+
+    /**
+     * SEP dihapus di BPJS dari modal VClaim: kosongkan node sep (termasuk reqSep,
+     * supaya simpan berikutnya tidak menerbitkan SEP baru diam-diam) + vno_sep.
+     */
+    #[On('sep-deleted-ugd')]
+    public function handleSepDeleted(): void
+    {
+        $this->dataDaftarUGD['sep'] = ['noSep' => '', 'reqSep' => [], 'resSep' => []];
+        $this->persistSepNode('terhapus');
         $this->incrementVersion('modal');
     }
 

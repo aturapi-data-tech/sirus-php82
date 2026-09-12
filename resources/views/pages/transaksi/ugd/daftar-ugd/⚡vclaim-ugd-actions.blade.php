@@ -254,6 +254,39 @@ new class extends Component {
         $this->closeModal();
     }
 
+    /* ===============================
+     | DELETE SEP dari BPJS (meniru modal VClaim RI)
+     | Node sep lokal + vno_sep dikosongkan oleh induk lewat event sep-deleted-ugd,
+     | termasuk reqSep — kalau reqSep tertinggal, simpan berikutnya akan
+     | menerbitkan SEP baru tanpa disadari (handleSepCreation).
+     =============================== */
+    public function deleteSEP(): void
+    {
+        $noSep = (string) ($this->sepData['noSep'] ?? '');
+        if ($noSep === '') {
+            $this->dispatch('toast', type: 'error', message: 'Tidak ada SEP untuk dihapus.');
+            return;
+        }
+        try {
+            $response = $this->sep_delete($noSep)->getOriginalContent();
+            $code = data_get($response, 'metadata.code');
+            $msg = data_get($response, 'metadata.message', 'Tidak ada pesan');
+            if (in_array($code, [200, 201])) {
+                $this->sepData = ['noSep' => '', 'reqSep' => [], 'resSep' => []];
+                $this->isFormLocked = false;
+
+                $this->dispatch('sep-deleted-ugd', rjNo: $this->rjNo);
+                $this->dispatch('toast', type: 'success', message: "SEP {$noSep} berhasil dihapus ({$code}): {$msg}");
+                $this->incrementVersion('form-sep');
+                $this->incrementVersion('info-pasien');
+            } else {
+                $this->dispatch('toast', type: 'error', message: "Hapus SEP gagal ({$code}): {$msg}");
+            }
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Error hapus SEP: ' . $e->getMessage());
+        }
+    }
+
     private function validateSEPForm(): void
     {
         /* FIX #4: Tambah validasi KLL — propinsi/kabupaten/kecamatan wajib isi
@@ -966,7 +999,23 @@ new class extends Component {
         {{-- FOOTER --}}
         <div
             class="sticky bottom-0 z-10 px-6 py-4 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
-            <div class="flex justify-end gap-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                {{-- Hapus SEP di kiri footer, sejajar Batal (permintaan user) --}}
+                <div>
+                    @if (!empty($sepData['noSep']))
+                        <x-confirm-button variant="danger" action="deleteSEP()"
+                            title="Hapus SEP BPJS"
+                            message="Yakin hapus SEP ini dari server BPJS? Tindakan ini tidak dapat dibatalkan."
+                            confirmText="Ya, hapus SEP" cancelText="Batal" class="text-xs gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Hapus SEP dari BPJS
+                        </x-confirm-button>
+                    @endif
+                </div>
+                <div class="flex flex-wrap items-center justify-end gap-2 ml-auto">
                 <x-secondary-button type="button" wire:click="closeModal">Batal</x-secondary-button>
                 <x-primary-button type="button" wire:click="generateSEP" wire:loading.attr="disabled"
                     :disabled="$isFormLocked" x-ref="btnSimpanVclaim">
@@ -980,6 +1029,7 @@ new class extends Component {
                     </span>
                     <span wire:loading><x-loading /> Menyimpan...</span>
                 </x-primary-button>
+                </div>
             </div>
         </div>
         @endif

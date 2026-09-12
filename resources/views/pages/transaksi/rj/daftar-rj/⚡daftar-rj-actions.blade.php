@@ -1004,12 +1004,12 @@ new class extends Component {
      * key terkait SEP (pola array_replace parsial — jangan replace penuh,
      * lihat catatan reload-DB+replace).
      */
-    private function persistSepNode(): void
+    private function persistSepNode(string $konteks = 'tercipta'): void
     {
         $rjNo = $this->dataDaftarPoliRJ['rjNo'] ?? null;
         if (empty($rjNo)) {
             // Row RJ belum ada — seharusnya tak terjadi setelah reorder simpan-dulu.
-            $this->dispatch('toast', type: 'warning', message: 'SEP tercipta tapi No. RJ belum ada — noSep: ' . ($this->dataDaftarPoliRJ['sep']['noSep'] ?? '-') . '. Simpan ulang pendaftaran.');
+            $this->dispatch('toast', type: 'warning', message: 'SEP ' . $konteks . ' tapi No. RJ belum ada — noSep: ' . ($this->dataDaftarPoliRJ['sep']['noSep'] ?? '-') . '. Simpan ulang pendaftaran.');
             return;
         }
 
@@ -1030,7 +1030,7 @@ new class extends Component {
             });
         } catch (\Throwable $e) {
             // SEP sudah ada di BPJS — beri tahu noSep-nya supaya bisa dicatat manual.
-            $this->dispatch('toast', type: 'error', message: 'SEP ' . ($this->dataDaftarPoliRJ['sep']['noSep'] ?? '-') . ' tercipta di BPJS tapi GAGAL tercatat lokal: ' . $e->getMessage() . ' — ulangi Simpan tanpa menutup form.', duration: 10000);
+            $this->dispatch('toast', type: 'error', message: 'SEP ' . ($this->dataDaftarPoliRJ['sep']['noSep'] ?? '-') . ' ' . $konteks . ' di BPJS tapi GAGAL tercatat lokal: ' . $e->getMessage() . ' — ulangi Simpan tanpa menutup form.', duration: 10000);
         }
     }
 
@@ -1173,6 +1173,18 @@ new class extends Component {
     /* ===============================
      | SEP HANDLERS
      =============================== */
+    /**
+     * SEP dihapus di BPJS dari modal VClaim: kosongkan node sep (termasuk reqSep,
+     * supaya simpan berikutnya tidak menerbitkan SEP baru diam-diam) + vno_sep.
+     */
+    #[On('sep-deleted')]
+    public function handleSepDeleted(): void
+    {
+        $this->dataDaftarPoliRJ['sep'] = ['noSep' => '', 'reqSep' => [], 'resSep' => []];
+        $this->persistSepNode('terhapus');
+        $this->incrementVersion('modal');
+    }
+
     #[On('sep-generated')]
     public function handleSepGenerated($reqSep): void
     {
