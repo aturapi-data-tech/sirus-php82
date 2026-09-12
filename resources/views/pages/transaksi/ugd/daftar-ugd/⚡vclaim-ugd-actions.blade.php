@@ -6,11 +6,10 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Traits\BPJS\VclaimTrait;
-use App\Http\Traits\BPJS\BiometrikSepTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 
 new class extends Component {
-    use VclaimTrait, BiometrikSepTrait, WithRenderVersioningTrait;
+    use VclaimTrait, WithRenderVersioningTrait;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal', 'form-sep', 'info-pasien'];
@@ -248,10 +247,6 @@ new class extends Component {
         }
 
         $this->validateSEPForm();
-        // Gerbang biometrik BPJS: status '0' tanpa lolos/lewati → blok pertanyaan acak dibuka, SEP ditunda.
-        if (!$this->biometrikSiap()) {
-            return;
-        }
         $request = $this->buildSEPRequest();
 
         $this->dispatch('sep-generated-ugd', reqSep: $request);
@@ -464,7 +459,6 @@ new class extends Component {
     {
         $this->dispatch('close-modal', name: 'vclaim-ugd-actions');
         $this->resetForm();
-        $this->resetBiometrik();
         $this->resetVersion();
         $this->modalTerbuka = false; // isi modal (guard @if) dihapus, tidak di-mount ulang
     }
@@ -536,9 +530,6 @@ new class extends Component {
                 x-on:focus-vclaim-dokter.window="$nextTick(() => setTimeout(() => $refs.lovDokterVclaim?.querySelector('input')?.focus(), 150))"
                 x-on:focus-vclaim-diagnosa.window="$nextTick(() => setTimeout(() => $refs.lovDiagnosaVclaim?.querySelector('input')?.focus(), 150))"
                 x-on:focus-vclaim-simpan.window="$nextTick(() => setTimeout(() => $refs.btnSimpanVclaim?.focus(), 150))">
-
-                {{-- Validasi biometrik BPJS (BiometrikSepTrait) — gerbang sebelum Buat SEP --}}
-                <x-vclaim.biometrik-panel :biometrik="$biometrik" :disabled="$isFormLocked" />
 
                 {{-- Info badge UGD --}}
                 <div class="flex flex-wrap items-center gap-2 mb-4">
