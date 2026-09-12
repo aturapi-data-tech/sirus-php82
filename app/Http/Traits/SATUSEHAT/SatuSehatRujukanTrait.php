@@ -1277,4 +1277,35 @@ trait SatuSehatRujukanTrait
 
         return $nama;
     }
+
+    /**
+     * Alamat RS dari Organization.address (line, kecamatan, kab/kota, provinsi, kode pos).
+     * Dipakai surat pengantar rujukan — PMK 16/2024 Pasal 17 mensyaratkan identitas
+     * fasyankes penerima. Cache & aturan kegagalan sama dengan rujukanNamaOrganisasi().
+     */
+    protected function rujukanAlamatOrganisasi(string $orgId): string
+    {
+        if ($orgId === '') {
+            return '';
+        }
+
+        $kunci = 'satusehat_rujukan_org_alamat_' . $orgId;
+        $tersimpan = Cache::get($kunci);
+        if (is_string($tersimpan) && $tersimpan !== '') {
+            return $tersimpan;
+        }
+
+        $hasil = $this->rujukanRequest('GET', 'Organization/' . urlencode($orgId));
+        $alamat = $hasil['code'] === 200 && is_array($hasil['body']) ? ($hasil['body']['address'][0] ?? []) : [];
+        $district = trim((string) ($alamat['district'] ?? ''));
+        $teks = collect(array_merge(
+            (array) ($alamat['line'] ?? []),
+            [$district !== '' ? 'Kec. ' . $district : '', $alamat['city'] ?? '', $alamat['state'] ?? '', $alamat['postalCode'] ?? ''],
+        ))->map(fn ($bagian) => trim((string) $bagian))->filter()->implode(', ');
+        if ($teks !== '') {
+            Cache::put($kunci, $teks, 86400);
+        }
+
+        return $teks;
+    }
 }

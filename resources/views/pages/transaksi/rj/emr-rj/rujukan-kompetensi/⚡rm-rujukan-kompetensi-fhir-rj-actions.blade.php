@@ -82,6 +82,12 @@ new class extends Component {
 
         $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo);
 
+        // Rujukan yang terbit sebelum alamat tujuan ikut disimpan: lengkapi dari
+        // Organization SATUSEHAT (di-cache) supaya ringkasan & surat tidak berlubang.
+        if (!empty($this->formRujukan['hasil']['noRujukanSatuSehat']) && blank($this->formRujukan['hasil']['tujuanAlamat'] ?? '')) {
+            $this->formRujukan['hasil']['tujuanAlamat'] = $this->rujukanAlamatOrganisasi((string) ($this->formRujukan['hasil']['tujuanOrgId'] ?? ''));
+        }
+
         // Jawaban faskes tujuan datang dari sistem RS LAIN — tidak ada pemberitahuan
         // yang mendorong ke kita, jadi status tersimpan bisa basi. Disegarkan sekali
         // saat modal dibuka, HANYA bila memang ada tugas yang masih menggantung:
@@ -888,6 +894,7 @@ new class extends Component {
             'noRujukanSatuSehat' => $nomor,
             'tujuanNama' => $kandidat['nama'],
             'tujuanOrgId' => $kandidat['orgId'],
+            'tujuanAlamat' => $this->rujukanAlamatOrganisasi($kandidat['orgId']),
             'dikirimOleh' => auth()->user()->name ?? 'Sirus',
             'dikirimPada' => now(config('app.timezone'))->format('d/m/Y H:i:s'),
         ];
@@ -1086,13 +1093,7 @@ new class extends Component {
     @if (!empty($formRujukan['hasil']['noRujukanSatuSehat']))
         <div class="p-3 space-y-1 text-sm border border-green-200 rounded-lg bg-green-50 dark:bg-green-950 dark:border-green-900">
             <p class="font-semibold text-green-800 dark:text-green-200">Rujukan IGD sudah terkirim</p>
-            <table class="text-gray-700 dark:text-gray-200">
-                <tr><td class="pr-3">No Rujukan SATUSEHAT</td><td class="font-mono font-semibold">{{ $formRujukan['hasil']['noRujukanSatuSehat'] }}</td></tr>
-                <tr><td class="pr-3">ServiceRequest</td><td class="font-mono">{{ $formRujukan['hasil']['serviceRequestId'] ?? '-' }}</td></tr>
-                <tr><td class="pr-3">Tanggal Rujukan</td><td class="font-semibold">{{ $this->tanggalRujukanTampil() }}</td></tr>
-                <tr><td class="pr-3">Tujuan</td><td>{{ $formRujukan['hasil']['tujuanNama'] ?? '-' }}</td></tr>
-                <tr><td class="pr-3">Dikirim</td><td>{{ $formRujukan['hasil']['dikirimPada'] ?? '-' }} oleh {{ $formRujukan['hasil']['dikirimOleh'] ?? '-' }}</td></tr>
-            </table>
+            <x-rujukan-kompetensi.ringkasan-terkirim :form="$formRujukan" jalur="fhir" :tanggalRujukan="$this->tanggalRujukanTampil()" :encounterId="$this->encounterUuid()" />
 
             {{-- Surat Pengantar Rujukan + Resume Klinis — format Kemkes (calon Kepmenkes),
                  wajib untuk SEMUA rujukan. Komponen cetaknya headless di halaman EMR. --}}

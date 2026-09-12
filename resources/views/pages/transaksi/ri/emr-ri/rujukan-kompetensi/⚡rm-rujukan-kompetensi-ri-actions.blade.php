@@ -789,6 +789,7 @@ new class extends Component {
             'tujuanNama' => $kandidat['nama'],
             'tujuanPpk' => $kandidat['kdppk'],
             'tujuanSatuSehat' => $kandidat['kodeFaskesSatuSehat'],
+            'tujuanAlamat' => $kandidat['alamat'],
             'dikirimOleh' => $payloadRujukan['user'],
             'dikirimPada' => Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s'),
         ];
@@ -1017,13 +1018,7 @@ new class extends Component {
     @if (!empty($formRujukan['hasil']['noRujukanSatuSehat']))
         <div class="p-3 space-y-1 text-sm border border-green-200 rounded-lg bg-green-50 dark:bg-green-950 dark:border-green-900">
             <p class="font-semibold text-green-800 dark:text-green-200">Rujukan sudah terkirim</p>
-            <table class="text-gray-700 dark:text-gray-200">
-                <tr><td class="pr-3">No Rujukan BPJS</td><td class="font-mono font-semibold">{{ ($formRujukan['hasil']['noRujukan'] ?? '') ?: '-' }}</td></tr>
-                <tr><td class="pr-3">No Rujukan SATUSEHAT</td><td class="font-mono font-semibold">{{ $formRujukan['hasil']['noRujukanSatuSehat'] }}</td></tr>
-                <tr><td class="pr-3">Tanggal Rujukan</td><td class="font-semibold">{{ $this->tanggalRujukanTampil() }}</td></tr>
-                <tr><td class="pr-3">Tujuan</td><td>{{ $formRujukan['hasil']['tujuanNama'] ?? '-' }} (PPK {{ $formRujukan['hasil']['tujuanPpk'] ?? '-' }})</td></tr>
-                <tr><td class="pr-3">Dikirim</td><td>{{ $formRujukan['hasil']['dikirimPada'] ?? '-' }} oleh {{ $formRujukan['hasil']['dikirimOleh'] ?? '-' }}</td></tr>
-            </table>
+            <x-rujukan-kompetensi.ringkasan-terkirim :form="$formRujukan" jalur="sisrute" :tanggalRujukan="$this->tanggalRujukanTampil()" :noSep="$this->nomorSep()" :encounterId="$this->encounterUuid()" />
 
             {{-- Surat Pengantar Rujukan + Resume Klinis — format Kemkes (calon Kepmenkes),
                  wajib untuk SEMUA rujukan. Komponen cetaknya headless di halaman EMR. --}}
