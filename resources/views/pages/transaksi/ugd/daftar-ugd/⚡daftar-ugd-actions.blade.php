@@ -48,10 +48,14 @@ new class extends Component {
     /* ===============================
      | MOUNT
      =============================== */
+    /** Snapshot reqSep seperti tersimpan di DB — pembanding "isi SEP berubah" sebelum Update SEP. */
+    public array $reqSepTersimpan = [];
+
     public function mount(): void
     {
         $this->registerAreas(['modal', 'pasien', 'dokter']);
         $this->dataDaftarUGD = $this->getDefaultUGDTemplate();
+        $this->reqSepTersimpan = [];
 
         $this->entryOptions = DB::table('rsmst_entryugds')
             ->select('entry_id', 'entry_desc', 'rujukan_status')
@@ -78,6 +82,7 @@ new class extends Component {
         $this->resetValidation();
 
         $this->dataDaftarUGD = $this->getDefaultUGDTemplate();
+        $this->reqSepTersimpan = [];
 
         $now = Carbon::now();
         $this->dataDaftarUGD['rjDate'] = $now->format('d/m/Y H:i:s');
@@ -114,6 +119,7 @@ new class extends Component {
         }
 
         $this->dataDaftarUGD = $data;
+        $this->reqSepTersimpan = $data['sep']['reqSep'] ?? [];
         $this->dataPasien = $this->findDataMasterPasien($this->dataDaftarUGD['regNo'] ?? '');
         $this->syncFromDataDaftarUGD();
 
@@ -543,9 +549,18 @@ new class extends Component {
 
         if (!$sudahAdaSEP && $hasReqSep) {
             $this->pushInsertSEP($this->dataDaftarUGD['sep']['reqSep']);
-        } elseif ($sudahAdaSEP && $hasReqSep) {
+        } elseif ($sudahAdaSEP && $hasReqSep && $this->reqSepBerubah()) {
             $this->pushUpdateSEP($this->dataDaftarUGD['sep']['reqSep']);
         }
+    }
+
+    /**
+     * Update SEP hanya bila isi reqSep beda dari yang tersimpan di DB. Simpan ulang
+     * pendaftaran tanpa menyentuh SEP dulu selalu mengirim ulang isi yang sama ke BPJS.
+     */
+    private function reqSepBerubah(): bool
+    {
+        return ($this->dataDaftarUGD['sep']['reqSep'] ?? []) != $this->reqSepTersimpan;
     }
 
     private function pushInsertSEP(array $reqSep): void
@@ -563,6 +578,7 @@ new class extends Component {
                 if ($sepData) {
                     $this->dataDaftarUGD['sep']['noSep'] = $sepData['noSep'] ?? '';
                     $this->dataDaftarUGD['sep']['resSep'] = $sepData;
+                    $this->reqSepTersimpan = $reqSep;
 
                     // Persist SEGERA — SEP di BPJS sudah tercipta, tidak boleh yatim.
                     $this->persistSepNode();
@@ -641,10 +657,33 @@ new class extends Component {
             $response = VclaimTrait::sep_update($payload)->getOriginalContent();
             $code = $response['metadata']['code'] ?? 500;
             $msg = $response['metadata']['message'] ?? '';
-            $this->dispatch('toast', type: $code == 200 ? 'success' : 'error', message: "Update SEP ({$code}): {$msg}");
+            if ($code == 200) {
+                $this->reqSepTersimpan = $reqSep;
+                $this->dispatch('toast', type: 'success', message: "Update SEP ({$code}): {$msg}");
+            } else {
+                $this->batalkanPerubahanSep("Update SEP ditolak BPJS ({$code}): {$msg}");
+            }
         } catch (\Exception $e) {
-            $this->dispatch('toast', type: 'error', message: 'Error Update SEP: ' . $e->getMessage());
+            $this->batalkanPerubahanSep('Update SEP gagal: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * BPJS menolak / tidak terjangkau saat Update SEP: JSON kita sudah memuat reqSep
+     * baru, sedangkan BPJS masih memegang isi lama. Supaya keduanya tidak berbeda,
+     * reqSep dikembalikan ke salinan yang tercatat di BPJS lalu ditulis ulang ke DB.
+     */
+    private function batalkanPerubahanSep(string $alasan): void
+    {
+        if (empty($this->reqSepTersimpan)) {
+            $this->dispatch('toast', type: 'error', message: $alasan);
+            return;
+        }
+
+        $this->dataDaftarUGD['sep']['reqSep'] = $this->reqSepTersimpan;
+        $this->persistSepNode('ditolak perubahannya');
+        $this->incrementVersion('modal');
+        $this->dispatch('toast', type: 'warning', message: $alasan . ' — perubahan SEP dibatalkan, isi lokal dikembalikan sesuai yang tercatat di BPJS.', duration: 10000);
     }
 
     /* ===============================
@@ -684,6 +723,7 @@ new class extends Component {
     public function handleSepDeleted(): void
     {
         $this->dataDaftarUGD['sep'] = ['noSep' => '', 'reqSep' => [], 'resSep' => []];
+        $this->reqSepTersimpan = [];
         $this->persistSepNode('terhapus');
         $this->incrementVersion('modal');
     }
@@ -972,6 +1012,16 @@ new class extends Component {
                                                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                             SEP: {{ $dataDaftarUGD['sep']['noSep'] }}
+                                        </div>
+                                    @elseif (!empty($dataDaftarUGD['sep']['reqSep']))
+                                        {{-- Insert SEP gagal / belum dicoba: reqSep tersimpan sebagai draft, dicoba lagi tiap Simpan --}}
+                                        <div
+                                            class="flex items-center gap-2 px-3 py-1 text-xs text-amber-800 bg-amber-100 rounded-full dark:bg-amber-900/30 dark:text-amber-300">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 9v2m0 4h.01M4.93 19h14.14c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3z" />
+                                            </svg>
+                                            Draft SEP tersimpan, belum terbit di BPJS — dicoba lagi saat Simpan
                                         </div>
                                     @endif
                                 </div>

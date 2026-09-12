@@ -52,6 +52,9 @@ new class extends Component {
     /* ===============================
      | MOUNT
      =============================== */
+    /** Snapshot reqSep seperti tersimpan di DB — pembanding "isi SEP berubah" sebelum Update SEP. */
+    public array $reqSepTersimpan = [];
+
     public function mount(): void
     {
         $this->registerAreas(['modal', 'pasien', 'dokter', 'satu-sehat']);
@@ -68,6 +71,7 @@ new class extends Component {
         $this->resetValidation();
 
         $this->dataDaftarPoliRJ = $this->getDefaultRJTemplate();
+        $this->reqSepTersimpan = [];
 
         $now = Carbon::now();
         $this->dataDaftarPoliRJ['rjDate'] = $now->format('d/m/Y H:i:s');
@@ -103,6 +107,7 @@ new class extends Component {
         }
 
         $this->dataDaftarPoliRJ = $data;
+        $this->reqSepTersimpan = $data['sep']['reqSep'] ?? [];
         $this->dataPasien = $this->findDataMasterPasien($this->dataDaftarPoliRJ['regNo'] ?? '');
         $this->syncFromDataDaftarPoliRJ();
 
@@ -895,9 +900,18 @@ new class extends Component {
 
         if (!$sudahAdaSEP && !empty($this->dataDaftarPoliRJ['sep']['reqSep'])) {
             $this->pushInsertSEP($this->dataDaftarPoliRJ['sep']['reqSep']);
-        } elseif ($sudahAdaSEP && !empty($this->dataDaftarPoliRJ['sep']['reqSep'])) {
+        } elseif ($sudahAdaSEP && !empty($this->dataDaftarPoliRJ['sep']['reqSep']) && $this->reqSepBerubah()) {
             $this->pushUpdateSEP($this->dataDaftarPoliRJ['sep']['reqSep']);
         }
+    }
+
+    /**
+     * Update SEP hanya bila isi reqSep beda dari yang tersimpan di DB. Simpan ulang
+     * pendaftaran tanpa menyentuh SEP dulu selalu mengirim ulang isi yang sama ke BPJS.
+     */
+    private function reqSepBerubah(): bool
+    {
+        return ($this->dataDaftarPoliRJ['sep']['reqSep'] ?? []) != $this->reqSepTersimpan;
     }
 
     private function updateTaskId1And2(): void
@@ -989,6 +1003,7 @@ new class extends Component {
         ];
 
         $this->dataDaftarPoliRJ['noReferensi'] = $this->resolveNoReferensi($reqSep);
+        $this->reqSepTersimpan = $reqSep;
 
         // Persist SEGERA — jangan menunggu alur simpan lain; SEP di BPJS
         // sudah tercipta dan tidak boleh yatim.
@@ -1068,8 +1083,27 @@ new class extends Component {
                 $this->handleUpdateSepError($response);
             }
         } catch (\Exception $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal update SEP: ' . $e->getMessage());
+            $this->batalkanPerubahanSep('Update SEP gagal: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * BPJS menolak / tidak terjangkau saat Update SEP: JSON kita sudah memuat reqSep
+     * baru, sedangkan BPJS masih memegang isi lama. Supaya keduanya tidak berbeda,
+     * reqSep dikembalikan ke salinan yang tercatat di BPJS lalu ditulis ulang ke DB.
+     */
+    private function batalkanPerubahanSep(string $alasan): void
+    {
+        if (empty($this->reqSepTersimpan)) {
+            $this->dispatch('toast', type: 'error', message: $alasan);
+            return;
+        }
+
+        $this->dataDaftarPoliRJ['sep']['reqSep'] = $this->reqSepTersimpan;
+        $this->dataDaftarPoliRJ['noReferensi'] = $this->resolveNoReferensi($this->reqSepTersimpan);
+        $this->persistSepNode('ditolak perubahannya');
+        $this->incrementVersion('modal');
+        $this->dispatch('toast', type: 'warning', message: $alasan . ' — perubahan SEP dibatalkan, isi lokal dikembalikan sesuai yang tercatat di BPJS.', duration: 10000);
     }
 
     private function formatUpdateSepRequest(array $reqSepUpdate): array
@@ -1128,6 +1162,7 @@ new class extends Component {
         $message = $response['metadata']['message'] ?? 'SEP berhasil diupdate';
         $this->dispatch('toast', type: 'success', message: "Update SEP ({$code}): {$message}");
         $this->dataDaftarPoliRJ['sep']['updated_at'] = Carbon::now()->format('d/m/Y H:i:s');
+        $this->reqSepTersimpan = $this->dataDaftarPoliRJ['sep']['reqSep'] ?? [];
         $this->persistSepNode();
     }
 
@@ -1135,7 +1170,7 @@ new class extends Component {
     {
         $code = $response['metadata']['code'] ?? 500;
         $message = $response['metadata']['message'] ?? 'Gagal update SEP';
-        $this->dispatch('toast', type: 'error', message: "Update SEP gagal ({$code}): {$message}");
+        $this->batalkanPerubahanSep("Update SEP ditolak BPJS ({$code}): {$message}");
     }
 
     /* ===============================
@@ -1181,6 +1216,7 @@ new class extends Component {
     public function handleSepDeleted(): void
     {
         $this->dataDaftarPoliRJ['sep'] = ['noSep' => '', 'reqSep' => [], 'resSep' => []];
+        $this->reqSepTersimpan = [];
         $this->persistSepNode('terhapus');
         $this->incrementVersion('modal');
     }
@@ -1572,6 +1608,16 @@ new class extends Component {
                                                     SEP: {{ $dataDaftarPoliRJ['sep']['noSep'] }}
                                                 </div>
                                                 <x-cetak-button wire:click="cetakSEP" title="Cetak SEP" />
+                                            @elseif (!empty($dataDaftarPoliRJ['sep']['reqSep']))
+                                                {{-- Insert SEP gagal / belum dicoba: reqSep tersimpan sebagai draft, dicoba lagi tiap Simpan --}}
+                                                <div
+                                                    class="flex items-center gap-2 px-3 py-1 text-xs text-amber-800 bg-amber-100 rounded-full dark:bg-amber-900/30 dark:text-amber-300">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M12 9v2m0 4h.01M4.93 19h14.14c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3z" />
+                                                    </svg>
+                                                    Draft SEP tersimpan, belum terbit di BPJS — dicoba lagi saat Simpan
+                                                </div>
                                             @endif
                                         </div>
                                         @if (!empty($dataDaftarPoliRJ['sep']['noSep']))
