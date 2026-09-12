@@ -58,22 +58,7 @@ new class extends Component {
         $this->loadData($rjNo);
 
         // Init telaahResep defaults — merge agar key baru tidak hilang
-        if (!isset($this->dataDaftarPoliRJ['telaahResep'])) {
-            $this->dataDaftarPoliRJ['telaahResep'] = $this->defaultTelaahResep();
-        } else {
-            foreach ($this->defaultTelaahResep() as $key => $default) {
-                $this->dataDaftarPoliRJ['telaahResep'][$key] ??= $default;
-            }
-        }
-
-        // Init telaahObat defaults
-        if (!isset($this->dataDaftarPoliRJ['telaahObat'])) {
-            $this->dataDaftarPoliRJ['telaahObat'] = $this->defaultTelaahObat();
-        } else {
-            foreach ($this->defaultTelaahObat() as $key => $default) {
-                $this->dataDaftarPoliRJ['telaahObat'][$key] ??= $default;
-            }
-        }
+        $this->lengkapiDefaultTelaah();
 
         $this->incrementVersion('modal-telaah-apotek');
         $this->dispatch('open-modal', name: 'telaah-apotek');
@@ -99,10 +84,11 @@ new class extends Component {
                     throw new \RuntimeException('Data RJ tidak ditemukan, simpan dibatalkan.');
                 }
 
-                $data['telaahResep'] = $this->dataDaftarPoliRJ['telaahResep'] ?? [];
+                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->dataDaftarPoliRJ['telaahResep'] ?? []);
 
                 $this->updateJsonRJ($this->rjNo, $data);
                 $this->dataDaftarPoliRJ = $data;
+                $this->lengkapiDefaultTelaah();
             });
 
             $this->incrementVersion('modal-telaah-apotek');
@@ -140,7 +126,7 @@ new class extends Component {
                     throw new \RuntimeException('Data RJ tidak ditemukan, simpan dibatalkan.');
                 }
 
-                $data['telaahResep'] = $this->dataDaftarPoliRJ['telaahResep'] ?? [];
+                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->dataDaftarPoliRJ['telaahResep'] ?? []);
                 $data['telaahResep']['penanggungJawab'] = [
                     'userLog' => auth()->user()->myuser_name,
                     'userLogCode' => auth()->user()->myuser_code,
@@ -149,6 +135,7 @@ new class extends Component {
 
                 $this->updateJsonRJ($this->rjNo, $data);
                 $this->dataDaftarPoliRJ = $data;
+                $this->lengkapiDefaultTelaah();
             });
 
             $this->incrementVersion('modal-telaah-apotek');
@@ -181,10 +168,11 @@ new class extends Component {
                     throw new \RuntimeException('Data RJ tidak ditemukan, simpan dibatalkan.');
                 }
 
-                $data['telaahObat'] = $this->dataDaftarPoliRJ['telaahObat'] ?? [];
+                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->dataDaftarPoliRJ['telaahObat'] ?? []);
 
                 $this->updateJsonRJ($this->rjNo, $data);
                 $this->dataDaftarPoliRJ = $data;
+                $this->lengkapiDefaultTelaah();
             });
 
             $this->incrementVersion('modal-telaah-apotek');
@@ -222,7 +210,7 @@ new class extends Component {
                     throw new \RuntimeException('Data RJ tidak ditemukan, simpan dibatalkan.');
                 }
 
-                $data['telaahObat'] = $this->dataDaftarPoliRJ['telaahObat'] ?? [];
+                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->dataDaftarPoliRJ['telaahObat'] ?? []);
                 $data['telaahObat']['penanggungJawab'] = [
                     'userLog' => auth()->user()->myuser_name,
                     'userLogCode' => auth()->user()->myuser_code,
@@ -231,6 +219,7 @@ new class extends Component {
 
                 $this->updateJsonRJ($this->rjNo, $data);
                 $this->dataDaftarPoliRJ = $data;
+                $this->lengkapiDefaultTelaah();
             });
 
             $this->incrementVersion('modal-telaah-apotek');
@@ -313,6 +302,21 @@ new class extends Component {
             'rutedgnResep' => ['rutedgnResep' => 'Ya', 'desc' => ''],
             'waktuFrekPemberiandgnResep' => ['waktuFrekPemberiandgnResep' => 'Ya', 'desc' => ''],
         ];
+    }
+
+    /**
+     * Pastikan telaahResep & telaahObat di state selalu punya SEMUA butir (nilai bawaan
+     * untuk yang belum tersimpan). Dipanggil saat modal dibuka DAN setiap kali state
+     * diganti isi DB sesudah simpan/TTD. Dulu penggantian itu membuang butir yang belum
+     * pernah disimpan, sehingga TTD berikutnya menyimpan tanda tangan TANPA nilai —
+     * di produksi 21/08–12/09/2026: 1.888 dari 3.100 telaah obat RJ ber-TTD kosong.
+     * Simpan/TTD juga selalu menulis array_replace(default, state) supaya DB lengkap.
+     */
+    private function lengkapiDefaultTelaah(): void
+    {
+        foreach (['telaahResep' => $this->defaultTelaahResep(), 'telaahObat' => $this->defaultTelaahObat()] as $node => $default) {
+            $this->dataDaftarPoliRJ[$node] = array_replace($default, $this->dataDaftarPoliRJ[$node] ?? []);
+        }
     }
 
     /* ===============================

@@ -84,23 +84,7 @@ new class extends Component {
         $this->apotekIndex = $existing;
 
         // Init defaults telaah resep & obat (di apotekHdr)
-        $apotek = &$this->dataDaftarRI['apotekHdr'][$this->apotekIndex];
-
-        if (!isset($apotek['telaahResep'])) {
-            $apotek['telaahResep'] = $this->defaultTelaahResep();
-        } else {
-            foreach ($this->defaultTelaahResep() as $key => $default) {
-                $apotek['telaahResep'][$key] ??= $default;
-            }
-        }
-
-        if (!isset($apotek['telaahObat'])) {
-            $apotek['telaahObat'] = $this->defaultTelaahObat();
-        } else {
-            foreach ($this->defaultTelaahObat() as $key => $default) {
-                $apotek['telaahObat'][$key] ??= $default;
-            }
-        }
+        $this->lengkapiDefaultTelaah($this->apotekIndex);
 
         // Hitung saldo apotek untuk semua obat unik di resep (non-racikan + racikan).
         $this->saldoPerObat = $this->hitungSaldoPerObat($this->dataDaftarRI['eresepHdr'][$this->eresepIndex] ?? []);
@@ -154,11 +138,12 @@ new class extends Component {
                 $idx = $this->ensureApotekHdrIndex($data, $this->slsNo);
 
                 $data['apotekHdr'][$idx]['telaahResep'] =
-                    $this->dataDaftarRI['apotekHdr'][$this->apotekIndex]['telaahResep'] ?? [];
+                    array_replace($this->defaultTelaahResep(), $this->dataDaftarRI['apotekHdr'][$this->apotekIndex]['telaahResep'] ?? []);
 
                 $this->updateJsonRI($this->riHdrNo, $data);
                 $this->dataDaftarRI = $data;
                 $this->apotekIndex = $idx;
+                $this->lengkapiDefaultTelaah($idx);
             });
 
             $this->incrementVersion('ri-resep-modal-telaah');
@@ -194,7 +179,7 @@ new class extends Component {
                 $idx = $this->ensureApotekHdrIndex($data, $this->slsNo);
 
                 $data['apotekHdr'][$idx]['telaahResep'] =
-                    $this->dataDaftarRI['apotekHdr'][$this->apotekIndex]['telaahResep'] ?? [];
+                    array_replace($this->defaultTelaahResep(), $this->dataDaftarRI['apotekHdr'][$this->apotekIndex]['telaahResep'] ?? []);
                 $data['apotekHdr'][$idx]['telaahResep']['penanggungJawab'] = [
                     'userLog' => auth()->user()->myuser_name,
                     'userLogCode' => auth()->user()->myuser_code,
@@ -204,6 +189,7 @@ new class extends Component {
                 $this->updateJsonRI($this->riHdrNo, $data);
                 $this->dataDaftarRI = $data;
                 $this->apotekIndex = $idx;
+                $this->lengkapiDefaultTelaah($idx);
             });
 
             $this->incrementVersion('ri-resep-modal-telaah');
@@ -233,11 +219,12 @@ new class extends Component {
                 $idx = $this->ensureApotekHdrIndex($data, $this->slsNo);
 
                 $data['apotekHdr'][$idx]['telaahObat'] =
-                    $this->dataDaftarRI['apotekHdr'][$this->apotekIndex]['telaahObat'] ?? [];
+                    array_replace($this->defaultTelaahObat(), $this->dataDaftarRI['apotekHdr'][$this->apotekIndex]['telaahObat'] ?? []);
 
                 $this->updateJsonRI($this->riHdrNo, $data);
                 $this->dataDaftarRI = $data;
                 $this->apotekIndex = $idx;
+                $this->lengkapiDefaultTelaah($idx);
             });
 
             $this->incrementVersion('ri-resep-modal-telaah');
@@ -273,7 +260,7 @@ new class extends Component {
                 $idx = $this->ensureApotekHdrIndex($data, $this->slsNo);
 
                 $data['apotekHdr'][$idx]['telaahObat'] =
-                    $this->dataDaftarRI['apotekHdr'][$this->apotekIndex]['telaahObat'] ?? [];
+                    array_replace($this->defaultTelaahObat(), $this->dataDaftarRI['apotekHdr'][$this->apotekIndex]['telaahObat'] ?? []);
                 $data['apotekHdr'][$idx]['telaahObat']['penanggungJawab'] = [
                     'userLog' => auth()->user()->myuser_name,
                     'userLogCode' => auth()->user()->myuser_code,
@@ -283,6 +270,7 @@ new class extends Component {
                 $this->updateJsonRI($this->riHdrNo, $data);
                 $this->dataDaftarRI = $data;
                 $this->apotekIndex = $idx;
+                $this->lengkapiDefaultTelaah($idx);
             });
 
             $this->incrementVersion('ri-resep-modal-telaah');
@@ -331,6 +319,21 @@ new class extends Component {
             'rutedgnResep' => ['rutedgnResep' => 'Ya', 'desc' => ''],
             'waktuFrekPemberiandgnResep' => ['waktuFrekPemberiandgnResep' => 'Ya', 'desc' => ''],
         ];
+    }
+
+    /**
+     * Pastikan telaahResep & telaahObat di state selalu punya SEMUA butir (nilai bawaan
+     * untuk yang belum tersimpan). Dipanggil saat modal dibuka DAN setiap kali state
+     * diganti isi DB sesudah simpan/TTD. Dulu penggantian itu membuang butir yang belum
+     * pernah disimpan, sehingga TTD berikutnya menyimpan tanda tangan TANPA nilai —
+     * di produksi 21/08–12/09/2026: 1.888 dari 3.100 telaah obat RJ ber-TTD kosong.
+     * Simpan/TTD juga selalu menulis array_replace(default, state) supaya DB lengkap.
+     */
+    private function lengkapiDefaultTelaah(int $idx): void
+    {
+        foreach (['telaahResep' => $this->defaultTelaahResep(), 'telaahObat' => $this->defaultTelaahObat()] as $node => $default) {
+            $this->dataDaftarRI['apotekHdr'][$idx][$node] = array_replace($default, $this->dataDaftarRI['apotekHdr'][$idx][$node] ?? []);
+        }
     }
 
     /* ===============================

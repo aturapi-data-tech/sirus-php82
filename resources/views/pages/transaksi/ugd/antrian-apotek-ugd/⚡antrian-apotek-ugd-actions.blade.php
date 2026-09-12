@@ -55,21 +55,7 @@ new class extends Component {
         $this->tabTelaah = 'telaah';
         $this->loadData($rjNo);
 
-        if (!isset($this->dataDaftarUGD['telaahResep'])) {
-            $this->dataDaftarUGD['telaahResep'] = $this->defaultTelaahResep();
-        } else {
-            foreach ($this->defaultTelaahResep() as $key => $default) {
-                $this->dataDaftarUGD['telaahResep'][$key] ??= $default;
-            }
-        }
-
-        if (!isset($this->dataDaftarUGD['telaahObat'])) {
-            $this->dataDaftarUGD['telaahObat'] = $this->defaultTelaahObat();
-        } else {
-            foreach ($this->defaultTelaahObat() as $key => $default) {
-                $this->dataDaftarUGD['telaahObat'][$key] ??= $default;
-            }
-        }
+        $this->lengkapiDefaultTelaah();
 
         $this->incrementVersion('modal-telaah-apotek-ugd');
         $this->dispatch('open-modal', name: 'telaah-apotek-ugd');
@@ -91,10 +77,11 @@ new class extends Component {
                     throw new \RuntimeException('Data UGD tidak ditemukan.');
                 }
 
-                $data['telaahResep'] = $this->dataDaftarUGD['telaahResep'] ?? [];
+                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->dataDaftarUGD['telaahResep'] ?? []);
 
                 $this->updateJsonUGD($this->rjNo, $data);
                 $this->dataDaftarUGD = $data;
+                $this->lengkapiDefaultTelaah();
             });
 
             $this->incrementVersion('modal-telaah-apotek-ugd');
@@ -128,7 +115,7 @@ new class extends Component {
                     throw new \RuntimeException('Data UGD tidak ditemukan.');
                 }
 
-                $data['telaahResep'] = $this->dataDaftarUGD['telaahResep'] ?? [];
+                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->dataDaftarUGD['telaahResep'] ?? []);
                 $data['telaahResep']['penanggungJawab'] = [
                     'userLog' => auth()->user()->myuser_name,
                     'userLogCode' => auth()->user()->myuser_code,
@@ -137,6 +124,7 @@ new class extends Component {
 
                 $this->updateJsonUGD($this->rjNo, $data);
                 $this->dataDaftarUGD = $data;
+                $this->lengkapiDefaultTelaah();
             });
 
             $this->incrementVersion('modal-telaah-apotek-ugd');
@@ -165,10 +153,11 @@ new class extends Component {
                     throw new \RuntimeException('Data UGD tidak ditemukan.');
                 }
 
-                $data['telaahObat'] = $this->dataDaftarUGD['telaahObat'] ?? [];
+                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->dataDaftarUGD['telaahObat'] ?? []);
 
                 $this->updateJsonUGD($this->rjNo, $data);
                 $this->dataDaftarUGD = $data;
+                $this->lengkapiDefaultTelaah();
             });
 
             $this->incrementVersion('modal-telaah-apotek-ugd');
@@ -202,7 +191,7 @@ new class extends Component {
                     throw new \RuntimeException('Data UGD tidak ditemukan.');
                 }
 
-                $data['telaahObat'] = $this->dataDaftarUGD['telaahObat'] ?? [];
+                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->dataDaftarUGD['telaahObat'] ?? []);
                 $data['telaahObat']['penanggungJawab'] = [
                     'userLog' => auth()->user()->myuser_name,
                     'userLogCode' => auth()->user()->myuser_code,
@@ -211,6 +200,7 @@ new class extends Component {
 
                 $this->updateJsonUGD($this->rjNo, $data);
                 $this->dataDaftarUGD = $data;
+                $this->lengkapiDefaultTelaah();
             });
 
             $this->incrementVersion('modal-telaah-apotek-ugd');
@@ -286,6 +276,21 @@ new class extends Component {
             'rutedgnResep' => ['rutedgnResep' => 'Ya', 'desc' => ''],
             'waktuFrekPemberiandgnResep' => ['waktuFrekPemberiandgnResep' => 'Ya', 'desc' => ''],
         ];
+    }
+
+    /**
+     * Pastikan telaahResep & telaahObat di state selalu punya SEMUA butir (nilai bawaan
+     * untuk yang belum tersimpan). Dipanggil saat modal dibuka DAN setiap kali state
+     * diganti isi DB sesudah simpan/TTD. Dulu penggantian itu membuang butir yang belum
+     * pernah disimpan, sehingga TTD berikutnya menyimpan tanda tangan TANPA nilai —
+     * di produksi 21/08–12/09/2026: 1.888 dari 3.100 telaah obat RJ ber-TTD kosong.
+     * Simpan/TTD juga selalu menulis array_replace(default, state) supaya DB lengkap.
+     */
+    private function lengkapiDefaultTelaah(): void
+    {
+        foreach (['telaahResep' => $this->defaultTelaahResep(), 'telaahObat' => $this->defaultTelaahObat()] as $node => $default) {
+            $this->dataDaftarUGD[$node] = array_replace($default, $this->dataDaftarUGD[$node] ?? []);
+        }
     }
 
     private function loadData(string $rjNo): void
