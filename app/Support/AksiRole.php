@@ -42,7 +42,7 @@ class AksiRole
     public const DOKUMEN_HAPUS = ['Admin', 'Manager Umum', 'Manager Medis'];
 
     /** Role yang boleh MEMBUKA KUNCI (mencabut TTD petugas) entri dokumen. */
-    public const DOKUMEN_BUKA_KUNCI = ['Admin', 'Manager Umum', 'Manager Medis', 'Perawat'];
+    public const DOKUMEN_BUKA_KUNCI = ['Admin', 'Manager Umum', 'Manager Medis'];
 
     /* ─────────────────────────────── EMR ─────────────────────────────── */
 
