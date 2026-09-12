@@ -876,30 +876,23 @@ trait VclaimTrait
      * -----------------------------------------------------------------*/
         $r = [
             "noSep"        => $SEPJsonReq['request']['t_sep']['noSep']       ?? '',
-            "noKartu"      => $SEPJsonReq['request']['t_sep']['noKartu']     ?? '',
-            "tglSep"       => $SEPJsonReq['request']['t_sep']['tglSep']      ?? '',
-            "ppkPelayanan" => $SEPJsonReq['request']['t_sep']['ppkPelayanan'] ?? '',
-            "jnsPelayanan" => $SEPJsonReq['request']['t_sep']['jnsPelayanan'] ?? '',
-            "klsRawatHak"  => $SEPJsonReq['request']['t_sep']['klsRawat']['klsRawatHak'] ?? '',
             "diagAwal"     => $SEPJsonReq['request']['t_sep']['diagAwal']    ?? '',
-            "tujuanKunj"   => $SEPJsonReq['request']['t_sep']['tujuanKunj']  ?? '',
-            "dpjpLayan"    => $SEPJsonReq['request']['t_sep']['dpjpLayan']   ?? '',
-            "catatan"      => $SEPJsonReq['request']['t_sep']['catatan']     ?? '',
-            "noTelp"       => $SEPJsonReq['request']['t_sep']['noTelp']      ?? '',
             "user"         => $SEPJsonReq['request']['t_sep']['user']        ?? '',
         ];
 
         /* ------------------------------------------------------------------
      * 2. Validasi minimal – hanya field yang memang diwajibkan
-     *    oleh spesifikasi *update* VClaim.
+     *    oleh spesifikasi *update* VClaim (SEP/2.0/update): t_sep hanya
+     *    memuat noSep, klsRawat, noMR, catatan, diagAwal, poli, cob, katarak,
+     *    jaminan, dpjpLayan, noTelp, user. noKartu/tglSep/jnsPelayanan/
+     *    tujuanKunj BUKAN bagian payload update — dulu ikut diwajibkan di sini
+     *    sehingga Update SEP otomatis RJ/UGD (payload sesuai spesifikasi)
+     *    selalu ditolak lokal "The no kartu field is required" (201) tanpa
+     *    pernah sampai ke BPJS.
      * -----------------------------------------------------------------*/
         $validator = Validator::make($r, [
             "noSep"      => "required",
-            "noKartu"    => "required",
-            "tglSep"     => "required|date_format:Y-m-d",
-            "jnsPelayanan" => "required|in:1,2",          // 1=RJ, 2=RI
             "diagAwal"   => "required",
-            "tujuanKunj" => "required",
             "user"       => "required",
         ]);
 
