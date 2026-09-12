@@ -170,6 +170,12 @@
                                 'interaksiObat' => 'Interaksi Obat',
                                 'bbPasienAnak' => 'Berat Badan Pasien Anak',
                                 'kontraIndikasiLain' => 'Kontra Indikasi Lain',
+                                // 5 butir tambahan (2026-08-21, Q0007 SATUSEHAT) — tampil di layar, wajib ikut tercetak
+                                'identitasDokter' => 'Identitas & Paraf Dokter',
+                                'tanggalResep' => 'Tanggal Resep',
+                                'ruanganAsalResep' => 'Ruangan/Unit Asal Resep',
+                                'stabilitasObat' => 'Stabilitas Obat',
+                                'ketepatanIndikasi' => 'Ketepatan Indikasi & Waktu Penggunaan',
                             ];
                         @endphp
                         @foreach ($telaahResepFields as $key => $label)
