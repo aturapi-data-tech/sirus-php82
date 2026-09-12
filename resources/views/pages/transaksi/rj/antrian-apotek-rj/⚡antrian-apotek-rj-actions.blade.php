@@ -67,6 +67,45 @@ new class extends Component {
     /* ===============================
      | SAVE TELAAH RESEP
      =============================== */
+    /* ===============================
+     | BUKA KUNCI TELAAH (pola modul dokumen) — hanya pemegang Gate dokumen.bukaKunci.
+     | Cabut TTD SATU bagian; isian butir dipertahankan supaya tinggal dikoreksi lalu
+     | ditandatangani ulang. Dicatat ke audit log kunjungan.
+     =============================== */
+    public function bukaKunciTelaah(string $bagian): void
+    {
+        if (!auth()->user()?->can('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: 'Hanya Admin / Manager yang dapat membuka kunci.');
+            return;
+        }
+        if (!in_array($bagian, ['telaahResep', 'telaahObat'], true)) {
+            return;
+        }
+        $label = $bagian === 'telaahResep' ? 'Telaah Resep' : 'Telaah Obat';
+
+        try {
+            DB::transaction(function () use ($bagian, $label) {
+                $this->lockRJRow($this->rjNo);
+                $fresh = $this->findDataRJ($this->rjNo) ?: [];
+                if (empty($fresh[$bagian]['penanggungJawab'])) {
+                    throw new \RuntimeException($label . ' belum ditandatangani.');
+                }
+                $pj = $fresh[$bagian]['penanggungJawab'];
+                unset($fresh[$bagian]['penanggungJawab']);
+                $this->updateJsonRJ($this->rjNo, $fresh);
+                $this->gantiStateDariDb($fresh, $bagian === 'telaahResep' ? 'telaahObat' : 'telaahResep');
+                $this->appendAdminLogRJ((int) $this->rjNo, 'Buka kunci ' . $label . ' apotek — TTD ' . ($pj['userLog'] ?? '-') . ' (' . ($pj['userLogDate'] ?? '-') . ') dicabut oleh ' . (auth()->user()->myuser_name ?? auth()->user()->name ?? '-'), 'MR');
+            });
+            $this->incrementVersion('modal-telaah-apotek');
+            $this->dispatch('toast', type: 'success', message: 'Kunci ' . $label . ' dibuka — TTD dicabut, isian tetap. Koreksi lalu tandatangani ulang.');
+            $this->afterSave();
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $e->getMessage());
+        }
+    }
+
     /** Satu tombol Simpan untuk kedua bagian (meniru Simpan EMR RJ) — setiap aksi memang menulis keduanya. */
     public function saveTelaah(): void
     {
@@ -717,12 +756,30 @@ new class extends Component {
                             <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
                             <span>Resep: <strong>TTD-E</strong> {{ $ttdResep['userLog'] }} · {{ $ttdResep['userLogDate'] }}</span>
                         </span>
+                        @can('dokumen.bukaKunci')
+                            <x-confirm-button variant="warning-soft" action="bukaKunciTelaah('telaahResep')"
+                                title="Buka Kunci Telaah Resep"
+                                message="TTD-E Telaah Resep akan dicabut dan bagian ini bisa diedit lagi. Isian butir tetap. Tindakan dicatat di audit log."
+                                confirmText="Ya, Buka Kunci" cancelText="Batal" class="text-xs gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6-6h12a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2z" /></svg>
+                                Buka Kunci
+                            </x-confirm-button>
+                        @endcan
                     @endif
                     @if ($ttdObat)
                         <span class="flex items-center gap-1.5 text-xs text-blue-700 dark:text-blue-300">
                             <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
                             <span>Obat: <strong>TTD-E</strong> {{ $ttdObat['userLog'] }} · {{ $ttdObat['userLogDate'] }}</span>
                         </span>
+                        @can('dokumen.bukaKunci')
+                            <x-confirm-button variant="warning-soft" action="bukaKunciTelaah('telaahObat')"
+                                title="Buka Kunci Telaah Obat"
+                                message="TTD-E Telaah Obat akan dicabut dan bagian ini bisa diedit lagi. Isian butir tetap. Tindakan dicatat di audit log."
+                                confirmText="Ya, Buka Kunci" cancelText="Batal" class="text-xs gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6-6h12a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2z" /></svg>
+                                Buka Kunci
+                            </x-confirm-button>
+                        @endcan
                     @endif
                     @if (!$ttdResep || !$ttdObat)
                         <x-outline-button wire:click="saveTelaah" wire:loading.attr="disabled">
