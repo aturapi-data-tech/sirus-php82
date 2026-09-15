@@ -818,15 +818,7 @@ new class extends Component {
                 @endif
 
                 @if ($viewOnly)
-                    <div
-                        class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-lg text-sky-700 bg-sky-50 border-sky-200 dark:bg-sky-900/20 dark:border-sky-600 dark:text-sky-300">
-                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        Menampilkan entri terkunci (hanya lihat) — klik <strong>Selesai Melihat</strong> untuk kembali
-                        ke entri baru.
-                    </div>
+                    <x-modul-dokumen.banner jenis="lihat" />
                 @elseif ($editingKey && !$isFormLocked)
                     <div
                         class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-lg text-blue-700 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-600 dark:text-blue-300">

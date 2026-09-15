@@ -22,6 +22,7 @@
  *  11. sel Aksi tabel daftar = komponen x-modul-dokumen.aksi-entri
  *  12. footer modal dua layar = komponen x-modul-dokumen.footer (kecuali Case Manager)
  *  13. kartu di tab = komponen x-modul-dokumen.kartu
+ *  14. banner status = komponen x-modul-dokumen.banner (tidak ditulis tangan)
  */
 require __DIR__ . '/../../../vendor/autoload.php';
 $app = require __DIR__ . '/../../../bootstrap/app.php';
@@ -106,6 +107,10 @@ foreach ($berkas as $path) {
             $catatan[] = 'Lihat di tabel daftar masih tombol berteks (harus <x-lihat-button>)';
         if (preg_match('/<x-(outline|danger|icon)-button[^>]*wire:click(\.prevent)?="(hapus|remove|delete)/', substr($sumber, (int) strrpos($sumber, '@unless ($this->diForm())'))))
             $catatan[] = 'hapus di tabel daftar masih tombol manual (harus <x-hapus-button>)';
+
+        // Banner status (terkunci / mode lihat / melanjutkan draft) WAJIB komponen x-modul-dokumen.banner.
+        if (preg_match('/<div[^>]*class="[^"]*(text-amber-700 bg-amber-50|text-sky-700 bg-sky-50|bg-brand-lime\/10 border border-brand-lime)/', $sumber))
+            $catatan[] = 'banner status ditulis tangan — pakai <x-modul-dokumen.banner jenis="terkunci|lihat|lanjut">';
 
         // Kartu di tab WAJIB komponen x-modul-dokumen.kartu (judul · badge · deskripsi · tombol Buka + pratinjau).
         if (!str_contains($sumber, '<x-modul-dokumen.kartu'))

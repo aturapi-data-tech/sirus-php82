@@ -53,7 +53,8 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
    :terkunci :lihat :mengedit [:bisaSimpan]>petunjuk</…>`** (slot `tombol` untuk Batal Edit/Cetak;
    docs §2a "Modal"). **Kartu di tab WAJIB `<x-modul-dokumen.kartu judul :jumlah satuan :nonaktif>`**
    (slot `deskripsi`/`badge`/`ringkasan`/`tombolLain`, slot bawaan = pratinjau tanpa `mt-*`; docs §2a
-   "Kartu di tab"). Komponen khusus modul dokumen lainnya ditaruh di folder
+   "Kartu di tab"). **Banner status WAJIB `<x-modul-dokumen.banner jenis="terkunci|lihat|lanjut" />`**
+   (kondisi @if tetap di modul; teks khusus lewat slot). Komponen khusus modul dokumen lainnya ditaruh di folder
    `resources/views/components/modul-dokumen/` (nested, `x-modul-dokumen.<nama>`).
 
 9. **Dua layar + nama method baku (BAKU, berlaku SEMUA modul multi-entri)** — `$layar` +

@@ -127,6 +127,22 @@ salah satunya diam-diam.
   daftar. Case Manager dikecualikan (tombol di dalam kartu Form A/B).
 - tombol: layar daftar `[Tutup] [Isi Formulir Baru]`, layar formulir
   `[Kembali ke Daftar] [Simpan …]`.
+- **Banner status di atas formulir = `<x-modul-dokumen.banner>`** (BAKU 2026-09-15, 137 titik):
+
+  ```blade
+  @if ($isFormLocked)
+      <x-modul-dokumen.banner jenis="terkunci" />
+  @endif
+  @if ($viewOnly)
+      <x-modul-dokumen.banner jenis="lihat" />
+  @elseif ($editingKey && !$isFormLocked)
+      <x-modul-dokumen.banner jenis="lanjut" />
+  @endif
+  ```
+
+  Kondisi tetap di modul; komponen = tampilan (kuning/biru/hijau, ikon gembok/mata/pensil) + teks baku.
+  Teks khusus lewat slot (Case Manager Form A/B, Form Transfer final, "pasien sudah pulang"); margin
+  lewat `class`. Teks baku sengaja TIDAK menampilkan kunci teknis entri (`$editingKey` = timestamp).
 
 ### Tabel (daftar & pratinjau)
 
