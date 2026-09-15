@@ -738,7 +738,12 @@ new class extends Component {
         <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal-trf-ugd-ri', [$rjNo ?? 'new']) }}">
 
             {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
-            <div class="flex items-center justify-between gap-4 px-6 py-4 border-b border-hairline bg-surface-soft dark:border-gray-700">
+            <div class="flex items-center justify-between gap-4 px-6 py-2.5 border-b border-hairline bg-surface-soft dark:border-gray-700">
+                <div class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-brand-green/10 dark:bg-brand-lime/15">
+                    <svg class="w-4 h-4 text-brand-green dark:text-brand-lime" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                </div>
                 <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Formulir Transfer UGD &rarr; Rawat Inap</h2>
                 <x-deskripsi-ringkas class="hidden sm:flex text-xs">Serah terima pasien dari Unit Gawat Darurat ke ruang Rawat Inap — kondisi, terapi, dan alat terpasang.</x-deskripsi-ringkas>
                 <x-icon-button class="ml-auto shrink-0" color="gray" type="button" wire:click="closeModal">

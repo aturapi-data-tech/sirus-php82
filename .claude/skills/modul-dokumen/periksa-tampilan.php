@@ -17,6 +17,8 @@
  *   8. bentuk tabel daftar = Edukasi Terintegrasi (docs §2a "Tabel daftar"): tanpa kolom No,
  *      ada panah rincian, Lihat = <x-lihat-button>, Cetak = <x-cetak-button>, hapus = <x-hapus-button>, label "Lanjutkan Pengisian" utuh,
  *      keterangan footer "Setiap entri berdiri sendiri" di layar daftar
+ *   9. header modal punya ikon (kotak w-7 h-7 rounded-lg sebelum judul)
+ *  10. tabel layar daftar di dalam kartu <x-border-form padding="p-0"> (bukan tabel polos selebar modal)
  */
 require __DIR__ . '/../../../vendor/autoload.php';
 $app = require __DIR__ . '/../../../bootstrap/app.php';
@@ -98,6 +100,25 @@ foreach ($berkas as $path) {
             $catatan[] = 'Lihat di tabel daftar masih tombol berteks (harus <x-lihat-button>)';
         if (preg_match('/<x-(outline|danger|icon)-button[^>]*wire:click(\.prevent)?="(hapus|remove|delete)/', substr($sumber, (int) strrpos($sumber, '@unless ($this->diForm())'))))
             $catatan[] = 'hapus di tabel daftar masih tombol manual (harus <x-hapus-button>)';
+
+        // Header modal WAJIB ikon (kotak w-7 h-7 rounded-lg) sebelum judul — docs §2a "Penamaan".
+        $posTutup = strpos($daftar, 'wire:click="closeModal"');
+        if ($posTutup !== false && !str_contains(substr($daftar, 0, $posTutup), 'w-7 h-7 rounded-lg'))
+            $catatan[] = 'header modal tanpa ikon (kotak w-7 h-7 rounded-lg sebelum judul)';
+
+        // Tabel layar daftar WAJIB di dalam kartu <x-border-form padding="p-0"> (acuan Edukasi Terintegrasi),
+        // bukan tabel polos selebar modal (Formulir Penjaminan & modul bedah sebelum 2026-09-15).
+        // Kartu boleh dibuka di dalam blok @unless, atau sudah terbuka sebelumnya (Case Manager: kartu "Form A").
+        if (preg_match_all('/@unless \(\$this->diForm\(\)\)(.*?)@endunless/s', $sumber, $blokDaftar, PREG_OFFSET_CAPTURE)) {
+            foreach ($blokDaftar[1] as [$isiBlok, $offsetBlok]) {
+                $posTabel = strpos($isiBlok, '<table');
+                if ($posTabel === false) continue;
+                $sebelumTabel = substr($sumber, 0, $offsetBlok + $posTabel);
+                $kartuTerbuka = substr_count($sebelumTabel, '<x-border-form') - substr_count($sebelumTabel, '</x-border-form>');
+                if ($kartuTerbuka < 1 && !str_contains(substr($isiBlok, 0, $posTabel), '@include'))
+                    $catatan[] = 'tabel layar daftar tidak dibungkus <x-border-form padding="p-0">';
+            }
+        }
 
         $duaLayar = str_contains($sumber, 'this->diForm()');
         if ($duaLayar) {

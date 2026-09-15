@@ -811,7 +811,12 @@ new class extends Component {
         <div class="flex flex-col min-h-[calc(100vh-8rem)]">
             {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
             <div class="flex items-center gap-3 px-6 py-2.5 border-b border-hairline dark:border-gray-700">
-                <div class="flex items-baseline flex-1 gap-2 min-w-0">
+                <div class="flex items-center flex-1 gap-2 min-w-0">
+                    <div class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-brand-green/10 dark:bg-brand-lime/15">
+                        <svg class="w-4 h-4 text-brand-green dark:text-brand-lime" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
                     <h2 class="truncate shrink-0 text-sm font-semibold text-ink dark:text-gray-100">Formulir Pelaporan Efek Samping Obat</h2>
                     <p class="flex-1 hidden min-w-0 truncate text-xs text-muted sm:block dark:text-gray-400">RM 37 &middot; mengikuti Form Kuning MESO BPOM</p>
                     <div class="flex items-center gap-1.5 ml-auto shrink-0">

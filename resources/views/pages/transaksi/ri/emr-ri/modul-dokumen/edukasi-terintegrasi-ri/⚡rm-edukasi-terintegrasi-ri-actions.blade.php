@@ -978,6 +978,11 @@ new class extends Component {
             {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
             <div class="flex items-center justify-between gap-4 px-6 py-2.5 border-b border-hairline bg-surface-soft dark:border-gray-700">
                 <div class="flex items-center gap-2.5 flex-1 min-w-0">
+                    <div class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-brand-green/10 dark:bg-brand-lime/15">
+                        <svg class="w-4 h-4 text-brand-green dark:text-brand-lime" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                    </div>
                     <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Edukasi Terintegrasi</h2>
                     <x-deskripsi-ringkas class="hidden sm:flex text-xs">Edukasi pasien &amp; keluarga oleh seluruh profesi — kebutuhan, metode, hasil, dan tindak lanjutnya.</x-deskripsi-ringkas>
                     @if ($jumlahEdukasiTerintegrasi > 0)

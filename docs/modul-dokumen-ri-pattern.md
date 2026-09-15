@@ -91,7 +91,10 @@ petunjuk "Klik baris untuk lihat detail lengkap" — judul modul sudah terpampan
 modal, jadi keduanya cuma pengulangan (keputusan user 2026-08-30, dibuang di 8 modul bedah +
 11 VK + kelompok lain).
 
-Tabelnya juga wajib **selebar modal**. Kartu `p-6 space-y-6 bg-canvas border … sm:p-8
+Tabelnya **selebar area isi modal, di dalam kartu `<x-border-form padding="p-0">`** yang dibuka
+tepat di dalam `@unless ($this->diForm())` (acuan Edukasi Terintegrasi; BAKU 2026-09-15 — tabel
+polos tanpa kartu seperti Formulir Penjaminan & modul bedah dulu terlihat "lepas", header tabelnya
+melebar melewati display pasien). Kartu ber-padding `p-6 space-y-6 bg-canvas border … sm:p-8
 rounded-2xl` hanya milik LAYAR FORMULIR — dua cara yang sah:
 
 ```blade
@@ -155,6 +158,10 @@ eab5fdbe, 8a941775). Kalau membuat modul baru, salin dari sana; jangan bikin var
 
 ### Penamaan
 
+Header modal WAJIB ikon: kotak `flex items-center justify-center w-7 h-7 rounded-lg shrink-0
+bg-brand-green/10 dark:bg-brand-lime/15` berisi `<svg class="w-4 h-4 text-brand-green …">` tepat
+sebelum `<h2>` judul, baris header `py-2.5` + `items-center` (12 modal disusulkan 2026-09-15).
+
 Kalimat utuh, bukan singkatan: "Lanjutkan Pengisian" (bukan "Lanjut Isi"), "Isi Formulir
 Baru" (bukan "Tambah Entri"), "Formulir Transfer UGD → Rawat Inap" (bukan "Form Transfer
 UGD → RI"), "Case Manager — Manajer Pelayanan Pasien" (bukan "(MPP)"). Tiap modal wajib
@@ -170,7 +177,8 @@ php .claude/skills/modul-dokumen/periksa-tampilan.php <berkas…>  # sebagian
 Membaca HTML hasil render (bukan isi berkas): keseimbangan tag di kedua layar, posisi tombol
 tutup lewat DOM, kelengkapan tombol footer, dan keterangan tabel saat kosong. Sejak 2026-09-08
 juga memeriksa bentuk tabel daftar: kolom No, panah rincian, Cetak bukan info/primary, label
-"Lanjutkan" tanpa "Pengisian", dan keterangan footer. EXIT 0 = lolos.
+"Lanjutkan" tanpa "Pengisian", dan keterangan footer. Sejak 2026-09-15: ikon header modal & tabel
+daftar di dalam `<x-border-form>`. EXIT 0 = lolos.
 
 ### Jebakan yang sudah menggigit (jangan diulang)
 

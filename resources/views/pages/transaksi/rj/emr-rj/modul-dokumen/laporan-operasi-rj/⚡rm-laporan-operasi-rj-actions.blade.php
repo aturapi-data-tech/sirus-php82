@@ -1150,6 +1150,7 @@ new class extends Component {
                         {{-- ══ DAFTAR LAPORAN TERSIMPAN (expandable) ══ --}}
                         @endif
                         @unless ($this->diForm())
+                        <x-border-form padding="p-0">
                         <div class="">
                                 <div class="overflow-x-auto rounded-2xl">
                                     <table class="min-w-full text-base">
@@ -1384,6 +1385,7 @@ new class extends Component {
                                     </table>
                                 </div>
                         </div>
+                        </x-border-form>
                         @endunless
 
                     </div>

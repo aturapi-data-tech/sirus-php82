@@ -904,7 +904,7 @@ new class extends Component {
                     {{-- Display Pasien --}}
 
                     <div
-                        class="p-4 space-y-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
+                        class="{{ $this->diForm() ? 'p-4 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700' : '' }} space-y-4">
 
                         @php $formReadOnly = $isFormLocked || $viewOnly; @endphp
 
@@ -1289,6 +1289,7 @@ new class extends Component {
                         {{-- DAFTAR CONSENT TERSIMPAN --}}
                         @endif
                         @unless ($this->diForm())
+                            <x-border-form padding="p-0">
                             <div class="overflow-x-auto rounded-2xl">
                                 <table class="min-w-full text-base">
                                     <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
@@ -1518,6 +1519,7 @@ new class extends Component {
                                     @endforelse
                                 </table>
                             </div>
+                            </x-border-form>
                         @endunless
 
                     </div>
