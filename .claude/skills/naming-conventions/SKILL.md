@@ -29,7 +29,12 @@ Variable lokal juga ditulis LENGKAP — jangan singkatan walau scope-nya pendek
 `$src`→`$sumber`, `$kw`→`$keyword`, `$w` (closure where)→`$subQuery`,
 `$b`/`$r` (item loop/sort)→nama itemnya (`$kunjungan`, `$jadwal`, `$entri`).
 Nama generik untuk collection hasil juga dihindari: `$hasil`→`$jadwalList`/`$riwayatList`.
-Pengecualian: `$row` untuk item `$this->rows` di template (idiom repo lintas halaman).
+**Item baris = `$row` / koleksinya `$rows`** (STANDAR, keputusan user 2026-09-15): item loop hasil query,
+`$this->rows`, `$results`, atau baris tabel ditulis `$row` — BUKAN `$r`, `$baris`, `$item`, `$data`.
+Bila dalam satu scope ada dua lapis baris, beri sufiks kata penuh (`$rowHeader`, `$rowDetail`).
+Item yang punya makna domain jelas tetap memakai nama domainnya (`$pasien`, `$dokterLeveling`, `$entri`).
+Catatan sebaran saat keputusan: `$baris` masih ada di 136 berkas / 1.257 kemunculan (terbanyak satu-sehat
+RJ/UGD/RI & downtime/cetak/form), 17 berkas di antaranya juga memakai `$row` → sapuan tersendiri, cek bentrok per scope.
 
 Akronim juga dieja penuh, termasuk yang sudah terlanjur jadi idiom lintas file
 (keputusan user 2026-07-27, alasan: auditor kode bingung membacanya):

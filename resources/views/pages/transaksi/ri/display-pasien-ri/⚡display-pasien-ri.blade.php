@@ -162,7 +162,7 @@ new class extends Component {
     @if (!empty($dataDaftarRi) && !empty($dataPasien))
 
         @php
-            $p = $dataPasien['pasien'] ?? [];
+            $pasien = $dataPasien['pasien'] ?? [];
             $ri = $dataDaftarRi;
 
             /* ── Klaim ── */
@@ -200,16 +200,16 @@ new class extends Component {
             $levelingDokter = $ri['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [];
 
             /* ── Alamat + RT/RW ── */
-            $alamat = trim($p['identitas']['alamat'] ?? '');
-            $rt = trim($p['identitas']['rt'] ?? '');
-            $rw = trim($p['identitas']['rw'] ?? '');
+            $alamat = trim($pasien['identitas']['alamat'] ?? '');
+            $rt = trim($pasien['identitas']['rt'] ?? '');
+            $rw = trim($pasien['identitas']['rw'] ?? '');
             $alamatLine = $alamat;
             if ($rt !== '' || $rw !== '') {
                 $alamatLine .= " RT {$rt}/RW {$rw}";
             }
 
             /* ── Tgl lahir ── */
-            $tglLahirRaw = $p['tglLahir'] ?? '';
+            $tglLahirRaw = $pasien['tglLahir'] ?? '';
             $tglLahirFmt = '-';
             if (!empty($tglLahirRaw)) {
                 try {
@@ -218,7 +218,7 @@ new class extends Component {
                     $tglLahirFmt = $tglLahirRaw;
                 }
             }
-            $tempatLahir = trim($p['tempatLahir'] ?? '');
+            $tempatLahir = trim($pasien['tempatLahir'] ?? '');
             $tglLahirLabel = $tempatLahir !== '' ? "{$tempatLahir}, {$tglLahirFmt}" : $tglLahirFmt;
         @endphp
 
@@ -233,10 +233,10 @@ new class extends Component {
                     {{-- Nama + No RM --}}
                     <div class="flex items-baseline justify-between gap-2">
                         <span class="text-xl font-bold text-ink dark:text-white">
-                            {{ $p['regName'] ?? '-' }}
+                            {{ $pasien['regName'] ?? '-' }}
                         </span>
                         <span class="font-mono text-base text-muted dark:text-gray-400 shrink-0">
-                            {{ $p['regNo'] ?? '-' }}
+                            {{ $pasien['regNo'] ?? '-' }}
                         </span>
                     </div>
 
@@ -247,13 +247,13 @@ new class extends Component {
                             <div>
                                 <span class="text-muted">Jenis Kelamin:</span>
                                 <span class="ml-1 text-body dark:text-gray-300">
-                                    {{ $p['jenisKelamin']['jenisKelaminDesc'] ?? '-' }}
+                                    {{ $pasien['jenisKelamin']['jenisKelaminDesc'] ?? '-' }}
                                 </span>
                             </div>
                             <div>
                                 <span class="text-muted">Umur:</span>
                                 <span class="ml-1 text-body dark:text-gray-300">
-                                    {{ $p['thn'] ?? 0 }} Thn {{ $p['bln'] ?? 0 }} Bln {{ $p['hari'] ?? 0 }} Hr
+                                    {{ $pasien['thn'] ?? 0 }} Thn {{ $pasien['bln'] ?? 0 }} Bln {{ $pasien['hari'] ?? 0 }} Hr
                                 </span>
                             </div>
                             <div>
@@ -268,17 +268,17 @@ new class extends Component {
                                 <div class="text-body dark:text-gray-300">📍 {{ $alamatLine }}</div>
                             @endif
 
-                            @if (!empty($p['kontak']['nomerTelponSelulerPasien']))
+                            @if (!empty($pasien['kontak']['nomerTelponSelulerPasien']))
                                 <div class="text-body dark:text-gray-300">
-                                    📞 {{ $p['kontak']['nomerTelponSelulerPasien'] }}
+                                    📞 {{ $pasien['kontak']['nomerTelponSelulerPasien'] }}
                                 </div>
                             @endif
 
                             <div class="text-xs font-mono text-muted dark:text-gray-400">
                                 🆔
-                                NIK: {{ $p['identitas']['nik'] ?? '-' }}
-                                @if (!empty($p['identitas']['idbpjs']))
-                                    • BPJS: {{ $p['identitas']['idbpjs'] }}
+                                NIK: {{ $pasien['identitas']['nik'] ?? '-' }}
+                                @if (!empty($pasien['identitas']['idbpjs']))
+                                    • BPJS: {{ $pasien['identitas']['idbpjs'] }}
                                 @endif
                             </div>
                         </div>

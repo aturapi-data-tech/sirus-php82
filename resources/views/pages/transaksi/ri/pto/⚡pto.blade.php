@@ -192,10 +192,10 @@ new class extends Component {
                         <div class="flex-1 min-h-0 px-3 overflow-x-auto overflow-y-auto rounded-t-2xl">
                             <table class="w-full min-w-full text-sm border-separate border-spacing-y-2">
                                 <tbody>
-                                    @forelse ($this->pasiens as $p)
-                                        @php $isActive = $selectedRihdrNo === (int) $p->rihdr_no; @endphp
-                                        <tr wire:key="pto-pasien-{{ $p->rihdr_no }}"
-                                            wire:click="selectPasien({{ (int) $p->rihdr_no }})"
+                                    @forelse ($this->pasiens as $pasien)
+                                        @php $isActive = $selectedRihdrNo === (int) $pasien->rihdr_no; @endphp
+                                        <tr wire:key="pto-pasien-{{ $pasien->rihdr_no }}"
+                                            wire:click="selectPasien({{ (int) $pasien->rihdr_no }})"
                                             class="cursor-pointer transition rounded-2xl shadow-sm ring-1 ring-hairline dark:ring-gray-700
                                            {{ $isActive
                                                ? 'bg-green-50 dark:bg-emerald-900/15 ring-2 ring-brand-green/50 border-l-4 border-brand-green'
@@ -204,41 +204,41 @@ new class extends Component {
                                                 <div class="grid grid-cols-2 gap-x-4 gap-y-1">
                                                     {{-- Kolom kiri: Identitas + Lokasi --}}
                                                     <x-list.identitas-pasien class="min-w-0"
-                                                        :regNo="$p->reg_no"
-                                                        :nama="$p->reg_name"
-                                                        :sex="$p->sex"
-                                                        :tglLahir="$p->birth_date"
-                                                        :alamat="$p->address">
-                                                        <div class="text-sm font-semibold text-blue-600 dark:text-blue-400 leading-tight mt-1">{{ $p->bangsal_name ?? '-' }}</div>
+                                                        :regNo="$pasien->reg_no"
+                                                        :nama="$pasien->reg_name"
+                                                        :sex="$pasien->sex"
+                                                        :tglLahir="$pasien->birth_date"
+                                                        :alamat="$pasien->address">
+                                                        <div class="text-sm font-semibold text-blue-600 dark:text-blue-400 leading-tight mt-1">{{ $pasien->bangsal_name ?? '-' }}</div>
                                                         <div class="text-sm text-body dark:text-gray-300 leading-tight">
-                                                            {{ $p->room_name ?? '-' }}
+                                                            {{ $pasien->room_name ?? '-' }}
                                                         </div>
                                                     </x-list.identitas-pasien>
 
                                                     {{-- Kolom kanan: DPJP / Penerima / Masuk --}}
                                                     <div class="min-w-0">
-                                                        @if (! empty($p->dpjp_list))
+                                                        @if (! empty($pasien->dpjp_list))
                                                             <div class="text-sm text-muted-soft mt-0.5">DPJP:</div>
-                                                            @foreach ($p->dpjp_list as $dokterLeveling)
+                                                            @foreach ($pasien->dpjp_list as $dokterLeveling)
                                                                 <div class="text-sm text-body dark:text-gray-200 leading-tight">
                                                                     {{ $dokterLeveling['drName'] }}
                                                                     @if ($dokterLeveling['level']) <span class="text-sm text-muted">({{ $dokterLeveling['level'] }})</span> @endif
                                                                 </div>
                                                             @endforeach
                                                         @endif
-                                                        <div class="text-xs italic text-muted dark:text-gray-400 mt-0.5">Penerima: {{ $p->dr_name ?? '-' }}</div>
+                                                        <div class="text-xs italic text-muted dark:text-gray-400 mt-0.5">Penerima: {{ $pasien->dr_name ?? '-' }}</div>
                                                         <div class="text-sm text-muted dark:text-gray-400">
-                                                            Masuk: {{ $p->entry_date_display ?? '-' }}
-                                                            @if ($p->exit_date_display) · Keluar: {{ $p->exit_date_display }} @endif
+                                                            Masuk: {{ $pasien->entry_date_display ?? '-' }}
+                                                            @if ($pasien->exit_date_display) · Keluar: {{ $pasien->exit_date_display }} @endif
                                                         </div>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td class="px-4 py-3 align-top text-right rounded-r-2xl whitespace-nowrap">
                                                 <div class="flex flex-col items-end gap-1.5">
-                                                    <x-badge :variant="$p->status_variant">{{ $p->status_text }}</x-badge>
-                                                    <x-badge :variant="$p->jumlah_resep > 0 ? 'info' : 'gray'">
-                                                        {{ $p->jumlah_resep }} resep
+                                                    <x-badge :variant="$pasien->status_variant">{{ $pasien->status_text }}</x-badge>
+                                                    <x-badge :variant="$pasien->jumlah_resep > 0 ? 'info' : 'gray'">
+                                                        {{ $pasien->jumlah_resep }} resep
                                                     </x-badge>
 
                                                     {{-- Titik-3 aksi — @click.stop supaya klik menu tidak ikut memilih baris
@@ -257,7 +257,7 @@ new class extends Component {
 
                                                                 <x-slot name="content">
                                                                     <x-dropdown-link href="#"
-                                                                        wire:click.prevent="openRekonsiliasiObat('{{ $p->rihdr_no }}')"
+                                                                        wire:click.prevent="openRekonsiliasiObat('{{ $pasien->rihdr_no }}')"
                                                                         class="px-3 py-2 text-sm rounded-lg bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/20">
                                                                         <div class="flex items-start gap-2 text-left">
                                                                             <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor"

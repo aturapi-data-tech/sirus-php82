@@ -383,8 +383,8 @@ new class extends Component {
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ($this->rows as $r)
-                                <tr wire:key="daftar-ri-bulanan-{{ $r->rihdr_no ?? $loop->index }}"
+                            @forelse ($this->rows as $row)
+                                <tr wire:key="daftar-ri-bulanan-{{ $row->rihdr_no ?? $loop->index }}"
                                     class="transition bg-canvas dark:bg-gray-900
                                            rounded-2xl shadow-sm ring-1 ring-hairline dark:ring-gray-700
                                            hover:shadow-lg hover:bg-surface-soft dark:hover:bg-gray-800/50">
@@ -393,11 +393,11 @@ new class extends Component {
                                     <td class="px-6 py-6 space-y-2 align-top">
                                         <div class="flex items-start gap-4">
                                             <x-list.identitas-pasien class="min-w-0"
-                                                :regNo="$r->reg_no"
-                                                :nama="$r->reg_name"
-                                                :sex="$r->sex"
-                                                :tglLahir="$r->birth_date"
-                                                :alamat="$r->address" />
+                                                :regNo="$row->reg_no"
+                                                :nama="$row->reg_name"
+                                                :sex="$row->sex"
+                                                :tglLahir="$row->birth_date"
+                                                :alamat="$row->address" />
                                         </div>
                                     </td>
 
@@ -408,15 +408,15 @@ new class extends Component {
                                             {{-- Sub-kiri: Bangsal / Room / DPJP / Penerima --}}
                                             <div class="space-y-2">
                                                 <div class="font-semibold text-blue-600 dark:text-blue-400">
-                                                    {{ $r->bangsal_name ?? '-' }}
+                                                    {{ $row->bangsal_name ?? '-' }}
                                                 </div>
                                                 <div class="text-base text-ink dark:text-gray-200">
-                                                    {{ $r->room_name ?? $r->room_id ?? '-' }}
+                                                    {{ $row->room_name ?? $row->room_id ?? '-' }}
                                                 </div>
-                                                @if (!empty($r->leveling_dokter_list))
+                                                @if (!empty($row->leveling_dokter_list))
                                                     <div class="space-y-0.5">
                                                         <div class="text-xs text-muted-soft">DPJP:</div>
-                                                        @foreach ($r->leveling_dokter_list as $dokterLeveling)
+                                                        @foreach ($row->leveling_dokter_list as $dokterLeveling)
                                                             @if (!empty($dokterLeveling['drName']))
                                                                 <div class="text-base text-body dark:text-gray-200">
                                                                     {{ $dokterLeveling['drName'] }}
@@ -431,23 +431,23 @@ new class extends Component {
                                                     </div>
                                                 @endif
                                                 <div class="text-xs italic text-muted dark:text-gray-400">
-                                                    Penerima: {{ $r->dr_name ?? '-' }}
+                                                    Penerima: {{ $row->dr_name ?? '-' }}
                                                 </div>
                                             </div>
 
                                             {{-- Sub-kanan: Klaim / SEP / SPRI / Lab+Rad --}}
                                             <div class="space-y-2">
-                                                <x-list.klaim-badge :status="$r->klaim_status" :desc="$r->klaim_desc" :id="$r->klaim_id" />
+                                                <x-list.klaim-badge :status="$row->klaim_status" :desc="$row->klaim_desc" :id="$row->klaim_id" />
 
-                                                <x-list.sep-spri :sep="$r->no_sep" :spri="$r->no_spri" />
+                                                <x-list.sep-spri :sep="$row->no_sep" :spri="$row->no_spri" />
 
-                                                @if ($r->lab_status > 0 || $r->rad_status > 0)
+                                                @if ($row->lab_status > 0 || $row->rad_status > 0)
                                                     <div class="flex gap-2 flex-wrap">
-                                                        @if ($r->lab_status > 0)
-                                                            <x-badge variant="brand">Laborat: {{ $r->lab_status }}</x-badge>
+                                                        @if ($row->lab_status > 0)
+                                                            <x-badge variant="brand">Laborat: {{ $row->lab_status }}</x-badge>
                                                         @endif
-                                                        @if ($r->rad_status > 0)
-                                                            <x-badge variant="warning">Radiologi: {{ $r->rad_status }}</x-badge>
+                                                        @if ($row->rad_status > 0)
+                                                            <x-badge variant="warning">Radiologi: {{ $row->rad_status }}</x-badge>
                                                         @endif
                                                     </div>
                                                 @endif
@@ -461,40 +461,40 @@ new class extends Component {
                                         <div class="text-sm text-body dark:text-gray-400 space-y-0.5 whitespace-nowrap">
                                             <div>
                                                 <span class="text-muted">Masuk:</span>
-                                                {{ $r->entry_date_display ?? '-' }}
+                                                {{ $row->entry_date_display ?? '-' }}
                                             </div>
-                                            @if (!empty($r->exit_date_display))
+                                            @if (!empty($row->exit_date_display))
                                                 <div>
                                                     <span class="text-muted">Pulang:</span>
-                                                    {{ $r->exit_date_display }}
+                                                    {{ $row->exit_date_display }}
                                                 </div>
                                             @endif
                                         </div>
 
-                                        <x-badge :variant="$r->status_variant">{{ $r->status_text }}</x-badge>
+                                        <x-badge :variant="$row->status_variant">{{ $row->status_text }}</x-badge>
 
                                         {{-- Progress bar EMR --}}
                                         <div class="w-full h-1.5 bg-surface-strong rounded-full dark:bg-gray-700">
-                                            <div class="h-1.5 rounded-full transition-all duration-500 {{ $r->emr_bar_color }}"
-                                                style="width: {{ $r->emr_percent ?? 0 }}%">
+                                            <div class="h-1.5 rounded-full transition-all duration-500 {{ $row->emr_bar_color }}"
+                                                style="width: {{ $row->emr_percent ?? 0 }}%">
                                             </div>
                                         </div>
 
                                         <div class="grid grid-cols-2 gap-2">
                                             <div class="text-xs text-body dark:text-gray-400">
-                                                EMR: {{ $r->emr_percent ?? 0 }}%
+                                                EMR: {{ $row->emr_percent ?? 0 }}%
                                             </div>
                                             <div class="text-xs text-body dark:text-gray-400">
-                                                E-Resep: {{ $r->eresep_percent ?? 0 }}%
+                                                E-Resep: {{ $row->eresep_percent ?? 0 }}%
                                             </div>
                                         </div>
 
-                                        @if ($r->diagnosis !== '-')
+                                        @if ($row->diagnosis !== '-')
                                             <div class="text-xs text-muted dark:text-gray-400">
                                                 <span class="font-semibold">Diagnosa:</span><br>
-                                                {{ $r->diagnosis }}
-                                                @if ($r->diagnosis_free_text !== '-')
-                                                    / {{ $r->diagnosis_free_text }}
+                                                {{ $row->diagnosis }}
+                                                @if ($row->diagnosis_free_text !== '-')
+                                                    / {{ $row->diagnosis_free_text }}
                                                 @endif
                                             </div>
                                         @endif
@@ -502,7 +502,7 @@ new class extends Component {
                                         {{-- Berkas BPJS ter-upload — badge per jenis (semua slot) --}}
                                         @php
                                             $berkasLabels = [1 => 'SEP', 2 => 'GROUPING', 3 => 'REKAM MEDIS', 4 => 'SKDP', 5 => 'LAIN-LAIN'];
-                                            $berkasTerupload = $r->berkas_uploaded ?? [];
+                                            $berkasTerupload = $row->berkas_uploaded ?? [];
                                         @endphp
                                         @if (!empty($berkasTerupload))
                                             <div class="flex flex-wrap items-center gap-1 mt-2" title="Berkas BPJS sudah di-upload">
@@ -537,16 +537,16 @@ new class extends Component {
                                                     <div class="p-2 space-y-2">
 
                                                         {{-- Kepala menu: pasien yang dituju aksi-aksi di bawah ini --}}
-                                                        <x-list.identitas-aksi :regNo="$r->reg_no" :nama="$r->reg_name" :sex="$r->sex"
+                                                        <x-list.identitas-aksi :regNo="$row->reg_no" :nama="$row->reg_name" :sex="$row->sex"
                                                             jalur="Rawat Inap" />
 
                                                         {{-- GRID 2 KOLOM --}}
                                                         <div class="grid grid-cols-2 gap-1 items-stretch">
 
                                                         @can('idrg.kirim')
-                                                            @if (($r->klaim_status === 'BPJS' || $r->klaim_id === 'JM') && $r->ri_status === 'P')
+                                                            @if (($row->klaim_status === 'BPJS' || $row->klaim_id === 'JM') && $row->ri_status === 'P')
                                                             <x-dropdown-link href="#"
-                                                                wire:click.prevent="openIdrg('{{ $r->rihdr_no }}')"
+                                                                wire:click.prevent="openIdrg('{{ $row->rihdr_no }}')"
                                                                 class="px-3 py-2 text-sm rounded-lg h-full bg-brand/5 hover:bg-brand/10 dark:bg-brand-lime/10 dark:hover:bg-brand-lime/20">
                                                                 <div class="flex items-start gap-2">
                                                                     <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -562,9 +562,9 @@ new class extends Component {
                                                         @endcan
 
                                                         @hasanyrole('Admin|Casemix|Tu')
-                                                            @if ($r->ri_status === 'P')
+                                                            @if ($row->ri_status === 'P')
                                                             <x-dropdown-link href="#"
-                                                                wire:click.prevent="openAdministrasi({{ $r->rihdr_no }})"
+                                                                wire:click.prevent="openAdministrasi({{ $row->rihdr_no }})"
                                                                 class="px-3 py-2 text-sm rounded-lg h-full bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 dark:hover:bg-sky-900/40">
                                                                 <div class="flex items-start gap-2">
                                                                     <svg class="w-5 h-5 mt-0.5 shrink-0 text-sky-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -581,7 +581,7 @@ new class extends Component {
 
                                                         @hasanyrole('Admin|Casemix|Tu')
                                                             <x-dropdown-link href="#"
-                                                                wire:click.prevent="openBerkasBpjs({{ $r->rihdr_no }})"
+                                                                wire:click.prevent="openBerkasBpjs({{ $row->rihdr_no }})"
                                                                 class="px-3 py-2 text-sm rounded-lg h-full bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/40">
                                                                 <div class="flex items-start gap-2">
                                                                     <svg class="w-5 h-5 mt-0.5 shrink-0 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">

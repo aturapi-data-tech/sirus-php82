@@ -395,7 +395,7 @@
                             $cairanTetesan = collect([$cairan ? $cairan . ' ml' : null, $tetesan ? $tetesan . ' gtt/mnt' : null])->filter()->implode(' · ');
                             // Skor EWS tersimpan di entri (dihitung saat entri dibuat) — entri lama tanpa `ews` tampil "-".
                             $ewsEntri = is_array($tandaVital['ews'] ?? null) && !empty($tandaVital['ews']['tersedia']) ? $tandaVital['ews'] : null;
-                            $ewsRinci = $ewsEntri ? collect($ewsEntri['per'] ?? [])->map(fn($p) => $p['desc'] . ': ' . ($p['skor'] ?? '-'))->implode(' · ') : '';
+                            $ewsRinci = $ewsEntri ? collect($ewsEntri['per'] ?? [])->map(fn($parameterEws) => $parameterEws['desc'] . ': ' . ($parameterEws['skor'] ?? '-'))->implode(' · ') : '';
                             // Badge kecil skor per parameter — susunan sama dengan tabel di form Observasi Lanjutan.
                             $ewsSkorSel = function (string $kode) use ($ewsEntri): string {
                                 if (!$ewsEntri || !array_key_exists($kode, $ewsEntri['per'] ?? [])) {
