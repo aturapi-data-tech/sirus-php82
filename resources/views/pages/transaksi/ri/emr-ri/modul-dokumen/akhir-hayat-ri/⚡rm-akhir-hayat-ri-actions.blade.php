@@ -1683,57 +1683,11 @@ new class extends Component {
             </div>{{-- /konten --}}
 
             {{-- ══ FOOTER ══ --}}
-            <div class="sticky bottom-0 z-10 px-6 py-3 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
-                @if ($this->diForm())
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    @if ($viewOnly)
-                        <p class="text-sm text-sky-600 dark:text-sky-400">Mode lihat — entri terkunci, tidak dapat diubah.</p>
-                    @elseif (!$isFormLocked)
-                        <p class="text-sm text-muted dark:text-gray-400">
-                            Simpan draft kapan saja. Entri terkunci saat <strong>petugas menandatangani</strong> di bagian 5.
-                        </p>
-                    @else
-                        <span></span>
-                    @endif
-
-                    <div class="flex flex-wrap items-center justify-end gap-2">
-                        <x-secondary-button type="button" wire:click="kembaliKeDaftar">Kembali ke Daftar</x-secondary-button>
-
-                        @if ($viewOnly)
-                            <x-primary-button wire:click.prevent="cancelEdit" wire:target="cancelEdit"
-                                wire:loading.attr="disabled" class="gap-1.5 min-w-[160px] justify-center">
-                                Selesai Melihat
-                            </x-primary-button>
-                        @elseif (!$isFormLocked)
-                            <x-primary-button wire:click.prevent="saveDraft" wire:loading.attr="disabled"
-                                wire:target="saveDraft" class="gap-2 min-w-[170px] justify-center">
-                                <span wire:loading.remove wire:target="saveDraft">{{ $editingKey ? 'Simpan Perubahan' : 'Simpan Draft' }}</span>
-                                <span wire:loading wire:target="saveDraft"><x-loading class="w-4 h-4" /> Menyimpan...</span>
-                            </x-primary-button>
-                        @endif
-                    </div>
-                </div>
-                @else
-                    <div class="flex flex-wrap items-center justify-end gap-2">
-                        <p class="flex items-center gap-1.5 mr-auto text-sm text-muted dark:text-gray-400">
-                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span>Setiap entri berdiri sendiri — <strong>Isi Formulir Baru</strong> untuk entri baru, <strong>Lanjutkan Pengisian</strong> untuk melanjutkan draft.</span>
-                        </p>
-                        <x-secondary-button type="button" wire:click="closeModal">Tutup</x-secondary-button>
-                        @unless ($isFormLocked)
-                            <x-primary-button type="button" wire:click="tambahEntri" wire:target="tambahEntri"
-                                wire:loading.attr="disabled" class="gap-1.5 min-w-[150px] justify-center">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                                Isi Formulir Baru
-                            </x-primary-button>
-                        @endunless
-                    </div>
-                @endif
-            </div>
+            <x-modul-dokumen.footer :formulir="$this->diForm()" :terkunci="$isFormLocked"
+                :lihat="$viewOnly"
+                :mengedit="$editingKey">
+                Simpan draft kapan saja. Entri terkunci saat <strong>petugas menandatangani</strong> di bagian 5.
+            </x-modul-dokumen.footer>
         </div>
     </x-modal>
 </div>

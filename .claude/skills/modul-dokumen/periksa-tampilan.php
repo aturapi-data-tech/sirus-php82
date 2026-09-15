@@ -20,6 +20,7 @@
  *   9. header modal = komponen x-modul-dokumen.header & punya ikon (kotak w-7 h-7 rounded-lg sebelum judul)
  *  10. tabel layar daftar di dalam kartu <x-border-form padding="p-0"> (bukan tabel polos selebar modal)
  *  11. sel Aksi tabel daftar = komponen x-modul-dokumen.aksi-entri
+ *  12. footer modal dua layar = komponen x-modul-dokumen.footer (kecuali Case Manager)
  */
 require __DIR__ . '/../../../vendor/autoload.php';
 $app = require __DIR__ . '/../../../bootstrap/app.php';
@@ -128,6 +129,10 @@ foreach ($berkas as $path) {
 
         $duaLayar = str_contains($sumber, 'this->diForm()');
         if ($duaLayar) {
+            // Footer modal dua layar WAJIB komponen — 2026-09-15. Case Manager dikecualikan: footernya baris
+            // tombol di dalam kartu Form A / editor Form B, bukan footer sticky modal.
+            if (!str_contains($sumber, '<x-modul-dokumen.footer') && !str_contains($path, 'case-manager'))
+                $catatan[] = 'footer modal tidak memakai <x-modul-dokumen.footer>';
             // Sel Aksi tabel daftar WAJIB komponen (Lanjutkan/Lihat/Cetak │ Buka Kunci/Hapus + Gate) — 2026-09-15.
             if (!str_contains($sumber, '<x-modul-dokumen.aksi-entri'))
                 $catatan[] = 'sel Aksi tabel daftar tidak memakai <x-modul-dokumen.aksi-entri>';

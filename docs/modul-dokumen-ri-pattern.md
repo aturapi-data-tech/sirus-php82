@@ -85,6 +85,25 @@ salah satunya diam-diam.
 - X = **anak terakhir baris flex judul**, `class="ml-auto shrink-0"` (sudah diurus komponen header).
 - footer = **saudara** area isi yang ber-`flex-1`, ditambah `sticky bottom-0`: menempel di
   dasar saat isi pendek, tetap terlihat saat isi panjang.
+- **Footer modul dua layar = komponen `<x-modul-dokumen.footer>`** (BAKU 2026-09-15, 62 modal):
+
+  ```blade
+  <x-modul-dokumen.footer :formulir="$this->diForm()" :terkunci="$isFormLocked"
+      :lihat="$viewOnly" :mengedit="$editingKey" :bisaSimpan="$riHdrNo && !$isFormLocked">
+      Simpan draft dulu, lalu <strong>kunci</strong> lewat tombol <strong>TTD Petugas &amp; Kunci</strong>.
+      <x-slot:tombol>
+          @if ($editingKey && !$isFormLocked)<x-secondary-button wire:click="cancelEdit">Batal Edit</x-secondary-button>@endif
+      </x-slot:tombol>
+  </x-modul-dokumen.footer>
+  ```
+
+  Layar daftar: keterangan "Setiap entri berdiri sendiri" + Tutup + Isi Formulir Baru (hilang saat
+  `terkunci`). Layar formulir: petunjuk (slot bawaan, tampil bila bisa simpan) / "Mode lihat" +
+  Kembali ke Daftar + slot `tombol` + Selesai Melihat (saat `lihat`) / Simpan. `bisaSimpan` default
+  `!terkunci && !lihat`; `labelSimpan` default Simpan Draft / Simpan Perubahan menurut `mengedit`.
+  Method `simpan`/`selesaiLihat`/`kembali`/`tutup`/`tambah` (default `saveDraft`/`cancelEdit`/
+  `kembaliKeDaftar`/`closeModal`/`tambahEntri`; `""` = tombol tidak ada). Tutup SENGAJA hanya di layar
+  daftar. Case Manager dikecualikan (tombol di dalam kartu Form A/B).
 - tombol: layar daftar `[Tutup] [Isi Formulir Baru]`, layar formulir
   `[Kembali ke Daftar] [Simpan …]`.
 
