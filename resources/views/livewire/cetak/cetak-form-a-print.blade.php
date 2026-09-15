@@ -18,8 +18,6 @@
             $thn = '-';
         }
 
-        $rsName = $identitasRs->int_name ?? 'RSI MADINAH';
-        $rsAddress = $identitasRs->int_address ?? '';
 
         $alamat = trim(
             ($identitas['alamat'] ?? '-') .
@@ -141,16 +139,10 @@
             </td>
         </tr>
 
-        {{-- Footer --}}
+        {{-- Footer — tgl cetak & kode formulir dicetak layout (pojok kiri bawah); di sini hanya identitas entri --}}
         <tr>
             <td colspan="2" class="px-1.5 py-1 text-[9px] text-gray-500 text-center border-t border-gray-300">
-                Dicetak: {{ \Carbon\Carbon::now(config('app.timezone'))->translatedFormat('d F Y') }}
-                &nbsp;&bull;&nbsp;
-                No. RM: {{ $pasien['regNo'] ?? '-' }}
-                &nbsp;&bull;&nbsp;
                 ID Form: {{ $dataFormA['formA_id'] ?? '-' }}
-                &nbsp;&bull;&nbsp;
-                {{ $rsName }}, {{ $rsAddress }}
             </td>
         </tr>
 

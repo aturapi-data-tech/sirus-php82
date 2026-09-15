@@ -90,6 +90,20 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
    kolom pasien/saksi. **Kartu stempel bespoke** (div nama/Kode/tanggal rata tengah) DILARANG;
    14 modul sudah diganti. Gambar TTD user lewat `x-signature.ttd-gambar :code` /
    `:empId`, sumber `App\Support\TtdUser` (dua format kolom `myuser_ttd_image`).
+   (b2) **Tata letak kolom TTD (standar 2026-09-15)** — grid `grid-cols-1 gap-6 md:grid-cols-2|3`,
+   tiap kolom `flex flex-col`: judul kolom uppercase rata tengah → **kotak gambar TTD langsung
+   di bawahnya** (`signature-result` / `signature-pad` / `ttd-petugas`) → field nama/hubungan →
+   baris teks `Waktu TTD:` (gaya `text-sm`, label `text-muted`, nilai `font-semibold`).
+   DILARANG: teks/tanggal di ATAS kotak (dulu `signature-result :date` → kotak turun, kini
+   komponen menaruh tanggal di bawah) dan pembungkus `min-h-* flex justify-center` di sekitar
+   kotak (kotak mengambang tak sejajar antar kolom), kolom berupa **kartu berbingkai**
+   (`p-3 border rounded-lg`) atau `ttd-petugas :framed="true"` di dalam grid TTD, dan stempel
+   petugas bespoke (div nama/kode/tanggal) — selalu `ttd-petugas :framed="false"`. Judul kolom boleh
+   lewat prop `label` ttd-petugas (sudah bergaya judul standar, rata tengah). Petugas tanpa berkas
+   gambar TTD tetap mendapat kotak berukuran sama berisi "Gambar tanda tangan tidak tersedia"
+   (`ttd-gambar teksKosong`). Diseragamkan 2026-09-15 di 17 berkas: General Consent, Pra-Anestesi,
+   Pre-Op, Surgical Safety Checklist (RJ/UGD/RI), Akhir Hayat RI/UGD, Edukasi Terintegrasi RI,
+   Surat Kematian RI/UGD. Contoh rapi: General Consent RJ/UGD/RI.
    (c) **Cetak/viewer**: path gambar TTD WAJIB `TtdUser::pathBerkasDariKode($kode)` — jangan
    `public_path('storage/' . $nilai)` sendiri (format baru nama-file-saja gagal `file_exists`).
    (d) **Kolom "Petugas (TTD)" di tabel & viewer hanya menampilkan nama bila `entryIsFinal()`**;
@@ -103,8 +117,12 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
    `<x-pdf.layout-a4-with-out-background kode="RM-05.11 · Rev.0" title="…">` — literal, bukan
    `:kode="…"`, pemisah `" · "` (salin dari blade lain: `grep -rh 'kode="RM-' resources/views
    --include='*-print.blade.php' | head -1`). **Tanpa config** — prop `kode` di `layout-a4`,
-   `layout-a4-with-out-background`, `layout-kwitansi` dicetak apa adanya, absolute di pojok
-   kanan atas (tak menggeser isi). Cetakan bukan formulir RM (kuitansi, etiket, SEP/PRB/SKDP,
+   `layout-a4-with-out-background`, `layout-kwitansi` dicetak apa adanya, fixed di pojok
+   kiri bawah SETIAP halaman (margin bawah, tak menimpa isi), berpasangan dengan
+   "Dicetak: <tanggal>" di pojok kanan bawah (layout A4). **Itulah satu-satunya footer cetakan
+   formulir RM** — JANGAN menulis footer "Dicetak • No. RM • nama/alamat RS" sendiri di blade cetak
+   (RS sudah di kop, No. RM di identitas pasien; 32 footer bespoke dihapus 2026-09-15). Info khas
+   entri (mis. "ID Form" MPP) boleh tetap di blade. Cetakan bukan formulir RM (kuitansi, etiket, SEP/PRB/SKDP,
    slip gaji, dokumen unit IT) tidak dikode.
    Daftar kelompok & nama formulir ada di `/panduan-dev/koding-formulir-rm` (method `formulir()`
    di SFC-nya); kolom View & Rev di halaman itu dibaca dari atribut blade.

@@ -18,7 +18,7 @@
                             ['4', 'Pasang prop kode di tag layout blade cetaknya.',
                              'Atribut literal kode="RM-KK.NN · Rev.0".'],
                             ['5', 'Buka Daftar Formulir RM & lihat PDF-nya sekali.',
-                             'View cetak baru muncul di baris kodenya; tak ada peringatan "Perlu dibenahi". Kode tampil di pojok kanan atas dan tidak menimpa kop.'],
+                             'View cetak baru muncul di baris kodenya; tak ada peringatan "Perlu dibenahi". Kode tampil kecil di pojok kiri bawah tiap halaman dan tidak menimpa isi.'],
                         ] as [$nomor, $judul, $keterangan])
                             <div class="ds-card-outline mb-3" style="padding:18px 20px">
                                 <div class="flex items-start gap-3">
@@ -116,7 +116,8 @@
                                     'Hasil port jalur lain memakai kode yang sudah ada, bukan kode baru',
                                     'Rancangan berubah → revisi naik di semua jalur, di commit yang sama',
                                     'Tidak ada kode yang dihapus atau dipakai ulang',
-                                    'Daftar Formulir RM tanpa peringatan, dan PDF dilihat sekali: kode tak menimpa kop',
+                                    'Daftar Formulir RM tanpa peringatan, dan PDF dilihat sekali: kode di pojok kiri bawah tak menimpa isi',
+                                    'Tidak menulis footer Dicetak / No. RM / nama RS sendiri — layout sudah mencetak kode (kiri bawah) & tanggal cetak (kanan bawah)',
                                 ] as $butir)
                                     <li class="flex items-start gap-2">
                                         <span style="color:var(--primary)">☐</span>

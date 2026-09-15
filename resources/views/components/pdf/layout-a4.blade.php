@@ -83,11 +83,35 @@
             padding: 30px 40px 30px 40px;
         }
 
+        /* ── KAKI FORMULIR RM (tiap halaman, di margin bawah): kode kiri · tanggal cetak kanan ── */
+        .kaki-formulir {
+            position: fixed;
+            bottom: -14px;
+            font-size: 8px;
+            color: #6b7280;
+        }
+
+        .kaki-formulir.kiri {
+            left: 40px;
+        }
+
+        .kaki-formulir.kanan {
+            right: 40px;
+            text-align: right;
+        }
+
         {!! $pdfCss ? file_get_contents(public_path('build/' . $pdfCss)) : '' !!}
     </style>
 </head>
 
 <body>
+    {{-- KAKI FORMULIR RM — SETIAP halaman (fixed, di margin bawah sehingga tak menimpa isi):
+         kiri kode apa adanya (mis. "RM-02.01 · Rev.0"), kanan tanggal cetak. Satu-satunya footer
+         cetakan formulir RM — nama/alamat RS sudah di kop, No. RM di identitas pasien. --}}
+    @if (filled($kode))
+        <div class="kaki-formulir kiri">{{ $kode }}</div>
+        <div class="kaki-formulir kanan">Dicetak: {{ \Carbon\Carbon::now(config('app.timezone'))->translatedFormat('d F Y') }}</div>
+    @endif
 
     {{-- BACKGROUND LAYER --}}
     <div class="pdf-background">
@@ -100,13 +124,6 @@
 
     {{-- CONTENT LAYER --}}
     <div class="pdf-content">
-
-        {{-- KODE FORMULIR RM — dicetak apa adanya (mis. "RM-02.01 · Rev.0"). Absolute agar tak menggeser isi. --}}
-        @if (filled($kode))
-            <div class="absolute top-3 right-10 text-[9px] text-black">
-                {{ $kode }}
-            </div>
-        @endif
 
         {{-- KOP SURAT — bisa sejajar dengan data pasien --}}
         @if ($patientData ?? false)

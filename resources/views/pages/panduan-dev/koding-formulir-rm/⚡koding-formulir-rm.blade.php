@@ -164,7 +164,8 @@ TXT,
 
 %TAG_LAYOUT_TUTUP%
 
-# Tercetak persis apa adanya di pojok kanan atas:   RM-05.11 · Rev.0
+# Kaki SETIAP halaman (dari layout):   RM-05.11 · Rev.0  ……  Dicetak: 15 September 2026
+# JANGAN tulis footer Dicetak / No. RM / nama RS sendiri di blade.
 # Layout lain yang juga punya prop kode: x-pdf.layout-a4, x-pdf.layout-kwitansi
 TXT,
 

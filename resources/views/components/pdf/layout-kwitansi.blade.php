@@ -41,19 +41,26 @@
             padding: 6mm 8mm;
         }
 
+        /* ── KODE FORMULIR RM (pojok kiri bawah) ── */
+        .kode-formulir {
+            position: fixed;
+            bottom: 2mm;
+            left: 8mm;
+            font-size: 6px;
+            color: #6b7280;
+        }
+
         {!! $pdfCss ? file_get_contents(public_path('build/' . $pdfCss)) : '' !!}
     </style>
 </head>
 
 <body>
-    <div class="kwitansi-wrapper relative">
-
-        {{-- KODE FORMULIR RM — dicetak apa adanya (mis. "RM-02.01 · Rev.0"). Absolute agar tak menggeser isi. --}}
-        @if (filled($kode))
-            <div class="absolute top-2 right-8 text-[7px] text-black">
-                {{ $kode }}
-            </div>
-        @endif
+    {{-- KODE FORMULIR RM — pojok kiri bawah SETIAP halaman (fixed, di margin bawah halaman
+         sehingga tak menimpa isi). Dicetak apa adanya, mis. "RM-02.01 · Rev.0". --}}
+    @if (filled($kode))
+        <div class="kode-formulir">{{ $kode }}</div>
+    @endif
+    <div class="kwitansi-wrapper">
 
         {{-- KOP: Identitas + Judul sejajar --}}
         <table class="w-full border-collapse">

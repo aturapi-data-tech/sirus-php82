@@ -35,9 +35,6 @@
     @php
         $entry = $data['entry'] ?? [];
         $form = $entry['form'] ?? [];
-        $identitasRs = $data['identitasRs'] ?? null;
-        $rsName = $identitasRs->int_name ?? 'RSI MADINAH';
-        $rsAddress = $identitasRs->int_address ?? '';
 
         // ── Maps key → label (satu sumber: App\Support\Options\EdukasiTerintegrasiOptions) ──
         $mapTujuan = \App\Support\Options\EdukasiTerintegrasiOptions::tujuan();
@@ -335,17 +332,6 @@
                         </td>
                     </tr>
                 </table>
-            </td>
-        </tr>
-
-        {{-- ── FOOTER INFO ── --}}
-        <tr>
-            <td colspan="2" class="px-1.5 py-1 text-[9px] text-gray-500 text-center border-t border-gray-300">
-                Dicetak: {{ $data['tglCetak'] ?? '-' }}
-                &nbsp;&bull;&nbsp;
-                No. RM: {{ $data['regNo'] ?? '-' }}
-                &nbsp;&bull;&nbsp;
-                {{ $rsName }}, {{ $rsAddress }}
             </td>
         </tr>
 

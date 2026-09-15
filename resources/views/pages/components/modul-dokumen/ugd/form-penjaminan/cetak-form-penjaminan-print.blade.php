@@ -76,9 +76,6 @@
             }
         }
 
-        $identitasRs = $data['identitasRs'] ?? null;
-        $rsName = $identitasRs->int_name ?? 'RSI MADINAH';
-        $rsAddress = $identitasRs->int_address ?? '';
     @endphp
 
     <table class="w-full text-[10px] border-collapse">
@@ -260,19 +257,6 @@
 
                     </tr>
                 </table>
-            </td>
-        </tr>
-
-        {{-- ── Footer ── --}}
-        <tr>
-            <td colspan="2" class="px-1.5 py-1 text-[9px] text-gray-500 text-center border-t border-gray-300">
-                Dicetak: {{ $data['tglCetak'] ?? '-' }}
-                &nbsp;&bull;&nbsp;
-                No. RM: {{ $data['regNo'] ?? '-' }}
-                &nbsp;&bull;&nbsp;
-                {{ $rsName }}@if (!empty($rsAddress))
-                    , {{ $rsAddress }}
-                @endif
             </td>
         </tr>
 

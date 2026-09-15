@@ -22,9 +22,6 @@
 
     @php
         $form = $data['form'] ?? [];
-        $identitasRs = $data['identitasRs'] ?? null;
-        $rsName = $identitasRs->int_name ?? 'RSI MADINAH';
-        $rsAddress = $identitasRs->int_address ?? '';
         $val = fn($nilai) => filled($nilai) ? e($nilai) : '-';
         $yn = fn($nilai) => !empty($nilai) ? 'Ya' : 'Tidak';
     @endphp
@@ -148,12 +145,6 @@
             </td>
         </tr>
 
-        <tr>
-            <td colspan="2" class="px-1.5 py-1 text-[9px] text-gray-500 text-center border-t border-gray-300">
-                Dicetak: {{ $data['tglCetak'] ?? '-' }} &nbsp;&bull;&nbsp; No. RM: {{ $data['regNo'] ?? '-' }}
-                &nbsp;&bull;&nbsp; {{ $rsName }}{{ $rsAddress ? ', ' . $rsAddress : '' }}
-            </td>
-        </tr>
     </table>
 
 </x-pdf.layout-a4-with-out-background>

@@ -4,7 +4,7 @@
                         <h1 class="ds-display-md mb-4">Pengkodean Formulir Rekam Medis</h1>
                         <p class="ds-body-md mb-4" style="max-width:62ch">
                             Setiap cetakan SIRUS yang menjadi bagian rekam medis pasien membawa
-                            <strong>kode formulir</strong> di pojok kanan atas, misalnya
+                            <strong>kode formulir</strong> kecil di pojok kiri bawah setiap halaman, misalnya
                             <span class="ds-code">RM-02.01 · Rev.0</span>. Dari kode itu petugas rekam medis
                             dan surveior bisa tahu lembar apa ini, rancangan versi berapa, dan menelusurinya
                             ke Daftar Induk.
