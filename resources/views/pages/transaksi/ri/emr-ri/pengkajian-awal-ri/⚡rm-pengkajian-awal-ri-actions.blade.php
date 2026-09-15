@@ -47,6 +47,8 @@ new class extends Component {
             'statusEmosional' => ['pilihan' => '', 'keterangan' => ''],
             'keluargaDekat' => ['nama' => '', 'hubungan' => '', 'telp' => ''],
             'informasiDidapatDari' => ['pilihan' => '', 'keterangan' => ''],
+            // Nilai kebudayaan yang dipercaya pasien — toggle ya/tidak (standar tidak), keterangan bila ya.
+            'nilaiKebudayaan' => ['pilihan' => 'tidak', 'keterangan' => ''],
         ],
         'bagian4PemeriksaanFisik' => [
             'tandaVital' => [
@@ -212,6 +214,8 @@ new class extends Component {
 
         $this->dataDaftarRi = $data;
         $this->dataDaftarRi['pengkajianAwalPasienRawatInap'] ??= $this->pengkajianAwalDefault;
+        // Entri lama (sebelum 2026-09-15) belum punya node nilaiKebudayaan → isi standar "tidak".
+        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['nilaiKebudayaan'] ??= ['pilihan' => 'tidak', 'keterangan' => ''];
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
 
@@ -806,6 +810,22 @@ new class extends Component {
                 @endif
             </div>
 
+        </div>
+
+        {{-- Nilai Kebudayaan yang Dipercaya — toggle ya/tidak (standar tidak), keterangan muncul bila ya (pola riwayat alergi) --}}
+        <div class="flex flex-col gap-2 mt-4 sm:flex-row sm:items-center">
+            <div class="shrink-0 sm:w-80">
+                <x-toggle
+                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.nilaiKebudayaan.pilihan"
+                    trueValue="ya" falseValue="tidak" label="Ada nilai kebudayaan yang dipercaya"
+                    :disabled="$isFormLocked || $isReadOnlyByRole" />
+            </div>
+            @if (($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['nilaiKebudayaan']['pilihan'] ?? 'tidak') === 'ya')
+                <x-text-input
+                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.nilaiKebudayaan.keterangan"
+                    class="w-full" placeholder="Keterangan nilai kebudayaan (mis. pantangan makanan, ritual, pengobatan tradisional)..."
+                    :disabled="$isFormLocked || $isReadOnlyByRole" />
+            @endif
         </div>
 
         {{-- Keluarga Dekat --}}

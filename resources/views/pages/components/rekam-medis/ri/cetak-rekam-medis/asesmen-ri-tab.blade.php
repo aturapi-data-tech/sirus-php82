@@ -24,6 +24,13 @@
     // — Pengkajian awal (perawat) & pengkajian dokter
     $pengkajianAwal = (array) $ambil('pengkajianAwalPasienRawatInap', []);
     $tandaVitalAwal = (array) data_get($pengkajianAwal, 'bagian4PemeriksaanFisik.tandaVital', []);
+    // Nilai kebudayaan yang dipercaya (Bagian 3): ya → keterangan, tidak → "Tidak ada", entri lama tanpa node → '-'.
+    $nilaiKebudayaan = (array) data_get($pengkajianAwal, 'bagian3PsikososialDanEkonomi.nilaiKebudayaan', []);
+    $teksNilaiKebudayaan = match ($nilaiKebudayaan['pilihan'] ?? null) {
+        'ya' => filled($nilaiKebudayaan['keterangan'] ?? '') ? $nilaiKebudayaan['keterangan'] : 'Ada (tanpa keterangan)',
+        'tidak' => 'Tidak ada',
+        default => '',
+    };
     $pengkajianDokter = (array) $ambil('pengkajianDokter', []);
     $rekonsiliasiObat = (array) data_get($pengkajianDokter, 'anamnesa.rekonsiliasiObat', []);
     $statusRekonsiliasiObat = data_get($pengkajianDokter, 'anamnesa.' . \App\Support\RekonsiliasiObat::STATUS_KEY);
@@ -91,7 +98,7 @@
             <p class="italic text-muted-soft">Belum ada pengkajian awal.</p>
         @else
             <div class="space-y-2">
-                @foreach ([['Keluhan Utama', data_get($pengkajianAwal, 'bagian4PemeriksaanFisik.keluhanUtama')], ['Diagnosa Masuk', data_get($pengkajianAwal, 'bagian1DataUmum.diagnosaMasuk')], ['Kondisi Saat Masuk', data_get($pengkajianAwal, 'bagian1DataUmum.kondisiSaatMasuk')], ['Catatan', data_get($pengkajianAwal, 'bagian5CatatanDanTandaTangan.catatanUmum')]] as [$judul, $nilai])
+                @foreach ([['Keluhan Utama', data_get($pengkajianAwal, 'bagian4PemeriksaanFisik.keluhanUtama')], ['Diagnosa Masuk', data_get($pengkajianAwal, 'bagian1DataUmum.diagnosaMasuk')], ['Kondisi Saat Masuk', data_get($pengkajianAwal, 'bagian1DataUmum.kondisiSaatMasuk')], ['Nilai Kebudayaan', $teksNilaiKebudayaan], ['Catatan', data_get($pengkajianAwal, 'bagian5CatatanDanTandaTangan.catatanUmum')]] as [$judul, $nilai])
                     <div class="flex flex-col gap-1 py-1 border-b sm:flex-row sm:gap-2 border-hairline-soft dark:border-gray-700/60">
                         <span class="w-48 shrink-0 text-muted">{{ $judul }}</span>
                         <span class="text-ink dark:text-gray-100">{{ filled($nilai) ? $nilai : '-' }}</span>
