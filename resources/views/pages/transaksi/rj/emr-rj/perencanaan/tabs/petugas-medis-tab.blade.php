@@ -21,6 +21,8 @@
             <x-signature.ttd-petugas :framed="false" :allowClear="false"
                 :ttd="$dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['drPemeriksa'] ?? ''"
                 :date="$dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['selesaiPemeriksaan'] ?? ''"
+                {{-- Kode = drId kunjungan: setDrPemeriksa() hanya mengizinkan TTD bila drId == myuser_code dokter login --}}
+                :code="$dataDaftarPoliRJ['drId'] ?? ''"
                 :locked="$isFormLocked"
                 sign="setDrPemeriksa" nameLabel="Dokter Pemeriksa" dateLabel="Selesai Pemeriksaan" signLabel="TTD Dokter" />
 

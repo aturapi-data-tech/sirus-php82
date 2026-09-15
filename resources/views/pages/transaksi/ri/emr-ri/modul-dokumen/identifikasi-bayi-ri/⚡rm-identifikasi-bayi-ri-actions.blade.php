@@ -548,7 +548,7 @@ new class extends Component {
                             </div>
                         </x-border-form>
 
-                        <x-signature.ttd-petugas :ttd="$newForm['ttd']" :date="$newForm['ttdDate'] ?? ''" :locked="$isFormLocked" />
+                        <x-signature.ttd-petugas :ttd="$newForm['ttd']" :date="$newForm['ttdDate'] ?? ''" :code="$newForm['ttdCode'] ?? ''" :locked="$isFormLocked" />
 
                         <div class="flex justify-end">
                             <x-primary-button type="button" wire:click="addEntry" wire:loading.attr="disabled" wire:target="addEntry">

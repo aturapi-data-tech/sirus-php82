@@ -20,6 +20,8 @@
             <x-signature.ttd-petugas :framed="false" :allowClear="false"
                 :ttd="$dataDaftarUGD['perencanaan']['pengkajianMedis']['drPemeriksa'] ?? ''"
                 :date="$dataDaftarUGD['perencanaan']['pengkajianMedis']['selesaiPemeriksaan'] ?? ''"
+                {{-- Kode = drId kunjungan: setDrPemeriksa() hanya mengizinkan TTD bila drId == myuser_code dokter login --}}
+                :code="$dataDaftarUGD['drId'] ?? ''"
                 :locked="$isFormLocked"
                 sign="setDrPemeriksa" nameLabel="Dokter Pemeriksa" dateLabel="Selesai Pemeriksaan" signLabel="TTD Dokter" />
 
