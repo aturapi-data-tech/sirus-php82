@@ -81,6 +81,7 @@ new class extends Component {
                 'ops-produksi' => 'Ke Produksi',
                 'ops-kunci-ip' => 'Mengunci ke IP RS',
                 'ops-pantau' => 'Memantau & Rotasi Sandi',
+                'ops-browser' => 'Buka Portal BPJS di Browser',
                 'faq' => 'Masalah → Penanganan',
             ],
             'Referensi' => [
@@ -367,7 +368,7 @@ acl terautentikasi proxy_auth REQUIRED
 <span style="color:#8b948c"># Lapis 2: tujuan yang boleh — hanya BPJS + penunjuk IP untuk uji</span>
 acl bpjs dstdomain .bpjs-kesehatan.go.id
 acl ipecho dstdomain api.ipify.org
-acl port_aman port 443 80
+acl port_aman port 443 80 8888   <span style="color:#8b948c"># 8888 = portal Trust Mark dvlp BPJS</span>
 
 http_access allow terautentikasi bpjs port_aman
 http_access allow terautentikasi ipecho port_aman
@@ -647,9 +648,68 @@ systemctl reload squid</pre>
                         Squid tanpa cache, jadi tidak ada disk yang perlu dibersihkan.</p>
                     </section>
 
+                    {{-- ====== OPS: BROWSER (PORTAL dvlp / TRUST MARK) ====== --}}
+                    <section x-show="section === 'ops-browser'" x-cloak>
+                        <div class="ds-eyebrow mb-3">16 — Operasional</div>
+                        <h1 class="ds-display-md mb-4">Buka Portal BPJS di Browser</h1>
+                        <p class="ds-body-md mb-4" style="max-width:62ch">
+                            Bukan hanya API: portal pengembang BPJS
+                            (<span class="ds-code">https://dvlp.bpjs-kesehatan.go.id:8888/trust-mark/portal.html</span>, Trust Mark &amp;
+                            katalog) juga hanya melayani IP ter-whitelist. Dibuka dari Chrome biasa — baik di Windows maupun
+                            Linux — lalu lintasnya keluar dari IP RS/rumah sehingga ditolak. Jalan keluarnya sama dengan
+                            aplikasi: <strong>jalankan Chrome dengan profil terpisah yang keluar lewat proxy VPS</strong>.
+                        </p>
+
+                        <div class="ds-card-outline mb-4" style="padding:0; overflow:hidden">
+                            <div class="ds-caption-up" style="color:var(--muted); padding:14px 24px 6px">Windows — shortcut di Desktop</div>
+                            <div style="padding:0 24px 14px" class="ds-body-sm">
+                                Klik kanan Desktop → <strong>New → Shortcut</strong>, tempel baris di bawah sebagai lokasi, beri nama
+                                <strong>Chrome BPJS</strong>. Chrome terpasang per user? Ganti path menjadi
+                                <span class="ds-code">%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe</span>.
+                            </div>
+<pre class="ds-code" style="{{ $kodeGelap }}">"C:\Program Files\Google\Chrome\Application\chrome.exe" --proxy-server="http://38.103.170.232:3128" --user-data-dir="%USERPROFILE%\chrome-bpjs-proxy"
+
+<span style="color:#8b948c">:: atau langsung dari Command Prompt</span>
+start "" "C:\Program Files\Google\Chrome\Application\chrome.exe" --proxy-server="http://38.103.170.232:3128" --user-data-dir="%USERPROFILE%\chrome-bpjs-proxy"</pre>
+                        </div>
+
+                        <div class="ds-card-outline mb-4" style="padding:0; overflow:hidden">
+                            <div class="ds-caption-up" style="color:var(--muted); padding:14px 24px 6px">Linux</div>
+<pre class="ds-code" style="{{ $kodeGelap }}">google-chrome --proxy-server="http://38.103.170.232:3128" --user-data-dir="$HOME/chrome-bpjs-proxy"</pre>
+                        </div>
+
+                        <div class="ds-card-outline mb-6" style="padding:0; overflow:hidden">
+                            <div class="ds-caption-up" style="color:var(--muted); padding:14px 24px 6px">Setelah jendela terbuka</div>
+                            <div class="overflow-x-auto">
+                                <table class="ds-table">
+                                    <thead><tr><th>#</th><th>Langkah</th><th>Hasil yang benar</th></tr></thead>
+                                    <tbody>
+                                        <tr><td class="ds-td-meta">1</td><td class="ds-body-sm">Muncul dialog login proxy</td><td class="ds-body-sm">Isi user <span class="ds-code">sirus</span> + sandi Squid (sama dengan di <span class="ds-code">BPJS_PROXY_URL</span>)</td></tr>
+                                        <tr><td class="ds-td-meta">2</td><td class="ds-body-sm">Buka <span class="ds-code">https://api.ipify.org</span></td><td class="ds-body-sm"><span class="ds-code">38.103.170.232</span></td></tr>
+                                        <tr><td class="ds-td-meta">3</td><td class="ds-body-sm">Buka <span class="ds-code">google.com</span></td><td class="ds-body-sm"><strong>Access Denied</strong> — wajar, proxy hanya mengizinkan domain BPJS</td></tr>
+                                        <tr><td class="ds-td-meta">4</td><td class="ds-body-sm">Buka portal Trust Mark (port 8888)</td><td class="ds-body-sm">Halaman login portal tampil</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="ds-callout ds-callout-info mb-4">
+                            <p class="ds-body-sm">Chrome biasa yang sedang terbuka <strong>tidak perlu ditutup</strong>: karena
+                            <span class="ds-code">--user-data-dir</span> berbeda, profil proxy berjalan sebagai jendela tersendiri dan
+                            tidak mengubah setelan proxy Chrome/Windows yang lain. Login portal tersimpan di profil itu.</p>
+                        </div>
+                        <div class="ds-callout ds-callout-warning">
+                            <p class="ds-body-sm"><strong>Jebakan nyata (12/09/2026):</strong> port 8888 semula tidak ada di
+                            <span class="ds-code">acl port_aman</span> → <span class="ds-code">ERR_TUNNEL_CONNECTION_FAILED</span>. Dan
+                            link reset sandi Trust Mark di email melompat lewat google.com / sendgrid.net yang diblok proxy —
+                            buka link itu di Chrome biasa sampai mendarat di domain bpjs-kesehatan.go.id, salin URL-nya, lalu
+                            tempel di jendela Chrome BPJS.</p>
+                        </div>
+                    </section>
+
                     {{-- ====== FAQ ====== --}}
                     <section x-show="section === 'faq'" x-cloak>
-                        <div class="ds-eyebrow mb-3">16 — Operasional</div>
+                        <div class="ds-eyebrow mb-3">17 — Operasional</div>
                         <h1 class="ds-display-md mb-4">Masalah → Penanganan</h1>
                         <div class="ds-card-outline mb-6" style="padding:0; overflow:hidden">
                             <div class="overflow-x-auto">
@@ -663,6 +723,9 @@ systemctl reload squid</pre>
                                         <tr><td class="ds-td-strong">apijkn-dev habis waktu, apijkn (prod) tembus</td><td class="ds-body-sm">Host dev BPJS sedang mati (terjadi 09/09/2026, langsung pun gagal)</td><td class="ds-body-sm">Bukan urusan proxy; tunggu / cek grup BPJS</td></tr>
                                         <tr><td class="ds-td-strong">BPJS menjawab "IP tidak terdaftar" walau cek-proxy COCOK</td><td class="ds-body-sm">Pengajuan whitelist belum diproses BPJS</td><td class="ds-body-sm">Tindak lanjuti formulir ke kantor cabang; lampirkan hasil <span class="ds-code">bpjs:cek-proxy</span></td></tr>
                                         <tr><td class="ds-td-strong">Google lewat proxy "lolos 200" saat uji curl</td><td class="ds-body-sm">Variabel proxy kosong → curl tanpa proxy</td><td class="ds-body-sm">Ulangi dengan alamat proxy eksplisit</td></tr>
+                                        <tr><td class="ds-td-strong">Browser: <span class="ds-code">ERR_TUNNEL_CONNECTION_FAILED</span> saat membuka Trust Mark</td><td class="ds-body-sm">Port 8888 belum ada di <span class="ds-code">acl port_aman</span></td><td class="ds-body-sm">Tambah <span class="ds-code">8888</span> ke baris itu, <span class="ds-code">systemctl reload squid</span></td></tr>
+                                        <tr><td class="ds-td-strong">Portal dvlp BPJS tak bisa dibuka dari Chrome biasa</td><td class="ds-body-sm">Portal hanya melayani IP ter-whitelist; Chrome biasa keluar dari IP RS / rumah</td><td class="ds-body-sm">Pakai profil Chrome ber-proxy — lihat "Buka Portal BPJS di Browser"</td></tr>
+                                        <tr><td class="ds-td-strong">Link reset sandi Trust Mark dari email "Access Denied"</td><td class="ds-body-sm">Link melompat lewat google.com / sendgrid.net yang diblok proxy</td><td class="ds-body-sm">Buka di Chrome biasa sampai mendarat di domain bpjs, salin URL, tempel di profil proxy</td></tr>
                                         <tr><td class="ds-td-strong">Panggilan BPJS baru selalu gagal, yang lama normal</td><td class="ds-body-sm">Kode baru memakai <span class="ds-code">Http::</span> langsung</td><td class="ds-body-sm">Ganti ke <span class="ds-code">BpjsHttp::mulai()</span></td></tr>
                                     </tbody>
                                 </table>
@@ -672,7 +735,7 @@ systemctl reload squid</pre>
 
                     {{-- ====== REFERENSI ====== --}}
                     <section x-show="section === 'referensi'" x-cloak>
-                        <div class="ds-eyebrow mb-3">17 — Referensi</div>
+                        <div class="ds-eyebrow mb-3">18 — Referensi</div>
                         <h1 class="ds-display-md mb-4">Dokumen &amp; Sumber</h1>
                         <div class="ds-card-outline mb-6" style="padding:0; overflow:hidden">
                             <div class="overflow-x-auto">

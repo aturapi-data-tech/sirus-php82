@@ -58,7 +58,7 @@ acl terautentikasi proxy_auth REQUIRED
 # Lapis 2: tujuan yang boleh — hanya BPJS + penunjuk IP untuk uji
 acl bpjs dstdomain .bpjs-kesehatan.go.id
 acl ipecho dstdomain api.ipify.org
-acl port_aman port 443 80
+acl port_aman port 443 80 8888   # 8888 = portal Trust Mark dvlp BPJS (browser)
 
 http_access allow terautentikasi bpjs port_aman
 http_access allow terautentikasi ipecho port_aman
@@ -99,7 +99,26 @@ php artisan bpjs:cek-proxy                                                 # har
 Tambah `acl rs src IP_RS/32` dan sisipkan `rs` ke dua baris `http_access allow`, lalu `systemctl reload squid`.
 Dev di luar RS akan ditolak 403 walau sandi benar. Kalau IP RS berubah: ubah satu baris + reload; aplikasi tidak disentuh.
 
-## 5. Jejak keputusan
+## 5. Membuka portal dvlp BPJS (Trust Mark) dari browser
+
+Portal `https://dvlp.bpjs-kesehatan.go.id:8888/trust-mark/portal.html` juga hanya melayani IP ter-whitelist,
+jadi Chrome biasa (Windows maupun Linux) ditolak. Jalankan Chrome dengan profil terpisah lewat proxy VPS:
+
+```
+:: Windows (shortcut Desktop / Command Prompt)
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --proxy-server="http://38.103.170.232:3128" --user-data-dir="%USERPROFILE%\chrome-bpjs-proxy"
+
+# Linux
+google-chrome --proxy-server="http://38.103.170.232:3128" --user-data-dir="$HOME/chrome-bpjs-proxy"
+```
+
+- Login proxy: user `sirus` + sandi Squid. Cek `api.ipify.org` = 38.103.170.232, `google.com` = Access Denied (wajar).
+- Chrome biasa tak perlu ditutup — `--user-data-dir` berbeda = jendela/profil tersendiri.
+- `ERR_TUNNEL_CONNECTION_FAILED` → port 8888 belum ada di `acl port_aman`.
+- Link reset sandi Trust Mark lewat google.com/sendgrid.net (diblok ACL) → buka di Chrome biasa sampai
+  mendarat di domain bpjs, salin URL, tempel di profil proxy.
+
+## 6. Jejak keputusan
 
 - Formulir diajukan 09/09/2026 a.n. Nuur Wahid Anshary (pemohon & vendor), IP utama 38.103.170.232,
   tanpa IP backup. Bila kelak ada IP backup, cukup tambah `acl` kedua atau VPS kedua + ubah `.env`.
