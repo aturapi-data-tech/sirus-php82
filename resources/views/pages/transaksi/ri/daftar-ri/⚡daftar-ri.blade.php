@@ -193,8 +193,8 @@ new class extends Component {
                 ->filter(function ($item) {
                     $jsonRaw = OracleLob::read($item->datadaftarri_json ?? null, 'rstxn_rihdrs', 'rihdr_no', $item->rihdr_no, 'datadaftarri_json');
                     $json = json_decode($jsonRaw ?: '{}', true) ?? [];
-                    foreach ($json['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [] as $ld) {
-                        if (($ld['drId'] ?? '') === $this->filterDokter) {
+                    foreach ($json['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [] as $dokterLeveling) {
+                        if (($dokterLeveling['drId'] ?? '') === $this->filterDokter) {
                             return true;
                         }
                     }
@@ -539,13 +539,13 @@ new class extends Component {
                                                 @if (!empty($row->leveling_dokter_list))
                                                     <div class="space-y-0.5">
                                                         <div class="text-xs text-muted-soft">DPJP:</div>
-                                                        @foreach ($row->leveling_dokter_list as $ld)
-                                                            @if (!empty($ld['drName']))
+                                                        @foreach ($row->leveling_dokter_list as $dokterLeveling)
+                                                            @if (!empty($dokterLeveling['drName']))
                                                                 <div class="text-base text-body dark:text-gray-200">
-                                                                    {{ $ld['drName'] }}
-                                                                    @if (!empty($ld['levelDokter']))
+                                                                    {{ $dokterLeveling['drName'] }}
+                                                                    @if (!empty($dokterLeveling['levelDokter']))
                                                                         <span class="text-xs text-muted">
-                                                                            ({{ $ld['levelDokter'] === 'RawatGabung' ? 'Rawat Gabung' : $ld['levelDokter'] }})
+                                                                            ({{ $dokterLeveling['levelDokter'] === 'RawatGabung' ? 'Rawat Gabung' : $dokterLeveling['levelDokter'] }})
                                                                         </span>
                                                                     @endif
                                                                 </div>

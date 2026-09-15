@@ -88,11 +88,11 @@
             <div class="flex gap-2 py-1 border-b border-hairline-soft dark:border-gray-700/60">
                 <span class="w-40 shrink-0 text-muted">DPJP</span>
                 <div class="font-medium text-ink dark:text-gray-100">
-                    @forelse (array_filter($levelingDokterList, fn($ld) => !empty($ld['drName'])) as $ld)
+                    @forelse (array_filter($levelingDokterList, fn($dokterLeveling) => !empty($dokterLeveling['drName'])) as $dokterLeveling)
                         <div>
-                            {{ $ld['drName'] }}
-                            @if (!empty($ld['levelDokter']))
-                                <span class="text-xs font-normal text-muted">({{ $ld['levelDokter'] === 'RawatGabung' ? 'Rawat Gabung' : $ld['levelDokter'] }})</span>
+                            {{ $dokterLeveling['drName'] }}
+                            @if (!empty($dokterLeveling['levelDokter']))
+                                <span class="text-xs font-normal text-muted">({{ $dokterLeveling['levelDokter'] === 'RawatGabung' ? 'Rawat Gabung' : $dokterLeveling['levelDokter'] }})</span>
                             @endif
                         </div>
                     @empty

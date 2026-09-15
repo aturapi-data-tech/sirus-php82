@@ -416,13 +416,13 @@ new class extends Component {
                                                 @if (!empty($r->leveling_dokter_list))
                                                     <div class="space-y-0.5">
                                                         <div class="text-xs text-muted-soft">DPJP:</div>
-                                                        @foreach ($r->leveling_dokter_list as $ld)
-                                                            @if (!empty($ld['drName']))
+                                                        @foreach ($r->leveling_dokter_list as $dokterLeveling)
+                                                            @if (!empty($dokterLeveling['drName']))
                                                                 <div class="text-base text-body dark:text-gray-200">
-                                                                    {{ $ld['drName'] }}
-                                                                    @if (!empty($ld['levelDokter']))
+                                                                    {{ $dokterLeveling['drName'] }}
+                                                                    @if (!empty($dokterLeveling['levelDokter']))
                                                                         <span class="text-xs text-muted">
-                                                                            ({{ $ld['levelDokter'] === 'RawatGabung' ? 'Rawat Gabung' : $ld['levelDokter'] }})
+                                                                            ({{ $dokterLeveling['levelDokter'] === 'RawatGabung' ? 'Rawat Gabung' : $dokterLeveling['levelDokter'] }})
                                                                         </span>
                                                                     @endif
                                                                 </div>

@@ -11,8 +11,8 @@
     @if (!empty($p['leveling_dokter_list']))
         <div class="mt-0.5">
             <span class="text-xs text-muted-soft">DPJP:</span>
-            @foreach ($p['leveling_dokter_list'] as $ld)
-                <div class="text-sm text-body dark:text-gray-200">{{ $ld['drName'] }}@if (!empty($ld['levelDokter'])) <span class="text-xs text-muted">({{ $ld['levelDokter'] === 'RawatGabung' ? 'Rawat Gabung' : $ld['levelDokter'] }})</span>@endif</div>
+            @foreach ($p['leveling_dokter_list'] as $dokterLeveling)
+                <div class="text-sm text-body dark:text-gray-200">{{ $dokterLeveling['drName'] }}@if (!empty($dokterLeveling['levelDokter'])) <span class="text-xs text-muted">({{ $dokterLeveling['levelDokter'] === 'RawatGabung' ? 'Rawat Gabung' : $dokterLeveling['levelDokter'] }})</span>@endif</div>
             @endforeach
         </div>
     @endif

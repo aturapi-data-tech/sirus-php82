@@ -868,9 +868,9 @@ new class extends Component {
                             @endif
                             @if (!empty($dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter']))
                                 <div class="mt-1 text-xs text-muted dark:text-gray-400">Tim Dokter:</div>
-                                @foreach ($dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] as $ld)
-                                    <div class="text-xs text-body dark:text-gray-300">{{ $ld['drDesc'] ?? '-' }}
-                                        <span class="text-muted-soft">({{ $ld['levelingDesc'] ?? '-' }})</span>
+                                @foreach ($dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] as $dokterLeveling)
+                                    <div class="text-xs text-body dark:text-gray-300">{{ $dokterLeveling['drDesc'] ?? '-' }}
+                                        <span class="text-muted-soft">({{ $dokterLeveling['levelingDesc'] ?? '-' }})</span>
                                     </div>
                                 @endforeach
                             @else

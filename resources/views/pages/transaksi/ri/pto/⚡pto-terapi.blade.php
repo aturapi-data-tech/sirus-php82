@@ -57,11 +57,11 @@ new class extends Component {
 
         // DPJP + level dokter (sama seperti Daftar RI); dr_name = Penerima
         $dpjpList = [];
-        foreach (($data['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? []) as $ld) {
-            if (! empty($ld['drName'])) {
-                $level = $ld['levelDokter'] ?? '';
+        foreach (($data['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? []) as $dokterLeveling) {
+            if (! empty($dokterLeveling['drName'])) {
+                $level = $dokterLeveling['levelDokter'] ?? '';
                 $dpjpList[] = [
-                    'drName' => $ld['drName'],
+                    'drName' => $dokterLeveling['drName'],
                     'level'  => $level === 'RawatGabung' ? 'Rawat Gabung' : $level,
                 ];
             }
@@ -201,10 +201,10 @@ new class extends Component {
                     <div class="space-y-1 min-w-0">
                         @if (! empty($pasien['dpjp_list']))
                             <div class="text-sm text-muted-soft">DPJP:</div>
-                            @foreach ($pasien['dpjp_list'] as $ld)
+                            @foreach ($pasien['dpjp_list'] as $dokterLeveling)
                                 <div class="text-sm text-body dark:text-gray-200 leading-tight">
-                                    {{ $ld['drName'] }}
-                                    @if ($ld['level']) <span class="text-sm text-muted">({{ $ld['level'] }})</span> @endif
+                                    {{ $dokterLeveling['drName'] }}
+                                    @if ($dokterLeveling['level']) <span class="text-sm text-muted">({{ $dokterLeveling['level'] }})</span> @endif
                                 </div>
                             @endforeach
                         @endif

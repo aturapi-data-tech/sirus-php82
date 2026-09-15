@@ -71,11 +71,11 @@
             <td class="{{ $kelasLabel }}">DPJP</td>
             {{-- Leveling Dokter — pola sama dgn kolom DPJP Daftar RI --}}
             <td colspan="3" class="{{ $kelasNilai }}">
-                @forelse (array_filter($dataRawatInap['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [], fn($ld) => !empty($ld['drName'])) as $ld)
+                @forelse (array_filter($dataRawatInap['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [], fn($dokterLeveling) => !empty($dokterLeveling['drName'])) as $dokterLeveling)
                     <div>
-                        {{ $ld['drName'] }}
-                        @if (!empty($ld['levelDokter']))
-                            ({{ $ld['levelDokter'] === 'RawatGabung' ? 'Rawat Gabung' : $ld['levelDokter'] }})
+                        {{ $dokterLeveling['drName'] }}
+                        @if (!empty($dokterLeveling['levelDokter']))
+                            ({{ $dokterLeveling['levelDokter'] === 'RawatGabung' ? 'Rawat Gabung' : $dokterLeveling['levelDokter'] }})
                         @endif
                     </div>
                 @empty

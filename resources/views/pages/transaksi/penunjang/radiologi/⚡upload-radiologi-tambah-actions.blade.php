@@ -278,8 +278,8 @@ new class extends Component {
             return [];
         }
         return collect($data['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [])
-            ->filter(fn($ld) => filled($ld['drName'] ?? null))
-            ->map(fn($ld) => ['drName' => $ld['drName'] ?? '', 'levelDokter' => $ld['levelDokter'] ?? ''])
+            ->filter(fn($dokterLeveling) => filled($dokterLeveling['drName'] ?? null))
+            ->map(fn($dokterLeveling) => ['drName' => $dokterLeveling['drName'] ?? '', 'levelDokter' => $dokterLeveling['levelDokter'] ?? ''])
             ->values()
             ->all();
     }

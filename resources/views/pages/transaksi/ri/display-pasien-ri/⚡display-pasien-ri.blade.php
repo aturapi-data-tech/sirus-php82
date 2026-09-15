@@ -393,12 +393,12 @@ new class extends Component {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach ($levelingDokter as $ld)
-                                        @if (!empty($ld['drName']))
-                                            <tr wire:key="display-ri-ld-{{ $ld['drId'] ?? $loop->index }}">
-                                                <td class="py-0.5 pr-2 font-semibold text-brand">{{ $ld['drName'] }}</td>
+                                    @foreach ($levelingDokter as $dokterLeveling)
+                                        @if (!empty($dokterLeveling['drName']))
+                                            <tr wire:key="display-ri-ld-{{ $dokterLeveling['drId'] ?? $loop->index }}">
+                                                <td class="py-0.5 pr-2 font-semibold text-brand">{{ $dokterLeveling['drName'] }}</td>
                                                 <td class="py-0.5 text-muted">
-                                                    {{ ($ld['levelDokter'] ?? '') === 'RawatGabung' ? 'Rawat Gabung' : ($ld['levelDokter'] ?? '-') }}
+                                                    {{ ($dokterLeveling['levelDokter'] ?? '') === 'RawatGabung' ? 'Rawat Gabung' : ($dokterLeveling['levelDokter'] ?? '-') }}
                                                 </td>
                                             </tr>
                                         @endif
