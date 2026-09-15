@@ -11,7 +11,9 @@
     $ambil = fn($path, $bawaan = '') => data_get($ri, $path, $bawaan);
 
     // — Ringkas ranap
-    $dpjp = (string) $ambil('drDesc');
+    // DPJP = Leveling Dokter, Dokter Penerima = drDesc header RI — pola sama dgn Daftar RI
+    $levelingDokterList = (array) $ambil('pengkajianAwalPasienRawatInap.levelingDokter', []);
+    $dokterPenerima = (string) $ambil('drDesc');
     $caraMasuk = (string) $ambil('entryDesc');
     $ruang = trim((string) $ambil('bangsalDesc') . ((string) $ambil('roomDesc') ? ' / ' . $ambil('roomDesc') : ''));
     $tanggalMasukRanap = (string) $ambil('entryDate');
@@ -83,7 +85,22 @@
     {{-- ═══════ RINGKAS RAWAT INAP ═══════ --}}
     <x-border-form title="Ringkas Rawat Inap" :collapsible="true" :open="true">
         <div class="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-            @foreach ([['DPJP', $dpjp], ['Cara Masuk', $caraMasuk], ['Ruang / Kamar', $ruang], ['Tanggal Masuk', $tanggalMasukRanap], ['Tanggal Keluar', $tanggalKeluarRanap ?: 'Masih dirawat'], ['Lama Rawat', $lamaRawat], ['Penjamin', $klaim], ['No. SEP', $noSep], ['No. Referensi', $noReferensi]] as [$judul, $nilai])
+            <div class="flex gap-2 py-1 border-b border-hairline-soft dark:border-gray-700/60">
+                <span class="w-40 shrink-0 text-muted">DPJP</span>
+                <div class="font-medium text-ink dark:text-gray-100">
+                    @forelse (array_filter($levelingDokterList, fn($ld) => !empty($ld['drName'])) as $ld)
+                        <div>
+                            {{ $ld['drName'] }}
+                            @if (!empty($ld['levelDokter']))
+                                <span class="text-xs font-normal text-muted">({{ $ld['levelDokter'] === 'RawatGabung' ? 'Rawat Gabung' : $ld['levelDokter'] }})</span>
+                            @endif
+                        </div>
+                    @empty
+                        -
+                    @endforelse
+                </div>
+            </div>
+            @foreach ([['Dokter Penerima', $dokterPenerima], ['Cara Masuk', $caraMasuk], ['Ruang / Kamar', $ruang], ['Tanggal Masuk', $tanggalMasukRanap], ['Tanggal Keluar', $tanggalKeluarRanap ?: 'Masih dirawat'], ['Lama Rawat', $lamaRawat], ['Penjamin', $klaim], ['No. SEP', $noSep], ['No. Referensi', $noReferensi]] as [$judul, $nilai])
                 <div class="flex gap-2 py-1 border-b border-hairline-soft dark:border-gray-700/60">
                     <span class="w-40 shrink-0 text-muted">{{ $judul }}</span>
                     <span class="font-medium text-ink dark:text-gray-100">{{ filled($nilai) ? $nilai : '-' }}</span>

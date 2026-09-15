@@ -75,8 +75,24 @@
         <tr>
             <td class="{{ $kelasLabel }}">Ruang / Kamar</td>
             <td class="{{ $kelasNilai }}">{{ trim(($dataRawatInap['bangsalDesc'] ?? '') . (filled($dataRawatInap['roomDesc'] ?? '') ? ' / ' . $dataRawatInap['roomDesc'] : '')) ?: '-' }}</td>
-            <td class="{{ $kelasLabel }}">DPJP</td>
+            <td class="{{ $kelasLabel }}">Dokter Penerima</td>
             <td class="{{ $kelasNilai }}">{{ $nilaiAtauStrip($dataRawatInap['drDesc'] ?? null) }}</td>
+        </tr>
+        <tr>
+            <td class="{{ $kelasLabel }}">DPJP</td>
+            {{-- Leveling Dokter — pola sama dgn kolom DPJP Daftar RI --}}
+            <td colspan="3" class="{{ $kelasNilai }}">
+                @forelse (array_filter($dataRawatInap['pengkajianAwalPasienRawatInap']['levelingDokter'] ?? [], fn($ld) => !empty($ld['drName'])) as $ld)
+                    <div>
+                        {{ $ld['drName'] }}
+                        @if (!empty($ld['levelDokter']))
+                            ({{ $ld['levelDokter'] === 'RawatGabung' ? 'Rawat Gabung' : $ld['levelDokter'] }})
+                        @endif
+                    </div>
+                @empty
+                    -
+                @endforelse
+            </td>
         </tr>
     </table>
 
