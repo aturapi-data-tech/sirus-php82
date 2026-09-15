@@ -56,7 +56,8 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
    "Kartu di tab"). **Banner status WAJIB `<x-modul-dokumen.banner jenis="terkunci|lihat|lanjut" />`**
    (kondisi @if tetap di modul; teks khusus lewat slot). **Badge status & sel TTD WAJIB
    `<x-modul-dokumen.status-entri :final />` & `<x-modul-dokumen.status-ttd :nama="… ?? ''" [:sudah :waktu gaya]/>`**
-   (docs §2a "Tabel daftar"). Komponen khusus modul dokumen lainnya ditaruh di folder
+   (docs §2a "Tabel daftar"). **Tabel layar daftar WAJIB `<x-modul-dokumen.tabel-daftar :kolom="[…]">` +
+   `@empty <x-modul-dokumen.baris-kosong :kolom="N" />`**. Komponen khusus modul dokumen lainnya ditaruh di folder
    `resources/views/components/modul-dokumen/` (nested, `x-modul-dokumen.<nama>`).
 
 9. **Dua layar + nama method baku (BAKU, berlaku SEMUA modul multi-entri)** — `$layar` +

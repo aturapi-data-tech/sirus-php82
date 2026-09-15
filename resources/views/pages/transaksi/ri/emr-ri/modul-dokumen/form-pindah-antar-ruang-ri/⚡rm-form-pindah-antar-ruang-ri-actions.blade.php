@@ -1028,20 +1028,7 @@ new class extends Component {
                     @endif
                     {{-- ══ DAFTAR RIWAYAT PINDAH ══ --}}
                     @unless ($this->diForm())
-                        <x-border-form padding="p-0">
-                        <div class="overflow-x-auto rounded-2xl">
-                            <table class="min-w-full text-sm">
-                                <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
-                                    <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                                        <th class="whitespace-nowrap w-8 px-2 py-3 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800"></th>
-                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Tgl Kirim</th>
-                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Dari → Ke</th>
-                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Pengirim (TTD)</th>
-                                        <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Penerima (TTD)</th>
-                                        <th class="whitespace-nowrap text-center px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Status</th>
-                                        <th class="whitespace-nowrap text-center w-64 px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Aksi</th>
-                                    </tr>
-                                </thead>
+                        <x-modul-dokumen.tabel-daftar :kolom="['', 'Tgl Kirim', 'Dari → Ke', 'Pengirim (TTD)', 'Penerima (TTD)', 'Status' => 'text-center', 'Aksi' => 'text-center w-64']">
                                 @forelse (collect($listPindah)->sortByDesc(fn($entri) => strtotime(strtr($entri['tglPindah'] ?? '', '/', '-')))->values()->all() as $pindah)
                                     @php
                                         $rowLocked = !empty($pindah['petugasPengirim']) && !empty($pindah['petugasPenerima']);
@@ -1138,15 +1125,9 @@ new class extends Component {
                                         </tr>
                                     </tbody>
                                 @empty
-                                    <tbody>
-                                        <tr>
-                                            <td colspan="7" class="px-4 py-8 text-center text-muted-soft">Belum ada data tersimpan</td>
-                                        </tr>
-                                    </tbody>
+                                    <x-modul-dokumen.baris-kosong :kolom="7" />
                                 @endforelse
-                            </table>
-                        </div>
-                        </x-border-form>
+                        </x-modul-dokumen.tabel-daftar>
                     @endunless
                 </div>
             </div>

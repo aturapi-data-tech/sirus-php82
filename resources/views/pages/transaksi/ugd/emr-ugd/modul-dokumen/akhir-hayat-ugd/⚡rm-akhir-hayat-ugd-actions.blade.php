@@ -1535,21 +1535,8 @@ new class extends Component {
 
                 {{-- ═══════════ RIWAYAT ═══════════ --}}
                 @unless ($this->diForm())
-                <x-border-form padding="p-0" align="start" bgcolor="bg-surface-soft">
-                    @php $list = $dataDaftarUGD['pengkajianAkhirHayatUGD'] ?? []; @endphp
-                    <div class="overflow-x-auto rounded-2xl">
-                        <table class="min-w-full text-sm">
-                            <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
-                                <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                                    <th class="whitespace-nowrap w-8 px-2 py-3 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800"></th>
-                                    <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Tanggal</th>
-                                    <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Jenis</th>
-                                    <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Penanda Tangan</th>
-                                    <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Petugas</th>
-                                    <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-center text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Status</th>
-                                    <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-center text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 w-56 bg-surface-card dark:bg-gray-800">Aksi</th>
-                                </tr>
-                            </thead>
+                @php $list = $dataDaftarUGD['pengkajianAkhirHayatUGD'] ?? []; @endphp
+                <x-modul-dokumen.tabel-daftar :kolom="['', 'Tanggal', 'Jenis', 'Penanda Tangan', 'Petugas', 'Status' => 'text-center', 'Aksi' => 'text-center w-56']">
                             @forelse (collect($list)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entri)
                                 @php
                                     $formEntri = $entri['form'] ?? [];
@@ -1626,15 +1613,9 @@ new class extends Component {
                                     </tr>
                                 </tbody>
                             @empty
-                                <tbody>
-                                    <tr>
-                                        <td colspan="7" class="px-4 py-8 text-center text-muted-soft">Belum ada pengkajian akhir hayat.</td>
-                                    </tr>
-                                </tbody>
+                                <x-modul-dokumen.baris-kosong :kolom="7" pesan="Belum ada pengkajian akhir hayat." />
                             @endforelse
-                        </table>
-                    </div>
-                </x-border-form>
+                </x-modul-dokumen.tabel-daftar>
                 @endunless
 
             </div>{{-- /konten --}}

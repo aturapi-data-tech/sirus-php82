@@ -1,17 +1,5 @@
                         {{-- ══ DAFTAR PENGKAJIAN TERSIMPAN (expandable) ══ --}}
-                        <x-border-form padding="p-0">
-                            <div class="overflow-x-auto rounded-2xl">
-                                <table class="min-w-full text-sm">
-                                    <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
-                                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                                            <th class="whitespace-nowrap w-8 px-2 py-3 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800"></th>
-                                            <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Tanggal</th>
-                                            <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Rencana Operasi</th>
-                                            <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">TTD (3 Pihak)</th>
-                                            <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800 text-center">Status</th>
-                                            <th class="whitespace-nowrap px-4 py-3 text-sm font-medium text-muted dark:text-gray-400 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800 text-center w-64">Aksi</th>
-                                            </tr>
-                                        </thead>
+                        <x-modul-dokumen.tabel-daftar :kolom="['', 'Tanggal', 'Rencana Operasi', 'TTD (3 Pihak)', 'Status' => 'text-center', 'Aksi' => 'text-center w-64']">
                                         @forelse (collect($preOpList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
                                             @php
                                                 $isFinal = $this->entryIsFinal($entry);
@@ -200,12 +188,6 @@
                                                 </tr>
                                             </tbody>
                                         @empty
-                                            <tbody>
-                                                <tr>
-                                                    <td colspan="6" class="px-4 py-8 text-center text-muted-soft">Belum ada pengkajian pre operasi tersimpan.</td>
-                                                </tr>
-                                            </tbody>
+                                            <x-modul-dokumen.baris-kosong :kolom="6" pesan="Belum ada pengkajian pre operasi tersimpan." />
                                         @endforelse
-                                    </table>
-                                </div>
-                            </x-border-form>
+                        </x-modul-dokumen.tabel-daftar>

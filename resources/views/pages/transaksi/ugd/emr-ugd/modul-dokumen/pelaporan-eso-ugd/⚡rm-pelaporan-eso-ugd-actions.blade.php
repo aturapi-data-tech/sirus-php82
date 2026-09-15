@@ -1273,20 +1273,7 @@ new class extends Component {
                 {{-- ══════ DAFTAR ENTRI TERSIMPAN ══════ --}}
                 @endif
                 @unless ($this->diForm())
-                <x-border-form padding="p-0">
-                    <div class="overflow-x-auto rounded-2xl">
-                        <table class="ds-table">
-                            <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
-                                <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                                    <th class="whitespace-nowrap ds-c w-8 bg-surface-card dark:bg-gray-800"></th>
-                                    <th class="whitespace-nowrap bg-surface-card dark:bg-gray-800">Tgl. Laporan</th>
-                                    <th class="whitespace-nowrap bg-surface-card dark:bg-gray-800">Manifestasi ESO</th>
-                                    <th class="whitespace-nowrap ds-c w-24 bg-surface-card dark:bg-gray-800">Jml Obat</th>
-                                    <th class="whitespace-nowrap bg-surface-card dark:bg-gray-800">Pelapor</th>
-                                    <th class="whitespace-nowrap ds-c w-24 bg-surface-card dark:bg-gray-800">Status</th>
-                                    <th class="whitespace-nowrap ds-c w-56 bg-surface-card dark:bg-gray-800">Aksi</th>
-                                </tr>
-                            </thead>
+                <x-modul-dokumen.tabel-daftar :kolom="['', 'Tgl. Laporan', 'Manifestasi ESO', 'Jml Obat' => 'w-24', 'Pelapor', 'Status' => 'w-24', 'Aksi' => 'w-56']">
                                 @forelse (collect($dataDaftarUGD['pelaporanEsoUGD'] ?? [])->sortByDesc(fn($entri) => strtotime(strtr((data_get($entri, 'form.tglLaporan') ?: ($entri['created_at'] ?? '')), '/', '-')))->values()->all() as $indexEntri => $entri)
                                     @php
                                         $idEntri = $entri['id'] ?? null;
@@ -1427,9 +1414,7 @@ new class extends Component {
                                         </tr>
                                     </tbody>
                                 @endforelse
-                        </table>
-                    </div>
-                </x-border-form>
+                </x-modul-dokumen.tabel-daftar>
                     {{-- FOOTER LAYAR DAFTAR — Tutup + Isi Formulir Baru, seragam dengan modul lain --}}
                 @endunless
 

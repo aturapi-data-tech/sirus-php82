@@ -24,6 +24,7 @@
  *  13. kartu di tab = komponen x-modul-dokumen.kartu
  *  14. banner status = komponen x-modul-dokumen.banner (tidak ditulis tangan)
  *  15. badge Terkunci/Draft = komponen x-modul-dokumen.status-entri
+ *  16. tabel layar daftar = komponen x-modul-dokumen.tabel-daftar (kecuali Case Manager)
  */
 require __DIR__ . '/../../../vendor/autoload.php';
 $app = require __DIR__ . '/../../../bootstrap/app.php';
@@ -97,7 +98,10 @@ foreach ($berkas as $path) {
 
         // Bentuk tabel daftar (docs §2a "Tabel daftar", BAKU 2026-09-08).
         // Kolom No: hanya <thead> PERTAMA di blok daftar (tabel di baris rincian/formulir boleh bernomor).
-        if (($posUnless = strrpos($sumber, '@unless ($this->diForm())')) !== false
+        // Tabel daftar berkomponen: kolom dibaca dari :kolom (thead pertama di sumber = tabel bersarang baris rincian).
+        if (preg_match('/<x-modul-dokumen\.tabel-daftar[^>]*:kolom="\[(.*?)\]"/s', $sumber, $kolomDaftar)) {
+            if (preg_match("/'No\\.?'/i", $kolomDaftar[1])) $catatan[] = 'tabel daftar masih punya kolom No';
+        } elseif (($posUnless = strrpos($sumber, '@unless ($this->diForm())')) !== false
             && preg_match('/<thead.*?<\/thead>/s', substr($sumber, $posUnless), $theadDaftar)
             && preg_match('/<th[^>]*>\s*No\.?\s*<\/th>/i', $theadDaftar[0]))
             $catatan[] = 'tabel daftar masih punya kolom No';
@@ -112,6 +116,10 @@ foreach ($berkas as $path) {
         // Banner status (terkunci / mode lihat / melanjutkan draft) WAJIB komponen x-modul-dokumen.banner.
         if (preg_match('/<div[^>]*class="[^"]*(text-amber-700 bg-amber-50|text-sky-700 bg-sky-50|bg-brand-lime\/10 border border-brand-lime)/', $sumber))
             $catatan[] = 'banner status ditulis tangan — pakai <x-modul-dokumen.banner jenis="terkunci|lihat|lanjut">';
+
+        // Tabel layar daftar WAJIB komponen x-modul-dokumen.tabel-daftar (kecuali Case Manager: tabel di kartu Form A/B).
+        if (str_contains($sumber, 'this->diForm()') && !str_contains($path, 'case-manager') && !str_contains($sumber, '<x-modul-dokumen.tabel-daftar'))
+            $catatan[] = 'tabel layar daftar tidak memakai <x-modul-dokumen.tabel-daftar>';
 
         // Badge status entri WAJIB komponen x-modul-dokumen.status-entri (Terkunci/Draft ditulis tangan ditolak).
         if (preg_match('/<x-badge[^>]*>\s*Terkunci\s*<\/x-badge>/', $sumber))
@@ -139,7 +147,8 @@ foreach ($berkas as $path) {
                 $posTabel = strpos($isiBlok, '<table');
                 if ($posTabel === false) continue;
                 $sebelumTabel = substr($sumber, 0, $offsetBlok + $posTabel);
-                $kartuTerbuka = substr_count($sebelumTabel, '<x-border-form') - substr_count($sebelumTabel, '</x-border-form>');
+                $kartuTerbuka = substr_count($sebelumTabel, '<x-border-form') - substr_count($sebelumTabel, '</x-border-form>')
+                    + substr_count($sebelumTabel, '<x-modul-dokumen.tabel-daftar') - substr_count($sebelumTabel, '</x-modul-dokumen.tabel-daftar>');
                 if ($kartuTerbuka < 1 && !str_contains(substr($isiBlok, 0, $posTabel), '@include'))
                     $catatan[] = 'tabel layar daftar tidak dibungkus <x-border-form padding="p-0">';
             }

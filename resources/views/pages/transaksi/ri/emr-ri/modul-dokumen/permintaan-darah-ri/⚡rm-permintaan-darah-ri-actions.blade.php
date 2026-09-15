@@ -796,19 +796,7 @@ new class extends Component {
                 @endif
                 @unless ($this->diForm())
                 @php $list = $dataDaftarRi['permintaanDarahRI'] ?? []; @endphp
-                <x-border-form padding="p-0" align="start" bgcolor="bg-surface-soft">
-                    <div class="overflow-x-auto rounded-2xl">
-                        <table class="w-full text-sm">
-                            <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
-                                <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                                    <th class="whitespace-nowrap w-8 px-2 py-2 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800"></th>
-                                    <th class="whitespace-nowrap px-3 py-2 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Tanggal</th>
-                                    <th class="whitespace-nowrap px-3 py-2 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Jenis</th>
-                                    <th class="whitespace-nowrap px-3 py-2 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Status</th>
-                                    <th class="whitespace-nowrap px-3 py-2 border-b border-hairline dark:border-gray-700 bg-surface-card dark:bg-gray-800">Dokter</th>
-                                    <th class="whitespace-nowrap px-3 py-2 text-center border-b border-hairline dark:border-gray-700 w-72 bg-surface-card dark:bg-gray-800">Aksi</th>
-                                </tr>
-                            </thead>
+                <x-modul-dokumen.tabel-daftar :kolom="['', 'Tanggal', 'Jenis', 'Status', 'Dokter', 'Aksi' => 'text-center w-72']">
                                 @forelse ($list as $row)
                                     @php
                                         $rid = $row['id'] ?? '';
@@ -918,9 +906,7 @@ new class extends Component {
                                         </tr>
                                     </tbody>
                                 @endforelse
-                        </table>
-                    </div>
-                </x-border-form>
+                </x-modul-dokumen.tabel-daftar>
                 @endunless
 
             </div>

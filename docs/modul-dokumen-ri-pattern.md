@@ -190,7 +190,25 @@ Surveilans HAIs sempat tanpa badge sama sekali.
 ### Tabel daftar: acuan Edukasi Terintegrasi (BAKU sejak 2026-09-08)
 
 Layar daftar setiap modul multi-entri memakai satu bentuk tabel, acuannya
-`edukasi-terintegrasi-ri`. Disapu ke 63 modul dua layar pada 2026-09-08 (commit 81f60f88,
+`edukasi-terintegrasi-ri`. **Kerangkanya = komponen `<x-modul-dokumen.tabel-daftar>`** (BAKU 2026-09-15,
+62 tabel) — kartu `x-border-form p-0` + tabel `min-w-full text-sm` + thead sticky:
+
+```blade
+@unless ($this->diForm())
+    <x-modul-dokumen.tabel-daftar :kolom="['', 'Tanggal', 'Petugas (TTD)', 'Status' => 'text-center', 'Aksi' => 'text-center w-64']">
+        @forelse ($daftarUrut as $entry)
+            <tbody wire:key="…" x-data="{ open: false }" class="border-b border-hairline dark:border-gray-700">…</tbody>
+        @empty
+            <x-modul-dokumen.baris-kosong :kolom="5" />
+        @endforelse
+    </x-modul-dokumen.tabel-daftar>
+@endunless
+```
+
+`:kolom` = label berurutan; berkunci teks = label ⇒ kelas tambahan (`text-center`, `w-64`); label `''` =
+kolom panah rincian (`w-8 px-2`). Slot `atas` = baris tombol di atas tabel di dalam kartu (Catatan Terapi
+Neonatal). `baris-kosong`: `:kolom` (colspan) + `pesan` (default "Belum ada data tersimpan"). Case Manager
+dikecualikan (tabel di dalam kartu Form A/B). Tabel bersarang di baris rincian tetap ditulis biasa. Disapu ke 63 modul dua layar pada 2026-09-08 (commit 81f60f88,
 eab5fdbe, 8a941775). Kalau membuat modul baru, salin dari sana; jangan bikin varian.
 
 ```

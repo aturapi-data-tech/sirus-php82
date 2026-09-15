@@ -1050,20 +1050,7 @@ new class extends Component {
                     {{-- ── DAFTAR BARIS OBSERVASI TERSIMPAN (expandable) ── --}}
                     @endif
                     @unless ($this->diForm())
-                    <x-border-form padding="p-0">
-                            <div class="overflow-x-auto rounded-2xl">
-                                <table class="min-w-full text-sm">
-                                    <thead class="sticky top-0 z-10 bg-surface-card dark:bg-gray-800">
-                                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                                            <th class="whitespace-nowrap w-8 px-2 py-3 border-b bg-surface-card dark:bg-gray-800"></th>
-                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Lembar Dibuat</th>
-                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Baris</th>
-                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Periode Pemantauan</th>
-                                            <th class="whitespace-nowrap px-4 py-3 border-b bg-surface-card dark:bg-gray-800">Petugas (TTD)</th>
-                                            <th class="whitespace-nowrap px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Status</th>
-                                            <th class="whitespace-nowrap px-4 py-3 text-center border-b bg-surface-card dark:bg-gray-800">Aksi</th>
-                                        </tr>
-                                    </thead>
+                    <x-modul-dokumen.tabel-daftar :kolom="['', 'Lembar Dibuat', 'Baris', 'Periode Pemantauan', 'Petugas (TTD)', 'Status' => 'text-center', 'Aksi' => 'text-center']">
                                     @forelse (collect($entriList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
                                         @php
                                             $isFinal = $this->entryIsFinal($entry);
@@ -1186,20 +1173,9 @@ new class extends Component {
                                             </tr>
                                         </tbody>
                                     @empty
-                                        <tbody>
-                                            <tr>
-                                                <td colspan="7" class="px-6 py-12">
-                                                    <div class="flex flex-col items-center justify-center gap-3">
-                                                        <svg class="w-12 h-12 text-muted-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
-                                                        <p class="text-base font-medium text-muted dark:text-gray-400">Belum ada data tersimpan</p>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        </tbody>
+                                        <x-modul-dokumen.baris-kosong :kolom="7" />
                                     @endforelse
-                                </table>
-                            </div>
-                    </x-border-form>
+                    </x-modul-dokumen.tabel-daftar>
                     @endunless
 
                 </div>
