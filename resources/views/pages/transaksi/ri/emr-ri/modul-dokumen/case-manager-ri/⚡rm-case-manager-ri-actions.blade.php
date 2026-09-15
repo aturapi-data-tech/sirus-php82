@@ -904,32 +904,11 @@ new class extends Component {
     <x-modal name="rm-case-manager-ri-{{ $riHdrNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
             wire:key="{{ $this->renderKey('modal-case-manager-ri', [$riHdrNo ?? 'new']) }}">
-            {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
-            <div class="flex items-center justify-between gap-4 px-6 py-2.5 border-b border-hairline bg-surface-soft dark:border-gray-700 shrink-0">
-                <div class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-brand-green/10 dark:bg-brand-lime/15">
-                    <svg class="w-4 h-4 text-brand-green dark:text-brand-lime" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                </div>
-                <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Case Manager — Manajer Pelayanan Pasien</h2>
-                <p class="flex-1 hidden min-w-0 truncate text-xs text-muted sm:block dark:text-gray-400">Form A &amp; B Manajer Pelayanan Pasien — skrining, rencana pelayanan, dan evaluasinya.</p>
-                <div class="flex items-center gap-2 flex-1 min-w-0">
-                    @if ($mppCountA + $mppCountB > 0)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ $mppCountA + $mppCountB }} tersimpan</x-badge>
-                    @endif
-                    @if ($isFormLocked)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
-                    @endif
-                </div>
-                <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-auto shrink-0 shrink-0">
-                    <span class="sr-only">Close</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd"
-                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clip-rule="evenodd" />
-                    </svg>
-                </x-icon-button>
-            </div>
+            <x-modul-dokumen.header judul="Case Manager — Manajer Pelayanan Pasien"
+                ikon="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                :jumlah="$mppCountA + $mppCountB" :readOnly="$isFormLocked">
+                Form A &amp; B Manajer Pelayanan Pasien — skrining, rencana pelayanan, dan evaluasinya.
+            </x-modul-dokumen.header>
 
             {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
             <div class="px-4 pt-2">

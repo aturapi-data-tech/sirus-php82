@@ -965,37 +965,11 @@ new class extends Component {
     {{-- ══ MODAL ══ --}}
     <x-modal name="rm-akhir-hayat-ugd-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]">
-            {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
-            <div class="flex items-center justify-between gap-4 px-6 py-2.5 border-b border-hairline bg-surface-soft dark:border-gray-700">
-                <div class="flex items-center gap-2.5 flex-1 min-w-0">
-                    <div class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-brand-green/10 dark:bg-brand-lime/15">
-                        <svg class="w-4 h-4 text-brand-green dark:text-brand-lime" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                        </svg>
-                    </div>
-                    <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">
-                        Pengkajian Akhir Hayat
-                        <span class="block text-sm font-normal text-muted dark:text-gray-400">
-                            Asesmen pasien menjelang akhir hayat &amp; keluarganya
-                        </span>
-                    </h2>
-                    <x-deskripsi-ringkas class="hidden sm:flex text-xs">Pengkajian pasien tahap terminal — kondisi medis, gejala, psikososial &amp; spiritual, lalu rencana perawatan.</x-deskripsi-ringkas>
-                    @if ($akhirHayatCount > 0)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ $akhirHayatCount }} tersimpan</x-badge>
-                    @endif
-                    @if ($isFormLocked)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
-                    @endif
-                </div>
-                <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-auto shrink-0 shrink-0">
-                    <span class="sr-only">Close</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd"
-                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clip-rule="evenodd" />
-                    </svg>
-                </x-icon-button>
-            </div>
+            <x-modul-dokumen.header judul="Pengkajian Akhir Hayat"
+                ikon="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                :jumlah="$akhirHayatCount" :readOnly="$isFormLocked">
+                Pengkajian pasien tahap terminal — kondisi medis, gejala, psikososial &amp; spiritual, lalu rencana perawatan.
+            </x-modul-dokumen.header>
 
             {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
             <div class="px-4 pt-2">

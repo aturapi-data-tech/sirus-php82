@@ -17,7 +17,7 @@
  *   8. bentuk tabel daftar = Edukasi Terintegrasi (docs §2a "Tabel daftar"): tanpa kolom No,
  *      ada panah rincian, Lihat = <x-lihat-button>, Cetak = <x-cetak-button>, hapus = <x-hapus-button>, label "Lanjutkan Pengisian" utuh,
  *      keterangan footer "Setiap entri berdiri sendiri" di layar daftar
- *   9. header modal punya ikon (kotak w-7 h-7 rounded-lg sebelum judul)
+ *   9. header modal = komponen x-modul-dokumen.header & punya ikon (kotak w-7 h-7 rounded-lg sebelum judul)
  *  10. tabel layar daftar di dalam kartu <x-border-form padding="p-0"> (bukan tabel polos selebar modal)
  */
 require __DIR__ . '/../../../vendor/autoload.php';
@@ -100,6 +100,11 @@ foreach ($berkas as $path) {
             $catatan[] = 'Lihat di tabel daftar masih tombol berteks (harus <x-lihat-button>)';
         if (preg_match('/<x-(outline|danger|icon)-button[^>]*wire:click(\.prevent)?="(hapus|remove|delete)/', substr($sumber, (int) strrpos($sumber, '@unless ($this->diForm())'))))
             $catatan[] = 'hapus di tabel daftar masih tombol manual (harus <x-hapus-button>)';
+
+        // Header modal WAJIB komponen x-modul-dokumen.header (ikon · judul · deskripsi · badge · tutup),
+        // bukan markup tulis-tangan — sejak 2026-09-15 (71 modal dikonversi).
+        if (!str_contains($sumber, '<x-modul-dokumen.header'))
+            $catatan[] = 'header modal tidak memakai <x-modul-dokumen.header>';
 
         // Header modal WAJIB ikon (kotak w-7 h-7 rounded-lg) sebelum judul — docs §2a "Penamaan".
         $posTutup = strpos($daftar, 'wire:click="closeModal"');

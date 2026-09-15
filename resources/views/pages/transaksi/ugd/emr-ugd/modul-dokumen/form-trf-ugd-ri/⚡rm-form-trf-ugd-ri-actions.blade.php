@@ -737,24 +737,10 @@ new class extends Component {
     <x-modal name="rm-form-trf-ugd-ri-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal-trf-ugd-ri', [$rjNo ?? 'new']) }}">
 
-            {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
-            <div class="flex items-center justify-between gap-4 px-6 py-2.5 border-b border-hairline bg-surface-soft dark:border-gray-700">
-                <div class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-brand-green/10 dark:bg-brand-lime/15">
-                    <svg class="w-4 h-4 text-brand-green dark:text-brand-lime" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                    </svg>
-                </div>
-                <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Formulir Transfer UGD &rarr; Rawat Inap</h2>
-                <x-deskripsi-ringkas class="hidden sm:flex text-xs">Serah terima pasien dari Unit Gawat Darurat ke ruang Rawat Inap — kondisi, terapi, dan alat terpasang.</x-deskripsi-ringkas>
-                <x-icon-button class="ml-auto shrink-0" color="gray" type="button" wire:click="closeModal">
-                    <span class="sr-only">Close</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd"
-                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clip-rule="evenodd" />
-                    </svg>
-                </x-icon-button>
-            </div>
+            <x-modul-dokumen.header judul="Formulir Transfer UGD → Rawat Inap"
+                ikon="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4">
+                Serah terima pasien dari Unit Gawat Darurat ke ruang Rawat Inap — kondisi, terapi, dan alat terpasang.
+            </x-modul-dokumen.header>
 
             {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
             <div class="px-4 pt-2">

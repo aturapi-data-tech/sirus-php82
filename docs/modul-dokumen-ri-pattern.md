@@ -62,8 +62,27 @@ salah satunya diam-diam.
 [footer]                                                        ← DI LUAR area isi
 ```
 
-- X = **anak terakhir baris flex judul**, `class="ml-auto shrink-0"`. Jangan dibuat
-  mengambang (`absolute`), jangan diberi baris sendiri, jangan ditaruh di dalam kelompok judul.
+- **Header = komponen `<x-modul-dokumen.header>`** (BAKU 2026-09-15, 71 modal) — jangan tulis
+  markup header sendiri:
+
+  ```blade
+  <x-modul-dokumen.header judul="Formulir Penjaminan & Orientasi Kamar"
+      ikon="M9 12l2 2 4-4m5.618-4.016A11.955…"
+      jalur="UGD" :jumlah="$penjaminanCount" :readOnly="$isFormLocked">
+      Pernyataan penjaminan pembiayaan sekaligus orientasi ruang rawat kepada pasien/keluarga.
+      <x-slot:badge>
+          @if ($editingKey)<x-badge class="shrink-0 whitespace-nowrap" variant="warning">Mode: Edit</x-badge>@endif
+      </x-slot:badge>
+  </x-modul-dokumen.header>
+  ```
+
+  Prop: `judul` (karakter asli, bukan entity), `ikon` (atribut `d` path heroicons 24×24), `jalur`
+  `RJ|UGD|RI` (badge brand), `jumlah` (badge "N tersimpan" bila > 0 — ekspresi dievaluasi LANGSUNG,
+  beri `?? []` bila datanya bisa belum ada), `readOnly`, `tutup` (default `closeModal`). Slot bawaan =
+  deskripsi (> 90 karakter otomatis diringkas + "Selengkapnya"); slot `badge` = badge khusus modul.
+- Komponen khusus modul dokumen dikumpulkan di **`resources/views/components/modul-dokumen/`**
+  (dipanggil `x-modul-dokumen.<nama>`) — bagian berulang berikutnya (footer, tabel daftar, …) masuk sini.
+- X = **anak terakhir baris flex judul**, `class="ml-auto shrink-0"` (sudah diurus komponen header).
 - footer = **saudara** area isi yang ber-`flex-1`, ditambah `sticky bottom-0`: menempel di
   dasar saat isi pendek, tetap terlihat saat isi panjang.
 - tombol: layar daftar `[Tutup] [Isi Formulir Baru]`, layar formulir

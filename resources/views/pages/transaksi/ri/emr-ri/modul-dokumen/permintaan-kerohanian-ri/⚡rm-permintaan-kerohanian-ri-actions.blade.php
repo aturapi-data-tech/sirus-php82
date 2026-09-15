@@ -670,54 +670,11 @@ new class extends Component {
     <x-modal name="rm-permintaan-kerohanian-ri-{{ $riHdrNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]"
             wire:key="{{ $this->renderKey('modal-permintaan-kerohanian-ri', [$riHdrNo ?? 'new']) }}">
-            {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
-            <div class="relative px-6 py-2.5 border-b border-hairline dark:border-gray-700">
-                <div class="absolute inset-0 opacity-[0.06] dark:opacity-[0.10]"
-                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 14px 14px;">
-                </div>
-
-                <div class="relative flex items-center gap-3 min-w-0">
-                    <div class="flex items-center flex-1 gap-3 min-w-0">
-                        <div class="flex items-center gap-2.5 min-w-0">
-                            <div class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-emerald-500/10">
-                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                </svg>
-                            </div>
-
-                            <div class="flex items-baseline gap-2 min-w-0">
-                                <h2 class="truncate shrink-0 font-semibold text-sm text-ink dark:text-gray-100">
-                                    Permintaan Pelayanan Kerohaniawan
-                                </h2>
-                                <x-deskripsi-ringkas class="text-xs">Formulir diisi & dijelaskan kepada pasien/keluarga — tampilan dapat diputar ke arah
-                                    pasien</x-deskripsi-ringkas>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-1.5 ml-auto shrink-0">
-                            <x-badge class="shrink-0 whitespace-nowrap" variant="brand">Rawat Inap</x-badge>
-                            @if (count($permintaanList) > 0)
-                                <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ count($permintaanList) }} tersimpan</x-badge>
-                            @endif
-                            @if ($isFormLocked)
-                                <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
-                            @endif
-                        </div>
-                    </div>
-
-                <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-auto shrink-0 shrink-0">
-                    <span class="sr-only">Close</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20"
-                    fill="currentColor">
-                    <path fill-rule="evenodd"
-                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clip-rule="evenodd" />
-                    </svg>
-                </x-icon-button>
-                </div>
-            </div>
+            <x-modul-dokumen.header judul="Permintaan Pelayanan Kerohaniawan"
+                ikon="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                jalur="RI" :jumlah="count($permintaanList)" :readOnly="$isFormLocked">
+                Formulir diisi & dijelaskan kepada pasien/keluarga — tampilan dapat diputar ke arah pasien
+            </x-modul-dokumen.header>
 
             {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
             <div class="px-4 pt-2">

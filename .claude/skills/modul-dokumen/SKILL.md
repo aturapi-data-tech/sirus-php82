@@ -45,6 +45,10 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
    Nama tombol kalimat utuh ("Lanjutkan Pengisian", "Isi Formulir Baru"), judul tanpa
    singkatan, deskripsi > 90 karakter pakai `<x-deskripsi-ringkas>`. Rincian + tabel
    jebakan: `docs/modul-dokumen-ri-pattern.md §2a`.
+   **Header modal WAJIB `<x-modul-dokumen.header judul ikon jalur :jumlah :readOnly>deskripsi</…>`**
+   (slot `badge` untuk badge khusus) — BAKU 2026-09-15, 71 modal; `:jumlah` dievaluasi langsung, jadi
+   ekspresi yang bisa null wajib `?? []`. Komponen khusus modul dokumen lainnya ditaruh di folder
+   `resources/views/components/modul-dokumen/` (nested, `x-modul-dokumen.<nama>`).
 
 9. **Dua layar + nama method baku (BAKU, berlaku SEMUA modul multi-entri)** — `$layar` +
    `diForm()`; `reset*()` ikut menyetel `$layar = 'daftar'` sehingga setiap jalur (simpan

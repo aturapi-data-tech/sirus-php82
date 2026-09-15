@@ -720,33 +720,11 @@ new class extends Component {
     {{-- MODAL FORM --}}
     <x-modal name="rm-form-penjaminan-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal-form-penjaminan', [$rjNo ?? 'new']) }}">
-            {{-- JUDUL + TOMBOL TUTUP SEBARIS — judul di kiri, X di kanan, paling atas modal --}}
-            <div class="flex items-center justify-between gap-4 px-6 py-2.5 border-b border-hairline bg-surface-soft dark:border-gray-700">
-                <div class="flex items-center gap-2.5 flex-1 min-w-0">
-                    <div class="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-brand-green/10 dark:bg-brand-lime/15">
-                        <svg class="w-4 h-4 text-brand-green dark:text-brand-lime" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                        </svg>
-                    </div>
-                    <h2 class="text-sm truncate shrink-0 font-semibold text-ink dark:text-gray-100">Formulir Penjaminan &amp; Orientasi Kamar</h2>
-                    <p class="flex-1 hidden min-w-0 truncate text-xs text-muted sm:block dark:text-gray-400">Pernyataan penjaminan pembiayaan sekaligus orientasi ruang rawat kepada pasien/keluarga.</p>
-                    <x-badge class="shrink-0 whitespace-nowrap" variant="danger">UGD</x-badge>
-                    @if ($penjaminanCount > 0)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="info">{{ $penjaminanCount }} tersimpan</x-badge>
-                    @endif
-                    @if ($isFormLocked)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="danger">Read Only</x-badge>
-                    @endif
-                </div>
-                <x-icon-button color="gray" type="button" wire:click="closeModal" class="ml-auto shrink-0 shrink-0">
-                    <span class="sr-only">Close</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd"
-                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clip-rule="evenodd" />
-                    </svg>
-                </x-icon-button>
-            </div>
+            <x-modul-dokumen.header judul="Formulir Penjaminan & Orientasi Kamar"
+                ikon="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                jalur="UGD" :jumlah="$penjaminanCount" :readOnly="$isFormLocked">
+                Pernyataan penjaminan pembiayaan sekaligus orientasi ruang rawat kepada pasien/keluarga.
+            </x-modul-dokumen.header>
 
             {{-- DISPLAY PASIEN — paling atas, mengikuti pola EMR --}}
             <div class="px-4 pt-2">
