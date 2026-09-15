@@ -4,18 +4,15 @@
 use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
-use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
-use Barryvdh\DomPDF\Facade\Pdf;
-use App\Support\TtdUser;
 use App\Support\Options\PengkajianAwalRiOptions;
 
 new class extends Component {
-    use EmrRITrait, EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
+    use EmrRITrait, EmrUGDTrait, WithRenderVersioningTrait, WithValidationToastTrait;
 
     public bool $isFormLocked = false;
     public bool $isReadOnlyByRole = false; // true jika user bukan Perawat/Admin — dokter boleh lihat tapi tidak edit/simpan
@@ -283,44 +280,6 @@ new class extends Component {
         $this->save();
     }
 
-    /** Cetak Pengkajian Awal Keperawatan RI (RM-03.11) — hanya membaca data, tidak menyimpan. */
-    public function cetak()
-    {
-        $pengkajian = $this->dataDaftarRi['pengkajianAwalPasienRawatInap'] ?? null;
-        if (empty($pengkajian) || empty($this->dataDaftarRi['regNo'])) {
-            $this->dispatch('toast', type: 'error', message: 'Data Pengkajian Awal belum tersedia.');
-            return;
-        }
-
-        try {
-            $identitasRs = DB::table('rsmst_identitases')->select('int_name', 'int_phone1', 'int_phone2', 'int_fax', 'int_address', 'int_city')->first();
-            $pasien = $this->findDataMasterPasien($this->dataDaftarRi['regNo'])['pasien'] ?? [];
-
-            if (!empty($pasien['tglLahir'])) {
-                try {
-                    $pasien['thn'] = Carbon::createFromFormat('d/m/Y', $pasien['tglLahir'])->diff(Carbon::now(config('app.timezone')))->format('%y Thn, %m Bln %d Hr');
-                } catch (\Throwable) {
-                    $pasien['thn'] = '-';
-                }
-            }
-
-            $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarRi,
-                'pengkajian' => $pengkajian,
-                'identitasRs' => $identitasRs,
-                'ttdPath' => TtdUser::pathBerkasDariKode(data_get($pengkajian, 'bagian5CatatanDanTandaTangan.petugasPengkajiCode')),
-                'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
-            ]);
-
-            set_time_limit(300);
-            $pdf = Pdf::loadView('pages.components.rekam-medis.ri.pengkajian-awal-ri.cetak-pengkajian-awal-ri-print', ['data' => $data])->setPaper('A4');
-
-            return response()->streamDownload(fn() => print $pdf->output(), 'pengkajian-awal-keperawatan-ri-' . ($pasien['regNo'] ?? $this->riHdrNo) . '.pdf');
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal cetak: ' . $e->getMessage());
-        }
-    }
-
     #[On('lov.selected.leveling-dokter-ri')]
     public function onDokterSelected(string $target, array $payload): void
     {
@@ -438,13 +397,6 @@ new class extends Component {
         openedAt = Date.now();
         $dispatch('section-clean', { tab: tab });
     });" x-on:input="markDirty()" x-on:change="markDirty()">
-
-    {{-- ── Cetak (RM-03.11) ── --}}
-    @if ($riHdrNo)
-        <div class="flex justify-end">
-            <x-cetak-button wire:click="cetak" label="Cetak Pengkajian Awal" />
-        </div>
-    @endif
 
     {{-- ── Read-only banner ── --}}
     @if ($isFormLocked)

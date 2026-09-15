@@ -13,9 +13,7 @@ use Livewire\Attributes\On;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Support\Terminologi\AlergiSnomed;
 use App\Support\RekonsiliasiObat;
-use App\Support\TtdUser;
 use App\Support\Options\PengkajianDokterRiOptions;
-use Barryvdh\DomPDF\Facade\Pdf;
 
 new class extends Component {
     use EmrRITrait, EmrUGDTrait, RekonsiliasiObatRITrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -379,44 +377,6 @@ new class extends Component {
         $this->store();
     }
 
-    /** Cetak Pengkajian Medis (Dokter) RI (RM-03.12) — hanya membaca data, tidak menyimpan. */
-    public function cetak()
-    {
-        $pengkajian = $this->dataDaftarRi['pengkajianDokter'] ?? null;
-        if (empty($pengkajian) || empty($this->dataDaftarRi['regNo'])) {
-            $this->dispatch('toast', type: 'error', message: 'Data Pengkajian Dokter belum tersedia.');
-            return;
-        }
-
-        try {
-            $identitasRs = DB::table('rsmst_identitases')->select('int_name', 'int_phone1', 'int_phone2', 'int_fax', 'int_address', 'int_city')->first();
-            $pasien = $this->findDataMasterPasien($this->dataDaftarRi['regNo'])['pasien'] ?? [];
-
-            if (!empty($pasien['tglLahir'])) {
-                try {
-                    $pasien['thn'] = Carbon::createFromFormat('d/m/Y', $pasien['tglLahir'])->diff(Carbon::now(config('app.timezone')))->format('%y Thn, %m Bln %d Hr');
-                } catch (\Throwable) {
-                    $pasien['thn'] = '-';
-                }
-            }
-
-            $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarRi,
-                'pengkajian' => $pengkajian,
-                'identitasRs' => $identitasRs,
-                'ttdPath' => TtdUser::pathBerkasDariKode(data_get($pengkajian, 'tandaTanganDokter.dokterPengkajiCode')),
-                'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
-            ]);
-
-            set_time_limit(300);
-            $pdf = Pdf::loadView('pages.components.rekam-medis.ri.pengkajian-dokter-ri.cetak-pengkajian-dokter-ri-print', ['data' => $data])->setPaper('A4');
-
-            return response()->streamDownload(fn() => print $pdf->output(), 'pengkajian-medis-ri-' . ($pasien['regNo'] ?? $this->riHdrNo) . '.pdf');
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal cetak: ' . $e->getMessage());
-        }
-    }
-
     public function addRekonsiliasiObat(): void
     {
         // validate() didahulukan supaya field yang kosong tetap ditandai merah
@@ -598,13 +558,6 @@ new class extends Component {
         openedAt = Date.now();
         $dispatch('section-clean', { tab: tab });
     });" x-on:input="markDirty()" x-on:change="markDirty()">
-
-    {{-- ── Cetak (RM-03.12) ── --}}
-    @if ($riHdrNo)
-        <div class="flex justify-end">
-            <x-cetak-button wire:click="cetak" label="Cetak Pengkajian Dokter" />
-        </div>
-    @endif
 
     @if ($isFormLocked)
         <div

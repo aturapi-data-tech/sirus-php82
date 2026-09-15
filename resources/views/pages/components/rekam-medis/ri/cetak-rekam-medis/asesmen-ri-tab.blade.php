@@ -119,10 +119,13 @@
                     </div>
                 @endif
 
-                <p class="pt-2 text-muted">
-                    Pengkaji: <span class="font-medium text-ink dark:text-gray-100">{{ data_get($pengkajianAwal, 'bagian5CatatanDanTandaTangan.petugasPengkaji', '-') }}</span>
-                    &middot; {{ data_get($pengkajianAwal, 'bagian5CatatanDanTandaTangan.jamPengkaji', '-') }}
-                </p>
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-2">
+                    <p class="text-muted">
+                        Pengkaji: <span class="font-medium text-ink dark:text-gray-100">{{ data_get($pengkajianAwal, 'bagian5CatatanDanTandaTangan.petugasPengkaji', '-') }}</span>
+                        &middot; {{ data_get($pengkajianAwal, 'bagian5CatatanDanTandaTangan.jamPengkaji', '-') }}
+                    </p>
+                    <x-cetak-button wire:click="cetakPengkajianAwal" label="Cetak Pengkajian Awal" />
+                </div>
             </div>
         @endif
     </x-border-form>
@@ -198,10 +201,13 @@
                     @endif
                 </div>
 
-                <p class="pt-2 text-muted">
-                    Dokter Pengkaji: <span class="font-medium text-ink dark:text-gray-100">{{ data_get($pengkajianDokter, 'tandaTanganDokter.dokterPengkaji', '-') }}</span>
-                    &middot; {{ data_get($pengkajianDokter, 'tandaTanganDokter.jamDokterPengkaji', '-') }}
-                </p>
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-2">
+                    <p class="text-muted">
+                        Dokter Pengkaji: <span class="font-medium text-ink dark:text-gray-100">{{ data_get($pengkajianDokter, 'tandaTanganDokter.dokterPengkaji', '-') }}</span>
+                        &middot; {{ data_get($pengkajianDokter, 'tandaTanganDokter.jamDokterPengkaji', '-') }}
+                    </p>
+                    <x-cetak-button wire:click="cetakPengkajianDokter" label="Cetak Pengkajian Dokter" />
+                </div>
             </div>
         @endif
     </x-border-form>

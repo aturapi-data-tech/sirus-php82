@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Support\Options\NyeriOptions;
+use App\Support\TtdUser;
 
 new class extends Component {
     use EmrRITrait, MasterPasienTrait;
@@ -163,6 +164,60 @@ new class extends Component {
             'dataFormB' => $formB,
         ])->output();
         return response()->streamDownload(fn() => print $pdf, 'form-b-' . $id . '.pdf');
+    }
+
+    /** Cetak Pengkajian Awal Keperawatan RI (RM-03.11). */
+    public function cetakPengkajianAwal(): mixed
+    {
+        $pengkajian = $this->dataDaftarRi['pengkajianAwalPasienRawatInap'] ?? [];
+        return $this->cetakPengkajian(
+            $pengkajian,
+            data_get($pengkajian, 'bagian5CatatanDanTandaTangan.petugasPengkajiCode'),
+            'pages.components.rekam-medis.ri.pengkajian-awal-ri.cetak-pengkajian-awal-ri-print',
+            'pengkajian-awal-keperawatan-ri-',
+            'Data Pengkajian Awal belum tersedia.',
+        );
+    }
+
+    /** Cetak Pengkajian Medis (Dokter) RI (RM-03.12). */
+    public function cetakPengkajianDokter(): mixed
+    {
+        $pengkajian = $this->dataDaftarRi['pengkajianDokter'] ?? [];
+        return $this->cetakPengkajian(
+            $pengkajian,
+            data_get($pengkajian, 'tandaTanganDokter.dokterPengkajiCode'),
+            'pages.components.rekam-medis.ri.pengkajian-dokter-ri.cetak-pengkajian-dokter-ri-print',
+            'pengkajian-medis-ri-',
+            'Data Pengkajian Dokter belum tersedia.',
+        );
+    }
+
+    /** Rakit $data (pasien + RI + TTD pengkaji) lalu stream PDF pengkajian. */
+    protected function cetakPengkajian(array $pengkajian, ?string $kodePengkaji, string $view, string $awalanBerkas, string $pesanKosong): mixed
+    {
+        if (empty($pengkajian) || empty($this->dataDaftarRi['regNo'])) {
+            $this->dispatch('toast', type: 'error', message: $pesanKosong);
+            return null;
+        }
+
+        try {
+            $pasien = $this->pasienUntukCetak();
+            $data = array_merge($pasien, [
+                'dataRi' => $this->dataDaftarRi,
+                'pengkajian' => $pengkajian,
+                'identitasRs' => DB::table('rsmst_identitases')->select('int_name', 'int_phone1', 'int_phone2', 'int_fax', 'int_address', 'int_city')->first(),
+                'ttdPath' => TtdUser::pathBerkasDariKode($kodePengkaji),
+                'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
+            ]);
+
+            set_time_limit(300);
+            $pdf = Pdf::loadView($view, ['data' => $data])->setPaper('A4');
+
+            return response()->streamDownload(fn() => print $pdf->output(), $awalanBerkas . ($pasien['regNo'] ?? $this->riHdrNo) . '.pdf');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal cetak: ' . $e->getMessage());
+            return null;
+        }
     }
 
     /** Ambil pasien (findDataMasterPasien) + hitung umur — basis $data cetak dokumen. */
