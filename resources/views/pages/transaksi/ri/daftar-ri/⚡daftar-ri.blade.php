@@ -491,15 +491,17 @@ new class extends Component {
                 class="mt-4 flex flex-col flex-1 min-h-0 bg-canvas border border-hairline shadow-sm rounded-2xl dark:border-gray-700 dark:bg-gray-900">
 
                 <div class="flex-1 min-h-0 overflow-x-auto overflow-y-auto rounded-t-2xl">
-                    <table class="min-w-full text-base -mt-3 border-separate border-spacing-y-3">
+                    {{-- table-fixed + lebar kolom di <th>: lebar kolom TIDAK lagi ikut isi baris (dulu diagnosa panjang
+                         melebarkan Status Layanan & memeras Kamar/Dokter sampai nama dokter pecah per kata). --}}
+                    <table class="w-full min-w-[1150px] table-fixed text-base -mt-3 border-separate border-spacing-y-3">
 
                         <thead class="sticky top-0 z-10 [&_th]:bg-surface-card dark:[&_th]:bg-gray-800">
                             <tr
                                 class="text-sm font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                                <th class="px-6 py-3">Pasien</th>
-                                <th class="px-6 py-3">Kamar / Dokter</th>
-                                <th class="px-6 py-3 min-w-[320px]">Status Layanan</th>
-                                <th class="px-6 py-3 text-center">Action</th>
+                                <th class="w-[20%] px-6 py-3">Pasien</th>
+                                <th class="w-[33%] px-6 py-3">Kamar / Dokter</th>
+                                <th class="w-[29%] px-6 py-3">Status Layanan</th>
+                                <th class="w-[240px] px-6 py-3 text-center">Action</th>
                             </tr>
                         </thead>
 
@@ -602,7 +604,7 @@ new class extends Component {
                                     </td>
 
                                     {{-- STATUS LAYANAN --}}
-                                    <td class="px-6 py-6 space-y-2 align-top min-w-[320px]">
+                                    <td class="px-6 py-6 space-y-2 align-top">
                                         <div class="text-sm text-body dark:text-gray-400 space-y-0.5 whitespace-nowrap">
                                             <div>
                                                 <span class="text-muted">Masuk:</span>
@@ -645,13 +647,27 @@ new class extends Component {
                                         </div>
 
                                         @if ($row->diagnosis !== '-')
-                                            <div class="text-xs text-muted dark:text-gray-400">
-                                                <span class="font-semibold">Diagnosa:</span><br>
-                                                {{ $row->diagnosis }}
-                                                @if ($row->diagnosis_free_text !== '-')
-                                                    / {{ $row->diagnosis_free_text }}
-                                                @endif
-                                            </div>
+                                            @php
+                                                $teksDiagnosa = $row->diagnosis . ($row->diagnosis_free_text !== '-' ? ' / ' . $row->diagnosis_free_text : '');
+                                            @endphp
+                                            {{-- Diagnosa panjang: 2 baris + Selengkapnya. Pakai <details> bawaan HTML, BUKAN
+                                                 toggle Alpine per baris — island x-data di list yang di-morph Livewire bisa
+                                                 lepas scope & bikin hang (kasus Pelayanan RJ 2026-08-11). --}}
+                                            @if (mb_strlen($teksDiagnosa) > 110)
+                                                <details class="text-xs group text-muted dark:text-gray-400">
+                                                    <summary class="list-none cursor-pointer [&::-webkit-details-marker]:hidden">
+                                                        <span class="font-semibold">Diagnosa:</span>
+                                                        <span class="block break-words line-clamp-2 group-open:line-clamp-none">{{ $teksDiagnosa }}</span>
+                                                        <span class="font-medium text-brand-green dark:text-brand-lime hover:underline group-open:hidden">Selengkapnya</span>
+                                                        <span class="hidden font-medium text-brand-green dark:text-brand-lime hover:underline group-open:inline">Ringkas</span>
+                                                    </summary>
+                                                </details>
+                                            @else
+                                                <div class="text-xs break-words text-muted dark:text-gray-400">
+                                                    <span class="font-semibold">Diagnosa:</span><br>
+                                                    {{ $teksDiagnosa }}
+                                                </div>
+                                            @endif
                                         @endif
 
                                         {{-- Validasi JSON — sementara di-comment, kalau perlu debug bisa di-uncomment
