@@ -861,21 +861,24 @@ new class extends Component {
                                 {{ $dataPasien['pasien']['identitas']['alamat'] ?? '-' }}</div>
                         </div>
                         <div class="text-sm">
-                            @if (!empty($dataDaftarRi['drDesc']))
-                                <div class="text-xs text-muted dark:text-gray-400">DPJP Utama</div>
-                                <div class="font-semibold text-ink dark:text-gray-200">
-                                    {{ $dataDaftarRi['drDesc'] }}</div>
-                            @endif
+                            {{-- DPJP = Leveling Dokter (drName + levelDokter), Penerima = drDesc — pola kolom DPJP Daftar RI --}}
                             @if (!empty($dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter']))
-                                <div class="mt-1 text-xs text-muted dark:text-gray-400">Tim Dokter:</div>
+                                <div class="text-xs text-muted dark:text-gray-400">DPJP:</div>
                                 @foreach ($dataDaftarRi['pengkajianAwalPasienRawatInap']['levelingDokter'] as $dokterLeveling)
-                                    <div class="text-xs text-body dark:text-gray-300">{{ $dokterLeveling['drDesc'] ?? '-' }}
-                                        <span class="text-muted-soft">({{ $dokterLeveling['levelingDesc'] ?? '-' }})</span>
-                                    </div>
+                                    @if (!empty($dokterLeveling['drName']))
+                                        <div class="font-semibold text-ink dark:text-gray-200">
+                                            {{ $dokterLeveling['drName'] }}
+                                            @if (!empty($dokterLeveling['levelDokter']))
+                                                <span class="text-xs font-normal text-muted-soft">({{ $dokterLeveling['levelDokter'] === 'RawatGabung' ? 'Rawat Gabung' : $dokterLeveling['levelDokter'] }})</span>
+                                            @endif
+                                        </div>
+                                    @endif
                                 @endforeach
                             @else
-                                <div class="text-xs text-muted-soft mt-1">—</div>
+                                <div class="text-xs text-muted dark:text-gray-400">DPJP:</div>
+                                <div class="text-xs text-muted-soft">—</div>
                             @endif
+                            <div class="mt-1 text-xs italic text-muted dark:text-gray-400">Penerima: {{ $dataDaftarRi['drDesc'] ?? '-' }}</div>
                         </div>
                         <div class="px-2 text-sm text-ink dark:text-gray-100">
                             <p class="text-right text-muted dark:text-gray-400">
