@@ -667,7 +667,7 @@ new class extends Component {
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-penundaan-pelayanan-ugd-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]"
+        <div class="flex flex-col min-h-full"
             wire:key="{{ $this->renderKey('modal-penundaan-pelayanan-ugd', [$rjNo ?? 'new']) }}">
             <x-modul-dokumen.header judul="Pemberitahuan Penundaan / Kelambatan Pelayanan"
                 ikon="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"

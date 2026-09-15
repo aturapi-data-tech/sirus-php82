@@ -84,7 +84,10 @@ salah satunya diam-diam.
   (dipanggil `x-modul-dokumen.<nama>`) — bagian berulang berikutnya (footer, tabel daftar, …) masuk sini.
 - X = **anak terakhir baris flex judul**, `class="ml-auto shrink-0"` (sudah diurus komponen header).
 - footer = **saudara** area isi yang ber-`flex-1`, ditambah `sticky bottom-0`: menempel di
-  dasar saat isi pendek, tetap terlihat saat isi panjang.
+  dasar saat isi pendek, tetap terlihat saat isi panjang. Pembungkus isi = anak langsung `<x-modal>` dengan
+  **`flex flex-col min-h-full`** — BUKAN `min-h-[calc(100vh-8rem)]` (±5rem lebih pendek dari panel
+  `h-[calc(100dvh-3rem)]`, footer jadi melayang dengan ruang kosong di bawahnya; dibenahi 74 modal
+  2026-09-15). Modal payung Modul Dokumen RJ/UGD/RI juga memakai `<x-modul-dokumen.header>`.
 - **Footer modul dua layar = komponen `<x-modul-dokumen.footer>`** (BAKU 2026-09-15, 62 modal):
 
   ```blade

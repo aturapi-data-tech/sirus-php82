@@ -863,7 +863,7 @@ new class extends Component {
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-pasca-anestesi-ugd-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]"
+        <div class="flex flex-col min-h-full"
             wire:key="{{ $this->renderKey('modal-pasca-anestesi-ugd', [$rjNo ?? 'new']) }}">
             <x-modul-dokumen.header judul="Monitoring Pasca Anestesi"
                 ikon="M3 12h4l2 5 4-10 2 5h6"

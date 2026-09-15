@@ -674,7 +674,7 @@ new class extends Component {
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-instruksi-pasca-bedah-ugd-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]"
+        <div class="flex flex-col min-h-full"
             wire:key="{{ $this->renderKey('modal-instruksi-pasca-bedah-ugd', [$rjNo ?? 'new']) }}">
             <x-modul-dokumen.header judul="Instruksi Pasca Bedah"
                 ikon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"

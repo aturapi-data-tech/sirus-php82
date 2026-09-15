@@ -963,7 +963,7 @@ new class extends Component {
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-pengkajian-pre-op-ri-{{ $riHdrNo ?? 'init' }}" size="full" height="full" focusable>
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]"
+        <div class="flex flex-col min-h-full"
             wire:key="{{ $this->renderKey('modal-pengkajian-pre-op-ri', [$riHdrNo ?? 'new']) }}">
             <x-modul-dokumen.header judul="Pengkajian Pre Operasi"
                 ikon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"

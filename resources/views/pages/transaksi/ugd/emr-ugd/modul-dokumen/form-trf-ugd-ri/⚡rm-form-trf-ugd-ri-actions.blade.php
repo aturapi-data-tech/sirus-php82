@@ -735,7 +735,7 @@ new class extends Component {
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-form-trf-ugd-ri-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal-trf-ugd-ri', [$rjNo ?? 'new']) }}">
+        <div class="flex flex-col min-h-full" wire:key="{{ $this->renderKey('modal-trf-ugd-ri', [$rjNo ?? 'new']) }}">
 
             <x-modul-dokumen.header judul="Formulir Transfer UGD → Rawat Inap"
                 ikon="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4">

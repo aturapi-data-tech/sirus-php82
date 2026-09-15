@@ -707,7 +707,7 @@ new class extends Component {
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-surveilans-hap-ri-{{ $riHdrNo }}" size="full" height="full" focusable>
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]"
+        <div class="flex flex-col min-h-full"
             wire:key="{{ $this->renderKey('modal-surveilans-hap-ri', [$riHdrNo ?? 'new', $editingKey ?? 'baru']) }}">
             <x-modul-dokumen.header judul="Surveilans Pneumonia Non-Ventilator (HAP)"
                 ikon="M3 12h4l2 5 4-10 2 5h6"

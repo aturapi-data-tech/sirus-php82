@@ -725,7 +725,7 @@ new class extends Component {
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-surveilans-ilo-ri-{{ $riHdrNo }}" size="full" height="full" focusable>
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]"
+        <div class="flex flex-col min-h-full"
             wire:key="{{ $this->renderKey('modal-surveilans-ilo-ri', [$riHdrNo ?? 'new', $editingKey ?? 'baru']) }}">
             <x-modul-dokumen.header judul="Surveilans Infeksi Luka Operasi (ILO)"
                 ikon="M13 10V3L4 14h7v7l9-11h-7z"

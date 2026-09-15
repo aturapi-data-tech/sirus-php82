@@ -624,7 +624,7 @@ new class extends Component {
     </div>
 
     <x-modal name="rm-laporan-anestesi-ugd-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal-laporan-anestesi-ugd', [$rjNo ?? 'new']) }}">
+        <div class="flex flex-col min-h-full" wire:key="{{ $this->renderKey('modal-laporan-anestesi-ugd', [$rjNo ?? 'new']) }}">
             <x-modul-dokumen.header judul="Laporan Anestesi"
                 ikon="M3 12h4l2 5 4-10 2 5h6">
                 PAB 6 / RM 53 — ahli anestesiologi. Tiap entri = 1 laporan; kunci lewat TTD.

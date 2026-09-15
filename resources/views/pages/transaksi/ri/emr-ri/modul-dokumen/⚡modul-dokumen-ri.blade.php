@@ -87,31 +87,19 @@ new class extends Component {
         {{-- Isi modal hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali
              (anak memuat datanya dari prop), tutup = dihapus tanpa mount ulang. --}}
         @if ($riHdrNo)
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]"
+        <div class="flex flex-col min-h-full"
             wire:key="{{ $this->renderKey('modal-modul-dokumen-ri', [$riHdrNo ?? 'new']) }}">
 
-            {{-- HEADER --}}
-            <div class="px-6 py-5 border-b border-hairline bg-surface-soft dark:border-gray-700">
-                <div class="flex items-start justify-between gap-4">
-                    {{-- Data Pasien RI di header (contek EMR RI) menggantikan judul statis → ruang kerja lebih besar --}}
-                    <div class="flex-1 min-w-0">
-                        <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
-                            wire:key="modul-dokumen-display-pasien-ri-header-{{ $riHdrNo }}" />
-                        @if ($isFormLocked)
-                            <div class="flex flex-wrap gap-2 mt-2">
-                                <x-badge variant="danger">Read Only</x-badge>
-                            </div>
-                        @endif
-                    </div>
-                    <x-icon-button color="gray" type="button" wire:click="closeModal" class="shrink-0">
-                        <span class="sr-only">Close</span>
-                        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
+            <x-modul-dokumen.header judul="Modul Dokumen"
+                ikon="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                jalur="RI" :readOnly="$isFormLocked">
+                Formulir &amp; dokumen bertanda tangan pasien — consent, surat keterangan, laporan, dan pengkajian.
+            </x-modul-dokumen.header>
+
+            {{-- DISPLAY PASIEN — di bawah header, sama dengan modal modul dokumen --}}
+            <div class="px-4 pt-2">
+                <livewire:pages::transaksi.ri.display-pasien-ri.display-pasien-ri :riHdrNo="$riHdrNo"
+                    wire:key="modul-dokumen-display-pasien-ri-header-{{ $riHdrNo }}" />
             </div>
 
             {{-- BODY --}}
@@ -502,7 +490,7 @@ new class extends Component {
 
             {{-- FOOTER --}}
             <div
-                class="sticky bottom-0 z-10 px-6 py-4 bg-surface-soft border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
+                class="sticky bottom-0 z-10 px-6 py-4 border-t bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-end gap-3">
                     <x-secondary-button wire:click="closeModal">Tutup</x-secondary-button>
                 </div>

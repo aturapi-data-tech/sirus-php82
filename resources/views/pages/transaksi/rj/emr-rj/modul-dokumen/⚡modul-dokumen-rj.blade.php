@@ -109,31 +109,18 @@ new class extends Component {
         {{-- Anak hanya di-mount saat ada pasien: tertutup = nol komponen, buka = mount sekali (baca CLOB
              dari prop rjNo di mount masing-masing), tutup = dihapus. Tidak ada event open-rm-* lagi. --}}
         @if ($rjNo)
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal', [$rjNo ?? 'new']) }}">
+        <div class="flex flex-col min-h-full" wire:key="{{ $this->renderKey('modal', [$rjNo ?? 'new']) }}">
 
-            {{-- HEADER --}}
-            <div class="px-6 py-5 border-b border-hairline bg-surface-soft dark:border-gray-700">
-                <div class="flex items-start justify-between gap-4">
-                    {{-- Data Pasien RJ di header (contek EMR RJ / Modul Dokumen UGD-RI) menggantikan judul statis --}}
-                    <div class="flex-1 min-w-0">
-                        <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
-                            wire:key="modul-dokumen-display-pasien-rj-header-{{ $rjNo }}" />
-                        @if ($isFormLocked)
-                            <div class="flex flex-wrap gap-2 mt-2">
-                                <x-badge variant="danger">Read Only</x-badge>
-                            </div>
-                        @endif
-                    </div>
+            <x-modul-dokumen.header judul="Modul Dokumen"
+                ikon="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                jalur="RJ" :readOnly="$isFormLocked">
+                Formulir &amp; dokumen bertanda tangan pasien — consent, surat keterangan, laporan, dan pengkajian.
+            </x-modul-dokumen.header>
 
-                    <x-icon-button color="gray" type="button" wire:click="closeModal" class="shrink-0">
-                        <span class="sr-only">Close</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </x-icon-button>
-                </div>
+            {{-- DISPLAY PASIEN — di bawah header, sama dengan modal modul dokumen --}}
+            <div class="px-4 pt-2">
+                <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="$rjNo"
+                    wire:key="modul-dokumen-display-pasien-rj-header-{{ $rjNo }}" />
             </div>
 
             {{-- BODY --}}
@@ -265,7 +252,7 @@ new class extends Component {
 
             {{-- FOOTER --}}
             <div
-                class="sticky bottom-0 z-10 px-6 py-4 bg-surface-soft border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
+                class="sticky bottom-0 z-10 px-6 py-4 border-t bg-canvas border-hairline dark:bg-gray-900 dark:border-gray-700">
                 <div class="flex justify-end gap-3">
                     <x-secondary-button wire:click="closeModal">
                         Tutup

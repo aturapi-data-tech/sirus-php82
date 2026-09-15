@@ -84,6 +84,9 @@ foreach ($berkas as $path) {
         if (preg_match('/Tersimpan\s*<\/h3>/', $daftar)) $catatan[] = 'layar daftar masih berjudul "… Tersimpan"';
         if (str_contains($daftar, 'Klik baris')) $catatan[] = 'layar daftar masih memuat baris petunjuk "Klik baris …"';
         if (str_contains($daftar, 'max-w-5xl')) $catatan[] = 'isi terkurung max-w-5xl (harus max-w-full)';
+        // Pembungkus isi modal WAJIB min-h-full: min-h-[calc(100vh-8rem)] lebih pendek ±5rem dari panel
+        // (h-[calc(100dvh-3rem)]) → footer sticky melayang, ada ruang kosong di bawahnya (2026-09-15).
+        if (str_contains($sumber, 'min-h-[calc(100vh-8rem)]')) $catatan[] = 'pembungkus modal min-h-[calc(100vh-8rem)] — pakai min-h-full supaya footer menempel di dasar';
 
         // Urutan tabel entri: terbaru di atas, bukan urutan simpan.
         if (str_contains($sumber, 'array_reverse(')) $catatan[] = 'masih array_reverse() — pakai collect()->sortByDesc(strtotime(strtr(…)))';

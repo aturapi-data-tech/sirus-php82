@@ -709,7 +709,7 @@ new class extends Component {
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-pulang-aps-ri-{{ $riHdrNo ?? 'init' }}" size="full" height="full" focusable>
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]"
+        <div class="flex flex-col min-h-full"
             wire:key="{{ $this->renderKey('modal-pulang-aps-ri', [$riHdrNo ?? 'new']) }}">
             <x-modul-dokumen.header judul="Surat Pernyataan Pulang Atas Permintaan Sendiri"
                 ikon="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"

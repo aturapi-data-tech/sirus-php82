@@ -753,7 +753,7 @@ new class extends Component {
     </div>
 
     <x-modal name="rm-surgical-safety-checklist-ri-{{ $riHdrNo ?? 'init' }}" size="full" height="full" focusable>
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal-surgical-safety-checklist-ri', [$riHdrNo ?? 'new']) }}">
+        <div class="flex flex-col min-h-full" wire:key="{{ $this->renderKey('modal-surgical-safety-checklist-ri', [$riHdrNo ?? 'new']) }}">
             <x-modul-dokumen.header judul="Surgical Safety Checklist"
                 ikon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                 jalur="RI" :jumlah="count($surgicalSafetyChecklistList)" :readOnly="$isFormLocked">

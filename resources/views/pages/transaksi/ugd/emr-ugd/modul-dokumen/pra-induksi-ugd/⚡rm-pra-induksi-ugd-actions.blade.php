@@ -814,7 +814,7 @@ new class extends Component {
     </div>
 
     <x-modal name="rm-pra-induksi-ugd-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]" wire:key="{{ $this->renderKey('modal-pra-induksi-ugd', [$rjNo ?? 'new']) }}">
+        <div class="flex flex-col min-h-full" wire:key="{{ $this->renderKey('modal-pra-induksi-ugd', [$rjNo ?? 'new']) }}">
             <x-modul-dokumen.header judul="Asesmen Pra Induksi"
                 ikon="M13 10V3L4 14h7v7l9-11h-7z"
                 jalur="RI" :jumlah="count($praInduksiList)" :readOnly="$isFormLocked">

@@ -605,7 +605,7 @@ new class extends Component {
     </div>
 
     <x-modal name="rm-permintaan-darah-ri-{{ $riHdrNo ?? 'init' }}" size="full" height="full" focusable>
-        <div class="flex flex-col min-h-[calc(100vh-8rem)]"
+        <div class="flex flex-col min-h-full"
             wire:key="{{ $this->renderKey('modal-permintaan-darah-ri', [$riHdrNo ?? 'new']) }}">
 
             <x-modul-dokumen.header judul="Formulir Permintaan Darah"
