@@ -1,4 +1,4 @@
-<x-pdf.layout-kwitansi title="RESEP ITER — Rawat Jalan">
+<x-pdf.layout-kwitansi kode="RM-07.02 · Rev.0" title="RESEP ITER — Rawat Jalan">
 
     {{-- ══════════════════════════════════════
          IDENTITAS PASIEN

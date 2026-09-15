@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/surveilans-plebitis-ri/cetak-surveilans-plebitis-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="SURVEILANS HAIs — IADP & PLEBITIS">
+<x-pdf.layout-a4-with-out-background kode="RM-11.05 · Rev.0" title="SURVEILANS HAIs — IADP & PLEBITIS">
 
     <x-slot name="patientData">
         @php

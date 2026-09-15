@@ -1,7 +1,7 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/akhir-hayat-ri/cetak-akhir-hayat-ri-print.blade.php --}}
 {{-- Pengkajian Akhir Hayat (End of Life) — gabungan formulir KARS + RM.RI.62 --}}
 
-<x-pdf.layout-a4-with-out-background title="PENGKAJIAN AKHIR HAYAT">
+<x-pdf.layout-a4-with-out-background kode="RM-03.10 · Rev.0" title="PENGKAJIAN AKHIR HAYAT">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

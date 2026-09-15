@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/laporan-persalinan-ri/cetak-laporan-persalinan-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="LAPORAN TINDAKAN PERSALINAN">
+<x-pdf.layout-a4-with-out-background kode="RM-05.09 · Rev.0" title="LAPORAN TINDAKAN PERSALINAN">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

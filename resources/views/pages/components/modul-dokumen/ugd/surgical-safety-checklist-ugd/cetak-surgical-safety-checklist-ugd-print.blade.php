@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ugd/surgical-safety-checklist-ugd/cetak-surgical-safety-checklist-ugd-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="SURGICAL SAFETY CHECKLIST">
+<x-pdf.layout-a4-with-out-background kode="RM-05.04 · Rev.0" title="SURGICAL SAFETY CHECKLIST">
 
     <x-slot name="patientData">
         @php

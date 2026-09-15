@@ -12,7 +12,7 @@
     $cetakTitle = ($isSetuju ? 'FORMULIR PERSETUJUAN ' : 'FORMULIR PENOLAKAN ') . $jcLabelTitle . ' — RAWAT INAP';
 @endphp
 
-<x-pdf.layout-a4-with-out-background :title="$cetakTitle">
+<x-pdf.layout-a4-with-out-background kode="RM-02.02 · Rev.0" :title="$cetakTitle">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

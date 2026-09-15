@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/rekam-medis/rekam-medis/penunjang/laboratorium-display/laboratorium-display-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="HASIL PEMERIKSAAN LABORATORIUM">
+<x-pdf.layout-a4-with-out-background kode="RM-06.01 · Rev.0" title="HASIL PEMERIKSAAN LABORATORIUM">
 
     {{-- ================================================================ --}}
     {{-- IDENTITAS PASIEN                                                   --}}

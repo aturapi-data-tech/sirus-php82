@@ -2,7 +2,7 @@
 
 @use('App\Support\Clause\SuratKematianClause')
 
-<x-pdf.layout-a4-with-out-background title="SURAT KETERANGAN KEMATIAN">
+<x-pdf.layout-a4-with-out-background kode="RM-09.04 · Rev.0" title="SURAT KETERANGAN KEMATIAN">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

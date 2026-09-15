@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/identifikasi-bayi-ri/cetak-identifikasi-bayi-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="IDENTIFIKASI BAYI">
+<x-pdf.layout-a4-with-out-background kode="RM-01.01 · Rev.0" title="IDENTIFIKASI BAYI">
 
     {{-- ── IDENTITAS PASIEN (IBU) ── --}}
     <x-slot name="patientData">

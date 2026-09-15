@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/surveilans-isk-ri/cetak-surveilans-isk-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="SURVEILANS HAIs — INFEKSI SALURAN KEMIH">
+<x-pdf.layout-a4-with-out-background kode="RM-11.04 · Rev.0" title="SURVEILANS HAIs — INFEKSI SALURAN KEMIH">
 
     <x-slot name="patientData">
         @php

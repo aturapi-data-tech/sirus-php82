@@ -1,7 +1,7 @@
 {{-- resources/views/pages/components/modul-dokumen/ugd/second-opinion/cetak-second-opinion-print.blade.php
      Port dari cetak Second Opinion RI (payload sama: form/identitasRs/ttdPemberiPath). --}}
 
-<x-pdf.layout-a4-with-out-background title="FORMULIR PERMINTAAN SECOND OPINION">
+<x-pdf.layout-a4-with-out-background kode="RM-02.07 · Rev.0" title="FORMULIR PERMINTAAN SECOND OPINION">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

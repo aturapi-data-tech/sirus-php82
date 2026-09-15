@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/second-opinion-ri/cetak-second-opinion-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="FORMULIR PERMINTAAN SECOND OPINION">
+<x-pdf.layout-a4-with-out-background kode="RM-02.07 · Rev.0" title="FORMULIR PERMINTAAN SECOND OPINION">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

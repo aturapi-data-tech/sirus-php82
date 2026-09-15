@@ -2,6 +2,8 @@
 @props([
     'title' => null,
     'data' => [],
+    // Kode formulir RM (mis. "RM-02.01 · Rev.0") — lihat /panduan-dev/koding-formulir-rm.
+    'kode' => null,
 ])
 @php
     $manifestPath = public_path('build/manifest.json');
@@ -44,7 +46,14 @@
 </head>
 
 <body>
-    <div class="kwitansi-wrapper">
+    <div class="kwitansi-wrapper relative">
+
+        {{-- KODE FORMULIR RM — dicetak apa adanya (mis. "RM-02.01 · Rev.0"). Absolute agar tak menggeser isi. --}}
+        @if (filled($kode))
+            <div class="absolute top-2 right-8 text-[7px] text-black">
+                {{ $kode }}
+            </div>
+        @endif
 
         {{-- KOP: Identitas + Judul sejajar --}}
         <table class="w-full border-collapse">

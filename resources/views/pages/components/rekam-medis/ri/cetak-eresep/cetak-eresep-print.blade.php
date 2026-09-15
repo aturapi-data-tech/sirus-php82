@@ -1,4 +1,4 @@
-<x-pdf.layout-a4-with-out-background title="RESEP RAWAT INAP">
+<x-pdf.layout-a4-with-out-background kode="RM-07.01 · Rev.0" title="RESEP RAWAT INAP">
 
     {{-- IDENTITAS PASIEN — sejajar dengan logo --}}
     @php

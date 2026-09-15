@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/catatan-terapi-neonatal-ri/cetak-catatan-terapi-neonatal-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="CATATAN TERAPI & PERENCANAAN KEPERAWATAN NEONATAL">
+<x-pdf.layout-a4-with-out-background kode="RM-04.06 · Rev.0" title="CATATAN TERAPI & PERENCANAAN KEPERAWATAN NEONATAL">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

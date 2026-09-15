@@ -4,6 +4,8 @@
     'showGaris' => false,
     'showWatermark' => false,
     'patientData' => null,
+    // Kode formulir RM (mis. "RM-02.01 · Rev.0") — lihat /panduan-dev/koding-formulir-rm.
+    'kode' => null,
 ])
 
 <!DOCTYPE html>
@@ -53,6 +55,13 @@
 
     {{-- CONTENT LAYER --}}
     <div class="pdf-content">
+
+        {{-- KODE FORMULIR RM — dicetak apa adanya (mis. "RM-02.01 · Rev.0"). Absolute agar tak menggeser isi. --}}
+        @if (filled($kode))
+            <div class="absolute top-3 right-10 text-[9px] text-black">
+                {{ $kode }}
+            </div>
+        @endif
 
         {{-- KOP SURAT — bisa sejajar dengan data pasien --}}
         @if ($patientData ?? false)

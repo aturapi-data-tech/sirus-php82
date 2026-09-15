@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/pasca-anestesi-ri/cetak-pasca-anestesi-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="MONITORING PASCA ANESTESI (RECOVERY ROOM)">
+<x-pdf.layout-a4-with-out-background kode="RM-05.07 · Rev.0" title="MONITORING PASCA ANESTESI (RECOVERY ROOM)">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/instruksi-pasca-bedah-ri/cetak-instruksi-pasca-bedah-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="INSTRUKSI PASCA BEDAH">
+<x-pdf.layout-a4-with-out-background kode="RM-05.08 · Rev.0" title="INSTRUKSI PASCA BEDAH">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

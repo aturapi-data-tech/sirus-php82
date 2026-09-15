@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/rekam-medis/ugd/cetak-rekam-medis/cetak-rekam-medis-ugd-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="ASSESMENT AWAL UGD">
+<x-pdf.layout-a4-with-out-background kode="RM-03.03 · Rev.0" title="ASSESMENT AWAL UGD">
 
     <x-slot name="patientData">
         @php

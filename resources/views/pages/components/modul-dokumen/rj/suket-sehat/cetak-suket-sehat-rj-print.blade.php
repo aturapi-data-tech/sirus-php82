@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/rj/suket-sehat/cetak-suket-sehat-print.blade.php --}}
 
-<x-pdf.layout-a4 title="SURAT KETERANGAN SEHAT">
+<x-pdf.layout-a4 kode="RM-10.02 · Rev.0" title="SURAT KETERANGAN SEHAT">
 
     {{-- IDENTITAS PASIEN --}}
     @php

@@ -67,7 +67,7 @@
     $ttdDpjp = $dpjpDrId ? \App\Models\User::where('myuser_code', $dpjpDrId)->value('myuser_ttd_image') : null;
 @endphp
 
-<x-pdf.layout-a4-with-out-background title="RESUME MEDIS">
+<x-pdf.layout-a4-with-out-background kode="RM-09.01 · Rev.0" title="RESUME MEDIS">
 
     <x-slot name="patientData">
         <x-pdf.identitas-pasien

@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/pengkajian-pre-op-ri/cetak-pengkajian-pre-op-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="PENGKAJIAN PRE OPERASI">
+<x-pdf.layout-a4-with-out-background kode="RM-05.01 · Rev.0" title="PENGKAJIAN PRE OPERASI">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

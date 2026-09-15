@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/pra-anestesi-ri/cetak-pra-anestesi-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="PENGKAJIAN PRA ANESTESI & PRA SEDASI">
+<x-pdf.layout-a4-with-out-background kode="RM-05.02 · Rev.0" title="PENGKAJIAN PRA ANESTESI & PRA SEDASI">
 
     <x-slot name="patientData">
         @php

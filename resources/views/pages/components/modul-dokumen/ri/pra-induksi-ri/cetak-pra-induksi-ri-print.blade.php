@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/pra-induksi-ri/cetak-pra-induksi-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="ASESMEN PRA INDUKSI">
+<x-pdf.layout-a4-with-out-background kode="RM-05.03 · Rev.0" title="ASESMEN PRA INDUKSI">
 
     <x-slot name="patientData">
         @php

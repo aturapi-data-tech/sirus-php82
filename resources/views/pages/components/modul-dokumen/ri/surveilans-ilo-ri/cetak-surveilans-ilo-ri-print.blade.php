@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/surveilans-ilo-ri/cetak-surveilans-ilo-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="SURVEILANS HAIs — INFEKSI LUKA OPERASI (ILO)">
+<x-pdf.layout-a4-with-out-background kode="RM-11.03 · Rev.0" title="SURVEILANS HAIs — INFEKSI LUKA OPERASI (ILO)">
 
     <x-slot name="patientData">
         @php

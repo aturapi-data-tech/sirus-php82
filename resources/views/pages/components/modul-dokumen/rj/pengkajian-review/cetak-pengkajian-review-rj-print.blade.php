@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/rj/pengkajian-review/cetak-pengkajian-review-rj-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="REVIEW PENGKAJIAN MEDIS RAWAT JALAN">
+<x-pdf.layout-a4-with-out-background kode="RM-03.04 · Rev.0" title="REVIEW PENGKAJIAN MEDIS RAWAT JALAN">
 
     {{-- Identitas pasien lewat slot patientData: layout menaruhnya di kiri, sejajar
          dengan logo & identitas RS di kanan. --}}

@@ -1,7 +1,7 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/permintaan-darah-ri/cetak-permintaan-darah-ri-print.blade.php --}}
 {{-- Formulir Permintaan Darah (transfusi) — Bagian 1 (RS) terisi + Bagian 2 (PMI) kosong utk diisi manual --}}
 
-<x-pdf.layout-a4-with-out-background title="FORMULIR PERMINTAAN DARAH">
+<x-pdf.layout-a4-with-out-background kode="RM-06.03 · Rev.0" title="FORMULIR PERMINTAAN DARAH">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

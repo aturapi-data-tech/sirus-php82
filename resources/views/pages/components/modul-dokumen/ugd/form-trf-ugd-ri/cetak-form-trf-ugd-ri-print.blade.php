@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ugd/form-trf-ugd-ri/cetak-form-trf-ugd-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="FORM TRANSFER PASIEN UGD - RAWAT INAP">
+<x-pdf.layout-a4-with-out-background kode="RM-08.01 · Rev.0" title="FORM TRANSFER PASIEN UGD - RAWAT INAP">
 
     {{-- IDENTITAS PASIEN --}}
     <x-slot name="patientData">

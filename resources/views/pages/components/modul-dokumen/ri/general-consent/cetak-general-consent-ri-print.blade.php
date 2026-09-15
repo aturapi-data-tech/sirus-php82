@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/general-consent/cetak-general-consent-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="FORMULIR PERSETUJUAN UMUM (GENERAL CONSENT) — RAWAT INAP">
+<x-pdf.layout-a4-with-out-background kode="RM-02.01 · Rev.0" title="FORMULIR PERSETUJUAN UMUM (GENERAL CONSENT) — RAWAT INAP">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

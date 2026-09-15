@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/surveilans-vap-ri/cetak-surveilans-vap-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="SURVEILANS HAIs — PNEUMONIA VENTILATOR">
+<x-pdf.layout-a4-with-out-background kode="RM-11.02 · Rev.0" title="SURVEILANS HAIs — PNEUMONIA VENTILATOR">
 
     <x-slot name="patientData">
         @php

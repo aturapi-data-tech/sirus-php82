@@ -2,7 +2,7 @@
 
 @use('App\Support\Clause\PulangApsClause')
 
-<x-pdf.layout-a4-with-out-background title="SURAT PERNYATAAN PULANG ATAS PERMINTAAN SENDIRI">
+<x-pdf.layout-a4-with-out-background kode="RM-02.06 · Rev.0" title="SURAT PERNYATAAN PULANG ATAS PERMINTAAN SENDIRI">
 
     {{-- Identitas pasien TIDAK di header — ditampilkan di body ("terhadap pasien di bawah ini") --}}
 

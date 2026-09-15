@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/laporan-anestesi-ri/cetak-laporan-anestesi-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="LAPORAN ANESTESI">
+<x-pdf.layout-a4-with-out-background kode="RM-05.06 · Rev.0" title="LAPORAN ANESTESI">
 
     <x-slot name="patientData">
         @php

@@ -2,7 +2,7 @@
 
 @use('App\Support\Clause\KerohanianClause')
 
-<x-pdf.layout-a4-with-out-background title="FORMULIR PERMINTAAN PELAYANAN KEROHANIAWAN">
+<x-pdf.layout-a4-with-out-background kode="RM-02.08 · Rev.0" title="FORMULIR PERMINTAAN PELAYANAN KEROHANIAWAN">
 
     {{-- Identitas pasien TIDAK di header — ditampilkan di body ("terhadap pasien di bawah ini") --}}
 

@@ -221,7 +221,7 @@
     $gcsPulang = ($tmp = trim((string) data_get($obs, 'gcs', ''))) !== '' ? $tmp : ($isMeninggal ? '0' : '-');
 @endphp
 
-<x-pdf.layout-a4-with-out-background title="RIWAYAT PENGOBATAN" :showGaris="false">
+<x-pdf.layout-a4-with-out-background kode="RM-07.03 · Rev.0" title="RIWAYAT PENGOBATAN" :showGaris="false">
     <x-slot:patientData>
         <x-pdf.identitas-pasien :rm="$rm" :nama="$nama" :jenisKelamin="$sexLabel"
             :tempatLahir="$tempatLahir" :tglLahir="$tglLahir" :umur="$umurStr" :alamat="$alamat">

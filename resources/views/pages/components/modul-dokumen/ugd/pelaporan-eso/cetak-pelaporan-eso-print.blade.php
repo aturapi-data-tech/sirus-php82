@@ -6,7 +6,7 @@
      Konsekuensinya lembar ini bukan lagi salinan persis Form Kuning — bila suatu saat
      harus dikirim apa adanya ke Pusat Farmakovigilans, deret kotaknya perlu dipulihkan. --}}
 
-<x-pdf.layout-a4-with-out-background title="FORMULIR PELAPORAN EFEK SAMPING OBAT (ESO)">
+<x-pdf.layout-a4-with-out-background kode="RM-07.04 · Rev.0" title="FORMULIR PELAPORAN EFEK SAMPING OBAT (ESO)">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

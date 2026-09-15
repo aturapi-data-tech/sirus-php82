@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/observasi-persalinan-ri/cetak-observasi-persalinan-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="OBSERVASI PERSALINAN">
+<x-pdf.layout-a4-with-out-background kode="RM-04.04 · Rev.0" title="OBSERVASI PERSALINAN">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

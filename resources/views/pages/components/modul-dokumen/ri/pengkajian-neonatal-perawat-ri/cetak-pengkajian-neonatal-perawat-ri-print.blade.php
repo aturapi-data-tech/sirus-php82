@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/pengkajian-neonatal-perawat-ri/cetak-pengkajian-neonatal-perawat-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="PENGKAJIAN KEPERAWATAN NEONATAL">
+<x-pdf.layout-a4-with-out-background kode="RM-03.09 · Rev.0" title="PENGKAJIAN KEPERAWATAN NEONATAL">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

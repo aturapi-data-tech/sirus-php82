@@ -1,6 +1,6 @@
 {{-- resources/views/livewire/cetak/cetak-form-b-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background
+<x-pdf.layout-a4-with-out-background kode="RM-04.08 · Rev.0"
     title="FORMULIR B — PELAKSANAAN, MONITORING & TERMINASI MPP">
 
     @php

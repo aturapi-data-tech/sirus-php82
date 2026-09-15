@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/rj/suket-sakit/cetak-suket-sakit-print.blade.php --}}
 
-<x-pdf.layout-a4 title="SURAT KETERANGAN SAKIT">
+<x-pdf.layout-a4 kode="RM-10.01 · Rev.0" title="SURAT KETERANGAN SAKIT">
 
     {{-- IDENTITAS PASIEN --}}
     @php

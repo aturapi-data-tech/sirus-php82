@@ -1,6 +1,6 @@
 ---
 name: modul-dokumen
-description: Pola membuat/mem-port modul dokumen bertanda tangan (consent, surat keterangan, laporan, Pengkajian Akhir Hayat) di EMR — kartu+tombol→modal, siklus Draft→TTD→Kunci→Lihat/Cetak, multi-entri, clause-versioning, PLUS wajib mendaftarkan viewer di display Rekam Medis dan (bila lintas jalur) porting RI⇄UGD⇄RJ. WAJIB dibaca sebelum membuat form dokumen baru, memasangnya di jalur lain, atau menambah viewer rekam-medisnya. Beda dari emr-multi-entry-document (CPPT/SBAR): di sini entri ditandatangani pasien/keluarga/saksi/petugas lalu terkunci & dicetak.
+description: Pola membuat/mem-port modul dokumen bertanda tangan (consent, surat keterangan, laporan, Pengkajian Akhir Hayat) di EMR — kartu+tombol→modal, siklus Draft→TTD→Kunci→Lihat/Cetak, multi-entri, clause-versioning, PLUS wajib mendaftarkan viewer di display Rekam Medis dan (bila lintas jalur) porting RI⇄UGD⇄RJ, serta kode formulir RM (RM-KK.NN) untuk tiap cetakan baru. WAJIB dibaca sebelum membuat form dokumen baru, memasangnya di jalur lain, atau menambah viewer rekam-medisnya. Beda dari emr-multi-entry-document (CPPT/SBAR): di sini entri ditandatangani pasien/keluarga/saksi/petugas lalu terkunci & dicetak.
 ---
 
 # Modul Dokumen (formulir bertanda tangan, multi-entri)
@@ -24,6 +24,7 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
 2. `…/components/modul-dokumen/<jalur>/<dok>/cetak-<dok>-print.blade.php` — cetak PDF.
 3. Daftarkan **tab + panel** di `modul-dokumen-<jalur>.blade.php` (`<x-tab>` + `<div x-show>` berisi `<livewire:… :rjNo/riHdrNo :disabled wire:key>`). **WAJIB pasang penanda tab** (lihat aturan #7).
 4. **Viewer rekam medis** — `…/rekam-medis/<jalur>/dokumen-view/<dok>-view-<jalur>.blade.php` **dan** daftarkan di `cetak-rekam-medis-open.blade.php`. **Belum selesai tanpa langkah ini.**
+5. **Kode formulir RM** — pasang `kode="RM-KK.NN · Rev.N"` di tag layout cetaknya; formulir baru juga ditambahkan ke daftar `/panduan-dev/koding-formulir-rm` (aturan #13). **Belum selesai tanpa langkah ini.**
 
 ## Aturan keras (paling sering keliru)
 
@@ -97,6 +98,23 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
    pad). Model 2 (multi-PPA, tiap TTD tersimpan langsung, kunci otomatis saat lengkap:
    Surgical Safety Checklist, Pra-Anestesi) hanya untuk dokumen yang memang butuh urutan bebas.
 
+13. **Kode formulir RM (BAKU sejak 2026-09-14, akreditasi MRMIK 3h & 6)** — tiap cetakan
+   formulir rekam medis menulis kodenya **langsung & lengkap** di tag layout:
+   `<x-pdf.layout-a4-with-out-background kode="RM-05.11 · Rev.0" title="…">` — literal, bukan
+   `:kode="…"`, pemisah `" · "` (salin dari blade lain: `grep -rh 'kode="RM-' resources/views
+   --include='*-print.blade.php' | head -1`). **Tanpa config** — prop `kode` di `layout-a4`,
+   `layout-a4-with-out-background`, `layout-kwitansi` dicetak apa adanya, absolute di pojok
+   kanan atas (tak menggeser isi). Cetakan bukan formulir RM (kuitansi, etiket, SEP/PRB/SKDP,
+   slip gaji, dokumen unit IT) tidak dikode.
+   Daftar kelompok & nama formulir ada di `/panduan-dev/koding-formulir-rm` (method `formulir()`
+   di SFC-nya); kolom View & Rev di halaman itu dibaca dari atribut blade.
+   (a) **Port jalur lain = pakai kode yang SUDAH ADA** (dengan revisinya), bukan kode baru — satu
+   formulir satu kode di RJ/UGD/RI. (b) Formulir baru = nomor berikutnya di kelompoknya + tambah
+   baris di `formulir()` panduan. (c) **Revisi naik** hanya bila rancangan berubah (butir isian
+   ditambah/diubah/dihapus), di SEMUA blade berkode itu, di commit yang sama; bug tampilan tidak.
+   (d) **Kode tak pernah dihapus/dipakai ulang** — formulir dihentikan: nama di panduan diberi
+   akhiran " (nonaktif)".
+
 ## Port ke jalur lain (RI ⇄ UGD ⇄ RJ)
 
 Salin actions + cetak, ganti token **per-string** (bukan `RI→UGD` global). Tabel lengkap di
@@ -122,5 +140,8 @@ Folder/file UGD/RJ **buang sufiks** `-ri`, tapi modal-name/renderArea/nama PDF *
 - **`php artisan view:cache`** → EXIT 0 (pipeline Blade asli), lalu `php artisan view:clear`.
   Jangan andalkan `Blade::compileString` untuk file host rekam-medis — banyak yang tak
   standalone-compilable (bandingkan dgn `git HEAD`: gagal identik = pre-existing).
+- **Kode formulir**: cetakan baru muncul di baris kodenya pada `/panduan-dev/koding-formulir-rm`
+  (tanpa kotak "Perlu dibenahi"), tidak nyasar di "Cetakan Tanpa Kode". Tanpa DB:
+  `grep -rL 'kode="RM-' resources/views --include='*-print.blade.php'`.
 - `grep` tidak ada token jalur asal yang nyasar di file hasil port.
 - Ikuti skill `blade-safe-edit` saat sed/regex pada `*.blade.php` (edit fresh copy, token presisi).

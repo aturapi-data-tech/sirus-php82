@@ -3,7 +3,7 @@
 @use('App\Support\Clause\PenolakanResusitasiClause')
 @use('App\Support\Options\PenolakanResusitasiOptions')
 
-<x-pdf.layout-a4-with-out-background title="SURAT PERNYATAAN PENOLAKAN TINDAKAN RESUSITASI (DNR)">
+<x-pdf.layout-a4-with-out-background kode="RM-02.04 · Rev.0" title="SURAT PERNYATAAN PENOLAKAN TINDAKAN RESUSITASI (DNR)">
 
     {{-- Identitas pasien TIDAK di header — ditampilkan di body ("terhadap pasien di bawah ini") --}}
 

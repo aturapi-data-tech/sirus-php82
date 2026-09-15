@@ -66,7 +66,7 @@
     ];
 @endphp
 
-<x-pdf.layout-a4-with-out-background title="SBAR (Situation, Background, Assessment, Recommendation)">
+<x-pdf.layout-a4-with-out-background kode="RM-04.02 · Rev.0" title="SBAR (Situation, Background, Assessment, Recommendation)">
 
     <x-slot name="patientData">
         <x-pdf.identitas-pasien

@@ -1,4 +1,4 @@
-<x-pdf.layout-a4-with-out-background title="RESUME RAWAT JALAN">
+<x-pdf.layout-a4-with-out-background kode="RM-03.01 · Rev.0" title="RESUME RAWAT JALAN">
 
     {{-- IDENTITAS PASIEN — sejajar dengan logo --}}
     <x-slot name="patientData">

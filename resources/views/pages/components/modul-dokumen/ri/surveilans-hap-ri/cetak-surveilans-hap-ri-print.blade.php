@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/surveilans-hap-ri/cetak-surveilans-hap-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="SURVEILANS HAIs — PNEUMONIA NON-VENTILATOR (HAP)">
+<x-pdf.layout-a4-with-out-background kode="RM-11.01 · Rev.0" title="SURVEILANS HAIs — PNEUMONIA NON-VENTILATOR (HAP)">
 
     <x-slot name="patientData">
         @php

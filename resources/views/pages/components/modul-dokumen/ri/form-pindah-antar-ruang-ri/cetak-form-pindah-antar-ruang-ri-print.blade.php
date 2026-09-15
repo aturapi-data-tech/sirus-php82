@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/form-pindah-antar-ruang-ri/cetak-form-pindah-antar-ruang-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="FORM PINDAH ANTAR RUANG - RAWAT INAP">
+<x-pdf.layout-a4-with-out-background kode="RM-08.02 · Rev.0" title="FORM PINDAH ANTAR RUANG - RAWAT INAP">
 
     {{-- IDENTITAS PASIEN --}}
     <x-slot name="patientData">

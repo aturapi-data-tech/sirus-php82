@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/edukasi-pasien/cetak-edukasi-pasien-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="FORMULIR EDUKASI PASIEN — RAWAT INAP">
+<x-pdf.layout-a4-with-out-background kode="RM-04.03 · Rev.0" title="FORMULIR EDUKASI PASIEN — RAWAT INAP">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

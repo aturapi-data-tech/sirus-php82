@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ugd/general-consent/cetak-general-consent-ugd-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="FORMULIR PERSETUJUAN UMUM (GENERAL CONSENT)">
+<x-pdf.layout-a4-with-out-background kode="RM-02.01 · Rev.0" title="FORMULIR PERSETUJUAN UMUM (GENERAL CONSENT)">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

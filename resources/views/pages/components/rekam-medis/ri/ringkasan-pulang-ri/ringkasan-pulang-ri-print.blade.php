@@ -52,7 +52,7 @@
     $savedBy = (string) data_get($ri, 'ringkasanPulangSavedBy', '');
 @endphp
 
-<x-pdf.layout-a4-with-out-background title="RINGKASAN PEMULANGAN PASIEN">
+<x-pdf.layout-a4-with-out-background kode="RM-09.02 · Rev.0" title="RINGKASAN PEMULANGAN PASIEN">
 
     <x-slot name="patientData">
         <x-pdf.identitas-pasien

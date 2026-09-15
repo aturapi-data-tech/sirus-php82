@@ -1,6 +1,6 @@
 {{-- resources/views/livewire/cetak/cetak-form-a-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background
+<x-pdf.layout-a4-with-out-background kode="RM-04.07 · Rev.0"
     title="FORMULIR A — IDENTIFIKASI & ASESMEN MANAJER PELAYANAN PASIEN (MPP)">
 
     @php

@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/laporan-operasi-ri/cetak-laporan-operasi-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="LAPORAN OPERASI">
+<x-pdf.layout-a4-with-out-background kode="RM-05.05 · Rev.0" title="LAPORAN OPERASI">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/rj/prmrj/cetak-prmrj-rj-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="FORMULIR PROFIL RINGKAS MEDIS RAWAT JALAN (PRMRJ)">
+<x-pdf.layout-a4-with-out-background kode="RM-09.03 · Rev.0" title="FORMULIR PROFIL RINGKAS MEDIS RAWAT JALAN (PRMRJ)">
 
     {{-- Identitas pasien lewat slot patientData: layout menaruhnya di kiri,
          sejajar logo & identitas RS di kanan. --}}

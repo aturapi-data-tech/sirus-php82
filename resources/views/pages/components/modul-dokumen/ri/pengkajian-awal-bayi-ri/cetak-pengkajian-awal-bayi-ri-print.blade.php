@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/pengkajian-awal-bayi-ri/cetak-pengkajian-awal-bayi-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="PENGKAJIAN AWAL BAYI">
+<x-pdf.layout-a4-with-out-background kode="RM-03.08 · Rev.0" title="PENGKAJIAN AWAL BAYI">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

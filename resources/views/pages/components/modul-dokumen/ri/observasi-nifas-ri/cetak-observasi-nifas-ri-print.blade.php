@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/observasi-nifas-ri/cetak-observasi-nifas-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="LEMBAR OBSERVASI NIFAS">
+<x-pdf.layout-a4-with-out-background kode="RM-04.05 · Rev.0" title="LEMBAR OBSERVASI NIFAS">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

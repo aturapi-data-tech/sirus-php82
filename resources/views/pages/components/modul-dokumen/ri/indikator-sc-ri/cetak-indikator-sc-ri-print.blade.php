@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/indikator-sc-ri/cetak-indikator-sc-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="INDIKATOR PROSES SC">
+<x-pdf.layout-a4-with-out-background kode="RM-05.10 · Rev.0" title="INDIKATOR PROSES SC">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

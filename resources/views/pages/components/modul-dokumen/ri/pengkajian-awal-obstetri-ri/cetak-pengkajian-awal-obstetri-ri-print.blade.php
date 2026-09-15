@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/pengkajian-awal-obstetri-ri/cetak-pengkajian-awal-obstetri-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="PENGKAJIAN AWAL OBSTETRI">
+<x-pdf.layout-a4-with-out-background kode="RM-03.05 · Rev.0" title="PENGKAJIAN AWAL OBSTETRI">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

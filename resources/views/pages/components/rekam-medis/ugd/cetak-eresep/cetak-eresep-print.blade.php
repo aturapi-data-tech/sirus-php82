@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/rekam-medis/ugd/cetak-eresep/cetak-eresep-ugd-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="RESEP UGD">
+<x-pdf.layout-a4-with-out-background kode="RM-07.01 · Rev.0" title="RESEP UGD">
 
     @php
         $isBpjs = ($dataDaftarUGD['klaimStatus'] ?? '') === 'BPJS' || ($dataDaftarUGD['klaimId'] ?? '') === 'JM';

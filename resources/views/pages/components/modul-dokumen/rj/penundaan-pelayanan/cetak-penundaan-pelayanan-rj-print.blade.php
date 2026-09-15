@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/rj/penundaan-pelayanan/cetak-penundaan-pelayanan-rj-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="FORMULIR PEMBERITAHUAN PENUNDAAN / KELAMBATAN PELAYANAN">
+<x-pdf.layout-a4-with-out-background kode="RM-02.05 · Rev.0" title="FORMULIR PEMBERITAHUAN PENUNDAAN / KELAMBATAN PELAYANAN">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

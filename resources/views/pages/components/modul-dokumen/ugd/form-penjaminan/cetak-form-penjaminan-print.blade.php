@@ -2,7 +2,7 @@
 
 @use('App\Support\KelasKamar')
 
-<x-pdf.layout-a4-with-out-background title="FORM PERNYATAAN KEPEMILIKAN KARTU PENJAMINAN BIAYA DAN ORIENTASI KAMAR">
+<x-pdf.layout-a4-with-out-background kode="RM-01.02 · Rev.0" title="FORM PERNYATAAN KEPEMILIKAN KARTU PENJAMINAN BIAYA DAN ORIENTASI KAMAR">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

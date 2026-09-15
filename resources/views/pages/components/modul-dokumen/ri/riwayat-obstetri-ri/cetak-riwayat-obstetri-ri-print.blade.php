@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/riwayat-obstetri-ri/cetak-riwayat-obstetri-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="RIWAYAT OBSTETRI">
+<x-pdf.layout-a4-with-out-background kode="RM-03.07 · Rev.0" title="RIWAYAT OBSTETRI">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

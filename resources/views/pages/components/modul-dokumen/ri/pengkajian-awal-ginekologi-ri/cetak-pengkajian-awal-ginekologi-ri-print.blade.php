@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/ri/pengkajian-awal-ginekologi-ri/cetak-pengkajian-awal-ginekologi-ri-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="PENGKAJIAN AWAL GINEKOLOGI">
+<x-pdf.layout-a4-with-out-background kode="RM-03.06 · Rev.0" title="PENGKAJIAN AWAL GINEKOLOGI">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">

@@ -2,7 +2,7 @@
 
 @use('App\Support\Clause\PenolakanObatClause')
 
-<x-pdf.layout-a4-with-out-background title="SURAT PERNYATAAN PENOLAKAN PENGOBATAN / OBAT TERTENTU">
+<x-pdf.layout-a4-with-out-background kode="RM-02.03 · Rev.0" title="SURAT PERNYATAAN PENOLAKAN PENGOBATAN / OBAT TERTENTU">
 
     {{-- Identitas pasien TIDAK di header — ditampilkan di body ("terhadap pasien di bawah ini") --}}
 

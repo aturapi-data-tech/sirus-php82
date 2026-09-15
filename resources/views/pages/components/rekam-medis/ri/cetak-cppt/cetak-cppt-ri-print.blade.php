@@ -69,7 +69,7 @@
     ];
 @endphp
 
-<x-pdf.layout-a4-with-out-background title="Catatan Perkembangan Pasien Terintegrasi (CPPT)">
+<x-pdf.layout-a4-with-out-background kode="RM-04.01 · Rev.0" title="Catatan Perkembangan Pasien Terintegrasi (CPPT)">
 
     <x-slot name="patientData">
         <x-pdf.identitas-pasien

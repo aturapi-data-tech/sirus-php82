@@ -1,4 +1,4 @@
-<x-pdf.layout-a4-with-out-background title="RESUME REHABILITASI MEDIK">
+<x-pdf.layout-a4-with-out-background kode="RM-03.02 · Rev.0" title="RESUME REHABILITASI MEDIK">
 
     {{-- IDENTITAS PASIEN — sejajar dengan logo --}}
     <x-slot name="patientData">

@@ -2,7 +2,7 @@
 {{-- Layout meniru report Oracle Forms legacy: HASIL PEMERIKSAAN + nama
      pemeriksaan + "Teman sejawat Yth." + isi hasil bacaan + TTD radiolog --}}
 
-<x-pdf.layout-a4-with-out-background title="HASIL PEMERIKSAAN RADIOLOGI">
+<x-pdf.layout-a4-with-out-background kode="RM-06.02 · Rev.0" title="HASIL PEMERIKSAAN RADIOLOGI">
 
     <x-slot name="patientData">
         @php

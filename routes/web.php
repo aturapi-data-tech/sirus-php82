@@ -62,6 +62,11 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('/panduan-dev/alur-pelayanan', 'pages::panduan-dev.alur-pelayanan.alur-pelayanan')
         ->name('panduan-dev.alur-pelayanan');
 
+    // Tutorial pengkodean formulir rekam medis (RM-KK.NN) — kode ditulis langsung di blade cetak;
+    // Daftar Induk (nama di halaman ini, view & revisi disisir dari blade); aturan kode, revisi
+    Route::livewire('/panduan-dev/koding-formulir-rm', 'pages::panduan-dev.koding-formulir-rm.koding-formulir-rm')
+        ->name('panduan-dev.koding-formulir-rm');
+
     // ===========================================
     // DOWN TIME — FORMULIR MANUAL WAKTU HENTI SIMRS
     // ===========================================

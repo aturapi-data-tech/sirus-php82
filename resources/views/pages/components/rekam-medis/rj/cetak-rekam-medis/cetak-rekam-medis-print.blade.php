@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/rj/rekam-medis/cetak-rekam-medis-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background title="ASSESMENT AWAL RAWAT JALAN">
+<x-pdf.layout-a4-with-out-background kode="RM-03.01 · Rev.0" title="ASSESMENT AWAL RAWAT JALAN">
 
     {{-- IDENTITAS PASIEN — sejajar dengan logo --}}
     <x-slot name="patientData">
