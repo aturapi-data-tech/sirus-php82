@@ -594,17 +594,35 @@ new class extends Component {
                                                 </x-badge>
                                             @endif
 
-                                            <div class="text-xs text-muted dark:text-gray-400">
-                                                <span class="font-semibold">Diagnosa:</span><br>
-                                                {{ $row->diagnosis }} / {{ $row->diagnosis_free_text }}
-                                            </div>
-
-                                            @if ($row->procedure !== '-' || $row->procedure_free_text !== '-')
-                                                <div class="text-xs text-muted dark:text-gray-400">
-                                                    <span class="font-semibold">Procedure:</span><br>
-                                                    {{ $row->procedure }} / {{ $row->procedure_free_text }}
-                                                </div>
-                                            @endif
+                                            {{-- Diagnosa & Procedure: kosong disembunyikan; > 110 karakter diringkas 2 baris +
+                                                 Selengkapnya lewat <details> bawaan HTML (bukan toggle Alpine per baris) — sama
+                                                 dengan Daftar Rawat Inap. --}}
+                                            @foreach ([
+                                                'Diagnosa' => [$row->diagnosis, $row->diagnosis_free_text],
+                                                'Procedure' => [$row->procedure, $row->procedure_free_text],
+                                            ] as $labelKlinis => $bagianKlinis)
+                                                @php
+                                                    $teksKlinis = implode(' / ', array_filter($bagianKlinis, fn($bagian) => filled($bagian) && $bagian !== '-'));
+                                                @endphp
+                                                @if ($teksKlinis === '')
+                                                    @continue
+                                                @endif
+                                                @if (mb_strlen($teksKlinis) > 110)
+                                                    <details class="text-xs group text-muted dark:text-gray-400">
+                                                        <summary class="list-none cursor-pointer [&::-webkit-details-marker]:hidden">
+                                                            <span class="font-semibold">{{ $labelKlinis }}:</span>
+                                                            <span class="block break-words line-clamp-2 group-open:line-clamp-none">{{ $teksKlinis }}</span>
+                                                            <span class="font-medium text-brand-green dark:text-brand-lime hover:underline group-open:hidden">Selengkapnya</span>
+                                                            <span class="hidden font-medium text-brand-green dark:text-brand-lime hover:underline group-open:inline">Ringkas</span>
+                                                        </summary>
+                                                    </details>
+                                                @else
+                                                    <div class="text-xs break-words text-muted dark:text-gray-400">
+                                                        <span class="font-semibold">{{ $labelKlinis }}:</span><br>
+                                                        {{ $teksKlinis }}
+                                                    </div>
+                                                @endif
+                                            @endforeach
 
                                             @if (!$row->is_json_valid)
                                                 <div
