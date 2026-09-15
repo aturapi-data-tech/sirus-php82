@@ -1123,48 +1123,12 @@ new class extends Component {
                                                     @endif
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-center whitespace-nowrap" @click.stop>
-                                                    <div class="flex items-center justify-end gap-2">
-                                                        {{-- Baris atas: aksi non-destruktif --}}
-                                                        <div class="flex items-center justify-center gap-2">
-                                                            @if (!$isFinal && !$isFormLocked)
-                                                                <x-primary-button type="button" wire:click="editEntry('{{ $rowKey }}')" wire:loading.attr="disabled" wire:target="editEntry('{{ $rowKey }}')" class="gap-1.5" title="Lanjutkan mengisi entri ini">
-                                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                                    </svg>
-                                                                    Lanjutkan Pengisian
-                                                                </x-primary-button>
-                                                            @endif
-                                                            @if ($isFinal)
-                                                                <x-lihat-button wire:click="viewEntry('{{ $rowKey }}')" title="Lihat detail (read-only) di form atas" />
-                                                                <x-cetak-button wire:click="cetak('{{ $rowKey }}')" title="Cetak" />
-                                                            @endif
-                                                        </div>
-
-                                                        {{-- Baris bawah: aksi terkunci/destruktif (Buka Kunci + Hapus) --}}
-                                                        @if (!$isFormLocked && (auth()->user()?->can('dokumen.bukaKunci') || auth()->user()?->can('dokumen.hapus')))
-                                                            <div class="flex items-center gap-2 pl-3 ml-1 border-l border-hairline dark:border-gray-700">
-                                                                @if ($isFinal && $rowKey)
-                                                                    @can('dokumen.bukaKunci')
-                                                                        <x-confirm-button variant="warning-soft" action="bukaKunci('{{ $rowKey }}')"
-                                                                            title="Buka Kunci Surat Penolakan Resusitasi"
-                                                                            message="TTD petugas akan dicabut & entri kembali menjadi draft untuk dikoreksi. TTD pembuat pernyataan tetap. Lanjutkan?"
-                                                                            confirmText="Ya, Buka Kunci" class="gap-1.5">
-                                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                                    d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" />
-                                                                            </svg>
-                                                                            Buka Kunci
-                                                                        </x-confirm-button>
-                                                                    @endcan
-                                                                @endif
-                                                                @if ($rowKey)
-                                                                    @can('dokumen.hapus')
-                                                                        <x-hapus-button wire:click.prevent="hapus('{{ $rowKey }}')" confirm="Yakin hapus surat pernyataan ini?" />
-                                                                    @endcan
-                                                                @endif
-                                                            </div>
-                                                        @endif
-                                                    </div>
+                                                    <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$isFinal" :terkunci="$isFormLocked"
+                                                        :cetakHanyaFinal="true"
+                                                        judulLihat="Lihat detail (read-only) di form atas"
+                                                        judulBukaKunci="Buka Kunci Surat Penolakan Resusitasi"
+                                                        pesanBukaKunci="TTD petugas akan dicabut & entri kembali menjadi draft untuk dikoreksi. TTD pembuat pernyataan tetap. Lanjutkan?"
+                                                        konfirmasiHapus="Yakin hapus surat pernyataan ini?" />
                                                 </td>
                                             </tr>
 

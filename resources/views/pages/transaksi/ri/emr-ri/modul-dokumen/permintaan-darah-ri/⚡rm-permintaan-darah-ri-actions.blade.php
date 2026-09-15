@@ -850,52 +850,15 @@ new class extends Component {
                                         </td>
                                         <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-muted dark:text-gray-300">{{ data_get($rf, 'ttd.dokterNama') ?: '-' }}</td>
                                         <td class="px-3 py-2 text-center align-middle border-b border-hairline dark:border-gray-700 whitespace-nowrap" @click.stop>
-                                            <div class="flex items-center justify-end gap-2">
-                                                {{-- Baris atas: aksi non-destruktif (Lanjut/Lihat/Cetak) --}}
-                                                <div class="flex items-center justify-center gap-2">
-                                                @if (!$final && !$isFormLocked && $rid)
-                                                    <x-primary-button type="button" wire:click="editEntri('{{ $rid }}')"
-                                                        wire:loading.attr="disabled" wire:target="editEntri('{{ $rid }}')"
-                                                        class="gap-1.5" title="Lanjutkan mengisi entri ini">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                        </svg>
-                                                        Lanjutkan Pengisian
-                                                    </x-primary-button>
-                                                @endif
-                                                @if ($final && $rid)
-                                                    <x-lihat-button wire:click="editEntri('{{ $rid }}')" title="Lihat entri terkunci" />
-                                                @endif
-                                                @if ($rid)
-                                                    <x-cetak-button wire:click="cetak('{{ $rid }}')" title="Cetak permintaan darah" />
-                                                @endif
-                                                </div>
-
-                                                {{-- Baris bawah: aksi terkunci/destruktif (Buka Kunci + Hapus) --}}
-                                                @if (!$isFormLocked && (auth()->user()?->can('dokumen.bukaKunci') || auth()->user()?->can('dokumen.hapus')))
-                                                <div class="flex items-center gap-2 pl-3 ml-1 border-l border-hairline dark:border-gray-700">
-                                                @if ($final && $rid && !$isFormLocked)
-                                                    @can('dokumen.bukaKunci')
-                                                        <x-confirm-button variant="warning-soft" action="bukaKunci('{{ $rid }}')"
-                                                            title="Buka Kunci Permintaan Darah"
-                                                            message="TTD dokter akan dicabut & entri kembali menjadi draft untuk dikoreksi. Lanjutkan?"
-                                                            confirmText="Ya, Buka Kunci" class="gap-1.5">
-                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                    d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" />
-                                                            </svg>
-                                                            Buka Kunci
-                                                        </x-confirm-button>
-                                                    @endcan
-                                                @endif
-                                                @if (!$isFormLocked && $rid)
-                                                    @can('dokumen.hapus')
-                                                        <x-hapus-button wire:click.prevent="hapusEntri('{{ $rid }}')" confirm="Hapus permintaan darah ini?" title="Hapus permintaan darah" />
-                                                    @endcan
-                                                @endif
-                                                </div>
-                                                @endif
-                                            </div>
+                                            <x-modul-dokumen.aksi-entri kunci="{{ $rid }}" :final="$final" :terkunci="$isFormLocked"
+                                                :bisaDiubah="filled($rid)"
+                                                lanjut="editEntri"
+                                                lihat="editEntri"
+                                                hapus="hapusEntri"
+                                                judulLihat="Lihat entri terkunci"
+                                                judulBukaKunci="Buka Kunci Permintaan Darah"
+                                                pesanBukaKunci="TTD dokter akan dicabut & entri kembali menjadi draft untuk dikoreksi. Lanjutkan?"
+                                                konfirmasiHapus="Hapus permintaan darah ini?" />
                                         </td>
                                         </tr>
 

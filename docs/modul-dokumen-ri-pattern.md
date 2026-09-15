@@ -150,6 +150,25 @@ eab5fdbe, 8a941775). Kalau membuat modul baru, salin dari sana; jangan bikin var
   bukan seluruh formulir.
 - **Tanggal** `font-mono`; **Petugas (TTD)** = nama petugas, atau badge merah `Belum TTD`;
   **Status** = badge `Terkunci` (info) / `Draft` (warning); kolom teks lain `text-muted`.
+- **Aksi = komponen `<x-modul-dokumen.aksi-entri>`** (BAKU 2026-09-15, 64 titik) — jangan tulis tombol
+  sendiri. Aturan di bawah sudah ada di dalamnya:
+
+  ```blade
+  <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
+      <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$isFinal" :terkunci="$isFormLocked"
+          judulBukaKunci="Buka Kunci Inform Consent" konfirmasiHapus="Yakin hapus Inform Consent ini?" />
+  </td>
+  ```
+
+  Prop method `lanjut`/`lihat`/`cetak`/`bukaKunci`/`hapus` (default `editEntry`/`viewEntry`/`cetak`/
+  `bukaKunci`/`hapus`; **string kosong `""` = tombol tidak ada** — `null` jatuh ke default),
+  `argumenAwal` (Case Manager `'formA'` → `hapusForm('formA','kunci')`), `bisaDiubah` (syarat tambahan,
+  mis. `filled($id)`), `cetakHanyaFinal` (dokumen legal), `hapusHanyaDraft` (Pindah Antar Ruang), teks
+  `judulLanjut`/`judulLihat`/`judulBukaKunci`/`pesanBukaKunci`/`konfirmasiHapus`. Slot = tombol khusus
+  di kelompok kiri (TTD Petugas menyusul di Inform Consent, TTD Saya di Identifikasi Bayi).
+  Jebakan saat membuat komponen sejenis: atribut `wire:*` ditulis LITERAL `wire:click="{{ $m }}('{{ $kunci }}')"`
+  — binding `:wire:click` di-escape Blade lalu di-escape lagi oleh lihat/cetak/hapus-button (wire:target
+  rusak); tanda kutip ganda di dalam nilai atribut komponen memutus parser tag.
 - **Aksi, SATU baris rata kanan** (BAKU 2026-09-08, permintaan user — dua baris lama membuat
   Buka Kunci & hapus berdempetan dan rawan salah klik):
   `[Lanjutkan Pengisian (primary, draft) | <x-lihat-button> (terkunci)] [<x-cetak-button>]  │

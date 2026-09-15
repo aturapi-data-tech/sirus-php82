@@ -1135,44 +1135,14 @@ new class extends Component {
                                                 @endif
                                             </td>
                                             <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
-                                                <div class="flex items-center justify-end gap-2">
-                                                    {{-- Baris atas: aksi non-destruktif (Lanjut/Cetak) --}}
-                                                    <div class="flex items-center justify-center gap-2">
-                                                        @if (!$rowLocked && !$isFormLocked)
-                                                            <x-primary-button type="button" wire:click="editPindah('{{ $kunciPindah }}')"
-                                                                wire:loading.attr="disabled" wire:target="editPindah('{{ $kunciPindah }}')"
-                                                                class="gap-1.5 whitespace-nowrap" title="Lanjutkan mengisi entri ini">
-                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                                </svg>
-                                                                Lanjutkan Pengisian
-                                                            </x-primary-button>
-                                                        @endif
-                                                        <x-cetak-button wire:click="cetakPindahRi('{{ $kunciPindah }}')" title="Cetak" />
-                                                    </div>
-
-                                                    {{-- Buka kunci: hanya saat kedua TTD sudah ada (Selesai) --}}
-                                                    @if ($rowLocked && !$isFormLocked && (auth()->user()?->can('dokumen.bukaKunci') || auth()->user()?->can('dokumen.hapus')))
-                                                        <div class="flex items-center gap-2 pl-3 ml-1 border-l border-hairline dark:border-gray-700">
-                                                            @can('dokumen.bukaKunci')
-                                                                <x-confirm-button variant="warning-soft" action="bukaKunci('{{ $kunciPindah }}')" title="Buka Kunci Form Pindah Antar Ruang"
-                                                                    message="TTD petugas penerima akan dicabut & entri kembali Transit untuk dikoreksi. Lanjutkan?"
-                                                                    confirmText="Ya, Buka Kunci" class="gap-1.5">
-                                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg>
-                                                                    Buka Kunci
-                                                                </x-confirm-button>
-                                                            @endcan
-                                                        </div>
-                                                    @endif
-                                                    {{-- Baris bawah: aksi destruktif (Hapus) --}}
-                                                    @if (!$rowLocked && !$isFormLocked && (auth()->user()?->can('dokumen.bukaKunci') || auth()->user()?->can('dokumen.hapus')))
-                                                        <div class="flex items-center gap-2 pl-3 ml-1 border-l border-hairline dark:border-gray-700">
-                                                            @can('dokumen.hapus')
-                                                                <x-hapus-button wire:click.prevent="hapus('{{ $kunciPindah }}')" confirm="Yakin hapus catatan pindah ini?" />
-                                                            @endcan
-                                                        </div>
-                                                    @endif
-                                                </div>
+                                                <x-modul-dokumen.aksi-entri kunci="{{ $kunciPindah }}" :final="$rowLocked" :terkunci="$isFormLocked"
+                                                    lanjut="editPindah"
+                                                    lihat=""
+                                                    cetak="cetakPindahRi"
+                                                    :hapusHanyaDraft="true"
+                                                    judulBukaKunci="Buka Kunci Form Pindah Antar Ruang"
+                                                    pesanBukaKunci="TTD petugas penerima akan dicabut & entri kembali Transit untuk dikoreksi. Lanjutkan?"
+                                                    konfirmasiHapus="Yakin hapus catatan pindah ini?" />
                                             </td>
                                         </tr>
 

@@ -19,6 +19,7 @@
  *      keterangan footer "Setiap entri berdiri sendiri" di layar daftar
  *   9. header modal = komponen x-modul-dokumen.header & punya ikon (kotak w-7 h-7 rounded-lg sebelum judul)
  *  10. tabel layar daftar di dalam kartu <x-border-form padding="p-0"> (bukan tabel polos selebar modal)
+ *  11. sel Aksi tabel daftar = komponen x-modul-dokumen.aksi-entri
  */
 require __DIR__ . '/../../../vendor/autoload.php';
 $app = require __DIR__ . '/../../../bootstrap/app.php';
@@ -127,6 +128,11 @@ foreach ($berkas as $path) {
 
         $duaLayar = str_contains($sumber, 'this->diForm()');
         if ($duaLayar) {
+            // Sel Aksi tabel daftar WAJIB komponen (Lanjutkan/Lihat/Cetak │ Buka Kunci/Hapus + Gate) — 2026-09-15.
+            if (!str_contains($sumber, '<x-modul-dokumen.aksi-entri'))
+                $catatan[] = 'sel Aksi tabel daftar tidak memakai <x-modul-dokumen.aksi-entri>';
+            if (preg_match('/<x-confirm-button[^>]*action="bukaKunci(Form)?\(/', substr($sumber, (int) strrpos($sumber, '@unless ($this->diForm())'))))
+                $catatan[] = 'Buka Kunci entri masih ditulis tangan di tabel daftar (pakai <x-modul-dokumen.aksi-entri>)';
             if (!str_contains($sumber, 'rotate-90')) $catatan[] = 'tabel daftar tanpa panah rincian (baris expand)';
             if (!str_contains($daftar, 'Setiap entri berdiri sendiri')) $catatan[] = 'layar daftar tanpa keterangan footer "Setiap entri berdiri sendiri"';
             if (!preg_match('/>\s*Tutup\s*</', $daftar)) $catatan[] = 'layar daftar tanpa tombol Tutup';

@@ -47,7 +47,9 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
    jebakan: `docs/modul-dokumen-ri-pattern.md §2a`.
    **Header modal WAJIB `<x-modul-dokumen.header judul ikon jalur :jumlah :readOnly>deskripsi</…>`**
    (slot `badge` untuk badge khusus) — BAKU 2026-09-15, 71 modal; `:jumlah` dievaluasi langsung, jadi
-   ekspresi yang bisa null wajib `?? []`. Komponen khusus modul dokumen lainnya ditaruh di folder
+   ekspresi yang bisa null wajib `?? []`. **Sel Aksi tabel daftar WAJIB `<x-modul-dokumen.aksi-entri
+   kunci :final :terkunci …>`** (Gate Buka Kunci/Hapus di dalamnya; method kosong `""` = tanpa tombol;
+   rincian docs §2a "Tabel daftar"). Komponen khusus modul dokumen lainnya ditaruh di folder
    `resources/views/components/modul-dokumen/` (nested, `x-modul-dokumen.<nama>`).
 
 9. **Dua layar + nama method baku (BAKU, berlaku SEMUA modul multi-entri)** — `$layar` +

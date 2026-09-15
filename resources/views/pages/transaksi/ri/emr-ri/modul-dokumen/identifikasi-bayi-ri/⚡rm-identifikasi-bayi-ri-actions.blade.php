@@ -640,36 +640,20 @@ new class extends Component {
                                                 @endif
                                             </td>
                                             <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
-                                                <div class="flex items-center justify-end gap-2">
-                                                    {{-- Baris atas: aksi non-destruktif --}}
-                                                    <div class="flex items-center justify-center gap-2">
-                                                        @if (!$rowFinal && !$isFormLocked)
-                                                            <x-primary-button type="button" wire:click="ttdEntry('{{ $rowKey }}')" wire:loading.attr="disabled"
-                                                                wire:target="ttdEntry('{{ $rowKey }}')" class="gap-1.5 whitespace-nowrap" title="Tanda tangani entri ini">
-                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                                                TTD Saya
-                                                            </x-primary-button>
-                                                        @endif
-                                                        <x-cetak-button wire:click="cetak('{{ $rowKey }}')" title="Cetak" />
-                                                    </div>
-                                                    {{-- Baris bawah: aksi terkunci/destruktif --}}
-                                                    @unless ($isFormLocked || !(auth()->user()?->can('dokumen.bukaKunci') || auth()->user()?->can('dokumen.hapus')))
-                                                        <div class="flex items-center gap-2 pl-3 ml-1 border-l border-hairline dark:border-gray-700">
-                                                            @if ($rowFinal)
-                                                                @can('dokumen.bukaKunci')
-                                                                    <x-confirm-button variant="warning-soft" action="bukaKunci('{{ $rowKey }}')" title="Buka Kunci Identifikasi Bayi"
-                                                                        message="TTD petugas akan dicabut dari entri ini — proses TTD diulang dari awal. Lanjutkan?" confirmText="Ya, Buka Kunci" class="gap-1.5">
-                                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg>
-                                                                        Buka Kunci
-                                                                    </x-confirm-button>
-                                                                @endcan
-                                                            @endif
-                                                            @can('dokumen.hapus')
-                                                                <x-hapus-button wire:click.prevent="hapus('{{ $rowKey }}')" confirm="Hapus entri identifikasi bayi ini?" title="Hapus entri" />
-                                                            @endcan
-                                                        </div>
-                                                    @endunless
-                                                </div>
+                                                <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$rowFinal" :terkunci="$isFormLocked"
+                                                    lanjut=""
+                                                    lihat=""
+                                                    judulBukaKunci="Buka Kunci Identifikasi Bayi"
+                                                    pesanBukaKunci="TTD petugas akan dicabut dari entri ini — proses TTD diulang dari awal. Lanjutkan?"
+                                                    konfirmasiHapus="Hapus entri identifikasi bayi ini?">
+                                                    @if (!$rowFinal && !$isFormLocked)
+                                                    <x-primary-button type="button" wire:click="ttdEntry('{{ $rowKey }}')" wire:loading.attr="disabled"
+                                                    wire:target="ttdEntry('{{ $rowKey }}')" class="gap-1.5 whitespace-nowrap" title="Tanda tangani entri ini">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                                    TTD Saya
+                                                    </x-primary-button>
+                                                    @endif
+                                                </x-modul-dokumen.aksi-entri>
                                             </td>
                                         </tr>
 

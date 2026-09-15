@@ -1077,42 +1077,16 @@ new class extends Component {
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
-                                        <div class="flex items-center justify-end gap-2">
-                                            {{-- Baris atas: aksi non-destruktif (Lanjut/Lihat/Cetak) --}}
-                                            <div class="flex flex-wrap items-center justify-center gap-2">
-                                            @if (!$isFinal && !$isFormLocked)
-                                                <x-primary-button type="button" wire:click="editEntryA('{{ $rowKey }}')" wire:loading.attr="disabled" wire:target="editEntryA('{{ $rowKey }}')" class="gap-1.5" title="Lanjutkan mengisi draft ini">
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                    </svg>
-                                                    Lanjutkan Pengisian
-                                                </x-primary-button>
-                                            @endif
-                                            @if ($isFinal)
-                                                <x-lihat-button wire:click="viewEntryA('{{ $rowKey }}')" title="Lihat detail (read-only)" />
-                                            @endif
-                                            <x-cetak-button wire:click="cetakFormA('{{ $rowKey }}')" title="Cetak" />
-                                            </div>
-
-                                            {{-- Baris bawah: aksi destruktif (Hapus) --}}
-                                            @if (!$isFormLocked && (auth()->user()?->can('dokumen.bukaKunci') || auth()->user()?->can('dokumen.hapus')))
-                                                <div class="flex items-center gap-2 pl-3 ml-1 border-l border-hairline dark:border-gray-700">
-                                                @if ($isFinal)
-                                                    @can('dokumen.bukaKunci')
-                                                        <x-confirm-button variant="warning-soft" action="bukaKunciForm('formA','{{ $rowKey }}')" title="Buka Kunci Case Manager Form A"
-                                                            message="TTD petugas akan dicabut & entri kembali menjadi draft untuk dikoreksi. Lanjutkan?"
-                                                            confirmText="Ya, Buka Kunci" class="gap-1.5">
-                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg>
-                                                            Buka Kunci
-                                                        </x-confirm-button>
-                                                    @endcan
-                                                @endif
-                                                @can('dokumen.hapus')
-                                                <x-hapus-button wire:click.prevent="hapusForm('formA','{{ $rowKey }}')" confirm="Hapus Form A ini?" />
-                                                @endcan
-                                                </div>
-                                            @endif
-                                        </div>
+                                        <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$isFinal" :terkunci="$isFormLocked"
+                                            lanjut="editEntryA"
+                                            lihat="viewEntryA"
+                                            cetak="cetakFormA"
+                                            bukaKunci="bukaKunciForm"
+                                            hapus="hapusForm"
+                                            argumenAwal="formA"
+                                            judulLanjut="Lanjutkan mengisi draft ini"
+                                            judulBukaKunci="Buka Kunci Case Manager Form A"
+                                            konfirmasiHapus="Hapus Form A ini?" />
                                     </td>
                                 </tr>
 
@@ -1185,40 +1159,16 @@ new class extends Component {
                                                                         @if (!empty($fbPetugas)) TTD: {{ $fbPetugas }} @else <span class="text-red-600 dark:text-red-400">Belum TTD</span> @endif
                                                                     </p>
                                                                 </div>
-                                                                <div class="flex flex-col items-end gap-1.5">
-                                                                    {{-- Baris atas: aksi non-destruktif (Lanjut/Lihat/Cetak) --}}
-                                                                    <div class="flex flex-wrap items-center justify-end gap-1.5">
-                                                                    @if (!$fbFinal && !$isFormLocked)
-                                                                        <x-primary-button type="button" wire:click="editEntryB('{{ $fbKey }}')" class="!px-2.5 !py-1 gap-1" title="Lanjutkan mengisi draft ini">
-                                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                                                            Lanjutkan Pengisian
-                                                                        </x-primary-button>
-                                                                    @endif
-                                                                    @if ($fbFinal)
-                                                                        <x-lihat-button wire:click="viewEntryB('{{ $fbKey }}')" title="Lihat detail (read-only)" />
-                                                                    @endif
-                                                                    <x-cetak-button wire:click="cetakFormB('{{ $fbKey }}')" title="Cetak Form B" />
-                                                                    </div>
-
-                                                                    {{-- Baris bawah: aksi destruktif (Hapus) --}}
-                                                                    @if (!$isFormLocked && (auth()->user()?->can('dokumen.bukaKunci') || auth()->user()?->can('dokumen.hapus')))
-                                                                        <div class="flex items-center gap-2 pl-3 ml-1 border-l border-hairline dark:border-gray-700">
-                                                                        @if ($fbFinal)
-                                                                            @can('dokumen.bukaKunci')
-                                                                                <x-confirm-button variant="warning-soft" action="bukaKunciForm('formB','{{ $fbKey }}')" title="Buka Kunci Case Manager Form B"
-                                                                                    message="TTD petugas akan dicabut & entri kembali menjadi draft untuk dikoreksi. Lanjutkan?"
-                                                                                    confirmText="Ya, Buka Kunci" class="gap-1.5">
-                                                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-8 4h10a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg>
-                                                                                    Buka Kunci
-                                                                                </x-confirm-button>
-                                                                            @endcan
-                                                                        @endif
-                                                                        @can('dokumen.hapus')
-                                                                        <x-hapus-button wire:click.prevent="hapusForm('formB','{{ $fbKey }}')" confirm="Hapus Form B ini?" title="Hapus Form B" />
-                                                                        @endcan
-                                                                        </div>
-                                                                    @endif
-                                                                </div>
+                                                                <x-modul-dokumen.aksi-entri kunci="{{ $fbKey }}" :final="$fbFinal" :terkunci="$isFormLocked"
+                                                                    lanjut="editEntryB"
+                                                                    lihat="viewEntryB"
+                                                                    cetak="cetakFormB"
+                                                                    bukaKunci="bukaKunciForm"
+                                                                    hapus="hapusForm"
+                                                                    argumenAwal="formB"
+                                                                    judulLanjut="Lanjutkan mengisi draft ini"
+                                                                    judulBukaKunci="Buka Kunci Case Manager Form B"
+                                                                    konfirmasiHapus="Hapus Form B ini?" />
                                                             </div>
                                                         </div>
                                                     @endforeach
