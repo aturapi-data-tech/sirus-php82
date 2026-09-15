@@ -920,11 +920,7 @@ new class extends Component {
                                     <x-badge :variant="$entryTtdCount === 3 ? 'success' : 'warning'">{{ $entryTtdCount }}/3 TTD</x-badge>
                                 </td>
                                 <td class="px-3 py-2 text-center">
-                                    @if ($this->entryIsFinal($entry))
-                                        <x-badge variant="info">Terkunci</x-badge>
-                                    @else
-                                        <x-badge variant="warning">Draft</x-badge>
-                                    @endif
+                                    <x-modul-dokumen.status-entri :final="$this->entryIsFinal($entry)" />
                                 </td>
                             </tr>
                         @endforeach

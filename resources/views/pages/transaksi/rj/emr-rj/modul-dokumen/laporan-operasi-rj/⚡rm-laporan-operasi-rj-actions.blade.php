@@ -686,11 +686,7 @@ new class extends Component {
                             @if (!empty($lo['tanggalOperasi']))
                                 <span class="text-sm text-muted-soft">— {{ $lo['tanggalOperasi'] }}</span>
                             @endif
-                            @if ($this->entryIsFinal($lo))
-                                <x-badge variant="info">Terkunci</x-badge>
-                            @else
-                                <x-badge variant="warning">Draft</x-badge>
-                            @endif
+                            <x-modul-dokumen.status-entri :final="$this->entryIsFinal($lo)" />
                         </li>
                     @endforeach
                     @if ($loCount > 3)
@@ -723,18 +719,10 @@ new class extends Component {
                                 {{ $entry['jenisTindakan'] ? Str::limit($entry['jenisTindakan'], 45) : '-' }}
                             </td>
                             <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">
-                                @if (!empty($entry['operatorTtd']))
-                                    <span class="font-medium text-ink dark:text-gray-200">{{ $entry['operatorTtd'] }}</span>
-                                @else
-                                    <x-badge variant="danger">Belum TTD</x-badge>
-                                @endif
+                                <x-modul-dokumen.status-ttd :nama="$entry['operatorTtd'] ?? ''" />
                             </td>
                             <td class="px-3 py-2 text-center align-middle">
-                                @if ($isFinal)
-                                    <x-badge variant="info">Terkunci</x-badge>
-                                @else
-                                    <x-badge variant="warning">Draft</x-badge>
-                                @endif
+                                <x-modul-dokumen.status-entri :final="$isFinal" />
                             </td>
                         </tr>
                     @empty
@@ -1107,18 +1095,10 @@ new class extends Component {
                                                         {{ $entry['jenisTindakan'] ? Str::limit($entry['jenisTindakan'], 45) : '-' }}
                                                     </td>
                                                     <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
-                                                        @if (!empty($entry['operatorTtd']))
-                                                            <span class="font-medium text-ink dark:text-gray-200">{{ $entry['operatorTtd'] }}</span>
-                                                        @else
-                                                            <x-badge variant="danger">Belum TTD</x-badge>
-                                                        @endif
+                                                        <x-modul-dokumen.status-ttd :nama="$entry['operatorTtd'] ?? ''" />
                                                     </td>
                                                     <td class="px-4 py-3 text-center align-middle">
-                                                        @if ($isFinal)
-                                                            <x-badge variant="info">Terkunci</x-badge>
-                                                        @else
-                                                            <x-badge variant="warning">Draft</x-badge>
-                                                        @endif
+                                                        <x-modul-dokumen.status-entri :final="$isFinal" />
                                                     </td>
                                                     <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
                                                         <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$isFinal" :terkunci="$isFormLocked"
@@ -1250,12 +1230,7 @@ new class extends Component {
                                                             <div>
                                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Operator (TTD)</dt>
                                                                 <dd class="mt-0.5">
-                                                                    @if (!empty($entry['operatorTtd']))
-                                                                        <span class="text-ink dark:text-gray-200">{{ $entry['operatorTtd'] }}</span>
-                                                                        <span class="text-sm text-muted-soft">— {{ $entry['operatorTtdDate'] ?? '-' }}</span>
-                                                                    @else
-                                                                        <x-badge variant="danger">Belum TTD</x-badge>
-                                                                    @endif
+                                                                    <x-modul-dokumen.status-ttd :nama="$entry['operatorTtd'] ?? ''" :waktu="$entry['operatorTtdDate'] ?? '-'" gaya="biasa" />
                                                                 </dd>
                                                             </div>
                                                         </dl>

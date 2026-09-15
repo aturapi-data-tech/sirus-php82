@@ -571,11 +571,7 @@ new class extends Component {
                         <tr class="border-t border-hairline dark:border-gray-800">
                             <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-muted dark:text-gray-300">{{ $jenisRingkas ?: '-' }}</td>
                             <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700">
-                                @if ($final)
-                                    <x-badge variant="success">Terkunci</x-badge>
-                                @else
-                                    <x-badge variant="warning">Draft</x-badge>
-                                @endif
+                                <x-modul-dokumen.status-entri :final="$final" />
                             </td>
                             <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-muted dark:text-gray-300">{{ data_get($rf, 'ttd.dokterNama') ?: '-' }}</td>
                         </tr>
@@ -830,11 +826,7 @@ new class extends Component {
                                         <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-ink dark:text-gray-200">{{ data_get($rf, 'tglPermintaan', '-') ?: '-' }}</td>
                                         <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-muted dark:text-gray-300">{{ $jenisRingkas ?: '-' }}</td>
                                         <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700">
-                                            @if ($final)
-                                                <x-badge variant="success">Terkunci</x-badge>
-                                            @else
-                                                <x-badge variant="warning">Draft</x-badge>
-                                            @endif
+                                            <x-modul-dokumen.status-entri :final="$final" />
                                         </td>
                                         <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-muted dark:text-gray-300">{{ data_get($rf, 'ttd.dokterNama') ?: '-' }}</td>
                                         <td class="px-3 py-2 text-center align-middle border-b border-hairline dark:border-gray-700 whitespace-nowrap" @click.stop>

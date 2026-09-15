@@ -721,14 +721,10 @@ new class extends Component {
                             </td>
                             <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $dnr['signatureDate'] ?? '-' }}</td>
                             <td class="px-3 py-2 text-muted dark:text-gray-400">
-                                @if (!empty($dnr['petugas'])){{ $dnr['petugas'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
+                                <x-modul-dokumen.status-ttd :nama="$dnr['petugas'] ?? ''" gaya="polos" />
                             </td>
                             <td class="px-3 py-2 text-center">
-                                @if ($this->entryIsFinal($dnr))
-                                    <x-badge variant="info">Terkunci</x-badge>
-                                @else
-                                    <x-badge variant="warning">Draft</x-badge>
-                                @endif
+                                <x-modul-dokumen.status-entri :final="$this->entryIsFinal($dnr)" />
                             </td>
                         </tr>
                     @empty
@@ -1056,18 +1052,10 @@ new class extends Component {
                                                     {{ $rowKey ?: '-' }}
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
-                                                    @if (!empty($entry['petugas']))
-                                                        <span class="font-medium text-ink dark:text-gray-200">{{ $entry['petugas'] }}</span>
-                                                    @else
-                                                        <x-badge variant="danger">Belum TTD</x-badge>
-                                                    @endif
+                                                    <x-modul-dokumen.status-ttd :nama="$entry['petugas'] ?? ''" />
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-center">
-                                                    @if ($isFinal)
-                                                        <x-badge variant="info">Terkunci</x-badge>
-                                                    @else
-                                                        <x-badge variant="warning">Draft</x-badge>
-                                                    @endif
+                                                    <x-modul-dokumen.status-entri :final="$isFinal" />
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-center whitespace-nowrap" @click.stop>
                                                     <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$isFinal" :terkunci="$isFormLocked"
@@ -1131,12 +1119,7 @@ new class extends Component {
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">TTD Pembuat Pernyataan</dt>
                                                             <dd class="mt-0.5">
-                                                                @if (!empty($entry['signature']))
-                                                                    <span class="text-success-deep dark:text-green-300">Sudah TTD</span>
-                                                                    <span class="text-sm text-muted-soft">— {{ $entry['signatureDate'] ?? '-' }}</span>
-                                                                @else
-                                                                    <x-badge variant="danger">Belum TTD</x-badge>
-                                                                @endif
+                                                                <x-modul-dokumen.status-ttd :sudah="!empty($entry['signature'])" :waktu="$entry['signatureDate'] ?? '-'" gaya="biasa" />
                                                             </dd>
                                                         </div>
                                                         <div>
@@ -1155,12 +1138,7 @@ new class extends Component {
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Petugas RS</dt>
                                                             <dd class="mt-0.5">
-                                                                @if (!empty($entry['petugas']))
-                                                                    <span class="text-ink dark:text-gray-200">{{ $entry['petugas'] }}</span>
-                                                                    <span class="text-sm text-muted-soft">— {{ $entry['petugasDate'] ?? '-' }}</span>
-                                                                @else
-                                                                    <x-badge variant="danger">Belum TTD</x-badge>
-                                                                @endif
+                                                                <x-modul-dokumen.status-ttd :nama="$entry['petugas'] ?? ''" :waktu="$entry['petugasDate'] ?? '-'" gaya="biasa" />
                                                             </dd>
                                                         </div>
                                                     </dl>

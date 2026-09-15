@@ -917,19 +917,11 @@ new class extends Component {
                                 <td class="px-3 py-2 font-mono text-muted whitespace-nowrap align-middle dark:text-gray-300">{{ $tglEdukasi }}</td>
                                 <td class="px-3 py-2 font-medium text-ink align-middle dark:text-white">{{ $pasienNama }}</td>
                                 <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">
-                                    @if ($petugasName !== '-')
-                                        <span class="font-medium text-ink dark:text-gray-200">{{ $petugasName }}</span>
-                                    @else
-                                        <x-badge variant="danger">Belum TTD</x-badge>
-                                    @endif
+                                    <x-modul-dokumen.status-ttd :nama="$petugasName" />
                                 </td>
                                 <td class="px-3 py-2 text-center align-middle">
                                     <div class="flex flex-col items-center gap-1">
-                                        @if ($isFinal)
-                                            <x-badge variant="info">Terkunci</x-badge>
-                                        @else
-                                            <x-badge variant="warning">Draft</x-badge>
-                                        @endif
+                                        <x-modul-dokumen.status-entri :final="$isFinal" />
                                         @if ($alertRow)
                                             <x-badge variant="danger">⚠ Risiko</x-badge>
                                         @endif
@@ -1495,19 +1487,11 @@ new class extends Component {
                             <td class="px-4 py-3 font-mono text-muted whitespace-nowrap align-middle dark:text-gray-300">{{ $tglEdukasi }}</td>
                             <td class="px-4 py-3 font-medium text-ink align-middle dark:text-white">{{ $pasienNama }}</td>
                             <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
-                                @if ($petugasName !== '-')
-                                    <span class="font-medium text-ink dark:text-gray-200">{{ $petugasName }}</span>
-                                @else
-                                    <x-badge variant="danger">Belum TTD</x-badge>
-                                @endif
+                                <x-modul-dokumen.status-ttd :nama="$petugasName" />
                             </td>
                             <td class="px-4 py-3 text-center align-middle">
                                 <div class="flex flex-col items-center gap-1">
-                                    @if ($isFinal)
-                                        <x-badge variant="info">Terkunci</x-badge>
-                                    @else
-                                        <x-badge variant="warning">Draft</x-badge>
-                                    @endif
+                                    <x-modul-dokumen.status-entri :final="$isFinal" />
                                     @if ($alertRow)
                                         <x-badge variant="danger">⚠ Risiko</x-badge>
                                     @endif
@@ -1595,11 +1579,7 @@ new class extends Component {
                                     <div>
                                         <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">TTD Pasien / Keluarga</dt>
                                         <dd class="mt-0.5">
-                                            @if ($hasTtd)
-                                                <span class="text-success-deep dark:text-green-300">Sudah TTD</span>
-                                            @else
-                                                <x-badge variant="danger">Belum TTD</x-badge>
-                                            @endif
+                                            <x-modul-dokumen.status-ttd :sudah="$hasTtd" gaya="biasa" />
                                         </dd>
                                     </div>
                                 </dl>

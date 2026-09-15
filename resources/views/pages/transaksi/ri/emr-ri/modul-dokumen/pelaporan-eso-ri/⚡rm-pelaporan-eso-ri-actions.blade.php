@@ -766,11 +766,7 @@ new class extends Component {
                                 @endif
                             </td>
                             <td class="ds-c">
-                                @if ($isFinal)
-                                    <x-badge variant="success">Terkunci</x-badge>
-                                @else
-                                    <x-badge variant="warning">Draft</x-badge>
-                                @endif
+                                <x-modul-dokumen.status-entri :final="$isFinal" />
                             </td>
                         </tr>
                     @empty
@@ -1323,11 +1319,7 @@ new class extends Component {
                                     @endif
                                 </td>
                                         <td class="ds-c">
-                                            @if ($isFinal)
-                                                <x-badge variant="success">Terkunci</x-badge>
-                                            @else
-                                                <x-badge variant="warning">Draft</x-badge>
-                                            @endif
+                                            <x-modul-dokumen.status-entri :final="$isFinal" />
                                         </td>
                                         <td class="ds-c whitespace-nowrap" @click.stop>
                                             <x-modul-dokumen.aksi-entri kunci="{{ $idEntri }}" :final="$isFinal" :terkunci="$isFormLocked"

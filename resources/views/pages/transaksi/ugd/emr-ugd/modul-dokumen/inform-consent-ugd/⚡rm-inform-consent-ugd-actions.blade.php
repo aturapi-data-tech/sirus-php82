@@ -781,7 +781,7 @@ new class extends Component {
                             </td>
                             <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $entry['signatureDate'] ?? '-' }}</td>
                             <td class="px-3 py-2 text-muted dark:text-gray-400">
-                                @if (!empty($entry['dokter'])){{ $entry['dokter'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
+                                <x-modul-dokumen.status-ttd :nama="$entry['dokter'] ?? ''" gaya="polos" />
                             </td>
                             <td class="px-3 py-2 text-center">
                                 @if (($entry['agreement'] ?? '1') === '1')
@@ -791,11 +791,7 @@ new class extends Component {
                                 @endif
                             </td>
                             <td class="px-3 py-2 text-center">
-                                @if ($this->entryIsFinal($entry))
-                                    <x-badge variant="info">Terkunci</x-badge>
-                                @else
-                                    <x-badge variant="warning">Draft</x-badge>
-                                @endif
+                                <x-modul-dokumen.status-entri :final="$this->entryIsFinal($entry)" />
                             </td>
                         </tr>
                     @empty
@@ -1247,11 +1243,7 @@ new class extends Component {
                                                     {{ $rowKey ?: '-' }}
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
-                                                    @if (!empty($consent['dokter']))
-                                                        <span class="font-medium text-ink dark:text-gray-200">{{ $consent['dokter'] }}</span>
-                                                    @else
-                                                        <x-badge variant="danger">Belum TTD</x-badge>
-                                                    @endif
+                                                    <x-modul-dokumen.status-ttd :nama="$consent['dokter'] ?? ''" />
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-center">
                                                     @if (($consent['agreement'] ?? '1') === '1')
@@ -1261,11 +1253,7 @@ new class extends Component {
                                                     @endif
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-center">
-                                                    @if ($isFinal)
-                                                        <x-badge variant="info">Terkunci</x-badge>
-                                                    @else
-                                                        <x-badge variant="warning">Draft</x-badge>
-                                                    @endif
+                                                    <x-modul-dokumen.status-entri :final="$isFinal" />
                                                 </td>
                                                 <td class="px-4 py-3 align-middle text-center whitespace-nowrap" @click.stop>
                                                     <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$isFinal" :terkunci="$isFormLocked"
@@ -1354,23 +1342,13 @@ new class extends Component {
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">TTD Pasien/Wali</dt>
                                                             <dd class="mt-0.5">
-                                                                @if (!empty($consent['signature']))
-                                                                    <span class="text-success-deep dark:text-green-300">Sudah TTD</span>
-                                                                    <span class="text-sm text-muted-soft">— {{ $consent['signatureDate'] ?? '-' }}</span>
-                                                                @else
-                                                                    <x-badge variant="danger">Belum TTD</x-badge>
-                                                                @endif
+                                                                <x-modul-dokumen.status-ttd :sudah="!empty($consent['signature'])" :waktu="$consent['signatureDate'] ?? '-'" gaya="biasa" />
                                                             </dd>
                                                         </div>
                                                         <div>
                                                             <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Pemberi Informasi (Petugas)</dt>
                                                             <dd class="mt-0.5">
-                                                                @if (!empty($consent['dokter']))
-                                                                    <span class="text-ink dark:text-gray-200">{{ $consent['dokter'] }}</span>
-                                                                    <span class="text-sm text-muted-soft">— {{ $consent['dokterDate'] ?? '-' }}</span>
-                                                                @else
-                                                                    <x-badge variant="danger">Belum TTD</x-badge>
-                                                                @endif
+                                                                <x-modul-dokumen.status-ttd :nama="$consent['dokter'] ?? ''" :waktu="$consent['dokterDate'] ?? '-'" gaya="biasa" />
                                                             </dd>
                                                         </div>
                                                     </dl>

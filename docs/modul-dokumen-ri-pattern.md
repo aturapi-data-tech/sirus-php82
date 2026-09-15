@@ -204,8 +204,14 @@ eab5fdbe, 8a941775). Kalau membuat modul baru, salin dari sana; jangan bikin var
   `<tr x-show="open" x-cloak><td colspan="N"><dl class="grid … md:grid-cols-2">`.
   Semua baris mulai TERTUTUP. Isi `<dl>` = ringkasan isian yang tidak muat di kolom,
   bukan seluruh formulir.
-- **Tanggal** `font-mono`; **Petugas (TTD)** = nama petugas, atau badge merah `Belum TTD`;
-  **Status** = badge `Terkunci` (info) / `Draft` (warning); kolom teks lain `text-muted`.
+- **Tanggal** `font-mono`; **Petugas (TTD)** = `<x-modul-dokumen.status-ttd :nama="$entry['ttd'] ?? ''" />`
+  (nama / badge merah `Belum TTD`); **Status** = `<x-modul-dokumen.status-entri :final="$isFinal" />`
+  (badge `Terkunci` info / `Draft` warning); kolom teks lain `text-muted`. BAKU 2026-09-15, 121 + 160 titik.
+  `status-ttd`: `gaya` tebal (tabel daftar) · biasa (baris rincian) · polos (pratinjau kartu, warna ikut sel);
+  `:waktu` → "… — waktu"; `:sudah` untuk TTD pasien tanpa nama (signature pad) → "Sudah TTD".
+  `:nama` wajib `?? ''` bila kuncinya bisa tak ada (prop dievaluasi langsung, bukan di dalam @if).
+  `status-entri`: `labelDraft` (Identifikasi Bayi "Belum TTD"). Pengecualian yang sengaja ditulis tangan:
+  Pelaporan ESO (baris "dibuat: …" di bawah badge) & Formulir Penjaminan (kode petugas).
 - **Aksi = komponen `<x-modul-dokumen.aksi-entri>`** (BAKU 2026-09-15, 64 titik) — jangan tulis tombol
   sendiri. Aturan di bawah sudah ada di dalamnya:
 

@@ -914,11 +914,7 @@ new class extends Component {
                                 <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">{{ $petugasName }}</td>
                                 <td class="px-3 py-2 text-center align-middle">
                                     <div class="flex flex-col items-center gap-1">
-                                        @if ($isFinal)
-                                            <x-badge variant="info">Terkunci</x-badge>
-                                        @else
-                                            <x-badge variant="warning">Draft</x-badge>
-                                        @endif
+                                        <x-modul-dokumen.status-entri :final="$isFinal" />
                                         @if ($adaDnr)
                                             <x-badge variant="danger">DNR</x-badge>
                                         @endif
@@ -1590,11 +1586,7 @@ new class extends Component {
                                         <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">{{ $petugasName }}</td>
                                         <td class="px-4 py-3 text-center align-middle">
                                             <div class="flex flex-col items-center gap-1">
-                                                @if ($isFinal)
-                                                    <x-badge variant="info">Terkunci</x-badge>
-                                                @else
-                                                    <x-badge variant="warning">Draft</x-badge>
-                                                @endif
+                                                <x-modul-dokumen.status-entri :final="$isFinal" />
                                                 @if ($adaDnr)
                                                     <x-badge variant="danger">DNR</x-badge>
                                                 @endif

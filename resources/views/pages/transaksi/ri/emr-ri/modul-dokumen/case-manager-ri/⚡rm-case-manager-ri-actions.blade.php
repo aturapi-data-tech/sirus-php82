@@ -1037,18 +1037,10 @@ new class extends Component {
                                     <td class="px-4 py-3 font-semibold align-middle text-ink dark:text-gray-100 font-mono">{{ $entry['tanggal'] ?: '-' }}</td>
                                     <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">{{ \Illuminate\Support\Str::limit($entry['indentifikasiKasus'] ?? '', 48) ?: '-' }}</td>
                                     <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
-                                        @if (!empty($petugas))
-                                            <span class="font-medium text-ink dark:text-gray-200">{{ $petugas }}</span>
-                                        @else
-                                            <x-badge variant="danger">Belum TTD</x-badge>
-                                        @endif
+                                        <x-modul-dokumen.status-ttd :nama="$petugas ?? ''" />
                                     </td>
                                     <td class="px-4 py-3 text-center align-middle">
-                                        @if ($isFinal)
-                                            <x-badge variant="info">Terkunci</x-badge>
-                                        @else
-                                            <x-badge variant="warning">Draft</x-badge>
-                                        @endif
+                                        <x-modul-dokumen.status-entri :final="$isFinal" />
                                     </td>
                                     <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
                                         <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$isFinal" :terkunci="$isFormLocked"
@@ -1075,12 +1067,7 @@ new class extends Component {
                                             <div>
                                                 <dt class="text-xs font-semibold tracking-wide uppercase text-muted-soft">Petugas (TTD)</dt>
                                                 <dd class="mt-0.5">
-                                                    @if (!empty($petugas))
-                                                        <span class="text-ink dark:text-gray-200">{{ $petugas }}</span>
-                                                        <span class="text-sm text-muted-soft">— {{ data_get($entry, 'tandaTanganPetugas.jabatan', 'MPP') }}</span>
-                                                    @else
-                                                        <x-badge variant="danger">Belum TTD</x-badge>
-                                                    @endif
+                                                    <x-modul-dokumen.status-ttd :nama="$petugas ?? ''" :waktu="data_get($entry, 'tandaTanganPetugas.jabatan', 'MPP')" gaya="biasa" />
                                                 </dd>
                                             </div>
                                             <div class="md:col-span-2">
@@ -1122,11 +1109,7 @@ new class extends Component {
                                                                 <div class="min-w-0">
                                                                     <div class="flex items-center gap-2">
                                                                         <span class="font-mono text-sm font-semibold text-ink dark:text-gray-100">{{ $fb['tanggal'] ?: '-' }}</span>
-                                                                        @if ($fbFinal)
-                                                                            <x-badge variant="info">Terkunci</x-badge>
-                                                                        @else
-                                                                            <x-badge variant="warning">Draft</x-badge>
-                                                                        @endif
+                                                                        <x-modul-dokumen.status-entri :final="$fbFinal" />
                                                                     </div>
                                                                     <p class="mt-1 text-sm text-muted dark:text-gray-400">{{ \Illuminate\Support\Str::limit($fb['pelaksanaanMonitoring'] ?? '', 90) ?: '-' }}</p>
                                                                     <p class="mt-0.5 text-xs text-muted-soft">

@@ -1080,24 +1080,10 @@ new class extends Component {
                                                 {{ $pindah['keRoomDesc'] ?? '-' }}
                                             </td>
                                             <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
-                                                @if (!empty($pindah['petugasPengirim']))
-                                                    <span class="font-medium text-ink dark:text-gray-200">{{ $pindah['petugasPengirim'] }}</span>
-                                                    @if (!empty($pindah['petugasPengirimDate']))
-                                                        <div class="text-xs text-muted-soft mt-0.5">{{ $pindah['petugasPengirimDate'] }}</div>
-                                                    @endif
-                                                @else
-                                                    <x-badge variant="danger">Belum TTD</x-badge>
-                                                @endif
+                                                <x-modul-dokumen.status-ttd :nama="$pindah['petugasPengirim'] ?? ''" :waktu="$pindah['petugasPengirimDate'] ?? null" />
                                             </td>
                                             <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
-                                                @if (!empty($pindah['petugasPenerima']))
-                                                    <span class="font-medium text-ink dark:text-gray-200">{{ $pindah['petugasPenerima'] }}</span>
-                                                    @if (!empty($pindah['petugasPenerimaDate']))
-                                                        <div class="text-xs text-muted-soft mt-0.5">{{ $pindah['petugasPenerimaDate'] }}</div>
-                                                    @endif
-                                                @else
-                                                    <x-badge variant="danger">Belum TTD</x-badge>
-                                                @endif
+                                                <x-modul-dokumen.status-ttd :nama="$pindah['petugasPenerima'] ?? ''" :waktu="$pindah['petugasPenerimaDate'] ?? null" />
                                             </td>
                                             <td class="px-4 py-3 text-center align-middle">
                                                 @if ($rowLocked)

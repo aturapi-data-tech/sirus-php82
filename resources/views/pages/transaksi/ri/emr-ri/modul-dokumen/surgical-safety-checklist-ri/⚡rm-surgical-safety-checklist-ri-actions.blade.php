@@ -717,11 +717,7 @@ new class extends Component {
                                 <x-badge :variant="$entryTtdCount === 3 ? 'success' : ($entryTtdCount > 0 ? 'warning' : 'danger')">{{ $entryTtdCount }}/3 TTD</x-badge>
                             </td>
                             <td class="px-3 py-2 text-center align-middle">
-                                @if ($isFinal)
-                                    <x-badge variant="info">Terkunci</x-badge>
-                                @else
-                                    <x-badge variant="warning">Draft</x-badge>
-                                @endif
+                                <x-modul-dokumen.status-entri :final="$isFinal" />
                             </td>
                         </tr>
                     @empty
@@ -1062,11 +1058,7 @@ new class extends Component {
                                                         <x-badge :variant="$entryTtdCount === 3 ? 'success' : ($entryTtdCount > 0 ? 'warning' : 'danger')">{{ $entryTtdCount }}/3 TTD</x-badge>
                                                     </td>
                                                     <td class="px-4 py-3 text-center align-middle">
-                                                        @if ($isFinal)
-                                                            <x-badge variant="info">Terkunci</x-badge>
-                                                        @else
-                                                            <x-badge variant="warning">Draft</x-badge>
-                                                        @endif
+                                                        <x-modul-dokumen.status-entri :final="$isFinal" />
                                                     </td>
                                                     <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
                                                         <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$isFinal" :terkunci="$isFormLocked"

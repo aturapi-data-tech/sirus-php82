@@ -602,18 +602,10 @@ new class extends Component {
                                                 <div class="text-xs text-muted-soft mt-0.5">BB {{ $entri['bb'] ?: '-' }} g <span class="text-muted-soft">·</span> PB {{ $entri['pb'] ?: '-' }} cm</div>
                                             </td>
                                             <td class="px-4 py-3 align-middle text-muted dark:text-gray-300">
-                                                @if (filled($entri['ttd'] ?? ''))
-                                                    <span class="font-medium text-ink dark:text-gray-200">{{ $entri['ttd'] ?? '' }}</span>
-                                                @else
-                                                    <x-badge variant="danger">Belum TTD</x-badge>
-                                                @endif
+                                                <x-modul-dokumen.status-ttd :nama="$entri['ttd'] ?? ''" />
                                             </td>
                                             <td class="px-4 py-3 text-center align-middle">
-                                                @if ($rowFinal)
-                                                    <x-badge variant="info">Terkunci</x-badge>
-                                                @else
-                                                    <x-badge variant="warning">Belum TTD</x-badge>
-                                                @endif
+                                                <x-modul-dokumen.status-entri :final="$rowFinal" labelDraft="Belum TTD" />
                                             </td>
                                             <td class="px-4 py-3 text-center align-middle whitespace-nowrap" @click.stop>
                                                 <x-modul-dokumen.aksi-entri kunci="{{ $rowKey }}" :final="$rowFinal" :terkunci="$isFormLocked"
