@@ -657,7 +657,7 @@ new class extends Component {
                                                 <details class="text-xs group text-muted dark:text-gray-400">
                                                     <summary class="list-none cursor-pointer [&::-webkit-details-marker]:hidden">
                                                         <span class="font-semibold">Diagnosa:</span>
-                                                        <span class="block break-words line-clamp-2 group-open:line-clamp-none">{{ $teksDiagnosa }}</span>
+                                                        <span class="break-words line-clamp-2 group-open:line-clamp-none">{{ $teksDiagnosa }}</span>
                                                         <span class="font-medium text-brand-green dark:text-brand-lime hover:underline group-open:hidden">Selengkapnya</span>
                                                         <span class="hidden font-medium text-brand-green dark:text-brand-lime hover:underline group-open:inline">Ringkas</span>
                                                     </summary>
