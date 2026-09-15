@@ -606,61 +606,40 @@ new class extends Component {
             ->count();
     @endphp
 
-    <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 min-w-0 space-y-3">
-                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
-                <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">
-                        Formulir Pindah Antar Ruang
-                    </h3>
-                    @if ($pindahCount > 0)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $pindahCount }} riwayat</x-badge>
-                    @else
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
-                    @endif
-                    @if ($inTransitCount > 0)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">{{ $inTransitCount }} dalam transit</x-badge>
-                    @endif
-                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Serah-terima pasien antar ruang. Petugas Pengirim TTD dulu — entry tetap dapat dilanjutkan Petugas Penerima sampai keduanya TTD (terkunci).</x-deskripsi-ringkas>
-                </div>
-
-                @if ($pindahCount > 0)
-                    <ul class="space-y-1 text-sm text-muted dark:text-gray-300 list-disc pl-5">
-                        @foreach (array_slice($listPindah, -3) as $pindah)
-                            <li>
-                                <span class="font-medium">{{ $pindah['dariRoomDesc'] ?? '-' }}</span>
-                                <span class="mx-1 text-xs text-muted-soft">→</span>
-                                <span class="font-medium">{{ $pindah['keRoomDesc'] ?? '-' }}</span>
-                                @if (!empty($pindah['tglPindah']))
-                                    <span class="text-xs text-muted-soft">— {{ $pindah['tglPindah'] }}</span>
-                                @endif
-                                @if (empty($pindah['petugasPenerima']))
-                                    <x-badge variant="warning" class="ml-1">Transit</x-badge>
-                                @endif
-                            </li>
-                        @endforeach
-                    </ul>
-                @endif
-            </div>
-
-            <div class="flex shrink-0">
-                <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
-                    wire:target="openModal" :disabled="$disabled || !$riHdrNo" class="gap-2">
-                    <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                        Buka Form Pindah
-                    </span>
-                    <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
-                        <x-loading class="w-4 h-4" /> Memuat...
-                    </span>
-                </x-primary-button>
-            </div>
-        </div>
-    </div>
+    <x-modul-dokumen.kartu judul="Formulir Pindah Antar Ruang"
+        tombol="Buka Form Pindah"
+        :nonaktif="$disabled || !$riHdrNo">
+        <x-slot:deskripsi>Serah-terima pasien antar ruang. Petugas Pengirim TTD dulu — entry tetap dapat dilanjutkan Petugas Penerima sampai keduanya TTD (terkunci).</x-slot:deskripsi>
+        <x-slot:badge>
+            @if ($pindahCount > 0)
+                <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $pindahCount }} riwayat</x-badge>
+            @else
+                <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
+            @endif
+            @if ($inTransitCount > 0)
+                <x-badge class="shrink-0 whitespace-nowrap" variant="warning">{{ $inTransitCount }} dalam transit</x-badge>
+            @endif
+        </x-slot:badge>
+        <x-slot:ringkasan>
+            @if ($pindahCount > 0)
+                <ul class="space-y-1 text-sm text-muted dark:text-gray-300 list-disc pl-5">
+                    @foreach (array_slice($listPindah, -3) as $pindah)
+                        <li>
+                            <span class="font-medium">{{ $pindah['dariRoomDesc'] ?? '-' }}</span>
+                            <span class="mx-1 text-xs text-muted-soft">→</span>
+                            <span class="font-medium">{{ $pindah['keRoomDesc'] ?? '-' }}</span>
+                            @if (!empty($pindah['tglPindah']))
+                                <span class="text-xs text-muted-soft">— {{ $pindah['tglPindah'] }}</span>
+                            @endif
+                            @if (empty($pindah['petugasPenerima']))
+                                <x-badge variant="warning" class="ml-1">Transit</x-badge>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </x-slot:ringkasan>
+    </x-modul-dokumen.kartu>
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-form-pindah-ri-{{ $riHdrNo ?? 'init' }}" size="full" height="full" focusable>

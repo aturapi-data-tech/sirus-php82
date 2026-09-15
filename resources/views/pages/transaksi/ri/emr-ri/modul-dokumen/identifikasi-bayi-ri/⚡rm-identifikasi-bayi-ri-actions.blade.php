@@ -424,36 +424,12 @@ new class extends Component {
 <div>
     {{-- ══ SUMMARY CARD (inline di tab) ══ --}}
     @php $ibCount = count($entriList ?? []); @endphp
-    <div class="p-5 border shadow-sm bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 min-w-0 space-y-2">
-                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
-                <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Identifikasi Bayi</h3>
-                    @if ($ibCount > 0)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $ibCount }} entri</x-badge>
-                    @else
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
-                    @endif
-                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Identifikasi bayi baru lahir (VK) — identitas ibu/ayah & bayi, gelang identitas, serah terima ke ruang neonatus, cap identifikasi (manual di berkas fisik), serta pernyataan serah terima saat pulang. Diisi Perawat / Bidan.</x-deskripsi-ringkas>
-                </div>
-            </div>
-            <div class="flex shrink-0">
-                <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
-                    wire:target="openModal" :disabled="$disabled || !$riHdrNo" class="gap-2">
-                    <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                        Buka Formulir
-                    </span>
-                    <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
-                        <x-loading class="w-4 h-4" /> Memuat...
-                    </span>
-                </x-primary-button>
-            </div>
-        </div>
-    </div>
+    <x-modul-dokumen.kartu judul="Identifikasi Bayi"
+        :jumlah="$ibCount"
+        satuan="entri"
+        :nonaktif="$disabled || !$riHdrNo">
+        <x-slot:deskripsi>Identifikasi bayi baru lahir (VK) — identitas ibu/ayah & bayi, gelang identitas, serah terima ke ruang neonatus, cap identifikasi (manual di berkas fisik), serta pernyataan serah terima saat pulang. Diisi Perawat / Bidan.</x-slot:deskripsi>
+    </x-modul-dokumen.kartu>
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="identifikasi-bayi-ri" size="full" height="full" focusable>

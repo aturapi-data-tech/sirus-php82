@@ -712,99 +712,79 @@ new class extends Component {
 <div>
     {{-- ══ RINGKASAN + TOMBOL ══ --}}
     @php $esoCount = count($dataDaftarRi['pelaporanEsoRI'] ?? []); @endphp
-    <div class="p-5 border shadow-sm bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 min-w-0 space-y-2">
-                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
-                <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Pelaporan Efek Samping Obat</h3>
-                    <x-badge class="shrink-0 whitespace-nowrap" variant="info">RM 37</x-badge>
-                    @if ($esoCount > 0)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $esoCount }} entri</x-badge>
-                    @else
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
-                    @endif
-                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Formulir kuning MESO: data penderita, manifestasi efek samping, daftar obat yang dicurigai, lalu ditandatangani pelapor. Bentuk kolom mengikuti Form Kuning BPOM 2026 supaya bisa langsung dilaporkan ke e-MESO.</x-deskripsi-ringkas>
-                </div>
-            </div>
-            <div class="flex shrink-0">
-                <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
-                    wire:target="openModal" :disabled="!$riHdrNo" class="gap-2">
-                    <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                        Buka Pelaporan ESO
-                    </span>
-                    <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
-                        <x-loading class="w-4 h-4" /> Memuat...
-                    </span>
-                </x-primary-button>
-            </div>
-        </div>
-        {{-- PRATINJAU ENTRI DI KARTU — ringkasan entri terbaru, tanpa perlu membuka modal --}}
-            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
-                <table class="ds-table">
-                    <thead class="bg-surface-card dark:bg-gray-800">
-                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                            <th class="whitespace-nowrap">Tgl. Laporan</th>
-                            <th class="whitespace-nowrap">Manifestasi ESO</th>
-                            <th class="whitespace-nowrap ds-c w-24">Jml Obat</th>
-                            <th class="whitespace-nowrap">Pelapor</th>
-                            <th class="whitespace-nowrap ds-c w-24">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse (array_slice(collect($dataDaftarRi['pelaporanEsoRI'] ?? [])->sortByDesc(fn($entri) => strtotime(strtr((data_get($entri, 'form.tglLaporan') ?: ($entri['created_at'] ?? '')), '/', '-')))->values()->all(), 0, 3) as $indexEntri => $entri)
-                            @php
-                                $idEntri = $entri['id'] ?? null;
-                                $isFinal = (bool) ($entri['finalized'] ?? false);
-                                $manifestasi = (string) data_get($entri, 'form.eso.manifestasi', '');
-                                $jumlahObat = count((array) data_get($entri, 'form.obat', []));
-                                $obatDicurigai = collect((array) data_get($entri, 'form.obat', []))
-                                    ->filter(fn($baris) => ($baris['dicurigai'] ?? 'Tidak') === 'Ya')
-                                    ->count();
-                            @endphp
-                            <tr class="border-t border-hairline dark:border-gray-800">
-                                <td class="ds-td-strong">{{ data_get($entri, 'form.tglLaporan', '-') }}</td>
-                                <td>
-                                    <div class="max-w-md truncate">{{ $manifestasi !== '' ? $manifestasi : '-' }}</div>
-                                </td>
-                                <td class="ds-c">
-                                    {{ $jumlahObat }}
-                                    @if ($obatDicurigai > 0)
-                                        <div class="text-muted dark:text-gray-400">{{ $obatDicurigai }} dicurigai</div>
-                                    @endif
-                                </td>
-                                <td>
-                                    @if ($isFinal && filled(data_get($entri, 'form.ttd.petugasName')))
-                                        {{ data_get($entri, 'form.ttd.petugasName') }}
-                                    @else
-                                        <x-badge variant="danger">Belum TTD</x-badge>
-                                        <span class="block text-xs text-muted-soft">dibuat: {{ data_get($entri, 'created_by.name', '-') }}</span>
-                                    @endif
-                                </td>
-                                <td class="ds-c">
-                                    @if ($isFinal)
-                                        <x-badge variant="success">Terkunci</x-badge>
-                                    @else
-                                        <x-badge variant="warning">Draft</x-badge>
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="5" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-            @if (count($dataDaftarRi['pelaporanEsoRI'] ?? []) > 3)
-                <p class="mt-2 text-xs italic text-muted-soft">+{{ count($dataDaftarRi['pelaporanEsoRI'] ?? []) - 3 }} entri lain — buka untuk melihat semua.</p>
+    <x-modul-dokumen.kartu judul="Pelaporan Efek Samping Obat"
+        tombol="Buka Pelaporan ESO"
+        :nonaktif="!$riHdrNo">
+        <x-slot:deskripsi>Formulir kuning MESO: data penderita, manifestasi efek samping, daftar obat yang dicurigai, lalu ditandatangani pelapor. Bentuk kolom mengikuti Form Kuning BPOM 2026 supaya bisa langsung dilaporkan ke e-MESO.</x-slot:deskripsi>
+        <x-slot:badge>
+            <x-badge class="shrink-0 whitespace-nowrap" variant="info">RM 37</x-badge>
+            @if ($esoCount > 0)
+                <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $esoCount }} entri</x-badge>
+            @else
+                <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
             @endif
-    </div>
+        </x-slot:badge>
+        <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+            <table class="ds-table">
+                <thead class="bg-surface-card dark:bg-gray-800">
+                    <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                        <th class="whitespace-nowrap">Tgl. Laporan</th>
+                        <th class="whitespace-nowrap">Manifestasi ESO</th>
+                        <th class="whitespace-nowrap ds-c w-24">Jml Obat</th>
+                        <th class="whitespace-nowrap">Pelapor</th>
+                        <th class="whitespace-nowrap ds-c w-24">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse (array_slice(collect($dataDaftarRi['pelaporanEsoRI'] ?? [])->sortByDesc(fn($entri) => strtotime(strtr((data_get($entri, 'form.tglLaporan') ?: ($entri['created_at'] ?? '')), '/', '-')))->values()->all(), 0, 3) as $indexEntri => $entri)
+                        @php
+                            $idEntri = $entri['id'] ?? null;
+                            $isFinal = (bool) ($entri['finalized'] ?? false);
+                            $manifestasi = (string) data_get($entri, 'form.eso.manifestasi', '');
+                            $jumlahObat = count((array) data_get($entri, 'form.obat', []));
+                            $obatDicurigai = collect((array) data_get($entri, 'form.obat', []))
+                                ->filter(fn($baris) => ($baris['dicurigai'] ?? 'Tidak') === 'Ya')
+                                ->count();
+                        @endphp
+                        <tr class="border-t border-hairline dark:border-gray-800">
+                            <td class="ds-td-strong">{{ data_get($entri, 'form.tglLaporan', '-') }}</td>
+                            <td>
+                                <div class="max-w-md truncate">{{ $manifestasi !== '' ? $manifestasi : '-' }}</div>
+                            </td>
+                            <td class="ds-c">
+                                {{ $jumlahObat }}
+                                @if ($obatDicurigai > 0)
+                                    <div class="text-muted dark:text-gray-400">{{ $obatDicurigai }} dicurigai</div>
+                                @endif
+                            </td>
+                            <td>
+                                @if ($isFinal && filled(data_get($entri, 'form.ttd.petugasName')))
+                                    {{ data_get($entri, 'form.ttd.petugasName') }}
+                                @else
+                                    <x-badge variant="danger">Belum TTD</x-badge>
+                                    <span class="block text-xs text-muted-soft">dibuat: {{ data_get($entri, 'created_by.name', '-') }}</span>
+                                @endif
+                            </td>
+                            <td class="ds-c">
+                                @if ($isFinal)
+                                    <x-badge variant="success">Terkunci</x-badge>
+                                @else
+                                    <x-badge variant="warning">Draft</x-badge>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if (count($dataDaftarRi['pelaporanEsoRI'] ?? []) > 3)
+            <p class="mt-2 text-xs italic text-muted-soft">+{{ count($dataDaftarRi['pelaporanEsoRI'] ?? []) - 3 }} entri lain — buka untuk melihat semua.</p>
+        @endif
+    </x-modul-dokumen.kartu>
 
     {{-- ══ MODAL ══ --}}
     <x-modal name="rm-pelaporan-eso-ri-{{ $riHdrNo ?? 'init' }}" size="full" height="full" focusable>

@@ -565,63 +565,46 @@ new class extends Component {
 <div>
     @php $laCount = count($laporanAnList ?? []); @endphp
 
-    <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 min-w-0 space-y-3">
-                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
-                <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Laporan Anestesi</h3>
-                    @if ($laCount > 0) <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $laCount }} laporan</x-badge>
-                    @else <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge> @endif
-                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Laporan pelaksanaan anestesi (PAB 6 / RM 53): teknik anestesi, monitoring sistem organ selama pembedahan, masalah &amp; keadaan akhir, ditandatangani ahli anestesiologi.</x-deskripsi-ringkas>
-                </div>
-            </div>
-            <div class="flex shrink-0">
-                <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled" wire:target="openModal" :disabled="$disabled || !$riHdrNo" class="gap-2">
-                    <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                        Buka Formulir
-                    </span>
-                    <span wire:loading wire:target="openModal" class="flex items-center gap-1.5"><x-loading class="w-4 h-4" /> Memuat...</span>
-                </x-primary-button>
-            </div>
-        </div>
-
-            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
-                <table class="min-w-full text-sm">
-                    <thead class="bg-surface-card dark:bg-gray-800">
-                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                            <th class="px-3 py-2 border-b">Tanggal</th>
-                            <th class="px-3 py-2 border-b">Jenis Anestesi</th>
-                            <th class="px-3 py-2 border-b">Petugas (TTD)</th>
-                            <th class="px-3 py-2 text-center border-b">Status</th>
+    <x-modul-dokumen.kartu judul="Laporan Anestesi"
+        :jumlah="$laCount"
+        satuan="laporan"
+        :nonaktif="$disabled || !$riHdrNo">
+        <x-slot:deskripsi>Laporan pelaksanaan anestesi (PAB 6 / RM 53): teknik anestesi, monitoring sistem organ selama pembedahan, masalah &amp; keadaan akhir, ditandatangani ahli anestesiologi.</x-slot:deskripsi>
+        <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+            <table class="min-w-full text-sm">
+                <thead class="bg-surface-card dark:bg-gray-800">
+                    <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                        <th class="px-3 py-2 border-b">Tanggal</th>
+                        <th class="px-3 py-2 border-b">Jenis Anestesi</th>
+                        <th class="px-3 py-2 border-b">Petugas (TTD)</th>
+                        <th class="px-3 py-2 text-center border-b">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse (collect($laporanAnList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $e)
+                        <tr class="border-b border-hairline dark:border-gray-700">
+                            <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ $e['tanggal'] ?: ($e['createdAt'] ?? '-') }}</td>
+                            <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $e['jenisAnestesi'] ? Str::limit($e['jenisAnestesi'], 40) : '-' }}</td>
+                            <td class="px-3 py-2 text-muted dark:text-gray-400">
+                                @if (!empty($e['ttd'])){{ $e['ttd'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                @if ($this->entryIsFinal($e))
+                                    <x-badge variant="info">Terkunci</x-badge>
+                                @else
+                                    <x-badge variant="warning">Draft</x-badge>
+                                @endif
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @forelse (collect($laporanAnList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $e)
-                            <tr class="border-b border-hairline dark:border-gray-700">
-                                <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ $e['tanggal'] ?: ($e['createdAt'] ?? '-') }}</td>
-                                <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $e['jenisAnestesi'] ? Str::limit($e['jenisAnestesi'], 40) : '-' }}</td>
-                                <td class="px-3 py-2 text-muted dark:text-gray-400">
-                                    @if (!empty($e['ttd'])){{ $e['ttd'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
-                                </td>
-                                <td class="px-3 py-2 text-center">
-                                    @if ($this->entryIsFinal($e))
-                                        <x-badge variant="info">Terkunci</x-badge>
-                                    @else
-                                        <x-badge variant="warning">Draft</x-badge>
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="4" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-    </div>
+                    @empty
+                        <tr>
+                            <td colspan="4" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </x-modul-dokumen.kartu>
 
     <x-modal name="rm-laporan-anestesi-ri-{{ $riHdrNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-full" wire:key="{{ $this->renderKey('modal-laporan-anestesi-ri', [$riHdrNo ?? 'new']) }}">

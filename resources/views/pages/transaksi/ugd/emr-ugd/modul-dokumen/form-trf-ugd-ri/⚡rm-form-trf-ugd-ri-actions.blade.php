@@ -683,55 +683,38 @@ new class extends Component {
         $trfKirim = !empty($trf['petugasPengirim']);
         $trfTerima = !empty($trf['petugasPenerima']);
     @endphp
-    <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 min-w-0 space-y-3">
-                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
-                <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Formulir Transfer UGD &rarr; Rawat Inap</h3>
-                    @if ($trfKirim && $trfTerima)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">Selesai</x-badge>
-                    @elseif ($trfKirim)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Menunggu TTD Penerima</x-badge>
-                    @else
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum diisi</x-badge>
-                    @endif
-                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Serah-terima pasien UGD ke ruang rawat inap — dua tahap (TTD Pengirim lalu Penerima).</p>
-                </div>
-                @if ($trfKirim)
-                    <dl class="grid grid-cols-1 gap-2 text-base sm:grid-cols-3 text-muted dark:text-gray-300">
-                        <div>
-                            <dt class="text-sm uppercase text-muted-soft">Tujuan Ruang</dt>
-                            <dd class="font-medium">{{ $trf['pindahKeRuangan'] ?: '-' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-sm uppercase text-muted-soft">TTD Pengirim</dt>
-                            <dd class="font-medium">{{ $trf['petugasPengirim'] ?: '-' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-sm uppercase text-muted-soft">TTD Penerima</dt>
-                            <dd class="font-medium">{{ $trf['petugasPenerima'] ?: '-' }}</dd>
-                        </div>
-                    </dl>
-                @endif
-            </div>
-            <div class="flex shrink-0">
-                <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
-                    wire:target="openModal" :disabled="!$rjNo" class="gap-2">
-                    <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                        {{ $trfKirim ? 'Buka / Lanjutkan Form Transfer' : 'Isi Form Transfer' }}
-                    </span>
-                    <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
-                        <x-loading class="w-4 h-4" /> Memuat...
-                    </span>
-                </x-primary-button>
-            </div>
-        </div>
-    </div>
+    <x-modul-dokumen.kartu judul="Formulir Transfer UGD → Rawat Inap"
+        :tombol="$trfKirim ? 'Buka / Lanjutkan Form Transfer' : 'Isi Form Transfer'"
+        :nonaktif="!$rjNo">
+        <x-slot:deskripsi>Serah-terima pasien UGD ke ruang rawat inap — dua tahap (TTD Pengirim lalu Penerima).</x-slot:deskripsi>
+        <x-slot:badge>
+            @if ($trfKirim && $trfTerima)
+                <x-badge class="shrink-0 whitespace-nowrap" variant="success">Selesai</x-badge>
+            @elseif ($trfKirim)
+                <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Menunggu TTD Penerima</x-badge>
+            @else
+                <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum diisi</x-badge>
+            @endif
+        </x-slot:badge>
+        <x-slot:ringkasan>
+            @if ($trfKirim)
+                <dl class="grid grid-cols-1 gap-2 text-base sm:grid-cols-3 text-muted dark:text-gray-300">
+                    <div>
+                        <dt class="text-sm uppercase text-muted-soft">Tujuan Ruang</dt>
+                        <dd class="font-medium">{{ $trf['pindahKeRuangan'] ?: '-' }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm uppercase text-muted-soft">TTD Pengirim</dt>
+                        <dd class="font-medium">{{ $trf['petugasPengirim'] ?: '-' }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm uppercase text-muted-soft">TTD Penerima</dt>
+                        <dd class="font-medium">{{ $trf['petugasPenerima'] ?: '-' }}</dd>
+                    </div>
+                </dl>
+            @endif
+        </x-slot:ringkasan>
+    </x-modul-dokumen.kartu>
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-form-trf-ugd-ri-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>

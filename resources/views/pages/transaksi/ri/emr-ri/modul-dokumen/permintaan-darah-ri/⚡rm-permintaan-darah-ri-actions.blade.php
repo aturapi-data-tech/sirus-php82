@@ -542,67 +542,55 @@ new class extends Component {
 }; ?>
 
 <div>
-    {{-- KARTU RINGKAS + TOMBOL BUKA --}}
+    {{-- KARTU RINGKAS + TOMBOL BUKA (dulu baris flex p-4 dengan tabel ikut di dalam baris) --}}
     @php $darahCount = count($dataDaftarRi['permintaanDarahRI'] ?? []); @endphp
-    <div class="flex items-center justify-between gap-3 p-4 border rounded-xl border-hairline bg-canvas dark:bg-gray-800 dark:border-gray-700">
-        {{-- JUDUL KARTU SEBARIS — judul · deskripsi --}}
-        <div class="flex items-baseline flex-1 gap-2 min-w-0">
-            <p class="flex-1 min-w-0 truncate shrink-0 text-sm font-semibold text-ink dark:text-white">Formulir Permintaan Darah</p>
-            <x-deskripsi-ringkas class="hidden sm:flex text-xs">Permintaan komponen darah untuk transfusi — ditandatangani dokter peminta lalu dicetak untuk PMI.
-                @if ($darahCount > 0)
-                    <span class="font-medium">· {{ $darahCount }} permintaan</span>
-                @endif</x-deskripsi-ringkas>
-        </div>
-        <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled" wire:target="openModal"
-            :disabled="!$riHdrNo" class="gap-2 shrink-0">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 4v16m8-8H4" />
-            </svg>
-            Buka Formulir
-        </x-primary-button>
-        @php $list = $dataDaftarRi['permintaanDarahRI'] ?? []; @endphp
-        {{-- PRATINJAU ENTRI DI KARTU — ringkasan entri terbaru, tanpa perlu membuka modal --}}
-            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
-                <table class="min-w-full text-sm">
-                    <thead class="bg-surface-card dark:bg-gray-800">
-                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                            <th class="whitespace-nowrap px-3 py-2 border-b border-hairline dark:border-gray-700">Jenis</th>
-                            <th class="whitespace-nowrap px-3 py-2 border-b border-hairline dark:border-gray-700">Status</th>
-                            <th class="whitespace-nowrap px-3 py-2 border-b border-hairline dark:border-gray-700">Dokter</th>
+    <x-modul-dokumen.kartu judul="Formulir Permintaan Darah"
+        :jumlah="$darahCount"
+        satuan="permintaan"
+        :nonaktif="!$riHdrNo">
+        <x-slot:deskripsi>Permintaan komponen darah untuk transfusi — ditandatangani dokter peminta lalu dicetak untuk PMI.</x-slot:deskripsi>
+    @php $list = $dataDaftarRi['permintaanDarahRI'] ?? []; @endphp
+    {{-- PRATINJAU ENTRI DI KARTU — ringkasan entri terbaru, tanpa perlu membuka modal --}}
+        <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+            <table class="min-w-full text-sm">
+                <thead class="bg-surface-card dark:bg-gray-800">
+                    <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                        <th class="whitespace-nowrap px-3 py-2 border-b border-hairline dark:border-gray-700">Jenis</th>
+                        <th class="whitespace-nowrap px-3 py-2 border-b border-hairline dark:border-gray-700">Status</th>
+                        <th class="whitespace-nowrap px-3 py-2 border-b border-hairline dark:border-gray-700">Dokter</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse (array_slice(collect($list ?? [])->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all(), 0, 3) as $row)
+                        @php
+                            $rid = $row['id'] ?? '';
+                            $rf = $row['form'] ?? [];
+                            $final = array_key_exists('finalized', $row) ? (bool) $row['finalized'] : filled(data_get($rf, 'ttd.dokterNama'));
+                            $jenisRingkas = collect($jenisOptions)->filter(fn($l, $k) => !empty(data_get($rf, "jenisDarah.$k.pilih")))->values()->implode(', ');
+                        @endphp
+                        <tr class="border-t border-hairline dark:border-gray-800">
+                            <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-muted dark:text-gray-300">{{ $jenisRingkas ?: '-' }}</td>
+                            <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700">
+                                @if ($final)
+                                    <x-badge variant="success">Terkunci</x-badge>
+                                @else
+                                    <x-badge variant="warning">Draft</x-badge>
+                                @endif
+                            </td>
+                            <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-muted dark:text-gray-300">{{ data_get($rf, 'ttd.dokterNama') ?: '-' }}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @forelse (array_slice(collect($list ?? [])->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all(), 0, 3) as $row)
-                            @php
-                                $rid = $row['id'] ?? '';
-                                $rf = $row['form'] ?? [];
-                                $final = array_key_exists('finalized', $row) ? (bool) $row['finalized'] : filled(data_get($rf, 'ttd.dokterNama'));
-                                $jenisRingkas = collect($jenisOptions)->filter(fn($l, $k) => !empty(data_get($rf, "jenisDarah.$k.pilih")))->values()->implode(', ');
-                            @endphp
-                            <tr class="border-t border-hairline dark:border-gray-800">
-                                <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-muted dark:text-gray-300">{{ $jenisRingkas ?: '-' }}</td>
-                                <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700">
-                                    @if ($final)
-                                        <x-badge variant="success">Terkunci</x-badge>
-                                    @else
-                                        <x-badge variant="warning">Draft</x-badge>
-                                    @endif
-                                </td>
-                                <td class="px-3 py-2 align-middle border-b border-hairline dark:border-gray-700 text-muted dark:text-gray-300">{{ data_get($rf, 'ttd.dokterNama') ?: '-' }}</td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="3" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-            @if (count($list) > 3)
-                <p class="mt-2 text-xs italic text-muted-soft">+{{ count($list) - 3 }} entri lain — buka untuk melihat semua.</p>
-            @endif
-    </div>
+                    @empty
+                        <tr>
+                            <td colspan="3" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if (count($list) > 3)
+            <p class="text-xs italic text-muted-soft">+{{ count($list) - 3 }} entri lain — buka untuk melihat semua.</p>
+        @endif
+    </x-modul-dokumen.kartu>
 
     <x-modal name="rm-permintaan-darah-ri-{{ $riHdrNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-full"

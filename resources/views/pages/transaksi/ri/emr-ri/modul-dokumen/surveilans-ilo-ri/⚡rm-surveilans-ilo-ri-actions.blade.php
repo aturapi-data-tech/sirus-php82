@@ -692,36 +692,12 @@ new class extends Component {
 <div>
     {{-- ══ KARTU RINGKAS ══ --}}
     @php $jumlahEntri = count($entriList ?? []); @endphp
-    <div class="p-5 border shadow-sm bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 min-w-0 space-y-2">
-                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
-                <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Surveilans Infeksi Luka Operasi (ILO)</h3>
-                    @if ($jumlahEntri > 0)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $jumlahEntri }} entri</x-badge>
-                    @else
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
-                    @endif
-                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Pemantauan infeksi daerah operasi — data operasi (jenis, ASA, lama, implan, endoskopi), pemantauan luka hari ke-1 s/d 17 (suhu, drainase, pus, perforasi, fistula), serta kultur. Diisi IPCLN / Perawat ruangan bersama tim kamar operasi.</x-deskripsi-ringkas>
-                </div>
-            </div>
-            <div class="flex shrink-0">
-                <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
-                    wire:target="openModal" :disabled="$disabled || !$riHdrNo" class="gap-2">
-                    <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                        Buka Formulir
-                    </span>
-                    <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
-                        <x-loading class="w-4 h-4" /> Memuat...
-                    </span>
-                </x-primary-button>
-            </div>
-        </div>
-    </div>
+    <x-modul-dokumen.kartu judul="Surveilans Infeksi Luka Operasi (ILO)"
+        :jumlah="$jumlahEntri"
+        satuan="entri"
+        :nonaktif="$disabled || !$riHdrNo">
+        <x-slot:deskripsi>Pemantauan infeksi daerah operasi — data operasi (jenis, ASA, lama, implan, endoskopi), pemantauan luka hari ke-1 s/d 17 (suhu, drainase, pus, perforasi, fistula), serta kultur. Diisi IPCLN / Perawat ruangan bersama tim kamar operasi.</x-slot:deskripsi>
+    </x-modul-dokumen.kartu>
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-surveilans-ilo-ri-{{ $riHdrNo }}" size="full" height="full" focusable>

@@ -846,44 +846,21 @@ new class extends Component {
 <div>
     {{-- RINGKASAN + TOMBOL (pola General Consent) --}}
     @php $jumlahEdukasiTerintegrasi = count($dataDaftarRi['edukasiPasienTerintegrasi'] ?? []); @endphp
-    <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 min-w-0 space-y-2">
-                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
-                <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Edukasi Terintegrasi</h3>
-                    @if ($jumlahEdukasiTerintegrasi > 0)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $jumlahEdukasiTerintegrasi }} entri</x-badge>
-                    @else
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
-                    @endif
-                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Pemberian informasi &amp; edukasi pasien/keluarga — satu formulir terintegrasi antar-PPA (dokter, perawat, gizi, farmasi, dll.), menggantikan form Edukasi Pasien lama.</x-deskripsi-ringkas>
-                </div>
-                @if (count($dataDaftarRi['edukasiPasien'] ?? []) > 0)
-                    <p class="text-sm text-muted-soft">
-                        + {{ count($dataDaftarRi['edukasiPasien']) }} entri form Edukasi Pasien lama — lihat &amp; cetak lewat display Rekam Medis.
-                    </p>
-                @endif
-            </div>
-            <div class="flex shrink-0">
-                <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
-                    wire:target="openModal" :disabled="!$riHdrNo" class="gap-2">
-                    <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                        Buka Edukasi Terintegrasi
-                    </span>
-                    <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
-                        <x-loading class="w-4 h-4" /> Memuat...
-                    </span>
-                </x-primary-button>
-            </div>
-        </div>
+    <x-modul-dokumen.kartu judul="Edukasi Terintegrasi"
+        :jumlah="$jumlahEdukasiTerintegrasi"
+        satuan="entri"
+        tombol="Buka Edukasi Terintegrasi"
+        :nonaktif="!$riHdrNo">
+        <x-slot:deskripsi>Pemberian informasi &amp; edukasi pasien/keluarga — satu formulir terintegrasi antar-PPA (dokter, perawat, gizi, farmasi, dll.), menggantikan form Edukasi Pasien lama.</x-slot:deskripsi>
+        <x-slot:ringkasan>
+            @if (count($dataDaftarRi['edukasiPasien'] ?? []) > 0)
+                <p class="text-sm text-muted-soft">
+                    + {{ count($dataDaftarRi['edukasiPasien']) }} entri form Edukasi Pasien lama — lihat &amp; cetak lewat display Rekam Medis.
+                </p>
+            @endif
+        </x-slot:ringkasan>
         @php $list = $dataDaftarRi['edukasiPasienTerintegrasi'] ?? []; @endphp
-        {{-- PRATINJAU ENTRI DI KARTU — ringkasan entri terbaru, tanpa perlu membuka modal --}}
-            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+            <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
                 <table class="min-w-full text-sm">
                     <thead class="bg-surface-card dark:bg-gray-800">
                         <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
@@ -970,7 +947,7 @@ new class extends Component {
             @if (count($list) > 3)
                 <p class="mt-2 text-xs italic text-muted-soft">+{{ count($list) - 3 }} entri lain — buka untuk melihat semua.</p>
             @endif
-    </div>
+    </x-modul-dokumen.kartu>
 
     {{-- MODAL FORM --}}
     <x-modal name="rm-edukasi-terintegrasi-ri-{{ $riHdrNo ?? 'init' }}" size="full" height="full" focusable>

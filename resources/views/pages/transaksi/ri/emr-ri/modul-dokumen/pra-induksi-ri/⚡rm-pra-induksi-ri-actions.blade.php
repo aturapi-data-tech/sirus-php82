@@ -732,86 +732,71 @@ new class extends Component {
 <div>
     @php $entriCount = count($praInduksiList ?? []); @endphp
 
-    <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 min-w-0 space-y-3">
-                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
-                <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Asesmen Pra Induksi</h3>
-                    @if ($entriCount > 0) <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $entriCount }} asesmen</x-badge>
-                    @else <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge> @endif
-                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Re-asesmen segera sebelum induksi (PAB 6 / RM 50.a): verifikasi kondisi terkini, ASA, rencana anestesi & obat pre-medikasi sesaat sebelum tindakan.</x-deskripsi-ringkas>
-                </div>
-                @if ($entriCount > 0)
-                    <ul class="space-y-1 text-base text-muted dark:text-gray-300 list-disc pl-5">
-                        @foreach (array_slice(collect($praInduksiList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all(), 0, 3) as $entri)
-                            <li><span class="font-medium">ASA {{ $entri['klasifikasiAsa'] ?? '-' }} · {{ $entri['rencanaAnestesi'] ?? '-' }}</span>
-                                @if (!empty($entri['tanggal'])) <span class="text-sm text-muted-soft">— {{ $entri['tanggal'] }}</span> @endif
-                            </li>
-                        @endforeach
-                        @if ($entriCount > 3) <li class="text-sm italic text-muted-soft">+{{ $entriCount - 3 }} lainnya…</li> @endif
-                    </ul>
-                @endif
-            </div>
-            <div class="flex shrink-0">
-                <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled" wire:target="openModal" :disabled="$disabled || !$riHdrNo" class="gap-2">
-                    <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                        Buka Formulir
-                    </span>
-                    <span wire:loading wire:target="openModal" class="flex items-center gap-1.5"><x-loading class="w-4 h-4" /> Memuat...</span>
-                </x-primary-button>
-            </div>
-        </div>
-        {{-- PRATINJAU ENTRI DI KARTU — ringkasan entri terbaru, tanpa perlu membuka modal --}}
-            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
-                <table class="min-w-full text-sm">
-                    <thead class="bg-surface-card dark:bg-gray-800">
-                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                            <th class="whitespace-nowrap px-3 py-2 border-b">Tanggal</th>
-                            <th class="whitespace-nowrap px-3 py-2 border-b">ASA</th>
-                            <th class="whitespace-nowrap px-3 py-2 border-b">Rencana</th>
-                            <th class="whitespace-nowrap px-3 py-2 border-b">Petugas (TTD)</th>
-                            <th class="whitespace-nowrap px-3 py-2 text-center border-b">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse (array_slice(collect($praInduksiList ?? [])->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all(), 0, 3) as $entry)
-                            @php
-                                $isFinal = $this->entryIsFinal($entry);
-                                $rowKey = $entry['createdAt'] ?? '';
-                            @endphp
-                            <tr class="border-t border-hairline dark:border-gray-800">
-                                <td class="px-3 py-2 font-semibold align-middle text-ink dark:text-gray-100">{{ $entry['tanggal'] ?: ($rowKey ?: '-') }}</td>
-                                <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">ASA {{ $entry['klasifikasiAsa'] ?: '-' }}</td>
-                                <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">{{ $entry['rencanaAnestesi'] ?: '-' }}</td>
-                                <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">
-                                    @if (!empty($entry['ttd']))
-                                        <span class="font-medium text-ink dark:text-gray-200">{{ $entry['ttd'] }}</span>
-                                    @else
-                                        <x-badge variant="danger">Belum TTD</x-badge>
-                                    @endif
-                                </td>
-                                <td class="px-3 py-2 text-center align-middle">
-                                    @if ($isFinal)
-                                        <x-badge variant="info">Terkunci</x-badge>
-                                    @else
-                                        <x-badge variant="warning">Draft</x-badge>
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="5" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-            @if (count($praInduksiList) > 3)
-                <p class="mt-2 text-xs italic text-muted-soft">+{{ count($praInduksiList) - 3 }} entri lain — buka untuk melihat semua.</p>
+    <x-modul-dokumen.kartu judul="Asesmen Pra Induksi"
+        :jumlah="$entriCount"
+        satuan="asesmen"
+        :nonaktif="$disabled || !$riHdrNo">
+        <x-slot:deskripsi>Re-asesmen segera sebelum induksi (PAB 6 / RM 50.a): verifikasi kondisi terkini, ASA, rencana anestesi & obat pre-medikasi sesaat sebelum tindakan.</x-slot:deskripsi>
+        <x-slot:ringkasan>
+            @if ($entriCount > 0)
+                <ul class="space-y-1 text-base text-muted dark:text-gray-300 list-disc pl-5">
+                    @foreach (array_slice(collect($praInduksiList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all(), 0, 3) as $entri)
+                        <li><span class="font-medium">ASA {{ $entri['klasifikasiAsa'] ?? '-' }} · {{ $entri['rencanaAnestesi'] ?? '-' }}</span>
+                            @if (!empty($entri['tanggal'])) <span class="text-sm text-muted-soft">— {{ $entri['tanggal'] }}</span> @endif
+                        </li>
+                    @endforeach
+                    @if ($entriCount > 3) <li class="text-sm italic text-muted-soft">+{{ $entriCount - 3 }} lainnya…</li> @endif
+                </ul>
             @endif
-    </div>
+        </x-slot:ringkasan>
+        <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+            <table class="min-w-full text-sm">
+                <thead class="bg-surface-card dark:bg-gray-800">
+                    <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                        <th class="whitespace-nowrap px-3 py-2 border-b">Tanggal</th>
+                        <th class="whitespace-nowrap px-3 py-2 border-b">ASA</th>
+                        <th class="whitespace-nowrap px-3 py-2 border-b">Rencana</th>
+                        <th class="whitespace-nowrap px-3 py-2 border-b">Petugas (TTD)</th>
+                        <th class="whitespace-nowrap px-3 py-2 text-center border-b">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse (array_slice(collect($praInduksiList ?? [])->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all(), 0, 3) as $entry)
+                        @php
+                            $isFinal = $this->entryIsFinal($entry);
+                            $rowKey = $entry['createdAt'] ?? '';
+                        @endphp
+                        <tr class="border-t border-hairline dark:border-gray-800">
+                            <td class="px-3 py-2 font-semibold align-middle text-ink dark:text-gray-100">{{ $entry['tanggal'] ?: ($rowKey ?: '-') }}</td>
+                            <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">ASA {{ $entry['klasifikasiAsa'] ?: '-' }}</td>
+                            <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">{{ $entry['rencanaAnestesi'] ?: '-' }}</td>
+                            <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">
+                                @if (!empty($entry['ttd']))
+                                    <span class="font-medium text-ink dark:text-gray-200">{{ $entry['ttd'] }}</span>
+                                @else
+                                    <x-badge variant="danger">Belum TTD</x-badge>
+                                @endif
+                            </td>
+                            <td class="px-3 py-2 text-center align-middle">
+                                @if ($isFinal)
+                                    <x-badge variant="info">Terkunci</x-badge>
+                                @else
+                                    <x-badge variant="warning">Draft</x-badge>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if (count($praInduksiList) > 3)
+            <p class="mt-2 text-xs italic text-muted-soft">+{{ count($praInduksiList) - 3 }} entri lain — buka untuk melihat semua.</p>
+        @endif
+    </x-modul-dokumen.kartu>
 
     <x-modal name="rm-pra-induksi-ri-{{ $riHdrNo ?? 'init' }}" size="full" height="full" focusable>
         <div class="flex flex-col min-h-full" wire:key="{{ $this->renderKey('modal-pra-induksi-ri', [$riHdrNo ?? 'new']) }}">

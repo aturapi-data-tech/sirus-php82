@@ -336,108 +336,84 @@ new class extends Component {
 
 <div>
     {{-- ══ SUMMARY CARD (inline) ══ --}}
-    <div class="p-5 border shadow-sm bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex flex-col gap-3">
-            <div class="flex items-start justify-between gap-4">
-                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
-                <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">
-                        Surat Keterangan Kematian
-                    </h3>
-                    @if (!$this->isPasienMeninggal())
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Tidak berlaku</x-badge>
-                    @elseif (!$sudahAda)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
-                    @elseif ($isFinal)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">Ditandatangani</x-badge>
-                    @else
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Draft</x-badge>
-                    @endif
-                </div>
-
-                @if ($this->isPasienMeninggal())
-                    <div class="flex gap-2 shrink-0">
-                        <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
-                            wire:target="openModal" :disabled="$disabled || !$riHdrNo" class="gap-2">
-                            <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                                </svg>
-                                Buka Formulir
-                            </span>
-                            <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
-                                <x-loading class="w-4 h-4" /> Memuat...
-                            </span>
-                        </x-primary-button>
-
-                        @if ($sudahAda)
-                            <x-cetak-button wire:click="cetak" label="Cetak" />
-                        @endif
-                    </div>
-                @endif
-            </div>
-
+    <x-modul-dokumen.kartu judul="Surat Keterangan Kematian"
+        :nonaktif="$disabled || !$riHdrNo"
+        :tampilTombol="$this->isPasienMeninggal()">
+        <x-slot:badge>
             @if (!$this->isPasienMeninggal())
-                <p class="text-base text-muted dark:text-gray-400">
-                    Surat keterangan kematian hanya dapat dibuat bila status pulang pasien di
-                    <strong>Perencanaan</strong> adalah <strong>Meninggal</strong>.
-                </p>
+                <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Tidak berlaku</x-badge>
+            @elseif (!$sudahAda)
+                <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
+            @elseif ($isFinal)
+                <x-badge class="shrink-0 whitespace-nowrap" variant="success">Ditandatangani</x-badge>
             @else
-                <p class="text-base text-muted dark:text-gray-400">
-                    Surat keterangan kematian yang diterbitkan rumah sakit untuk pasien meninggal saat rawat inap.
-                    Nomor surat &amp; tanggal meninggal mengikuti <strong>Perencanaan</strong> (nomor yang sama dikirim
-                    ke BPJS). Sekali ditandatangani, surat terkunci.
-                </p>
-
-                @if (!$this->perencanaanLengkap())
-                    <div
-                        class="flex items-start gap-2.5 px-3 py-2.5 text-base border rounded-lg bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200">
-                        <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                            stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>
-                            <strong>No. Surat Keterangan Meninggal</strong> dan/atau <strong>Tanggal Meninggal</strong>
-                            belum diisi di <strong>Perencanaan</strong>. Keduanya dipakai surat ini dan dikirim ke BPJS,
-                            jadi harus diisi di sana lebih dulu.
-                        </span>
-                    </div>
-                @endif
-
-                @if ($sudahAda)
-                    <div class="overflow-x-auto">
-                        <h4 class="mb-2 text-sm font-semibold text-body dark:text-gray-300">Surat Tersimpan</h4>
-                        <table class="min-w-full text-sm border rounded-lg border-hairline dark:border-gray-700">
-                            <thead class="bg-surface-soft dark:bg-gray-800">
-                                <tr>
-                                    <th class="px-3 py-2 font-semibold text-left text-body dark:text-gray-300">No. Surat</th>
-                                    <th class="px-3 py-2 font-semibold text-left text-body dark:text-gray-300">Tgl. Meninggal</th>
-                                    <th class="px-3 py-2 font-semibold text-left text-body dark:text-gray-300">Dokter</th>
-                                    <th class="px-3 py-2 font-semibold text-left text-body dark:text-gray-300">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr class="border-t border-hairline dark:border-gray-700">
-                                    <td class="px-3 py-2 text-body dark:text-gray-300">{{ $this->nomorSurat() ?: '-' }}</td>
-                                    <td class="px-3 py-2 text-body dark:text-gray-300">{{ $this->tanggalMeninggal() ?: '-' }}</td>
-                                    <td class="px-3 py-2 text-body dark:text-gray-300">{{ $newForm['dokterPenerang'] ?: '-' }}</td>
-                                    <td class="px-3 py-2">
-                                        @if ($isFinal)
-                                            <x-badge variant="success">Ditandatangani</x-badge>
-                                        @else
-                                            <x-badge variant="warning">Draft</x-badge>
-                                        @endif
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                @endif
+                <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Draft</x-badge>
             @endif
-        </div>
-    </div>
+        </x-slot:badge>
+        <x-slot:tombolLain>
+            @if ($sudahAda)
+                <x-cetak-button wire:click="cetak" label="Cetak" />
+            @endif
+        </x-slot:tombolLain>
+        @if (!$this->isPasienMeninggal())
+            <p class="text-base text-muted dark:text-gray-400">
+                Surat keterangan kematian hanya dapat dibuat bila status pulang pasien di
+                <strong>Perencanaan</strong> adalah <strong>Meninggal</strong>.
+            </p>
+        @else
+            <p class="text-base text-muted dark:text-gray-400">
+                Surat keterangan kematian yang diterbitkan rumah sakit untuk pasien meninggal saat rawat inap.
+                Nomor surat &amp; tanggal meninggal mengikuti <strong>Perencanaan</strong> (nomor yang sama dikirim
+                ke BPJS). Sekali ditandatangani, surat terkunci.
+            </p>
+
+            @if (!$this->perencanaanLengkap())
+                <div
+                    class="flex items-start gap-2.5 px-3 py-2.5 text-base border rounded-lg bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200">
+                    <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>
+                        <strong>No. Surat Keterangan Meninggal</strong> dan/atau <strong>Tanggal Meninggal</strong>
+                        belum diisi di <strong>Perencanaan</strong>. Keduanya dipakai surat ini dan dikirim ke BPJS,
+                        jadi harus diisi di sana lebih dulu.
+                    </span>
+                </div>
+            @endif
+
+            @if ($sudahAda)
+                <div class="overflow-x-auto">
+                    <h4 class="mb-2 text-sm font-semibold text-body dark:text-gray-300">Surat Tersimpan</h4>
+                    <table class="min-w-full text-sm border rounded-lg border-hairline dark:border-gray-700">
+                        <thead class="bg-surface-soft dark:bg-gray-800">
+                            <tr>
+                                <th class="px-3 py-2 font-semibold text-left text-body dark:text-gray-300">No. Surat</th>
+                                <th class="px-3 py-2 font-semibold text-left text-body dark:text-gray-300">Tgl. Meninggal</th>
+                                <th class="px-3 py-2 font-semibold text-left text-body dark:text-gray-300">Dokter</th>
+                                <th class="px-3 py-2 font-semibold text-left text-body dark:text-gray-300">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-t border-hairline dark:border-gray-700">
+                                <td class="px-3 py-2 text-body dark:text-gray-300">{{ $this->nomorSurat() ?: '-' }}</td>
+                                <td class="px-3 py-2 text-body dark:text-gray-300">{{ $this->tanggalMeninggal() ?: '-' }}</td>
+                                <td class="px-3 py-2 text-body dark:text-gray-300">{{ $newForm['dokterPenerang'] ?: '-' }}</td>
+                                <td class="px-3 py-2">
+                                    @if ($isFinal)
+                                        <x-badge variant="success">Ditandatangani</x-badge>
+                                    @else
+                                        <x-badge variant="warning">Draft</x-badge>
+                                    @endif
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        @endif
+    </x-modul-dokumen.kartu>
 
     {{-- MODAL FORM --}}
     <x-modal name="rm-surat-kematian-ri-{{ $riHdrNo }}" size="full" height="full" focusable>

@@ -263,30 +263,11 @@ new class extends Component {
 
 <div>
     {{-- RINGKASAN + TOMBOL (pola General Consent) --}}
-    <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
-            <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Surat Keterangan</h3>
-                <p class="flex-1 hidden min-w-0 truncate text-sm text-muted sm:block dark:text-gray-400">Surat Keterangan Sehat &amp; Surat Keterangan Istirahat (sakit) untuk pasien rawat jalan.</p>
-            </div>
-            <div class="flex shrink-0">
-                <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
-                    wire:target="openModal" :disabled="!$rjNo" class="gap-2">
-                    <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                        Buka Surat Keterangan
-                    </span>
-                    <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
-                        <x-loading class="w-4 h-4" /> Memuat...
-                    </span>
-                </x-primary-button>
-            </div>
-        </div>
-    </div>
+    <x-modul-dokumen.kartu judul="Surat Keterangan"
+        tombol="Buka Surat Keterangan"
+        :nonaktif="!$rjNo">
+        <x-slot:deskripsi>Surat Keterangan Sehat &amp; Surat Keterangan Istirahat (sakit) untuk pasien rawat jalan.</x-slot:deskripsi>
+    </x-modul-dokumen.kartu>
 
     {{-- MODAL FORM --}}
     <x-modal name="rm-suket-rj-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>

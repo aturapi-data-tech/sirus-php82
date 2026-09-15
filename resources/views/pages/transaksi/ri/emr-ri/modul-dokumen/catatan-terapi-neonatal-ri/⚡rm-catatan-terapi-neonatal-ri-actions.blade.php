@@ -531,74 +531,51 @@ new class extends Component {
 <div>
     {{-- ══ SUMMARY CARD (inline di tab) ══ --}}
     @php $ctnCount = count($entriList ?? []); @endphp
-    <div class="p-5 border shadow-sm bg-canvas border-hairline rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 min-w-0 space-y-2">
-                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
-                <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Catatan Terapi &amp; Perencanaan Keperawatan Neonatal</h3>
-                    @if ($ctnCount > 0)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $ctnCount }} entri</x-badge>
-                    @else
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
-                    @endif
-                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Catatan terapi dokter (penatalaksanaan &amp; ICD 9 CM) dan perencanaan &amp; tindakan keperawatan untuk pasien neonatal (RM 08.c). Diisi Dokter dan Perawat/Bidan. Tiap entri = 1 baris catatan.</x-deskripsi-ringkas>
-                </div>
-            </div>
-            <div class="flex items-center gap-2 shrink-0">
-                @if ($ctnCount > 0)
-                    <x-cetak-button wire:click="cetakSemua" label="Cetak Catatan" />
-                @endif
-                <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
-                    wire:target="openModal" :disabled="$disabled || !$riHdrNo" class="gap-2">
-                    <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                        Buka Formulir
-                    </span>
-                    <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
-                        <x-loading class="w-4 h-4" /> Memuat...
-                    </span>
-                </x-primary-button>
-            </div>
-        </div>
-
-            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
-                <table class="min-w-full text-sm">
-                    <thead class="bg-surface-card dark:bg-gray-800">
-                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                            <th class="px-3 py-2 border-b">Tgl / Jam</th>
-                            <th class="px-3 py-2 border-b">Jenis</th>
-                            <th class="px-3 py-2 border-b">Petugas (TTD)</th>
-                            <th class="px-3 py-2 text-center border-b">Status</th>
+    <x-modul-dokumen.kartu judul="Catatan Terapi & Perencanaan Keperawatan Neonatal"
+        :jumlah="$ctnCount"
+        satuan="entri"
+        :nonaktif="$disabled || !$riHdrNo">
+        <x-slot:deskripsi>Catatan terapi dokter (penatalaksanaan &amp; ICD 9 CM) dan perencanaan &amp; tindakan keperawatan untuk pasien neonatal (RM 08.c). Diisi Dokter dan Perawat/Bidan. Tiap entri = 1 baris catatan.</x-slot:deskripsi>
+        <x-slot:tombolLain>
+            @if ($ctnCount > 0)
+                <x-cetak-button wire:click="cetakSemua" label="Cetak Catatan" />
+            @endif
+        </x-slot:tombolLain>
+        <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+            <table class="min-w-full text-sm">
+                <thead class="bg-surface-card dark:bg-gray-800">
+                    <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                        <th class="px-3 py-2 border-b">Tgl / Jam</th>
+                        <th class="px-3 py-2 border-b">Jenis</th>
+                        <th class="px-3 py-2 border-b">Petugas (TTD)</th>
+                        <th class="px-3 py-2 text-center border-b">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse (collect($entriList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entri)
+                        <tr class="border-b border-hairline dark:border-gray-700">
+                            <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ ($entri['tglJam'] ?? '') ?: ($entri['createdAt'] ?? '-') }}</td>
+                            <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $entri['jenis'] ?? '-' }}</td>
+                            <td class="px-3 py-2 text-muted dark:text-gray-400">
+                                @if (!empty($entri['ttd'])){{ $entri['ttd'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                @if ($this->entryIsFinal($entri))
+                                    <x-badge variant="info">Terkunci</x-badge>
+                                @else
+                                    <x-badge variant="warning">Draft</x-badge>
+                                @endif
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @forelse (collect($entriList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entri)
-                            <tr class="border-b border-hairline dark:border-gray-700">
-                                <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">{{ ($entri['tglJam'] ?? '') ?: ($entri['createdAt'] ?? '-') }}</td>
-                                <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $entri['jenis'] ?? '-' }}</td>
-                                <td class="px-3 py-2 text-muted dark:text-gray-400">
-                                    @if (!empty($entri['ttd'])){{ $entri['ttd'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
-                                </td>
-                                <td class="px-3 py-2 text-center">
-                                    @if ($this->entryIsFinal($entri))
-                                        <x-badge variant="info">Terkunci</x-badge>
-                                    @else
-                                        <x-badge variant="warning">Draft</x-badge>
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="4" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-    </div>
+                    @empty
+                        <tr>
+                            <td colspan="4" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </x-modul-dokumen.kartu>
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="catatan-terapi-neonatal-ri" size="full" height="full" focusable>

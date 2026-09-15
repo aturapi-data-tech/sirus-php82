@@ -756,87 +756,57 @@ new class extends Component {
     {{-- ══ SUMMARY CARD (inline di tab) ══ --}}
     @php $informConsentCount = count($consentList ?? []); @endphp
 
-    <div
-        class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex flex-col gap-3">
-            {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi; tombol tetap di kanan --}}
-            <div class="flex items-center justify-between gap-4">
-                <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">
-                        Inform Consent
-                    </h3>
-                    @if ($informConsentCount > 0)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $informConsentCount }} tindakan</x-badge>
-                    @else
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
-                    @endif
-                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Persetujuan tindakan medis per-tindakan: tujuan, risiko, alternatif, serta tanda tangan pasien/wali, dokter penjelas, dan saksi.</x-deskripsi-ringkas>
-                </div>
-
-                <div class="flex shrink-0">
-                    <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
-                        wire:target="openModal" :disabled="$disabled || !$rjNo" class="gap-2">
-                        <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                            </svg>
-                            Buka Inform Consent
-                        </span>
-                        <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
-                            <x-loading class="w-4 h-4" /> Memuat...
-                        </span>
-                    </x-primary-button>
-                </div>
-            </div>
-
-
-                <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-surface-card dark:bg-gray-800">
-                            <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                                <th class="px-3 py-2 border-b">Tindakan</th>
-                                <th class="px-3 py-2 border-b">Tanggal</th>
-                                <th class="px-3 py-2 border-b">Pemberi Informasi</th>
-                                <th class="px-3 py-2 border-b text-center">Persetujuan</th>
-                                <th class="px-3 py-2 border-b text-center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse (collect($consentList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
-                                <tr class="border-b border-hairline dark:border-gray-700">
-                                    <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">
-                                        {{ \Illuminate\Support\Str::limit($entry['tindakan'] ?? '-', 50) }}
-                                    </td>
-                                    <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $entry['signatureDate'] ?? '-' }}</td>
-                                    <td class="px-3 py-2 text-muted dark:text-gray-400">
-                                        @if (!empty($entry['dokter'])){{ $entry['dokter'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
-                                    </td>
-                                    <td class="px-3 py-2 text-center">
-                                        @if (($entry['agreement'] ?? '1') === '1')
-                                            <x-badge variant="success">Menyetujui</x-badge>
-                                        @else
-                                            <x-badge variant="danger">Menolak</x-badge>
-                                        @endif
-                                    </td>
-                                    <td class="px-3 py-2 text-center">
-                                        @if ($this->entryIsFinal($entry))
-                                            <x-badge variant="info">Terkunci</x-badge>
-                                        @else
-                                            <x-badge variant="warning">Draft</x-badge>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="5" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+    <x-modul-dokumen.kartu judul="Inform Consent"
+        :jumlah="$informConsentCount"
+        satuan="tindakan"
+        tombol="Buka Inform Consent"
+        :nonaktif="$disabled || !$rjNo">
+        <x-slot:deskripsi>Persetujuan tindakan medis per-tindakan: tujuan, risiko, alternatif, serta tanda tangan pasien/wali, dokter penjelas, dan saksi.</x-slot:deskripsi>
+        <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+            <table class="min-w-full text-sm">
+                <thead class="bg-surface-card dark:bg-gray-800">
+                    <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                        <th class="px-3 py-2 border-b">Tindakan</th>
+                        <th class="px-3 py-2 border-b">Tanggal</th>
+                        <th class="px-3 py-2 border-b">Pemberi Informasi</th>
+                        <th class="px-3 py-2 border-b text-center">Persetujuan</th>
+                        <th class="px-3 py-2 border-b text-center">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse (collect($consentList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $entry)
+                        <tr class="border-b border-hairline dark:border-gray-700">
+                            <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">
+                                {{ \Illuminate\Support\Str::limit($entry['tindakan'] ?? '-', 50) }}
+                            </td>
+                            <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $entry['signatureDate'] ?? '-' }}</td>
+                            <td class="px-3 py-2 text-muted dark:text-gray-400">
+                                @if (!empty($entry['dokter'])){{ $entry['dokter'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                @if (($entry['agreement'] ?? '1') === '1')
+                                    <x-badge variant="success">Menyetujui</x-badge>
+                                @else
+                                    <x-badge variant="danger">Menolak</x-badge>
+                                @endif
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                @if ($this->entryIsFinal($entry))
+                                    <x-badge variant="info">Terkunci</x-badge>
+                                @else
+                                    <x-badge variant="warning">Draft</x-badge>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
-    </div>
+    </x-modul-dokumen.kartu>
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-inform-consent-ugd-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>

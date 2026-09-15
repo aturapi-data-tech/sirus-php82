@@ -630,82 +630,52 @@ new class extends Component {
     {{-- ══ SUMMARY CARD (inline) ══ --}}
     @php $poCount = count($penolakanList ?? []); @endphp
 
-    <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex flex-col gap-3">
-            {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi; tombol tetap di kanan --}}
-            <div class="flex items-center justify-between gap-4">
-                <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">
-                        Penolakan Pengobatan / Obat Tertentu
-                    </h3>
-                    @if ($poCount > 0)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $poCount }} surat</x-badge>
-                    @else
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
-                    @endif
-                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Surat pernyataan pasien/keluarga yang menolak pemberian pengobatan/obat tertentu setelah mendapat penjelasan dokter/petugas. Dapat lebih dari satu surat.</x-deskripsi-ringkas>
-                </div>
-
-                <div class="flex shrink-0">
-                    <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
-                        wire:target="openModal" :disabled="$disabled || !$rjNo" class="gap-2">
-                        <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                            </svg>
-                            Buka Formulir
-                        </span>
-                        <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
-                            <x-loading class="w-4 h-4" /> Memuat...
-                        </span>
-                    </x-primary-button>
-                </div>
-            </div>
-
-
-                <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-surface-card dark:bg-gray-800">
-                            <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                                <th class="px-3 py-2 border-b">Pembuat Pernyataan</th>
-                                <th class="px-3 py-2 border-b">Obat yang Ditolak</th>
-                                <th class="px-3 py-2 border-b">Tanggal</th>
-                                <th class="px-3 py-2 border-b">Petugas RS</th>
-                                <th class="px-3 py-2 border-b text-center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse (collect($penolakanList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $po)
-                                <tr class="border-b border-hairline dark:border-gray-700">
-                                    <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">
-                                        {{ Str::limit($po['pembuatNama'] ?? '-', 50) ?: '-' }}
-                                    </td>
-                                    <td class="px-3 py-2 text-muted dark:text-gray-400">
-                                        {{ Str::limit($po['namaObat'] ?? '-', 40) ?: '-' }}
-                                    </td>
-                                    <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $po['signatureDate'] ?? '-' }}</td>
-                                    <td class="px-3 py-2 text-muted dark:text-gray-400">
-                                        @if (!empty($po['petugas'])){{ $po['petugas'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
-                                    </td>
-                                    <td class="px-3 py-2 text-center">
-                                        @if ($this->entryIsFinal($po))
-                                            <x-badge variant="info">Terkunci</x-badge>
-                                        @else
-                                            <x-badge variant="warning">Draft</x-badge>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="5" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+    <x-modul-dokumen.kartu judul="Penolakan Pengobatan / Obat Tertentu"
+        :jumlah="$poCount"
+        satuan="surat"
+        :nonaktif="$disabled || !$rjNo">
+        <x-slot:deskripsi>Surat pernyataan pasien/keluarga yang menolak pemberian pengobatan/obat tertentu setelah mendapat penjelasan dokter/petugas. Dapat lebih dari satu surat.</x-slot:deskripsi>
+        <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+            <table class="min-w-full text-sm">
+                <thead class="bg-surface-card dark:bg-gray-800">
+                    <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                        <th class="px-3 py-2 border-b">Pembuat Pernyataan</th>
+                        <th class="px-3 py-2 border-b">Obat yang Ditolak</th>
+                        <th class="px-3 py-2 border-b">Tanggal</th>
+                        <th class="px-3 py-2 border-b">Petugas RS</th>
+                        <th class="px-3 py-2 border-b text-center">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse (collect($penolakanList)->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all() as $po)
+                        <tr class="border-b border-hairline dark:border-gray-700">
+                            <td class="px-3 py-2 font-medium text-ink dark:text-gray-200">
+                                {{ Str::limit($po['pembuatNama'] ?? '-', 50) ?: '-' }}
+                            </td>
+                            <td class="px-3 py-2 text-muted dark:text-gray-400">
+                                {{ Str::limit($po['namaObat'] ?? '-', 40) ?: '-' }}
+                            </td>
+                            <td class="px-3 py-2 text-muted dark:text-gray-400">{{ $po['signatureDate'] ?? '-' }}</td>
+                            <td class="px-3 py-2 text-muted dark:text-gray-400">
+                                @if (!empty($po['petugas'])){{ $po['petugas'] }}@else<x-badge variant="danger">Belum TTD</x-badge>@endif
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                @if ($this->entryIsFinal($po))
+                                    <x-badge variant="info">Terkunci</x-badge>
+                                @else
+                                    <x-badge variant="warning">Draft</x-badge>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
-    </div>
+    </x-modul-dokumen.kartu>
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-penolakan-obat-ugd-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>

@@ -894,40 +894,13 @@ new class extends Component {
     {{-- ══ SUMMARY CARD (inline) ══ --}}
     @php $preOpCount = count($preOpList ?? []); @endphp
 
-    <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 min-w-0 space-y-3">
-                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
-                <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Pengkajian Pre Operasi</h3>
-                    @if ($preOpCount > 0)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $preOpCount }} pengkajian</x-badge>
-                    @else
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
-                    @endif
-                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Persiapan pasien & serah-terima ruangan → OK (RM 49): keadaan pra bedah, persiapan pasien (puasa/cukur/premedikasi), kelengkapan administrasi yang disertakan ke kamar operasi. Tiap entri = 1 pengkajian; simpan draft dulu lalu kunci lewat TTD.</x-deskripsi-ringkas>
-                </div>
-            </div>
-
-            <div class="flex shrink-0">
-                <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
-                    wire:target="openModal" :disabled="$disabled || !$rjNo" class="gap-2">
-                    <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                        Buka Formulir
-                    </span>
-                    <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
-                        <x-loading class="w-4 h-4" /> Memuat...
-                    </span>
-                </x-primary-button>
-            </div>
-        </div>
-
+    <x-modul-dokumen.kartu judul="Pengkajian Pre Operasi"
+        :jumlah="$preOpCount"
+        satuan="pengkajian"
+        :nonaktif="$disabled || !$rjNo">
+        <x-slot:deskripsi>Persiapan pasien & serah-terima ruangan → OK (RM 49): keadaan pra bedah, persiapan pasien (puasa/cukur/premedikasi), kelengkapan administrasi yang disertakan ke kamar operasi. Tiap entri = 1 pengkajian; simpan draft dulu lalu kunci lewat TTD.</x-slot:deskripsi>
         @if ($preOpCount > 0)
-            <div class="mt-4 overflow-x-auto">
+            <div class="overflow-x-auto">
                 <table class="min-w-full text-sm border border-hairline rounded-lg dark:border-gray-700">
                     <thead class="bg-surface-soft dark:bg-gray-800">
                         <tr class="text-left text-muted dark:text-gray-300">
@@ -959,7 +932,7 @@ new class extends Component {
                 </table>
             </div>
         @endif
-    </div>
+    </x-modul-dokumen.kartu>
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-pengkajian-pre-op-rj-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>

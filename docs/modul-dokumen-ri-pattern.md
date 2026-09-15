@@ -52,6 +52,24 @@ salah satunya diam-diam.
   badge `shrink-0 whitespace-nowrap`; deskripsi `<x-deskripsi-ringkas>` bila > 90 karakter
 - **induk baris judul WAJIB `min-w-0`** — tanpa itu `truncate` tak menggigit dan kartunya
   melar melewati layar sampai tombol "Buka …" terdorong keluar
+- **Kartu = komponen `<x-modul-dokumen.kartu>`** (BAKU 2026-09-15, 71 modul):
+
+  ```blade
+  <x-modul-dokumen.kartu judul="Laporan Anestesi" :jumlah="$laCount" satuan="laporan"
+      :nonaktif="$disabled || !$riHdrNo">
+      <x-slot:deskripsi>Laporan pelaksanaan anestesi (PAB 6 / RM 53): …</x-slot:deskripsi>
+      <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+          <table class="min-w-full text-sm">…pratinjau 3 entri terbaru…</table>
+      </div>
+  </x-modul-dokumen.kartu>
+  ```
+
+  `jumlah` + `satuan` → badge hijau "N laporan" / kuning "Belum ada"; status khusus lewat slot `badge`
+  (General Consent "Sudah ditandatangani", Surat Kematian). Prop `tombol` (label, boleh `:tombol` dinamis),
+  `buka` (default `openModal`), `nonaktif`, `tampilTombol`. Slot `ringkasan` = dl/ul di bawah judul;
+  slot `tombolLain` = tombol di sebelah Buka (Cetak Catatan); slot bawaan = pratinjau, dibungkus
+  `mt-3 space-y-3` oleh komponen — **jangan beri `mt-*` sendiri**. Nama slot tak boleh sama dengan
+  nama prop (slot `tombol` sempat menimpa label tombol).
 
 ### Modal
 

@@ -672,112 +672,83 @@ new class extends Component {
     {{-- ══ SUMMARY CARD (inline) ══ --}}
     @php $loCount = count($laporanList ?? []); @endphp
 
-    <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 min-w-0 space-y-3">
-                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
-                <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">
-                        Laporan Operasi
-                    </h3>
-                    @if ($loCount > 0)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">{{ $loCount }} laporan</x-badge>
-                    @else
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ada</x-badge>
+    <x-modul-dokumen.kartu judul="Laporan Operasi"
+        :jumlah="$loCount"
+        satuan="laporan"
+        :nonaktif="$disabled || !$rjNo">
+        <x-slot:deskripsi>Laporan operasi (DPJP) memuat diagnosis pra/pasca-op, tim bedah, uraian temuan, komplikasi, spesimen PA, perdarahan &amp; registry implan. Diisi operator <span class="font-medium">segera setelah operasi</span> (PAB 7.2 &amp; 7.4). Bisa dicicil (Draft), lalu dikunci lewat TTD Operator.</x-slot:deskripsi>
+        <x-slot:ringkasan>
+            @if ($loCount > 0)
+                <ul class="space-y-1 text-base text-muted dark:text-gray-300 list-disc pl-5">
+                    @foreach (array_slice($laporanList, 0, 3) as $lo)
+                        <li>
+                            <span class="font-medium">{{ \Illuminate\Support\Str::limit($lo['jenisTindakan'] ?? '-', 60) ?: '-' }}</span>
+                            @if (!empty($lo['tanggalOperasi']))
+                                <span class="text-sm text-muted-soft">— {{ $lo['tanggalOperasi'] }}</span>
+                            @endif
+                            @if ($this->entryIsFinal($lo))
+                                <x-badge variant="info">Terkunci</x-badge>
+                            @else
+                                <x-badge variant="warning">Draft</x-badge>
+                            @endif
+                        </li>
+                    @endforeach
+                    @if ($loCount > 3)
+                        <li class="text-sm italic text-muted-soft">+{{ $loCount - 3 }} lainnya…</li>
                     @endif
-                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Laporan operasi (DPJP) memuat diagnosis pra/pasca-op, tim bedah, uraian temuan, komplikasi, spesimen PA, perdarahan &amp; registry implan. Diisi operator <span class="font-medium">segera setelah operasi</span> (PAB 7.2 &amp; 7.4). Bisa dicicil (Draft), lalu dikunci lewat TTD Operator.</x-deskripsi-ringkas>
-                </div>
-
-
-                @if ($loCount > 0)
-                    <ul class="space-y-1 text-base text-muted dark:text-gray-300 list-disc pl-5">
-                        @foreach (array_slice($laporanList, 0, 3) as $lo)
-                            <li>
-                                <span class="font-medium">{{ \Illuminate\Support\Str::limit($lo['jenisTindakan'] ?? '-', 60) ?: '-' }}</span>
-                                @if (!empty($lo['tanggalOperasi']))
-                                    <span class="text-sm text-muted-soft">— {{ $lo['tanggalOperasi'] }}</span>
+                </ul>
+            @endif
+        </x-slot:ringkasan>
+        <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
+            <table class="min-w-full text-sm">
+                <thead class="bg-surface-card dark:bg-gray-800">
+                    <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
+                        <th class="whitespace-nowrap px-3 py-2 border-b">Tgl Operasi</th>
+                        <th class="whitespace-nowrap px-3 py-2 border-b">Tindakan</th>
+                        <th class="whitespace-nowrap px-3 py-2 border-b">Operator (TTD)</th>
+                        <th class="whitespace-nowrap px-3 py-2 text-center border-b">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse (array_slice(collect($laporanList ?? [])->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all(), 0, 3) as $entry)
+                        @php
+                            $isFinal = $this->entryIsFinal($entry);
+                            $rowKey = $entry['createdAt'] ?? '';
+                        @endphp
+                        <tr class="border-t border-hairline dark:border-gray-800">
+                            <td class="px-3 py-2 font-semibold align-middle text-ink dark:text-gray-100">
+                                {{ $entry['tanggalOperasi'] ?: ($rowKey ?: '-') }}
+                            </td>
+                            <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">
+                                {{ $entry['jenisTindakan'] ? Str::limit($entry['jenisTindakan'], 45) : '-' }}
+                            </td>
+                            <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">
+                                @if (!empty($entry['operatorTtd']))
+                                    <span class="font-medium text-ink dark:text-gray-200">{{ $entry['operatorTtd'] }}</span>
+                                @else
+                                    <x-badge variant="danger">Belum TTD</x-badge>
                                 @endif
-                                @if ($this->entryIsFinal($lo))
+                            </td>
+                            <td class="px-3 py-2 text-center align-middle">
+                                @if ($isFinal)
                                     <x-badge variant="info">Terkunci</x-badge>
                                 @else
                                     <x-badge variant="warning">Draft</x-badge>
                                 @endif
-                            </li>
-                        @endforeach
-                        @if ($loCount > 3)
-                            <li class="text-sm italic text-muted-soft">+{{ $loCount - 3 }} lainnya…</li>
-                        @endif
-                    </ul>
-                @endif
-            </div>
-
-            <div class="flex shrink-0">
-                <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
-                    wire:target="openModal" :disabled="$disabled || !$rjNo" class="gap-2">
-                    <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                        Buka Formulir
-                    </span>
-                    <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
-                        <x-loading class="w-4 h-4" /> Memuat...
-                    </span>
-                </x-primary-button>
-            </div>
-        </div>
-        {{-- PRATINJAU ENTRI DI KARTU — ringkasan entri terbaru, tanpa perlu membuka modal --}}
-            <div class="mt-3 overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
-                <table class="min-w-full text-sm">
-                    <thead class="bg-surface-card dark:bg-gray-800">
-                        <tr class="text-xs font-semibold tracking-wide text-left text-muted uppercase dark:text-gray-300">
-                            <th class="whitespace-nowrap px-3 py-2 border-b">Tgl Operasi</th>
-                            <th class="whitespace-nowrap px-3 py-2 border-b">Tindakan</th>
-                            <th class="whitespace-nowrap px-3 py-2 border-b">Operator (TTD)</th>
-                            <th class="whitespace-nowrap px-3 py-2 text-center border-b">Status</th>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @forelse (array_slice(collect($laporanList ?? [])->sortByDesc(fn($entri) => strtotime(strtr(($entri['tanggal'] ?? '') ?: ($entri['createdAt'] ?? ''), '/', '-')))->values()->all(), 0, 3) as $entry)
-                            @php
-                                $isFinal = $this->entryIsFinal($entry);
-                                $rowKey = $entry['createdAt'] ?? '';
-                            @endphp
-                            <tr class="border-t border-hairline dark:border-gray-800">
-                                <td class="px-3 py-2 font-semibold align-middle text-ink dark:text-gray-100">
-                                    {{ $entry['tanggalOperasi'] ?: ($rowKey ?: '-') }}
-                                </td>
-                                <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">
-                                    {{ $entry['jenisTindakan'] ? Str::limit($entry['jenisTindakan'], 45) : '-' }}
-                                </td>
-                                <td class="px-3 py-2 align-middle text-muted dark:text-gray-300">
-                                    @if (!empty($entry['operatorTtd']))
-                                        <span class="font-medium text-ink dark:text-gray-200">{{ $entry['operatorTtd'] }}</span>
-                                    @else
-                                        <x-badge variant="danger">Belum TTD</x-badge>
-                                    @endif
-                                </td>
-                                <td class="px-3 py-2 text-center align-middle">
-                                    @if ($isFinal)
-                                        <x-badge variant="info">Terkunci</x-badge>
-                                    @else
-                                        <x-badge variant="warning">Draft</x-badge>
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="4" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-            @if (count($laporanList) > 3)
-                <p class="mt-2 text-xs italic text-muted-soft">+{{ count($laporanList) - 3 }} entri lain — buka untuk melihat semua.</p>
-            @endif
-    </div>
+                    @empty
+                        <tr>
+                            <td colspan="4" class="px-3 py-6 text-center text-muted-soft">Belum ada data tersimpan</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if (count($laporanList) > 3)
+            <p class="mt-2 text-xs italic text-muted-soft">+{{ count($laporanList) - 3 }} entri lain — buka untuk melihat semua.</p>
+        @endif
+    </x-modul-dokumen.kartu>
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-laporan-operasi-rj-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>

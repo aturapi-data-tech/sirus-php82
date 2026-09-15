@@ -21,6 +21,7 @@
  *  10. tabel layar daftar di dalam kartu <x-border-form padding="p-0"> (bukan tabel polos selebar modal)
  *  11. sel Aksi tabel daftar = komponen x-modul-dokumen.aksi-entri
  *  12. footer modal dua layar = komponen x-modul-dokumen.footer (kecuali Case Manager)
+ *  13. kartu di tab = komponen x-modul-dokumen.kartu
  */
 require __DIR__ . '/../../../vendor/autoload.php';
 $app = require __DIR__ . '/../../../bootstrap/app.php';
@@ -105,6 +106,10 @@ foreach ($berkas as $path) {
             $catatan[] = 'Lihat di tabel daftar masih tombol berteks (harus <x-lihat-button>)';
         if (preg_match('/<x-(outline|danger|icon)-button[^>]*wire:click(\.prevent)?="(hapus|remove|delete)/', substr($sumber, (int) strrpos($sumber, '@unless ($this->diForm())'))))
             $catatan[] = 'hapus di tabel daftar masih tombol manual (harus <x-hapus-button>)';
+
+        // Kartu di tab WAJIB komponen x-modul-dokumen.kartu (judul · badge · deskripsi · tombol Buka + pratinjau).
+        if (!str_contains($sumber, '<x-modul-dokumen.kartu'))
+            $catatan[] = 'kartu di tab tidak memakai <x-modul-dokumen.kartu>';
 
         // Header modal WAJIB komponen x-modul-dokumen.header (ikon · judul · deskripsi · badge · tutup),
         // bukan markup tulis-tangan — sejak 2026-09-15 (71 modal dikonversi).

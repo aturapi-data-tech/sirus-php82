@@ -871,34 +871,15 @@ new class extends Component {
         $mppCountA = count($dataDaftarRi['formMPP']['formA'] ?? []);
         $mppCountB = count($dataDaftarRi['formMPP']['formB'] ?? []);
     @endphp
-    <div class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 min-w-0 space-y-2">
-                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
-                <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">Case Manager — Manajer Pelayanan Pasien</h3>
-                    <x-badge class="shrink-0 whitespace-nowrap" variant="{{ $mppCountA > 0 ? 'success' : 'warning' }}">Form A: {{ $mppCountA }}</x-badge>
-                    <x-badge class="shrink-0 whitespace-nowrap" variant="{{ $mppCountB > 0 ? 'success' : 'warning' }}">Form B: {{ $mppCountB }}</x-badge>
-                    <p class="flex-1 min-w-0 hidden truncate text-sm text-muted sm:block dark:text-gray-400">Skrining awal &amp; pelaksanaan/monitoring oleh Manajer Pelayanan Pasien selama perawatan.</p>
-                </div>
-            </div>
-            <div class="flex shrink-0">
-                <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
-                    wire:target="openModal" :disabled="$disabled || !$riHdrNo" class="gap-2">
-                    <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                        Buka Case Manager (MPP)
-                    </span>
-                    <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
-                        <x-loading class="w-4 h-4" /> Memuat...
-                    </span>
-                </x-primary-button>
-            </div>
-        </div>
-    </div>
+    <x-modul-dokumen.kartu judul="Case Manager — Manajer Pelayanan Pasien"
+        tombol="Buka Case Manager (MPP)"
+        :nonaktif="$disabled || !$riHdrNo">
+        <x-slot:deskripsi>Skrining awal &amp; pelaksanaan/monitoring oleh Manajer Pelayanan Pasien selama perawatan.</x-slot:deskripsi>
+        <x-slot:badge>
+            <x-badge class="shrink-0 whitespace-nowrap" variant="{{ $mppCountA > 0 ? 'success' : 'warning' }}">Form A: {{ $mppCountA }}</x-badge>
+            <x-badge class="shrink-0 whitespace-nowrap" variant="{{ $mppCountB > 0 ? 'success' : 'warning' }}">Form B: {{ $mppCountB }}</x-badge>
+        </x-slot:badge>
+    </x-modul-dokumen.kartu>
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-case-manager-ri-{{ $riHdrNo ?? 'init' }}" size="full" height="full" focusable>

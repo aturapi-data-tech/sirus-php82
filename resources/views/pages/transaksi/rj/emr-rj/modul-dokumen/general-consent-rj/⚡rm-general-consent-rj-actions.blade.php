@@ -450,60 +450,38 @@ new class extends Component {
         $gcSigned = !empty($gc['signature']);
     @endphp
 
-    <div
-        class="p-5 bg-canvas border border-hairline shadow-sm rounded-2xl dark:bg-gray-900 dark:border-gray-700">
-        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex-1 min-w-0 space-y-3">
-                {{-- JUDUL KARTU SEBARIS — judul · badge · deskripsi --}}
-                <div class="flex items-baseline flex-1 gap-2 min-w-0">
-                    <h3 class="truncate shrink-0 text-base font-semibold text-ink dark:text-gray-200">
-                        General Consent
-                    </h3>
-                    @if ($gcSigned)
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="success">Sudah ditandatangani</x-badge>
-                    @else
-                        <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ditandatangani</x-badge>
-                    @endif
-                    <x-deskripsi-ringkas class="hidden sm:flex text-sm">Persetujuan umum pasien terhadap pelayanan rawat jalan, hak & tanggung jawab, serta perlindungan data.</x-deskripsi-ringkas>
-                </div>
-
-                @if ($gcSigned)
-                    <dl class="grid grid-cols-1 gap-2 text-base sm:grid-cols-3 text-muted dark:text-gray-300">
-                        <div>
-                            <dt class="text-sm uppercase text-muted-soft">Wali</dt>
-                            <dd class="font-medium">{{ $gc['wali'] ?? '-' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-sm uppercase text-muted-soft">Persetujuan</dt>
-                            <dd class="font-medium">
-                                {{ ($gc['agreement'] ?? '1') === '1' ? 'Setuju' : 'Tidak Setuju' }}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt class="text-sm uppercase text-muted-soft">Tanggal TTD</dt>
-                            <dd class="font-medium">{{ $gc['signatureDate'] ?? '-' }}</dd>
-                        </div>
-                    </dl>
-                @endif
-            </div>
-
-            <div class="flex shrink-0">
-                <x-primary-button type="button" wire:click="openModal" wire:loading.attr="disabled"
-                    wire:target="openModal" :disabled="$disabled || !$rjNo" class="gap-2">
-                    <span wire:loading.remove wire:target="openModal" class="flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                        Buka General Consent
-                    </span>
-                    <span wire:loading wire:target="openModal" class="flex items-center gap-1.5">
-                        <x-loading class="w-4 h-4" /> Memuat...
-                    </span>
-                </x-primary-button>
-            </div>
-        </div>
-    </div>
+    <x-modul-dokumen.kartu judul="General Consent"
+        tombol="Buka General Consent"
+        :nonaktif="$disabled || !$rjNo">
+        <x-slot:deskripsi>Persetujuan umum pasien terhadap pelayanan rawat jalan, hak & tanggung jawab, serta perlindungan data.</x-slot:deskripsi>
+        <x-slot:badge>
+            @if ($gcSigned)
+                <x-badge class="shrink-0 whitespace-nowrap" variant="success">Sudah ditandatangani</x-badge>
+            @else
+                <x-badge class="shrink-0 whitespace-nowrap" variant="warning">Belum ditandatangani</x-badge>
+            @endif
+        </x-slot:badge>
+        <x-slot:ringkasan>
+            @if ($gcSigned)
+                <dl class="grid grid-cols-1 gap-2 text-base sm:grid-cols-3 text-muted dark:text-gray-300">
+                    <div>
+                        <dt class="text-sm uppercase text-muted-soft">Wali</dt>
+                        <dd class="font-medium">{{ $gc['wali'] ?? '-' }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm uppercase text-muted-soft">Persetujuan</dt>
+                        <dd class="font-medium">
+                            {{ ($gc['agreement'] ?? '1') === '1' ? 'Setuju' : 'Tidak Setuju' }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm uppercase text-muted-soft">Tanggal TTD</dt>
+                        <dd class="font-medium">{{ $gc['signatureDate'] ?? '-' }}</dd>
+                    </div>
+                </dl>
+            @endif
+        </x-slot:ringkasan>
+    </x-modul-dokumen.kartu>
 
     {{-- ══ MODAL FORM ══ --}}
     <x-modal name="rm-general-consent-rj-{{ $rjNo ?? 'init' }}" size="full" height="full" focusable>
