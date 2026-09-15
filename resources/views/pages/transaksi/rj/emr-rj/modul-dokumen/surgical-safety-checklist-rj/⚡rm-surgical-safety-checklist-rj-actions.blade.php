@@ -1039,24 +1039,24 @@ new class extends Component {
 
                             </div>
 
-                            {{-- ══ TTD 3 PIHAK = KUNCI ══ --}}
+                            {{-- ══ TTD 3 PIHAK = KUNCI — standar tata letak TTD: kolom tanpa bingkai, judul (label) rata tengah → kotak TTD ══ --}}
                             <section class="pt-6 space-y-4 border-t border-hairline dark:border-gray-700">
                                 <h3 class="text-base font-semibold text-ink dark:text-gray-200">Tanda Tangan (3 Pihak)</h3>
-                                <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                                    <x-signature.ttd-petugas :ttd="$newForm['ttdDokterAnestesi']" :date="$newForm['ttdDokterAnestesiDate'] ?? ''"
+                                <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                                    <x-signature.ttd-petugas :framed="false" :ttd="$newForm['ttdDokterAnestesi']" :date="$newForm['ttdDokterAnestesiDate'] ?? ''"
                                         :code="$newForm['ttdDokterAnestesiCode'] ?? ''" :locked="$formReadOnly"
                                         sign="setTtdRole('dokterAnestesi')" clear="clearTtdRole('dokterAnestesi')"
-                                        title="Dokter Anestesi" nameLabel="Dokter Anestesi" dateLabel="Waktu TTD"
+                                        label="Dokter Anestesi" nameLabel="Dokter Anestesi" dateLabel="Waktu TTD"
                                         signLabel="TTD Dokter Anestesi" clearLabel="Batal TTD" />
-                                    <x-signature.ttd-petugas :ttd="$newForm['ttdPerawatInstrumen']" :date="$newForm['ttdPerawatInstrumenDate'] ?? ''"
+                                    <x-signature.ttd-petugas :framed="false" :ttd="$newForm['ttdPerawatInstrumen']" :date="$newForm['ttdPerawatInstrumenDate'] ?? ''"
                                         :code="$newForm['ttdPerawatInstrumenCode'] ?? ''" :locked="$formReadOnly"
                                         sign="setTtdRole('perawatInstrumen')" clear="clearTtdRole('perawatInstrumen')"
-                                        title="Perawat Instrumen" nameLabel="Perawat Instrumen" dateLabel="Waktu TTD"
+                                        label="Perawat Instrumen" nameLabel="Perawat Instrumen" dateLabel="Waktu TTD"
                                         signLabel="TTD Perawat Instrumen" clearLabel="Batal TTD" />
-                                    <x-signature.ttd-petugas :ttd="$newForm['ttdOperator']" :date="$newForm['ttdOperatorDate'] ?? ''"
+                                    <x-signature.ttd-petugas :framed="false" :ttd="$newForm['ttdOperator']" :date="$newForm['ttdOperatorDate'] ?? ''"
                                         :code="$newForm['ttdOperatorCode'] ?? ''" :locked="$formReadOnly"
                                         sign="setTtdRole('operator')" clear="clearTtdRole('operator')"
-                                        title="Operator" nameLabel="Operator" dateLabel="Waktu TTD"
+                                        label="Operator" nameLabel="Operator" dateLabel="Waktu TTD"
                                         signLabel="TTD Operator" clearLabel="Batal TTD" />
                                 </div>
                                 @if (!$formReadOnly)

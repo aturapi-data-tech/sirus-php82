@@ -704,18 +704,15 @@ new class extends Component {
                                             class="mb-2 text-sm font-semibold tracking-wide text-center text-muted uppercase dark:text-gray-400">
                                             Pasien / Wali
                                         </div>
-                                        <div class="min-h-56 flex flex-col justify-center">
-                                            @if (!empty($consent['signature']))
-                                                <x-signature.signature-result :signature="$consent['signature']"
-                                                    :date="$consent['signatureDate'] ?? ''" :disabled="$isFormLocked"
-                                                    wireMethod="clearSignature" />
-                                            @elseif (!$isFormLocked)
-                                                <x-signature.signature-pad wireMethod="setSignature" />
-                                            @else
-                                                <p class="py-8 text-sm italic text-center text-muted-soft">Belum
-                                                    ditandatangani.</p>
-                                            @endif
-                                        </div>
+                                        @if (!empty($consent['signature']))
+                                            <x-signature.signature-result :signature="$consent['signature']"
+                                                :disabled="$isFormLocked" wireMethod="clearSignature" />
+                                        @elseif (!$isFormLocked)
+                                            <x-signature.signature-pad wireMethod="setSignature" />
+                                        @else
+                                            <p class="py-8 text-sm italic text-center text-muted-soft">Belum
+                                                ditandatangani.</p>
+                                        @endif
 
                                         <div class="mt-3">
                                             <x-input-label value="Nama Pasien / Wali *" class="mb-1" />
@@ -737,6 +734,11 @@ new class extends Component {
                                             </x-select-input>
                                             <x-input-error :messages="$errors->get('waliHubungan')" class="mt-1" />
                                         </div>
+
+                                        @if (!empty($consent['signature']))
+                                            <p class="mt-2 text-sm"><span class="text-muted">Waktu TTD:</span>
+                                                <span class="font-semibold text-ink dark:text-gray-200">{{ $consent['signatureDate'] ?? '-' }}</span></p>
+                                        @endif
                                     </div>
 
                                     {{-- Petugas Pemberi Penjelasan --}}
@@ -745,18 +747,16 @@ new class extends Component {
                                             class="mb-2 text-sm font-semibold tracking-wide text-center text-muted uppercase dark:text-gray-400">
                                             Petugas Pemberi Penjelasan
                                         </div>
-                                        <div class="min-h-56 flex flex-col justify-center">
-                                            @if (empty($consent['petugasPemeriksa']) && !empty($consent['signature']))
-                                                <div class="mb-2 text-center">
-                                                    <x-badge variant="warning">Menunggu TTD Petugas</x-badge>
-                                                </div>
-                                            @endif
-                                            <x-signature.ttd-petugas :framed="false" :allowClear="false"
-                                                :ttd="$consent['petugasPemeriksa'] ?? ''"
-                                                :date="$consent['petugasPemeriksaDate'] ?? ''"
-                                                :code="$consent['petugasPemeriksaCode'] ?? ''" :locked="$isFormLocked"
-                                                sign="setPetugasPemeriksa" label="" signLabel="TTD sebagai Petugas" />
-                                        </div>
+                                        @if (empty($consent['petugasPemeriksa']) && !empty($consent['signature']))
+                                            <div class="mb-2 text-center">
+                                                <x-badge variant="warning">Menunggu TTD Petugas</x-badge>
+                                            </div>
+                                        @endif
+                                        <x-signature.ttd-petugas :framed="false" :allowClear="false"
+                                            :ttd="$consent['petugasPemeriksa'] ?? ''"
+                                            :date="$consent['petugasPemeriksaDate'] ?? ''"
+                                            :code="$consent['petugasPemeriksaCode'] ?? ''" :locked="$isFormLocked"
+                                            sign="setPetugasPemeriksa" label="" signLabel="TTD sebagai Petugas" />
                                     </div>
                                 </div>
                             </section>

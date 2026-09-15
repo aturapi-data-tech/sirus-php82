@@ -1501,16 +1501,16 @@ new class extends Component {
                                 {{ $clause['persetujuan'] }}
                             </p>
 
-                            {{-- Tiga kolom TTD berbingkai seragam & sama tinggi (items-stretch + h-full),
-                                 supaya kotak tanda tangan sejajar dan tidak terlihat berantakan. --}}
-                            <div class="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
+                            {{-- Tiga kolom TTD — standar tata letak TTD: judul kolom → kotak TTD langsung di bawahnya
+                                 (tanpa kartu & tanpa justify-center) supaya kotak ketiga kolom sejajar. --}}
+                            <div class="grid grid-cols-1 gap-6 mt-4 sm:grid-cols-2 lg:grid-cols-3">
 
                                 {{-- Pasien / Keluarga --}}
-                                <div class="flex flex-col h-full p-3 border rounded-lg border-hairline bg-surface-soft/60 dark:bg-gray-900/40 dark:border-gray-700">
-                                    <p class="mb-2 text-xs font-semibold tracking-wide text-center uppercase text-muted dark:text-gray-400">
+                                <div class="flex flex-col">
+                                    <div class="mb-2 text-sm font-semibold tracking-wide text-center uppercase text-muted dark:text-gray-400">
                                         Pasien / Keluarga
-                                    </p>
-                                    <div class="flex-1">
+                                    </div>
+                                    <div>
                                         @if (!empty($keluargaSignature))
                                             <x-signature.signature-result :signature="$keluargaSignature" :date="''"
                                                 :disabled="$formReadOnly" wireMethod="clearKeluargaSignature" />
@@ -1544,11 +1544,11 @@ new class extends Component {
                                 </div>
 
                                 {{-- Saksi (wajib) --}}
-                                <div class="flex flex-col h-full p-3 border rounded-lg border-hairline bg-surface-soft/60 dark:bg-gray-900/40 dark:border-gray-700">
-                                    <p class="mb-2 text-xs font-semibold tracking-wide text-center uppercase text-muted dark:text-gray-400">
+                                <div class="flex flex-col">
+                                    <div class="mb-2 text-sm font-semibold tracking-wide text-center uppercase text-muted dark:text-gray-400">
                                         Saksi *
-                                    </p>
-                                    <div class="flex-1">
+                                    </div>
+                                    <div>
                                         @if (!empty($saksiSignature))
                                             <x-signature.signature-result :signature="$saksiSignature" :date="''"
                                                 :disabled="$formReadOnly" wireMethod="clearSaksiSignature" />
@@ -1570,11 +1570,11 @@ new class extends Component {
                                 </div>
 
                                 {{-- Petugas — judul kolom sudah ada di atas, jadi komponen cukup pakai label "Nama" --}}
-                                <div class="flex flex-col h-full p-3 border rounded-lg border-hairline bg-surface-soft/60 dark:bg-gray-900/40 dark:border-gray-700">
-                                    <p class="mb-2 text-xs font-semibold tracking-wide text-center uppercase text-muted dark:text-gray-400">
+                                <div class="flex flex-col">
+                                    <div class="mb-2 text-sm font-semibold tracking-wide text-center uppercase text-muted dark:text-gray-400">
                                         Petugas (Dokter / Perawat)
-                                    </p>
-                                    <div class="flex-1 flex flex-col justify-center">
+                                    </div>
+                                    <div>
                                         <x-signature.ttd-petugas :framed="false"
                                             :ttd="$form['ttd']['petugasName'] ?? ''"
                                             :date="$form['ttd']['petugasDate'] ?? ''"

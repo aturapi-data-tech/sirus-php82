@@ -8,6 +8,9 @@
     'empId' => '',
     // Nama penanda-tangan — hanya untuk alt text.
     'name' => '',
+    // Teks pengganti bila gambar TTD tak ada. Terisi → kotak berukuran SAMA tetap tampil
+    // berisi teks ini (kolom TTD tetangga tetap sejajar); kosong → tak render apa pun.
+    'teksKosong' => '',
 ])
 
 @php
@@ -19,8 +22,14 @@
      Kotak putih dibuat SAMA dengan hasil signature-pad pasien/saksi (x-signature.signature-result):
      lebar penuh + proporsi kanvas pad 460x180 (inline style — token aspect-[460/180] tidak ada
      di build Tailwind), sehingga tiga kolom TTD sejajar tingginya. --}}
-@if ($ttdImageUrl)
+@if ($ttdImageUrl || filled($teksKosong))
     <div {{ $attributes->merge(['class' => 'w-full overflow-hidden bg-white border border-gray-200 rounded-xl dark:border-gray-700']) }}>
-        <img src="{{ $ttdImageUrl }}" alt="Tanda tangan {{ $name }}" class="w-full object-contain p-2 mx-auto max-h-40" style="aspect-ratio: 460 / 180;" />
+        @if ($ttdImageUrl)
+            <img src="{{ $ttdImageUrl }}" alt="Tanda tangan {{ $name }}" class="w-full object-contain p-2 mx-auto max-h-40" style="aspect-ratio: 460 / 180;" />
+        @else
+            <div class="flex items-center justify-center w-full p-2 mx-auto text-sm italic text-center max-h-40 text-muted-soft" style="aspect-ratio: 460 / 180;">
+                {{ $teksKosong }}
+            </div>
+        @endif
     </div>
 @endif

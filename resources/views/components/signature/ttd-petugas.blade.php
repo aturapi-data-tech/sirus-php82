@@ -30,7 +30,7 @@
     'framed' => true,
     // Judul kartu bingkai — hanya dipakai saat framed=true.
     'title' => 'Tanda Tangan',
-    // Judul kecil di atas baris field; kosongkan bila judul kolom sudah ada di luar komponen.
+    // Judul kolom (gaya standar kolom TTD: uppercase rata tengah); kosongkan bila judul kolom sudah ada di luar komponen.
     'label' => '',
 
     // ══ Teks label field & tombol (gaya EMR: 2 field readonly ditumpuk) ══
@@ -62,15 +62,15 @@
 
             <div class="{{ $framed ? 'max-w-xl mx-auto' : '' }}">
                 @if ($label)
-                    <div class="mb-2 text-sm font-semibold tracking-wide uppercase text-muted dark:text-gray-400 {{ $framed ? 'text-center' : 'text-left' }}">
+                    <div class="mb-2 text-sm font-semibold tracking-wide text-center uppercase text-muted dark:text-gray-400">
                         {{ $label }}
                     </div>
                 @endif
 
                 <div class="space-y-2">
-                    {{-- Gambar TTD penanda-tangan (bila user punya myuser_ttd_image) --}}
+                    {{-- Gambar TTD penanda-tangan; bila user tak punya myuser_ttd_image kotak tetap tampil berisi teks (kolom tetangga tetap sejajar) --}}
                     @if ($signed)
-                        <x-signature.ttd-gambar :code="$code" :name="$ttd" class="mb-1" />
+                        <x-signature.ttd-gambar :code="$code" :name="$ttd" teksKosong="Gambar tanda tangan tidak tersedia" class="mb-1" />
                     @endif
 
                     {{-- Nama penanda-tangan: label + input box (readonly) --}}

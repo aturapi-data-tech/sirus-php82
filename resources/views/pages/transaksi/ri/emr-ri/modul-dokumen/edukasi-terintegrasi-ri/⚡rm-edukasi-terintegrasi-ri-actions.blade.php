@@ -1391,17 +1391,17 @@ new class extends Component {
 
                 <hr class="border-hairline dark:border-gray-700">
 
-                {{-- ─── 7) TANDA TANGAN — dua kolom berbingkai sama tinggi (pola Akhir Hayat) ─── --}}
+                {{-- ─── 7) TANDA TANGAN — standar tata letak TTD: judul kolom → kotak TTD langsung di bawahnya ─── --}}
                 <div class="space-y-3">
                     <h4 class="text-sm font-semibold text-ink dark:text-gray-100">7) Tanda Tangan</h4>
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 items-stretch">
+                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
 
                         {{-- Pasien / Keluarga --}}
-                        <div class="flex flex-col h-full p-3 border rounded-lg border-hairline bg-surface-soft/60 dark:bg-gray-900/40 dark:border-gray-700">
-                            <p class="mb-2 text-xs font-semibold tracking-wide text-center uppercase text-muted dark:text-gray-400">
+                        <div class="flex flex-col">
+                            <div class="mb-2 text-sm font-semibold tracking-wide text-center uppercase text-muted dark:text-gray-400">
                                 Pasien / Keluarga *
-                            </p>
-                            <div class="flex-1">
+                            </div>
+                            <div>
                                 @if (!empty($sasaranEdukasiSignature))
                                     <x-signature.signature-result :signature="$sasaranEdukasiSignature" :date="''"
                                         :disabled="$formReadOnly" wireMethod="clearSasaranSignature" />
@@ -1439,11 +1439,11 @@ new class extends Component {
                         </div>
 
                         {{-- Petugas — judul kolom sudah ada di atas, komponen cukup label "Nama" --}}
-                        <div class="flex flex-col h-full p-3 border rounded-lg border-hairline bg-surface-soft/60 dark:bg-gray-900/40 dark:border-gray-700">
-                            <p class="mb-2 text-xs font-semibold tracking-wide text-center uppercase text-muted dark:text-gray-400">
+                        <div class="flex flex-col">
+                            <div class="mb-2 text-sm font-semibold tracking-wide text-center uppercase text-muted dark:text-gray-400">
                                 Petugas (Pemberi Informasi)
-                            </p>
-                            <div class="flex-1 flex flex-col justify-center">
+                            </div>
+                            <div>
                                 <x-signature.ttd-petugas :framed="false"
                                     :ttd="$form['pemberiInformasi']['petugasName'] ?? ''"
                                     :code="$form['pemberiInformasi']['petugasCode'] ?? ''"

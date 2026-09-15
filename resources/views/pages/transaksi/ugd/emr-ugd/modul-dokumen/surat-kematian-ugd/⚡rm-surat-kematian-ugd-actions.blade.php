@@ -448,25 +448,22 @@ new class extends Component {
                 </div>
 
                 {{-- TTD Dokter --}}
+                {{-- TTD dokter — standar tata letak TTD: judul kolom → kotak TTD (ttd-petugas) --}}
                 <div class="pt-4 border-t border-hairline dark:border-gray-700">
-                    <x-input-label value="Dokter yang Menerangkan" />
-                    @if (!empty($newForm['dokterPenerang']))
-                        <div
-                            class="px-3 py-2 mt-1 text-base border rounded-lg bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200">
-                            <x-signature.ttd-gambar :code="$newForm['dokterPenerangCode'] ?? ''" :name="$newForm['dokterPenerang']" class="mb-2" />
-                            <strong>{{ $newForm['dokterPenerang'] }}</strong>
-                            @if (!empty($newForm['dokterPenerangCode']))
-                                (Kode: {{ $newForm['dokterPenerangCode'] }})
-                            @endif
-                            @if (!empty($newForm['dokterPenerangDate']))
-                                &mdash; {{ $newForm['dokterPenerangDate'] }}
+                    <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        <div class="flex flex-col">
+                            <div class="mb-2 text-sm font-semibold tracking-wide text-center uppercase text-muted dark:text-gray-400">Dokter yang Menerangkan</div>
+                            @if (!empty($newForm['dokterPenerang']))
+                                <x-signature.ttd-petugas :framed="false" :locked="true" :ttd="$newForm['dokterPenerang']"
+                                    :code="$newForm['dokterPenerangCode'] ?? ''" :date="$newForm['dokterPenerangDate'] ?? ''"
+                                    nameLabel="Nama Dokter" />
+                            @else
+                                <p class="py-8 text-base italic text-center text-muted-soft">
+                                    Belum ditandatangani. Menandatangani akan <strong>mengunci</strong> surat ini.
+                                </p>
                             @endif
                         </div>
-                    @else
-                        <p class="mt-1 text-base text-muted dark:text-gray-400">
-                            Belum ditandatangani. Menandatangani akan <strong>mengunci</strong> surat ini.
-                        </p>
-                    @endif
+                    </div>
                 </div>
 
                     </div>

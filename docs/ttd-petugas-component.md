@@ -103,6 +103,55 @@ jadi method cukup ada di induk.
     label="Dokter Anestesi" signLabel="TTD Dokter Anestesi" clearLabel="Hapus TTD" />
 ```
 
+## Standar tata letak kolom TTD (2026-09-15)
+Pasien/wali, saksi, dan petugas berdampingan dalam satu grid — kotak gambar TTD harus
+**sejajar di satu baris**. Urutan tiap kolom:
+
+```
+PASIEN / WALI                         PETUGAS PEMBERI PENJELASAN      ← judul kolom (uppercase, tengah)
+┌──────────────────────────┐          ┌──────────────────────────┐
+│  signature-result / pad  │          │  ttd-gambar (ttd-petugas) │   ← kotak LANGSUNG di bawah judul
+└──────────────────────────┘          └──────────────────────────┘
+Nama Pasien / Wali [.......]          Petugas [.......]                ← field nama
+Hubungan [.......]                    Kode: 123X123
+Waktu TTD: 15/09/2026 08:16:38        Waktu TTD: 15/09/2026 08:16:39   ← teks, bukan input
+```
+
+```blade
+<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div class="flex flex-col">
+        <div class="mb-2 text-sm font-semibold tracking-wide text-center uppercase text-muted dark:text-gray-400">Pasien / Wali</div>
+        @if (!empty($signature))
+            <x-signature.signature-result :signature="$signature" :disabled="$isFormLocked" wireMethod="clearSignature" />
+        @elseif (!$isFormLocked)
+            <x-signature.signature-pad wireMethod="setSignature" />
+        @endif
+        {{-- field nama / hubungan --}}
+        @if (!empty($signature))
+            <p class="mt-2 text-sm"><span class="text-muted">Waktu TTD:</span>
+                <span class="font-semibold text-ink dark:text-gray-200">{{ $signatureDate }}</span></p>
+        @endif
+    </div>
+    <div class="flex flex-col">
+        <div class="mb-2 ...">Petugas Pemberi Penjelasan</div>
+        <x-signature.ttd-petugas :framed="false" ... />
+    </div>
+</div>
+```
+
+- **Jangan ada teks di atas kotak.** `signature-result` kini menaruh prop `date` DI BAWAH kotak;
+  lebih rapi lagi taruh baris "Waktu TTD" setelah field nama/hubungan (mirror kolom petugas).
+- **Jangan bungkus kotak dengan `min-h-* flex justify-center`** — kotak jadi di-tengah-vertikal
+  dan turun-naik beda antar kolom (bug General Consent sebelum 2026-09-15).
+- Kotak `signature-result` & `ttd-gambar` identik: `w-full` + `max-h-40` + `aspect-ratio: 460 / 180`.
+- **Jangan** jadikan kolom kartu berbingkai (`p-3 border rounded-lg`) dan **jangan** pakai
+  `ttd-petugas :framed="true"` di dalam grid TTD — semua kolom tanpa bingkai.
+- Judul kolom boleh ditulis di luar komponen **atau** lewat prop `label` ttd-petugas — keduanya
+  bergaya sama (uppercase, rata tengah). Jangan pakai keduanya sekaligus.
+- `ttd-petugas` mengirim `teksKosong` ke `ttd-gambar`: petugas yang tak punya berkas gambar TTD
+  tetap mendapat kotak berukuran sama berisi "Gambar tanda tangan tidak tersedia", jadi field
+  di bawahnya tidak naik. `ttd-gambar` tanpa `teksKosong` (modal lab) tetap tak render apa pun.
+
 ## Struktur internal
 **Satu file** `ttd-petugas.blade.php` (tak ada sub-komponen). Bingkai saat `framed=true`
 sengaja pakai `<div>` biasa (bukan `<x-border-form>`), dibuka/tutup per cabang `@if`,
