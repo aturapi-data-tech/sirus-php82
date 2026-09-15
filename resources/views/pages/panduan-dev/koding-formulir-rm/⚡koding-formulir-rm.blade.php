@@ -60,6 +60,8 @@ new class extends Component {
             'RM-03.08' => 'Pengkajian Awal Bayi Baru Lahir',
             'RM-03.09' => 'Pengkajian Keperawatan Neonatal',
             'RM-03.10' => 'Pengkajian Pasien Akhir Hayat',
+            'RM-03.11' => 'Pengkajian Awal Keperawatan Rawat Inap',
+            'RM-03.12' => 'Pengkajian Medis (Dokter) Rawat Inap',
 
             'RM-04.01' => 'Catatan Perkembangan Pasien Terintegrasi (CPPT)',
             'RM-04.02' => 'Komunikasi SBAR',

@@ -4,14 +4,18 @@
 use Livewire\Component;
 use App\Http\Traits\Txn\Ri\EmrRITrait;
 use App\Http\Traits\Txn\Ugd\EmrUGDTrait;
+use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Http\Traits\Concerns\WithRenderVersioningTrait;
 use App\Http\Traits\Concerns\WithValidationToastTrait;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\TtdUser;
+use App\Support\Options\PengkajianAwalRiOptions;
 
 new class extends Component {
-    use EmrRITrait, EmrUGDTrait, WithRenderVersioningTrait, WithValidationToastTrait;
+    use EmrRITrait, EmrUGDTrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
 
     public bool $isFormLocked = false;
     public bool $isReadOnlyByRole = false; // true jika user bukan Perawat/Admin — dokter boleh lihat tapi tidak edit/simpan
@@ -279,6 +283,44 @@ new class extends Component {
         $this->save();
     }
 
+    /** Cetak Pengkajian Awal Keperawatan RI (RM-03.11) — hanya membaca data, tidak menyimpan. */
+    public function cetak()
+    {
+        $pengkajian = $this->dataDaftarRi['pengkajianAwalPasienRawatInap'] ?? null;
+        if (empty($pengkajian) || empty($this->dataDaftarRi['regNo'])) {
+            $this->dispatch('toast', type: 'error', message: 'Data Pengkajian Awal belum tersedia.');
+            return;
+        }
+
+        try {
+            $identitasRs = DB::table('rsmst_identitases')->select('int_name', 'int_phone1', 'int_phone2', 'int_fax', 'int_address', 'int_city')->first();
+            $pasien = $this->findDataMasterPasien($this->dataDaftarRi['regNo'])['pasien'] ?? [];
+
+            if (!empty($pasien['tglLahir'])) {
+                try {
+                    $pasien['thn'] = Carbon::createFromFormat('d/m/Y', $pasien['tglLahir'])->diff(Carbon::now(config('app.timezone')))->format('%y Thn, %m Bln %d Hr');
+                } catch (\Throwable) {
+                    $pasien['thn'] = '-';
+                }
+            }
+
+            $data = array_merge($pasien, [
+                'dataRi' => $this->dataDaftarRi,
+                'pengkajian' => $pengkajian,
+                'identitasRs' => $identitasRs,
+                'ttdPath' => TtdUser::pathBerkasDariKode(data_get($pengkajian, 'bagian5CatatanDanTandaTangan.petugasPengkajiCode')),
+                'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
+            ]);
+
+            set_time_limit(300);
+            $pdf = Pdf::loadView('pages.components.rekam-medis.ri.pengkajian-awal-ri.cetak-pengkajian-awal-ri-print', ['data' => $data])->setPaper('A4');
+
+            return response()->streamDownload(fn() => print $pdf->output(), 'pengkajian-awal-keperawatan-ri-' . ($pasien['regNo'] ?? $this->riHdrNo) . '.pdf');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal cetak: ' . $e->getMessage());
+        }
+    }
+
     #[On('lov.selected.leveling-dokter-ri')]
     public function onDokterSelected(string $target, array $payload): void
     {
@@ -397,6 +439,13 @@ new class extends Component {
         $dispatch('section-clean', { tab: tab });
     });" x-on:input="markDirty()" x-on:change="markDirty()">
 
+    {{-- ── Cetak (RM-03.11) ── --}}
+    @if ($riHdrNo)
+        <div class="flex justify-end">
+            <x-cetak-button wire:click="cetak" label="Cetak Pengkajian Awal" />
+        </div>
+    @endif
+
     {{-- ── Read-only banner ── --}}
     @if ($isFormLocked)
         <div
@@ -438,9 +487,9 @@ new class extends Component {
                     wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian1DataUmum.kondisiSaatMasuk"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
-                    <option value="mandiri">Mandiri</option>
-                    <option value="dibantu">Dibantu</option>
-                    <option value="tirahBaring">Tirah Baring</option>
+                    @foreach (PengkajianAwalRiOptions::KONDISI_SAAT_MASUK as $nilaiOpsi => $labelOpsi)
+                        <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                    @endforeach
                 </x-select-input>
             </div>
 
@@ -458,10 +507,9 @@ new class extends Component {
                     wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian1DataUmum.asalPasien.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
-                    <option value="poliklinik">Poliklinik</option>
-                    <option value="igd">IGD</option>
-                    <option value="kamarOperasi">Kamar Operasi</option>
-                    <option value="lainnya">Lainnya</option>
+                    @foreach (PengkajianAwalRiOptions::ASAL_PASIEN as $nilaiOpsi => $labelOpsi)
+                        <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                    @endforeach
                 </x-select-input>
                 @if (($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian1DataUmum']['asalPasien']['pilihan'] ?? '') === 'lainnya')
                     <x-text-input
@@ -479,8 +527,9 @@ new class extends Component {
                     wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian1DataUmum.barangBerharga.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
-                    <option value="ada">Ada</option>
-                    <option value="tidakAda">Tidak Ada</option>
+                    @foreach (PengkajianAwalRiOptions::BARANG_BERHARGA as $nilaiOpsi => $labelOpsi)
+                        <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                    @endforeach
                 </x-select-input>
                 @if (($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian1DataUmum']['barangBerharga']['pilihan'] ?? '') === 'ada')
                     <x-text-input
@@ -496,10 +545,9 @@ new class extends Component {
                     wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian1DataUmum.alatBantu.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
-                    <option value="kacamata">Kacamata</option>
-                    <option value="gigiPalsu">Gigi Palsu</option>
-                    <option value="alatBantuDengar">Alat Bantu Dengar</option>
-                    <option value="lainnya">Lainnya</option>
+                    @foreach (PengkajianAwalRiOptions::ALAT_BANTU as $nilaiOpsi => $labelOpsi)
+                        <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                    @endforeach
                 </x-select-input>
                 @if (($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian1DataUmum']['alatBantu']['pilihan'] ?? '') === 'lainnya')
                     <x-text-input
@@ -531,12 +579,9 @@ new class extends Component {
                         wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.riwayatPenyakitOperasiCedera.pilihan"
                         class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                         <option value="">— Pilih —</option>
-                        <option value="hipertensi">Hipertensi</option>
-                        <option value="diabetes">Diabetes</option>
-                        <option value="asma">Asma</option>
-                        <option value="stroke">Stroke</option>
-                        <option value="penyakitJantung">Penyakit Jantung</option>
-                        <option value="lainnya">Lainnya</option>
+                        @foreach (PengkajianAwalRiOptions::RIWAYAT_PENYAKIT as $nilaiOpsi => $labelOpsi)
+                            <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                        @endforeach
                     </x-select-input>
                     @if (
                         ($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian2RiwayatPasien']['riwayatPenyakitOperasiCedera'][
@@ -572,9 +617,9 @@ new class extends Component {
                                 wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.kebiasaan.merokok.pilihan"
                                 class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                                 <option value="">— Pilih —</option>
-                                <option value="ya">Ya</option>
-                                <option value="tidak">Tidak</option>
-                                <option value="berhenti">Berhenti</option>
+                                @foreach (PengkajianAwalRiOptions::KEBIASAAN as $nilaiOpsi => $labelOpsi)
+                                    <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                                @endforeach
                             </x-select-input>
                         </div>
                         @if (in_array(
@@ -608,9 +653,9 @@ new class extends Component {
                                 wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.kebiasaan.alkoholObat.pilihan"
                                 class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                                 <option value="">— Pilih —</option>
-                                <option value="ya">Ya</option>
-                                <option value="tidak">Tidak</option>
-                                <option value="berhenti">Berhenti</option>
+                                @foreach (PengkajianAwalRiOptions::KEBIASAAN as $nilaiOpsi => $labelOpsi)
+                                    <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                                @endforeach
                             </x-select-input>
                         </div>
                         @if (in_array(
@@ -644,9 +689,9 @@ new class extends Component {
                         wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.vaksinasi.influenza.pilihan"
                         class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                         <option value="">— Pilih —</option>
-                        <option value="ya">Ya</option>
-                        <option value="tidak">Tidak</option>
-                        <option value="menolak">Menolak</option>
+                        @foreach (PengkajianAwalRiOptions::VAKSINASI as $nilaiOpsi => $labelOpsi)
+                            <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                        @endforeach
                     </x-select-input>
                 </div>
                 <div>
@@ -655,9 +700,9 @@ new class extends Component {
                         wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.vaksinasi.pneumonia.pilihan"
                         class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                         <option value="">— Pilih —</option>
-                        <option value="ya">Ya</option>
-                        <option value="tidak">Tidak</option>
-                        <option value="menolak">Menolak</option>
+                        @foreach (PengkajianAwalRiOptions::VAKSINASI as $nilaiOpsi => $labelOpsi)
+                            <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                        @endforeach
                     </x-select-input>
                 </div>
 
@@ -668,11 +713,9 @@ new class extends Component {
                         wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian2RiwayatPasien.riwayatKeluarga.pilihan"
                         class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                         <option value="">— Pilih —</option>
-                        <option value="penyakitJantung">Penyakit Jantung</option>
-                        <option value="hipertensi">Hipertensi</option>
-                        <option value="diabetes">Diabetes</option>
-                        <option value="stroke">Stroke</option>
-                        <option value="lainnya">Lainnya</option>
+                        @foreach (PengkajianAwalRiOptions::RIWAYAT_KELUARGA as $nilaiOpsi => $labelOpsi)
+                            <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                        @endforeach
                     </x-select-input>
                     @if (
                         ($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian2RiwayatPasien']['riwayatKeluarga']['pilihan'] ?? '') ===
@@ -702,11 +745,9 @@ new class extends Component {
                     wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.agamaKepercayaan.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
-                    <option value="islam">Islam</option>
-                    <option value="kristen">Kristen</option>
-                    <option value="hindu">Hindu</option>
-                    <option value="budha">Budha</option>
-                    <option value="lainnya">Lainnya</option>
+                    @foreach (PengkajianAwalRiOptions::AGAMA as $nilaiOpsi => $labelOpsi)
+                        <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                    @endforeach
                 </x-select-input>
                 @if (
                     ($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['agamaKepercayaan']['pilihan'] ??
@@ -725,9 +766,9 @@ new class extends Component {
                     wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.statusPernikahan.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
-                    <option value="menikah">Menikah</option>
-                    <option value="belumMenikah">Belum Menikah</option>
-                    <option value="dudaJanda">Duda / Janda</option>
+                    @foreach (PengkajianAwalRiOptions::STATUS_PERNIKAHAN as $nilaiOpsi => $labelOpsi)
+                        <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                    @endforeach
                 </x-select-input>
             </div>
 
@@ -738,9 +779,9 @@ new class extends Component {
                     wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.tempatTinggal.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
-                    <option value="rumah">Rumah</option>
-                    <option value="panti">Panti</option>
-                    <option value="lainnya">Lainnya</option>
+                    @foreach (PengkajianAwalRiOptions::TEMPAT_TINGGAL as $nilaiOpsi => $labelOpsi)
+                        <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                    @endforeach
                 </x-select-input>
                 @if (
                     ($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['tempatTinggal']['pilihan'] ??
@@ -759,9 +800,9 @@ new class extends Component {
                     wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.aktivitas.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
-                    <option value="mandiri">Mandiri</option>
-                    <option value="dibantu">Dibantu</option>
-                    <option value="tirahBaring">Tirah Baring</option>
+                    @foreach (PengkajianAwalRiOptions::AKTIVITAS as $nilaiOpsi => $labelOpsi)
+                        <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                    @endforeach
                 </x-select-input>
             </div>
 
@@ -772,10 +813,9 @@ new class extends Component {
                     wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.statusEmosional.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
-                    <option value="kooperatif">Kooperatif</option>
-                    <option value="cemas">Cemas</option>
-                    <option value="depresi">Depresi</option>
-                    <option value="lainnya">Lainnya</option>
+                    @foreach (PengkajianAwalRiOptions::STATUS_EMOSIONAL as $nilaiOpsi => $labelOpsi)
+                        <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                    @endforeach
                 </x-select-input>
                 @if (
                     ($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['statusEmosional']['pilihan'] ??
@@ -794,9 +834,9 @@ new class extends Component {
                     wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.informasiDidapatDari.pilihan"
                     class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                     <option value="">— Pilih —</option>
-                    <option value="pasien">Pasien</option>
-                    <option value="keluarga">Keluarga</option>
-                    <option value="lainnya">Lainnya</option>
+                    @foreach (PengkajianAwalRiOptions::INFORMASI_DARI as $nilaiOpsi => $labelOpsi)
+                        <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                    @endforeach
                 </x-select-input>
                 @if (
                     ($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['informasiDidapatDari'][
@@ -887,69 +927,10 @@ new class extends Component {
                 Sistem Organ</p>
 
             @php
-                $organSystems = [
-                    [
-                        'path' => 'mataTelingaHidungTenggorokan',
-                        'label' => 'Mata, Telinga, Hidung & Tenggorokan',
-                        'opts' => [
-                            'normal' => 'Normal',
-                            'gangguanVisus' => 'Gangguan Visus',
-                            'tuli' => 'Tuli',
-                            'lainnya' => 'Lainnya',
-                        ],
-                    ],
-                    [
-                        'path' => 'paru',
-                        'label' => 'Paru',
-                        'opts' => [
-                            'normal' => 'Normal',
-                            'ronki' => 'Ronki',
-                            'wheezing' => 'Wheezing',
-                            'lainnya' => 'Lainnya',
-                        ],
-                    ],
-                    [
-                        'path' => 'jantung',
-                        'label' => 'Jantung',
-                        'opts' => [
-                            'normal' => 'Normal',
-                            'takikardi' => 'Takikardi',
-                            'bradikardi' => 'Bradikardi',
-                            'lainnya' => 'Lainnya',
-                        ],
-                    ],
-                    [
-                        'path' => 'gastrointestinal',
-                        'label' => 'Gastrointestinal',
-                        'opts' => [
-                            'normal' => 'Normal',
-                            'distensi' => 'Distensi',
-                            'diare' => 'Diare',
-                            'konstipasi' => 'Konstipasi',
-                            'lainnya' => 'Lainnya',
-                        ],
-                    ],
-                    [
-                        'path' => 'genitourinaria',
-                        'label' => 'Genitourinaria',
-                        'opts' => [
-                            'normal' => 'Normal',
-                            'hematuria' => 'Hematuria',
-                            'inkontinensia' => 'Inkontinensia',
-                            'lainnya' => 'Lainnya',
-                        ],
-                    ],
-                    [
-                        'path' => 'muskuloskeletalDanKulit',
-                        'label' => 'Muskuloskeletal & Kulit',
-                        'opts' => [
-                            'normal' => 'Normal',
-                            'deformitas' => 'Deformitas',
-                            'luka' => 'Luka',
-                            'lainnya' => 'Lainnya',
-                        ],
-                    ],
-                ];
+                $organSystems = collect(PengkajianAwalRiOptions::SISTEM_ORGAN)
+                    ->map(fn($organ, $path) => ['path' => $path, 'label' => $organ['label'], 'opts' => $organ['opsi']])
+                    ->values()
+                    ->all();
             @endphp
 
             {{-- 4 kolom: baris 1 = 4 sistem organ, baris 2 = 2 sisanya + Neurologi (col-span-2) --}}
@@ -998,12 +979,9 @@ new class extends Component {
                                 wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian4PemeriksaanFisik.pemeriksaanSistemOrgan.neurologi.tingkatKesadaran.pilihan"
                                 class="w-full mt-1" :disabled="$isFormLocked || $isReadOnlyByRole">
                                 <option value="">— Pilih —</option>
-                                <option value="komposMentis">Kompos Mentis</option>
-                                <option value="apatis">Apatis</option>
-                                <option value="somnolen">Somnolen</option>
-                                <option value="sopor">Sopor</option>
-                                <option value="koma">Koma</option>
-                                <option value="delirium">Delirium</option>
+                                @foreach (PengkajianAwalRiOptions::TINGKAT_KESADARAN as $nilaiOpsi => $labelOpsi)
+                                    <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                                @endforeach
                             </x-select-input>
                         </div>
                         <div>

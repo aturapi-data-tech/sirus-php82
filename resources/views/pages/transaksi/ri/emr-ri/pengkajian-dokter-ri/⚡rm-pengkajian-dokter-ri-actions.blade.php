@@ -13,6 +13,9 @@ use Livewire\Attributes\On;
 use App\Http\Traits\Master\MasterPasien\MasterPasienTrait;
 use App\Support\Terminologi\AlergiSnomed;
 use App\Support\RekonsiliasiObat;
+use App\Support\TtdUser;
+use App\Support\Options\PengkajianDokterRiOptions;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 new class extends Component {
     use EmrRITrait, EmrUGDTrait, RekonsiliasiObatRITrait, MasterPasienTrait, WithRenderVersioningTrait, WithValidationToastTrait;
@@ -376,6 +379,44 @@ new class extends Component {
         $this->store();
     }
 
+    /** Cetak Pengkajian Medis (Dokter) RI (RM-03.12) — hanya membaca data, tidak menyimpan. */
+    public function cetak()
+    {
+        $pengkajian = $this->dataDaftarRi['pengkajianDokter'] ?? null;
+        if (empty($pengkajian) || empty($this->dataDaftarRi['regNo'])) {
+            $this->dispatch('toast', type: 'error', message: 'Data Pengkajian Dokter belum tersedia.');
+            return;
+        }
+
+        try {
+            $identitasRs = DB::table('rsmst_identitases')->select('int_name', 'int_phone1', 'int_phone2', 'int_fax', 'int_address', 'int_city')->first();
+            $pasien = $this->findDataMasterPasien($this->dataDaftarRi['regNo'])['pasien'] ?? [];
+
+            if (!empty($pasien['tglLahir'])) {
+                try {
+                    $pasien['thn'] = Carbon::createFromFormat('d/m/Y', $pasien['tglLahir'])->diff(Carbon::now(config('app.timezone')))->format('%y Thn, %m Bln %d Hr');
+                } catch (\Throwable) {
+                    $pasien['thn'] = '-';
+                }
+            }
+
+            $data = array_merge($pasien, [
+                'dataRi' => $this->dataDaftarRi,
+                'pengkajian' => $pengkajian,
+                'identitasRs' => $identitasRs,
+                'ttdPath' => TtdUser::pathBerkasDariKode(data_get($pengkajian, 'tandaTanganDokter.dokterPengkajiCode')),
+                'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
+            ]);
+
+            set_time_limit(300);
+            $pdf = Pdf::loadView('pages.components.rekam-medis.ri.pengkajian-dokter-ri.cetak-pengkajian-dokter-ri-print', ['data' => $data])->setPaper('A4');
+
+            return response()->streamDownload(fn() => print $pdf->output(), 'pengkajian-medis-ri-' . ($pasien['regNo'] ?? $this->riHdrNo) . '.pdf');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal cetak: ' . $e->getMessage());
+        }
+    }
+
     public function addRekonsiliasiObat(): void
     {
         // validate() didahulukan supaya field yang kosong tetap ditandai merah
@@ -557,6 +598,13 @@ new class extends Component {
         openedAt = Date.now();
         $dispatch('section-clean', { tab: tab });
     });" x-on:input="markDirty()" x-on:change="markDirty()">
+
+    {{-- ── Cetak (RM-03.12) ── --}}
+    @if ($riHdrNo)
+        <div class="flex justify-end">
+            <x-cetak-button wire:click="cetak" label="Cetak Pengkajian Dokter" />
+        </div>
+    @endif
 
     @if ($isFormLocked)
         <div
@@ -914,37 +962,7 @@ new class extends Component {
     <x-border-form title="Bagian 2.2 — Pemeriksaan Anatomi" align="start" bgcolor="bg-surface-soft"
         :collapsible="true" :open="false">
         @php
-            $anatomiList = [
-                'kepala' => 'Kepala',
-                'mata' => 'Mata',
-                'telinga' => 'Telinga',
-                'hidung' => 'Hidung',
-                'rambut' => 'Rambut',
-                'bibir' => 'Bibir',
-                'gigiGeligi' => 'Gigi Geligi',
-                'lidah' => 'Lidah',
-                'langitLangit' => 'Langit-Langit',
-                'leher' => 'Leher',
-                'tenggorokan' => 'Tenggorokan',
-                'tonsil' => 'Tonsil',
-                'dada' => 'Dada',
-                'payudara' => 'Payudara',
-                'punggung' => 'Punggung',
-                'perut' => 'Perut',
-                'genital' => 'Genital',
-                'anus' => 'Anus',
-                'lenganAtas' => 'Lengan Atas',
-                'lenganBawah' => 'Lengan Bawah',
-                'jariTangan' => 'Jari Tangan',
-                'kukuTangan' => 'Kuku Tangan',
-                'persendianTangan' => 'Persendian Tangan',
-                'tungkaiAtas' => 'Tungkai Atas',
-                'tungkaiBawah' => 'Tungkai Bawah',
-                'jariKaki' => 'Jari Kaki',
-                'kukuKaki' => 'Kuku Kaki',
-                'persendianKaki' => 'Persendian Kaki',
-                'faring' => 'Faring',
-            ];
+            $anatomiList = PengkajianDokterRiOptions::ANATOMI;
         @endphp
 
         <div class="mt-4" x-data="{ activeTabAnatomi: '{{ array_key_first($anatomiList) }}' }">
@@ -984,9 +1002,9 @@ new class extends Component {
                                 <x-select-input x-on:change="kelainan = $event.target.value"
                                     wire:model.live="dataDaftarRi.pengkajianDokter.anatomi.{{ $key }}.kelainan"
                                     :disabled="$isFormLocked || $isReadOnlyByRole" class="w-full mt-1">
-                                    <option value="Tidak Diperiksa">Tidak Diperiksa</option>
-                                    <option value="Tidak Ada Kelainan">Tidak Ada Kelainan</option>
-                                    <option value="Ada">Ada Kelainan</option>
+                                    @foreach (PengkajianDokterRiOptions::KELAINAN as $nilaiKelainan => $labelKelainan)
+                                        <option value="{{ $nilaiKelainan }}">{{ $labelKelainan }}</option>
+                                    @endforeach
                                 </x-select-input>
                                 <x-input-error :messages="$errors->get('dataDaftarRi.pengkajianDokter.anatomi.' . $key . '.kelainan')" class="mt-1" />
                             </div>
@@ -1056,7 +1074,7 @@ new class extends Component {
                     class="w-full mt-1" rows="2" :disabled="$isFormLocked || $isReadOnlyByRole" />
             </div>
             <div class="grid grid-cols-2 gap-3">
-                @foreach ([['key' => 'penegakanDiagnosa', 'label' => 'Penegakan Diagnosis'], ['key' => 'terapi', 'label' => 'Terapi'], ['key' => 'terapiPulang', 'label' => 'Terapi Pulang'], ['key' => 'diet', 'label' => 'Diet'], ['key' => 'edukasi', 'label' => 'Edukasi'], ['key' => 'monitoring', 'label' => 'Monitoring']] as $field)
+                @foreach (collect(PengkajianDokterRiOptions::RENCANA)->map(fn($label, $key) => ['key' => $key, 'label' => $label]) as $field)
                     <div>
                         <x-input-label value="{{ $field['label'] }}" />
                         <x-textarea wire:model.live="dataDaftarRi.pengkajianDokter.rencana.{{ $field['key'] }}"
