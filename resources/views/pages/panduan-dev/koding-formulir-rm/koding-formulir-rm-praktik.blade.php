@@ -117,7 +117,7 @@
                                     'Rancangan berubah → revisi naik di semua jalur, di commit yang sama',
                                     'Tidak ada kode yang dihapus atau dipakai ulang',
                                     'Daftar Formulir RM tanpa peringatan, dan PDF dilihat sekali: kode di pojok kiri bawah tak menimpa isi',
-                                    'Tidak menulis footer Dicetak / No. RM / nama RS sendiri — layout sudah mencetak kode (kiri bawah) & tanggal cetak (kanan bawah)',
+                                    'Tidak menulis footer Dicetak / No. RM / nama RS sendiri — layout sudah mencetak kode (kiri bawah) & "Dicetak: tanggal jam oleh user" (kanan bawah)',
                                 ] as $butir)
                                     <li class="flex items-start gap-2">
                                         <span style="color:var(--primary)">☐</span>

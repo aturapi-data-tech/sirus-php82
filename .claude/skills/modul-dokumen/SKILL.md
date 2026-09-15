@@ -119,7 +119,7 @@ sudah di RI + UGD, contoh cetak payload bespoke). Beda dari skill `emr-multi-ent
    --include='*-print.blade.php' | head -1`). **Tanpa config** — prop `kode` di `layout-a4`,
    `layout-a4-with-out-background`, `layout-kwitansi` dicetak apa adanya, fixed di pojok
    kiri bawah SETIAP halaman (margin bawah, tak menimpa isi), berpasangan dengan
-   "Dicetak: <tanggal>" di pojok kanan bawah (layout A4). **Itulah satu-satunya footer cetakan
+   "Dicetak: dd/mm/yyyy hh:mi:ss oleh <myuser_name>" di pojok kanan bawah (layout A4). **Itulah satu-satunya footer cetakan
    formulir RM** — JANGAN menulis footer "Dicetak • No. RM • nama/alamat RS" sendiri di blade cetak
    (RS sudah di kop, No. RM di identitas pasien; 32 footer bespoke dihapus 2026-09-15). Info khas
    entri (mis. "ID Form" MPP) boleh tetap di blade. Cetakan bukan formulir RM (kuitansi, etiket, SEP/PRB/SKDP,

@@ -106,11 +106,16 @@
 
 <body>
     {{-- KAKI FORMULIR RM — SETIAP halaman (fixed, di margin bawah sehingga tak menimpa isi):
-         kiri kode apa adanya (mis. "RM-02.01 · Rev.0"), kanan tanggal cetak. Satu-satunya footer
+         kiri kode apa adanya (mis. "RM-02.01 · Rev.0"), kanan "Dicetak: dd/mm/yyyy hh:mi:ss oleh <user>". Satu-satunya footer
          cetakan formulir RM — nama/alamat RS sudah di kop, No. RM di identitas pasien. --}}
     @if (filled($kode))
         <div class="kaki-formulir kiri">{{ $kode }}</div>
-        <div class="kaki-formulir kanan">Dicetak: {{ \Carbon\Carbon::now(config('app.timezone'))->translatedFormat('d F Y') }}</div>
+        <div class="kaki-formulir kanan">
+            Dicetak: {{ \Carbon\Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s') }}
+            @if (filled(auth()->user()?->myuser_name))
+                oleh {{ auth()->user()->myuser_name }}
+            @endif
+        </div>
     @endif
 
     {{-- BACKGROUND LAYER --}}
