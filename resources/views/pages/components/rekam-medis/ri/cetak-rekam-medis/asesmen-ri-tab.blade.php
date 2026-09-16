@@ -45,6 +45,10 @@
         'tidak' => 'Tidak ada',
         default => '',
     };
+    // Tindak lanjut hambatan hanya bermakna bila ada hambatan.
+    $teksTindakLanjutHambatan = ($identifikasiHambatan['pilihan'] ?? null) === 'ya'
+        ? (string) ($identifikasiHambatan['tindakLanjut'] ?? '')
+        : '';
     $pengkajianDokter = (array) $ambil('pengkajianDokter', []);
     $rekonsiliasiObat = (array) data_get($pengkajianDokter, 'anamnesa.rekonsiliasiObat', []);
     $statusRekonsiliasiObat = data_get($pengkajianDokter, 'anamnesa.' . \App\Support\RekonsiliasiObat::STATUS_KEY);
@@ -127,7 +131,7 @@
             <p class="italic text-muted-soft">Belum ada pengkajian awal.</p>
         @else
             <div class="space-y-2">
-                @foreach ([['Keluhan Utama', data_get($pengkajianAwal, 'bagian4PemeriksaanFisik.keluhanUtama')], ['Diagnosa Masuk', data_get($pengkajianAwal, 'bagian1DataUmum.diagnosaMasuk')], ['Kondisi Saat Masuk', data_get($pengkajianAwal, 'bagian1DataUmum.kondisiSaatMasuk')], ['Nilai Kebudayaan', $teksNilaiKebudayaan], ['Identifikasi Hambatan', $teksIdentifikasiHambatan], ['Catatan', data_get($pengkajianAwal, 'bagian5CatatanDanTandaTangan.catatanUmum')]] as [$judul, $nilai])
+                @foreach ([['Keluhan Utama', data_get($pengkajianAwal, 'bagian4PemeriksaanFisik.keluhanUtama')], ['Diagnosa Masuk', data_get($pengkajianAwal, 'bagian1DataUmum.diagnosaMasuk')], ['Kondisi Saat Masuk', data_get($pengkajianAwal, 'bagian1DataUmum.kondisiSaatMasuk')], ['Nilai Kebudayaan', $teksNilaiKebudayaan], ['Identifikasi Hambatan', $teksIdentifikasiHambatan], ['Tindak Lanjut Hambatan', $teksTindakLanjutHambatan], ['Catatan', data_get($pengkajianAwal, 'bagian5CatatanDanTandaTangan.catatanUmum')]] as [$judul, $nilai])
                     <div class="flex flex-col gap-1 py-1 border-b sm:flex-row sm:gap-2 border-hairline-soft dark:border-gray-700/60">
                         <span class="w-48 shrink-0 text-muted">{{ $judul }}</span>
                         <span class="text-ink dark:text-gray-100">{{ filled($nilai) ? $nilai : '-' }}</span>

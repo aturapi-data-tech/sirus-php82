@@ -51,7 +51,7 @@ new class extends Component {
             // Nilai kebudayaan yang dipercaya pasien — toggle ya/tidak (standar tidak), keterangan bila ya.
             'nilaiKebudayaan' => ['pilihan' => 'tidak', 'keterangan' => ''],
             // Hambatan komunikasi/edukasi — toggle ya/tidak (standar tidak), jenis & keterangan bila ya.
-            'identifikasiHambatan' => ['pilihan' => 'tidak', 'jenis' => '', 'keterangan' => ''],
+            'identifikasiHambatan' => ['pilihan' => 'tidak', 'jenis' => '', 'keterangan' => '', 'tindakLanjut' => ''],
         ],
         'bagian4PemeriksaanFisik' => [
             'tandaVital' => [
@@ -220,7 +220,9 @@ new class extends Component {
         // Entri lama (sebelum 2026-09-15) belum punya node nilaiKebudayaan → isi standar "tidak".
         $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['nilaiKebudayaan'] ??= ['pilihan' => 'tidak', 'keterangan' => ''];
         // Entri lama (sebelum 2026-09-16) belum punya node identifikasiHambatan → isi standar "tidak".
-        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['identifikasiHambatan'] ??= ['pilihan' => 'tidak', 'jenis' => '', 'keterangan' => ''];
+        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['identifikasiHambatan'] ??= ['pilihan' => 'tidak', 'jenis' => '', 'keterangan' => '', 'tindakLanjut' => ''];
+        // Entri yang sudah punya node hambatan tapi belum punya tindakLanjut (ditambah belakangan).
+        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['identifikasiHambatan']['tindakLanjut'] ??= '';
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
 
@@ -847,6 +849,16 @@ new class extends Component {
                     :disabled="$isFormLocked || $isReadOnlyByRole" />
             @endif
         </div>
+
+        {{-- Tindak Lanjut Hambatan — teks bebas, hanya muncul bila ada hambatan --}}
+        @if (($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['identifikasiHambatan']['pilihan'] ?? 'tidak') === 'ya')
+            <div class="mt-2 sm:pl-80">
+                <x-text-input
+                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.identifikasiHambatan.tindakLanjut"
+                    class="w-full" placeholder="Tindak lanjut hambatan (mis. dampingi penerjemah keluarga, edukasi tertulis, libatkan alat bantu dengar)..."
+                    :disabled="$isFormLocked || $isReadOnlyByRole" />
+            </div>
+        @endif
 
         {{-- Keluarga Dekat --}}
         <div class="mt-4 p-3 rounded-lg border border-hairline dark:border-gray-700 bg-canvas dark:bg-gray-800">
