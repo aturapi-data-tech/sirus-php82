@@ -263,6 +263,79 @@ new class extends Component {
         }
     }
 
+
+    /* ===============================
+     | BUKA KUNCI TTD-E DOKTER PEMERIKSA
+     =============================== */
+    /**
+     * Cabut stempel TTD-E dokter supaya kunjungan ini bisa di-TTD ulang.
+     *
+     * x-signature.ttd-petugas hanya merender tombol TTD selama namanya masih
+     * kosong ($signed = !empty($ttd)), jadi begitu ter-TTD tombolnya hilang dan
+     * salah TTD tak punya jalan pulang. Ini padanan "Buka Kunci" modul dokumen:
+     * yang dicabut HANYA stempel petugas, sedangkan waktu pemeriksaan DIPERTAHANKAN
+     * karena itu data klinis yang bisa saja diketik sendiri, bukan cap tanda tangan.
+     *
+     * erm_status dikembalikan ke 'A' supaya kolom penanda kunci tidak berbohong,
+     * meski hari ini checkEmrUGDStatus() memang sengaja selalu false.
+     */
+    public function bukaKunciTtdPemeriksa(): void
+    {
+        // Guard SERVER — guard blade saja bisa ditembus, wire:click memanggil method publik.
+        if (! auth()->user()?->can('emr.bukaKunciTtd')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membuka kunci TTD-E.');
+
+            return;
+        }
+
+        if (blank($this->rjNo)) {
+            return;
+        }
+
+        if (blank($this->dataDaftarUGD['perencanaan']['pengkajianMedis']['drPemeriksa'] ?? '')) {
+            $this->dispatch('toast', type: 'error', message: 'Belum ada TTD-E yang perlu dibuka.');
+
+            return;
+        }
+
+        try {
+            DB::transaction(function () {
+                $this->lockUGDRow($this->rjNo);
+
+                $drSebelumnya = $this->dataDaftarUGD['perencanaan']['pengkajianMedis']['drPemeriksa'];
+
+                // Baca data terkini SESUDAH lock — pola UGD (findDataUGD + updateJsonUGD),
+                // bukan syncPerencanaanJson() seperti RJ.
+                $data = $this->findDataUGD($this->rjNo) ?? [];
+
+                if (empty($data)) {
+                    throw new \RuntimeException('Data UGD tidak ditemukan, buka kunci dibatalkan.');
+                }
+
+                $this->dataDaftarUGD['perencanaan']['pengkajianMedis']['drPemeriksa'] = '';
+                $this->dataDaftarUGD['perencanaan']['pengkajianMedis']['selesaiPemeriksaan'] = '';
+
+                DB::table('rstxn_ugdhdrs')
+                    ->where('rj_no', $this->rjNo)
+                    ->update(['erm_status' => 'A']);
+
+                $data['perencanaan'] = $this->dataDaftarUGD['perencanaan'] ?? [];
+                $data['ermStatus'] = 'A';
+
+                $this->updateJsonUGD($this->rjNo, $data);
+                $this->dataDaftarUGD = $data;
+
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Buka Kunci TTD-E Dokter Pemeriksa — stempel ' . $drSebelumnya . ' dicabut oleh ' . (auth()->user()->myuser_name ?? '-'), 'MR');
+            });
+
+            $this->afterSave('Kunci TTD-E dibuka — dokter bisa TTD ulang.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $e->getMessage());
+        }
+    }
+
     /* ===============================
      | OPEN MODAL E-RESEP UGD
      =============================== */

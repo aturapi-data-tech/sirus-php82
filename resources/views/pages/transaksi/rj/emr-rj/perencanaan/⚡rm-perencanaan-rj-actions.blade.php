@@ -334,6 +334,68 @@ new class extends Component {
         }
     }
 
+
+    /* ===============================
+     | BUKA KUNCI TTD-E DOKTER PEMERIKSA
+     =============================== */
+    /**
+     * Cabut stempel TTD-E dokter supaya kunjungan ini bisa di-TTD ulang.
+     *
+     * x-signature.ttd-petugas hanya merender tombol TTD selama namanya masih
+     * kosong ($signed = !empty($ttd)), jadi begitu ter-TTD tombolnya hilang dan
+     * salah TTD tak punya jalan pulang. Ini padanan "Buka Kunci" modul dokumen:
+     * yang dicabut HANYA stempel petugas, sedangkan waktu pemeriksaan DIPERTAHANKAN
+     * karena itu data klinis yang bisa saja diketik sendiri, bukan cap tanda tangan.
+     *
+     * erm_status dikembalikan ke 'A' supaya kolom penanda kunci tidak berbohong,
+     * meski hari ini checkEmrRJStatus() memang sengaja selalu false.
+     */
+    public function bukaKunciTtdPemeriksa(): void
+    {
+        // Guard SERVER — guard blade saja bisa ditembus, wire:click memanggil method publik.
+        if (! auth()->user()?->can('emr.bukaKunciTtd')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membuka kunci TTD-E.');
+
+            return;
+        }
+
+        if (blank($this->rjNo)) {
+            return;
+        }
+
+        if (blank($this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['drPemeriksa'] ?? '')) {
+            $this->dispatch('toast', type: 'error', message: 'Belum ada TTD-E yang perlu dibuka.');
+
+            return;
+        }
+
+        try {
+            DB::transaction(function () {
+                $this->lockRJRow($this->rjNo);
+
+                $drSebelumnya = $this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['drPemeriksa'];
+
+                $this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['drPemeriksa'] = '';
+                $this->dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['selesaiPemeriksaan'] = '';
+
+                $this->dataDaftarPoliRJ['ermStatus'] = 'A';
+                DB::table('rstxn_rjhdrs')
+                    ->where('rj_no', $this->rjNo)
+                    ->update(['erm_status' => 'A']);
+
+                $this->syncPerencanaanJson();
+
+                $this->appendAdminLogRJ((int) $this->rjNo, 'Buka Kunci TTD-E Dokter Pemeriksa — stempel ' . $drSebelumnya . ' dicabut oleh ' . (auth()->user()->myuser_name ?? '-'), 'MR');
+            });
+
+            $this->afterSave('Kunci TTD-E dibuka — dokter bisa TTD ulang.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $e->getMessage());
+        }
+    }
+
     /* ===============================
      | OPEN MODAL E-RESEP
      =============================== */
