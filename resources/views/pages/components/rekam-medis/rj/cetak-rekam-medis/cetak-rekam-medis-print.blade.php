@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/modul-dokumen/rj/rekam-medis/cetak-rekam-medis-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background kode="RM-03.01 · Rev.0" title="ASSESMENT AWAL RAWAT JALAN">
+<x-pdf.layout-a4-with-out-background kode="RM-03.01 · Rev.1" title="ASSESMENT AWAL RAWAT JALAN">
 
     {{-- IDENTITAS PASIEN — sejajar dengan logo --}}
     <x-slot name="patientData">
@@ -381,6 +381,21 @@
             <td class="border border-black px-1.5 py-0.5 align-top" colspan="2">
                 {!! nl2br(e($procedureText)) !!}
             </td>
+        </tr>
+
+        {{-- ASUHAN KEPERAWATAN — diagnosis SDKI + jumlah implementasi.
+             Satu baris per diagnosis; entri RJ tak punya SOAP. --}}
+        @php
+            $daftarAskep = (array) ($dataDaftarTxn['asuhanKeperawatan'] ?? []);
+            $askepText = collect($daftarAskep)
+                ->map(fn ($askep) => trim(($askep['diagKepId'] ?? '') . ' ' . ($askep['diagKepDesc'] ?? ''))
+                    . (count($askep['implementasi'] ?? []) ? ' (implementasi ' . count($askep['implementasi']) . 'x)' : ''))
+                ->filter()
+                ->implode("\n");
+        @endphp
+        <tr>
+            <td class="border border-black px-1.5 py-0.5 font-bold align-top">ASUHAN KEPERAWATAN</td>
+            <td class="border border-black px-1.5 py-0.5 align-top" colspan="2">{!! nl2br(e($askepText ?: '-')) !!}</td>
         </tr>
 
         {{-- ── TINDAK LANJUT ────────────────────────────────────────────── --}}

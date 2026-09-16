@@ -620,6 +620,44 @@ new class extends Component {
                     </div>
                 </x-border-form>
 
+                {{-- ═══════ ASUHAN KEPERAWATAN (SDKI/SLKI/SIKI) ═══════
+                     Node JSON sama dengan RI ('asuhanKeperawatan'), tapi entri UGD
+                     tidak punya SOAP — implementasinya hanya tindakan SIKI + skor SLKI. --}}
+                @php $daftarAskep = (array) ($dataDaftarTxn['asuhanKeperawatan'] ?? []); @endphp
+                <div class="mb-4">
+                    <x-border-form title="Asuhan Keperawatan ({{ count($daftarAskep) }} diagnosis)">
+                        <div class="overflow-x-auto border rounded-xl border-hairline dark:border-gray-700">
+                            <table class="ds-table">
+                                <thead>
+                                    <tr>
+                                        <th>Waktu</th>
+                                        <th>Diagnosis Keperawatan (SDKI)</th>
+                                        <th>Implementasi</th>
+                                        <th>Perawat</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse ($daftarAskep as $askep)
+                                        <tr>
+                                            <td class="ds-td-strong">{{ $askep['tglAsuhanKeperawatan'] ?? '-' }}</td>
+                                            <td>
+                                                <span class="font-medium">{{ $askep['diagKepId'] ?? '-' }}</span>
+                                                &mdash; {{ $askep['diagKepDesc'] ?? '-' }}
+                                            </td>
+                                            <td class="ds-td-meta">{{ count($askep['implementasi'] ?? []) }}x</td>
+                                            <td class="ds-td-meta">{{ $askep['petugasAsuhanKeperawatan'] ?? '-' }}</td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="4" class="ds-c italic text-muted-soft">Belum ada asuhan keperawatan.</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </x-border-form>
+                </div>
+
                 {{-- TINDAK LANJUT + TERAPI --}}
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <x-border-form title="Tindak Lanjut">

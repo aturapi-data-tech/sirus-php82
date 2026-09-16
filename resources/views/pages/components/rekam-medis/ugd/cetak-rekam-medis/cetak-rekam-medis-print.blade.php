@@ -1,6 +1,6 @@
 {{-- resources/views/pages/components/rekam-medis/ugd/cetak-rekam-medis/cetak-rekam-medis-ugd-print.blade.php --}}
 
-<x-pdf.layout-a4-with-out-background kode="RM-03.03 · Rev.0" title="ASSESMENT AWAL UGD">
+<x-pdf.layout-a4-with-out-background kode="RM-03.03 · Rev.1" title="ASSESMENT AWAL UGD">
 
     <x-slot name="patientData">
         @php
@@ -403,6 +403,21 @@
         <tr>
             <td class="border border-black px-1.5 py-0.5 font-bold align-top">PROSEDUR</td>
             <td class="border border-black px-1.5 py-0.5 align-top" colspan="2">{!! nl2br(e($procedureText)) !!}</td>
+        </tr>
+
+        {{-- ASUHAN KEPERAWATAN — diagnosis SDKI + jumlah implementasi.
+             Satu baris per diagnosis; entri UGD tak punya SOAP. --}}
+        @php
+            $daftarAskep = (array) ($dataDaftarTxn['asuhanKeperawatan'] ?? []);
+            $askepText = collect($daftarAskep)
+                ->map(fn ($askep) => trim(($askep['diagKepId'] ?? '') . ' ' . ($askep['diagKepDesc'] ?? ''))
+                    . (count($askep['implementasi'] ?? []) ? ' (implementasi ' . count($askep['implementasi']) . 'x)' : ''))
+                ->filter()
+                ->implode("\n");
+        @endphp
+        <tr>
+            <td class="border border-black px-1.5 py-0.5 font-bold align-top">ASUHAN KEPERAWATAN</td>
+            <td class="border border-black px-1.5 py-0.5 align-top" colspan="2">{!! nl2br(e($askepText ?: '-')) !!}</td>
         </tr>
 
         {{-- TINDAK LANJUT --}}
