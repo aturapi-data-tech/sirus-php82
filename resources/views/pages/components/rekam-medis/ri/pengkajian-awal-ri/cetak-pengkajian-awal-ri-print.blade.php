@@ -4,7 +4,7 @@
 
 @use('App\Support\Options\PengkajianAwalRiOptions')
 
-<x-pdf.layout-a4-with-out-background kode="RM-03.11 · Rev.0" title="PENGKAJIAN AWAL KEPERAWATAN RAWAT INAP">
+<x-pdf.layout-a4-with-out-background kode="RM-03.11 · Rev.1" title="PENGKAJIAN AWAL KEPERAWATAN RAWAT INAP">
 
     {{-- ── IDENTITAS PASIEN ── --}}
     <x-slot name="patientData">
@@ -279,6 +279,10 @@
             <tr>
                 <td class="{{ $kelasLabel }}">Rumusan Masalah</td>
                 <td class="{{ $kelasNilai }}">{!! $teksBebas($catatanTandaTangan['rumusanMasalah'] ?? null) !!}</td>
+            </tr>
+            <tr>
+                <td class="{{ $kelasLabel }}">Diagnosa Keperawatan</td>
+                <td class="{{ $kelasNilai }}">{!! $teksBebas($catatanTandaTangan['diagnosaKeperawatan'] ?? null) !!}</td>
             </tr>
         </table>
 

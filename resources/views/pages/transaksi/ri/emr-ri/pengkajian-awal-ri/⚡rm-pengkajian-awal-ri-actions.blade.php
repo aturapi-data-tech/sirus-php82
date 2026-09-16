@@ -79,6 +79,8 @@ new class extends Component {
         'bagian5CatatanDanTandaTangan' => [
             'catatanUmum' => '',
             'rumusanMasalah' => '',
+            // Diagnosa keperawatan versi tulisan perawat, pendamping Rumusan Masalah.
+            'diagnosaKeperawatan' => '',
             'petugasPengkaji' => '',
             'petugasPengkajiCode' => '',
             'jamPengkaji' => '',
@@ -223,6 +225,8 @@ new class extends Component {
         $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['identifikasiHambatan'] ??= ['pilihan' => 'tidak', 'jenis' => '', 'keterangan' => '', 'tindakLanjut' => ''];
         // Entri yang sudah punya node hambatan tapi belum punya tindakLanjut (ditambah belakangan).
         $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['identifikasiHambatan']['tindakLanjut'] ??= '';
+        // Entri lama belum punya diagnosaKeperawatan di bagian 5.
+        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian5CatatanDanTandaTangan']['diagnosaKeperawatan'] ??= '';
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
 
@@ -1115,8 +1119,8 @@ new class extends Component {
     <x-border-form title="Bagian 5 — Catatan & Tanda Tangan" align="start" bgcolor="bg-surface-soft"
         :collapsible="true" :open="false">
 
-        {{-- Catatan Umum + Rumusan Masalah — sebaris --}}
-        <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+        {{-- Catatan Umum + Rumusan Masalah + Diagnosa Keperawatan — sebaris --}}
+        <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
 
             {{-- Catatan Umum --}}
             <div>
@@ -1134,13 +1138,23 @@ new class extends Component {
                     class="w-full mt-1" rows="2"
                     placeholder="Masalah keperawatan, mis: Nyeri akut b.d agen pencedera fisiologis..."
                     :disabled="$isFormLocked || $isReadOnlyByRole" />
-                <p class="mt-1 text-sm text-muted dark:text-gray-400 italic">
+                <p class="mt-1 text-sm italic text-muted dark:text-gray-400">
                     Tindak lanjuti rumusan masalah ini dengan mengisi <span class="font-semibold">Asuhan
                         Keperawatan</span> (diagnosis SDKI + intervensi SIKI + luaran SLKI).
                 </p>
             </div>
 
-        </div>{{-- /catatan + rumusan masalah --}}
+            {{-- Diagnosa Keperawatan — tulisan perawat sendiri, sejajar dengan Rumusan Masalah --}}
+            <div>
+                <x-input-label value="Diagnosa Keperawatan" />
+                <x-textarea
+                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian5CatatanDanTandaTangan.diagnosaKeperawatan"
+                    class="w-full mt-1" rows="2"
+                    placeholder="Diagnosa keperawatan, mis: Nyeri akut, Risiko jatuh, Defisit nutrisi..."
+                    :disabled="$isFormLocked || $isReadOnlyByRole" />
+            </div>
+
+        </div>{{-- /catatan + rumusan masalah + diagnosa keperawatan --}}
 
         {{-- TTD Perawat --}}
         <div class="mt-3">
