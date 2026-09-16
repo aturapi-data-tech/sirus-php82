@@ -1094,7 +1094,7 @@ new class extends Component {
                     {{-- TAB NAVIGATION --}}
                     <x-scrollable-tabs class="w-full px-2 mb-2 border-b border-hairline dark:border-gray-700">
                         <div class="flex flex-nowrap w-full gap-2 -mb-px">
-                            @foreach (['Nyeri' => 'Nyeri', 'Risiko Jatuh' => 'Risiko Jatuh', 'Risiko Bunuh Diri' => 'Risiko Bunuh Diri', 'Dekubitus' => 'Dekubitus', 'Gizi' => 'Gizi'] as $tab => $label)
+                            @foreach (['Nyeri' => 'Nyeri', 'Risiko Jatuh' => 'Risiko Jatuh', 'Risiko Bunuh Diri' => 'Risiko Bunuh Diri', 'Dekubitus' => 'Dekubitus', 'Gizi' => 'Gizi', 'Diagnosa Keperawatan' => 'Diagnosa Keperawatan'] as $tab => $label)
                                 <x-tab variant="underline" active-expr="activeTab === '{{ $tab }}'"
                                     x-on:click="activeTab = '{{ $tab }}'">
                                     {{ $label }}
@@ -1124,6 +1124,13 @@ new class extends Component {
 
                         <div class="w-full" x-show.transition.in.opacity.duration.600="activeTab === 'Gizi'">
                             @include('pages.transaksi.rj.emr-rj.penilaian.tabs.gizi-tab')
+                        </div>
+                        {{-- Diagnosa Keperawatan — satu baris <livewire:>, BUKAN partial berisi
+                             formulir. Askep punya siklus simpannya sendiri (multi-entri +
+                             implementasi + riwayat), jadi dibiarkan komponen mandiri. --}}
+                        <div class="w-full" x-show.transition.in.opacity.duration.600="activeTab === 'Diagnosa Keperawatan'">
+                            <livewire:pages::transaksi.rj.emr-rj.asuhan-keperawatan.rm-asuhan-keperawatan-rj-actions
+                                :rjNo="$rjNo" wire:key="rm-asuhan-keperawatan-rj-{{ $rjNo }}" />
                         </div>
 
                     </div>

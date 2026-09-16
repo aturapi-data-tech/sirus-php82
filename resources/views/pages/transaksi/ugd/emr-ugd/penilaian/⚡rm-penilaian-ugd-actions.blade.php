@@ -1069,7 +1069,7 @@ new class extends Component {
                     {{-- TAB NAVIGATION --}}
                     <x-scrollable-tabs class="w-full px-2 mb-2 border-b border-hairline dark:border-gray-700">
                         <div class="flex flex-nowrap w-full gap-2 -mb-px">
-                            @foreach (['Nyeri' => 'Nyeri', 'Risiko Jatuh' => 'Risiko Jatuh', 'Risiko Bunuh Diri' => 'Risiko Bunuh Diri', 'Dekubitus' => 'Dekubitus', 'Gizi' => 'Gizi'] as $tab => $label)
+                            @foreach (['Nyeri' => 'Nyeri', 'Risiko Jatuh' => 'Risiko Jatuh', 'Risiko Bunuh Diri' => 'Risiko Bunuh Diri', 'Dekubitus' => 'Dekubitus', 'Gizi' => 'Gizi', 'Diagnosa Keperawatan' => 'Diagnosa Keperawatan'] as $tab => $label)
                                 <x-tab variant="underline" active-expr="activeTab === '{{ $tab }}'"
                                     x-on:click="activeTab = '{{ $tab }}'">
                                     {{ $label }}
@@ -1094,6 +1094,16 @@ new class extends Component {
                         </div>
                         <div class="w-full" x-show.transition.in.opacity.duration.600="activeTab === 'Gizi'">
                             @include('pages.transaksi.ugd.emr-ugd.penilaian.tabs.gizi-tab')
+                        </div>
+                        {{-- Diagnosa Keperawatan — satu baris <livewire:>, BUKAN partial berisi
+                             formulir. Askep punya siklus simpannya sendiri (multi-entri +
+                             implementasi + riwayat); dijejalkan ke komponen ini, Penilaian UGD
+                             yang sudah ~1.100 baris akan jadi dua kali lipat dan dua siklus
+                             simpan bercampur. Pola sama dipakai tab Tindak Lanjut yang memuat
+                             komponen rujukan. --}}
+                        <div class="w-full" x-show.transition.in.opacity.duration.600="activeTab === 'Diagnosa Keperawatan'">
+                            <livewire:pages::transaksi.ugd.emr-ugd.asuhan-keperawatan.rm-asuhan-keperawatan-ugd-actions
+                                :rjNo="$rjNo" wire:key="rm-asuhan-keperawatan-ugd-{{ $rjNo }}" />
                         </div>
                     </div>
                 </div>
