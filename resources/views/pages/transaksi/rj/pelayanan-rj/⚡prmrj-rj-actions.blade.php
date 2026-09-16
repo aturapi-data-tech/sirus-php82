@@ -93,6 +93,57 @@ new class extends Component {
     }
 
     /**
+     * Tarik ULANG bagian 2 dari EMR kunjungan ini.
+     *
+     * Perlu ada karena snapshot tersimpan MENANG atas bacaan segar dari EMR (lihat
+     * komentar panjang di muatPrmrj). Aturan itu benar — tanpa itu suntingan dokter
+     * hilang tiap modal dibuka ulang — tapi akibatnya begitu PRMRJ pernah disimpan,
+     * perubahan EMR SESUDAHNYA tak pernah sampai ke formulir: diagnosis yang baru
+     * ditambahkan, terapi yang diganti, operasi yang baru dicatat. Sebelum ada tombol
+     * ini satu-satunya jalan adalah mengetik ulang semuanya.
+     *
+     * Hanya menyentuh bagian 2. Kriteria, Obat Khusus, dan TTD tidak ikut tersapu.
+     */
+    public function salinDariEmrRj(): void
+    {
+        if ($this->isFormLocked) {
+            $this->dispatch('toast', type: 'error', message: 'PRMRJ sudah terkunci — buka kuncinya dulu.');
+
+            return;
+        }
+
+        if (blank($this->rjNo)) {
+            return;
+        }
+
+        $dataRJ = $this->findDataRJ($this->rjNo);
+
+        if (blank($dataRJ)) {
+            $this->dispatch('toast', type: 'error', message: 'Data EMR kunjungan ini tidak ditemukan.');
+
+            return;
+        }
+
+        $segar = $this->buildOtomatisPrmrj($dataRJ, $this->rjNo);
+
+        // Sebut berapa kolom yang benar-benar BERUBAH. Tanpa ini tombolnya terasa mati
+        // ketika EMR memang belum berubah — petugas menekan berulang kali menyangka gagal.
+        $berubah = 0;
+
+        foreach ($segar as $kunci => $nilai) {
+            if ((string) ($this->otomatis[$kunci] ?? '') !== (string) $nilai) {
+                $berubah++;
+            }
+        }
+
+        $this->otomatis = array_replace($this->otomatis, $segar);
+
+        $this->dispatch('toast', type: $berubah ? 'success' : 'info', message: $berubah
+            ? 'Disalin dari EMR — ' . $berubah . ' kolom diperbarui.'
+            : 'Sudah sama dengan EMR — tidak ada yang berubah.');
+    }
+
+    /**
      * Tutup lewat server (dulu tombol X/Tutup hanya Alpine): kosongkan rjNo supaya isi modal
      * (guard @if) benar-benar dihapus dan tidak di-mount ulang saat tutup.
      */
@@ -246,32 +297,44 @@ new class extends Component {
             return;
         }
 
-        // SPO menulis "3 atau lebih" untuk kriteria a & b. Ambang itu ditegakkan,
-        // bukan sekadar tertulis di label — kalau tidak, toggle-nya bisa menyala
-        // dengan satu butir tercentang dan pasien lolos kriteria tanpa alasan.
-        // "Lainnya" ikut dihitung satu butir bila diisi.
+        // Kriteria a, b, dan c adalah ALTERNATIF, bukan syarat bertumpuk: begitu SATU
+        // terpenuhi penuh, pasien sudah layak PRMRJ dan sisanya jadi opsional. Maka
+        // yang ditegakkan adalah "minimal satu terpenuhi" — bukan "tiap toggle yang
+        // menyala harus penuh". Kalau ditegakkan per toggle, petugas yang mencentang
+        // (a) lengkap lalu iseng menyalakan (b) dengan satu asuhan akan ditolak,
+        // padahal (a) saja sudah cukup.
+        //
+        // Ambang "3 atau lebih" pada a & b tetap dari SPO, dan "Lainnya" dihitung
+        // satu butir bila diisi.
         $jumlahDiagnosis = count($this->kunciTerpilihPrmrj($this->form['detailDiagnosis']))
             + (filled($this->form['detailDiagnosisLain']) ? 1 : 0);
-
-        if ($this->form['diagnosisKompleks'] && $jumlahDiagnosis < PrmrjOptions::AMBANG_BUTIR) {
-            $this->dispatch('toast', type: 'error', message: 'Diagnosis kompleks butuh minimal '
-                . PrmrjOptions::AMBANG_BUTIR . ' diagnosis penyerta — baru ' . $jumlahDiagnosis . ' dipilih.');
-
-            return;
-        }
 
         $jumlahAsuhan = count($this->kunciTerpilihPrmrj($this->form['detailAsuhan']))
             + (filled($this->form['detailAsuhanLain']) ? 1 : 0);
 
-        if ($this->form['asuhanTigaAtauLebih'] && $jumlahAsuhan < PrmrjOptions::AMBANG_BUTIR) {
-            $this->dispatch('toast', type: 'error', message: 'Kriteria asuhan butuh minimal '
-                . PrmrjOptions::AMBANG_BUTIR . ' asuhan — baru ' . $jumlahAsuhan . ' dipilih.');
+        $diagnosisTerpenuhi = $this->form['diagnosisKompleks'] && $jumlahDiagnosis >= PrmrjOptions::AMBANG_BUTIR;
+        $asuhanTerpenuhi = $this->form['asuhanTigaAtauLebih'] && $jumlahAsuhan >= PrmrjOptions::AMBANG_BUTIR;
+        $alergiTerpenuhi = $this->form['alergiObatMdr'] && filled($this->form['detailAlergi']);
 
-            return;
-        }
+        if (! $diagnosisTerpenuhi && ! $asuhanTerpenuhi && ! $alergiTerpenuhi) {
+            // Sebut yang kurang pada kriteria yang MENYALA saja — menyebut kriteria
+            // yang memang tidak dipilih cuma jadi kebisingan.
+            $kurang = [];
 
-        if ($this->form['alergiObatMdr'] && blank($this->form['detailAlergi'])) {
-            $this->dispatch('toast', type: 'error', message: 'Sebutkan alergi obat / multi drug resistance-nya.');
+            if ($this->form['diagnosisKompleks']) {
+                $kurang[] = 'diagnosis penyerta baru ' . $jumlahDiagnosis . ' dari ' . PrmrjOptions::AMBANG_BUTIR;
+            }
+
+            if ($this->form['asuhanTigaAtauLebih']) {
+                $kurang[] = 'asuhan baru ' . $jumlahAsuhan . ' dari ' . PrmrjOptions::AMBANG_BUTIR;
+            }
+
+            if ($this->form['alergiObatMdr']) {
+                $kurang[] = 'alergi / multi drug resistance belum disebutkan';
+            }
+
+            $this->dispatch('toast', type: 'error', message: 'Belum ada kriteria yang terpenuhi — '
+                . implode('; ', $kurang) . '. Cukup salah satu saja.');
 
             return;
         }
@@ -583,7 +646,24 @@ new class extends Component {
                             <div class="px-4 py-3 space-y-3">
                                 <p class="text-sm text-muted dark:text-gray-400">
                                     Pasien layak PRMRJ bila <strong>salah satu</strong> terpenuhi.
+                                    Begitu satu kriteria lengkap, dua sisanya opsional.
                                 </p>
+                                {{-- Dihitung SEKALI di sini, bukan di dalam tiap kriteria: ketiganya
+                                     saling melihat, karena satu kriteria yang sudah terpenuhi membuat
+                                     kekurangan di kriteria lain tak lagi menghalangi. --}}
+                                @php
+                                    $jumlahDiagnosis = count(array_filter($form['detailDiagnosis']))
+                                        + (filled($form['detailDiagnosisLain']) ? 1 : 0);
+                                    $jumlahAsuhan = count(array_filter($form['detailAsuhan']))
+                                        + (filled($form['detailAsuhanLain']) ? 1 : 0);
+
+                                    $diagnosisTerpenuhi = $form['diagnosisKompleks'] && $jumlahDiagnosis >= PrmrjOptions::AMBANG_BUTIR;
+                                    $asuhanTerpenuhi = $form['asuhanTigaAtauLebih'] && $jumlahAsuhan >= PrmrjOptions::AMBANG_BUTIR;
+                                    $alergiTerpenuhi = $form['alergiObatMdr'] && filled($form['detailAlergi']);
+                                    $adaYangTerpenuhi = $diagnosisTerpenuhi || $asuhanTerpenuhi || $alergiTerpenuhi;
+
+                                    $kelasPetunjuk = $adaYangTerpenuhi ? 'text-muted dark:text-gray-400' : 'text-red-600 dark:text-red-400';
+                                @endphp
                                 {{-- Tiap toggle membuka rinciannya sendiri. Rinciannya baru muncul
                                      saat toggle-nya menyala — daftar mati yang selalu terlihat cuma
                                      jadi kebisingan di layar yang sudah padat. --}}
@@ -605,12 +685,11 @@ new class extends Component {
                                                     <x-text-input wire:model.live="form.detailDiagnosisLain" :disabled="$terkunci"
                                                         placeholder="Diagnosis penyerta lain (opsional)" class="w-full" />
                                                 </div>
-                                                @php
-                                                    $jumlahDiagnosis = count(array_filter($form['detailDiagnosis']))
-                                                        + (filled($form['detailDiagnosisLain']) ? 1 : 0);
-                                                @endphp
-                                                <p class="pt-1 text-xs {{ $jumlahDiagnosis >= PrmrjOptions::AMBANG_BUTIR ? 'text-muted dark:text-gray-400' : 'text-red-600 dark:text-red-400' }}">
+                                                <p class="pt-1 text-xs {{ $diagnosisTerpenuhi ? 'text-muted dark:text-gray-400' : $kelasPetunjuk }}">
                                                     Dipilih {{ $jumlahDiagnosis }} dari minimal {{ PrmrjOptions::AMBANG_BUTIR }}.
+                                                    @if (!$diagnosisTerpenuhi && $adaYangTerpenuhi)
+                                                        Opsional — kriteria lain sudah terpenuhi.
+                                                    @endif
                                                 </p>
                                             </div>
                                         @endif
@@ -632,12 +711,11 @@ new class extends Component {
                                                     <x-text-input wire:model.live="form.detailAsuhanLain" :disabled="$terkunci"
                                                         placeholder="Asuhan lain (opsional)" class="w-full" />
                                                 </div>
-                                                @php
-                                                    $jumlahAsuhan = count(array_filter($form['detailAsuhan']))
-                                                        + (filled($form['detailAsuhanLain']) ? 1 : 0);
-                                                @endphp
-                                                <p class="pt-1 text-xs {{ $jumlahAsuhan >= PrmrjOptions::AMBANG_BUTIR ? 'text-muted dark:text-gray-400' : 'text-red-600 dark:text-red-400' }}">
+                                                <p class="pt-1 text-xs {{ $asuhanTerpenuhi ? 'text-muted dark:text-gray-400' : $kelasPetunjuk }}">
                                                     Dipilih {{ $jumlahAsuhan }} dari minimal {{ PrmrjOptions::AMBANG_BUTIR }}.
+                                                    @if (!$asuhanTerpenuhi && $adaYangTerpenuhi)
+                                                        Opsional — kriteria lain sudah terpenuhi.
+                                                    @endif
                                                 </p>
                                             </div>
                                         @endif
@@ -652,6 +730,14 @@ new class extends Component {
                                             <div class="pt-2 pl-4 mt-2 border-l-2 border-hairline dark:border-gray-700">
                                                 <x-text-input wire:model.live="form.detailAlergi" :disabled="$terkunci"
                                                     placeholder="cth: alergi amoxicillin; MRSA" class="w-full" />
+                                                @if (!$alergiTerpenuhi)
+                                                    <p class="pt-1 text-xs {{ $kelasPetunjuk }}">
+                                                        Sebutkan alergi obat atau multi drug resistance-nya.
+                                                        @if ($adaYangTerpenuhi)
+                                                            Opsional — kriteria lain sudah terpenuhi.
+                                                        @endif
+                                                    </p>
+                                                @endif
                                             </div>
                                         @endif
                                     </div>
@@ -699,11 +785,24 @@ new class extends Component {
                         {{-- ── 2. DATA KUNJUNGAN INI ── --}}
                         <x-border-form :title="__('2. Data Kunjungan Ini')" :align="__('start')" :bgcolor="__('bg-surface-soft')">
                             <div class="px-4 py-3 space-y-3">
-                                <p class="text-sm text-muted dark:text-gray-400">
-                                    Terisi sendiri dari EMR kunjungan ini, tapi <strong>tetap bisa diedit</strong> &mdash;
-                                    yang tersimpan adalah yang terlihat di sini, disalin apa adanya saat disimpan
-                                    supaya cetakan tetap sama dengan yang ditandatangani.
-                                </p>
+                                <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                    <p class="text-sm text-muted dark:text-gray-400">
+                                        Terisi sendiri dari EMR kunjungan ini, tapi <strong>tetap bisa diedit</strong> &mdash;
+                                        yang tersimpan adalah yang terlihat di sini, disalin apa adanya saat disimpan
+                                        supaya cetakan tetap sama dengan yang ditandatangani.
+                                    </p>
+                                    {{-- Sekali PRMRJ tersimpan, isi di bawah TIDAK lagi ikut EMR (snapshot
+                                         tersimpan menang). Tombol ini jalan keluarnya bila EMR berubah
+                                         sesudahnya. Pakai konfirmasi karena suntingan manual ikut tertimpa. --}}
+                                    @if (!$terkunci)
+                                        <x-confirm-button variant="secondary" action="salinDariEmrRj()"
+                                            title="Salin dari EMR RJ"
+                                            message="Isi bagian ini akan ditimpa dengan data EMR kunjungan terbaru. Suntingan manual di bagian 2 ikut hilang. Kriteria, Obat Khusus, dan TTD tidak tersentuh."
+                                            confirmText="Salin" class="shrink-0">
+                                            Salin dari EMR RJ
+                                        </x-confirm-button>
+                                    @endif
+                                </div>
 
                                 <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                                     <div>
