@@ -177,14 +177,38 @@ new class extends Component {
             ->whereBetween('hd.rj_date', [$start, $end])
             ->groupBy('r.rj_no');
 
+        // Subquery PRMRJ — sama polanya, tapi dua hal membedakannya:
+        //
+        // 1. Tabel rstxn_prmrjs BISA BELUM TERPASANG di sebagian lingkungan (itu
+        //    sebabnya PrmrjTrait punya checkPrmrjTable). Kalau di-join membabi buta,
+        //    seluruh daftar Pelayanan RJ ikut mati ORA-00942 — bukan cuma badge-nya.
+        //    Maka subquery ini hanya ikut bila tabelnya memang ada.
+        // 2. Tautan ke kunjungan tersimpan DI DALAM CLOB prmrj_json, dan Oracle di
+        //    sini tak mendukung JSON_VALUE. Jadi badge bertumpu pada reg_no —
+        //    "pasien ini punya PRMRJ", bukan "kunjungan ini punya PRMRJ". Itu juga
+        //    lebih berguna: PRMRJ memang profil berjalan milik pasien lintas kunjungan.
+        //
+        // COUNT(DISTINCT) wajib: join ke rstxn_rjhdrs menggandakan baris sebanyak
+        // kunjungan pasien dalam rentang tanggal.
+        $prmrjTabelAda = $this->prmrjTabelAda();
+
+        $prmrjSub = $prmrjTabelAda
+            ? DB::table('rstxn_prmrjs as pr')
+                ->join('rstxn_rjhdrs as hp', 'hp.reg_no', '=', 'pr.reg_no')
+                ->select('pr.reg_no', DB::raw('COUNT(DISTINCT pr.prmrj_no) as prmrj_status'))
+                ->whereBetween('hp.rj_date', [$start, $end])
+                ->groupBy('pr.reg_no')
+            : null;
+
         $query = DB::table('rstxn_rjhdrs as h')
             ->join('rsmst_pasiens as p', 'p.reg_no', '=', 'h.reg_no')
             ->leftJoin('rsmst_polis as po', 'po.poli_id', '=', 'h.poli_id')
             ->leftJoin('rsmst_doctors as d', 'd.dr_id', '=', 'h.dr_id')
             ->leftJoin('rsmst_klaimtypes as k', 'k.klaim_id', '=', 'h.klaim_id')
-            ->leftJoinSub($labSub, 'lab', fn($j) => $j->on('lab.ref_no', '=', 'h.rj_no'))
-            ->leftJoinSub($radSub, 'rad', fn($j) => $j->on('rad.rj_no', '=', 'h.rj_no'))
-            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.poli_id', 'po.poli_desc', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.erm_status', 'h.vno_sep', DB::raw('COALESCE(lab.lab_status, 0) as lab_status'), DB::raw('COALESCE(rad.rad_status, 0) as rad_status'), 'h.datadaftarpolirj_json', 'k.klaim_desc', 'k.klaim_status'])
+            ->leftJoinSub($labSub, 'lab', fn($join) => $join->on('lab.ref_no', '=', 'h.rj_no'))
+            ->leftJoinSub($radSub, 'rad', fn($join) => $join->on('rad.rj_no', '=', 'h.rj_no'))
+            ->when($prmrjTabelAda, fn($queryDaftar) => $queryDaftar->leftJoinSub($prmrjSub, 'prmrj', fn($join) => $join->on('prmrj.reg_no', '=', 'h.reg_no')))
+            ->select(['h.rj_no', DB::raw("to_char(h.rj_date,'dd/mm/yyyy hh24:mi:ss') as rj_date_display"), 'h.reg_no', 'p.reg_name', 'p.sex', 'p.address', DB::raw("to_char(p.birth_date,'dd/mm/yyyy') as birth_date"), 'h.no_antrian', 'h.poli_id', 'po.poli_desc', 'h.dr_id', 'd.dr_name', 'h.klaim_id', 'h.shift', 'h.rj_status', 'h.erm_status', 'h.vno_sep', DB::raw('COALESCE(lab.lab_status, 0) as lab_status'), DB::raw('COALESCE(rad.rad_status, 0) as rad_status'), DB::raw($prmrjTabelAda ? 'COALESCE(prmrj.prmrj_status, 0) as prmrj_status' : '0 as prmrj_status'), 'h.datadaftarpolirj_json', 'k.klaim_desc', 'k.klaim_status'])
             ->whereBetween('h.rj_date', [$start, $end])
             ->where('h.klaim_id', '!=', 'KR') // Kronis (ambil obat) bukan kunjungan pelayanan — seragam dgn apotek/kasir/daftar-rj
             ->orderBy('d.dr_name', 'desc')
@@ -199,13 +223,13 @@ new class extends Component {
         // BPJS = klaim_status='BPJS' (di rsmst_klaimtypes) ATAU klaim_id='JM' (JKN Mobile)
         // UMUM = bukan keduanya
         if ($this->filterKlaim === 'BPJS') {
-            $query->where(function ($q) {
-                $q->where('k.klaim_status', 'BPJS')->orWhere('h.klaim_id', 'JM');
+            $query->where(function ($subQuery) {
+                $subQuery->where('k.klaim_status', 'BPJS')->orWhere('h.klaim_id', 'JM');
             });
         } elseif ($this->filterKlaim === 'UMUM') {
-            $query->where(function ($q) {
-                $q->where(function ($w) {
-                    $w->where('k.klaim_status', '!=', 'BPJS')->orWhereNull('k.klaim_status');
+            $query->where(function ($subQuery) {
+                $subQuery->where(function ($subQueryKlaim) {
+                    $subQueryKlaim->where('k.klaim_status', '!=', 'BPJS')->orWhereNull('k.klaim_status');
                 })->where('h.klaim_id', '!=', 'JM');
             });
         }
@@ -220,18 +244,37 @@ new class extends Component {
 
         $search = trim($this->searchKeyword);
         if ($search !== '' && mb_strlen($search) >= 2) {
-            $kw = mb_strtoupper($search);
-            $query->where(function ($q) use ($search, $kw) {
+            $keyword = mb_strtoupper($search);
+            $query->where(function ($subQuery) use ($search, $keyword) {
                 if (ctype_digit($search)) {
-                    $q->orWhere('h.rj_no', 'like', "%{$search}%")->orWhere('h.reg_no', 'like', "%{$search}%");
+                    $subQuery->orWhere('h.rj_no', 'like', "%{$search}%")->orWhere('h.reg_no', 'like', "%{$search}%");
                 }
-                $q->orWhere(DB::raw('UPPER(h.rj_no)'), 'like', "%{$kw}%")
-                    ->orWhere(DB::raw('UPPER(h.reg_no)'), 'like', "%{$kw}%")
-                    ->orWhere(DB::raw('UPPER(p.reg_name)'), 'like', "%{$kw}%");
+                $subQuery->orWhere(DB::raw('UPPER(h.rj_no)'), 'like', "%{$keyword}%")
+                    ->orWhere(DB::raw('UPPER(h.reg_no)'), 'like', "%{$keyword}%")
+                    ->orWhere(DB::raw('UPPER(p.reg_name)'), 'like', "%{$keyword}%");
             });
         }
 
         return $query;
+    }
+
+    /**
+     * Tabel PRMRJ terpasang? Memakai KUNCI CACHE YANG SAMA dengan
+     * PrmrjTrait::checkPrmrjTable() supaya dua tempat ini tak pernah berbeda
+     * pendapat, tanpa harus menarik seluruh trait ke komponen daftar ini
+     * (trait-nya besar dan berisiko bentrok nama method).
+     */
+    private function prmrjTabelAda(): bool
+    {
+        return \Illuminate\Support\Facades\Cache::remember('prmrj.tabel.ada', 300, function () {
+            try {
+                DB::table('rstxn_prmrjs')->limit(1)->exists();
+
+                return true;
+            } catch (\Throwable) {
+                return false;
+            }
+        });
     }
 
     private function dateRange(): array
@@ -323,6 +366,8 @@ new class extends Component {
                 $row->procedure = isset($json['procedure']) && is_array($json['procedure']) ? implode('# ', array_column($json['procedure'], 'procedureId')) : '-';
                 $row->procedure_free_text = $json['procedureFreeText'] ?? '-';
                 $row->procedure_detail = $json['procedure'] ?? null;
+
+                $row->prmrj_status = (int) ($row->prmrj_status ?? 0);
 
                 $row->status_resep = $json['statusResep']['status'] ?? null;
                 $row->status_resep_label = $row->status_resep === 'DITUNGGU' ? 'Ditunggu' : ($row->status_resep === 'DITINGGAL' ? 'Ditinggal' : '-');
@@ -616,6 +661,24 @@ new class extends Component {
                                                             clip-rule="evenodd" />
                                                     </svg>
                                                     Risiko Bunuh Diri {{ $row->resiko_bunuh_diri['kategori'] }}
+                                                </x-badge>
+                                            </div>
+                                        @endif
+
+                                        {{-- Penanda PRMRJ — pasien sudah punya Profil Ringkas Medis RJ.
+                                             Sengaja DI LUAR blok expanded: gunanya justru supaya terbaca
+                                             sekilas tanpa membuka detail baris. Hitungannya per pasien,
+                                             bukan per kunjungan — lihat komentar subquery-nya. --}}
+                                        @if ($row->prmrj_status)
+                                            <div>
+                                                <x-badge variant="purple" class="gap-1"
+                                                    title="Pasien sudah punya Profil Ringkas Medis Rawat Jalan{{ $row->prmrj_status > 1 ? ' — ' . $row->prmrj_status . ' lembar' : '' }}">
+                                                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                    PRMRJ{{ $row->prmrj_status > 1 ? ' (' . $row->prmrj_status . ')' : '' }}
                                                 </x-badge>
                                             </div>
                                         @endif
