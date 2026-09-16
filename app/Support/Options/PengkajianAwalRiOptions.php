@@ -37,6 +37,9 @@ class PengkajianAwalRiOptions
 
     public const INFORMASI_DARI = ['pasien' => 'Pasien', 'keluarga' => 'Keluarga', 'lainnya' => 'Lainnya'];
 
+    /** Jenis hambatan komunikasi/edukasi (bagian3PsikososialDanEkonomi.identifikasiHambatan.jenis). */
+    public const HAMBATAN = ['bahasa' => 'Bahasa', 'pendengaran' => 'Pendengaran', 'penglihatan' => 'Penglihatan', 'fisik' => 'Fisik', 'kognitif' => 'Kognitif', 'emosiMotivasi' => 'Emosi / Motivasi', 'budayaAgama' => 'Budaya / Agama', 'lainnya' => 'Lainnya'];
+
     public const TINGKAT_KESADARAN = ['komposMentis' => 'Kompos Mentis', 'apatis' => 'Apatis', 'somnolen' => 'Somnolen', 'sopor' => 'Sopor', 'koma' => 'Koma', 'delirium' => 'Delirium'];
 
     /** Pemeriksaan sistem organ (bagian4PemeriksaanFisik.pemeriksaanSistemOrgan) — path => [label, opsi]. Neurologi terpisah (punya GCS). */

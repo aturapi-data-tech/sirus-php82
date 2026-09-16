@@ -50,6 +50,8 @@ new class extends Component {
             'informasiDidapatDari' => ['pilihan' => '', 'keterangan' => ''],
             // Nilai kebudayaan yang dipercaya pasien — toggle ya/tidak (standar tidak), keterangan bila ya.
             'nilaiKebudayaan' => ['pilihan' => 'tidak', 'keterangan' => ''],
+            // Hambatan komunikasi/edukasi — toggle ya/tidak (standar tidak), jenis & keterangan bila ya.
+            'identifikasiHambatan' => ['pilihan' => 'tidak', 'jenis' => '', 'keterangan' => ''],
         ],
         'bagian4PemeriksaanFisik' => [
             'tandaVital' => [
@@ -217,6 +219,8 @@ new class extends Component {
         $this->dataDaftarRi['pengkajianAwalPasienRawatInap'] ??= $this->pengkajianAwalDefault;
         // Entri lama (sebelum 2026-09-15) belum punya node nilaiKebudayaan → isi standar "tidak".
         $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['nilaiKebudayaan'] ??= ['pilihan' => 'tidak', 'keterangan' => ''];
+        // Entri lama (sebelum 2026-09-16) belum punya node identifikasiHambatan → isi standar "tidak".
+        $this->dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['identifikasiHambatan'] ??= ['pilihan' => 'tidak', 'jenis' => '', 'keterangan' => ''];
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
 
@@ -816,6 +820,30 @@ new class extends Component {
                 <x-text-input
                     wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.nilaiKebudayaan.keterangan"
                     class="w-full" placeholder="Keterangan nilai kebudayaan (mis. pantangan makanan, ritual, pengobatan tradisional)..."
+                    :disabled="$isFormLocked || $isReadOnlyByRole" />
+            @endif
+        </div>
+
+        {{-- Identifikasi Hambatan — toggle ya/tidak (standar tidak); bila ya, jenis & keterangan muncul (pola Nilai Kebudayaan) --}}
+        <div class="flex flex-col gap-2 mt-4 sm:flex-row sm:items-center">
+            <div class="shrink-0 sm:w-80">
+                <x-toggle
+                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.identifikasiHambatan.pilihan"
+                    trueValue="ya" falseValue="tidak" label="Ada hambatan komunikasi / edukasi"
+                    :disabled="$isFormLocked || $isReadOnlyByRole" />
+            </div>
+            @if (($dataDaftarRi['pengkajianAwalPasienRawatInap']['bagian3PsikososialDanEkonomi']['identifikasiHambatan']['pilihan'] ?? 'tidak') === 'ya')
+                <x-select-input
+                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.identifikasiHambatan.jenis"
+                    class="w-full sm:w-64 sm:shrink-0" :disabled="$isFormLocked || $isReadOnlyByRole">
+                    <option value="">— Jenis Hambatan —</option>
+                    @foreach (PengkajianAwalRiOptions::HAMBATAN as $nilaiOpsi => $labelOpsi)
+                        <option value="{{ $nilaiOpsi }}">{{ $labelOpsi }}</option>
+                    @endforeach
+                </x-select-input>
+                <x-text-input
+                    wire:model.live="dataDaftarRi.pengkajianAwalPasienRawatInap.bagian3PsikososialDanEkonomi.identifikasiHambatan.keterangan"
+                    class="w-full" placeholder="Keterangan hambatan (mis. hanya bisa bahasa Jawa, gangguan pendengaran berat)..."
                     :disabled="$isFormLocked || $isReadOnlyByRole" />
             @endif
         </div>

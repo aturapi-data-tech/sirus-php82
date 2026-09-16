@@ -58,6 +58,13 @@
             default => '-',
         };
 
+        $identifikasiHambatan = $psikososial['identifikasiHambatan'] ?? [];
+        $teksIdentifikasiHambatan = match ($identifikasiHambatan['pilihan'] ?? null) {
+            'ya' => PengkajianAwalRiOptions::teks(PengkajianAwalRiOptions::HAMBATAN, $identifikasiHambatan['jenis'] ?? null, $identifikasiHambatan['keterangan'] ?? null, true),
+            'tidak' => 'Tidak ada',
+            default => '-',
+        };
+
         $kelasJudulBagian = 'text-[11px] font-bold bg-[#eef2ee] px-1.5 py-[3px] border border-[#999] mt-1.5';
         $kelasLabel = 'w-[22%] text-[#333] bg-[#f7f7f7] border border-[#999] px-[5px] py-[2px] align-top';
         $kelasNilai = 'border border-[#999] px-[5px] py-[2px] align-top';
@@ -175,6 +182,10 @@
             <tr>
                 <td class="{{ $kelasLabel }}">Nilai Kebudayaan yang Dipercaya</td>
                 <td colspan="3" class="{{ $kelasNilai }}">{{ $teksNilaiKebudayaan }}</td>
+            </tr>
+            <tr>
+                <td class="{{ $kelasLabel }}">Identifikasi Hambatan</td>
+                <td colspan="3" class="{{ $kelasNilai }}">{{ $teksIdentifikasiHambatan }}</td>
             </tr>
             <tr>
                 <td class="{{ $kelasLabel }}">Keluarga Dekat</td>
