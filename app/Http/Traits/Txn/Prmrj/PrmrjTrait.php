@@ -285,21 +285,36 @@ trait PrmrjTrait
         // Diagnosa, tindakan, dan operasi ditulis sebagai TEKS BEBAS satu baris per
         // butir — bukan daftar terstruktur. Kode digabung di depan uraiannya supaya
         // dua kolom di formulir kertas tetap terbaca dalam satu teks.
-        $diagnosa = collect($dataRJ['diagnosis'] ?? [])
-            ->map(fn ($baris) => trim(
-                trim((string) ($baris['icdX'] ?? $baris['diagId'] ?? ''))
-                . ' ' . trim((string) ($baris['diagDesc'] ?? ''))
+        //
+        // TEKS BEBAS DIUTAMAKAN atas daftar ICD (keputusan user 2026-09-16). Yang
+        // dibaca dokter di PRMRJ adalah tulisan bebasnya — "COPD", "cva squale",
+        // "ht", "lbp dt susp lumbal" — bukan "J44.9 Chronic obstructive pulmonary
+        // disease, unspecified". Daftar ICD tetap dipakai sebagai CADANGAN bila teks
+        // bebasnya memang tak diisi, supaya kolomnya tidak kosong melompong pada
+        // kunjungan yang hanya mengisi kode.
+        $diagnosaIcd = collect($dataRJ['diagnosis'] ?? [])
+            ->map(fn ($row) => trim(
+                trim((string) ($row['icdX'] ?? $row['diagId'] ?? ''))
+                . ' ' . trim((string) ($row['diagDesc'] ?? ''))
             ))
             ->filter()
             ->implode("\n");
 
-        $tindakan = collect($dataRJ['procedure'] ?? [])
-            ->map(fn ($baris) => trim(
-                trim((string) ($baris['procedureId'] ?? ''))
-                . ' ' . trim((string) ($baris['procedureDesc'] ?? ''))
+        $diagnosa = filled($dataRJ['diagnosisFreeText'] ?? '')
+            ? trim((string) $dataRJ['diagnosisFreeText'])
+            : $diagnosaIcd;
+
+        $tindakanIcd = collect($dataRJ['procedure'] ?? [])
+            ->map(fn ($row) => trim(
+                trim((string) ($row['procedureId'] ?? ''))
+                . ' ' . trim((string) ($row['procedureDesc'] ?? ''))
             ))
             ->filter()
             ->implode("\n");
+
+        $tindakan = filled($dataRJ['procedureFreeText'] ?? '')
+            ? trim((string) $dataRJ['procedureFreeText'])
+            : $tindakanIcd;
 
         return [
             'tglKunjungan' => (string) ($dataRJ['rjDate'] ?? ''),
