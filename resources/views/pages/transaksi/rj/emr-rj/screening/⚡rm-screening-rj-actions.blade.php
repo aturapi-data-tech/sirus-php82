@@ -692,6 +692,18 @@ new class extends Component {
                 <div class="flex flex-wrap items-center justify-end gap-3">
                     <x-secondary-button wire:click="closeModal">Tutup</x-secondary-button>
 
+                    {{-- Screening ditandatangani PALING AWAL, jadi dicabut PALING AKHIR:
+                         selagi EMR masih terkunci TTD dokter, tombolnya diganti keterangan —
+                         bukan disembunyikan diam-diam — supaya petugas tahu urutannya. --}}
+                    @if ($isFormLocked && $isEmrLocked)
+                        @can('dokumen.bukaKunci')
+                            <p class="text-xs text-muted dark:text-gray-400">
+                                Buka kunci <strong>TTD-E Dokter Pemeriksa</strong> lebih dulu sebelum
+                                screening bisa dibuka.
+                            </p>
+                        @endcan
+                    @endif
+
                     {{-- Terkunci oleh TTD (bukan EMR-level) → Admin/Manager boleh Buka Kunci --}}
                     @if ($isFormLocked && !$isEmrLocked)
                         @can('dokumen.bukaKunci')

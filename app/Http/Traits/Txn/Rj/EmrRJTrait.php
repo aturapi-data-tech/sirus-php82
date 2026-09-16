@@ -325,8 +325,12 @@ trait EmrRJTrait
         if (! $row || empty($row->erm_status)) {
             return false;
         }
-        return false;
-        // return $row->erm_status !== 'A';
+        // Dinyalakan kembali 2026-09-16: begitu dokter TTD-E (erm_status 'L'), EMR
+        // RJ jadi baca-saja sampai ada yang membuka kuncinya. Aman karena tiap
+        // stempel kini punya Buka Kunci sendiri, dan urutannya dipaksa dari yang
+        // paling akhir menandatangani — membuka TTD dokter mengembalikan erm_status
+        // ke 'A', yang membuat stempel perawat & screening bisa dibuka sesudahnya.
+        return $row->erm_status !== 'A';
     }
 
     /**

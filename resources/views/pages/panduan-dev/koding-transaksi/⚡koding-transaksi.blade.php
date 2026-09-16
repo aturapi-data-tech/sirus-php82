@@ -690,9 +690,13 @@ if ($this->checkOkPendingRJ($this->rjNo)) {       // ada rstxn_oks ok_status = '
 // L4 · KUNCI KONKURENSI — setiap tulis: DB::transaction + lockRJRow /
 //   lockForUpdate (bab 03) — dua user tidak saling menimpa.
 
-// L5 · KUNCI KLINIS (longgar, beda dgn finansial):
-//   - erm_status: checkEmrRJStatus saat ini SENGAJA selalu false — kebijakan:
-//     EMR tetap bisa diedit, cukup terjejak appendAdminLog (tab Log Aktivitas)
+// L5 · KUNCI KLINIS:
+//   - erm_status: checkEmrRJStatus/checkEmrUGDStatus AKTIF (2026-09-16) — begitu
+//     dokter TTD-E, erm_status 'L' dan EMR RJ/UGD jadi baca-saja. Membukanya lewat
+//     Buka Kunci per stempel (Gate dokumen.bukaKunci), urutannya dari yang paling
+//     akhir TTD: Dokter -> Perawat -> Screening. Semua terjejak appendAdminLog.
+//   - EMR RI MASIH longgar (checkEmrRIStatus selalu false) — sengaja, karena
+//     stempel RI belum punya tombol Buka Kunci; menyalakannya akan menjebak user.
 //   - dokumen ber-TTD: isFormLocked per-form setelah tanda tangan (bab 07)
 
 // + KUNCI LINTAS JALUR: transfer RJ→UGD juga men-set
