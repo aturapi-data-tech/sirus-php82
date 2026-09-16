@@ -47,6 +47,20 @@ new class extends Component {
         $default = $this->getDefaultPerencanaan();
         $current = $this->dataDaftarUGD['perencanaan'] ?? [];
         $this->dataDaftarUGD['perencanaan'] = array_replace_recursive($default, $current);
+
+        // Daftar Tindak Lanjut selalu ikut default. Data UGD lama menyimpan opsi
+        // "PRB" di JSON-nya, dan array_replace_recursive menggabungkan array
+        // berindeks per posisi sehingga opsi itu ikut terbawa. PRB adalah program
+        // khusus Rawat Jalan, jadi tidak lagi ditawarkan di UGD -- kecuali rekam
+        // lama yang nilainya memang sudah "PRB", supaya nilainya tetap terbaca
+        // dan tidak terhapus diam-diam saat disimpan ulang.
+        $tindakLanjutOptions = $default['tindakLanjut']['tindakLanjutOptions'];
+
+        if (($this->dataDaftarUGD['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '') === 'PRB') {
+            $tindakLanjutOptions[] = ['tindakLanjut' => 'PRB'];
+        }
+
+        $this->dataDaftarUGD['perencanaan']['tindakLanjut']['tindakLanjutOptions'] = $tindakLanjutOptions;
     }
 
     /* ===============================
@@ -250,57 +264,6 @@ new class extends Component {
     }
 
     /* ===============================
-     | SET STATUS PRB
-     =============================== */
-    public function setStatusPRB(): void
-    {
-        if ($this->isFormLocked) {
-            return;
-        }
-
-        $statusPRB = isset($this->dataDaftarUGD['statusPRB']['penanggungJawab']['statusPRB']) ? !$this->dataDaftarUGD['statusPRB']['penanggungJawab']['statusPRB'] : 1;
-
-        $this->dataDaftarUGD['statusPRB']['penanggungJawab'] = [
-            'statusPRB' => $statusPRB,
-            'userLog' => auth()->user()->myuser_name,
-            'userLogDate' => now()->format('d/m/Y H:i:s'),
-            'userLogCode' => auth()->user()->myuser_code,
-        ];
-
-        if ($statusPRB) {
-            $this->dataDaftarUGD['perencanaan']['tindakLanjut']['tindakLanjut'] = 'PRB';
-        }
-
-        try {
-            DB::transaction(function () use ($statusPRB) {
-                // Lock row dulu
-                $this->lockUGDRow($this->rjNo);
-
-                $data = $this->findDataUGD($this->rjNo) ?? [];
-
-                if (empty($data)) {
-                    throw new \RuntimeException('Data UGD tidak ditemukan, simpan dibatalkan.');
-                }
-
-                $data['perencanaan'] = $this->dataDaftarUGD['perencanaan'] ?? [];
-                $data['statusPRB'] = $this->dataDaftarUGD['statusPRB'] ?? [];
-
-                $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
-
-                // Audit log
-                $this->appendAdminLogUGD((int) $this->rjNo, 'Set Status PRB UGD — ' . ($statusPRB ? 'Aktif' : 'Nonaktif'), 'MR');
-            });
-
-            $this->afterSave('Status PRB berhasil diperbarui.');
-        } catch (\RuntimeException $e) {
-            $this->dispatch('toast', type: 'error', message: $e->getMessage());
-        } catch (\Exception $e) {
-            $this->dispatch('toast', type: 'error', message: 'Gagal menyimpan: ' . $e->getMessage());
-        }
-    }
-
-    /* ===============================
      | OPEN MODAL E-RESEP UGD
      =============================== */
     public function openModalEresepUGD(): void
@@ -375,7 +338,7 @@ new class extends Component {
                 // lagi di SOAP, dan RL 3.3 (Mati IGD & DOA) kehilangan sumbernya —
                 // kolom rstxn_ugdhdrs.death_on_igd_status tak pernah ditulis 'Y' oleh
                 // siapa pun. RL33Trait sekarang membaca kematian dari nilai ini.
-                'tindakLanjutOptions' => [['tindakLanjut' => 'MRS'], ['tindakLanjut' => 'Kontrol'], ['tindakLanjut' => 'Rujuk'], ['tindakLanjut' => 'Perawatan Selesai'], ['tindakLanjut' => 'PRB'], ['tindakLanjut' => 'Meninggal'], ['tindakLanjut' => 'Lain-lain']],
+                'tindakLanjutOptions' => [['tindakLanjut' => 'MRS'], ['tindakLanjut' => 'Kontrol'], ['tindakLanjut' => 'Rujuk'], ['tindakLanjut' => 'Perawatan Selesai'], ['tindakLanjut' => 'Meninggal'], ['tindakLanjut' => 'Lain-lain']],
             ],
 
             'terapiTab' => 'Terapi',

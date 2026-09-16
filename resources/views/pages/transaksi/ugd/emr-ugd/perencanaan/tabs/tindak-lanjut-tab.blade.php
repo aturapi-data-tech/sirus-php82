@@ -23,15 +23,6 @@
             <x-input-error :messages="$errors->get('dataDaftarUGD.perencanaan.tindakLanjut.keteranganTindakLanjut')" class="mt-1" />
         </div>
 
-        {{-- Set Status PRB --}}
-        @if (!$isFormLocked)
-            <div>
-                <x-primary-button wire:click.prevent="setStatusPRB" type="button" wire:loading.remove>
-                    Set Status PRB
-                </x-primary-button>
-            </div>
-        @endif
-
         {{-- Rujukan Antar RS — tampil hanya jika Tindak Lanjut = Rujuk --}}
         @if (($dataDaftarUGD['perencanaan']['tindakLanjut']['tindakLanjut'] ?? '') === 'Rujuk')
             <div class="pt-2 border-t border-hairline-soft dark:border-gray-700">
