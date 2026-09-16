@@ -353,7 +353,7 @@ new class extends Component {
     public function bukaKunciTtdPemeriksa(): void
     {
         // Guard SERVER — guard blade saja bisa ditembus, wire:click memanggil method publik.
-        if (! auth()->user()?->can('emr.bukaKunciTtd')) {
+        if (! auth()->user()?->can('dokumen.bukaKunci')) {
             $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membuka kunci TTD-E.');
 
             return;

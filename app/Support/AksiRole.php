@@ -49,17 +49,6 @@ class AksiRole
     /** Melihat Log Aktivitas EMR/Administrasi (jejak audit) — manager ke atas. */
     public const EMR_LOG_AKTIVITAS = ['Admin', 'Manager Umum', 'Manager Medis'];
 
-    /**
-     * MEMBUKA KUNCI TTD-E Dokter Pemeriksa di EMR RJ/UGD — mencabut stempel dokter
-     * supaya bisa di-TTD ulang.
-     *
-     * Daftarnya kebetulan sama dengan DOKUMEN_BUKA_KUNCI, tapi SENGAJA dipisah
-     * (lihat aturan di docblock kelas): yang ini mencabut tanda tangan dokter pada
-     * rekam medis, sedangkan yang itu pada formulir dokumen. Kelak salah satunya
-     * bisa dilonggarkan tanpa diam-diam ikut melonggarkan yang lain.
-     */
-    public const EMR_BUKA_KUNCI_TTD = ['Admin', 'Manager Umum', 'Manager Medis'];
-
     /** Cetak e-resep dari layar EMR. */
     public const EMR_CETAK_ERESEP = ['Perawat', 'Dokter', 'Casemix', 'Manager Medis', 'Manager Umum', 'Admin'];
 

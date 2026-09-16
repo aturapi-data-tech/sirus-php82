@@ -29,11 +29,12 @@
             <x-input-error :messages="$errors->get('dataDaftarPoliRJ.perencanaan.pengkajianMedis.drPemeriksa')" class="mt-1" />
 
             {{-- Buka Kunci TTD-E — hanya muncul bila SUDAH ter-TTD, dan hanya untuk role
-                 berhak (Gate emr.bukaKunciTtd). Tombol TTD sendiri hilang begitu stempel
+                 berhak (Gate dokumen.bukaKunci, sama dengan Buka Kunci Screening & modul
+                 dokumen). Tombol TTD sendiri hilang begitu stempel
                  terisi, jadi tanpa ini salah TTD tak punya jalan pulang. Gaya mengikuti
                  Buka Kunci modul dokumen: x-confirm-button variant kuning. --}}
             @if (filled($dataDaftarPoliRJ['perencanaan']['pengkajianMedis']['drPemeriksa'] ?? ''))
-                @can('emr.bukaKunciTtd')
+                @can('dokumen.bukaKunci')
                     <div class="flex justify-end">
                         <x-confirm-button variant="warning-soft" action="bukaKunciTtdPemeriksa()"
                             title="Buka Kunci TTD-E"

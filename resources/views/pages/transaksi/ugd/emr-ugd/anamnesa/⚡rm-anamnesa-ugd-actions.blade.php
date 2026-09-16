@@ -335,6 +335,87 @@ new class extends Component {
         $this->incrementVersion('modal-anamnesa-ugd');
     }
 
+
+    /* ===============================
+     | BUKA KUNCI TTD PERAWAT PENERIMA
+     =============================== */
+    /**
+     * Cabut stempel Perawat Penerima supaya bisa di-TTD ulang.
+     *
+     * x-signature.ttd-petugas hanya merender tombol TTD selama namanya masih kosong,
+     * jadi salah TTD tak punya jalan pulang. Padanan Buka Kunci Screening & modul
+     * dokumen, memakai Gate yang sama.
+     *
+     * Berbeda dari setPerawatPenerima() yang hanya mengubah state di memori dan
+     * menunggu tombol Simpan: pencabutan ditulis LANGSUNG ke DB. Kalau hanya di
+     * memori, petugas bisa menutup modal tanpa menyimpan dan stempelnya hidup lagi,
+     * sementara audit log sudah terlanjur mencatat pencabutan yang tak pernah terjadi.
+     */
+    public function bukaKunciTtdPerawatPenerima(): void
+    {
+        // Guard SERVER — guard blade saja bisa ditembus, wire:click memanggil method publik.
+        if (! auth()->user()?->can('dokumen.bukaKunci')) {
+            $this->dispatch('toast', type: 'error', message: 'Anda tidak berhak membuka kunci TTD Perawat.');
+
+            return;
+        }
+
+        if (blank($this->rjNo)) {
+            return;
+        }
+
+        if (blank($this->dataDaftarUGD['anamnesa']['pengkajianPerawatan']['perawatPenerima'] ?? '')) {
+            $this->dispatch('toast', type: 'error', message: 'Belum ada TTD Perawat yang perlu dibuka.');
+
+            return;
+        }
+
+        // URUTAN PENCABUTAN: dari yang PALING AKHIR menandatangani.
+        //
+        // Alurnya Screening -> Perawat Penerima -> Dokter, dan TTD dokter itu yang
+        // mengesahkan SELURUH rekaman kunjungan (sekaligus menandai erm_status 'L').
+        // Kalau stempel perawat boleh dicabut selagi TTD dokter masih berdiri, isinya
+        // berubah di bawah tanda tangan yang sudah mengesahkannya — dokter tercatat
+        // menyetujui rekaman yang bukan lagi yang dia setujui.
+        if (filled($this->dataDaftarUGD['perencanaan']['pengkajianMedis']['drPemeriksa'] ?? '')) {
+            $this->dispatch('toast', type: 'error', message: 'Buka kunci TTD-E Dokter Pemeriksa lebih dulu — TTD dokter mengesahkan seluruh rekaman kunjungan ini.');
+
+            return;
+        }
+
+        try {
+            DB::transaction(function () {
+                $this->lockUGDRow($this->rjNo);
+
+                $data = $this->findDataUGD($this->rjNo) ?? [];
+
+                if (empty($data)) {
+                    throw new \RuntimeException('Data UGD tidak ditemukan, buka kunci dibatalkan.');
+                }
+
+                $perawatSebelumnya = $data['anamnesa']['pengkajianPerawatan']['perawatPenerima'] ?? '-';
+
+                // Cabut stempel petugas SAJA; isian pengkajian & jam datang dipertahankan —
+                // jam datang itu waktu pasien tiba, bukan cap tanda tangan.
+                $data['anamnesa']['pengkajianPerawatan']['perawatPenerima'] = '';
+                $data['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'] = '';
+
+                $this->updateJsonUGD((int) $this->rjNo, $data);
+                $this->dataDaftarUGD = $data;
+
+                $this->appendAdminLogUGD((int) $this->rjNo, 'Buka Kunci TTD Perawat Penerima — stempel ' . $perawatSebelumnya . ' dicabut oleh ' . (auth()->user()->myuser_name ?? '-'), 'MR');
+            });
+
+            $this->incrementVersion('modal-anamnesa-ugd');
+            $this->dispatch('refresh-after-ugd.saved');
+            $this->dispatch('toast', type: 'success', message: 'Kunci TTD Perawat dibuka — bisa TTD ulang.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Gagal membuka kunci: ' . $e->getMessage());
+        }
+    }
+
     public function setAutoJamDatang(): void
     {
         $this->dataDaftarUGD['anamnesa']['pengkajianPerawatan']['jamDatang'] = now()->format('d/m/Y H:i:s');
