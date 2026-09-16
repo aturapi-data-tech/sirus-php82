@@ -104,7 +104,7 @@ new class extends Component {
      *
      * Hanya menyentuh bagian 2. Kriteria, Obat Khusus, dan TTD tidak ikut tersapu.
      */
-    public function salinDariEmrRj(): void
+    public function salinDataKunjungan(): void
     {
         if ($this->isFormLocked) {
             $this->dispatch('toast', type: 'error', message: 'PRMRJ sudah terkunci — buka kuncinya dulu.');
@@ -119,7 +119,7 @@ new class extends Component {
         $dataRJ = $this->findDataRJ($this->rjNo);
 
         if (blank($dataRJ)) {
-            $this->dispatch('toast', type: 'error', message: 'Data EMR kunjungan ini tidak ditemukan.');
+            $this->dispatch('toast', type: 'error', message: 'Data kunjungan pasien ini tidak ditemukan.');
 
             return;
         }
@@ -139,8 +139,8 @@ new class extends Component {
         $this->otomatis = array_replace($this->otomatis, $segar);
 
         $this->dispatch('toast', type: $berubah ? 'success' : 'info', message: $berubah
-            ? 'Disalin dari EMR — ' . $berubah . ' kolom diperbarui.'
-            : 'Sudah sama dengan EMR — tidak ada yang berubah.');
+            ? 'Tersalin — ' . $berubah . ' kolom diperbarui.'
+            : 'Sudah sama dengan data kunjungan — tidak ada yang berubah.');
     }
 
     /**
@@ -600,36 +600,25 @@ new class extends Component {
              tutup = dihapus tanpa mount ulang (closeModal mengosongkan rjNo). --}}
         @if ($rjNo)
         <div class="flex flex-col h-full">
-            {{-- ══ HEADER ══ --}}
-            <div class="px-6 py-4 border-b border-hairline dark:border-gray-700">
-                <div class="flex items-start justify-between gap-3">
-                    {{-- Urutan baku: DISPLAY PASIEN dulu, judul dokumen di bawahnya.
-                         Yang pertama dicari petugas saat modal terbuka adalah "ini pasien
-                         siapa", bukan nama formulirnya. --}}
-                    <div class="min-w-0">
-                        @if (filled($rjNo))
-                            {{-- Display pasien RJ — komponen yang sama dipakai EMR RJ, log
-                                 aktivitas, dan viewer rekam medis. Ia memuat sendiri dari rjNo,
-                                 jadi komponen ini tak perlu merakit identitas apa pun. --}}
-                            <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="(string) $rjNo"
-                                wire:key="prmrj-display-pasien-rj-{{ $rjNo }}" />
-                        @endif
+            {{-- ══ HEADER ══ Susunan baku modul dokumen (docs/modul-dokumen-ri-pattern.md §2a):
+                 [ikon · judul · deskripsi · badge · x sebaris] lalu display pasien di bawahnya.
+                 Sebelumnya PRMRJ memasang display pasien LEBIH DULU dan judul formulir di
+                 bawahnya — kebalikan dari 74 modal lain, jadi petugas menemukan tata letak
+                 yang berbeda sendiri di satu modul ini saja. --}}
+            <x-modul-dokumen.header judul="Profil Ringkas Medis Rawat Jalan (PRMRJ)"
+                ikon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                jalur="RJ" :jumlah="$riwayatTotal" :readOnly="$terkunci">
+                Diidentifikasi dan dilengkapi DPJP Utama.
+            </x-modul-dokumen.header>
 
-                        <h2 class="mt-3 text-base font-semibold text-ink dark:text-gray-100">
-                            Profil Ringkas Medis Rawat Jalan (PRMRJ)
-                        </h2>
-                        <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
-                            Diidentifikasi dan dilengkapi DPJP Utama.
-                        </p>
-                    </div>
-                    <x-icon-button color="gray" type="button"
-                        wire:click="closeModal" class="shrink-0">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </x-icon-button>
+            {{-- DISPLAY PASIEN — komponen yang sama dipakai EMR RJ, log aktivitas, dan viewer
+                 rekam medis. Ia memuat sendiri dari rjNo, jadi modul ini tak merakit identitas. --}}
+            @if (filled($rjNo))
+                <div class="px-4 pt-2">
+                    <livewire:pages::transaksi.rj.display-pasien-rj.display-pasien-rj :rjNo="(string) $rjNo"
+                        wire:key="prmrj-display-pasien-rj-{{ $rjNo }}" />
                 </div>
-            </div>
+            @endif
 
             {{-- ══ ISI ══ --}}
             <div class="flex-1 min-h-0 px-6 py-4 space-y-4 overflow-y-auto">
@@ -787,19 +776,24 @@ new class extends Component {
                             <div class="px-4 py-3 space-y-3">
                                 <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                     <p class="text-sm text-muted dark:text-gray-400">
-                                        Terisi sendiri dari EMR kunjungan ini, tapi <strong>tetap bisa diedit</strong> &mdash;
-                                        yang tersimpan adalah yang terlihat di sini, disalin apa adanya saat disimpan
-                                        supaya cetakan tetap sama dengan yang ditandatangani.
+                                        Terisi sendiri dari data kunjungan pasien ini, dan <strong>tetap bisa diedit</strong>.
+                                        Yang dicetak nanti persis seperti yang terlihat di sini.
                                     </p>
-                                    {{-- Sekali PRMRJ tersimpan, isi di bawah TIDAK lagi ikut EMR (snapshot
-                                         tersimpan menang). Tombol ini jalan keluarnya bila EMR berubah
-                                         sesudahnya. Pakai konfirmasi karena suntingan manual ikut tertimpa. --}}
+                                    {{-- Sekali PRMRJ tersimpan, isi di bawah tidak lagi ikut data kunjungan
+                                         (snapshot tersimpan menang). Tombol ini jalan keluarnya bila data
+                                         kunjungan berubah sesudahnya. Pakai konfirmasi karena ketikan
+                                         petugas di bagian ini ikut tertimpa. --}}
                                     @if (!$terkunci)
-                                        <x-confirm-button variant="secondary" action="salinDariEmrRj()"
-                                            title="Salin dari EMR RJ"
-                                            message="Isi bagian ini akan ditimpa dengan data EMR kunjungan terbaru. Suntingan manual di bagian 2 ikut hilang. Kriteria, Obat Khusus, dan TTD tidak tersentuh."
-                                            confirmText="Salin" class="shrink-0">
-                                            Salin dari EMR RJ
+                                        <x-confirm-button variant="secondary" action="salinDataKunjungan()"
+                                            title="Salin Data Kunjungan"
+                                            message="Isi bagian ini akan diganti dengan data kunjungan pasien yang terbaru. Ketikan Anda di bagian ini ikut hilang. Kriteria, Obat Khusus, dan tanda tangan tidak tersentuh."
+                                            confirmText="Salin" class="shrink-0 px-2.5 py-1.5 text-sm">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                                stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                            </svg>
+                                            Salin Data Kunjungan
                                         </x-confirm-button>
                                     @endif
                                 </div>
