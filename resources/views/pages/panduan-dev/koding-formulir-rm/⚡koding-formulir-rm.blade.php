@@ -99,6 +99,7 @@ new class extends Component {
             'RM-09.02' => 'Ringkasan Pasien Pulang',
             'RM-09.03' => 'Profil Ringkas Medis Rawat Jalan (PRMRJ)',
             'RM-09.04' => 'Surat Keterangan Kematian',
+            'RM-09.05' => 'Resume Rawat Jalan',
 
             'RM-10.01' => 'Surat Keterangan Sakit',
             'RM-10.02' => 'Surat Keterangan Sehat',
