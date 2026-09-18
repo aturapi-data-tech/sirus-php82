@@ -4,11 +4,11 @@
     {{-- Mulai Istirahat + Jumlah Hari — 1 baris (grid 4 kolom) --}}
     <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-2">
     <div class="sm:col-span-2">
-        <x-input-label for="dataDaftarPoliRJ.suket.suketIstirahat.mulaiIstirahat" :value="__('Mulai Istirahat')" :required="__(false)" />
+        <x-input-label for="suket.suketIstirahat.mulaiIstirahat" :value="__('Mulai Istirahat')" :required="__(false)" />
 
-        <x-select-input id="dataDaftarPoliRJ.suket.suketIstirahat.mulaiIstirahat" class="mt-1 ml-2" :disabled="$isFormLocked"
-            :error="$errors->has('dataDaftarPoliRJ.suket.suketIstirahat.mulaiIstirahat')" wire:model.live="dataDaftarPoliRJ.suket.suketIstirahat.mulaiIstirahat">
-            @foreach ($dataDaftarPoliRJ['suket']['suketIstirahat']['mulaiIstirahatOptions'] ?? [] as $option)
+        <x-select-input id="suket.suketIstirahat.mulaiIstirahat" class="mt-1 ml-2" :disabled="$isFormLocked"
+            :error="$errors->has('suket.suketIstirahat.mulaiIstirahat')" wire:model.live="suket.suketIstirahat.mulaiIstirahat">
+            @foreach ($suket['suketIstirahat']['mulaiIstirahatOptions'] ?? [] as $option)
                 @php
                     // Kompat: struktur baru ['value','label'] + fallback struktur lama ['mulaiIstirahat']
                     $optValue = $option['value'] ?? $option['mulaiIstirahat'] ?? '';
@@ -18,31 +18,31 @@
             @endforeach
         </x-select-input>
 
-        <x-input-error :messages="$errors->get('dataDaftarPoliRJ.suket.suketIstirahat.mulaiIstirahat')" class="mt-1" />
+        <x-input-error :messages="$errors->get('suket.suketIstirahat.mulaiIstirahat')" class="mt-1" />
     </div>
 
     {{-- Jumlah Hari Istirahat --}}
     <div class="sm:col-span-1">
-        <x-input-label for="dataDaftarPoliRJ.suket.suketIstirahat.suketIstirahatHari" :value="__('Jumlah Hari Istirahat')"
+        <x-input-label for="suket.suketIstirahat.suketIstirahatHari" :value="__('Jumlah Hari Istirahat')"
             :required="__(false)" />
-        <x-text-input-mou id="dataDaftarPoliRJ.suket.suketIstirahat.suketIstirahatHari" placeholder="0"
-            class="mt-1 ml-2" :error="$errors->has('dataDaftarPoliRJ.suket.suketIstirahat.suketIstirahatHari')" :disabled="$isFormLocked" :mou_label="__('Hari')"
-            wire:model.live="dataDaftarPoliRJ.suket.suketIstirahat.suketIstirahatHari" />
+        <x-text-input-mou id="suket.suketIstirahat.suketIstirahatHari" placeholder="0"
+            class="mt-1 ml-2" :error="$errors->has('suket.suketIstirahat.suketIstirahatHari')" :disabled="$isFormLocked" :mou_label="__('Hari')"
+            wire:model.live="suket.suketIstirahat.suketIstirahatHari" />
 
-        <x-input-error :messages="$errors->get('dataDaftarPoliRJ.suket.suketIstirahat.suketIstirahatHari')" class="mt-1" />
+        <x-input-error :messages="$errors->get('suket.suketIstirahat.suketIstirahatHari')" class="mt-1" />
     </div>
     </div>{{-- /grid 2 kolom --}}
 
     {{-- Keterangan Istirahat --}}
     <div class="mb-2">
-        <x-input-label for="dataDaftarPoliRJ.suket.suketIstirahat.suketIstirahat" :value="__('Keterangan')"
+        <x-input-label for="suket.suketIstirahat.suketIstirahat" :value="__('Keterangan')"
             :required="__(false)" />
 
-        <x-textarea id="dataDaftarPoliRJ.suket.suketIstirahat.suketIstirahat"
-            placeholder="Tuliskan keterangan surat istirahat pasien..." class="mt-1 ml-2 max-w-2xl" :error="$errors->has('dataDaftarPoliRJ.suket.suketIstirahat.suketIstirahat')"
-            :disabled="$isFormLocked" wire:model.live="dataDaftarPoliRJ.suket.suketIstirahat.suketIstirahat" rows="3" />
+        <x-textarea id="suket.suketIstirahat.suketIstirahat"
+            placeholder="Tuliskan keterangan surat istirahat pasien..." class="mt-1 ml-2 max-w-2xl" :error="$errors->has('suket.suketIstirahat.suketIstirahat')"
+            :disabled="$isFormLocked" wire:model.live="suket.suketIstirahat.suketIstirahat" rows="3" />
 
-        <x-input-error :messages="$errors->get('dataDaftarPoliRJ.suket.suketIstirahat.suketIstirahat')" class="mt-1" />
+        <x-input-error :messages="$errors->get('suket.suketIstirahat.suketIstirahat')" class="mt-1" />
     </div>
 
     {{-- TOMBOL CETAK --}}

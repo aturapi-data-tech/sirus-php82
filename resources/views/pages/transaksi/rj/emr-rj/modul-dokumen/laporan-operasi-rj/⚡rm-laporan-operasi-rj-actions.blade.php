@@ -25,7 +25,6 @@ new class extends Component {
     public ?string $rjNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarPoliRJ = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-laporan-operasi-rj'];
@@ -108,7 +107,6 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataRJ($this->rjNo);
             if ($data) {
-                $this->dataDaftarPoliRJ = $data;
                 $this->regNo = $data['regNo'] ?? null;
                 $this->laporanList = $data[$this->jsonKey] ?? [];
                 $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $disabled;
@@ -136,12 +134,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarPoliRJ = $data;
         $this->regNo = $data['regNo'] ?? null;
-        if (!isset($this->dataDaftarPoliRJ[$this->jsonKey]) || !is_array($this->dataDaftarPoliRJ[$this->jsonKey])) {
-            $this->dataDaftarPoliRJ[$this->jsonKey] = [];
-        }
-        $this->laporanList = $this->dataDaftarPoliRJ[$this->jsonKey];
+        $this->laporanList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
         $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-laporan-operasi-rj');
 
@@ -284,7 +278,6 @@ new class extends Component {
             $fresh[$this->jsonKey] = array_values($list);
 
             $this->updateJsonRJ((int) $this->rjNo, $fresh);
-            $this->dataDaftarPoliRJ = $fresh;
             $this->laporanList = $fresh[$this->jsonKey];
 
             $this->appendAdminLogRJ((int) $this->rjNo, $logVerb . ' Laporan Operasi — ' . ($entry['jenisTindakan'] ?: '-') . ' (' . $key . ')', 'MR');
@@ -496,7 +489,7 @@ new class extends Component {
             }
 
             $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarPoliRJ,
+                'dataRi' => $this->findDataRJ($this->rjNo) ?: [],
                 'form' => $entry,
                 'identitasRs' => $identitasRs,
                 'ttdOperatorPath' => $ttdOperatorPath,
@@ -543,7 +536,6 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRJ((int) $this->rjNo, $fresh);
-                $this->dataDaftarPoliRJ = $fresh;
                 $this->laporanList = $fresh[$this->jsonKey];
 
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Hapus Laporan Operasi — ' . $createdAt, 'MR');
@@ -591,7 +583,6 @@ new class extends Component {
                 $list[$index]['operatorTtdDate'] = '';
                 $fresh[$this->jsonKey] = array_values($list);
                 $this->updateJsonRJ((int) $this->rjNo, $fresh);
-                $this->dataDaftarPoliRJ = $fresh;
                 $this->laporanList = $fresh[$this->jsonKey];
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Buka kunci Laporan Operasi (' . $createdAt . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut, entri kembali draft', 'MR');
@@ -659,7 +650,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarPoliRJ = [];
         $this->laporanList = [];
         $this->resetNewForm();
         $this->editingKey = null;

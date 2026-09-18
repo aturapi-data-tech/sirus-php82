@@ -15,7 +15,8 @@ new class extends Component {
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
     public bool $disabled = false;
-    public array $dataDaftarPoliRJ = [];
+    /** Nama pasien untuk isian awal penanda tangan (dulu dibaca dari dokumen penuh). */
+    public ?string $regName = null;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-penundaan-pelayanan-rj'];
@@ -78,8 +79,8 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataRJ($this->rjNo);
             if ($data) {
-                $this->dataDaftarPoliRJ = $data;
                 $this->penundaanList = $data['penundaanPelayananRJ'] ?? [];
+                $this->regName = $data['regName'] ?? null;
                 $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $disabled;
             }
         }
@@ -106,12 +107,9 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarPoliRJ = $data;
-        if (!isset($this->dataDaftarPoliRJ['penundaanPelayananRJ']) || !is_array($this->dataDaftarPoliRJ['penundaanPelayananRJ'])) {
-            $this->dataDaftarPoliRJ['penundaanPelayananRJ'] = [];
-        }
-        $this->penundaanList = $this->dataDaftarPoliRJ['penundaanPelayananRJ'];
-        $this->newForm['namaPenanda'] = $this->dataDaftarPoliRJ['regName'] ?? '';
+        $this->penundaanList = is_array($data['penundaanPelayananRJ'] ?? null) ? $data['penundaanPelayananRJ'] : [];
+        $this->regName = $data['regName'] ?? null;
+        $this->newForm['namaPenanda'] = $this->regName ?? '';
         $this->isFormLocked = $this->checkEmrRJStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-penundaan-pelayanan-rj');
 
@@ -242,7 +240,7 @@ new class extends Component {
         try {
             $this->persistEntry($key, true, 'Kunci (TTD Petugas)');
             $this->resetNewForm();
-            $this->newForm['namaPenanda'] = $this->dataDaftarPoliRJ['regName'] ?? '';
+            $this->newForm['namaPenanda'] = $this->regName ?? '';
             $this->signature = '';
             $this->editingKey = null;
             $this->viewOnly = false;
@@ -316,7 +314,6 @@ new class extends Component {
             $data['penundaanPelayananRJ'] = array_values($list);
 
             $this->updateJsonRJ($this->rjNo, $data);
-            $this->dataDaftarPoliRJ = $data;
             $this->penundaanList = $data['penundaanPelayananRJ'];
 
             $this->appendAdminLogRJ((int) $this->rjNo, $logVerb . ' Penundaan Pelayanan RJ — jenis "' . ($entry['jenis'] ?: ($entry['alasan'] ?: '-')) . '" (' . $key . ')', 'MR');
@@ -415,7 +412,7 @@ new class extends Component {
     public function cancelEdit(): void
     {
         $this->resetNewForm();
-        $this->newForm['namaPenanda'] = $this->dataDaftarPoliRJ['regName'] ?? '';
+        $this->newForm['namaPenanda'] = $this->regName ?? '';
         $this->signature = '';
         $this->editingKey = null;
         $this->viewOnly = false;
@@ -494,7 +491,6 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->dataDaftarPoliRJ = $data;
                 $this->penundaanList = $data['penundaanPelayananRJ'];
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Hapus Pemberitahuan Penundaan/Kelambatan — TTD ' . $signatureDate, 'MR');
             });
@@ -537,7 +533,6 @@ new class extends Component {
                 $list[$index]['pemberiInfoDate'] = '';
                 $data['penundaanPelayananRJ'] = array_values($list);
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->dataDaftarPoliRJ = $data;
                 $this->penundaanList = $data['penundaanPelayananRJ'];
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Buka kunci Pemberitahuan Penundaan Pelayanan (' . $signatureDate . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut, entri kembali draft', 'MR');
@@ -576,7 +571,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarPoliRJ = [];
         $this->penundaanList = [];
         $this->resetNewForm();
         $this->signature = '';

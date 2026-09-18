@@ -3,13 +3,13 @@
 
     {{-- Keterangan Sehat --}}
     <div class="mb-2">
-        <x-input-label for="dataDaftarPoliRJ.suket.suketSehat.suketSehat" :value="__('Keterangan')" :required="__(false)" />
+        <x-input-label for="suket.suketSehat.suketSehat" :value="__('Keterangan')" :required="__(false)" />
 
-        <x-textarea id="dataDaftarPoliRJ.suket.suketSehat.suketSehat"
-            placeholder="Tuliskan keterangan surat sehat pasien..." class="mt-1 ml-2 max-w-2xl" :error="$errors->has('dataDaftarPoliRJ.suket.suketSehat.suketSehat')" :disabled="$isFormLocked"
-            wire:model.live="dataDaftarPoliRJ.suket.suketSehat.suketSehat" rows="3" />
+        <x-textarea id="suket.suketSehat.suketSehat"
+            placeholder="Tuliskan keterangan surat sehat pasien..." class="mt-1 ml-2 max-w-2xl" :error="$errors->has('suket.suketSehat.suketSehat')" :disabled="$isFormLocked"
+            wire:model.live="suket.suketSehat.suketSehat" rows="3" />
 
-        <x-input-error :messages="$errors->get('dataDaftarPoliRJ.suket.suketSehat.suketSehat')" class="mt-1" />
+        <x-input-error :messages="$errors->get('suket.suketSehat.suketSehat')" class="mt-1" />
     </div>
 
     {{-- TOMBOL CETAK --}}
