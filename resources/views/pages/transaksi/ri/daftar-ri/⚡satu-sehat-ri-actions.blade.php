@@ -11,7 +11,10 @@ new class extends Component {
     use EmrRITrait;
 
     public ?string $riHdrNo = null;
-    public array $dataDaftarRI = [];
+    /** Identitas pasien untuk judul panel — bukan dokumennya. */
+    public string $regName = '';
+    public string $regNoPasien = '';
+    public string $roomDesc = '';
 
     /**
      * URUTAN KANONIK "Kirim Semua". Bukan sekadar urutan tampilan — ada
@@ -148,7 +151,9 @@ new class extends Component {
         $this->antrianKirim = [];
         $this->langkahAktif = '';
         $this->riHdrNo = null;
-        $this->dataDaftarRI = [];
+        $this->regName = '';
+        $this->regNoPasien = '';
+        $this->roomDesc = '';
         $this->dispatch('close-modal', name: 'ri-satu-sehat');
     }
 
@@ -171,7 +176,9 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Inap tidak ditemukan.');
             return false;
         }
-        $this->dataDaftarRI = $data;
+        $this->regName = (string) ($data['regName'] ?? '');
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->roomDesc = (string) ($data['roomDesc'] ?? '');
         return true;
     }
 };
@@ -204,11 +211,11 @@ new class extends Component {
                                     <span class="text-sm font-normal text-muted dark:text-gray-400">— Rawat Inap</span>
                                 </h2>
                                 <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
-                                    <span class="font-semibold">{{ $dataDaftarRI['regName'] ?? '-' }}</span>
-                                    &mdash; RM: {{ $dataDaftarRI['regNo'] ?? '-' }}
+                                    <span class="font-semibold">{{ $regName ?: '-' }}</span>
+                                    &mdash; RM: {{ $regNoPasien ?: '-' }}
                                     &mdash; RI: {{ $riHdrNo ?? '-' }}
-                                    @if (!empty($dataDaftarRI['roomDesc']))
-                                        &mdash; Kamar: {{ $dataDaftarRI['roomDesc'] }}
+                                    @if (filled($roomDesc))
+                                        &mdash; Kamar: {{ $roomDesc }}
                                     @endif
                                 </p>
                             </div>
