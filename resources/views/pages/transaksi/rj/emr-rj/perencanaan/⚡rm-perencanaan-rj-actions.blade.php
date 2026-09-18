@@ -78,11 +78,6 @@ new class extends Component {
         $default = $this->getDefaultPerencanaan();
         $this->perencanaan = array_replace_recursive($default, $this->perencanaan);
     }
-
-    /* ===============================
-     | OPEN REKAM MEDIS - PERENCANAAN
-     =============================== */
-    #[On('open-rm-perencanaan-rj')]
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar + cuplikan yang disimpan. */
     private function serapDokumen(array $data): void
     {
@@ -113,6 +108,11 @@ new class extends Component {
         $this->dokumenTermuat = true;
     }
 
+
+    /* ===============================
+     | OPEN REKAM MEDIS - PERENCANAAN
+     =============================== */
+    #[On('open-rm-perencanaan-rj')]
     public function openPerencanaan($rjNo): void
     {
         if (empty($rjNo)) {

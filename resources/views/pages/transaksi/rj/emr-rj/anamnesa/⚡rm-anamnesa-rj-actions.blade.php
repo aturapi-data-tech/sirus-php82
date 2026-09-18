@@ -35,11 +35,6 @@ new class extends Component {
     // renderVersions
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-anamnesa-rj'];
-
-    /* ===============================
-     | OPEN REKAM MEDIS PERAWAT - ANAMNESA
-     =============================== */
-    #[On('open-rm-anamnesa-rj')]
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + dua penanda yang disimpan. */
     private function serapDokumen(array $data): void
     {
@@ -49,6 +44,11 @@ new class extends Component {
         $this->dokumenTermuat = true;
     }
 
+
+    /* ===============================
+     | OPEN REKAM MEDIS PERAWAT - ANAMNESA
+     =============================== */
+    #[On('open-rm-anamnesa-rj')]
     public function openAnamnesa($rjNo): void
     {
         if (empty($rjNo)) {
