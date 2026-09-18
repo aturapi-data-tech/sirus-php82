@@ -28,7 +28,6 @@ new class extends Component {
     public ?string $rjNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarUGD = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-pengkajian-pre-op-ugd'];
@@ -136,7 +135,6 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataUGD($this->rjNo);
             if ($data) {
-                $this->dataDaftarUGD = $data;
                 $this->regNo = $data['regNo'] ?? null;
                 $this->preOpList = $data[$this->jsonKey] ?? [];
                 $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
@@ -165,12 +163,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
         $this->regNo = $data['regNo'] ?? null;
-        if (!isset($this->dataDaftarUGD[$this->jsonKey]) || !is_array($this->dataDaftarUGD[$this->jsonKey])) {
-            $this->dataDaftarUGD[$this->jsonKey] = [];
-        }
-        $this->preOpList = $this->dataDaftarUGD[$this->jsonKey];
+        $this->preOpList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
         $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-pengkajian-pre-op-ugd');
 
@@ -341,7 +335,6 @@ new class extends Component {
             $fresh[$this->jsonKey] = array_values($list);
 
             $this->updateJsonUGD((int) $this->rjNo, $fresh);
-            $this->dataDaftarUGD = $fresh;
             $this->preOpList = $fresh[$this->jsonKey];
 
             $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Pengkajian Pre Operasi — ' . ($entry['rencanaOperasi'] ?: '-') . ' (' . $key . ')', 'MR');
@@ -487,7 +480,6 @@ new class extends Component {
                 $fresh[$this->jsonKey] = array_values($list);
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
                 $this->preOpList = $fresh[$this->jsonKey];
 
                 $pelaku = auth()->user()->myuser_name ?? '-';
@@ -665,7 +657,7 @@ new class extends Component {
             }
 
             $data = array_merge($pasien, $ttdPaths, [
-                'dataRi' => $this->dataDaftarUGD,
+                'dataRi' => $this->findDataUGD($this->rjNo) ?: [],
                 'form' => $entry,
                 'identitasRs' => $identitasRs,
                 'tglCetak' => Carbon::now(config('app.timezone'))->translatedFormat('d F Y'),
@@ -707,7 +699,6 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
                 $this->preOpList = $fresh[$this->jsonKey];
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Pengkajian Pre Operasi — ' . $createdAt, 'MR');
@@ -880,7 +871,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarUGD = [];
         $this->preOpList = [];
         $this->resetNewForm();
         $this->editingKey = null;

@@ -12,7 +12,18 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+    /**
+     * IRISAN dokumen: hanya cabang `suket`. Sekaligus MODEL FORM — partial tab
+     * mengikat `wire:model.live="suket.suketIstirahat.*"` langsung ke sini.
+     */
+    public array $suket = [];
+
+    /** Tanggal kunjungan — dipakai getDefaultSuket() menghitung opsi Hari Ini/Besok. */
+    public ?string $rjDate = null;
+
+    /** Penanda dokumen sudah dimuat lewat open(). rendering() mengisi $suket dengan
+     *  default walau form belum pernah dibuka, jadi empty($suket) TIDAK sah jadi guard. */
+    public bool $dokumenTermuat = false;
 
     // Tab aktif (Suket Sehat / Suket Istirahat) — di-entangle ke Alpine supaya
     // tidak balik ke default saat re-render (incrementVersion) sesudah Simpan.
@@ -41,8 +52,7 @@ new class extends Component {
     public function rendering(): void
     {
         $default = $this->getDefaultSuket();
-        $current = $this->dataDaftarUGD['suket'] ?? [];
-        $this->dataDaftarUGD['suket'] = array_replace_recursive($default, $current);
+        $this->suket = array_replace_recursive($default, $this->suket);
     }
 
     /* ===============================
@@ -65,18 +75,19 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
-
-        $this->dataDaftarUGD['suket'] ??= $this->getDefaultSuket();
+        // rjDate DULU: getDefaultSuket() membacanya untuk opsi Hari Ini/Besok.
+        $this->rjDate = $data['rjDate'] ?? null;
+        $this->suket = $data['suket'] ?? $this->getDefaultSuket();
+        $this->dokumenTermuat = true;
 
         // Normalisasi data legacy:
         // - Regenerate mulaiIstirahatOptions ke struktur baru ([value, label])
         // - Strip suffix " (Hari Ini)"/" (Besok)" dari mulaiIstirahat agar Carbon parse aman
         $fresh = $this->getDefaultSuket();
-        $this->dataDaftarUGD['suket']['suketIstirahat']['mulaiIstirahatOptions']
+        $this->suket['suketIstirahat']['mulaiIstirahatOptions']
             = $fresh['suketIstirahat']['mulaiIstirahatOptions'];
-        $mulai = (string) ($this->dataDaftarUGD['suket']['suketIstirahat']['mulaiIstirahat'] ?? '');
-        $this->dataDaftarUGD['suket']['suketIstirahat']['mulaiIstirahat']
+        $mulai = (string) ($this->suket['suketIstirahat']['mulaiIstirahat'] ?? '');
+        $this->suket['suketIstirahat']['mulaiIstirahat']
             = trim(preg_replace('/\s*\(.+?\)\s*$/', '', $mulai)) ?: $fresh['suketIstirahat']['mulaiIstirahat'];
 
         $this->isFormLocked = $this->checkEmrUGDStatus($rjNo);
@@ -89,22 +100,22 @@ new class extends Component {
     protected function rules(): array
     {
         return [
-            'dataDaftarUGD.suket.suketIstirahat.suketIstirahatHari' => 'nullable|integer|min:1',
+            'suket.suketIstirahat.suketIstirahatHari' => 'nullable|integer|min:1',
         ];
     }
 
     protected function messages(): array
     {
         return [
-            'dataDaftarUGD.suket.suketIstirahat.suketIstirahatHari.integer' => ':attribute harus berupa angka.',
-            'dataDaftarUGD.suket.suketIstirahat.suketIstirahatHari.min' => ':attribute minimal 1 hari.',
+            'suket.suketIstirahat.suketIstirahatHari.integer' => ':attribute harus berupa angka.',
+            'suket.suketIstirahat.suketIstirahatHari.min' => ':attribute minimal 1 hari.',
         ];
     }
 
     protected function validationAttributes(): array
     {
         return [
-            'dataDaftarUGD.suket.suketIstirahat.suketIstirahatHari' => 'Jumlah Hari Istirahat',
+            'suket.suketIstirahat.suketIstirahatHari' => 'Jumlah Hari Istirahat',
         ];
     }
 
@@ -137,10 +148,9 @@ new class extends Component {
                 $isBaru = empty($data['suket']);
 
                 // 3. Patch hanya key suket
-                $data['suket'] = $this->dataDaftarUGD['suket'] ?? [];
+                $data['suket'] = $this->suket;
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
 
                 $this->appendAdminLogUGD((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' Surat Keterangan UGD — mulai istirahat ' . ($data['suket']['suketIstirahat']['mulaiIstirahat'] ?? '-'), 'MR');
             });
@@ -175,7 +185,7 @@ new class extends Component {
     private function getDefaultSuket(): array
     {
         try {
-            $rjDate = Carbon::createFromFormat('d/m/Y H:i:s', $this->dataDaftarUGD['rjDate'] ?? '');
+            $rjDate = Carbon::createFromFormat('d/m/Y H:i:s', $this->rjDate ?? '');
         } catch (\Throwable) {
             $rjDate = Carbon::now(config('app.timezone'));
         }
@@ -231,6 +241,7 @@ new class extends Component {
     protected function resetForm(): void
     {
         $this->resetVersion();
+        $this->dokumenTermuat = false;
         $this->isFormLocked = false;
     }
 };
@@ -271,7 +282,7 @@ new class extends Component {
                     <x-modul-dokumen.banner jenis="terkunci" />
                 @endif
 
-                @if (isset($dataDaftarUGD['suket']))
+                @if ($dokumenTermuat)
                     <div class="w-full">
                         <div x-data="{ activeTab: @entangle('suketActiveTab') }" class="w-full">
 
@@ -280,15 +291,15 @@ new class extends Component {
                                 <div class="flex flex-nowrap w-full gap-2 -mb-px">
 
                                     <x-tab variant="underline"
-                                        active-expr="activeTab === '{{ $dataDaftarUGD['suket']['suketSehatTab'] ?? 'Suket Sehat' }}'"
-                                        x-on:click="activeTab = '{{ $dataDaftarUGD['suket']['suketSehatTab'] ?? 'Suket Sehat' }}'">
-                                        {{ $dataDaftarUGD['suket']['suketSehatTab'] ?? 'Suket Sehat' }}
+                                        active-expr="activeTab === '{{ $suket['suketSehatTab'] ?? 'Suket Sehat' }}'"
+                                        x-on:click="activeTab = '{{ $suket['suketSehatTab'] ?? 'Suket Sehat' }}'">
+                                        {{ $suket['suketSehatTab'] ?? 'Suket Sehat' }}
                                     </x-tab>
 
                                     <x-tab variant="underline"
-                                        active-expr="activeTab === '{{ $dataDaftarUGD['suket']['suketIstirahatTab'] ?? 'Suket Istirahat' }}'"
-                                        x-on:click="activeTab = '{{ $dataDaftarUGD['suket']['suketIstirahatTab'] ?? 'Suket Istirahat' }}'">
-                                        {{ $dataDaftarUGD['suket']['suketIstirahatTab'] ?? 'Suket Istirahat' }}
+                                        active-expr="activeTab === '{{ $suket['suketIstirahatTab'] ?? 'Suket Istirahat' }}'"
+                                        x-on:click="activeTab = '{{ $suket['suketIstirahatTab'] ?? 'Suket Istirahat' }}'">
+                                        {{ $suket['suketIstirahatTab'] ?? 'Suket Istirahat' }}
                                     </x-tab>
 
                                 </div>
@@ -297,16 +308,16 @@ new class extends Component {
                             {{-- TAB CONTENTS --}}
                             <div class="w-full p-4">
 
-                                @if (isset($dataDaftarUGD['suket']['suketSehatTab']))
+                                @if (isset($suket['suketSehatTab']))
                                     <div class="w-full"
-                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarUGD['suket']['suketSehatTab'] ?? 'Suket Sehat' }}'">
+                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $suket['suketSehatTab'] ?? 'Suket Sehat' }}'">
                                         @include('pages.transaksi.ugd.emr-ugd.modul-dokumen.suket-ugd.tabs.suket-sehat-ugd-tab')
                                     </div>
                                 @endif
 
-                                @if (isset($dataDaftarUGD['suket']['suketIstirahatTab']))
+                                @if (isset($suket['suketIstirahatTab']))
                                     <div class="w-full"
-                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $dataDaftarUGD['suket']['suketIstirahatTab'] ?? 'Suket Istirahat' }}'">
+                                        x-show.transition.in.opacity.duration.600="activeTab === '{{ $suket['suketIstirahatTab'] ?? 'Suket Istirahat' }}'">
                                         @include('pages.transaksi.ugd.emr-ugd.modul-dokumen.suket-ugd.tabs.suket-istirahat-ugd-tab')
                                     </div>
                                 @endif

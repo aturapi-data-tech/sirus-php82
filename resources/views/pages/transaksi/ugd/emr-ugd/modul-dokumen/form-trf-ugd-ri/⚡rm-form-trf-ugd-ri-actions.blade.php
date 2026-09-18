@@ -15,7 +15,36 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+    /**
+     * IRISAN dokumen: hanya cabang `trfUgd` — sekaligus model form
+     * (jalur validasi & wire:model kini `trfUgd.*`).
+     */
+    public array $trfUgd = [];
+
+    /**
+     * Empat nilai rekam medis yang dipakai getDefaultTrfUgd() sebagai isian awal.
+     * BENTUKNYA sengaja meniru dokumen (bersarang) supaya helper itu tak perlu diubah —
+     * dia tetap memanggil data_get('anamnesa.alergi.alergi') dan kawan-kawan.
+     */
+    public array $sumberTrf = [];
+
+    /** Penanda kunjungan sudah dimuat lewat openTrfUgdRi(). */
+    public bool $dokumenTermuat = false;
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + empat nilai sumber disimpan. */
+    private function serapIrisan(array $data): void
+    {
+        $this->trfUgd = $data['trfUgd'] ?? [];
+        $this->sumberTrf = [
+            'diagnosisFreeText' => data_get($data, 'diagnosisFreeText', ''),
+            'anamnesa' => [
+                'alergi' => ['alergi' => data_get($data, 'anamnesa.alergi.alergi', '')],
+                'keluhanUtama' => ['keluhanUtama' => data_get($data, 'anamnesa.keluhanUtama.keluhanUtama', '')],
+            ],
+            'perencanaan' => ['terapi' => ['terapi' => data_get($data, 'perencanaan.terapi.terapi', '')]],
+        ];
+        $this->dokumenTermuat = true;
+    }
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-trf-ugd-ri'];
@@ -65,9 +94,7 @@ new class extends Component {
 
     public function rendering(): void
     {
-        $default = $this->getDefaultTrfUgd($this->dataDaftarUGD);
-        $current = $this->dataDaftarUGD['trfUgd'] ?? [];
-        $this->dataDaftarUGD['trfUgd'] = array_replace_recursive($default, $current);
+        $this->trfUgd = array_replace_recursive($this->getDefaultTrfUgd($this->sumberTrf), $this->trfUgd);
     }
 
     /* ===============================
@@ -113,19 +140,19 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
-        $this->dataDaftarUGD['trfUgd'] ??= $this->getDefaultTrfUgd($data);
+        $this->serapIrisan($data);
+        $this->trfUgd = $this->trfUgd ?: $this->getDefaultTrfUgd($data);
 
         // Ruangan asal defaultnya UGD, TAPI hanya diisikan bila masih kosong. Dulu baris
         // ini menimpa tanpa syarat, sehingga ruangan asal yang sudah diperbaiki petugas
         // (IGD punya lebih dari satu ruangan: Gawat Darurat, Isolasi IGD) kembali jadi
         // 'UGD' tiap kali form dibuka ulang.
-        if (blank($this->dataDaftarUGD['trfUgd']['pindahDariRuangan'] ?? null)) {
-            $this->dataDaftarUGD['trfUgd']['pindahDariRuangan'] = 'UGD';
+        if (blank($this->trfUgd['pindahDariRuangan'] ?? null)) {
+            $this->trfUgd['pindahDariRuangan'] = 'UGD';
         }
 
         // Sync top-level variables dari nested data
-        $this->kondisiKlinis = (int) ($this->dataDaftarUGD['trfUgd']['kondisiKlinis'] ?? 0);
+        $this->kondisiKlinis = (int) ($this->trfUgd['kondisiKlinis'] ?? 0);
         $this->levelDokterSelected = $this->levelingDokter['levelDokter'] ?? 'Utama';
 
         // Final-locked kalau kedua TTD sudah ada — terkunci permanen meskipun EMR belum locked
@@ -136,8 +163,8 @@ new class extends Component {
     /** Cek apakah form sudah final (kedua TTD ada) → terkunci permanen */
     public function isFinalSigned(): bool
     {
-        return !empty($this->dataDaftarUGD['trfUgd']['petugasPengirim'])
-            && !empty($this->dataDaftarUGD['trfUgd']['petugasPenerima']);
+        return !empty($this->trfUgd['petugasPengirim'])
+            && !empty($this->trfUgd['petugasPenerima']);
     }
 
     /** Buka modal form transfer (dari kartu ringkasan di tab). */
@@ -199,7 +226,7 @@ new class extends Component {
     public function updated(string $name, mixed $value): void
     {
         if ($name === 'kondisiKlinis') {
-            $this->dataDaftarUGD['trfUgd']['kondisiKlinis'] = (int) $value;
+            $this->trfUgd['kondisiKlinis'] = (int) $value;
         }
 
         if ($name === 'levelDokterSelected') {
@@ -230,10 +257,10 @@ new class extends Component {
                 // Tangkap status sebelum overwrite (untuk verb log Buat/Update)
                 $isBaru = empty($data['trfUgd']);
 
-                $data['trfUgd'] = array_replace($data['trfUgd'] ?? [], $this->dataDaftarUGD['trfUgd'] ?? []);
+                $data['trfUgd'] = array_replace($data['trfUgd'] ?? [], $this->trfUgd ?? []);
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->serapIrisan($data);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' Form Transfer UGD→RI (pindah ke ' . ($data['trfUgd']['pindahKeRuangan'] ?: '-') . ', tgl pindah ' . ($data['trfUgd']['tglPindah'] ?: '-') . ')', 'MR');
             });
@@ -260,7 +287,7 @@ new class extends Component {
         $this->levelingDokter['tglEntry'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
         $this->validate();
 
-        $exists = collect($this->dataDaftarUGD['trfUgd']['levelingDokter'] ?? [])->firstWhere('tglEntry', $this->levelingDokter['tglEntry']);
+        $exists = collect($this->trfUgd['levelingDokter'] ?? [])->firstWhere('tglEntry', $this->levelingDokter['tglEntry']);
 
         if ($exists) {
             $this->dispatch('toast', type: 'error', message: 'Data leveling dokter pada waktu tersebut sudah ada.');
@@ -277,7 +304,7 @@ new class extends Component {
                 }
 
                 // Pertahankan field yang sudah diketik user tapi belum di-Simpan (samakan perilaku dengan save())
-                $data['trfUgd'] = array_replace($data['trfUgd'] ?? [], $this->dataDaftarUGD['trfUgd'] ?? []);
+                $data['trfUgd'] = array_replace($data['trfUgd'] ?? [], $this->trfUgd ?? []);
 
                 $data['trfUgd']['levelingDokter'][] = [
                     'drId' => $this->levelingDokter['drId'],
@@ -296,7 +323,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->serapIrisan($data);
             });
 
             $this->resetLevelingDokter();
@@ -328,7 +355,7 @@ new class extends Component {
                 }
 
                 // Pertahankan field yang sudah diketik user tapi belum di-Simpan (samakan perilaku dengan save())
-                $data['trfUgd'] = array_replace($data['trfUgd'] ?? [], $this->dataDaftarUGD['trfUgd'] ?? []);
+                $data['trfUgd'] = array_replace($data['trfUgd'] ?? [], $this->trfUgd ?? []);
 
                 $deletedDok = collect($data['trfUgd']['levelingDokter'] ?? [])
                     ->firstWhere('tglEntry', $tglEntry);
@@ -347,7 +374,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->serapIrisan($data);
             });
 
             $this->incrementVersion('modal-trf-ugd-ri');
@@ -381,7 +408,7 @@ new class extends Component {
                 }
 
                 // Pertahankan field yang sudah diketik user tapi belum di-Simpan (samakan perilaku dengan save())
-                $data['trfUgd'] = array_replace($data['trfUgd'] ?? [], $this->dataDaftarUGD['trfUgd'] ?? []);
+                $data['trfUgd'] = array_replace($data['trfUgd'] ?? [], $this->trfUgd ?? []);
 
                 $list = &$data['trfUgd']['levelingDokter'];
                 foreach ($list as &$item) {
@@ -403,7 +430,7 @@ new class extends Component {
                 unset($item);
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->serapIrisan($data);
             });
 
             $this->incrementVersion('modal-trf-ugd-ri');
@@ -436,7 +463,7 @@ new class extends Component {
                 }
 
                 // Pertahankan field yang sudah diketik user tapi belum di-Simpan (samakan perilaku dengan save())
-                $data['trfUgd'] = array_replace($data['trfUgd'] ?? [], $this->dataDaftarUGD['trfUgd'] ?? []);
+                $data['trfUgd'] = array_replace($data['trfUgd'] ?? [], $this->trfUgd ?? []);
 
                 $data['trfUgd']['alatYangTerpasang'][] = [
                     'jenis' => trim($this->alat['jenis']),
@@ -446,7 +473,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->serapIrisan($data);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Tambah alat terpasang Form Transfer UGD→RI: ' . trim($this->alat['jenis']), 'MR');
             });
@@ -480,7 +507,7 @@ new class extends Component {
                 }
 
                 // Pertahankan field yang sudah diketik user tapi belum di-Simpan (samakan perilaku dengan save())
-                $data['trfUgd'] = array_replace($data['trfUgd'] ?? [], $this->dataDaftarUGD['trfUgd'] ?? []);
+                $data['trfUgd'] = array_replace($data['trfUgd'] ?? [], $this->trfUgd ?? []);
 
                 $deletedAlat = $data['trfUgd']['alatYangTerpasang'][$index]['jenis'] ?? '-';
 
@@ -490,7 +517,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->serapIrisan($data);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus alat terpasang Form Transfer UGD→RI: ' . $deletedAlat, 'MR');
             });
@@ -513,7 +540,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Form terkunci.');
             return;
         }
-        if (!empty($this->dataDaftarUGD['trfUgd']['petugasPengirim'])) {
+        if (!empty($this->trfUgd['petugasPengirim'])) {
             $this->dispatch('toast', type: 'error', message: 'Petugas Pengirim sudah diisi sebelumnya.');
             return;
         }
@@ -521,32 +548,32 @@ new class extends Component {
         // Validasi kelengkapan area KIRIM sebelum TTD (rules; save biasa tetap draft/boleh tak lengkap)
         // TTV wajib meniru RJ pemeriksaan: Nadi, Nafas, Suhu (sistolik/diastolik/spo2/gda opsional).
         $this->validateWithToast([
-            'dataDaftarUGD.trfUgd.pindahKeRuangan' => 'required',
-            'dataDaftarUGD.trfUgd.tglPindah' => 'required',
-            'dataDaftarUGD.trfUgd.alasanPindah' => 'required',
-            'dataDaftarUGD.trfUgd.metodePemindahanPasien' => 'required',
-            'dataDaftarUGD.trfUgd.levelingDokter' => 'required|array|min:1',
-            'dataDaftarUGD.trfUgd.kondisiSaatDikirim.frekuensiNadi' => 'required',
-            'dataDaftarUGD.trfUgd.kondisiSaatDikirim.frekuensiNafas' => 'required',
-            'dataDaftarUGD.trfUgd.kondisiSaatDikirim.suhu' => 'required',
+            'trfUgd.pindahKeRuangan' => 'required',
+            'trfUgd.tglPindah' => 'required',
+            'trfUgd.alasanPindah' => 'required',
+            'trfUgd.metodePemindahanPasien' => 'required',
+            'trfUgd.levelingDokter' => 'required|array|min:1',
+            'trfUgd.kondisiSaatDikirim.frekuensiNadi' => 'required',
+            'trfUgd.kondisiSaatDikirim.frekuensiNafas' => 'required',
+            'trfUgd.kondisiSaatDikirim.suhu' => 'required',
         ], [
             'required' => ':attribute wajib diisi sebelum TTD Pengirim.',
             'array' => ':attribute wajib diisi sebelum TTD Pengirim.',
             'min' => ':attribute wajib diisi (min. 1) sebelum TTD Pengirim.',
         ], [
-            'dataDaftarUGD.trfUgd.pindahKeRuangan' => 'Pindah ke Ruangan',
-            'dataDaftarUGD.trfUgd.tglPindah' => 'Tanggal/Jam Pindah',
-            'dataDaftarUGD.trfUgd.alasanPindah' => 'Alasan Pindah',
-            'dataDaftarUGD.trfUgd.metodePemindahanPasien' => 'Metode Pemindahan Pasien',
-            'dataDaftarUGD.trfUgd.levelingDokter' => 'Leveling Dokter',
-            'dataDaftarUGD.trfUgd.kondisiSaatDikirim.frekuensiNadi' => 'Nadi (saat dikirim)',
-            'dataDaftarUGD.trfUgd.kondisiSaatDikirim.frekuensiNafas' => 'Nafas (saat dikirim)',
-            'dataDaftarUGD.trfUgd.kondisiSaatDikirim.suhu' => 'Suhu (saat dikirim)',
+            'trfUgd.pindahKeRuangan' => 'Pindah ke Ruangan',
+            'trfUgd.tglPindah' => 'Tanggal/Jam Pindah',
+            'trfUgd.alasanPindah' => 'Alasan Pindah',
+            'trfUgd.metodePemindahanPasien' => 'Metode Pemindahan Pasien',
+            'trfUgd.levelingDokter' => 'Leveling Dokter',
+            'trfUgd.kondisiSaatDikirim.frekuensiNadi' => 'Nadi (saat dikirim)',
+            'trfUgd.kondisiSaatDikirim.frekuensiNafas' => 'Nafas (saat dikirim)',
+            'trfUgd.kondisiSaatDikirim.suhu' => 'Suhu (saat dikirim)',
         ]);
 
-        $this->dataDaftarUGD['trfUgd']['petugasPengirim'] = auth()->user()->myuser_name ?? '';
-        $this->dataDaftarUGD['trfUgd']['petugasPengirimCode'] = auth()->user()->myuser_code ?? '';
-        $this->dataDaftarUGD['trfUgd']['petugasPengirimDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+        $this->trfUgd['petugasPengirim'] = auth()->user()->myuser_name ?? '';
+        $this->trfUgd['petugasPengirimCode'] = auth()->user()->myuser_code ?? '';
+        $this->trfUgd['petugasPengirimDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
         $this->save();
     }
 
@@ -556,29 +583,29 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Form terkunci.');
             return;
         }
-        if (empty($this->dataDaftarUGD['trfUgd']['petugasPengirim'])) {
+        if (empty($this->trfUgd['petugasPengirim'])) {
             $this->dispatch('toast', type: 'error', message: 'Petugas Pengirim harus TTD terlebih dahulu.');
             return;
         }
-        if (!empty($this->dataDaftarUGD['trfUgd']['petugasPenerima'])) {
+        if (!empty($this->trfUgd['petugasPenerima'])) {
             $this->dispatch('toast', type: 'error', message: 'Petugas Penerima sudah diisi sebelumnya.');
             return;
         }
 
         // Validasi TTV area TERIMA sebelum TTD (rules; tiru RJ: Nadi, Nafas, Suhu)
         $this->validateWithToast([
-            'dataDaftarUGD.trfUgd.kondisiSaatDiterima.frekuensiNadi' => 'required',
-            'dataDaftarUGD.trfUgd.kondisiSaatDiterima.frekuensiNafas' => 'required',
-            'dataDaftarUGD.trfUgd.kondisiSaatDiterima.suhu' => 'required',
+            'trfUgd.kondisiSaatDiterima.frekuensiNadi' => 'required',
+            'trfUgd.kondisiSaatDiterima.frekuensiNafas' => 'required',
+            'trfUgd.kondisiSaatDiterima.suhu' => 'required',
         ], ['required' => ':attribute wajib diisi sebelum TTD Penerima.'], [
-            'dataDaftarUGD.trfUgd.kondisiSaatDiterima.frekuensiNadi' => 'Nadi (saat diterima)',
-            'dataDaftarUGD.trfUgd.kondisiSaatDiterima.frekuensiNafas' => 'Nafas (saat diterima)',
-            'dataDaftarUGD.trfUgd.kondisiSaatDiterima.suhu' => 'Suhu (saat diterima)',
+            'trfUgd.kondisiSaatDiterima.frekuensiNadi' => 'Nadi (saat diterima)',
+            'trfUgd.kondisiSaatDiterima.frekuensiNafas' => 'Nafas (saat diterima)',
+            'trfUgd.kondisiSaatDiterima.suhu' => 'Suhu (saat diterima)',
         ]);
 
-        $this->dataDaftarUGD['trfUgd']['petugasPenerima'] = auth()->user()->myuser_name ?? '';
-        $this->dataDaftarUGD['trfUgd']['petugasPenerimaCode'] = auth()->user()->myuser_code ?? '';
-        $this->dataDaftarUGD['trfUgd']['petugasPenerimaDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+        $this->trfUgd['petugasPenerima'] = auth()->user()->myuser_name ?? '';
+        $this->trfUgd['petugasPenerimaCode'] = auth()->user()->myuser_code ?? '';
+        $this->trfUgd['petugasPenerimaDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
         $this->save();
 
         // Setelah TTD penerima, re-evaluate lock — kalau pengirim juga ada, form jadi final-locked
@@ -593,7 +620,7 @@ new class extends Component {
      =============================== */
     public function setTglPindah(): void
     {
-        $this->dataDaftarUGD['trfUgd']['tglPindah'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
+        $this->trfUgd['tglPindah'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
         $this->incrementVersion('modal-trf-ugd-ri');
     }
 
@@ -667,7 +694,9 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarUGD = [];
+        $this->trfUgd = [];
+        $this->sumberTrf = [];
+        $this->dokumenTermuat = false;
         $this->kondisiKlinis = 0;
         $this->levelDokterSelected = 'Utama';
         $this->reset(['levelingDokter', 'alat']);
@@ -679,7 +708,7 @@ new class extends Component {
 <div>
     {{-- ══ RINGKASAN + TOMBOL BUKA (tampilan tab, pola General Consent) ══ --}}
     @php
-        $trf = $dataDaftarUGD['trfUgd'] ?? [];
+        $trf = $trfUgd ?? [];
         $trfKirim = !empty($trf['petugasPengirim']);
         $trfTerima = !empty($trf['petugasPenerima']);
     @endphp
@@ -798,7 +827,7 @@ new class extends Component {
                 </x-modul-dokumen.banner>
             @endif
 
-            @if (isset($dataDaftarUGD['trfUgd']))
+            @if ($dokumenTermuat)
 
                 {{-- ══ RINGKASAN KLINIS ══ --}}
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -809,17 +838,17 @@ new class extends Component {
                         <div class="space-y-3">
                             <div>
                                 <x-input-label value="Keluhan Utama" class="mb-1" />
-                                <x-textarea wire:model.live="dataDaftarUGD.trfUgd.keluhanUtama" :error="$errors->has('dataDaftarUGD.trfUgd.keluhanUtama')" rows="3"
+                                <x-textarea wire:model.live="trfUgd.keluhanUtama" :error="$errors->has('trfUgd.keluhanUtama')" rows="3"
                                     :disabled="$isFormLocked" />
                             </div>
                             <div>
                                 <x-input-label value="Temuan Signifikan" class="mb-1" />
-                                <x-textarea wire:model.live="dataDaftarUGD.trfUgd.temuanSignifikan" :error="$errors->has('dataDaftarUGD.trfUgd.temuanSignifikan')" rows="3"
+                                <x-textarea wire:model.live="trfUgd.temuanSignifikan" :error="$errors->has('trfUgd.temuanSignifikan')" rows="3"
                                     :disabled="$isFormLocked" />
                             </div>
                             <div>
                                 <x-input-label value="Alergi" class="mb-1" />
-                                <x-textarea wire:model.live="dataDaftarUGD.trfUgd.alergi" :error="$errors->has('dataDaftarUGD.trfUgd.alergi')" rows="2" :disabled="$isFormLocked" />
+                                <x-textarea wire:model.live="trfUgd.alergi" :error="$errors->has('trfUgd.alergi')" rows="2" :disabled="$isFormLocked" />
                             </div>
                         </div>
                     </div>
@@ -831,12 +860,12 @@ new class extends Component {
                         <div class="space-y-3">
                             <div>
                                 <x-input-label value="Diagnosis (Free Text)" class="mb-1" />
-                                <x-textarea wire:model.live="dataDaftarUGD.trfUgd.diagnosisFreeText" :error="$errors->has('dataDaftarUGD.trfUgd.diagnosisFreeText')" rows="3"
+                                <x-textarea wire:model.live="trfUgd.diagnosisFreeText" :error="$errors->has('trfUgd.diagnosisFreeText')" rows="3"
                                     :disabled="$isFormLocked" />
                             </div>
                             <div>
                                 <x-input-label value="Terapi UGD" class="mb-1" />
-                                <x-textarea wire:model.live="dataDaftarUGD.trfUgd.terapiUgd" :error="$errors->has('dataDaftarUGD.trfUgd.terapiUgd')" rows="3"
+                                <x-textarea wire:model.live="trfUgd.terapiUgd" :error="$errors->has('trfUgd.terapiUgd')" rows="3"
                                     placeholder="Tuliskan terapi UGD..." :disabled="$isFormLocked" />
                             </div>
                         </div>
@@ -848,7 +877,7 @@ new class extends Component {
                     <h3 class="mb-3 text-base font-semibold text-body dark:text-gray-300">Leveling Dokter</h3>
 
                     {{-- Tabel Leveling Dokter --}}
-                    @php $levelingList = $dataDaftarUGD['trfUgd']['levelingDokter'] ?? []; @endphp
+                    @php $levelingList = $trfUgd['levelingDokter'] ?? []; @endphp
 
                     @if (count($levelingList) > 0)
                         <div class="mt-3 overflow-x-auto">
@@ -976,12 +1005,12 @@ new class extends Component {
                                          (Gawat Darurat, Isolasi IGD). Record lama hanya menyimpan teks 'UGD'
                                          tanpa id — itulah gunanya nama-awal, supaya nilainya tetap terbaca
                                          sampai petugas memilih ruangan sungguhan. --}}
-                                    <x-ruangan-combobox wire-model="dataDaftarUGD.trfUgd.pindahDariRoomId"
-                                        wire-model-nama="dataDaftarUGD.trfUgd.pindahDariRuangan"
+                                    <x-ruangan-combobox wire-model="trfUgd.pindahDariRoomId"
+                                        wire-model-nama="trfUgd.pindahDariRuangan"
                                         enter-action="$wire.save()"
                                         placeholder="Ketik nama ruangan asal…" />
                                 @else
-                                    <x-text-input :value="$dataDaftarUGD['trfUgd']['pindahDariRuangan'] ?? 'UGD'" disabled
+                                    <x-text-input :value="$trfUgd['pindahDariRuangan'] ?? 'UGD'" disabled
                                         class="w-full bg-surface-soft dark:bg-gray-800" />
                                 @endif
                             </div>
@@ -992,22 +1021,22 @@ new class extends Component {
                                          pasien ke unit penunjang (radiologi/lab/OK), komponennya sudah siap —
                                          pakai sumber="poli" + hanya="<id unit>" di form tujuannya sendiri,
                                          jangan melebarkan daftar form transfer ini. --}}
-                                    <x-ruangan-combobox wire-model="dataDaftarUGD.trfUgd.pindahKeRoomId"
-                                        wire-model-nama="dataDaftarUGD.trfUgd.pindahKeRuangan"
+                                    <x-ruangan-combobox wire-model="trfUgd.pindahKeRoomId"
+                                        wire-model-nama="trfUgd.pindahKeRuangan"
                                         enter-action="$wire.save()"
-                                        :error="$errors->has('dataDaftarUGD.trfUgd.pindahKeRuangan')"
+                                        :error="$errors->has('trfUgd.pindahKeRuangan')"
                                         placeholder="Ketik nama ruangan tujuan…" />
                                 @else
-                                    <x-text-input :value="($dataDaftarUGD['trfUgd']['pindahKeRuangan'] ?? '') .
-                                        (!empty($dataDaftarUGD['trfUgd']['pindahKeBedNo'])
-                                            ? ' — Bed ' . $dataDaftarUGD['trfUgd']['pindahKeBedNo']
+                                    <x-text-input :value="($trfUgd['pindahKeRuangan'] ?? '') .
+                                        (!empty($trfUgd['pindahKeBedNo'])
+                                            ? ' — Bed ' . $trfUgd['pindahKeBedNo']
                                             : '')" disabled class="w-full" />
                                 @endif
-                                @if (!empty($dataDaftarUGD['trfUgd']['pindahKeRoomId']))
+                                @if (!empty($trfUgd['pindahKeRoomId']))
                                     <div class="flex gap-2 mt-1 text-sm text-muted">
-                                        <span>ID: {{ $dataDaftarUGD['trfUgd']['pindahKeRoomId'] }}</span>
-                                        @if (!empty($dataDaftarUGD['trfUgd']['pindahKeBedNo']))
-                                            <span>• Bed: {{ $dataDaftarUGD['trfUgd']['pindahKeBedNo'] }}</span>
+                                        <span>ID: {{ $trfUgd['pindahKeRoomId'] }}</span>
+                                        @if (!empty($trfUgd['pindahKeBedNo']))
+                                            <span>• Bed: {{ $trfUgd['pindahKeBedNo'] }}</span>
                                         @endif
                                     </div>
                                 @endif
@@ -1015,7 +1044,7 @@ new class extends Component {
                             <div>
                                 <x-input-label value="Tanggal / Jam Pindah" class="mb-1" />
                                 <div class="flex items-center gap-2">
-                                    <x-text-input wire:model.live="dataDaftarUGD.trfUgd.tglPindah" :error="$errors->has('dataDaftarUGD.trfUgd.tglPindah')"
+                                    <x-text-input wire:model.live="trfUgd.tglPindah" :error="$errors->has('trfUgd.tglPindah')"
                                         placeholder="dd/mm/yyyy hh:mm:ss" class="grow" :disabled="$isFormLocked" />
                                     @if (!$isFormLocked)
                                         <x-now-button wire:click="setTglPindah" />
@@ -1024,12 +1053,12 @@ new class extends Component {
                             </div>
                             <div>
                                 <x-input-label value="Alasan Pindah" class="mb-1" />
-                                <x-textarea wire:model.live="dataDaftarUGD.trfUgd.alasanPindah" :error="$errors->has('dataDaftarUGD.trfUgd.alasanPindah')" rows="2"
+                                <x-textarea wire:model.live="trfUgd.alasanPindah" :error="$errors->has('trfUgd.alasanPindah')" rows="2"
                                     :disabled="$isFormLocked" />
                             </div>
                             <div>
                                 <x-input-label value="Metode Pemindahan" class="mb-1" />
-                                <x-textarea wire:model.live="dataDaftarUGD.trfUgd.metodePemindahanPasien" :error="$errors->has('dataDaftarUGD.trfUgd.metodePemindahanPasien')" rows="2"
+                                <x-textarea wire:model.live="trfUgd.metodePemindahanPasien" :error="$errors->has('trfUgd.metodePemindahanPasien')" rows="2"
                                     placeholder="Brankar / Kursi roda / Jalan sendiri..." :disabled="$isFormLocked" />
                             </div>
                         </div>
@@ -1080,12 +1109,12 @@ new class extends Component {
                             </div>
                             <div>
                                 <x-input-label value="Fasilitas yang Dibutuhkan" class="mb-1" />
-                                <x-textarea wire:model.live="dataDaftarUGD.trfUgd.fasilitas" :error="$errors->has('dataDaftarUGD.trfUgd.fasilitas')" rows="2"
+                                <x-textarea wire:model.live="trfUgd.fasilitas" :error="$errors->has('trfUgd.fasilitas')" rows="2"
                                     :disabled="$isFormLocked" />
                             </div>
                             <div>
                                 <x-input-label value="Fasilitas Pendukung" class="mb-1" />
-                                <x-textarea wire:model.live="dataDaftarUGD.trfUgd.fasilitasPendukung" :error="$errors->has('dataDaftarUGD.trfUgd.fasilitasPendukung')" rows="2"
+                                <x-textarea wire:model.live="trfUgd.fasilitasPendukung" :error="$errors->has('trfUgd.fasilitasPendukung')" rows="2"
                                     :disabled="$isFormLocked" />
                             </div>
                         </div>
@@ -1093,7 +1122,7 @@ new class extends Component {
                 </div>
 
                 {{-- Penerima hanya boleh mengisi bagiannya setelah pengirim TTD (pola serah-terima RI) --}}
-                @php $disableTerima = $isFormLocked || empty($dataDaftarUGD['trfUgd']['petugasPengirim'] ?? ''); @endphp
+                @php $disableTerima = $isFormLocked || empty($trfUgd['petugasPengirim'] ?? ''); @endphp
 
                 {{-- ══ KONDISI TTV ══ --}}
                 <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -1112,8 +1141,8 @@ new class extends Component {
                                                 class="!text-sm whitespace-nowrap" />
                                             {{-- TTV numerik: .blur (bukan .live) untuk hindari digit hilang saat ketik cepat --}}
                                             <x-text-input
-                                                wire:model.blur="dataDaftarUGD.trfUgd.{{ $sec['key'] }}.{{ $ttv['field'] }}"
-                                                :error="$errors->has('dataDaftarUGD.trfUgd.' . $sec['key'] . '.' . $ttv['field'])"
+                                                wire:model.blur="trfUgd.{{ $sec['key'] }}.{{ $ttv['field'] }}"
+                                                :error="$errors->has('trfUgd.' . $sec['key'] . '.' . $ttv['field'])"
                                                 placeholder="{{ $ttv['ph'] }}" class="w-full mt-1 text-base text-center"
                                                 :disabled="$sec['disabled']" />
                                         </div>
@@ -1121,7 +1150,7 @@ new class extends Component {
                                 </div>
                                 <div>
                                     <x-input-label value="Keadaan Umum" class="mb-1 !text-sm" />
-                                    <x-textarea wire:model.live="dataDaftarUGD.trfUgd.{{ $sec['key'] }}.keadaanPasien"
+                                    <x-textarea wire:model.live="trfUgd.{{ $sec['key'] }}.keadaanPasien"
                                         rows="2" :disabled="$sec['disabled']" />
                                 </div>
                             </div>
@@ -1137,13 +1166,13 @@ new class extends Component {
                         @foreach ([['field' => 'observasi', 'label' => 'Observasi'], ['field' => 'pembatasanCairan', 'label' => 'Pembatasan Cairan'], ['field' => 'balanceCairan', 'label' => 'Balance Cairan'], ['field' => 'diet', 'label' => 'Diet']] as $rp)
                             <div>
                                 <x-input-label value="{{ $rp['label'] }}" class="mb-1" />
-                                <x-textarea wire:model.live="dataDaftarUGD.trfUgd.rencanaPerawatan.{{ $rp['field'] }}"
+                                <x-textarea wire:model.live="trfUgd.rencanaPerawatan.{{ $rp['field'] }}"
                                     rows="2" :disabled="$disableTerima" />
                             </div>
                         @endforeach
                         <div class="md:col-span-2">
                             <x-input-label value="Lain-lain" class="mb-1" />
-                            <x-textarea wire:model.live="dataDaftarUGD.trfUgd.rencanaPerawatan.lainLain" :error="$errors->has('dataDaftarUGD.trfUgd.rencanaPerawatan.lainLain')" rows="2"
+                            <x-textarea wire:model.live="trfUgd.rencanaPerawatan.lainLain" :error="$errors->has('trfUgd.rencanaPerawatan.lainLain')" rows="2"
                                 :disabled="$disableTerima" />
                         </div>
                     </div>
@@ -1184,7 +1213,7 @@ new class extends Component {
                         </x-primary-button>
                     @endif
 
-                    @php $alatList = $dataDaftarUGD['trfUgd']['alatYangTerpasang'] ?? []; @endphp
+                    @php $alatList = $trfUgd['alatYangTerpasang'] ?? []; @endphp
                     @if (!empty($alatList))
                         <div class="space-y-2">
                             @foreach ($alatList as $index => $alatItem)
@@ -1223,17 +1252,17 @@ new class extends Component {
                     <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                         {{-- Pengirim (UGD) --}}
                         <x-signature.ttd-petugas :framed="false" :allowClear="false"
-                            :ttd="$dataDaftarUGD['trfUgd']['petugasPengirim'] ?? ''"
-                            :date="$dataDaftarUGD['trfUgd']['petugasPengirimDate'] ?? ''"
-                            :code="$dataDaftarUGD['trfUgd']['petugasPengirimCode'] ?? ''" :locked="$isFormLocked"
+                            :ttd="$trfUgd['petugasPengirim'] ?? ''"
+                            :date="$trfUgd['petugasPengirimDate'] ?? ''"
+                            :code="$trfUgd['petugasPengirimCode'] ?? ''" :locked="$isFormLocked"
                             sign="setPetugasPengirim" label="Petugas Pengirim" signLabel="TTD Petugas Pengirim" />
 
                         {{-- Penerima (RI) — terkunci sampai Pengirim TTD --}}
                         <x-signature.ttd-petugas :framed="false" :allowClear="false"
-                            :ttd="$dataDaftarUGD['trfUgd']['petugasPenerima'] ?? ''"
-                            :date="$dataDaftarUGD['trfUgd']['petugasPenerimaDate'] ?? ''"
-                            :code="$dataDaftarUGD['trfUgd']['petugasPenerimaCode'] ?? ''"
-                            :locked="$isFormLocked || empty($dataDaftarUGD['trfUgd']['petugasPengirim'] ?? '')"
+                            :ttd="$trfUgd['petugasPenerima'] ?? ''"
+                            :date="$trfUgd['petugasPenerimaDate'] ?? ''"
+                            :code="$trfUgd['petugasPenerimaCode'] ?? ''"
+                            :locked="$isFormLocked || empty($trfUgd['petugasPengirim'] ?? '')"
                             sign="setPetugasPenerima" label="Petugas Penerima" signLabel="TTD Petugas Penerima"
                             emptyText="Menunggu TTD Pengirim." />
                     </div>
@@ -1253,7 +1282,7 @@ new class extends Component {
             </div>{{-- /konten flex-1 --}}
 
             {{-- ══ FOOTER STICKY (anak langsung modal-body → selalu terlihat) ══ --}}
-            @if (isset($dataDaftarUGD['trfUgd']))
+            @if ($dokumenTermuat)
                 <div class="sticky bottom-0 z-10 px-6 py-3 bg-canvas border-t border-hairline dark:bg-gray-900 dark:border-gray-700">
                     <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
                         <x-secondary-button type="button" wire:click="closeModal" class="min-w-[120px] justify-center">Tutup</x-secondary-button>

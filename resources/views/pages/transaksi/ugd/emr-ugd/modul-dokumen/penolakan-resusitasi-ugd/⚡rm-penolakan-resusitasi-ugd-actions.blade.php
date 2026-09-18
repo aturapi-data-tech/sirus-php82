@@ -26,7 +26,8 @@ new class extends Component {
     public ?int $rjNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarUGD = [];
+    /** Nama pasien untuk isian awal penanda tangan (dulu dibaca dari dokumen penuh). */
+    public ?string $regName = null;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-penolakan-resusitasi-ugd'];
@@ -91,7 +92,6 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataUGD($this->rjNo);
             if ($data) {
-                $this->dataDaftarUGD = $data;
                 $this->regNo = $data['regNo'] ?? null;
                 $this->penolakanList = $data['penolakanResusitasiUGD'] ?? [];
                 $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
@@ -121,13 +121,10 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
         $this->regNo = $data['regNo'] ?? null;
-        if (!isset($this->dataDaftarUGD['penolakanResusitasiUGD']) || !is_array($this->dataDaftarUGD['penolakanResusitasiUGD'])) {
-            $this->dataDaftarUGD['penolakanResusitasiUGD'] = [];
-        }
-        $this->penolakanList = $this->dataDaftarUGD['penolakanResusitasiUGD'];
-        $this->newForm['pembuatNama'] = $this->dataDaftarUGD['regName'] ?? '';
+        $this->penolakanList = is_array($data['penolakanResusitasiUGD'] ?? null) ? $data['penolakanResusitasiUGD'] : [];
+        $this->regName = $data['regName'] ?? null;
+        $this->newForm['pembuatNama'] = $this->regName ?? '';
         $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-penolakan-resusitasi-ugd');
 
@@ -293,7 +290,7 @@ new class extends Component {
         try {
             $this->persistEntry($key, true, 'Kunci (TTD Petugas)');
             $this->resetNewForm();
-            $this->newForm['pembuatNama'] = $this->dataDaftarUGD['regName'] ?? '';
+            $this->newForm['pembuatNama'] = $this->regName ?? '';
             $this->signature = '';
             $this->signatureSaksi = '';
             $this->editingKey = null;
@@ -369,7 +366,6 @@ new class extends Component {
             $data['penolakanResusitasiUGD'] = array_values($list);
 
             $this->updateJsonUGD($this->rjNo, $data);
-            $this->dataDaftarUGD = $data;
             $this->penolakanList = $data['penolakanResusitasiUGD'];
 
             $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Surat Penolakan Tindakan Resusitasi (DNR) UGD — diagnosis "' . ($entry['diagnosis'] ?: '-') . '" oleh "' . ($entry['pembuatNama'] ?: '-') . '" (' . $key . ')', 'MR');
@@ -471,7 +467,7 @@ new class extends Component {
     public function cancelEdit(): void
     {
         $this->resetNewForm();
-        $this->newForm['pembuatNama'] = $this->dataDaftarUGD['regName'] ?? '';
+        $this->newForm['pembuatNama'] = $this->regName ?? '';
         $this->signature = '';
         $this->signatureSaksi = '';
         $this->editingKey = null;
@@ -537,7 +533,6 @@ new class extends Component {
 
                 $fresh['penolakanResusitasiUGD'] = array_values($list);
                 $this->updateJsonUGD($this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
                 $this->penolakanList = $fresh['penolakanResusitasiUGD'];
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Buka kunci Surat Penolakan Tindakan Resusitasi (DNR) — entri ' . $key . ' (oleh ' . (auth()->user()->myuser_name ?? auth()->user()->name ?? '-') . ')', 'MR');
@@ -587,7 +582,7 @@ new class extends Component {
             }
 
             $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarUGD,
+                'dataRi' => $this->findDataUGD($this->rjNo) ?: [],
                 'form' => $entry,
                 'identitasRs' => $identitasRs,
                 'ttdPetugasPath' => $ttdPetugasPath,
@@ -635,7 +630,6 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
                 $this->penolakanList = $data['penolakanResusitasiUGD'];
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Surat Penolakan Tindakan Resusitasi (DNR) — TTD ' . $signatureDate, 'MR');
             });
@@ -679,7 +673,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarUGD = [];
         $this->penolakanList = [];
         $this->resetNewForm();
         $this->signature = '';

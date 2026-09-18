@@ -25,7 +25,6 @@ new class extends Component {
     public ?string $rjNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarUGD = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-pra-anestesi-ugd'];
@@ -124,7 +123,6 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataUGD($this->rjNo);
             if ($data) {
-                $this->dataDaftarUGD = $data;
                 $this->regNo = $data['regNo'] ?? null;
                 $this->praAnestesiList = $data['praAnestesiUGD'] ?? [];
                 $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
@@ -153,12 +151,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
         $this->regNo = $data['regNo'] ?? null;
-        if (!isset($this->dataDaftarUGD['praAnestesiUGD']) || !is_array($this->dataDaftarUGD['praAnestesiUGD'])) {
-            $this->dataDaftarUGD['praAnestesiUGD'] = [];
-        }
-        $this->praAnestesiList = $this->dataDaftarUGD['praAnestesiUGD'];
+        $this->praAnestesiList = is_array($data['praAnestesiUGD'] ?? null) ? $data['praAnestesiUGD'] : [];
         $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-pra-anestesi-ugd');
 
@@ -305,7 +299,6 @@ new class extends Component {
             $fresh['praAnestesiUGD'] = array_values($list);
 
             $this->updateJsonUGD((int) $this->rjNo, $fresh);
-            $this->dataDaftarUGD = $fresh;
             $this->praAnestesiList = $fresh['praAnestesiUGD'];
 
             $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Pengkajian Pra Anestesi — ' . ($entry['psAsa'] ?: '-') . ' (' . $key . ')', 'MR');
@@ -490,7 +483,6 @@ new class extends Component {
                 $fresh['praAnestesiUGD'] = array_values($list);
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
                 $this->praAnestesiList = $fresh['praAnestesiUGD'];
 
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
@@ -626,7 +618,7 @@ new class extends Component {
             }
 
             $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarUGD,
+                'dataRi' => $this->findDataUGD($this->rjNo) ?: [],
                 'form' => $entry,
                 'identitasRs' => $identitasRs,
                 'ttdPath' => $ttdPath,
@@ -673,7 +665,6 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonUGD((int) $this->rjNo, $fresh);
-                $this->dataDaftarUGD = $fresh;
                 $this->praAnestesiList = $fresh['praAnestesiUGD'];
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Pengkajian Pra Anestesi — ' . $createdAt, 'MR');
@@ -720,7 +711,6 @@ new class extends Component {
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarUGD = [];
         $this->praAnestesiList = [];
         $this->resetNewForm();
         $this->signaturePasien = '';
