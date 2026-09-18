@@ -3,52 +3,52 @@
     <div class="p-4 bg-canvas border border-hairline rounded-xl shadow-sm dark:bg-gray-900 dark:border-gray-700">
         <h3 class="text-base font-semibold text-body dark:text-gray-300 mb-3">Laboratorium</h3>
         <livewire:pages::transaksi.rj.emr-rj.pemeriksaan.penunjang.laborat.rm-laborat-rj-actions
-            :rjNo="$dataDaftarPoliRJ['rjNo'] ?? ''" :disabled="$isFormLocked"
-            wire:key="laborat-actions-{{ $dataDaftarPoliRJ['rjNo'] ?? 'new' }}" />
+            :rjNo="$rjNo" :disabled="$isFormLocked"
+            wire:key="laborat-actions-{{ $rjNo ?: 'new' }}" />
 
         <div class="mt-3">
             <livewire:pages::transaksi.rj.emr-rj.pemeriksaan.penunjang.laborat.rm-daftar-laborat-rj
-                :rjNo="$dataDaftarPoliRJ['rjNo'] ?? ''"
-                wire:key="daftar-laborat-rj-{{ $dataDaftarPoliRJ['rjNo'] ?? 'new' }}" />
+                :rjNo="$rjNo"
+                wire:key="daftar-laborat-rj-{{ $rjNo ?: 'new' }}" />
         </div>
     </div>
 
     <div class="p-4 bg-canvas border border-hairline rounded-xl shadow-sm dark:bg-gray-900 dark:border-gray-700">
         <h3 class="text-base font-semibold text-body dark:text-gray-300 mb-3">Laboratorium Luar</h3>
         <livewire:pages::transaksi.rj.emr-rj.pemeriksaan.penunjang.laborat.rm-laborat-luar-rj-actions
-            :rjNo="$dataDaftarPoliRJ['rjNo'] ?? ''" :disabled="$isFormLocked"
-            wire:key="laborat-luar-actions-{{ $dataDaftarPoliRJ['rjNo'] ?? 'new' }}" />
+            :rjNo="$rjNo" :disabled="$isFormLocked"
+            wire:key="laborat-luar-actions-{{ $rjNo ?: 'new' }}" />
 
         <div class="mt-3">
             <livewire:pages::transaksi.rj.emr-rj.pemeriksaan.penunjang.laborat.rm-daftar-laborat-luar-rj
-                :rjNo="$dataDaftarPoliRJ['rjNo'] ?? ''"
-                wire:key="daftar-lab-luar-rj-{{ $dataDaftarPoliRJ['rjNo'] ?? 'new' }}" />
+                :rjNo="$rjNo"
+                wire:key="daftar-lab-luar-rj-{{ $rjNo ?: 'new' }}" />
         </div>
     </div>
 
     <div class="p-4 bg-canvas border border-hairline rounded-xl shadow-sm dark:bg-gray-900 dark:border-gray-700">
         <h3 class="text-base font-semibold text-body dark:text-gray-300 mb-3">Radiologi</h3>
         <livewire:pages::transaksi.rj.emr-rj.pemeriksaan.penunjang.radiologi.rm-radiologi-rj-actions
-            :rjNo="$dataDaftarPoliRJ['rjNo'] ?? ''" :disabled="$isFormLocked"
-            wire:key="radiologi-actions-{{ $dataDaftarPoliRJ['rjNo'] ?? 'new' }}" />
+            :rjNo="$rjNo" :disabled="$isFormLocked"
+            wire:key="radiologi-actions-{{ $rjNo ?: 'new' }}" />
 
         <div class="mt-3">
             <livewire:pages::transaksi.rj.emr-rj.pemeriksaan.penunjang.radiologi.rm-daftar-radiologi-rj
-                :rjNo="$dataDaftarPoliRJ['rjNo'] ?? ''"
-                wire:key="daftar-radiologi-rj-{{ $dataDaftarPoliRJ['rjNo'] ?? 'new' }}" />
+                :rjNo="$rjNo"
+                wire:key="daftar-radiologi-rj-{{ $rjNo ?: 'new' }}" />
         </div>
     </div>
 
     <div class="p-4 bg-canvas border border-hairline rounded-xl shadow-sm dark:bg-gray-900 dark:border-gray-700">
         <h3 class="text-base font-semibold text-body dark:text-gray-300 mb-3">Kamar Operasi</h3>
         <livewire:pages::transaksi.rj.emr-rj.pemeriksaan.penunjang.kamar-operasi.rm-kamar-operasi-rj-actions
-            :rjNo="$dataDaftarPoliRJ['rjNo'] ?? ''" :disabled="$isFormLocked"
-            wire:key="kamar-operasi-rj-actions-{{ $dataDaftarPoliRJ['rjNo'] ?? 'new' }}" />
+            :rjNo="$rjNo" :disabled="$isFormLocked"
+            wire:key="kamar-operasi-rj-actions-{{ $rjNo ?: 'new' }}" />
 
         <div class="mt-3">
             <livewire:pages::transaksi.rj.emr-rj.pemeriksaan.penunjang.kamar-operasi.rm-daftar-kamar-operasi-rj
-                :rjNo="$dataDaftarPoliRJ['rjNo'] ?? ''"
-                wire:key="daftar-kamar-operasi-rj-{{ $dataDaftarPoliRJ['rjNo'] ?? 'new' }}" />
+                :rjNo="$rjNo"
+                wire:key="daftar-kamar-operasi-rj-{{ $rjNo ?: 'new' }}" />
         </div>
     </div>
 

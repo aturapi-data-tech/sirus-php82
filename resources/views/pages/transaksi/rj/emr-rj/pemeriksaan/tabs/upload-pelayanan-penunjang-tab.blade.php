@@ -74,7 +74,7 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                @forelse ($dataDaftarPoliRJ['pemeriksaan']['uploadHasilPenunjang'] ?? [] as $item)
+                @forelse ($pemeriksaan['uploadHasilPenunjang'] ?? [] as $item)
                     <tr class="group hover:bg-surface-soft dark:hover:bg-gray-800 transition">
 
                         <td class="px-4 py-2 whitespace-nowrap text-body dark:text-gray-300">

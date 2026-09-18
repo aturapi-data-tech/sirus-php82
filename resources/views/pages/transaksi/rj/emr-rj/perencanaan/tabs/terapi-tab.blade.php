@@ -2,9 +2,9 @@
 
     {{-- Textarea Terapi --}}
     <div>
-        <x-textarea id="terapi" placeholder="Terapi" :error="$errors->has('dataDaftarPoliRJ.perencanaan.terapi.terapi')" :disabled="$isFormLocked" :rows="7"
-            wire:model.live="dataDaftarPoliRJ.perencanaan.terapi.terapi" />
-        <x-input-error :messages="$errors->get('dataDaftarPoliRJ.perencanaan.terapi.terapi')" class="mt-1" />
+        <x-textarea id="terapi" placeholder="Terapi" :error="$errors->has('perencanaan.terapi.terapi')" :disabled="$isFormLocked" :rows="7"
+            wire:model.live="perencanaan.terapi.terapi" />
+        <x-input-error :messages="$errors->get('perencanaan.terapi.terapi')" class="mt-1" />
     </div>
 
     {{-- Shortcut tombol E-Resep — auto-save SOAP child dulu, tunggu konfirmasi,
