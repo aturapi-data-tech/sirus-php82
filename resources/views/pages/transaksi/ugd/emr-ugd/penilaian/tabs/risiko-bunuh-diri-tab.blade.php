@@ -135,7 +135,7 @@
         </x-border-form>
     @endif
 
-    @if (collect($dataDaftarUGD['penilaian']['resikoBunuhDiri'] ?? [])->filter(fn($entri) => filled(data_get($entri, 'tglPenilaian')))->isNotEmpty())
+    @if (collect($penilaian['resikoBunuhDiri'] ?? [])->filter(fn($entri) => filled(data_get($entri, 'tglPenilaian')))->isNotEmpty())
         <x-border-form :title="__('Riwayat Skrining Risiko Bunuh Diri')" :align="__('start')" :bgcolor="__('bg-canvas')">
             <div class="overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
                 <table class="w-full text-sm text-left text-muted dark:text-gray-300">
@@ -154,7 +154,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                        @foreach (array_reverse(array_filter($dataDaftarUGD['penilaian']['resikoBunuhDiri'] ?? [], fn($entri) => filled(data_get($entri, 'tglPenilaian'))), true) as $i => $row)
+                        @foreach (array_reverse(array_filter($penilaian['resikoBunuhDiri'] ?? [], fn($entri) => filled(data_get($entri, 'tglPenilaian'))), true) as $i => $row)
                             @php
                                 $kat = $row['kategoriResiko'] ?? '-';
                                 $rowBg = match ($kat) {
