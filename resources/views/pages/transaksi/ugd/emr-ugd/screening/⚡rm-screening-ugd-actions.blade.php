@@ -44,7 +44,7 @@ new class extends Component {
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
     private function muatDariDokumen(array $data): void
     {
-        $this->screening = $data['screening'];
+        $this->screening = is_array($data['screening'] ?? null) ? $data['screening'] : [];
     }
     protected array $renderAreas = ['modal-screening-ugd'];
 

@@ -82,7 +82,6 @@ new class extends Component {
         // Initialize penilaian data jika belum ada
         $this->muatDariDokumen($data);
 
-        $this->muatDariDokumen($data);
         $this->skalaDisarankan = NyeriOptions::saranUntukUmur($this->umurPasienTahun);
 
         $this->incrementVersion('modal-penilaian-rj');
