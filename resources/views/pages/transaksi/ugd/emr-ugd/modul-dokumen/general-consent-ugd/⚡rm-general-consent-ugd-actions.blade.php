@@ -29,6 +29,7 @@ new class extends Component {
     public array $generalConsent = [];
 
     /** Nama pasien untuk isian awal Nama Pasien/Wali (dulu dibaca dari dokumen penuh). */
+    public ?string $regNo = null;
     public ?string $regName = null;
 
     public array $renderVersions = [];
@@ -50,6 +51,7 @@ new class extends Component {
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
     private function muatDariDokumen(array $data): void
     {
+        $this->regNo = $data['regNo'] ?? null;
         $this->generalConsent = $data['generalConsentPasienUGD'] ?? $this->getDefaultGeneralConsent();
         $this->regName = $data['regName'] ?? null;
     }
@@ -235,7 +237,7 @@ new class extends Component {
             return;
         }
 
-        $this->signature = TtdPasien::simpan($dataUrl, TtdPasien::regNoDariKunjungan('UGD', $this->rjNo));   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
+        $this->signature = TtdPasien::simpan($dataUrl, $this->regNo);   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
         $this->generalConsent['signature'] = $this->signature;
         $this->generalConsent['signatureDate'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
     }

@@ -60,9 +60,12 @@ new class extends Component {
 
     public array $hubunganOptions = ['Pasien Sendiri', 'Suami', 'Istri', 'Orang Tua', 'Anak', 'Saudara', 'Lainnya'];
 
+    public ?string $regNo = null;
+
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
     private function muatDariDokumen(array $data): void
     {
+        $this->regNo = $data['regNo'] ?? null;
         $this->listForm = is_array($data['formPenjaminanOrientasiKamar'] ?? null) ? $data['formPenjaminanOrientasiKamar'] : [];
     }
     public array $listForm = [];
@@ -203,7 +206,7 @@ new class extends Component {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
         }
-        $this->signature = TtdPasien::simpan($dataUrl, TtdPasien::regNoDariKunjungan('UGD', $this->rjNo));   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
+        $this->signature = TtdPasien::simpan($dataUrl, $this->regNo);   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
         $this->incrementVersion('modal-form-penjaminan');
     }
 
@@ -221,7 +224,7 @@ new class extends Component {
         if ($this->isFormLocked || $this->viewOnly) {
             return;
         }
-        $this->signatureSaksi = TtdPasien::simpan($dataUrl, TtdPasien::regNoDariKunjungan('UGD', $this->rjNo));   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
+        $this->signatureSaksi = TtdPasien::simpan($dataUrl, $this->regNo);   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
         $this->incrementVersion('modal-form-penjaminan');
     }
 

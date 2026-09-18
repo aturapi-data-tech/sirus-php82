@@ -17,6 +17,7 @@ new class extends Component {
     public ?int $rjNo = null;
     public bool $disabled = false;
     /** Nama pasien untuk isian awal penanda tangan (dulu dibaca dari dokumen penuh). */
+    public ?string $regNo = null;
     public ?string $regName = null;
 
     public array $renderVersions = [];
@@ -93,6 +94,7 @@ new class extends Component {
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
     private function muatDariDokumen(array $data): void
     {
+        $this->regNo = $data['regNo'] ?? null;
         $this->consentList = is_array($data['informConsentPasienUGD'] ?? null) ? $data['informConsentPasienUGD'] : [];
         $this->regName = $data['regName'] ?? null;
     }
@@ -232,7 +234,7 @@ new class extends Component {
         if ($this->isFormLocked) {
             return;
         }
-        $this->signature = TtdPasien::simpan($dataUrl, TtdPasien::regNoDariKunjungan('UGD', $this->rjNo));   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
+        $this->signature = TtdPasien::simpan($dataUrl, $this->regNo);   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
         $this->incrementVersion('modal-inform-consent-ugd');
     }
 
@@ -250,7 +252,7 @@ new class extends Component {
         if ($this->isFormLocked) {
             return;
         }
-        $this->signatureSaksi = TtdPasien::simpan($dataUrl, TtdPasien::regNoDariKunjungan('UGD', $this->rjNo));   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
+        $this->signatureSaksi = TtdPasien::simpan($dataUrl, $this->regNo);   // gambar ke RSTXN_TTDS; di sini cukup referensi "TTD:<no>"
         $this->incrementVersion('modal-inform-consent-ugd');
     }
 
