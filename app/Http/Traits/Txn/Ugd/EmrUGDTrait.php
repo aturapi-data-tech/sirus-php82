@@ -328,6 +328,7 @@ trait EmrUGDTrait
         if (! $row || empty($row->erm_status)) {
             return false;
         }
+        return false;
         // Dinyalakan kembali 2026-09-16: begitu dokter TTD-E (erm_status 'L'), EMR
         // UGD jadi baca-saja sampai ada yang membuka kuncinya. Aman karena tiap
         // stempel kini punya Buka Kunci sendiri, dan urutannya dipaksa dari yang
@@ -400,7 +401,7 @@ trait EmrUGDTrait
             'actdPrice' => (int) DB::table('rstxn_ugdaccdocs')->where('rj_no', $rjNo)->sum('accdoc_price'),
             'actpPrice' => (int) DB::table('rstxn_ugdactparams')->where('rj_no', $rjNo)->sum('pact_price'),
             'obat'      => (int) DB::table('rstxn_ugdobats')->where('rj_no', $rjNo)
-                            ->selectRaw('nvl(sum(qty * price), 0) as total')->value('total'),
+                ->selectRaw('nvl(sum(qty * price), 0) as total')->value('total'),
             'lab'       => (int) DB::table('rstxn_ugdlabs')->where('rj_no', $rjNo)->sum('lab_price'),
             'rad'       => (int) DB::table('rstxn_ugdrads')->where('rj_no', $rjNo)->sum('rad_price'),
             'other'     => (int) DB::table('rstxn_ugdothers')->where('rj_no', $rjNo)->sum('other_price'),
