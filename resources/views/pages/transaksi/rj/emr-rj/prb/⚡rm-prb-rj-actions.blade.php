@@ -67,7 +67,7 @@ new class extends Component {
      | OPEN
     ═══════════════════════════════════════ */
     /** Dokumen dibaca sebagai variabel LOKAL; hanya skalar ini yang disimpan. */
-    private function serapSkalar(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->regNoPasien = (string) ($data['regNo'] ?? '');
         $this->drId = (string) ($data['drId'] ?? '');
@@ -89,7 +89,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapSkalar($data);
+        $this->muatDariDokumen($data);
 
         $this->formPRB = !empty($data['prb']) && is_array($data['prb'])
             ? $data['prb']
@@ -444,7 +444,7 @@ new class extends Component {
 
         // Init jika belum pernah mount
         if (empty($this->formPRB['noSep'])) {
-            $this->serapSkalar($freshData);
+            $this->muatDariDokumen($freshData);
             $this->formPRB = !empty($freshData['prb']) ? $freshData['prb'] : $this->getDefaultPRB();
         }
 

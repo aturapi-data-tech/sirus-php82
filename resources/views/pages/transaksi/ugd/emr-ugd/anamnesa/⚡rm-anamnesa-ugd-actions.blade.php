@@ -34,7 +34,7 @@ new class extends Component {
     public bool $dokumenTermuat = false;
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + tiga nilai yang disimpan. */
-    private function serapDokumen(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->anamnesa = $data['anamnesa'] ?? [];
         $this->regNoPasien = (string) ($data['regNo'] ?? '');
@@ -119,7 +119,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapDokumen($data);
+        $this->muatDariDokumen($data);
 
         // Inisialisasi key anamnesa jika belum ada
         if (!$this->anamnesa) {
@@ -266,7 +266,7 @@ new class extends Component {
 
                 // 5. Simpan JSON
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->serapDokumen($data);
+                $this->muatDariDokumen($data);
 
                 // Basis digeser ke hasil tersimpan — Simpan berikutnya tidak boleh
                 // memakai titik cabang yang sudah usang.
@@ -425,7 +425,7 @@ new class extends Component {
                 $data['anamnesa']['pengkajianPerawatan']['perawatPenerimaCode'] = '';
 
                 $this->updateJsonUGD((int) $this->rjNo, $data);
-                $this->serapDokumen($data);
+                $this->muatDariDokumen($data);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Buka Kunci TTD Perawat Penerima — stempel ' . $perawatSebelumnya . ' dicabut oleh ' . (auth()->user()->myuser_name ?? '-'), 'MR');
             });

@@ -26,7 +26,7 @@ new class extends Component {
     public string $regNoPasien = '';
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + dua nilai yang disimpan. */
-    private function serapIrisan(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->daftarSbar = $data['sbar'] ?? [];
         $this->dpjpUtamaRow = $this->dpjpUtamaRow($data);
@@ -80,7 +80,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapIrisan($data);
+        $this->muatDariDokumen($data);
 
         $role = auth()->user()->profesiKlinis();
         $this->activeProfession = match (true) {
@@ -159,7 +159,7 @@ new class extends Component {
                 ]);
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->serapIrisan($fresh);
+                $this->muatDariDokumen($fresh);
                 $inserted = true;
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah SBAR — entri ' . $this->formEntrySBAR['tglSBAR'] . ' (' . ($this->formEntrySBAR['profession'] ?: '-') . ')', 'MR');
@@ -280,7 +280,7 @@ new class extends Component {
                 $fresh['sbar'] = $list->values()->all();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->serapIrisan($fresh);
+                $this->muatDariDokumen($fresh);
                 $updated = true;
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Edit SBAR — entri ' . ($row['tglSBAR'] ?? '-') . ' (' . ($row['profession'] ?: '-') . ')', 'MR');
@@ -329,7 +329,7 @@ new class extends Component {
                 $fresh['sbar'] = $list->values()->all();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->serapIrisan($fresh);
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus SBAR — entri ' . ($row['tglSBAR'] ?? '-') . ' oleh ' . ($row['petugasSBAR'] ?? '-'), 'MR');
             });
@@ -390,7 +390,7 @@ new class extends Component {
                 $fresh['sbar'] = $list->values()->all();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->serapIrisan($fresh);
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Review SBAR — entri ' . ($row['tglSBAR'] ?? '-') . ' oleh DPJP ' . ($dpjp['drName'] ?? '-'), 'MR');
             });
@@ -436,7 +436,7 @@ new class extends Component {
                 $fresh['sbar'] = $list->values()->all();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->serapIrisan($fresh);
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Batal review SBAR — entri ' . ($row['tglSBAR'] ?? '-'), 'MR');
             });

@@ -22,7 +22,7 @@ new class extends Component {
     public int $jumlahGizi = 0;
 
     /** Dokumen dibaca sebagai variabel LOKAL, dihitung, lalu dilepas. */
-    private function hitungBadge(array $data): void
+    private function hitungRingkasan(array $data): void
     {
         $this->jumlahNyeri = count($data['penilaian']['nyeri'] ?? []);
         $this->jumlahResikoJatuh = count($data['penilaian']['resikoJatuh'] ?? []);
@@ -74,7 +74,7 @@ new class extends Component {
             return;
         }
 
-        $this->hitungBadge($data);
+        $this->hitungRingkasan($data);
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← pakai trait
 
@@ -92,7 +92,7 @@ new class extends Component {
     {
         $data = $this->findDataRI($riHdrNo);
         if ($data) {
-            $this->hitungBadge($data);
+            $this->hitungRingkasan($data);
         }
     }
 

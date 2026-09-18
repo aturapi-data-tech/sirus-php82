@@ -21,7 +21,7 @@ new class extends Component {
     public string $roomDesc = '';
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
-    private function serapIrisan(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->daftarPindah = $data['formPindahAntarRuangRI'] ?? [];
         $this->roomId = (string) ($data['roomId'] ?? '');
@@ -92,7 +92,7 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->serapIrisan($data);
+                $this->muatDariDokumen($data);
                 $this->listPindah = $data['formPindahAntarRuangRI'] ?? [];
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
             }
@@ -118,7 +118,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapIrisan($data);
+        $this->muatDariDokumen($data);
         $this->listPindah = $data['formPindahAntarRuangRI'] ?? [];
 
         // Auto-fill "Dari ruang" dari kamar pasien saat ini
@@ -427,7 +427,7 @@ new class extends Component {
                 }
 
                 $this->updateJsonRI((int) $this->riHdrNo, $data);
-                $this->serapIrisan($data);
+                $this->muatDariDokumen($data);
                 $this->listPindah = $data['formPindahAntarRuangRI'];
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, ($this->editingTglPindah === null ? 'Buat' : 'Update') . ' Form Pindah Antar Ruang — entri ' . ($this->newPindah['tglPindah'] ?: '-'), 'MR');
@@ -489,7 +489,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $data);
-                $this->serapIrisan($data);
+                $this->muatDariDokumen($data);
                 $this->listPindah = $data['formPindahAntarRuangRI'];
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Form Pindah Antar Ruang — entri ' . ($tglPindah ?: '-'), 'MR');
@@ -532,7 +532,7 @@ new class extends Component {
                 $list[$index]['petugasPenerimaDate'] = '';
                 $data['formPindahAntarRuangRI'] = array_values($list);
                 $this->updateJsonRI((int) $this->riHdrNo, $data);
-                $this->serapIrisan($data);
+                $this->muatDariDokumen($data);
                 $this->listPindah = $data['formPindahAntarRuangRI'];
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Form Pindah Antar Ruang (' . ($tglPindah ?: '-') . ') oleh ' . $pembukaKunci . ' — TTD penerima dicabut, entri kembali Transit', 'MR');

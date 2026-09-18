@@ -20,7 +20,7 @@ new class extends Component {
     public bool $dokumenTermuat = false;
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya jejak petugas yang disimpan. */
-    private function serapJejak(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->administrasiRj = $data['AdministrasiRj'] ?? [];
         $this->dokumenTermuat = true;
@@ -83,7 +83,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapJejak($data);
+        $this->muatDariDokumen($data);
         $this->statusResep = [
             'status' => $data['statusResep']['status'] ?? 'DITUNGGU',
             'keterangan' => $data['statusResep']['keterangan'] ?? '',
@@ -285,7 +285,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonRJ($rjNo, $data);
-                $this->serapJejak($data);
+                $this->muatDariDokumen($data);
             });
 
             $this->dispatch('toast', type: 'success', message: 'Administrasi berhasil disimpan.');

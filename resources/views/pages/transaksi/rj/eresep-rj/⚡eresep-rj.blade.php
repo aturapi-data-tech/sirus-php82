@@ -40,7 +40,7 @@ new class extends Component {
         $this->registerAreas(['modal']);
     }
     /** Dokumen dibaca sebagai variabel LOKAL; hanya dua cabang status + regNo yang disimpan. */
-    private function serapStatus(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->statusPRB = $data['statusPRB'] ?? [];
         $this->statusIter = $data['statusIter'] ?? [];
@@ -66,7 +66,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapStatus($data);
+        $this->muatDariDokumen($data);
 
         // Cek status lock kunjungan
         if ($this->checkRJStatus($rjNo)) {
@@ -131,7 +131,7 @@ new class extends Component {
                 }
 
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->serapStatus($data);
+                $this->muatDariDokumen($data);
             });
 
             $this->dispatch('toast', type: 'success', message: 'Status PRB berhasil diperbarui.');
@@ -181,7 +181,7 @@ new class extends Component {
                     ->where('rj_no', $this->rjNo)
                     ->update(['status_iter' => $statusIter ? 'Y' : 'N']);
 
-                $this->serapStatus($data);
+                $this->muatDariDokumen($data);
             });
 
             $this->dispatch('toast', type: 'success', message: 'Status Iter berhasil diperbarui.');
@@ -273,7 +273,7 @@ new class extends Component {
 
                 // 9. Persist + sync properti lokal
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->serapStatus($data);
+                $this->muatDariDokumen($data);
             });
 
             // Silent: tutup modal + reopen rekam medis sudah jadi feedback visual; tak perlu toast.

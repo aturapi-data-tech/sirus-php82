@@ -28,7 +28,7 @@ new class extends Component {
     public string $regNoPasien = '';
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + regNo yang disimpan. */
-    private function serapIrisan(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->formMPP = $data['formMPP'] ?? [];
         $this->regNoPasien = (string) ($data['regNo'] ?? '');
@@ -90,7 +90,7 @@ new class extends Component {
         if (!$data) {
             return;
         }
-        $this->serapIrisan($data);
+        $this->muatDariDokumen($data);
         $this->formMPP ??= ['formA' => [], 'formB' => []];
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
     }
@@ -112,7 +112,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapIrisan($data);
+        $this->muatDariDokumen($data);
         $this->formMPP ??= ['formA' => [], 'formB' => []];
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
 

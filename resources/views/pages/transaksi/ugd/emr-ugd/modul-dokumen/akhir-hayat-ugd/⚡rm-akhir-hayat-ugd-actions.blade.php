@@ -35,7 +35,7 @@ new class extends Component {
     public array $daftarAkhirHayat = [];
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
-    private function serapIrisan(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->daftarAkhirHayat = $data['pengkajianAkhirHayatUGD'] ?? [];
         $this->diagnosisFreeText = (string) ($data['diagnosisFreeText'] ?? '');
@@ -162,7 +162,7 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataUGD($this->rjNo);
             if ($data) {
-                $this->serapIrisan($data);
+                $this->muatDariDokumen($data);
                 $this->regNo = $data['regNo'] ?? null;
                 $this->form['ttd']['keluargaNama'] = $data['regName'] ?? '';
                 $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
@@ -178,7 +178,7 @@ new class extends Component {
 
         $data = $this->findDataUGD($this->rjNo);
         if ($data) {
-            $this->serapIrisan($data);
+            $this->muatDariDokumen($data);
             $this->regNo = $data['regNo'] ?? $this->regNo;
             $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
         }
