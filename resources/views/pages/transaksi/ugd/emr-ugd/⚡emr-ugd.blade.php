@@ -17,7 +17,15 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+    /**
+     * RINGKASAN kunjungan, bukan dokumennya. Induk EMR UGD hanya perlu identitas pasien,
+     * SEP, dan tahu apakah e-resep sudah terisi; anak-anaknya memuat datanya sendiri
+     * dari prop rjNo.
+     */
+    public string $regNoPasien = '';
+    public string $drId = '';
+    public string $noSep = '';
+    public bool $adaEresep = false;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-emr-ugd'];
@@ -51,7 +59,7 @@ new class extends Component {
             return;
         }
 
-        $regNo = $this->dataDaftarUGD['regNo'] ?? '';
+        $regNo = $this->regNoPasien;
         $dataMasterPasien = $this->findDataMasterPasien($regNo);
         $nokartuBpjs = $dataMasterPasien['pasien']['identitas']['idbpjs'] ?? '';
 
@@ -60,7 +68,7 @@ new class extends Component {
             return;
         }
 
-        $drId = $this->dataDaftarUGD['drId'] ?? '';
+        $drId = $this->drId;
         if (!$drId) {
             $this->dispatch('toast', type: 'error', message: 'Data dokter tidak ditemukan.');
             return;
@@ -103,7 +111,11 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
+        // Dokumen dibaca sebagai variabel LOKAL, diperas jadi ringkasan, lalu dilepas.
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->drId = (string) ($data['drId'] ?? '');
+        $this->noSep = (string) ($data['sep']['noSep'] ?? '');
+        $this->adaEresep = !empty($data['eresep']) || !empty($data['eresepRacikan']);
 
         if ($this->checkEmrUGDStatus($rjNo)) {
             $this->isFormLocked = true;
@@ -160,7 +172,7 @@ new class extends Component {
 
     public function hasEresep(): bool
     {
-        return !empty($this->dataDaftarUGD['eresep']) || !empty($this->dataDaftarUGD['eresepRacikan']);
+        return $this->adaEresep;
     }
 
     /* ===============================
@@ -180,7 +192,7 @@ new class extends Component {
      =============================== */
     protected function resetForm(): void
     {
-        $this->reset(['rjNo', 'dataDaftarUGD']);
+        $this->reset(['rjNo', 'regNoPasien', 'drId', 'noSep', 'adaEresep']);
         $this->resetVersion();
         $this->isFormLocked = false;
     }
@@ -303,8 +315,8 @@ new class extends Component {
                                         Medis</span>
                                 </div>
                                 <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
-                                    :regNo="$dataDaftarUGD['regNo'] ?? ''"
-                                    wire:key="emr-ugd.rekam-medis-display-ugd-{{ $dataDaftarUGD['regNo'] ?? 'new' }}" />
+                                    :regNo="$regNoPasien"
+                                    wire:key="emr-ugd.rekam-medis-display-ugd-{{ $regNoPasien ?: 'new' }}" />
                             </div>
                         </div>
 
@@ -402,9 +414,9 @@ new class extends Component {
                         @endrole
 
                         @role(['Dokter', 'Admin'])
-                            @if (!empty($dataDaftarUGD['sep']['noSep']))
+                            @if (filled($noSep))
                                 <x-primary-button type="button"
-                                    wire:click="myiCare('{{ $dataDaftarUGD['sep']['noSep'] }}')"
+                                    wire:click="myiCare('{{ $noSep }}')"
                                     wire:loading.attr="disabled" wire:target="myiCare"
                                     class="gap-1 !bg-emerald-600 hover:!bg-emerald-700 !text-white focus:!ring-emerald-300 dark:!bg-emerald-600 dark:!text-white dark:hover:!bg-emerald-700 dark:focus:!ring-emerald-900">
                                     <span wire:loading.remove wire:target="myiCare" class="flex items-center gap-1">
