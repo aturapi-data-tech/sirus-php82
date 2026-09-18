@@ -102,34 +102,6 @@ class TtdPasien
         return self::$gambarTermuat[$ttdNo];
     }
 
-    /**
-     * No. RM dari nomor kunjungan — untuk komponen yang tidak memegang regNo sendiri.
-     * Satu query ringan ke header, hanya saat pasien menggores. Null bila jalur tak dikenal
-     * atau kunjungan tak ditemukan (REG_NO di RSTXN_TTDS memang boleh kosong).
-     */
-    public static function regNoDariKunjungan(string $jalur, int|string|null $nomorKunjungan): ?string
-    {
-        if (blank($nomorKunjungan) || !in_array($jalur, ['RJ', 'UGD', 'RI'], true)) {
-            return null;
-        }
-
-        try {
-            if ($jalur === 'RJ') {
-                return DB::table('rstxn_rjhdrs')->where('rj_no', $nomorKunjungan)->value('reg_no');
-            }
-            if ($jalur === 'UGD') {
-                return DB::table('rstxn_ugdhdrs')->where('rj_no', $nomorKunjungan)->value('reg_no');
-            }
-            if ($jalur === 'RI') {
-                return DB::table('rstxn_rihdrs')->where('rihdr_no', $nomorKunjungan)->value('reg_no');
-            }
-        } catch (\Throwable $e) {
-            report($e);
-        }
-
-        return null;
-    }
-
     /** Tabel RSTXN_TTDS sudah dipasang? Di-cache supaya tak query tiap goresan. */
     public static function tabelTersedia(): bool
     {
