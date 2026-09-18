@@ -247,7 +247,7 @@ new class extends Component {
 
             $this->dispatch('toast', type: 'success', message: 'Pasien berhasil dipindahkan ke ' . $this->formEntry['roomName'] . ' Bed ' . $this->formEntry['roomBedNo'] . '.');
             $this->dispatch('administrasi-ri.updated');
-            $this->dispatch('daftar-ri.refresh');
+            $this->dispatch('refresh-after-ri.saved');
             $this->closeModal();
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
