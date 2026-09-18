@@ -31,7 +31,10 @@ new class extends Component {
     private function muatDariDokumen(array $data): void
     {
         $this->regNoPasien = (string) ($data['regNo'] ?? '');
-        $this->pemeriksaan = $data['pemeriksaan'] ?? [];
+        $this->pemeriksaan = $data['pemeriksaan'] ?? [
+            'pemeriksaanPenunjang' => ['lab' => [], 'rad' => []],
+            'uploadHasilPenunjang' => [],
+        ];
     }
 
     /**
@@ -64,10 +67,6 @@ new class extends Component {
             return;
         }
 
-        $this->pemeriksaan = $data['pemeriksaan'] ?? [
-            'pemeriksaanPenunjang' => ['lab' => [], 'rad' => []],
-            'uploadHasilPenunjang' => [],
-        ];
         $this->muatDariDokumen($data);
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait

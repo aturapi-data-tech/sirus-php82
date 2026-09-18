@@ -33,7 +33,6 @@ new class extends Component {
     private function muatDariDokumen(array $data): void
     {
         $this->eresepHdr = $data['eresepHdr'] ?? [];
-        $this->activeResepIndex = count($data['eresepHdr']) - 1;
     }
     protected array $renderAreas = ['modal', 'hdr-list'];
 
@@ -176,6 +175,8 @@ new class extends Component {
 
                 $this->updateJsonRI($this->riHdrNo, $data);
                 $this->muatDariDokumen($data);
+                // Resep yang baru dibuat langsung jadi resep aktif — HANYA di jalur tambah ini.
+                $this->activeResepIndex = count($this->eresepHdr) - 1;
             });
 
             $this->formResepHdr['resepDate'] = Carbon::now()->format('d/m/Y H:i:s');

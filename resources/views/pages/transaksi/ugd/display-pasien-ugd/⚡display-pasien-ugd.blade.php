@@ -74,7 +74,6 @@ new class extends Component {
         $this->muatDariDokumen($data);
         $this->resikoJatuhTerakhir = $this->hitungResikoJatuhTerakhir($data);
         $this->resikoBunuhDiriTerakhir = $this->hitungResikoBunuhDiriTerakhir($data);
-        $this->muatDariDokumen($data);
     }
 
     /**
