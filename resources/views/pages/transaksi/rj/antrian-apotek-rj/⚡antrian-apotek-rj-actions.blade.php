@@ -12,7 +12,21 @@ new class extends Component {
 
     public ?string $rjNo = null;
     public bool $isFormLocked = false;
-    public array $dataDaftarPoliRJ = [];
+    /**
+     * IRISAN dokumen: dua cabang telaah (model form, wire:model) + dua cabang resep
+     * (dibaca untuk ditampilkan) + satu skalar.
+     *
+     * Dokumen `datadaftarpolirj_json` utuh tidak disimpan di properti publik — ikut snapshot
+     * Livewire tiap request. Setiap simpan/TTD tetap membaca ulang dokumen dari DB.
+     */
+    public array $telaahResep = [];
+    public array $telaahObat = [];
+    public array $eresep = [];
+    public array $eresepRacikan = [];
+    public string $regNoPasien = '';
+
+    /** Penanda kunjungan sudah dimuat (guard tampilan; irisan bisa kosong secara sah). */
+    public bool $dokumenTermuat = false;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-telaah-apotek'];
@@ -129,8 +143,8 @@ new class extends Component {
                     throw new \RuntimeException('Data RJ tidak ditemukan, simpan dibatalkan.');
                 }
 
-                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->dataDaftarPoliRJ['telaahResep'] ?? []);
-                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->dataDaftarPoliRJ['telaahObat'] ?? []); // satu tampilan, satu simpan
+                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->telaahResep ?? []);
+                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->telaahObat ?? []); // satu tampilan, satu simpan
 
                 $this->updateJsonRJ($this->rjNo, $data);
                 $this->gantiStateDariDb($data, 'telaahObat');
@@ -156,8 +170,8 @@ new class extends Component {
             return;
         }
 
-        if (isset($this->dataDaftarPoliRJ['telaahResep']['penanggungJawab'])) {
-            $this->dispatch('toast', type: 'info', message: 'TTD-E Telaah Resep sudah dilakukan oleh ' . $this->dataDaftarPoliRJ['telaahResep']['penanggungJawab']['userLog']);
+        if (isset($this->telaahResep['penanggungJawab'])) {
+            $this->dispatch('toast', type: 'info', message: 'TTD-E Telaah Resep sudah dilakukan oleh ' . $this->telaahResep['penanggungJawab']['userLog']);
             return;
         }
 
@@ -171,8 +185,8 @@ new class extends Component {
                     throw new \RuntimeException('Data RJ tidak ditemukan, simpan dibatalkan.');
                 }
 
-                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->dataDaftarPoliRJ['telaahResep'] ?? []);
-                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->dataDaftarPoliRJ['telaahObat'] ?? []); // satu tampilan, satu simpan
+                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->telaahResep ?? []);
+                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->telaahObat ?? []); // satu tampilan, satu simpan
                 $data['telaahResep']['penanggungJawab'] = [
                     'userLog' => auth()->user()->myuser_name,
                     'userLogCode' => auth()->user()->myuser_code,
@@ -213,8 +227,8 @@ new class extends Component {
                     throw new \RuntimeException('Data RJ tidak ditemukan, simpan dibatalkan.');
                 }
 
-                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->dataDaftarPoliRJ['telaahResep'] ?? []); // satu tampilan, satu simpan
-                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->dataDaftarPoliRJ['telaahObat'] ?? []);
+                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->telaahResep ?? []); // satu tampilan, satu simpan
+                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->telaahObat ?? []);
 
                 $this->updateJsonRJ($this->rjNo, $data);
                 $this->gantiStateDariDb($data, 'telaahResep');
@@ -240,8 +254,8 @@ new class extends Component {
             return;
         }
 
-        if (isset($this->dataDaftarPoliRJ['telaahObat']['penanggungJawab'])) {
-            $this->dispatch('toast', type: 'info', message: 'TTD-E Telaah Obat sudah dilakukan oleh ' . $this->dataDaftarPoliRJ['telaahObat']['penanggungJawab']['userLog']);
+        if (isset($this->telaahObat['penanggungJawab'])) {
+            $this->dispatch('toast', type: 'info', message: 'TTD-E Telaah Obat sudah dilakukan oleh ' . $this->telaahObat['penanggungJawab']['userLog']);
             return;
         }
 
@@ -255,8 +269,8 @@ new class extends Component {
                     throw new \RuntimeException('Data RJ tidak ditemukan, simpan dibatalkan.');
                 }
 
-                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->dataDaftarPoliRJ['telaahResep'] ?? []); // satu tampilan, satu simpan
-                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->dataDaftarPoliRJ['telaahObat'] ?? []);
+                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->telaahResep ?? []); // satu tampilan, satu simpan
+                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->telaahObat ?? []);
                 $data['telaahObat']['penanggungJawab'] = [
                     'userLog' => auth()->user()->myuser_name,
                     'userLogCode' => auth()->user()->myuser_code,
@@ -357,11 +371,21 @@ new class extends Component {
      * di produksi 21/08–12/09/2026: 1.888 dari 3.100 telaah obat RJ ber-TTD kosong.
      * Simpan/TTD juga selalu menulis array_replace(default, state) supaya DB lengkap.
      */
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya empat cabang + regNo yang disimpan. */
+    private function serapIrisan(array $data): void
+    {
+        $this->telaahResep = $data['telaahResep'] ?? [];
+        $this->telaahObat = $data['telaahObat'] ?? [];
+        $this->eresep = $data['eresep'] ?? [];
+        $this->eresepRacikan = $data['eresepRacikan'] ?? [];
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->dokumenTermuat = true;
+    }
+
     private function lengkapiDefaultTelaah(): void
     {
-        foreach (['telaahResep' => $this->defaultTelaahResep(), 'telaahObat' => $this->defaultTelaahObat()] as $node => $default) {
-            $this->dataDaftarPoliRJ[$node] = array_replace($default, $this->dataDaftarPoliRJ[$node] ?? []);
-        }
+        $this->telaahResep = array_replace($this->defaultTelaahResep(), $this->telaahResep);
+        $this->telaahObat = array_replace($this->defaultTelaahObat(), $this->telaahObat);
     }
 
     /**
@@ -371,10 +395,10 @@ new class extends Component {
      */
     private function gantiStateDariDb(array $data, string $nodeDipertahankan): void
     {
-        $isianLayar = $this->dataDaftarPoliRJ[$nodeDipertahankan] ?? null;
-        $this->dataDaftarPoliRJ = $data;
+        $isianLayar = $this->{$nodeDipertahankan};
+        $this->serapIrisan($data);
         if (is_array($isianLayar)) {
-            $this->dataDaftarPoliRJ[$nodeDipertahankan] = $isianLayar;
+            $this->{$nodeDipertahankan} = $isianLayar;
         }
         $this->lengkapiDefaultTelaah();
     }
@@ -394,7 +418,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarPoliRJ = $data;
+        $this->serapIrisan($data);
     }
 
     private function afterSave(): void
@@ -407,7 +431,12 @@ new class extends Component {
         $this->resetVersion();
         $this->rjNo = null;
         $this->isFormLocked = false;
-        $this->dataDaftarPoliRJ = [];
+        $this->telaahResep = [];
+        $this->telaahObat = [];
+        $this->eresep = [];
+        $this->eresepRacikan = [];
+        $this->regNoPasien = '';
+        $this->dokumenTermuat = false;
     }
 };
 ?>
@@ -450,16 +479,16 @@ new class extends Component {
 
                 {{-- BODY --}}
                 <div class="flex-1 px-6 py-4">
-                    @if (isset($dataDaftarPoliRJ['telaahResep']))
+                    @if ($dokumenTermuat)
 
                         {{-- Info obat --}}
-                        @if (!empty($dataDaftarPoliRJ['eresep']) || !empty($dataDaftarPoliRJ['eresepRacikan']))
+                        @if (!empty($eresep) || !empty($eresepRacikan))
                             <div
                                 class="mb-4 p-3 bg-blue-50 rounded-xl border border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
                                 <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1.5">Daftar Obat
                                     dalam Resep</p>
                                 <div class="space-y-1">
-                                    @foreach ($dataDaftarPoliRJ['eresep'] ?? [] as $obat)
+                                    @foreach ($eresep ?? [] as $obat)
                                         <div class="flex justify-between text-xs text-blue-800 dark:text-blue-200">
                                             <span
                                                 class="font-medium uppercase">{{ $obat['productName'] ?? '-' }}</span>
@@ -472,9 +501,9 @@ new class extends Component {
                                             </span>
                                         </div>
                                     @endforeach
-                                    @if (!empty($dataDaftarPoliRJ['eresepRacikan']))
+                                    @if (!empty($eresepRacikan))
                                         @php $prevNo = null; @endphp
-                                        @foreach ($dataDaftarPoliRJ['eresepRacikan'] as $racikan)
+                                        @foreach ($eresepRacikan as $racikan)
                                             @isset($racikan['jenisKeterangan'])
                                                 <div
                                                     class="flex justify-between text-xs text-amber-800 dark:text-amber-200
@@ -528,7 +557,7 @@ new class extends Component {
                         @endphp
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-                            @foreach ($dataDaftarPoliRJ['telaahResep'] as $key => $field)
+                            @foreach ($telaahResep as $key => $field)
                                 @if ($key === 'penanggungJawab')
                                     @continue
                                 @endif
@@ -545,29 +574,29 @@ new class extends Component {
                                         </div>
                                         <div class="shrink-0">
                                             <x-toggle
-                                                wire:model.live="dataDaftarPoliRJ.telaahResep.{{ $key }}.{{ $key }}"
-                                                trueValue="Ya" falseValue="Tidak" :disabled="isset($dataDaftarPoliRJ['telaahResep']['penanggungJawab'])">
+                                                wire:model.live="telaahResep.{{ $key }}.{{ $key }}"
+                                                trueValue="Ya" falseValue="Tidak" :disabled="isset($telaahResep['penanggungJawab'])">
                                                 {{ ($field[$key] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak' }}
                                             </x-toggle>
                                         </div>
                                     </div>
                                     <div class="mt-2">
-                                        <x-text-input wire:model="dataDaftarPoliRJ.telaahResep.{{ $key }}.desc"
+                                        <x-text-input wire:model="telaahResep.{{ $key }}.desc"
                                             class="w-full text-xs py-1.5" placeholder="Catatan (opsional)..."
-                                            :disabled="isset($dataDaftarPoliRJ['telaahResep']['penanggungJawab'])" />
+                                            :disabled="isset($telaahResep['penanggungJawab'])" />
                                     </div>
                                 </div>
                             @endforeach
                         </div>
 
                         {{-- Ringkasan setelah TTD --}}
-                        @if (isset($dataDaftarPoliRJ['telaahResep']['penanggungJawab']))
+                        @if (isset($telaahResep['penanggungJawab']))
                             <div
                                 class="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-800">
                                 <p class="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-2">Ringkasan
                                     Telaah Resep</p>
                                 <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-1.5">
-                                    @foreach ($dataDaftarPoliRJ['telaahResep'] as $key => $field)
+                                    @foreach ($telaahResep as $key => $field)
                                         @if ($key === 'penanggungJawab')
                                             @continue
                                         @endif
@@ -601,16 +630,16 @@ new class extends Component {
 
                 {{-- BODY --}}
                 <div class="flex-1 px-6 py-4">
-                    @if (isset($dataDaftarPoliRJ['telaahObat']))
+                    @if (isset($telaahObat))
 
                         {{-- Daftar obat --}}
-                        @if (!empty($dataDaftarPoliRJ['eresep']) || !empty($dataDaftarPoliRJ['eresepRacikan']))
+                        @if (!empty($eresep) || !empty($eresepRacikan))
                             <div
                                 class="mb-4 p-3 bg-blue-50 rounded-xl border border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
                                 <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1.5">Daftar Obat
                                     dalam Resep</p>
                                 <div class="space-y-1">
-                                    @foreach ($dataDaftarPoliRJ['eresep'] ?? [] as $idx => $obat)
+                                    @foreach ($eresep ?? [] as $idx => $obat)
                                         <div class="flex justify-between text-xs text-blue-800 dark:text-blue-200">
                                             <span>
                                                 <span
@@ -627,9 +656,9 @@ new class extends Component {
                                             </span>
                                         </div>
                                     @endforeach
-                                    @if (!empty($dataDaftarPoliRJ['eresepRacikan']))
+                                    @if (!empty($eresepRacikan))
                                         @php $prevNo = null; @endphp
-                                        @foreach ($dataDaftarPoliRJ['eresepRacikan'] as $racikan)
+                                        @foreach ($eresepRacikan as $racikan)
                                             @isset($racikan['jenisKeterangan'])
                                                 <div
                                                     class="flex justify-between text-xs text-amber-800 dark:text-amber-200
@@ -672,7 +701,7 @@ new class extends Component {
                         @endphp
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            @foreach ($dataDaftarPoliRJ['telaahObat'] as $key => $field)
+                            @foreach ($telaahObat as $key => $field)
                                 @if ($key === 'penanggungJawab')
                                     @continue
                                 @endif
@@ -689,29 +718,29 @@ new class extends Component {
                                         </div>
                                         <div class="shrink-0">
                                             <x-toggle
-                                                wire:model.live="dataDaftarPoliRJ.telaahObat.{{ $key }}.{{ $key }}"
-                                                trueValue="Ya" falseValue="Tidak" :disabled="isset($dataDaftarPoliRJ['telaahObat']['penanggungJawab'])">
+                                                wire:model.live="telaahObat.{{ $key }}.{{ $key }}"
+                                                trueValue="Ya" falseValue="Tidak" :disabled="isset($telaahObat['penanggungJawab'])">
                                                 {{ ($field[$key] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak' }}
                                             </x-toggle>
                                         </div>
                                     </div>
                                     <div class="mt-2">
-                                        <x-text-input wire:model="dataDaftarPoliRJ.telaahObat.{{ $key }}.desc"
+                                        <x-text-input wire:model="telaahObat.{{ $key }}.desc"
                                             class="w-full text-xs py-1.5" placeholder="Catatan (opsional)..."
-                                            :disabled="isset($dataDaftarPoliRJ['telaahObat']['penanggungJawab'])" />
+                                            :disabled="isset($telaahObat['penanggungJawab'])" />
                                     </div>
                                 </div>
                             @endforeach
                         </div>
 
                         {{-- Ringkasan setelah TTD --}}
-                        @if (isset($dataDaftarPoliRJ['telaahObat']['penanggungJawab']))
+                        @if (isset($telaahObat['penanggungJawab']))
                             <div
                                 class="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-100 dark:bg-blue-900/10 dark:border-blue-800">
                                 <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-2">Ringkasan
                                     Telaah Obat</p>
                                 <div class="grid grid-cols-2 gap-1.5">
-                                    @foreach ($dataDaftarPoliRJ['telaahObat'] as $key => $field)
+                                    @foreach ($telaahObat as $key => $field)
                                         @if ($key === 'penanggungJawab')
                                             @continue
                                         @endif
@@ -744,8 +773,8 @@ new class extends Component {
             {{-- FOOTER TUNGGAL — meniru EMR RJ (SOAP satu tampilan, satu Simpan): Simpan menulis telaah
                  resep & obat sekaligus; TTD-E tetap per bagian karena penanggung jawabnya dicatat terpisah. --}}
             @php
-                $ttdResep = $dataDaftarPoliRJ['telaahResep']['penanggungJawab'] ?? null;
-                $ttdObat = $dataDaftarPoliRJ['telaahObat']['penanggungJawab'] ?? null;
+                $ttdResep = $telaahResep['penanggungJawab'] ?? null;
+                $ttdObat = $telaahObat['penanggungJawab'] ?? null;
             @endphp
             <div
                 class="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-t border-hairline bg-surface-soft rounded-b-xl dark:border-gray-700 dark:bg-gray-900">
@@ -822,11 +851,11 @@ new class extends Component {
                 {{-- REKAM MEDIS — riwayat kunjungan pasien. rjNoRefCopyTo sengaja TIDAK
                      dikirim: apoteker menelaah, bukan menulis resep, jadi tombol salin
                      resep ke kunjungan aktif tidak boleh aktif di sini. --}}
-                @if (filled($dataDaftarPoliRJ['regNo'] ?? ''))
+                @if (filled($regNoPasien))
                     <div class="px-6 py-4">
                         <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
-                            :regNo="$dataDaftarPoliRJ['regNo']"
-                            wire:key="telaah-apotek-rekam-medis-{{ $dataDaftarPoliRJ['regNo'] }}-{{ $rjNo ?? 'none' }}" />
+                            :regNo="$regNoPasien"
+                            wire:key="telaah-apotek-rekam-medis-{{ $regNoPasien }}-{{ $rjNo ?? 'none' }}" />
                     </div>
                 @else
                     <div class="px-6 py-12 text-center text-muted-soft">Data pasien belum dimuat.</div>

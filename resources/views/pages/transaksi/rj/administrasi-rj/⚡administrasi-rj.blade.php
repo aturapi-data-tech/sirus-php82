@@ -12,7 +12,19 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarPoliRJ = [];
+    /**
+     * Jejak petugas administrasi terakhir + penanda termuat — bukan dokumennya.
+     * Isian statusResep sendiri sudah disalin ke properti form saat open().
+     */
+    public array $administrasiRj = [];
+    public bool $dokumenTermuat = false;
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya jejak petugas yang disimpan. */
+    private function serapJejak(array $data): void
+    {
+        $this->administrasiRj = $data['AdministrasiRj'] ?? [];
+        $this->dokumenTermuat = true;
+    }
     public array $renderVersions = [];
     public string $statusKronisHdr = 'N'; // sync dari rstxn_rjhdrs.status_kronis
     public string $statusIterHdr = 'N'; // sync dari rstxn_rjhdrs.status_iter
@@ -65,16 +77,16 @@ new class extends Component {
         $this->rjNo = $rjNo;
         $this->resetValidation();
 
-        $dataDaftarPoliRJ = $this->findDataRJ($rjNo);
-        if (!$dataDaftarPoliRJ) {
+        $data = $this->findDataRJ($rjNo);
+        if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
             return;
         }
 
-        $this->dataDaftarPoliRJ = $dataDaftarPoliRJ;
+        $this->serapJejak($data);
         $this->statusResep = [
-            'status' => $this->dataDaftarPoliRJ['statusResep']['status'] ?? 'DITUNGGU',
-            'keterangan' => $this->dataDaftarPoliRJ['statusResep']['keterangan'] ?? '',
+            'status' => $data['statusResep']['status'] ?? 'DITUNGGU',
+            'keterangan' => $data['statusResep']['keterangan'] ?? '',
         ];
 
         // $readOnly = dibuka dari bulanan (view-only untuk Casemix verifikasi tagihan vs klaim).
@@ -273,7 +285,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonRJ($rjNo, $data);
-                $this->dataDaftarPoliRJ = $data;
+                $this->serapJejak($data);
             });
 
             $this->dispatch('toast', type: 'success', message: 'Administrasi berhasil disimpan.');
@@ -469,7 +481,7 @@ new class extends Component {
      =============================== */
     protected function resetForm(): void
     {
-        $this->reset(['rjNo', 'dataDaftarPoliRJ']);
+        $this->reset(['rjNo', 'administrasiRj', 'dokumenTermuat']);
         $this->resetVersion();
         $this->isFormLocked = false;
         $this->activeTabAdministrasi = 'JasaKaryawan';
@@ -724,7 +736,7 @@ new class extends Component {
                         </div>
 
                         <div class="flex-shrink-0">
-                            @if (isset($dataDaftarPoliRJ['AdministrasiRj']))
+                            @if (!empty($administrasiRj))
                                 <div
                                     class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold
                                     text-success dark:text-success
@@ -735,9 +747,9 @@ new class extends Component {
                                             d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     <span>Selesai oleh
-                                        <strong>{{ $dataDaftarPoliRJ['AdministrasiRj']['userLog'] }}</strong></span>
+                                        <strong>{{ $administrasiRj['userLog'] }}</strong></span>
                                     <span class="text-xs font-normal text-emerald-500 dark:text-emerald-400">
-                                        {{ $dataDaftarPoliRJ['AdministrasiRj']['userLogDate'] }}
+                                        {{ $administrasiRj['userLogDate'] }}
                                     </span>
                                 </div>
                             @else

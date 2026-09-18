@@ -11,7 +11,14 @@ new class extends Component {
     use EmrRJTrait, MasterPasienTrait;
 
     public ?string $rjNo = null;
-    public array $dataDaftarPoliRJ = [];
+    /**
+     * RINGKASAN kunjungan untuk kartu display — bukan dokumennya.
+     *
+     * Bentuknya sengaja MENIRU dokumen aslinya (key & sarangnya sama) supaya blade cukup
+     * memakai alias `$rj` seperti sebelumnya. Yang berubah hanya isinya: sembilan nilai,
+     * bukan seluruh `datadaftarpolirj_json`.
+     */
+    public array $ringkas = [];
     public array $dataPasien = [];
 
     /** Penilaian risiko jatuh terbaru — terisi hanya jika kategori Sedang/Tinggi. */
@@ -37,16 +44,27 @@ new class extends Component {
 
         $this->rjNo = $rjNo;
 
-        $dataDaftarPoliRJ = $this->findDataRJ($rjNo);
-        if (!$dataDaftarPoliRJ) {
+        $data = $this->findDataRJ($rjNo);
+        if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
             return;
         }
 
-        $this->dataDaftarPoliRJ = $dataDaftarPoliRJ;
-        $this->dataPasien = $this->findDataMasterPasien($dataDaftarPoliRJ['regNo']) ?? [];
-        $this->resikoJatuhTerakhir = $this->hitungResikoJatuhTerakhir($dataDaftarPoliRJ);
-        $this->resikoBunuhDiriTerakhir = $this->hitungResikoBunuhDiriTerakhir($dataDaftarPoliRJ);
+        // Dokumen dibaca sebagai variabel LOKAL; hanya nilai yang dipakai kartu yang ditahan.
+        $this->ringkas = [
+            'drDesc'    => $data['drDesc'] ?? null,
+            'klaimId'   => $data['klaimId'] ?? null,
+            'noAntrian' => $data['noAntrian'] ?? null,
+            'poliDesc'  => $data['poliDesc'] ?? null,
+            'rjDate'    => $data['rjDate'] ?? null,
+            'rjStatus'  => $data['rjStatus'] ?? null,
+            'shift'     => $data['shift'] ?? null,
+            'sep'         => ['noSep' => $data['sep']['noSep'] ?? null],
+            'pemeriksaan' => ['fungsional' => $data['pemeriksaan']['fungsional'] ?? []],
+        ];
+        $this->dataPasien = $this->findDataMasterPasien($data['regNo'] ?? '') ?? [];
+        $this->resikoJatuhTerakhir = $this->hitungResikoJatuhTerakhir($data);
+        $this->resikoBunuhDiriTerakhir = $this->hitungResikoBunuhDiriTerakhir($data);
     }
 
     /**
@@ -147,11 +165,11 @@ new class extends Component {
 ?>
 
 <div>
-    @if (!empty($dataDaftarPoliRJ) && !empty($dataPasien))
+    @if (!empty($ringkas) && !empty($dataPasien))
 
         @php
             $p = $dataPasien['pasien'] ?? [];
-            $rj = $dataDaftarPoliRJ;
+            $rj = $ringkas;
             $fun = $rj['pemeriksaan']['fungsional'] ?? [];
 
             $klaim = DB::table('rsmst_klaimtypes')

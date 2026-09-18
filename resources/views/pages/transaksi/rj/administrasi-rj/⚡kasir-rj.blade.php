@@ -15,7 +15,8 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarPoliRJ = [];
+    /** Penanda kunjungan sudah dimuat. Dokumennya sendiri tidak pernah dibaca di sini. */
+    public bool $dokumenTermuat = false;
 
     // ── Ringkasan Biaya ──
     public int $rjTotal = 0;
@@ -82,7 +83,7 @@ new class extends Component {
 
         $this->findData($rjNo);
 
-        if (empty($this->dataDaftarPoliRJ)) {
+        if (!$this->dokumenTermuat) {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Jalan tidak ditemukan.');
             return;
         }
@@ -112,7 +113,7 @@ new class extends Component {
 
     private function findData(int $rjNo): void
     {
-        $this->dataDaftarPoliRJ = $this->findDataRJ($rjNo) ?? [];
+        $this->dokumenTermuat = filled($this->findDataRJ($rjNo) ?? []);
     }
 
     /* ===============================
@@ -639,7 +640,7 @@ new class extends Component {
      =============================== */
     private function resetKasir(): void
     {
-        $this->reset(['rjNo', 'dataDaftarPoliRJ', 'bayar', 'accId', 'accName', 'txnStatus']);
+        $this->reset(['rjNo', 'dokumenTermuat', 'bayar', 'accId', 'accName', 'txnStatus']);
         $this->resetVersion();
         $this->isFormLocked = false;
         $this->rjTotal = 0;
