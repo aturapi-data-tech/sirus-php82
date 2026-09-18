@@ -18,7 +18,27 @@ new class extends Component {
     public ?int $rjNo = null;
 
     // Referensi kunjungan — TIDAK di-bind ke form
-    public array $dataDaftarPoliRJ = [];
+    /**
+     * IRISAN dokumen: daftar diagnosa + nilai SATUSEHAT/identitas yang dipakai menyusun
+     * kiriman FHIR. Dokumen utuh tidak disimpan di properti publik.
+     */
+    public array $diagnosis = [];
+    public array $conditionIds = [];
+    public string $encounterId = '';
+    public string $regNoPasien = '';
+    public string $regName = '';
+    public string $drIdPasien = '';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
+    private function serapIrisan(array $data): void
+    {
+        $this->diagnosis = $data['diagnosis'] ?? [];
+        $this->conditionIds = $data['satusehat']['conditionIds'] ?? [];
+        $this->encounterId = (string) ($data['satusehat']['encounterId'] ?? '');
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->regName = (string) ($data['regName'] ?? '');
+        $this->drIdPasien = (string) ($data['drId'] ?? '');
+    }
 
     // State rujukan — dipersist ke node rujukanKompetensi di JSON UGD
     public array $formRujukan = [];
@@ -39,7 +59,7 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $this->dataDaftarPoliRJ = $data;
+        $this->serapIrisan($data);
 
         $tersimpan = $data['rujukanKompetensiFhir'] ?? [];
         if (!empty($tersimpan) && is_array($tersimpan)) {
@@ -73,7 +93,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data kunjungan RJ tidak ditemukan.');
             return;
         }
-        $this->dataDaftarPoliRJ = $data;
+        $this->serapIrisan($data);
 
         $tersimpan = $data['rujukanKompetensiFhir'] ?? [];
         if (!empty($tersimpan) && is_array($tersimpan)) {
@@ -369,24 +389,24 @@ new class extends Component {
 
     public function encounterUuid(): string
     {
-        return (string) ($this->dataDaftarPoliRJ['satusehat']['encounterId'] ?? '');
+        return $this->encounterId;
     }
 
     private function patientUuid(): string
     {
-        $regNo = $this->dataDaftarPoliRJ['regNo'] ?? '';
+        $regNo = $this->regNoPasien;
         return $regNo === '' ? '' : (string) (DB::table('rsmst_pasiens')->where('reg_no', $regNo)->value('patient_uuid') ?? '');
     }
 
     private function dokterUuid(): string
     {
-        $drId = $this->dataDaftarPoliRJ['drId'] ?? '';
+        $drId = $this->drIdPasien;
         return $drId === '' ? '' : (string) (DB::table('rsmst_doctors')->where('dr_id', $drId)->value('dr_uuid') ?? '');
     }
 
     private function dokterNama(): string
     {
-        $drId = $this->dataDaftarPoliRJ['drId'] ?? '';
+        $drId = $this->drIdPasien;
         return $drId === '' ? '' : (string) (DB::table('rsmst_doctors')->where('dr_id', $drId)->value('dr_name') ?? '');
     }
 
@@ -395,7 +415,7 @@ new class extends Component {
     ═══════════════════════════════════════ */
     public function pilihDiagnosa(int $index): void
     {
-        $diagnosa = $this->dataDaftarPoliRJ['diagnosis'][$index] ?? null;
+        $diagnosa = $this->diagnosis[$index] ?? null;
         if (!$diagnosa) {
             return;
         }
@@ -632,7 +652,7 @@ new class extends Component {
             'identifierCarePlan' => $identifierCarePlan,
             'encounterId' => $this->encounterUuid(),
             'patientUuid' => $this->patientUuid(),
-            'patientName' => (string) ($this->dataDaftarPoliRJ['regName'] ?? ''),
+            'patientName' => $this->regName,
             'practitionerUuid' => $this->dokterUuid(),
             'practitionerName' => $this->dokterNama(),
             'orgTujuanId' => $kandidat['orgId'],
@@ -866,7 +886,7 @@ new class extends Component {
         $respon = $this->rujukanServiceRequest([
             'occurrenceDateTime' => $this->rujukanTanggalRencanaIso($this->formRujukan['tglRencanaKunjungan']) ?: null,
             'performerTypeKode' => $this->formRujukan['performerTypeKode'],
-            'conditionIds' => $this->dataDaftarPoliRJ['satusehat']['conditionIds'] ?? [],
+            'conditionIds' => $this->conditionIds,
 
             'identifier' => (string) Str::uuid(),
             'carePlanId' => $this->formRujukan['carePlanId'],
@@ -950,7 +970,7 @@ new class extends Component {
                 }
                 $data['rujukanKompetensiFhir'] = $this->formRujukan;
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->dataDaftarPoliRJ = $data;
+                $this->serapIrisan($data);
                 if ($catatanAudit) {
                     $this->appendAdminLogRJ((int) $this->rjNo, $catatanAudit, 'MR');
                 }
@@ -1167,7 +1187,7 @@ new class extends Component {
                 </div>
 
                 <div class="flex flex-wrap gap-2">
-                    @forelse ($dataDaftarPoliRJ['diagnosis'] ?? [] as $indexDiagnosa => $diagnosa)
+                    @forelse ($diagnosis as $indexDiagnosa => $diagnosa)
                         @php $kodeIni = $diagnosa['icdX'] ?? ($diagnosa['diagId'] ?? ''); @endphp
                         <button type="button" wire:click="pilihDiagnosa({{ $indexDiagnosa }})" @disabled($isFormLocked)
                             class="px-2 py-1 text-xs rounded-lg border {{ $formRujukan['kodeDiagnosa'] === $kodeIni ? 'bg-rose-600 text-white border-transparent' : 'bg-canvas text-gray-700 border-hairline dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600' }}">

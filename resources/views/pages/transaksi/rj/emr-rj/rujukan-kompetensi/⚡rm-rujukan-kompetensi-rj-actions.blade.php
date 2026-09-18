@@ -19,7 +19,29 @@ new class extends Component {
     public ?int $rjNo = null;
 
     // Referensi kunjungan — TIDAK di-bind ke form
-    public array $dataDaftarPoliRJ = [];
+    /**
+     * IRISAN dokumen: cabang `rujukanKompetensi` (isian tersimpan) + nilai rekam medis
+     * yang dipakai menyiapkan kiriman SISRUTE/SATUSEHAT.
+     */
+    public array $rujukanKompetensi = [];
+    public array $diagnosis = [];
+    public string $regNoPasien = '';
+    public string $drIdPasien = '';
+    public string $kdPoliBpjs = '';
+    public string $encounterId = '';
+    public string $noKartuSep = '';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
+    private function serapIrisan(array $data): void
+    {
+        $this->rujukanKompetensi = $data['rujukanKompetensi'] ?? [];
+        $this->diagnosis = $data['diagnosis'] ?? [];
+        $this->regNoPasien = (string) ($data['regNo'] ?? ($data['reg_no'] ?? ''));
+        $this->drIdPasien = (string) ($data['drId'] ?? ($data['dr_id'] ?? ''));
+        $this->kdPoliBpjs = (string) ($data['kdpolibpjs'] ?? '');
+        $this->encounterId = (string) ($data['satusehat']['encounterId'] ?? '');
+        $this->noKartuSep = preg_replace('/\D/', '', (string) ($data['sep']['reqSep']['request']['t_sep']['noKartu'] ?? ''));
+    }
 
     // State rujukan kompetensi — dipersist ke node rujukanKompetensi di JSON RJ
     // supaya retry setelah gangguan BPJS/SATUSEHAT tidak perlu isi ulang.
@@ -40,14 +62,14 @@ new class extends Component {
             return;
         }
 
-        $dataDaftarPoliRJ = $this->findDataRJ($this->rjNo);
-        if (empty($dataDaftarPoliRJ)) {
+        $data = $this->findDataRJ($this->rjNo);
+        if (empty($data)) {
             return;
         }
-        $this->dataDaftarPoliRJ = $dataDaftarPoliRJ;
+        $this->serapIrisan($data);
 
         // Restore state tersimpan; merge di atas default supaya key baru tetap ada
-        $tersimpan = $dataDaftarPoliRJ['rujukanKompetensi'] ?? [];
+        $tersimpan = $data['rujukanKompetensi'] ?? [];
         if (!empty($tersimpan) && is_array($tersimpan)) {
             $this->formRujukan = array_replace($this->defaultFormRujukan(), $tersimpan);
         } else {
@@ -70,14 +92,14 @@ new class extends Component {
 
         // Baca ulang saat dibuka: SEP/Encounter/diagnosa bisa terbit setelah panel
         // pertama kali dirender, jadi prasyarat harus dinilai dari data terkini.
-        $dataDaftarPoliRJ = $this->findDataRJ($this->rjNo);
-        if (empty($dataDaftarPoliRJ)) {
+        $data = $this->findDataRJ($this->rjNo);
+        if (empty($data)) {
             $this->dispatch('toast', type: 'error', message: 'Data kunjungan RJ tidak ditemukan.');
             return;
         }
-        $this->dataDaftarPoliRJ = $dataDaftarPoliRJ;
+        $this->serapIrisan($data);
 
-        $tersimpan = $dataDaftarPoliRJ['rujukanKompetensi'] ?? [];
+        $tersimpan = $data['rujukanKompetensi'] ?? [];
         if (!empty($tersimpan) && is_array($tersimpan)) {
             $this->formRujukan = array_replace($this->defaultFormRujukan(), $tersimpan);
         }
@@ -124,10 +146,10 @@ new class extends Component {
 
     private function prefillDariKunjungan(): void
     {
-        $diagnosisPertama = collect($this->dataDaftarPoliRJ['diagnosis'] ?? [])->first();
+        $diagnosisPertama = collect($this->diagnosis)->first();
         $this->formRujukan['kodeDiagnosa'] = $diagnosisPertama['icdX'] ?? ($diagnosisPertama['diagId'] ?? '');
         $this->formRujukan['diagnosaDesc'] = $diagnosisPertama['diagDesc'] ?? '';
-        $this->formRujukan['kodeSpesialis'] = $this->dataDaftarPoliRJ['kdpolibpjs'] ?? '';
+        $this->formRujukan['kodeSpesialis'] = $this->kdPoliBpjs;
     }
 
     /* ═══════════════════════════════════════
@@ -184,9 +206,9 @@ new class extends Component {
 
         // 1. Kartu BPJS — perbandingan lokal, tanpa panggilan keluar.
         $kartuPasien = preg_replace('/\D/', '', (string) (DB::table('rsmst_pasiens')
-            ->where('reg_no', $this->dataDaftarPoliRJ['regNo'] ?? '')
+            ->where('reg_no', $this->regNoPasien)
             ->value('nokartu_bpjs') ?? ''));
-        $kartuSep = preg_replace('/\D/', '', (string) ($this->dataDaftarPoliRJ['sep']['reqSep']['request']['t_sep']['noKartu'] ?? ''));
+        $kartuSep = $this->noKartuSep;
         if ($kartuPasien !== '' && $kartuSep !== '' && $kartuPasien !== $kartuSep) {
             $masalah[] = "No. kartu BPJS di SEP ({$kartuSep}) berbeda dari master pasien ({$kartuPasien})";
         }
@@ -223,12 +245,12 @@ new class extends Component {
 
     public function encounterUuid(): string
     {
-        return (string) ($this->dataDaftarPoliRJ['satusehat']['encounterId'] ?? '');
+        return $this->encounterId;
     }
 
     private function patientUuid(): string
     {
-        $regNo = $this->dataDaftarPoliRJ['regNo'] ?? ($this->dataDaftarPoliRJ['reg_no'] ?? '');
+        $regNo = $this->regNoPasien;
         if ($regNo === '') {
             return '';
         }
@@ -237,7 +259,7 @@ new class extends Component {
 
     private function dokterUuid(): string
     {
-        $drId = $this->dataDaftarPoliRJ['drId'] ?? ($this->dataDaftarPoliRJ['dr_id'] ?? '');
+        $drId = $this->drIdPasien;
         if ($drId === '') {
             return '';
         }
@@ -249,7 +271,7 @@ new class extends Component {
     ═══════════════════════════════════════ */
     public function pilihDiagnosa(int $index): void
     {
-        $diagnosa = $this->dataDaftarPoliRJ['diagnosis'][$index] ?? null;
+        $diagnosa = $this->diagnosis[$index] ?? null;
         if (!$diagnosa) {
             return;
         }
@@ -863,7 +885,7 @@ new class extends Component {
                 }
                 $data['rujukanKompetensi'] = $this->formRujukan;
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->dataDaftarPoliRJ = $data;
+                $this->serapIrisan($data);
                 if ($catatanAudit) {
                     $this->appendAdminLogRJ((int) $this->rjNo, $catatanAudit, 'MR');
                 }
@@ -1088,7 +1110,7 @@ new class extends Component {
 
             {{-- Pilih diagnosa dari EMR --}}
             <div class="flex flex-wrap gap-2">
-                @forelse ($dataDaftarPoliRJ['diagnosis'] ?? [] as $indexDiagnosa => $diagnosa)
+                @forelse ($diagnosis as $indexDiagnosa => $diagnosa)
                     @php $kodeIni = $diagnosa['icdX'] ?? ($diagnosa['diagId'] ?? ''); @endphp
                     <button type="button" wire:click="pilihDiagnosa({{ $indexDiagnosa }})" @disabled($isFormLocked)
                         class="px-2 py-1 text-xs rounded-lg border {{ $formRujukan['kodeDiagnosa'] === $kodeIni ? 'bg-indigo-600 text-white border-transparent' : 'bg-canvas text-gray-700 border-hairline dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600' }}">
