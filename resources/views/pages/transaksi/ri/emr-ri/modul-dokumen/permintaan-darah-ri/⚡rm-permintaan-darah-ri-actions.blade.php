@@ -26,7 +26,16 @@ new class extends Component {
     public ?string $riHdrNo = null;
     public ?string $regNo = null;
     public bool $disabled = false;
-    public array $dataDaftarRi = [];
+    /** IRISAN dokumen: cabang `permintaanDarahRI` + diagnosa masuk. */
+    public array $daftarPermintaanDarah = [];
+    public string $diagnosaMasuk = '';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
+    private function serapIrisan(array $data): void
+    {
+        $this->daftarPermintaanDarah = $data['permintaanDarahRI'] ?? [];
+        $this->diagnosaMasuk = (string) (data_get($data, 'pengkajianAwalPasienRawatInap.bagian1DataUmum.diagnosaMasuk') ?? '');
+    }
 
     public array $form = [];
     public ?string $editingKey = null;   // id entri yang sedang diedit; null = entri baru
@@ -59,9 +68,9 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->dataDaftarRi = $data;
+                $this->serapIrisan($data);
                 $this->regNo = $data['regNo'] ?? null;
-                $this->dataDaftarRi['permintaanDarahRI'] ??= [];
+                $this->daftarPermintaanDarah ??= [];
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
             }
         }
@@ -75,9 +84,9 @@ new class extends Component {
 
         $data = $this->findDataRI($this->riHdrNo);
         if ($data) {
-            $this->dataDaftarRi = $data;
+            $this->serapIrisan($data);
             $this->regNo = $data['regNo'] ?? $this->regNo;
-            $this->dataDaftarRi['permintaanDarahRI'] ??= [];
+            $this->daftarPermintaanDarah ??= [];
             $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
         }
 
@@ -128,7 +137,7 @@ new class extends Component {
             $this->form['tglPermintaan'] = Carbon::now(config('app.timezone'))->format('d/m/Y H:i:s');
         }
         // Diagnosa masuk sebagai bantuan awal — tetap bisa dikoreksi.
-        $diagnosa = data_get($this->dataDaftarRi, 'pengkajianAwalPasienRawatInap.bagian1DataUmum.diagnosaMasuk', '');
+        $diagnosa = $this->diagnosaMasuk;
         if (filled($diagnosa) && empty($this->form['diagnosaSementara'])) {
             $this->form['diagnosaSementara'] = (string) $diagnosa;
         }
@@ -309,7 +318,7 @@ new class extends Component {
 
             $fresh['permintaanDarahRI'] = array_values($list);
             $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-            $this->dataDaftarRi = $fresh;
+            $this->daftarPermintaanDarah = $fresh['permintaanDarahRI'] ?? [];
 
             $this->appendAdminLogRI(
                 (int) $this->riHdrNo,
@@ -340,7 +349,7 @@ new class extends Component {
 
     public function editEntri(string $id): void
     {
-        $entri = collect($this->dataDaftarRi['permintaanDarahRI'] ?? [])->firstWhere('id', $id);
+        $entri = collect($this->daftarPermintaanDarah ?? [])->firstWhere('id', $id);
         if (!$entri) {
             $this->dispatch('toast', type: 'error', message: 'Entri tidak ditemukan.');
             return;
@@ -369,7 +378,7 @@ new class extends Component {
 
                 $fresh['permintaanDarahRI'] = $newList;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->daftarPermintaanDarah = $fresh['permintaanDarahRI'] ?? [];
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Permintaan Darah — entri ' . $id, 'MR');
             });
@@ -420,7 +429,7 @@ new class extends Component {
 
                 $fresh['permintaanDarahRI'] = array_values($list);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->daftarPermintaanDarah = $fresh['permintaanDarahRI'] ?? [];
 
                 $this->appendAdminLogRI(
                     (int) $this->riHdrNo,
@@ -444,7 +453,7 @@ new class extends Component {
      =============================== */
     public function cetak(string $id)
     {
-        $entry = collect($this->dataDaftarRi['permintaanDarahRI'] ?? [])->firstWhere('id', $id);
+        $entry = collect($this->daftarPermintaanDarah ?? [])->firstWhere('id', $id);
         if (!$entry) {
             $this->dispatch('toast', type: 'error', message: 'Data permintaan darah tidak ditemukan.');
             return;
@@ -473,7 +482,7 @@ new class extends Component {
             }
 
             $data = array_merge($pasien, [
-                'dataRi' => $this->dataDaftarRi,
+                'dataRi' => $this->findDataRI($this->riHdrNo) ?: [],
                 'entry' => $entry,
                 'identitasRs' => $identitasRs,
                 'ttdDokterPath' => $ttdDokterPath,
@@ -543,13 +552,13 @@ new class extends Component {
 
 <div>
     {{-- KARTU RINGKAS + TOMBOL BUKA (dulu baris flex p-4 dengan tabel ikut di dalam baris) --}}
-    @php $darahCount = count($dataDaftarRi['permintaanDarahRI'] ?? []); @endphp
+    @php $darahCount = count($daftarPermintaanDarah ?? []); @endphp
     <x-modul-dokumen.kartu judul="Formulir Permintaan Darah"
         :jumlah="$darahCount"
         satuan="permintaan"
         :nonaktif="!$riHdrNo">
         <x-slot:deskripsi>Permintaan komponen darah untuk transfusi — ditandatangani dokter peminta lalu dicetak untuk PMI.</x-slot:deskripsi>
-    @php $list = $dataDaftarRi['permintaanDarahRI'] ?? []; @endphp
+    @php $list = $daftarPermintaanDarah ?? []; @endphp
     {{-- PRATINJAU ENTRI DI KARTU — ringkasan entri terbaru, tanpa perlu membuka modal --}}
         <div class="overflow-x-auto rounded-2xl border border-hairline dark:border-gray-700">
             <table class="min-w-full text-sm">
@@ -594,7 +603,7 @@ new class extends Component {
 
             <x-modul-dokumen.header judul="Formulir Permintaan Darah"
                 ikon="M12 3s5.5 6.3 5.5 10a5.5 5.5 0 11-11 0C6.5 9.3 12 3 12 3z"
-                jalur="RI" :jumlah="count($dataDaftarRi['permintaanDarahRI'] ?? [])" :readOnly="$isFormLocked">
+                jalur="RI" :jumlah="count($daftarPermintaanDarah ?? [])" :readOnly="$isFormLocked">
                 Permintaan darah &amp; komponen darah — Rawat Inap
             </x-modul-dokumen.header>
 
@@ -795,7 +804,7 @@ new class extends Component {
                 {{-- ── DAFTAR PERMINTAAN ── --}}
                 @endif
                 @unless ($this->diForm())
-                @php $list = $dataDaftarRi['permintaanDarahRI'] ?? []; @endphp
+                @php $list = $daftarPermintaanDarah ?? []; @endphp
                 <x-modul-dokumen.tabel-daftar :kolom="['', 'Tanggal', 'Jenis', 'Status', 'Dokter', 'Aksi' => 'text-center w-72']">
                                 @forelse ($list as $row)
                                     @php
