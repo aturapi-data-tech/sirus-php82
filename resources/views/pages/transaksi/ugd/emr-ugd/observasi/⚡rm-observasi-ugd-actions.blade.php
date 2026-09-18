@@ -16,7 +16,18 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+
+    /**
+     * IRISAN dokumen: hanya `observasi.observasiLanjutan.tandaVital`.
+     *
+     * Dokumen `datadaftarugd_json` utuh sengaja TIDAK disimpan di properti publik — properti
+     * publik ikut snapshot Livewire dan dikirim bolak-balik tiap request. Untuk MENYIMPAN,
+     * dokumen utuh tetap dibaca ulang dari DB di dalam transaksi + lock.
+     */
+    public array $daftarTandaVital = [];
+
+    /** Penanda dokumen sudah ter-muat (mengganti peran `dataDaftarUGD['regNo']`). */
+    public ?string $regNoPasien = null;
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-observasi-ugd'];
@@ -123,7 +134,7 @@ new class extends Component {
         $this->umurTahun = $umur['tahun'];
 
         // Varian mengikuti umur; entri terakhir yang sudah memilih varian (mis. MEOWS) lebih diutamakan.
-        $terakhir = collect($this->dataDaftarUGD['observasi']['observasiLanjutan']['tandaVital'] ?? [])
+        $terakhir = collect($this->daftarTandaVital)
             ->sortByDesc(fn($item) => strtotime(str_replace('/', '-', $item['waktuPemeriksaan'] ?? '')) ?: 0)
             ->first();
         $varianTerakhir = $terakhir['ewsVarian'] ?? null;
@@ -221,20 +232,15 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
-
-        // Inisialisasi struktur jika belum ada
-        $this->dataDaftarUGD['observasi']['observasiLanjutan'] ??= [
-            'tandaVitalTab' => 'Observasi Lanjutan',
-            'tandaVital' => [],
-        ];
-        $this->dataDaftarUGD['observasi']['observasiLanjutan']['tandaVital'] ??= [];
+        // Diisi SEBELUM tentukanUmurDanVarian() — fungsi itu membaca entri terakhir dari sini.
+        $this->daftarTandaVital = $data['observasi']['observasiLanjutan']['tandaVital'] ?? [];
+        $this->regNoPasien = $data['regNo'] ?? null;
 
         // Generate ID untuk data lama yang belum ada ID
-        $this->generateIds('tandaVital', 'observasi_');
+        $this->generateIds('observasi_');
 
         $this->isFormLocked = $this->checkEmrUGDStatus($rjNo);
-        $this->tentukanUmurDanVarian($data['regNo'] ?? null);
+        $this->tentukanUmurDanVarian($this->regNoPasien);
 
         // Set waktu default
         $this->setWaktuPemeriksaan();
@@ -246,12 +252,12 @@ new class extends Component {
      | RELOAD SETELAH SIMPAN EMR GLOBAL
      | Simpan SOAP mem-morph parent EMR → komponen pasif (tak dapat event save) ikut
      | ter-wipe ("Data UGD belum dimuat"). Muat ulang HANYA bila memang ter-wipe
-     | (regNo hilang), supaya input berjalan tak ke-reset.
+     | (regNoPasien hilang), supaya input berjalan tak ke-reset.
      =============================== */
     #[On('refresh-after-ugd.saved')]
     public function reloadAfterUgdSaved(): void
     {
-        if (empty($this->rjNo) || !empty($this->dataDaftarUGD['regNo'])) {
+        if (empty($this->rjNo) || !empty($this->regNoPasien)) {
             return;
         }
 
@@ -373,7 +379,8 @@ new class extends Component {
 
                 // 7. Simpan JSON
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->daftarTandaVital = $data['observasi']['observasiLanjutan']['tandaVital'];
+                $this->generateIds('observasi_');
             });
 
             // 8. Reset form + notify — di luar transaksi
@@ -435,7 +442,8 @@ new class extends Component {
 
                 // 5. Simpan JSON
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->daftarTandaVital = $data['observasi']['observasiLanjutan']['tandaVital'];
+                $this->generateIds('observasi_');
             });
 
             // 6. Notify — di luar transaksi
@@ -466,20 +474,20 @@ new class extends Component {
         $this->resetValidation();
     }
 
-    private function generateIds(string $key, string $prefix): void
+    private function generateIds(string $prefix): void
     {
-        if (isset($this->dataDaftarUGD['observasi']['observasiLanjutan'][$key])) {
-            foreach ($this->dataDaftarUGD['observasi']['observasiLanjutan'][$key] as &$item) {
-                $item['id'] ??= uniqid($prefix);
-            }
+        foreach ($this->daftarTandaVital as &$item) {
+            $item['id'] ??= uniqid($prefix);
         }
+        unset($item);
     }
 
     protected function resetForm(): void
     {
         $this->resetVersion();
         $this->isFormLocked = false;
-        $this->dataDaftarUGD = [];
+        $this->daftarTandaVital = [];
+        $this->regNoPasien = null;
         $this->reset(['observasiLanjutan', 'ewsPratinjau']);
     }
 };
@@ -501,7 +509,7 @@ new class extends Component {
                 </div>
             @endif
 
-            @if (isset($dataDaftarUGD['observasi']['observasiLanjutan']))
+            @if (filled($regNoPasien))
 
                 {{-- FORM INPUT --}}
                 @if (!$isFormLocked)
@@ -726,7 +734,7 @@ new class extends Component {
 
                 {{-- TABEL DATA --}}
                 @php
-                    $tandaVitalData = $dataDaftarUGD['observasi']['observasiLanjutan']['tandaVital'] ?? [];
+                    $tandaVitalData = $daftarTandaVital;
                     $sortedTtv = collect($tandaVitalData)
                         ->sortByDesc(
                             fn($item) => \Carbon\Carbon::createFromFormat(
