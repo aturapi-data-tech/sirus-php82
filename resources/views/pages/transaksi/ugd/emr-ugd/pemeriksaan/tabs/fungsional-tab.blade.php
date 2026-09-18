@@ -5,25 +5,25 @@
         {{-- Alat Bantu --}}
         <div>
             <x-input-label value="Alat Bantu" />
-            <x-text-input wire:model.live="dataDaftarUGD.pemeriksaan.fungsional.alatBantu" placeholder="Alat Bantu"
-                :error="$errors->has('dataDaftarUGD.pemeriksaan.fungsional.alatBantu')" :disabled="$isFormLocked" class="w-full mt-1" />
-            <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.fungsional.alatBantu')" class="mt-1" />
+            <x-text-input wire:model.live="pemeriksaan.fungsional.alatBantu" placeholder="Alat Bantu"
+                :error="$errors->has('pemeriksaan.fungsional.alatBantu')" :disabled="$isFormLocked" class="w-full mt-1" />
+            <x-input-error :messages="$errors->get('pemeriksaan.fungsional.alatBantu')" class="mt-1" />
         </div>
 
         {{-- Prothesa --}}
         <div>
             <x-input-label value="Prothesa" />
-            <x-text-input wire:model.live="dataDaftarUGD.pemeriksaan.fungsional.prothesa" placeholder="Prothesa"
-                :error="$errors->has('dataDaftarUGD.pemeriksaan.fungsional.prothesa')" :disabled="$isFormLocked" class="w-full mt-1" />
-            <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.fungsional.prothesa')" class="mt-1" />
+            <x-text-input wire:model.live="pemeriksaan.fungsional.prothesa" placeholder="Prothesa"
+                :error="$errors->has('pemeriksaan.fungsional.prothesa')" :disabled="$isFormLocked" class="w-full mt-1" />
+            <x-input-error :messages="$errors->get('pemeriksaan.fungsional.prothesa')" class="mt-1" />
         </div>
 
         {{-- Cacat Tubuh --}}
         <div>
             <x-input-label value="Cacat Tubuh" />
-            <x-text-input wire:model.live="dataDaftarUGD.pemeriksaan.fungsional.cacatTubuh" placeholder="Cacat Tubuh"
-                :error="$errors->has('dataDaftarUGD.pemeriksaan.fungsional.cacatTubuh')" :disabled="$isFormLocked" class="w-full mt-1" />
-            <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.fungsional.cacatTubuh')" class="mt-1" />
+            <x-text-input wire:model.live="pemeriksaan.fungsional.cacatTubuh" placeholder="Cacat Tubuh"
+                :error="$errors->has('pemeriksaan.fungsional.cacatTubuh')" :disabled="$isFormLocked" class="w-full mt-1" />
+            <x-input-error :messages="$errors->get('pemeriksaan.fungsional.cacatTubuh')" class="mt-1" />
         </div>
 
     </div>

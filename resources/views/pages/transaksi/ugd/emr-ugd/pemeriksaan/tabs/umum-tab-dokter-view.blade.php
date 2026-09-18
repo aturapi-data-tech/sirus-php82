@@ -8,57 +8,57 @@
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">Keadaan Umum</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['tandaVital']['keadaanUmum'] ?? '-' }}
-                    <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.tandaVital.keadaanUmum')" class="mt-1" />
+                    {{ $pemeriksaan['tandaVital']['keadaanUmum'] ?? '-' }}
+                    <x-input-error :messages="$errors->get('pemeriksaan.tandaVital.keadaanUmum')" class="mt-1" />
                 </span>
             </div>
 
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">Tingkat Kesadaran</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['tandaVital']['tingkatKesadaran'] ?? '-' }}
-                    <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.tandaVital.tingkatKesadaran')" class="mt-1" />
+                    {{ $pemeriksaan['tandaVital']['tingkatKesadaran'] ?? '-' }}
+                    <x-input-error :messages="$errors->get('pemeriksaan.tandaVital.tingkatKesadaran')" class="mt-1" />
                 </span>
             </div>
 
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">A — Jalan Nafas</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['tandaVital']['jalanNafas']['jalanNafas'] ?? '-' }}
+                    {{ $pemeriksaan['tandaVital']['jalanNafas']['jalanNafas'] ?? '-' }}
                 </span>
             </div>
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">B — Pernafasan</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['tandaVital']['pernafasan']['pernafasan'] ?? '-' }}
+                    {{ $pemeriksaan['tandaVital']['pernafasan']['pernafasan'] ?? '-' }}
                 </span>
             </div>
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">Gerak Dada</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['tandaVital']['gerakDada']['gerakDada'] ?? '-' }}
+                    {{ $pemeriksaan['tandaVital']['gerakDada']['gerakDada'] ?? '-' }}
                 </span>
             </div>
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">C — Sirkulasi</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['tandaVital']['sirkulasi']['sirkulasi'] ?? '-' }}
+                    {{ $pemeriksaan['tandaVital']['sirkulasi']['sirkulasi'] ?? '-' }}
                 </span>
             </div>
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">D — Disability</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['tandaVital']['disability']['disability'] ?? '-' }}
+                    {{ $pemeriksaan['tandaVital']['disability']['disability'] ?? '-' }}
                 </span>
             </div>
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">GCS</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
                     @php
-                        $e = $dataDaftarUGD['pemeriksaan']['tandaVital']['e'] ?? '';
-                        $v = $dataDaftarUGD['pemeriksaan']['tandaVital']['v'] ?? '';
-                        $m = $dataDaftarUGD['pemeriksaan']['tandaVital']['m'] ?? '';
-                        $t = $dataDaftarUGD['pemeriksaan']['tandaVital']['gcs'] ?? '';
+                        $e = $pemeriksaan['tandaVital']['e'] ?? '';
+                        $v = $pemeriksaan['tandaVital']['v'] ?? '';
+                        $m = $pemeriksaan['tandaVital']['m'] ?? '';
+                        $t = $pemeriksaan['tandaVital']['gcs'] ?? '';
                     @endphp
                     @if ($e !== '' || $v !== '' || $m !== '')
                         E{{ $e ?: '-' }} V{{ $v ?: '-' }} M{{ $m ?: '-' }}
@@ -72,57 +72,57 @@
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">Tekanan Darah</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['tandaVital']['sistolik'] ?? '-' }}
+                    {{ $pemeriksaan['tandaVital']['sistolik'] ?? '-' }}
                     /
-                    {{ $dataDaftarUGD['pemeriksaan']['tandaVital']['distolik'] ?? '-' }}
+                    {{ $pemeriksaan['tandaVital']['distolik'] ?? '-' }}
                     <span class="text-sm text-muted-soft">mmHg</span>
-                    <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.tandaVital.sistolik')" class="mt-1" />
-                    <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.tandaVital.distolik')" class="mt-1" />
+                    <x-input-error :messages="$errors->get('pemeriksaan.tandaVital.sistolik')" class="mt-1" />
+                    <x-input-error :messages="$errors->get('pemeriksaan.tandaVital.distolik')" class="mt-1" />
                 </span>
             </div>
 
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">Frekuensi Nadi</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['tandaVital']['frekuensiNadi'] ?? '-' }}
+                    {{ $pemeriksaan['tandaVital']['frekuensiNadi'] ?? '-' }}
                     <span class="text-sm text-muted-soft">x/menit</span>
-                    <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.tandaVital.frekuensiNadi')" class="mt-1" />
+                    <x-input-error :messages="$errors->get('pemeriksaan.tandaVital.frekuensiNadi')" class="mt-1" />
                 </span>
             </div>
 
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">Frekuensi Nafas</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['tandaVital']['frekuensiNafas'] ?? '-' }}
+                    {{ $pemeriksaan['tandaVital']['frekuensiNafas'] ?? '-' }}
                     <span class="text-sm text-muted-soft">x/menit</span>
-                    <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.tandaVital.frekuensiNafas')" class="mt-1" />
+                    <x-input-error :messages="$errors->get('pemeriksaan.tandaVital.frekuensiNafas')" class="mt-1" />
                 </span>
             </div>
 
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">Suhu</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['tandaVital']['suhu'] ?? '-' }}
+                    {{ $pemeriksaan['tandaVital']['suhu'] ?? '-' }}
                     <span class="text-sm text-muted-soft">°C</span>
-                    <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.tandaVital.suhu')" class="mt-1" />
+                    <x-input-error :messages="$errors->get('pemeriksaan.tandaVital.suhu')" class="mt-1" />
                 </span>
             </div>
 
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">SPO2</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['tandaVital']['spo2'] ?? '-' }}
+                    {{ $pemeriksaan['tandaVital']['spo2'] ?? '-' }}
                     <span class="text-sm text-muted-soft">%</span>
-                    <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.tandaVital.spo2')" class="mt-1" />
+                    <x-input-error :messages="$errors->get('pemeriksaan.tandaVital.spo2')" class="mt-1" />
                 </span>
             </div>
 
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">GDA</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['tandaVital']['gda'] ?? '-' }}
+                    {{ $pemeriksaan['tandaVital']['gda'] ?? '-' }}
                     <span class="text-sm text-muted-soft">g/dl</span>
-                    <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.tandaVital.gda')" class="mt-1" />
+                    <x-input-error :messages="$errors->get('pemeriksaan.tandaVital.gda')" class="mt-1" />
                 </span>
             </div>
 
@@ -136,45 +136,45 @@
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">Berat Badan</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['nutrisi']['bb'] ?? '-' }}
+                    {{ $pemeriksaan['nutrisi']['bb'] ?? '-' }}
                     <span class="text-sm text-muted-soft">Kg</span>
-                    <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.nutrisi.bb')" class="mt-1" />
+                    <x-input-error :messages="$errors->get('pemeriksaan.nutrisi.bb')" class="mt-1" />
                 </span>
             </div>
 
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">Tinggi Badan</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['nutrisi']['tb'] ?? '-' }}
+                    {{ $pemeriksaan['nutrisi']['tb'] ?? '-' }}
                     <span class="text-sm text-muted-soft">Cm</span>
-                    <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.nutrisi.tb')" class="mt-1" />
+                    <x-input-error :messages="$errors->get('pemeriksaan.nutrisi.tb')" class="mt-1" />
                 </span>
             </div>
 
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">Index Masa Tubuh</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['nutrisi']['imt'] ?? '-' }}
+                    {{ $pemeriksaan['nutrisi']['imt'] ?? '-' }}
                     <span class="text-sm text-muted-soft">Kg/M²</span>
-                    <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.nutrisi.imt')" class="mt-1" />
+                    <x-input-error :messages="$errors->get('pemeriksaan.nutrisi.imt')" class="mt-1" />
                 </span>
             </div>
 
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">Lingkar Kepala</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['nutrisi']['lk'] ?? '-' }}
+                    {{ $pemeriksaan['nutrisi']['lk'] ?? '-' }}
                     <span class="text-sm text-muted-soft">Cm</span>
-                    <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.nutrisi.lk')" class="mt-1" />
+                    <x-input-error :messages="$errors->get('pemeriksaan.nutrisi.lk')" class="mt-1" />
                 </span>
             </div>
 
             <div class="py-2 grid grid-cols-3 gap-2 items-start border-b border-hairline dark:border-gray-700">
                 <span class="text-sm font-medium text-muted dark:text-gray-400">Lingkar Lengan Atas</span>
                 <span class="col-span-2 text-base font-medium text-ink dark:text-gray-200">
-                    {{ $dataDaftarUGD['pemeriksaan']['nutrisi']['lila'] ?? '-' }}
+                    {{ $pemeriksaan['nutrisi']['lila'] ?? '-' }}
                     <span class="text-sm text-muted-soft">Cm</span>
-                    <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.nutrisi.lila')" class="mt-1" />
+                    <x-input-error :messages="$errors->get('pemeriksaan.nutrisi.lila')" class="mt-1" />
                 </span>
             </div>
 

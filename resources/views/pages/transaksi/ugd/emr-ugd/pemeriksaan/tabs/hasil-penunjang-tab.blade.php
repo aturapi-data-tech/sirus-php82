@@ -40,22 +40,22 @@
     {{-- TAB CONTENT --}}
 
     <div x-show="activeTab === 'laboratorium'" x-cloak class="space-y-4">
-        <livewire:pages::components.rekam-medis.penunjang.laboratorium-display.laboratorium-display :regNo="$dataDaftarUGD['regNo'] ?? ''"
-            wire:key="emr-ugd.laboratorium-display-{{ $dataDaftarUGD['regNo'] ?? 'new' }}" />
+        <livewire:pages::components.rekam-medis.penunjang.laboratorium-display.laboratorium-display :regNo="$regNoPasien"
+            wire:key="emr-ugd.laboratorium-display-{{ $regNoPasien ?: 'new' }}" />
 
         <livewire:pages::components.rekam-medis.penunjang.lab-luar-display.lab-luar-display
-            :regNo="$dataDaftarUGD['regNo'] ?? ''"
-            wire:key="emr-ugd.lab-luar-display-{{ $dataDaftarUGD['regNo'] ?? 'new' }}" />
+            :regNo="$regNoPasien"
+            wire:key="emr-ugd.lab-luar-display-{{ $regNoPasien ?: 'new' }}" />
     </div>
 
     <div x-show="activeTab === 'radiologi'" x-cloak>
-        <livewire:pages::components.rekam-medis.penunjang.radiologi-display.radiologi-display :regNo="$dataDaftarUGD['regNo'] ?? ''"
-            wire:key="emr-ugd.radiologi-display-{{ $dataDaftarUGD['regNo'] ?? 'new' }}" />
+        <livewire:pages::components.rekam-medis.penunjang.radiologi-display.radiologi-display :regNo="$regNoPasien"
+            wire:key="emr-ugd.radiologi-display-{{ $regNoPasien ?: 'new' }}" />
     </div>
 
     <div x-show="activeTab === 'upload'" x-cloak>
         <livewire:pages::components.rekam-medis.penunjang.upload-penunjang-display.upload-penunjang-display
-            :regNo="$dataDaftarUGD['regNo'] ?? ''" wire:key="emr-ugd.upload-penunjang-display-{{ $dataDaftarUGD['regNo'] ?? 'new' }}" />
+            :regNo="$regNoPasien" wire:key="emr-ugd.upload-penunjang-display-{{ $regNoPasien ?: 'new' }}" />
     </div>
 
 </div>
