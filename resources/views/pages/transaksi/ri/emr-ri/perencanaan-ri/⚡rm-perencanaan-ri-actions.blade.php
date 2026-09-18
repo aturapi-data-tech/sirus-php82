@@ -20,7 +20,25 @@ new class extends Component {
     public bool $isFormLocked = false;
     public bool $isBPJS = false;
     public ?string $riHdrNo = null;
-    public array $dataDaftarRi = [];
+    /**
+     * IRISAN dokumen: cabang `perencanaan` (model form) + empat nilai dari cabang lain
+     * (jenis klaim, nomor & tanggal SEP, penanda kasus polisi).
+     */
+    public array $perencanaan = [];
+    public string $klaimId = '';
+    public string $noSep = '';
+    public ?string $tglSep = null;
+    public bool $kasusPolisi = false;
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
+    private function serapIrisan(array $data): void
+    {
+        $this->perencanaan = $data['perencanaan'] ?? [];
+        $this->klaimId = (string) ($data['klaimId'] ?? '');
+        $this->noSep = (string) ($data['sep']['noSep'] ?? '');
+        $this->tglSep = $data['sep']['reqSep']['request']['t_sep']['tglSep'] ?? null;
+        $this->kasusPolisi = (bool) ($data['kPolisi'] ?? false);
+    }
 
     // Form entri Discharge Planning (multi-entri). Ditambahkan ke array in-memory,
     // dipersist saat store() — sama pola dengan field perencanaan lain di form ini.
@@ -66,8 +84,8 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarRi = $data;
-        $this->dataDaftarRi['perencanaan'] ??= [
+        $this->serapIrisan($data);
+        $this->perencanaan ??= [
             'tindakLanjut' => [
                 'tindakLanjut' => '',
                 'tindakLanjutKode' => '',
@@ -86,13 +104,13 @@ new class extends Component {
 
         $klaimStatus =
             DB::table('rsmst_klaimtypes')
-                ->where('klaim_id', $this->dataDaftarRi['klaimId'] ?? '')
+                ->where('klaim_id', $this->klaimId)
                 ->value('klaim_status') ?? 'UMUM';
 
         $this->isBPJS = $klaimStatus === 'BPJS';
 
-        if ($this->isBPJS && empty($this->dataDaftarRi['perencanaan']['tindakLanjut']['noSep'])) {
-            $this->dataDaftarRi['perencanaan']['tindakLanjut']['noSep'] = $this->dataDaftarRi['sep']['noSep'] ?? '';
+        if ($this->isBPJS && empty($this->perencanaan['tindakLanjut']['noSep'])) {
+            $this->perencanaan['tindakLanjut']['noSep'] = $this->noSep;
         }
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo); // ← trait
@@ -104,8 +122,8 @@ new class extends Component {
     {
         $opt = collect($this->tindakLanjutOptions)->firstWhere('tindakLanjutKode', $val);
         if ($opt) {
-            $this->dataDaftarRi['perencanaan']['tindakLanjut']['tindakLanjutKode'] = $opt['tindakLanjutKode'];
-            $this->dataDaftarRi['perencanaan']['tindakLanjut']['statusPulang'] = $opt['tindakLanjutKodeBpjs'];
+            $this->perencanaan['tindakLanjut']['tindakLanjutKode'] = $opt['tindakLanjutKode'];
+            $this->perencanaan['tindakLanjut']['statusPulang'] = $opt['tindakLanjutKodeBpjs'];
 
             // Meninggal (statusPulang BPJS 4): No. Surat Meninggal WAJIB saat update pulang
             // SEP (VclaimTrait: required_if statusPulang=4|min:5), tapi kenyataannya sering
@@ -114,8 +132,8 @@ new class extends Component {
             //
             // JANGAN timpa yang sudah terisi: bisa nomor manual RS yang sudah terlanjur
             // dilaporkan/dicetak. Field tetap bisa diedit petugas — ini default, bukan kunci.
-            if ((string) $opt['tindakLanjutKodeBpjs'] === '4' && trim((string) ($this->dataDaftarRi['perencanaan']['tindakLanjut']['noSuratMeninggal'] ?? '')) === '') {
-                $this->dataDaftarRi['perencanaan']['tindakLanjut']['noSuratMeninggal'] = NomorSuratKematian::generate();
+            if ((string) $opt['tindakLanjutKodeBpjs'] === '4' && trim((string) ($this->perencanaan['tindakLanjut']['noSuratMeninggal'] ?? '')) === '') {
+                $this->perencanaan['tindakLanjut']['noSuratMeninggal'] = NomorSuratKematian::generate();
             }
         }
         $this->store();
@@ -159,7 +177,7 @@ new class extends Component {
         $jenis = trim((string) $this->formPelayanan['jenisPelayanan']);
         $snomed = DischargePlanningOptions::pelayanan($jenis);
 
-        $this->dataDaftarRi['perencanaan']['dischargePlanning']['pelayananBerkelanjutan']['pelayananBerkelanjutanData'][] = [
+        $this->perencanaan['dischargePlanning']['pelayananBerkelanjutan']['pelayananBerkelanjutanData'][] = [
             'id'              => (string) Str::uuid(),
             'jenisPelayanan'  => $jenis,
             'ketJenis'        => trim((string) ($this->formPelayanan['ketJenis'] ?? '')),
@@ -181,13 +199,13 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang.');
             return;
         }
-        $rows = $this->dataDaftarRi['perencanaan']['dischargePlanning']['pelayananBerkelanjutan']['pelayananBerkelanjutanData'] ?? [];
+        $rows = $this->perencanaan['dischargePlanning']['pelayananBerkelanjutan']['pelayananBerkelanjutanData'] ?? [];
         if (!isset($rows[$index])) {
             return;
         }
         $jenis = $rows[$index]['jenisPelayanan'] ?? '-';
         unset($rows[$index]);
-        $this->dataDaftarRi['perencanaan']['dischargePlanning']['pelayananBerkelanjutan']['pelayananBerkelanjutanData'] = array_values($rows);
+        $this->perencanaan['dischargePlanning']['pelayananBerkelanjutan']['pelayananBerkelanjutanData'] = array_values($rows);
         $this->store('Hapus pelayanan berkelanjutan — ' . $jenis);
     }
 
@@ -209,7 +227,7 @@ new class extends Component {
         $jenis = trim((string) $this->formAlat['jenisAlat']);
         $snomed = DischargePlanningOptions::alatBantu($jenis);
 
-        $this->dataDaftarRi['perencanaan']['dischargePlanning']['penggunaanAlatBantu']['penggunaanAlatBantuData'][] = [
+        $this->perencanaan['dischargePlanning']['penggunaanAlatBantu']['penggunaanAlatBantuData'][] = [
             'id'            => (string) Str::uuid(),
             'jenisAlat'     => $jenis,
             'ketAlat'       => trim((string) ($this->formAlat['ketAlat'] ?? '')),
@@ -231,13 +249,13 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Pasien sudah pulang.');
             return;
         }
-        $rows = $this->dataDaftarRi['perencanaan']['dischargePlanning']['penggunaanAlatBantu']['penggunaanAlatBantuData'] ?? [];
+        $rows = $this->perencanaan['dischargePlanning']['penggunaanAlatBantu']['penggunaanAlatBantuData'] ?? [];
         if (!isset($rows[$index])) {
             return;
         }
         $jenis = $rows[$index]['jenisAlat'] ?? '-';
         unset($rows[$index]);
-        $this->dataDaftarRi['perencanaan']['dischargePlanning']['penggunaanAlatBantu']['penggunaanAlatBantuData'] = array_values($rows);
+        $this->perencanaan['dischargePlanning']['penggunaanAlatBantu']['penggunaanAlatBantuData'] = array_values($rows);
         $this->store('Hapus alat bantu — ' . $jenis);
     }
 
@@ -256,9 +274,9 @@ new class extends Component {
 
                 $fresh = $this->findDataRI($this->riHdrNo) ?? [];
                 $isBaru = empty($fresh['perencanaan']);
-                $fresh['perencanaan'] = $this->dataDaftarRi['perencanaan'] ?? [];
+                $fresh['perencanaan'] = $this->perencanaan ?? [];
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->dataDaftarRi = $fresh;
+                $this->serapIrisan($fresh);
 
                 $tl = $fresh['perencanaan']['tindakLanjut'] ?? [];
                 $tlDesc = collect($this->tindakLanjutOptions)->firstWhere('tindakLanjutKode', $tl['tindakLanjutKode'] ?? '')['tindakLanjut'] ?? '-';
@@ -277,12 +295,12 @@ new class extends Component {
 
     public function setTglPulang(): void
     {
-        $this->dataDaftarRi['perencanaan']['tindakLanjut']['tglPulang'] = Carbon::now(config('app.timezone'))->format('d/m/Y');
+        $this->perencanaan['tindakLanjut']['tglPulang'] = Carbon::now(config('app.timezone'))->format('d/m/Y');
     }
 
     public function setTglMeninggal(): void
     {
-        $this->dataDaftarRi['perencanaan']['tindakLanjut']['tglMeninggal'] = Carbon::now(config('app.timezone'))->format('d/m/Y');
+        $this->perencanaan['tindakLanjut']['tglMeninggal'] = Carbon::now(config('app.timezone'))->format('d/m/Y');
     }
 
     public function setTglRencana(): void
@@ -298,13 +316,13 @@ new class extends Component {
         }
 
         // Simpan JSON dulu sebelum kirim ke BPJS
-        $this->store('Update Tgl Pulang BPJS — pulang ' . ($this->dataDaftarRi['perencanaan']['tindakLanjut']['tglPulang'] ?? '-'));
+        $this->store('Update Tgl Pulang BPJS — pulang ' . ($this->perencanaan['tindakLanjut']['tglPulang'] ?? '-'));
 
-        $tindak = $this->dataDaftarRi['perencanaan']['tindakLanjut'] ?? [];
+        $tindak = $this->perencanaan['tindakLanjut'] ?? [];
 
         // Cek klaim BPJS
         $klaimStatus = DB::table('rsmst_klaimtypes')
-            ->where('klaim_id', $this->dataDaftarRi['klaimId'] ?? '')
+            ->where('klaim_id', $this->klaimId)
             ->value('klaim_status') ?? 'UMUM';
 
         if ($klaimStatus !== 'BPJS') {
@@ -318,7 +336,7 @@ new class extends Component {
             return;
         }
 
-        $tglSepRaw = $this->dataDaftarRi['sep']['reqSep']['request']['t_sep']['tglSep'] ?? null;
+        $tglSepRaw = $this->tglSep;
         if (empty($tglSepRaw)) {
             $this->dispatch('toast', type: 'error', message: 'Pembuatan SEP bukan melalui siRUS, Tgl SEP belum tersedia.');
             return;
@@ -431,16 +449,16 @@ new class extends Component {
                 <div class="mt-2 flex flex-wrap gap-3">
                     @foreach ($tindakLanjutOptions as $opt)
                         <x-radio-button :label="$opt['tindakLanjut']" :value="$opt['tindakLanjutKode']" name="tindakLanjut"
-                            wire:model.live="dataDaftarRi.perencanaan.tindakLanjut.tindakLanjut" :disabled="$isFormLocked" />
+                            wire:model.live="perencanaan.tindakLanjut.tindakLanjut" :disabled="$isFormLocked" />
                         {{-- x-radio-button sudah include label --}}
                     @endforeach
                 </div>
-                @if (!empty($dataDaftarRi['perencanaan']['tindakLanjut']['tindakLanjut']))
+                @if (!empty($perencanaan['tindakLanjut']['tindakLanjut']))
                     <p class="mt-1 text-xs text-muted">
                         Kode SNOMED: <span
-                            class="font-mono">{{ $dataDaftarRi['perencanaan']['tindakLanjut']['tindakLanjutKode'] ?? '-' }}</span>
+                            class="font-mono">{{ $perencanaan['tindakLanjut']['tindakLanjutKode'] ?? '-' }}</span>
                         | Status BPJS: <span
-                            class="font-mono">{{ $dataDaftarRi['perencanaan']['tindakLanjut']['statusPulang'] ?? '-' }}</span>
+                            class="font-mono">{{ $perencanaan['tindakLanjut']['statusPulang'] ?? '-' }}</span>
                     </p>
                 @endif
             </div>
@@ -450,7 +468,7 @@ new class extends Component {
                 <div>
                     <x-input-label value="Tanggal Pulang" />
                     <div class="flex gap-2 mt-1">
-                        <x-text-input wire:model.live="dataDaftarRi.perencanaan.tindakLanjut.tglPulang" class="flex-1"
+                        <x-text-input wire:model.live="perencanaan.tindakLanjut.tglPulang" class="flex-1"
                             placeholder="dd/mm/yyyy" :disabled="$isFormLocked" />
                         @if (!$isFormLocked)
                             <x-secondary-button wire:click="setTglPulang" type="button" class="text-xs">Hari
@@ -462,17 +480,17 @@ new class extends Component {
                 {{-- Keterangan --}}
                 <div>
                     <x-input-label value="Keterangan Tindak Lanjut" />
-                    <x-text-input wire:model.live="dataDaftarRi.perencanaan.tindakLanjut.keteranganTindakLanjut"
+                    <x-text-input wire:model.live="perencanaan.tindakLanjut.keteranganTindakLanjut"
                         class="w-full mt-1" :disabled="$isFormLocked" />
                 </div>
             </div>
 
             {{-- Jika Meninggal (statusPulang: 4) --}}
-            @if (($dataDaftarRi['perencanaan']['tindakLanjut']['statusPulang'] ?? '') == 4)
+            @if (($perencanaan['tindakLanjut']['statusPulang'] ?? '') == 4)
                 <div class="grid grid-cols-2 gap-3 p-3 rounded-lg bg-red-50 border border-red-200">
                     <div>
                         <x-input-label value="No. Surat Keterangan Meninggal *" />
-                        <x-text-input wire:model.live="dataDaftarRi.perencanaan.tindakLanjut.noSuratMeninggal"
+                        <x-text-input wire:model.live="perencanaan.tindakLanjut.noSuratMeninggal"
                             class="w-full mt-1" :disabled="$isFormLocked" placeholder="Wajib diisi jika meninggal" />
                         <p class="mt-1 text-sm text-muted dark:text-gray-400">
                             Terisi otomatis (stempel waktu) saat status Meninggal dipilih. Boleh diganti bila RS
@@ -482,7 +500,7 @@ new class extends Component {
                     <div>
                         <x-input-label value="Tanggal Meninggal *" />
                         <div class="flex gap-2 mt-1">
-                            <x-text-input wire:model.live="dataDaftarRi.perencanaan.tindakLanjut.tglMeninggal"
+                            <x-text-input wire:model.live="perencanaan.tindakLanjut.tglMeninggal"
                                 class="flex-1" placeholder="dd/mm/yyyy" :disabled="$isFormLocked" />
                             @if (!$isFormLocked)
                                 <x-now-button wire:click="setTglMeninggal" />
@@ -493,11 +511,11 @@ new class extends Component {
             @endif
 
             {{-- Jika KLL (Kecelakaan Lalu Lintas) --}}
-            @if ($dataDaftarRi['kPolisi'] ?? false)
+            @if ($kasusPolisi)
                 <div class="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
                     <div>
                         <x-input-label value="No. Laporan Polisi (KLL) *" />
-                        <x-text-input wire:model.live="dataDaftarRi.perencanaan.tindakLanjut.noLPManual"
+                        <x-text-input wire:model.live="perencanaan.tindakLanjut.noLPManual"
                             class="w-full mt-1" :disabled="$isFormLocked" placeholder="Wajib diisi untuk kasus KLL" />
                     </div>
                 </div>
@@ -509,7 +527,7 @@ new class extends Component {
                     <div>
                         <x-input-label value="No. SEP" />
                         <div class="flex gap-2 mt-1">
-                            <x-text-input wire:model.live="dataDaftarRi.perencanaan.tindakLanjut.noSep"
+                            <x-text-input wire:model.live="perencanaan.tindakLanjut.noSep"
                                 class="flex-1 font-mono" :disabled="$isFormLocked" />
                             @if (!$isFormLocked)
                                 <x-success-button wire:click="updateTglPulangBPJS" type="button"
@@ -529,7 +547,7 @@ new class extends Component {
                             @endif
                         </div>
                         <p class="mt-1 text-xs text-muted">
-                            Status Pulang: <span class="font-mono">{{ $dataDaftarRi['perencanaan']['tindakLanjut']['statusPulang'] ?? '-' }}</span>
+                            Status Pulang: <span class="font-mono">{{ $perencanaan['tindakLanjut']['statusPulang'] ?? '-' }}</span>
                             (1: Atas Persetujuan Dokter, 3: Atas Permintaan Sendiri, 4: Meninggal, 5: Lain-lain)
                         </p>
                     </div>
@@ -547,12 +565,12 @@ new class extends Component {
                 <div class="mt-2 flex gap-4">
                     @foreach (['Ada', 'Tidak Ada'] as $opt)
                         <x-radio-button :label="$opt" :value="$opt" name="pelayananBerkelanjutan"
-                            wire:model.live="dataDaftarRi.perencanaan.dischargePlanning.pelayananBerkelanjutan.pelayananBerkelanjutan"
+                            wire:model.live="perencanaan.dischargePlanning.pelayananBerkelanjutan.pelayananBerkelanjutan"
                             :disabled="$isFormLocked" />
                     @endforeach
                 </div>
                 @if (
-                    ($dataDaftarRi['perencanaan']['dischargePlanning']['pelayananBerkelanjutan']['pelayananBerkelanjutan'] ?? '') ===
+                    ($perencanaan['dischargePlanning']['pelayananBerkelanjutan']['pelayananBerkelanjutan'] ?? '') ===
                         'Ada')
                     {{-- Entri terstruktur: tiap baris membawa kode SNOMED-nya sendiri (untuk CarePlan). --}}
                     <div class="mt-3 space-y-2 rounded-lg border border-hairline p-3 dark:border-gray-700">
@@ -599,7 +617,7 @@ new class extends Component {
 
                     @php
                         $rowsPelayanan =
-                            $dataDaftarRi['perencanaan']['dischargePlanning']['pelayananBerkelanjutan'][
+                            $perencanaan['dischargePlanning']['pelayananBerkelanjutan'][
                                 'pelayananBerkelanjutanData'
                             ] ?? [];
                     @endphp
@@ -648,11 +666,11 @@ new class extends Component {
                 <div class="mt-2 flex gap-4">
                     @foreach (['Ada', 'Tidak Ada'] as $opt)
                         <x-radio-button :label="$opt" :value="$opt" name="penggunaanAlatBantu"
-                            wire:model.live="dataDaftarRi.perencanaan.dischargePlanning.penggunaanAlatBantu.penggunaanAlatBantu"
+                            wire:model.live="perencanaan.dischargePlanning.penggunaanAlatBantu.penggunaanAlatBantu"
                             :disabled="$isFormLocked" />
                     @endforeach
                 </div>
-                @if (($dataDaftarRi['perencanaan']['dischargePlanning']['penggunaanAlatBantu']['penggunaanAlatBantu'] ?? '') === 'Ada')
+                @if (($perencanaan['dischargePlanning']['penggunaanAlatBantu']['penggunaanAlatBantu'] ?? '') === 'Ada')
                     {{-- Entri terstruktur: tiap baris membawa kode SNOMED-nya sendiri (untuk CarePlan). --}}
                     <div class="mt-3 space-y-2 rounded-lg border border-hairline p-3 dark:border-gray-700">
                         <div class="grid grid-cols-2 gap-2">
@@ -696,7 +714,7 @@ new class extends Component {
 
                     @php
                         $rowsAlat =
-                            $dataDaftarRi['perencanaan']['dischargePlanning']['penggunaanAlatBantu'][
+                            $perencanaan['dischargePlanning']['penggunaanAlatBantu'][
                                 'penggunaanAlatBantuData'
                             ] ?? [];
                     @endphp
