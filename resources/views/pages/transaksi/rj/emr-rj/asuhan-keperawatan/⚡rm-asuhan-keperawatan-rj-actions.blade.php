@@ -51,6 +51,12 @@ new class extends Component {
     ];
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->daftarAskep = $data['asuhanKeperawatan'] ?? [];
+    }
     protected array $renderAreas = ['modal-asuhan-keperawatan-rj'];
 
     /**
@@ -80,7 +86,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data RJ tidak ditemukan.');
             return;
         }
-        $this->daftarAskep = $data['asuhanKeperawatan'] ?? [];
+        $this->muatDariDokumen($data);
         $this->incrementVersion('modal-asuhan-keperawatan-rj');
         // Kunci klinis mengikuti kebijakan trait (sengaja longgar), bukan inline ri_status.
         $this->isFormLocked = $this->checkEmrRJStatus($rjNo);
@@ -208,7 +214,7 @@ new class extends Component {
                 $fresh['asuhanKeperawatan'] ??= [];
                 $fresh['asuhanKeperawatan'][] = $this->formEntryAsuhanKeperawatan;
                 $this->updateJsonRJ((int) $this->rjNo, $fresh);
-                $this->daftarAskep = $fresh['asuhanKeperawatan'] ?? [];
+                $this->muatDariDokumen($fresh);
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Tambah Asuhan Keperawatan — entri ' . ($this->formEntryAsuhanKeperawatan['tglAsuhanKeperawatan'] ?: '-') . ' (' . ($this->formEntryAsuhanKeperawatan['diagKepId'] ?: '-') . ')', 'MR');
             });
             $this->resetFormEntry();
@@ -236,7 +242,7 @@ new class extends Component {
                 array_splice($fresh['asuhanKeperawatan'], $index, 1);
                 $fresh['asuhanKeperawatan'] = array_values($fresh['asuhanKeperawatan']);
                 $this->updateJsonRJ((int) $this->rjNo, $fresh);
-                $this->daftarAskep = $fresh['asuhanKeperawatan'] ?? [];
+                $this->muatDariDokumen($fresh);
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Hapus Asuhan Keperawatan — entri ' . ($askepRow['tglAsuhanKeperawatan'] ?? '-') . ' (' . ($askepRow['diagKepId'] ?? '-') . ')', 'MR');
             });
             $this->afterSave('Asuhan Keperawatan berhasil dihapus.');
@@ -324,7 +330,7 @@ new class extends Component {
                 $fresh['asuhanKeperawatan'][$idx]['implementasi'][] = $implEntry;
 
                 $this->updateJsonRJ((int) $this->rjNo, $fresh);
-                $this->daftarAskep = $fresh['asuhanKeperawatan'] ?? [];
+                $this->muatDariDokumen($fresh);
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Tambah Implementasi Askep — entri ' . ($implEntry['tglImpl'] ?: '-') . ' (' . ($askep['diagKepId'] ?? '-') . ')', 'MR');
             });
             $this->reset(['formImpl']);
@@ -353,7 +359,7 @@ new class extends Component {
                 $fresh['asuhanKeperawatan'][$askepIndex]['implementasi'] = array_values($fresh['asuhanKeperawatan'][$askepIndex]['implementasi']);
 
                 $this->updateJsonRJ((int) $this->rjNo, $fresh);
-                $this->daftarAskep = $fresh['asuhanKeperawatan'] ?? [];
+                $this->muatDariDokumen($fresh);
                 $this->appendAdminLogRJ((int) $this->rjNo, 'Hapus Implementasi Askep — entri ' . ($impl['tglImpl'] ?? '-') . ' oleh ' . ($impl['petugasImpl'] ?? '-'), 'MR');
             });
             $this->afterSave('Implementasi berhasil dihapus.');
