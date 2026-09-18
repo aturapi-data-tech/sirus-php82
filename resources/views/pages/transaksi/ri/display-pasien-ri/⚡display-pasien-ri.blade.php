@@ -80,7 +80,6 @@ new class extends Component {
         $this->muatDariDokumen($data);
         $this->resikoJatuhTerakhir = $this->hitungResikoJatuhTerakhir($data);
         $this->resikoBunuhDiriTerakhir = $this->hitungResikoBunuhDiriTerakhir($data);
-        $this->muatDariDokumen($data);
         $this->entryLabels = DB::table('rsmst_entrytypes')->pluck('entry_desc', 'entry_id')
             ->mapWithKeys(fn($entryDesc, $entryId) => [(string) $entryId => $entryDesc])->all();
     }

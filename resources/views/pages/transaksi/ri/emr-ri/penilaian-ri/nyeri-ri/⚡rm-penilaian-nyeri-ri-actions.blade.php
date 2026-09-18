@@ -105,7 +105,6 @@ new class extends Component {
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
 
-        $this->muatDariDokumen($data);
         $this->skalaDisarankan = NyeriOptions::saranUntukUmur($this->umurPasienTahun);
 
         $this->incrementVersion('modal-penilaian-nyeri-ri');

@@ -55,7 +55,8 @@ new class extends Component {
     {
         $this->pengkajianDokter = $data['pengkajianDokter'] ?? [];
         $this->regNoPasien = (string) ($data['regNo'] ?? '');
-        $this->rekonsiliasiObatSaatDibuka = $data['pengkajianDokter']['anamnesa']['rekonsiliasiObat'];
+        // data_get + default: helper ini juga dipanggil open(), saat node pengkajianDokter belum tentu ada.
+        $this->rekonsiliasiObatSaatDibuka = (array) data_get($data, 'pengkajianDokter.anamnesa.rekonsiliasiObat', []);
     }
     protected array $renderAreas = ['modal-pengkajian-dokter-ri'];
 
@@ -327,7 +328,6 @@ new class extends Component {
                 RekonsiliasiObat::pertahankanStatus($fresh['pengkajianDokter']['anamnesa'], $statusRekonsiliasiDb);
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->muatDariDokumen($fresh);
 
                 // Basis digeser ke hasil tersimpan — Simpan berikutnya tidak boleh
                 // memakai titik cabang yang sudah usang.
