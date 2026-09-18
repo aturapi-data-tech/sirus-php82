@@ -49,7 +49,8 @@
         $kelasLabel = $kelasInfo['nama'] ?? $kelasKey ?: '-';
         $kelasTarif = $kelasInfo['tarifLabel'] ?? '-';
         $fasilitas = $kelasInfo['fasilitas'] ?? [];
-        $fasChunks = array_chunk($fasilitas, ceil(count($fasilitas) / 2));
+        // max(1, …): kelas belum dipilih / kelas tanpa daftar fasilitas -> count 0 -> array_chunk(…, 0) melempar ValueError (500 saat cetak).
+        $fasChunks = array_chunk($fasilitas, max(1, (int) ceil(count($fasilitas) / 2)));
 
         // ── TTD Pembuat ──
         $sigPembuatRaw = (string) ($form['signaturePembuat'] ?? '');
