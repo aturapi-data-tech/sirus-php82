@@ -15,20 +15,20 @@ new class extends Component {
      * Hanya JUMLAH entri tiap sub-tab, bukan dokumen EMR-nya — induk ini cuma butuh
      * lima angka untuk badge tab. Pola sama dengan induk Observasi RI (7f7ab38e).
      */
-    public int $countNyeri = 0;
-    public int $countResikoJatuh = 0;
-    public int $countResikoBunuhDiri = 0;
-    public int $countDekubitus = 0;
-    public int $countGizi = 0;
+    public int $jumlahNyeri = 0;
+    public int $jumlahResikoJatuh = 0;
+    public int $jumlahResikoBunuhDiri = 0;
+    public int $jumlahDekubitus = 0;
+    public int $jumlahGizi = 0;
 
     /** Dokumen dibaca sebagai variabel LOKAL, dihitung, lalu dilepas. */
     private function hitungBadge(array $data): void
     {
-        $this->countNyeri = count($data['penilaian']['nyeri'] ?? []);
-        $this->countResikoJatuh = count($data['penilaian']['resikoJatuh'] ?? []);
-        $this->countResikoBunuhDiri = count($data['penilaian']['resikoBunuhDiri'] ?? []);
-        $this->countDekubitus = count($data['penilaian']['dekubitus'] ?? []);
-        $this->countGizi = count($data['penilaian']['gizi'] ?? []);
+        $this->jumlahNyeri = count($data['penilaian']['nyeri'] ?? []);
+        $this->jumlahResikoJatuh = count($data['penilaian']['resikoJatuh'] ?? []);
+        $this->jumlahResikoBunuhDiri = count($data['penilaian']['resikoBunuhDiri'] ?? []);
+        $this->jumlahDekubitus = count($data['penilaian']['dekubitus'] ?? []);
+        $this->jumlahGizi = count($data['penilaian']['gizi'] ?? []);
     }
 
     public string $subTab = 'nyeri';
@@ -199,11 +199,11 @@ new class extends Component {
             <div class="flex flex-wrap gap-2 -mb-px">
                 @php
                     $penilaianTabs = [
-                        ['key' => 'nyeri', 'label' => 'Penilaian Nyeri', 'count' => $this->countNyeri],
-                        ['key' => 'resikoJatuh', 'label' => 'Risiko Jatuh', 'count' => $this->countResikoJatuh],
-                        ['key' => 'resikoBunuhDiri', 'label' => 'Risiko Bunuh Diri', 'count' => $this->countResikoBunuhDiri],
-                        ['key' => 'dekubitus', 'label' => 'Dekubitus', 'count' => $this->countDekubitus],
-                        ['key' => 'gizi', 'label' => 'Gizi', 'count' => $this->countGizi],
+                        ['key' => 'nyeri', 'label' => 'Penilaian Nyeri', 'count' => $this->jumlahNyeri],
+                        ['key' => 'resikoJatuh', 'label' => 'Risiko Jatuh', 'count' => $this->jumlahResikoJatuh],
+                        ['key' => 'resikoBunuhDiri', 'label' => 'Risiko Bunuh Diri', 'count' => $this->jumlahResikoBunuhDiri],
+                        ['key' => 'dekubitus', 'label' => 'Dekubitus', 'count' => $this->jumlahDekubitus],
+                        ['key' => 'gizi', 'label' => 'Gizi', 'count' => $this->jumlahGizi],
                     ];
                 @endphp
                 @foreach ($penilaianTabs as $tab)

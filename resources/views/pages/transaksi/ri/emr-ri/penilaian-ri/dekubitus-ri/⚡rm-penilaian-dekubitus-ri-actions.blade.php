@@ -15,7 +15,7 @@ new class extends Component {
     public bool $isFormLocked = false;
     public ?string $riHdrNo = null;
     /** IRISAN dokumen: hanya daftar `penilaian.dekubitus`. */
-    public array $daftarEntri = [];
+    public array $daftarDekubitus = [];
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-penilaian-dekubitus-ri'];
@@ -64,7 +64,7 @@ new class extends Component {
             return;
         }
 
-        $this->daftarEntri = $data['penilaian']['dekubitus'] ?? [];
+        $this->daftarDekubitus = $data['penilaian']['dekubitus'] ?? [];
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
 
@@ -140,7 +140,7 @@ new class extends Component {
                 $fresh['penilaian']['dekubitus'][] = $this->formEntryDekubitus;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah Penilaian Dekubitus — ' . ($this->formEntryDekubitus['tglPenilaian'] ?? '-'), 'MR');
-                $this->daftarEntri = $fresh['penilaian']['dekubitus'] ?? [];
+                $this->daftarDekubitus = $fresh['penilaian']['dekubitus'] ?? [];
             });
             $this->reset(['formEntryDekubitus']);
             $this->afterSave('Penilaian Dekubitus berhasil disimpan.');
@@ -167,7 +167,7 @@ new class extends Component {
                 $fresh['penilaian']['dekubitus'] = array_values($fresh['penilaian']['dekubitus']);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Penilaian Dekubitus — entri ' . $tglHapus, 'MR');
-                $this->daftarEntri = $fresh['penilaian']['dekubitus'] ?? [];
+                $this->daftarDekubitus = $fresh['penilaian']['dekubitus'] ?? [];
             });
             $this->afterSave('Dekubitus dihapus.');
         } catch (\RuntimeException $e) {
@@ -271,7 +271,7 @@ new class extends Component {
         </div>
     @endif
 
-    @if (collect($daftarEntri)->filter(fn($r) => filled(data_get($r, 'tglPenilaian')))->isNotEmpty())
+    @if (collect($daftarDekubitus)->filter(fn($r) => filled(data_get($r, 'tglPenilaian')))->isNotEmpty())
         <x-border-form title="Riwayat Penilaian Dekubitus" align="start" bgcolor="bg-canvas">
             <div class="mt-3 overflow-x-auto rounded-lg border border-hairline dark:border-gray-700">
                 <table class="w-full text-xs text-left text-muted dark:text-gray-300">
@@ -289,7 +289,7 @@ new class extends Component {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-hairline-soft dark:divide-gray-700">
-                        @foreach (array_reverse(array_filter($daftarEntri, fn($r) => filled(data_get($r, 'tglPenilaian'))), true) as $i => $row)
+                        @foreach (array_reverse(array_filter($daftarDekubitus, fn($r) => filled(data_get($r, 'tglPenilaian'))), true) as $i => $row)
                             @php
                                 $kat = $row['dekubitus']['kategoriResiko'] ?? '-';
                                 $rowBg = in_array($kat, ['Sangat Tinggi', 'Tinggi'])
