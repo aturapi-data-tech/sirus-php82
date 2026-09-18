@@ -67,6 +67,13 @@ new class extends Component {
     // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja, tak bisa edit).
     public bool $viewOnly = false;
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->penundaanList = is_array($data['penundaanPelayananUGD'] ?? null) ? $data['penundaanPelayananUGD'] : [];
+        $this->regName = $data['regName'] ?? null;
+    }
+
     /* ===============================
      | MOUNT
      =============================== */
@@ -79,8 +86,7 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataUGD($this->rjNo);
             if ($data) {
-                $this->penundaanList = $data['penundaanPelayananUGD'] ?? [];
-                $this->regName = $data['regName'] ?? null;
+                $this->muatDariDokumen($data);
                 $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
             }
         }
@@ -107,8 +113,7 @@ new class extends Component {
             return;
         }
 
-        $this->penundaanList = is_array($data['penundaanPelayananUGD'] ?? null) ? $data['penundaanPelayananUGD'] : [];
-        $this->regName = $data['regName'] ?? null;
+        $this->muatDariDokumen($data);
         $this->newForm['namaPenanda'] = $this->regName ?? '';
         $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-penundaan-pelayanan-ugd');
@@ -314,7 +319,7 @@ new class extends Component {
             $data['penundaanPelayananUGD'] = array_values($list);
 
             $this->updateJsonUGD($this->rjNo, $data);
-            $this->penundaanList = $data['penundaanPelayananUGD'];
+            $this->muatDariDokumen($data);
 
             $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Penundaan Pelayanan UGD — jenis "' . ($entry['jenis'] ?: ($entry['alasan'] ?: '-')) . '" (' . $key . ')', 'MR');
         });
@@ -491,7 +496,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->penundaanList = $data['penundaanPelayananUGD'];
+                $this->muatDariDokumen($data);
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Pemberitahuan Penundaan/Kelambatan — TTD ' . $signatureDate, 'MR');
             });
 
@@ -533,7 +538,7 @@ new class extends Component {
                 $list[$index]['pemberiInfoDate'] = '';
                 $data['penundaanPelayananUGD'] = array_values($list);
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->penundaanList = $data['penundaanPelayananUGD'];
+                $this->muatDariDokumen($data);
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Buka kunci Pemberitahuan Penundaan Pelayanan (' . $signatureDate . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut, entri kembali draft', 'MR');
             });

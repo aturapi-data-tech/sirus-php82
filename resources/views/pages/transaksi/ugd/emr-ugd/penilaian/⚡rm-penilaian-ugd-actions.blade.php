@@ -178,8 +178,7 @@ new class extends Component {
             return;
         }
 
-        $this->penilaian = $data['penilaian'] ?? $this->getDefaultPenilaian();
-        $this->regNoPasien = $data['regNo'] ?? null;
+        $this->muatDariDokumen($data);
 
         $this->umurPasienTahun = $this->hitungUmurPasien($this->regNoPasien);
         $this->skalaDisarankan = NyeriOptions::saranUntukUmur($this->umurPasienTahun);
@@ -236,7 +235,7 @@ new class extends Component {
                 $data['penilaian'] = $this->penilaian;
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->penilaian = $data['penilaian'];
+                $this->muatDariDokumen($data);
 
                 // 4. Audit log
                 if ($logKeterangan !== null) {
@@ -507,6 +506,13 @@ new class extends Component {
     ];
 
     public array $tindakLanjutBunuhDiriOptions = ['Edukasi & monitoring', 'Safety plan', 'Observasi ketat', 'Konsul DPJP'];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->penilaian = $data['penilaian'] ?? $this->getDefaultPenilaian();
+        $this->regNoPasien = $data['regNo'] ?? null;
+    }
 
     private function defaultFormEntryResikoBunuhDiriState(): array
     {

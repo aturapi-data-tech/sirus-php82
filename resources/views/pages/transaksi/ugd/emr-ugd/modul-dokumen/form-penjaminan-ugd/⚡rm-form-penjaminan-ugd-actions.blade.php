@@ -58,6 +58,12 @@ new class extends Component {
     public array $kelasKamarOptions = [];
 
     public array $hubunganOptions = ['Pasien Sendiri', 'Suami', 'Istri', 'Orang Tua', 'Anak', 'Saudara', 'Lainnya'];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->listForm = is_array($data['formPenjaminanOrientasiKamar'] ?? null) ? $data['formPenjaminanOrientasiKamar'] : [];
+    }
     public array $listForm = [];
 
     /* ===============================
@@ -107,7 +113,7 @@ new class extends Component {
             return;
         }
 
-        $this->listForm = is_array($data['formPenjaminanOrientasiKamar'] ?? null) ? $data['formPenjaminanOrientasiKamar'] : [];
+        $this->muatDariDokumen($data);
         $this->isFormLocked = $this->checkEmrUGDStatus($rjNo);
         $this->incrementVersion('modal-form-penjaminan');
     }
@@ -287,7 +293,7 @@ new class extends Component {
             $data['formPenjaminanOrientasiKamar'] = array_values($list);
 
             $this->updateJsonUGD($this->rjNo, $data);
-            $this->listForm = $data['formPenjaminanOrientasiKamar'];
+            $this->muatDariDokumen($data);
 
             $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Form Penjaminan UGD: ' . ($entry['pembuatNama'] ?: '-') . ' (' . $key . ')', 'MR');
         });
@@ -538,7 +544,7 @@ new class extends Component {
                 $data['formPenjaminanOrientasiKamar'] = collect($data['formPenjaminanOrientasiKamar'])->reject(fn($item) => ($item['signaturePembuatDate'] ?? '') === $signaturePembuatDate)->values()->toArray();
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->listForm = $data['formPenjaminanOrientasiKamar'];
+                $this->muatDariDokumen($data);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Form Penjaminan UGD: ' . $deletedPembuat . ' (' . $signaturePembuatDate . ')', 'MR');
             });
@@ -581,7 +587,7 @@ new class extends Component {
                 $list[$index]['petugasDate'] = '';
                 $data['formPenjaminanOrientasiKamar'] = array_values($list);
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->listForm = $data['formPenjaminanOrientasiKamar'];
+                $this->muatDariDokumen($data);
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Buka kunci Form Penjaminan (' . $signaturePembuatDate . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut, entri kembali draft', 'MR');
             });

@@ -40,6 +40,12 @@ new class extends Component {
     public string $dinyatakanMeninggal = '';
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->screening = $data['screening'];
+    }
     protected array $renderAreas = ['modal-screening-ugd'];
 
     /* ===============================
@@ -311,7 +317,7 @@ new class extends Component {
                 // nol. $sinkron['setDeathStatus'] sudah menyediakan keputusannya — tinggal
                 // dipasang penulisnya bila konsep ini disetujui.
                 // Simpan hanya slice screening (lihat catatan di openScreening).
-                $this->screening = $data['screening'];
+                $this->muatDariDokumen($data);
 
                 // 4. Audit log — penetapan MAUPUN pencabutan P0 dicatat eksplisit.
                 $logText = ($isBaru ? 'Buat' : 'Update') . ' Screening UGD (' . $verb . ') — prioritas ' . ($data['screening']['prioritasPelayanan'] ?? '-') . ' — saran triase ' . ($triaseSaran ?? '-');
@@ -408,7 +414,7 @@ new class extends Component {
                 $data['screening']['tanggalPelayanan'] = '';
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->screening = $data['screening'];
+                $this->muatDariDokumen($data);
 
                 $this->appendAdminLogUGD(
                     (int) $this->rjNo,

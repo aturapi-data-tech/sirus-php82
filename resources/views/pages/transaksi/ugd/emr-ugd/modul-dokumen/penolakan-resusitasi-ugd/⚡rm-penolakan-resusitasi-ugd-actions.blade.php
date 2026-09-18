@@ -80,6 +80,14 @@ new class extends Component {
     // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja, tak bisa edit).
     public bool $viewOnly = false;
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->penolakanList = is_array($data['penolakanResusitasiUGD'] ?? null) ? $data['penolakanResusitasiUGD'] : [];
+        $this->regName = $data['regName'] ?? null;
+    }
+
     /* ===============================
      | MOUNT
      =============================== */
@@ -92,8 +100,7 @@ new class extends Component {
         if ($this->rjNo) {
             $data = $this->findDataUGD($this->rjNo);
             if ($data) {
-                $this->regNo = $data['regNo'] ?? null;
-                $this->penolakanList = $data['penolakanResusitasiUGD'] ?? [];
+                $this->muatDariDokumen($data);
                 $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $disabled;
             }
         }
@@ -121,9 +128,7 @@ new class extends Component {
             return;
         }
 
-        $this->regNo = $data['regNo'] ?? null;
-        $this->penolakanList = is_array($data['penolakanResusitasiUGD'] ?? null) ? $data['penolakanResusitasiUGD'] : [];
-        $this->regName = $data['regName'] ?? null;
+        $this->muatDariDokumen($data);
         $this->newForm['pembuatNama'] = $this->regName ?? '';
         $this->isFormLocked = $this->checkEmrUGDStatus($this->rjNo) || $this->disabled;
         $this->incrementVersion('modal-penolakan-resusitasi-ugd');
@@ -366,7 +371,7 @@ new class extends Component {
             $data['penolakanResusitasiUGD'] = array_values($list);
 
             $this->updateJsonUGD($this->rjNo, $data);
-            $this->penolakanList = $data['penolakanResusitasiUGD'];
+            $this->muatDariDokumen($data);
 
             $this->appendAdminLogUGD((int) $this->rjNo, $logVerb . ' Surat Penolakan Tindakan Resusitasi (DNR) UGD — diagnosis "' . ($entry['diagnosis'] ?: '-') . '" oleh "' . ($entry['pembuatNama'] ?: '-') . '" (' . $key . ')', 'MR');
         });
@@ -533,7 +538,7 @@ new class extends Component {
 
                 $fresh['penolakanResusitasiUGD'] = array_values($list);
                 $this->updateJsonUGD($this->rjNo, $fresh);
-                $this->penolakanList = $fresh['penolakanResusitasiUGD'];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Buka kunci Surat Penolakan Tindakan Resusitasi (DNR) — entri ' . $key . ' (oleh ' . (auth()->user()->myuser_name ?? auth()->user()->name ?? '-') . ')', 'MR');
             });
@@ -630,7 +635,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->penolakanList = $data['penolakanResusitasiUGD'];
+                $this->muatDariDokumen($data);
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Surat Penolakan Tindakan Resusitasi (DNR) — TTD ' . $signatureDate, 'MR');
             });
 
