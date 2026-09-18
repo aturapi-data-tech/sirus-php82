@@ -80,6 +80,14 @@ new class extends Component {
     // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja, tak bisa edit).
     public bool $viewOnly = false;
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->penolakanList = is_array($data['penolakanResusitasiRI'] ?? null) ? $data['penolakanResusitasiRI'] : [];
+        $this->regName = $data['regName'] ?? null;
+    }
+
     /* ===============================
      | MOUNT
      =============================== */
@@ -92,8 +100,7 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->regNo = $data['regNo'] ?? null;
-                $this->penolakanList = $data['penolakanResusitasiRI'] ?? [];
+                $this->muatDariDokumen($data);
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
             }
         }
@@ -121,9 +128,7 @@ new class extends Component {
             return;
         }
 
-        $this->regNo = $data['regNo'] ?? null;
-        $this->penolakanList = is_array($data['penolakanResusitasiRI'] ?? null) ? $data['penolakanResusitasiRI'] : [];
-        $this->regName = $data['regName'] ?? null;
+        $this->muatDariDokumen($data);
         $this->newForm['pembuatNama'] = $this->regName ?? '';
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
         $this->incrementVersion('modal-penolakan-resusitasi-ri');
@@ -366,7 +371,7 @@ new class extends Component {
             $data['penolakanResusitasiRI'] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $data);
-            $this->penolakanList = $data['penolakanResusitasiRI'];
+            $this->muatDariDokumen($data);
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Surat Penolakan Tindakan Resusitasi (DNR) RI — diagnosis "' . ($entry['diagnosis'] ?: '-') . '" oleh "' . ($entry['pembuatNama'] ?: '-') . '" (' . $key . ')', 'MR');
         });
@@ -533,7 +538,7 @@ new class extends Component {
 
                 $fresh['penolakanResusitasiRI'] = array_values($list);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->penolakanList = $fresh['penolakanResusitasiRI'];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Surat Penolakan Tindakan Resusitasi (DNR) — entri ' . $key . ' (oleh ' . (auth()->user()->myuser_name ?? auth()->user()->name ?? '-') . ')', 'MR');
             });
@@ -630,7 +635,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $data);
-                $this->penolakanList = $data['penolakanResusitasiRI'];
+                $this->muatDariDokumen($data);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Surat Penolakan Tindakan Resusitasi (DNR) — TTD ' . $signatureDate, 'MR');
             });
 

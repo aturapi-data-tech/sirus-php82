@@ -70,6 +70,14 @@ new class extends Component {
     // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja, tak bisa edit).
     public bool $viewOnly = false;
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->permintaanList = is_array($data['permintaanKerohanianRI'] ?? null) ? $data['permintaanKerohanianRI'] : [];
+        $this->regName = $data['regName'] ?? null;
+    }
+
     /* ===============================
      | MOUNT
      =============================== */
@@ -82,8 +90,7 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->regNo = $data['regNo'] ?? null;
-                $this->permintaanList = $data['permintaanKerohanianRI'] ?? [];
+                $this->muatDariDokumen($data);
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
             }
         }
@@ -110,9 +117,7 @@ new class extends Component {
             return;
         }
 
-        $this->regNo = $data['regNo'] ?? null;
-        $this->permintaanList = is_array($data['permintaanKerohanianRI'] ?? null) ? $data['permintaanKerohanianRI'] : [];
-        $this->regName = $data['regName'] ?? null;
+        $this->muatDariDokumen($data);
         $this->newForm['pemohonNama'] = $this->regName ?? '';
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
         $this->incrementVersion('modal-permintaan-kerohanian-ri');
@@ -284,7 +289,7 @@ new class extends Component {
             $data['permintaanKerohanianRI'] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $data);
-            $this->permintaanList = $data['permintaanKerohanianRI'];
+            $this->muatDariDokumen($data);
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Permintaan Pelayanan Kerohaniawan RI — pemohon "' . ($entry['pemohonNama'] ?: '-') . '" (' . $key . ')', 'MR');
         });
@@ -494,7 +499,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $data);
-                $this->permintaanList = $data['permintaanKerohanianRI'];
+                $this->muatDariDokumen($data);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Permintaan Pelayanan Kerohaniawan — TTD ' . $signatureDate, 'MR');
             });
 
@@ -535,7 +540,7 @@ new class extends Component {
                 $list[$index]['petugasDate'] = '';
                 $data['permintaanKerohanianRI'] = array_values($list);
                 $this->updateJsonRI((int) $this->riHdrNo, $data);
-                $this->permintaanList = $data['permintaanKerohanianRI'];
+                $this->muatDariDokumen($data);
                 $pembukaKunci = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Permintaan Pelayanan Kerohanian (' . $signatureDate . ') oleh ' . $pembukaKunci . ' — TTD petugas dicabut, entri kembali draft', 'MR');
             });

@@ -81,6 +81,12 @@ new class extends Component {
 
     public array $tindakLanjutBunuhDiriOptions = ['Edukasi & monitoring', 'Safety plan', 'Observasi ketat', 'Konsul DPJP'];
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->daftarResikoBunuhDiri = $data['penilaian']['resikoBunuhDiri'] ?? [];
+    }
+
     public function mount(): void
     {
         $this->registerAreas(['modal-penilaian-risiko-bunuh-diri-ri']);
@@ -103,7 +109,7 @@ new class extends Component {
             return;
         }
 
-        $this->daftarResikoBunuhDiri = $data['penilaian']['resikoBunuhDiri'] ?? [];
+        $this->muatDariDokumen($data);
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
 
@@ -282,7 +288,7 @@ new class extends Component {
                 $fresh['penilaian']['resikoBunuhDiri'][] = $this->formEntryResikoBunuhDiri;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah Skrining Risiko Bunuh Diri (C-SSRS) — kategori ' . ($this->formEntryResikoBunuhDiri['kategoriResiko'] ?? '-') . ', entri ' . ($this->formEntryResikoBunuhDiri['tglPenilaian'] ?? '-'), 'MR');
-                $this->daftarResikoBunuhDiri = $fresh['penilaian']['resikoBunuhDiri'] ?? [];
+                $this->muatDariDokumen($fresh);
             });
             $this->reset(['formEntryResikoBunuhDiri']);
             $this->afterSave('Skrining Risiko Bunuh Diri berhasil disimpan.');
@@ -309,7 +315,7 @@ new class extends Component {
                 $fresh['penilaian']['resikoBunuhDiri'] = array_values($fresh['penilaian']['resikoBunuhDiri']);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Skrining Risiko Bunuh Diri (C-SSRS) — entri ' . $tglHapus, 'MR');
-                $this->daftarResikoBunuhDiri = $fresh['penilaian']['resikoBunuhDiri'] ?? [];
+                $this->muatDariDokumen($fresh);
             });
             $this->afterSave('Skrining Risiko Bunuh Diri dihapus.');
         } catch (\RuntimeException $e) {

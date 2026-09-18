@@ -37,6 +37,16 @@ new class extends Component {
     ];
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->jumlahObat = count($data['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? []);
+        $this->jumlahPengeluaran = count($data['observasi']['pengeluaranCairan']['pengeluaranCairan'] ?? []);
+        $this->jumlahOksigen = count($data['observasi']['pemakaianOksigen']['pemakaianOksigenData'] ?? []);
+        $this->jumlahAlatInvasif = count($data['observasi']['alatInvasif']['alatInvasifData'] ?? []);
+        $this->jumlahTandaVital = count($data['observasi']['observasiLanjutan']['tandaVital'] ?? []);
+    }
     protected array $renderAreas = ['modal-observasi-ri'];
 
     /**
@@ -70,11 +80,7 @@ new class extends Component {
         }
 
         // $data TIDAK disimpan ke properti — cukup diambil jumlah entri tiap sub-tab.
-        $this->jumlahObat = count($data['observasi']['obatDanCairan']['pemberianObatDanCairan'] ?? []);
-        $this->jumlahPengeluaran = count($data['observasi']['pengeluaranCairan']['pengeluaranCairan'] ?? []);
-        $this->jumlahOksigen = count($data['observasi']['pemakaianOksigen']['pemakaianOksigenData'] ?? []);
-        $this->jumlahAlatInvasif = count($data['observasi']['alatInvasif']['alatInvasifData'] ?? []);
-        $this->jumlahTandaVital = count($data['observasi']['observasiLanjutan']['tandaVital'] ?? []);
+        $this->muatDariDokumen($data);
 
         // Gunakan trait untuk cek status
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);

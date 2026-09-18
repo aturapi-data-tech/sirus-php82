@@ -92,6 +92,14 @@ new class extends Component {
     // true = entri terkunci sedang ditampilkan di form dalam mode read-only (lihat saja, tak bisa edit).
     public bool $viewOnly = false;
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->consentList = is_array($data['informConsentPasienRI'] ?? null) ? $data['informConsentPasienRI'] : [];
+        $this->regName = $data['regName'] ?? null;
+    }
+
     public function mount(?string $riHdrNo = null, bool $disabled = false): void
     {
         $this->riHdrNo = $riHdrNo ?: null;
@@ -101,8 +109,7 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->regNo = $data['regNo'] ?? null;
-                $this->consentList = $data['informConsentPasienRI'] ?? [];
+                $this->muatDariDokumen($data);
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
             }
         }
@@ -130,9 +137,7 @@ new class extends Component {
             return;
         }
 
-        $this->regNo = $data['regNo'] ?? null;
-        $this->consentList = is_array($data['informConsentPasienRI'] ?? null) ? $data['informConsentPasienRI'] : [];
-        $this->regName = $data['regName'] ?? null;
+        $this->muatDariDokumen($data);
         // Default nama Pasien/Wali = nama pasien & hubungan = Pasien Sendiri (pola penundaan)
         $this->newConsent['wali'] = $this->regName ?? '';
         $this->newConsent['waliHubungan'] = 'pasien';
@@ -370,7 +375,7 @@ new class extends Component {
                 $list[$index]['dokterDate'] = '';
                 $fresh['informConsentPasienRI'] = array_values($list);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->consentList = $fresh['informConsentPasienRI'];
+                $this->muatDariDokumen($fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Inform Consent — entri ' . $signatureDate . ' (oleh ' . (auth()->user()->myuser_name ?? auth()->user()->name ?? '-') . ')', 'MR');
             });
             $this->incrementVersion('modal-inform-consent-ri');
@@ -485,7 +490,7 @@ new class extends Component {
             $data['informConsentPasienRI'] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $data);
-            $this->consentList = $data['informConsentPasienRI'];
+            $this->muatDariDokumen($data);
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Inform Consent RI — tindakan "' . ($entry['tindakan'] ?: '-') . '" (' . $key . ')', 'MR');
         });
@@ -712,7 +717,7 @@ new class extends Component {
                 $fresh['informConsentPasienRI'] = collect($fresh['informConsentPasienRI'])->reject(fn($item) => ($item['signatureDate'] ?? '') === $signatureDate)->values()->toArray();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->consentList = $fresh['informConsentPasienRI'];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Inform Consent — entri ' . ($signatureDate ?: '-'), 'MR');
             });

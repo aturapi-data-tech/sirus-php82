@@ -40,6 +40,12 @@ new class extends Component {
     ];
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->daftarAlatInvasif = $data['observasi']['alatInvasif']['alatInvasifData'] ?? [];
+    }
     protected array $renderAreas = ['modal-alat-invasif-ri'];
 
     public function mount(): void
@@ -62,7 +68,7 @@ new class extends Component {
             return;
         }
 
-        $this->daftarAlatInvasif = $data['observasi']['alatInvasif']['alatInvasifData'] ?? [];
+        $this->muatDariDokumen($data);
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
         $this->setWaktuMulaiAlat();
@@ -136,7 +142,7 @@ new class extends Component {
                 ]);
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->daftarAlatInvasif = $data['observasi']['alatInvasif']['alatInvasifData'];
+                $this->muatDariDokumen($data);
 
                 $this->appendAdminLogRI(
                     (int) $this->riHdrNo,
@@ -216,7 +222,7 @@ new class extends Component {
 
                 $data['observasi']['alatInvasif']['alatInvasifData'] = array_values($daftar);
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->daftarAlatInvasif = $data['observasi']['alatInvasif']['alatInvasifData'];
+                $this->muatDariDokumen($data);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Set waktu lepas Alat Invasif — ' . $waktuLepas, 'MR');
             });
@@ -253,7 +259,7 @@ new class extends Component {
                     ->all();
 
                 $this->updateJsonRI($this->riHdrNo, $data);
-                $this->daftarAlatInvasif = $data['observasi']['alatInvasif']['alatInvasifData'];
+                $this->muatDariDokumen($data);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Alat Invasif — pasang ' . $waktuPasang, 'MR');
             });

@@ -135,8 +135,7 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->regNo = $data['regNo'] ?? null;
-                $this->preOpList = $data[$this->jsonKey] ?? [];
+                $this->muatDariDokumen($data);
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled;
             }
         }
@@ -163,8 +162,7 @@ new class extends Component {
             return;
         }
 
-        $this->regNo = $data['regNo'] ?? null;
-        $this->preOpList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
+        $this->muatDariDokumen($data);
         $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
         $this->incrementVersion('modal-pengkajian-pre-op-ri');
 
@@ -335,7 +333,7 @@ new class extends Component {
             $fresh[$this->jsonKey] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-            $this->preOpList = $fresh[$this->jsonKey];
+            $this->muatDariDokumen($fresh);
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Pengkajian Pre Operasi — ' . ($entry['rencanaOperasi'] ?: '-') . ' (' . $key . ')', 'MR');
         });
@@ -480,7 +478,7 @@ new class extends Component {
                 $fresh[$this->jsonKey] = array_values($list);
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->preOpList = $fresh[$this->jsonKey];
+                $this->muatDariDokumen($fresh);
 
                 $pelaku = auth()->user()->myuser_name ?? '-';
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci Pengkajian Pre Operasi (' . $createdAt . ') oleh ' . $pelaku . ' — ketiga TTD dicabut', 'MR');
@@ -699,7 +697,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->preOpList = $fresh[$this->jsonKey];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Pengkajian Pre Operasi — ' . $createdAt, 'MR');
             });
@@ -752,6 +750,13 @@ new class extends Component {
     public string $persiapanJenis = '';
     public string $persiapanNama = '';
     public string $persiapanTglJam = '';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regNo = $data['regNo'] ?? null;
+        $this->preOpList = is_array($data[$this->jsonKey] ?? null) ? $data[$this->jsonKey] : [];
+    }
 
     public function setPersiapanTglJamNow(): void
     {

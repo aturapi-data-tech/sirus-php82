@@ -24,6 +24,12 @@ new class extends Component {
     public array $pengkajianAwal = [];
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->pengkajianAwal = $data['pengkajianAwalPasienRawatInap'] ?? [];
+    }
     protected array $renderAreas = ['modal-pengkajian-awal-ri'];
 
     public array $pengkajianAwalDefault = [
@@ -221,7 +227,7 @@ new class extends Component {
             return;
         }
 
-        $this->pengkajianAwal = $data['pengkajianAwalPasienRawatInap'] ?? [];
+        $this->muatDariDokumen($data);
         $this->pengkajianAwal ??= $this->pengkajianAwalDefault;
         // Entri lama (sebelum 2026-09-15) belum punya node nilaiKebudayaan → isi standar "tidak".
         $this->pengkajianAwal['bagian3PsikososialDanEkonomi']['nilaiKebudayaan'] ??= ['pilihan' => 'tidak', 'keterangan' => ''];
@@ -265,7 +271,7 @@ new class extends Component {
                 $isBaru = empty($fresh['pengkajianAwalPasienRawatInap']);
                 $fresh['pengkajianAwalPasienRawatInap'] = $this->pengkajianAwal ?? [];
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->pengkajianAwal = $fresh['pengkajianAwalPasienRawatInap'] ?? [];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, $logKeterangan ?? ($isBaru ? 'Buat' : 'Update') . ' Pengkajian Awal RI', 'MR');
             });

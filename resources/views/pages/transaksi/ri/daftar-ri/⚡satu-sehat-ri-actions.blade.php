@@ -47,6 +47,14 @@ new class extends Component {
     /** Langkah yang sedang ditunggu kabarnya. Dikosongkan begitu kabarnya datang. */
     public string $langkahAktif = '';
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->regName = (string) ($data['regName'] ?? '');
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->roomDesc = (string) ($data['roomDesc'] ?? '');
+    }
+
     public function kirimSemua(): void
     {
         if (empty($this->riHdrNo)) {
@@ -176,9 +184,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data Rawat Inap tidak ditemukan.');
             return false;
         }
-        $this->regName = (string) ($data['regName'] ?? '');
-        $this->regNoPasien = (string) ($data['regNo'] ?? '');
-        $this->roomDesc = (string) ($data['roomDesc'] ?? '');
+        $this->muatDariDokumen($data);
         return true;
     }
 };

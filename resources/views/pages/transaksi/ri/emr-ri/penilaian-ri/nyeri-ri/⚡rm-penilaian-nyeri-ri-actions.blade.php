@@ -24,6 +24,13 @@ new class extends Component {
     public array $skalaDisarankan = [];
 
     public array $renderVersions = [];
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->daftarNyeri = $data['penilaian']['nyeri'] ?? [];
+        $this->umurPasienTahun = $this->hitungUmurPasien($data['regNo'] ?? null);
+    }
     protected array $renderAreas = ['modal-penilaian-nyeri-ri'];
 
     public array $formEntryNyeri = [
@@ -94,11 +101,11 @@ new class extends Component {
             return;
         }
 
-        $this->daftarNyeri = $data['penilaian']['nyeri'] ?? [];
+        $this->muatDariDokumen($data);
 
         $this->isFormLocked = $this->checkEmrRIStatus($riHdrNo);
 
-        $this->umurPasienTahun = $this->hitungUmurPasien($data['regNo'] ?? null);
+        $this->muatDariDokumen($data);
         $this->skalaDisarankan = NyeriOptions::saranUntukUmur($this->umurPasienTahun);
 
         $this->incrementVersion('modal-penilaian-nyeri-ri');
@@ -278,7 +285,7 @@ new class extends Component {
                 $fresh['penilaian']['nyeri'][] = $this->formEntryNyeri;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah Penilaian Nyeri — ' . ($this->formEntryNyeri['tglPenilaian'] ?? '-'), 'MR');
-                $this->daftarNyeri = $fresh['penilaian']['nyeri'] ?? [];
+                $this->muatDariDokumen($fresh);
             });
             $this->reset(['formEntryNyeri']);
             $this->afterSave('Penilaian Nyeri berhasil disimpan.');
@@ -305,7 +312,7 @@ new class extends Component {
                 $fresh['penilaian']['nyeri'] = array_values($fresh['penilaian']['nyeri']);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Penilaian Nyeri — entri ' . $tglHapus, 'MR');
-                $this->daftarNyeri = $fresh['penilaian']['nyeri'] ?? [];
+                $this->muatDariDokumen($fresh);
             });
             $this->afterSave('Penilaian Nyeri dihapus.');
         } catch (\RuntimeException $e) {

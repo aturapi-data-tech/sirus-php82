@@ -49,6 +49,14 @@ new class extends Component {
 
     public array $agreementOptions = [['value' => '1', 'label' => 'Setuju'], ['value' => '0', 'label' => 'Tidak Setuju']];
 
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan di bawah ini yang disimpan. */
+    private function muatDariDokumen(array $data): void
+    {
+        $this->generalConsent = $data['generalConsentPasienRI'] ?? $this->defaultConsent();
+        $this->regName = $data['regName'] ?? null;
+        $this->regNo = $data['regNo'] ?? null;
+    }
+
     public array $waliHubunganOptions = [
         ['value' => 'pasien', 'label' => 'Pasien Sendiri'],
         ['value' => 'suami', 'label' => 'Suami'],
@@ -70,9 +78,7 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->generalConsent = $data['generalConsentPasienRI'] ?? $this->defaultConsent();
-                $this->regName = $data['regName'] ?? null;
-                $this->regNo = $data['regNo'] ?? null;
+                $this->muatDariDokumen($data);
                 // Terkunci bila EMR terkunci, dinonaktifkan, ATAU sudah di-TTD petugas (final).
                 $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $disabled
                     || !empty($data['generalConsentPasienRI']['petugasPemeriksa'] ?? '');
@@ -102,9 +108,7 @@ new class extends Component {
             return;
         }
 
-        $this->generalConsent = $data['generalConsentPasienRI'] ?? $this->defaultConsent();
-        $this->regName = $data['regName'] ?? null;
-        $this->regNo = $data['regNo'] ?? null;
+        $this->muatDariDokumen($data);
 
         $consent = $this->generalConsent;
         // Default Nama Pasien/Wali = nama pasien & hubungan = Pasien Sendiri bila belum diisi (pola penundaan)
@@ -273,7 +277,7 @@ new class extends Component {
                 $fresh['generalConsentPasienRI'] = array_replace($fresh['generalConsentPasienRI'] ?? $this->defaultConsent(), (array) ($this->generalConsent ?? []));
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->generalConsent = $fresh['generalConsentPasienRI'] ?? [];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'TTD Petugas + kunci General Consent — TTD pasien ' . ($fresh['generalConsentPasienRI']['signatureDate'] ?? '-'), 'MR');
             });
@@ -320,7 +324,7 @@ new class extends Component {
                 $gc['petugasPemeriksaDate'] = '';
                 $fresh['generalConsentPasienRI'] = $gc;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->generalConsent = $fresh['generalConsentPasienRI'] ?? [];
+                $this->muatDariDokumen($fresh);
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Buka kunci General Consent — TTD petugas dicabut (oleh ' . (auth()->user()->myuser_name ?? auth()->user()->name ?? '-') . ')', 'MR');
             });
 
@@ -361,7 +365,7 @@ new class extends Component {
                 $fresh['generalConsentPasienRI'] = array_replace($fresh['generalConsentPasienRI'] ?? $this->defaultConsent(), (array) ($this->generalConsent ?? []));
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->generalConsent = $fresh['generalConsentPasienRI'] ?? [];
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, ($isBaru ? 'Buat' : 'Update') . ' General Consent — TTD ' . ($fresh['generalConsentPasienRI']['signatureDate'] ?? '-'), 'MR');
             });
