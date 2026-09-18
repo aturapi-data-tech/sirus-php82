@@ -32,7 +32,7 @@ new class extends Component {
     public string $noKartuSep = '';
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
-    private function serapIrisan(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->rujukanKompetensi = $data['rujukanKompetensi'] ?? [];
         $this->diagnosis = $data['diagnosis'] ?? [];
@@ -66,7 +66,7 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $this->serapIrisan($data);
+        $this->muatDariDokumen($data);
 
         // Restore state tersimpan; merge di atas default supaya key baru tetap ada
         $tersimpan = $data['rujukanKompetensi'] ?? [];
@@ -97,7 +97,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data kunjungan RJ tidak ditemukan.');
             return;
         }
-        $this->serapIrisan($data);
+        $this->muatDariDokumen($data);
 
         $tersimpan = $data['rujukanKompetensi'] ?? [];
         if (!empty($tersimpan) && is_array($tersimpan)) {
@@ -885,7 +885,7 @@ new class extends Component {
                 }
                 $data['rujukanKompetensi'] = $this->formRujukan;
                 $this->updateJsonRJ($this->rjNo, $data);
-                $this->serapIrisan($data);
+                $this->muatDariDokumen($data);
                 if ($catatanAudit) {
                     $this->appendAdminLogRJ((int) $this->rjNo, $catatanAudit, 'MR');
                 }

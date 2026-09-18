@@ -30,7 +30,7 @@ new class extends Component {
     public string $drIdPasien = '';
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
-    private function serapIrisan(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->diagnosis = $data['diagnosis'] ?? [];
         $this->conditionIds = $data['satusehat']['conditionIds'] ?? [];
@@ -59,7 +59,7 @@ new class extends Component {
         if (empty($data)) {
             return;
         }
-        $this->serapIrisan($data);
+        $this->muatDariDokumen($data);
 
         $tersimpan = $data['rujukanKompetensiFhir'] ?? [];
         if (!empty($tersimpan) && is_array($tersimpan)) {
@@ -91,7 +91,7 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data kunjungan tidak ditemukan.');
             return;
         }
-        $this->serapIrisan($data);
+        $this->muatDariDokumen($data);
 
         $tersimpan = $data['rujukanKompetensiFhir'] ?? [];
         if (!empty($tersimpan) && is_array($tersimpan)) {
@@ -968,7 +968,7 @@ new class extends Component {
                 }
                 $data['rujukanKompetensiFhir'] = $this->formRujukan;
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->serapIrisan($data);
+                $this->muatDariDokumen($data);
                 if ($catatanAudit) {
                     $this->appendAdminLogUGD((int) $this->rjNo, $catatanAudit, 'MR');
                 }
