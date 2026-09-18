@@ -1,6 +1,6 @@
 {{-- pages/transaksi/ugd/emr-ugd/pemeriksaan/tabs/anatomi-tab.blade.php --}}
 @php
-    $anatomiData = $dataDaftarUGD['pemeriksaan']['anatomi'] ?? [];
+    $anatomiData = $pemeriksaan['anatomi'] ?? [];
 
     if (empty($anatomiData)) {
         $anatomiData = collect(['kepala', 'mata', 'telinga', 'hidung', 'rambut', 'bibir', 'gigiGeligi', 'lidah', 'langitLangit', 'leher', 'tenggorokan', 'tonsil', 'dada', 'payudarah', 'punggung', 'perut', 'genital', 'anus', 'lenganAtas', 'lenganBawah', 'jariTangan', 'kukuTangan', 'persendianTangan', 'tungkaiAtas', 'tungkaiBawah', 'jariKaki', 'kukuKaki', 'persendianKaki', 'faring'])
@@ -38,7 +38,7 @@
                         <div>
                             <x-input-label :value="__(strtoupper($key) . ' — Kelainan')" />
                             <x-select-input
-                                wire:model.live="dataDaftarUGD.pemeriksaan.anatomi.{{ $key }}.kelainan"
+                                wire:model.live="pemeriksaan.anatomi.{{ $key }}.kelainan"
                                 :disabled="$isFormLocked" class="w-full mt-1">
                                 @foreach ($pAnatomi['kelainanOptions'] as $kelainanOptions)
                                     <option value="{{ $kelainanOptions['kelainan'] }}">
@@ -46,16 +46,16 @@
                                     </option>
                                 @endforeach
                             </x-select-input>
-                            <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.anatomi.' . $key . '.kelainan')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('pemeriksaan.anatomi.' . $key . '.kelainan')" class="mt-1" />
                         </div>
 
                         {{-- Deskripsi --}}
                         <div>
                             <x-input-label value="Deskripsi" />
-                            <x-textarea wire:model.live="dataDaftarUGD.pemeriksaan.anatomi.{{ $key }}.desc"
-                                placeholder="{{ strtoupper($key) }}" :error="$errors->has('dataDaftarUGD.pemeriksaan.anatomi.' . $key . '.desc')" :disabled="$isFormLocked" rows="4"
+                            <x-textarea wire:model.live="pemeriksaan.anatomi.{{ $key }}.desc"
+                                placeholder="{{ strtoupper($key) }}" :error="$errors->has('pemeriksaan.anatomi.' . $key . '.desc')" :disabled="$isFormLocked" rows="4"
                                 class="w-full mt-1" />
-                            <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.anatomi.' . $key . '.desc')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('pemeriksaan.anatomi.' . $key . '.desc')" class="mt-1" />
                         </div>
 
                     </div>

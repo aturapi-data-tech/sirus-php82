@@ -6,7 +6,7 @@
         <div class="sm:col-span-1">
             <x-input-label value="Suspek" />
             <x-select-input wire:model.live="suspekAkibatKerja" :disabled="$isFormLocked" class="w-full mt-1">
-                @foreach ($dataDaftarUGD['pemeriksaan']['suspekAkibatKerja']['suspekAkibatKerjaOptions'] ?? [] as $suspekAkibatKerjaOption)
+                @foreach ($pemeriksaan['suspekAkibatKerja']['suspekAkibatKerjaOptions'] ?? [] as $suspekAkibatKerjaOption)
                     <option value="{{ $suspekAkibatKerjaOption['suspekAkibatKerja'] }}">
                         {{ $suspekAkibatKerjaOption['suspekAkibatKerja'] }}
                     </option>
@@ -17,9 +17,9 @@
         {{-- Keterangan --}}
         <div class="sm:col-span-2">
             <x-input-label value="Keterangan" />
-            <x-text-input wire:model.live="dataDaftarUGD.pemeriksaan.suspekAkibatKerja.keteranganSuspekAkibatKerja"
-                placeholder="Keterangan" :error="$errors->has('dataDaftarUGD.pemeriksaan.suspekAkibatKerja.keteranganSuspekAkibatKerja')" :disabled="$isFormLocked" class="w-full mt-1" />
-            <x-input-error :messages="$errors->get('dataDaftarUGD.pemeriksaan.suspekAkibatKerja.keteranganSuspekAkibatKerja')" class="mt-1" />
+            <x-text-input wire:model.live="pemeriksaan.suspekAkibatKerja.keteranganSuspekAkibatKerja"
+                placeholder="Keterangan" :error="$errors->has('pemeriksaan.suspekAkibatKerja.keteranganSuspekAkibatKerja')" :disabled="$isFormLocked" class="w-full mt-1" />
+            <x-input-error :messages="$errors->get('pemeriksaan.suspekAkibatKerja.keteranganSuspekAkibatKerja')" class="mt-1" />
         </div>
 
     </div>
