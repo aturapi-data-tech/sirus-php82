@@ -79,7 +79,7 @@
 
                             <div class="text-center my-1">
                                 @if (!empty($consent['signature']))
-                                    <img src="{{ $consent['signature'] }}" class="h-16" alt="Tanda Tangan Pasien" />
+                                    <img src="{{ \App\Support\TtdPasien::sumberGambar($consent['signature']) }}" class="h-16" alt="Tanda Tangan Pasien" />
                                 @else
                                     <div class="h-16">&nbsp;</div>
                                 @endif
