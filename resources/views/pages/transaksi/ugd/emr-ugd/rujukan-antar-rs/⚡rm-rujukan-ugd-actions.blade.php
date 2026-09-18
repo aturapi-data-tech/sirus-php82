@@ -28,7 +28,7 @@ new class extends Component {
     public bool $dokumenTermuat = false;
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
-    private function serapDokumen(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->rujukanAntarRS = $data['rujukanAntarRS'] ?? [];
         $this->noSepKunjungan = (string) ($data['sep']['noSep'] ?? '');
@@ -68,7 +68,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapDokumen($data);
+        $this->muatDariDokumen($data);
         $this->rujukanAntarRS = $this->rujukanAntarRS ?: $this->getDefaultRujukanAntarRS();
 
         $this->incrementVersion('modal-rujukan-rs');
@@ -273,7 +273,7 @@ new class extends Component {
                 $data['rujukanAntarRS'] = $this->rujukanAntarRS ?? [];
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->serapDokumen($data);
+                $this->muatDariDokumen($data);
 
                 // 4. Audit log (rekam medis)
                 $this->appendAdminLogUGD((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' Rujukan Antar RS UGD: tujuan ' . ($data['rujukanAntarRS']['ppkDirujukNama'] ?: ($data['rujukanAntarRS']['ppkDirujuk'] ?: '-')) . ' (tgl rujukan ' . ($data['rujukanAntarRS']['tglRujukan'] ?: '-') . ')', 'MR');
@@ -339,7 +339,7 @@ new class extends Component {
                     $data = $this->findDataUGD($this->rjNo) ?? [];
                     $data['rujukanAntarRS'] = $this->rujukanAntarRS;
                     $this->updateJsonUGD($this->rjNo, $data);
-                    $this->serapDokumen($data);
+                    $this->muatDariDokumen($data);
 
                     $this->appendAdminLogUGD((int) $this->rjNo, $label . ' Rujukan Antar RS UGD ke BPJS: noRujukan ' . ($data['rujukanAntarRS']['noRujukan'] ?: '-') . ' (tujuan ' . ($data['rujukanAntarRS']['ppkDirujukNama'] ?: ($data['rujukanAntarRS']['ppkDirujuk'] ?: '-')) . ')', 'MR');
                 });
@@ -381,7 +381,7 @@ new class extends Component {
                     $data = $this->findDataUGD($this->rjNo) ?? [];
                     $data['rujukanAntarRS'] = $this->rujukanAntarRS;
                     $this->updateJsonUGD($this->rjNo, $data);
-                    $this->serapDokumen($data);
+                    $this->muatDariDokumen($data);
 
                     $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus Rujukan Antar RS UGD dari BPJS: noRujukan ' . $noRujukan, 'MR');
                 });

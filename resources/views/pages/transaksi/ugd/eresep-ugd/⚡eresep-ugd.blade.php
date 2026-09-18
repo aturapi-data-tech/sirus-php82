@@ -23,7 +23,7 @@ new class extends Component {
     public string $regNoPasien = '';
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya dua nilai ini yang disimpan. */
-    private function serapRingkas(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->eresepCito = (string) ($data['eresepCito'] ?? '0');
         $this->regNoPasien = (string) ($data['regNo'] ?? '');
@@ -57,7 +57,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapRingkas($data);
+        $this->muatDariDokumen($data);
 
         if ($this->checkUGDStatus($rjNo)) {
             $this->isFormLocked = true;
@@ -141,7 +141,7 @@ new class extends Component {
 
                 // 4. Simpan JSON
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->serapRingkas($data);
+                $this->muatDariDokumen($data);
             });
 
             // 5. Dispatch — di luar transaksi. Silent: tutup modal + reopen rekam medis
@@ -185,7 +185,7 @@ new class extends Component {
                 $data['eresepCito'] = $cito;
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->serapRingkas($data);
+                $this->muatDariDokumen($data);
                 $this->appendAdminLogUGD((int) $this->rjNo, $cito === '1' ? 'E-Resep ditandai CITO' : 'Tanda CITO e-resep dicabut', 'MR');
             });
         } catch (\RuntimeException $e) {

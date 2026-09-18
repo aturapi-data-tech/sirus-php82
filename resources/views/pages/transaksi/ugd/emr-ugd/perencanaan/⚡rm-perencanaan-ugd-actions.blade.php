@@ -40,7 +40,7 @@ new class extends Component {
     public bool $dokumenTermuat = false;
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar + cuplikan disimpan. */
-    private function serapDokumen(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->perencanaan = $data['perencanaan'] ?? [];
         $this->drId = (string) ($data['drId'] ?? '');
@@ -132,7 +132,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapDokumen($data);
+        $this->muatDariDokumen($data);
         $this->perencanaan = $this->perencanaan ?: $this->getDefaultPerencanaan();
 
         $this->incrementVersion('modal-perencanaan-ugd');
@@ -214,7 +214,7 @@ new class extends Component {
                 $data['perencanaan'] = $this->perencanaan;
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->serapDokumen($data);
+                $this->muatDariDokumen($data);
 
                 // Audit log
                 $this->appendAdminLogUGD((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' Perencanaan UGD — waktu pemeriksaan ' . ($data['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] ?? '-'), 'MR');
@@ -297,7 +297,7 @@ new class extends Component {
                 $data['ermStatus'] = 'L';
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->serapDokumen($data);
+                $this->muatDariDokumen($data);
 
                 // 5. Audit log
                 $this->appendAdminLogUGD((int) $this->rjNo, 'TTD-E Dokter Pemeriksa UGD — ' . $drDesc . ' (' . ($data['perencanaan']['pengkajianMedis']['waktuPemeriksaan'] ?? '-') . ')', 'MR');
@@ -371,7 +371,7 @@ new class extends Component {
                 $data['ermStatus'] = 'A';
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->serapDokumen($data);
+                $this->muatDariDokumen($data);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Buka Kunci TTD-E Dokter Pemeriksa — stempel ' . $drSebelumnya . ' dicabut oleh ' . (auth()->user()->myuser_name ?? '-'), 'MR');
             });

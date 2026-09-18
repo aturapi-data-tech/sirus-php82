@@ -30,7 +30,7 @@ new class extends Component {
     public string $regName = '';
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + regName yang disimpan. */
-    private function serapIrisan(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->edukasiTerintegrasi = $data['edukasiPasienTerintegrasi'] ?? [];
         $this->edukasiLama = $data['edukasiPasien'] ?? [];
@@ -87,7 +87,7 @@ new class extends Component {
         if ($this->riHdrNo) {
             $data = $this->findDataRI($this->riHdrNo);
             if ($data) {
-                $this->serapIrisan($data);
+                $this->muatDariDokumen($data);
                 $this->regNo = $data['regNo'] ?? null;
                 $this->edukasiTerintegrasi ??= [];
                 $this->form['sasaran']['nama'] = $data['regName'] ?? '';
@@ -105,7 +105,7 @@ new class extends Component {
 
         $data = $this->findDataRI($this->riHdrNo);
         if ($data) {
-            $this->serapIrisan($data);
+            $this->muatDariDokumen($data);
             $this->regNo = $data['regNo'] ?? $this->regNo;
             $this->edukasiTerintegrasi ??= [];
             $this->isFormLocked = $this->checkEmrRIStatus($this->riHdrNo) || $this->disabled;
@@ -290,7 +290,7 @@ new class extends Component {
             $fresh['edukasiPasienTerintegrasi'] = array_values($list);
 
             $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-            $this->serapIrisan($fresh);
+            $this->muatDariDokumen($fresh);
 
             $this->appendAdminLogRI((int) $this->riHdrNo, $logVerb . ' Edukasi Terintegrasi — entri ' . ($entry['form']['tglEdukasi'] ?? '-'), 'MR');
         });
@@ -531,7 +531,7 @@ new class extends Component {
 
                 $fresh['edukasiPasienTerintegrasi'] = array_values($list);
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->serapIrisan($fresh);
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI(
                     (int) $this->riHdrNo,
@@ -654,7 +654,7 @@ new class extends Component {
 
                 $fresh['edukasiPasienTerintegrasi'] = $newList;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->serapIrisan($fresh);
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus Edukasi Terintegrasi — entri ' . ($deletedRow['form']['tglEdukasi'] ?? '-'), 'MR');
             });

@@ -29,7 +29,7 @@ new class extends Component {
     public bool $dokumenTermuat = false;
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
-    private function serapIrisan(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->kontrol = $data['kontrol'] ?? [];
         $this->noSep = (string) ($data['sep']['noSep'] ?? '');
@@ -93,7 +93,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapIrisan($data);
+        $this->muatDariDokumen($data);
 
         $this->formKontrol = !empty($data['kontrol']) && is_array($data['kontrol'])
             ? $data['kontrol']
@@ -285,7 +285,7 @@ new class extends Component {
                 $isBaru = empty($fresh['kontrol']);
                 $fresh['kontrol'] = $this->formKontrol;
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->serapIrisan($fresh);
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, ($isBaru ? 'Buat' : 'Update') . ' SKDP — kontrol ' . ($this->formKontrol['tglKontrol'] ?: '-'), 'MR');
             });

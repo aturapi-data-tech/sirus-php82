@@ -32,7 +32,7 @@ new class extends Component {
     public bool $dokumenTermuat = false;
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + empat nilai sumber disimpan. */
-    private function serapIrisan(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->trfUgd = $data['trfUgd'] ?? [];
         $this->sumberTrf = [
@@ -140,7 +140,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapIrisan($data);
+        $this->muatDariDokumen($data);
         $this->trfUgd = $this->trfUgd ?: $this->getDefaultTrfUgd($data);
 
         // Ruangan asal defaultnya UGD, TAPI hanya diisikan bila masih kosong. Dulu baris
@@ -260,7 +260,7 @@ new class extends Component {
                 $data['trfUgd'] = array_replace($data['trfUgd'] ?? [], $this->trfUgd ?? []);
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->serapIrisan($data);
+                $this->muatDariDokumen($data);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, ($isBaru ? 'Buat' : 'Update') . ' Form Transfer UGD→RI (pindah ke ' . ($data['trfUgd']['pindahKeRuangan'] ?: '-') . ', tgl pindah ' . ($data['trfUgd']['tglPindah'] ?: '-') . ')', 'MR');
             });
@@ -323,7 +323,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->serapIrisan($data);
+                $this->muatDariDokumen($data);
             });
 
             $this->resetLevelingDokter();
@@ -374,7 +374,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->serapIrisan($data);
+                $this->muatDariDokumen($data);
             });
 
             $this->incrementVersion('modal-trf-ugd-ri');
@@ -430,7 +430,7 @@ new class extends Component {
                 unset($item);
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->serapIrisan($data);
+                $this->muatDariDokumen($data);
             });
 
             $this->incrementVersion('modal-trf-ugd-ri');
@@ -473,7 +473,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->serapIrisan($data);
+                $this->muatDariDokumen($data);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Tambah alat terpasang Form Transfer UGD→RI: ' . trim($this->alat['jenis']), 'MR');
             });
@@ -517,7 +517,7 @@ new class extends Component {
                     ->toArray();
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->serapIrisan($data);
+                $this->muatDariDokumen($data);
 
                 $this->appendAdminLogUGD((int) $this->rjNo, 'Hapus alat terpasang Form Transfer UGD→RI: ' . $deletedAlat, 'MR');
             });

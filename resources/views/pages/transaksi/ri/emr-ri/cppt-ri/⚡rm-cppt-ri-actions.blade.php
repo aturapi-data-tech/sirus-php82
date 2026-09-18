@@ -28,7 +28,7 @@ new class extends Component {
     public string $regNoPasien = '';
 
     /** Dokumen dibaca sebagai variabel LOKAL; hanya irisan + skalar yang disimpan. */
-    private function serapIrisan(array $data): void
+    private function muatDariDokumen(array $data): void
     {
         $this->daftarCppt = $data['cppt'] ?? [];
         $this->formMPP = $data['formMPP'] ?? [];
@@ -87,7 +87,7 @@ new class extends Component {
             return;
         }
 
-        $this->serapIrisan($data);
+        $this->muatDariDokumen($data);
         $this->daftarCppt ??= [];
 
         if (
@@ -145,7 +145,7 @@ new class extends Component {
                     }
                 }
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->serapIrisan($fresh);
+                $this->muatDariDokumen($fresh);
             });
         } catch (\Throwable $e) {
             // Persist gagal — tampilan tetap pakai id in-memory agar tidak error.
@@ -215,7 +215,7 @@ new class extends Component {
                 ]);
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->serapIrisan($fresh);
+                $this->muatDariDokumen($fresh);
                 $inserted = true;
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Tambah CPPT — entri ' . $this->formEntryCPPT['tglCPPT'] . ' (' . ($this->formEntryCPPT['profession'] ?: '-') . ')', 'MR');
@@ -349,7 +349,7 @@ new class extends Component {
                 $fresh['cppt'] = $cppts->values()->all();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->serapIrisan($fresh);
+                $this->muatDariDokumen($fresh);
                 $updated = true;
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Edit CPPT — entri ' . ($row['tglCPPT'] ?? '-') . ' (' . ($row['profession'] ?: '-') . ')', 'MR');
@@ -414,7 +414,7 @@ new class extends Component {
                 }
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->serapIrisan($fresh);
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Hapus CPPT — entri ' . ($cpptRow['tglCPPT'] ?? '-') . ' oleh ' . ($cpptRow['petugasCPPT'] ?? '-'), 'MR');
             });
@@ -475,7 +475,7 @@ new class extends Component {
                 $fresh['cppt'] = $cppts->values()->all();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->serapIrisan($fresh);
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Review CPPT — entri ' . ($row['tglCPPT'] ?? '-') . ' oleh DPJP ' . ($dpjp['drName'] ?? '-'), 'MR');
             });
@@ -521,7 +521,7 @@ new class extends Component {
                 $fresh['cppt'] = $cppts->values()->all();
 
                 $this->updateJsonRI((int) $this->riHdrNo, $fresh);
-                $this->serapIrisan($fresh);
+                $this->muatDariDokumen($fresh);
 
                 $this->appendAdminLogRI((int) $this->riHdrNo, 'Batal review CPPT — entri ' . ($row['tglCPPT'] ?? '-'), 'MR');
             });
@@ -648,7 +648,7 @@ new class extends Component {
         }
         $fresh = $this->findDataRI($this->riHdrNo);
         if ($fresh) {
-            $this->serapIrisan($fresh);
+            $this->muatDariDokumen($fresh);
             $this->incrementVersion('modal-cppt-ri');
         }
     }
