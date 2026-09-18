@@ -13,7 +13,21 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+    /**
+     * Penanda CITO + identitas pasien — bukan dokumennya.
+     *
+     * Cabang `eresep`/`eresepRacikan` TIDAK ditahan di sini: anak non-racikan & racikan
+     * memuat dan menyimpan cabangnya masing-masing.
+     */
+    public string $eresepCito = '0';
+    public string $regNoPasien = '';
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya dua nilai ini yang disimpan. */
+    private function serapRingkas(array $data): void
+    {
+        $this->eresepCito = (string) ($data['eresepCito'] ?? '0');
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+    }
     public string $activeTab = 'NonRacikan';
 
     public array $renderVersions = [];
@@ -43,14 +57,11 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
+        $this->serapRingkas($data);
 
         if ($this->checkUGDStatus($rjNo)) {
             $this->isFormLocked = true;
         }
-
-        $this->dataDaftarUGD['eresep'] ??= [];
-        $this->dataDaftarUGD['eresepRacikan'] ??= [];
 
         $this->dispatch('open-modal', name: 'emr-ugd.eresep-ugd');
         $this->incrementVersion('modal');
@@ -130,7 +141,7 @@ new class extends Component {
 
                 // 4. Simpan JSON
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->serapRingkas($data);
             });
 
             // 5. Dispatch — di luar transaksi. Silent: tutup modal + reopen rekam medis
@@ -174,7 +185,7 @@ new class extends Component {
                 $data['eresepCito'] = $cito;
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->serapRingkas($data);
                 $this->appendAdminLogUGD((int) $this->rjNo, $cito === '1' ? 'E-Resep ditandai CITO' : 'Tanda CITO e-resep dicabut', 'MR');
             });
         } catch (\RuntimeException $e) {
@@ -189,7 +200,7 @@ new class extends Component {
      =============================== */
     protected function resetForm(): void
     {
-        $this->reset(['rjNo', 'dataDaftarUGD', 'activeTab']);
+        $this->reset(['rjNo', 'eresepCito', 'regNoPasien', 'activeTab']);
         $this->resetVersion();
         $this->isFormLocked = false;
     }
@@ -225,11 +236,11 @@ new class extends Component {
                             @if ($isFormLocked)
                                 <x-badge variant="danger">Read Only</x-badge>
                             @endif
-                            @if (($dataDaftarUGD['eresepCito'] ?? '0') === '1')
+                            @if ($eresepCito === '1')
                                 <x-badge variant="danger" class="font-bold">CITO</x-badge>
                             @endif
                             {{-- Prioritas CITO — pola sama order lab/radiologi: apotek mendahulukan resep ini --}}
-                            <x-toggle :current="$dataDaftarUGD['eresepCito'] ?? '0'" trueValue="1" falseValue="0" onColor="bg-error"
+                            <x-toggle :current="$eresepCito" trueValue="1" falseValue="0" onColor="bg-error"
                                 wireClick="toggleEresepCito" :disabled="$isFormLocked" label="CITO — didahulukan apotek" class="ml-2" />
                         </div>
                     </div>
@@ -286,9 +297,9 @@ new class extends Component {
 
                     {{-- REKAM MEDIS — kolom ke-3 grid (dulu di LUAR grid → jatuh ke bawah) --}}
                     <div>
-                        <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display :regNo="$dataDaftarUGD['regNo'] ?? ''"
+                        <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display :regNo="$regNoPasien"
                             :rjNo="$rjNo ?? 0"
-                            wire:key="eresep-ugd-rekam-medis-display-ugd-{{ $dataDaftarUGD['regNo'] ?? 'new' }}" />
+                            wire:key="eresep-ugd-rekam-medis-display-ugd-{{ $regNoPasien ?: 'new' }}" />
                     </div>
                 </div>
             </div>

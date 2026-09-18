@@ -12,7 +12,9 @@ new class extends Component {
     use EmrUGDTrait;
 
     public ?string $rjNo = null;
-    public array $dataDaftarUGD = [];
+    /** Identitas pasien untuk judul panel — bukan dokumennya. */
+    public string $regName = '';
+    public string $regNoPasien = '';
 
     /**
      * URUTAN KANONIK "Kirim Semua". Bukan sekadar urutan tampilan — ada
@@ -144,7 +146,8 @@ new class extends Component {
         $this->antrianKirim = [];
         $this->langkahAktif = '';
         $this->rjNo = null;
-        $this->dataDaftarUGD = [];
+        $this->regName = '';
+        $this->regNoPasien = '';
         $this->dispatch('close-modal', name: 'ugd-satu-sehat');
     }
 
@@ -167,7 +170,8 @@ new class extends Component {
             $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.');
             return false;
         }
-        $this->dataDaftarUGD = $data;
+        $this->regName = (string) ($data['regName'] ?? '');
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
         return true;
     }
 };
@@ -200,8 +204,8 @@ new class extends Component {
                                     <span class="text-sm font-normal text-muted dark:text-gray-400">— UGD (Emergency)</span>
                                 </h2>
                                 <p class="mt-0.5 text-sm text-muted dark:text-gray-400">
-                                    <span class="font-semibold">{{ $dataDaftarUGD['regName'] ?? '-' }}</span>
-                                    &mdash; RM: {{ $dataDaftarUGD['regNo'] ?? '-' }}
+                                    <span class="font-semibold">{{ $regName ?: '-' }}</span>
+                                    &mdash; RM: {{ $regNoPasien ?: '-' }}
                                     &mdash; UGD: {{ $rjNo ?? '-' }}
                                 </p>
                             </div>

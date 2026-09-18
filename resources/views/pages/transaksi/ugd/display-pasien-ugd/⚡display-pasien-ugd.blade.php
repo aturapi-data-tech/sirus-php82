@@ -12,7 +12,11 @@ new class extends Component {
     use EmrUGDTrait, MasterPasienTrait;
 
     public ?string $rjNo = null;
-    public array $dataDaftarUGD = [];
+    /**
+     * RINGKASAN kunjungan untuk kartu display — bukan dokumennya. Bentuknya sengaja
+     * MENIRU dokumen aslinya supaya blade cukup memakai alias `$rj` seperti sebelumnya.
+     */
+    public array $ringkas = [];
     public array $dataPasien = [];
 
     /** Penilaian risiko jatuh terbaru — terisi hanya jika kategori Sedang/Tinggi. */
@@ -42,17 +46,28 @@ new class extends Component {
 
         $this->rjNo = $rjNo;
 
-        $dataDaftarUGD = $this->findDataUGD($rjNo);
-        if (!$dataDaftarUGD) {
+        $data = $this->findDataUGD($rjNo);
+        if (!$data) {
             $this->dispatch('toast', type: 'error', message: 'Data UGD tidak ditemukan.');
             return;
         }
 
-        $this->dataDaftarUGD = $dataDaftarUGD;
-        $this->dataPasien = $this->findDataMasterPasien($dataDaftarUGD['regNo']) ?? [];
-        $this->resikoJatuhTerakhir = $this->hitungResikoJatuhTerakhir($dataDaftarUGD);
-        $this->resikoBunuhDiriTerakhir = $this->hitungResikoBunuhDiriTerakhir($dataDaftarUGD);
-        $this->ewsTerakhir = EwsSkor::terakhirDari($dataDaftarUGD['observasi']['observasiLanjutan']['tandaVital'] ?? []) ?? [];
+        // Dokumen dibaca sebagai variabel LOKAL; hanya nilai yang dipakai kartu yang ditahan.
+        $this->ringkas = [
+            'drDesc'    => $data['drDesc'] ?? null,
+            'entryId'   => $data['entryId'] ?? null,
+            'entryDesc' => $data['entryDesc'] ?? null,
+            'klaimId'   => $data['klaimId'] ?? null,
+            'noAntrian' => $data['noAntrian'] ?? null,
+            'rjDate'    => $data['rjDate'] ?? null,
+            'rjStatus'  => $data['rjStatus'] ?? null,
+            'shift'     => $data['shift'] ?? null,
+            'sep'       => ['noSep' => $data['sep']['noSep'] ?? null],
+        ];
+        $this->dataPasien = $this->findDataMasterPasien($data['regNo'] ?? '') ?? [];
+        $this->resikoJatuhTerakhir = $this->hitungResikoJatuhTerakhir($data);
+        $this->resikoBunuhDiriTerakhir = $this->hitungResikoBunuhDiriTerakhir($data);
+        $this->ewsTerakhir = EwsSkor::terakhirDari($data['observasi']['observasiLanjutan']['tandaVital'] ?? []) ?? [];
     }
 
     /**
@@ -153,11 +168,11 @@ new class extends Component {
 ?>
 
 <div>
-    @if (!empty($dataDaftarUGD) && !empty($dataPasien))
+    @if (!empty($ringkas) && !empty($dataPasien))
 
         @php
             $p = $dataPasien['pasien'] ?? [];
-            $rj = $dataDaftarUGD;
+            $rj = $ringkas;
 
             $klaim = DB::table('rsmst_klaimtypes')
                 ->where('klaim_id', $rj['klaimId'] ?? null)

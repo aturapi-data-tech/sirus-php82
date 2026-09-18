@@ -13,7 +13,19 @@ new class extends Component {
 
     public bool $isFormLocked = false;
     public ?int $rjNo = null;
-    public array $dataDaftarUGD = [];
+    /**
+     * Jejak petugas administrasi terakhir + penanda termuat — bukan dokumennya.
+     * Isian statusResep sendiri sudah disalin ke properti form saat open().
+     */
+    public array $administrasiRj = [];
+    public bool $dokumenTermuat = false;
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya jejak petugas yang disimpan. */
+    private function serapJejak(array $data): void
+    {
+        $this->administrasiRj = $data['AdministrasiRj'] ?? [];
+        $this->dokumenTermuat = true;
+    }
     public string $rjStatus = 'A'; // sync dari rstxn_ugdhdrs.rj_status — A/L/F/I
 
     public array $renderVersions = [];
@@ -72,10 +84,10 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
+        $this->serapJejak($data);
         $this->statusResep = [
-            'status' => $this->dataDaftarUGD['statusResep']['status'] ?? 'DITUNGGU',
-            'keterangan' => $this->dataDaftarUGD['statusResep']['keterangan'] ?? '',
+            'status' => $data['statusResep']['status'] ?? 'DITUNGGU',
+            'keterangan' => $data['statusResep']['keterangan'] ?? '',
         ];
 
         // $readOnly = dibuka dari bulanan (view-only untuk Casemix verifikasi tagihan vs klaim).
@@ -126,7 +138,7 @@ new class extends Component {
      =============================== */
     protected function resetForm(): void
     {
-        $this->reset(['rjNo', 'dataDaftarUGD']);
+        $this->reset(['rjNo', 'administrasiRj', 'dokumenTermuat']);
         $this->resetVersion();
         $this->isFormLocked = false;
         $this->activeTabAdministrasi = 'JasaKaryawan';
@@ -289,7 +301,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonUGD($rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->serapJejak($data);
             });
 
             // 5. Notify + sumAll — di luar transaksi
@@ -343,7 +355,7 @@ new class extends Component {
                 ];
 
                 $this->updateJsonUGD($this->rjNo, $data);
-                $this->dataDaftarUGD = $data;
+                $this->serapJejak($data);
             });
 
             // findData() di dalam transaksi menimpa $this->statusResep dgn nilai DB LAMA
@@ -681,7 +693,7 @@ new class extends Component {
                         </div>
 
                         <div class="flex-shrink-0">
-                            @if (isset($dataDaftarUGD['AdministrasiRj']))
+                            @if (!empty($administrasiRj))
                                 <div
                                     class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold
                                     text-success dark:text-success bg-emerald-50 dark:bg-emerald-900/20
@@ -691,9 +703,9 @@ new class extends Component {
                                             d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     <span>Selesai oleh
-                                        <strong>{{ $dataDaftarUGD['AdministrasiRj']['userLog'] }}</strong></span>
+                                        <strong>{{ $administrasiRj['userLog'] }}</strong></span>
                                     <span
-                                        class="text-xs font-normal text-emerald-500 dark:text-emerald-400">{{ $dataDaftarUGD['AdministrasiRj']['userLogDate'] }}</span>
+                                        class="text-xs font-normal text-emerald-500 dark:text-emerald-400">{{ $administrasiRj['userLogDate'] }}</span>
                                 </div>
                             @else
                                 <x-primary-button type="button"

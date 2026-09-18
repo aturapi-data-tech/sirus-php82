@@ -13,7 +13,29 @@ new class extends Component {
 
     public ?string $rjNo = null;
     public bool $isFormLocked = false;
-    public array $dataDaftarUGD = [];
+    /**
+     * IRISAN dokumen: dua cabang telaah (model form) + dua cabang resep (dibaca untuk
+     * ditampilkan) + satu skalar. Kembaran komponen Antrian Apotek RJ.
+     */
+    public array $telaahResep = [];
+    public array $telaahObat = [];
+    public array $eresep = [];
+    public array $eresepRacikan = [];
+    public string $regNoPasien = '';
+
+    /** Penanda kunjungan sudah dimuat (guard tampilan; irisan bisa kosong secara sah). */
+    public bool $dokumenTermuat = false;
+
+    /** Dokumen dibaca sebagai variabel LOKAL; hanya empat cabang + regNo yang disimpan. */
+    private function serapIrisan(array $data): void
+    {
+        $this->telaahResep = $data['telaahResep'] ?? [];
+        $this->telaahObat = $data['telaahObat'] ?? [];
+        $this->eresep = $data['eresep'] ?? [];
+        $this->eresepRacikan = $data['eresepRacikan'] ?? [];
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
+        $this->dokumenTermuat = true;
+    }
 
     public array $renderVersions = [];
     protected array $renderAreas = ['modal-telaah-apotek-ugd'];
@@ -122,8 +144,8 @@ new class extends Component {
                     throw new \RuntimeException('Data UGD tidak ditemukan.');
                 }
 
-                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->dataDaftarUGD['telaahResep'] ?? []);
-                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->dataDaftarUGD['telaahObat'] ?? []); // satu tampilan, satu simpan
+                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->telaahResep ?? []);
+                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->telaahObat ?? []); // satu tampilan, satu simpan
 
                 $this->updateJsonUGD($this->rjNo, $data);
                 $this->gantiStateDariDb($data, 'telaahObat');
@@ -146,8 +168,8 @@ new class extends Component {
             return;
         }
 
-        if (isset($this->dataDaftarUGD['telaahResep']['penanggungJawab'])) {
-            $this->dispatch('toast', type: 'info', message: 'TTD-E Telaah Resep sudah dilakukan oleh ' . $this->dataDaftarUGD['telaahResep']['penanggungJawab']['userLog']);
+        if (isset($this->telaahResep['penanggungJawab'])) {
+            $this->dispatch('toast', type: 'info', message: 'TTD-E Telaah Resep sudah dilakukan oleh ' . $this->telaahResep['penanggungJawab']['userLog']);
             return;
         }
 
@@ -160,8 +182,8 @@ new class extends Component {
                     throw new \RuntimeException('Data UGD tidak ditemukan.');
                 }
 
-                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->dataDaftarUGD['telaahResep'] ?? []);
-                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->dataDaftarUGD['telaahObat'] ?? []); // satu tampilan, satu simpan
+                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->telaahResep ?? []);
+                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->telaahObat ?? []); // satu tampilan, satu simpan
                 $data['telaahResep']['penanggungJawab'] = [
                     'userLog' => auth()->user()->myuser_name,
                     'userLogCode' => auth()->user()->myuser_code,
@@ -198,8 +220,8 @@ new class extends Component {
                     throw new \RuntimeException('Data UGD tidak ditemukan.');
                 }
 
-                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->dataDaftarUGD['telaahResep'] ?? []); // satu tampilan, satu simpan
-                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->dataDaftarUGD['telaahObat'] ?? []);
+                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->telaahResep ?? []); // satu tampilan, satu simpan
+                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->telaahObat ?? []);
 
                 $this->updateJsonUGD($this->rjNo, $data);
                 $this->gantiStateDariDb($data, 'telaahResep');
@@ -222,8 +244,8 @@ new class extends Component {
             return;
         }
 
-        if (isset($this->dataDaftarUGD['telaahObat']['penanggungJawab'])) {
-            $this->dispatch('toast', type: 'info', message: 'TTD-E Telaah Obat sudah dilakukan oleh ' . $this->dataDaftarUGD['telaahObat']['penanggungJawab']['userLog']);
+        if (isset($this->telaahObat['penanggungJawab'])) {
+            $this->dispatch('toast', type: 'info', message: 'TTD-E Telaah Obat sudah dilakukan oleh ' . $this->telaahObat['penanggungJawab']['userLog']);
             return;
         }
 
@@ -236,8 +258,8 @@ new class extends Component {
                     throw new \RuntimeException('Data UGD tidak ditemukan.');
                 }
 
-                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->dataDaftarUGD['telaahResep'] ?? []); // satu tampilan, satu simpan
-                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->dataDaftarUGD['telaahObat'] ?? []);
+                $data['telaahResep'] = array_replace($this->defaultTelaahResep(), $this->telaahResep ?? []); // satu tampilan, satu simpan
+                $data['telaahObat'] = array_replace($this->defaultTelaahObat(), $this->telaahObat ?? []);
                 $data['telaahObat']['penanggungJawab'] = [
                     'userLog' => auth()->user()->myuser_name,
                     'userLogCode' => auth()->user()->myuser_code,
@@ -333,9 +355,8 @@ new class extends Component {
      */
     private function lengkapiDefaultTelaah(): void
     {
-        foreach (['telaahResep' => $this->defaultTelaahResep(), 'telaahObat' => $this->defaultTelaahObat()] as $node => $default) {
-            $this->dataDaftarUGD[$node] = array_replace($default, $this->dataDaftarUGD[$node] ?? []);
-        }
+        $this->telaahResep = array_replace($this->defaultTelaahResep(), $this->telaahResep);
+        $this->telaahObat = array_replace($this->defaultTelaahObat(), $this->telaahObat);
     }
 
     /**
@@ -345,10 +366,10 @@ new class extends Component {
      */
     private function gantiStateDariDb(array $data, string $nodeDipertahankan): void
     {
-        $isianLayar = $this->dataDaftarUGD[$nodeDipertahankan] ?? null;
-        $this->dataDaftarUGD = $data;
+        $isianLayar = $this->{$nodeDipertahankan};
+        $this->serapIrisan($data);
         if (is_array($isianLayar)) {
-            $this->dataDaftarUGD[$nodeDipertahankan] = $isianLayar;
+            $this->{$nodeDipertahankan} = $isianLayar;
         }
         $this->lengkapiDefaultTelaah();
     }
@@ -364,7 +385,7 @@ new class extends Component {
             return;
         }
 
-        $this->dataDaftarUGD = $data;
+        $this->serapIrisan($data);
     }
 
     private function afterSave(): void
@@ -377,7 +398,12 @@ new class extends Component {
         $this->resetVersion();
         $this->rjNo = null;
         $this->isFormLocked = false;
-        $this->dataDaftarUGD = [];
+        $this->telaahResep = [];
+        $this->telaahObat = [];
+        $this->eresep = [];
+        $this->eresepRacikan = [];
+        $this->regNoPasien = '';
+        $this->dokumenTermuat = false;
     }
 };
 ?>
@@ -417,15 +443,15 @@ new class extends Component {
                 <div class="flex flex-col lg:col-span-2">
 
                     <div class="flex-1 px-6 py-4">
-                        @if (isset($dataDaftarUGD['telaahResep']))
+                        @if ($dokumenTermuat)
 
-                            @if (!empty($dataDaftarUGD['eresep']) || !empty($dataDaftarUGD['eresepRacikan']))
+                            @if (!empty($eresep) || !empty($eresepRacikan))
                                 <div
                                     class="mb-4 p-3 bg-blue-50 rounded-xl border border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
                                     <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1.5">Daftar
                                         Obat dalam Resep</p>
                                     <div class="space-y-1">
-                                        @foreach ($dataDaftarUGD['eresep'] ?? [] as $obat)
+                                        @foreach ($eresep ?? [] as $obat)
                                             <div class="flex justify-between text-xs text-blue-800 dark:text-blue-200">
                                                 <span
                                                     class="font-medium uppercase">{{ $obat['productName'] ?? '-' }}</span>
@@ -438,9 +464,9 @@ new class extends Component {
                                                 </span>
                                             </div>
                                         @endforeach
-                                        @if (!empty($dataDaftarUGD['eresepRacikan']))
+                                        @if (!empty($eresepRacikan))
                                             @php $prevNo = null; @endphp
-                                            @foreach ($dataDaftarUGD['eresepRacikan'] as $racikan)
+                                            @foreach ($eresepRacikan as $racikan)
                                                 @isset($racikan['jenisKeterangan'])
                                                     <div
                                                         class="flex justify-between text-xs text-amber-800 dark:text-amber-200
@@ -493,7 +519,7 @@ new class extends Component {
                             @endphp
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-                                @foreach ($dataDaftarUGD['telaahResep'] as $key => $field)
+                                @foreach ($telaahResep as $key => $field)
                                     @if ($key === 'penanggungJawab')
                                         @continue
                                     @endif
@@ -510,28 +536,28 @@ new class extends Component {
                                             </div>
                                             <div class="shrink-0">
                                                 <x-toggle
-                                                    wire:model.live="dataDaftarUGD.telaahResep.{{ $key }}.{{ $key }}"
-                                                    trueValue="Ya" falseValue="Tidak" :disabled="isset($dataDaftarUGD['telaahResep']['penanggungJawab'])">
+                                                    wire:model.live="telaahResep.{{ $key }}.{{ $key }}"
+                                                    trueValue="Ya" falseValue="Tidak" :disabled="isset($telaahResep['penanggungJawab'])">
                                                     {{ ($field[$key] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak' }}
                                                 </x-toggle>
                                             </div>
                                         </div>
                                         <div class="mt-2">
-                                            <x-text-input wire:model="dataDaftarUGD.telaahResep.{{ $key }}.desc"
+                                            <x-text-input wire:model="telaahResep.{{ $key }}.desc"
                                                 class="w-full text-xs py-1.5" placeholder="Catatan (opsional)..."
-                                                :disabled="isset($dataDaftarUGD['telaahResep']['penanggungJawab'])" />
+                                                :disabled="isset($telaahResep['penanggungJawab'])" />
                                         </div>
                                     </div>
                                 @endforeach
                             </div>
 
-                            @if (isset($dataDaftarUGD['telaahResep']['penanggungJawab']))
+                            @if (isset($telaahResep['penanggungJawab']))
                                 <div
                                     class="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-800">
                                     <p class="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-2">
                                         Ringkasan Telaah Resep</p>
                                     <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-1.5">
-                                        @foreach ($dataDaftarUGD['telaahResep'] as $key => $field)
+                                        @foreach ($telaahResep as $key => $field)
                                             @if ($key === 'penanggungJawab')
                                                 @continue
                                             @endif
@@ -564,15 +590,15 @@ new class extends Component {
                 <div class="flex flex-col">
 
                     <div class="flex-1 px-6 py-4">
-                        @if (isset($dataDaftarUGD['telaahObat']))
+                        @if (isset($telaahObat))
 
-                            @if (!empty($dataDaftarUGD['eresep']) || !empty($dataDaftarUGD['eresepRacikan']))
+                            @if (!empty($eresep) || !empty($eresepRacikan))
                                 <div
                                     class="mb-4 p-3 bg-blue-50 rounded-xl border border-blue-200 dark:bg-blue-900/20 dark:border-blue-700">
                                     <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1.5">Daftar
                                         Obat dalam Resep</p>
                                     <div class="space-y-1">
-                                        @foreach ($dataDaftarUGD['eresep'] ?? [] as $idx => $obat)
+                                        @foreach ($eresep ?? [] as $idx => $obat)
                                             <div class="flex justify-between text-xs text-blue-800 dark:text-blue-200">
                                                 <span>
                                                     <span
@@ -589,9 +615,9 @@ new class extends Component {
                                                 </span>
                                             </div>
                                         @endforeach
-                                        @if (!empty($dataDaftarUGD['eresepRacikan']))
+                                        @if (!empty($eresepRacikan))
                                             @php $prevNo = null; @endphp
-                                            @foreach ($dataDaftarUGD['eresepRacikan'] as $racikan)
+                                            @foreach ($eresepRacikan as $racikan)
                                                 @isset($racikan['jenisKeterangan'])
                                                     <div
                                                         class="flex justify-between text-xs text-amber-800 dark:text-amber-200
@@ -633,7 +659,7 @@ new class extends Component {
                             @endphp
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                @foreach ($dataDaftarUGD['telaahObat'] as $key => $field)
+                                @foreach ($telaahObat as $key => $field)
                                     @if ($key === 'penanggungJawab')
                                         @continue
                                     @endif
@@ -650,28 +676,28 @@ new class extends Component {
                                             </div>
                                             <div class="shrink-0">
                                                 <x-toggle
-                                                    wire:model.live="dataDaftarUGD.telaahObat.{{ $key }}.{{ $key }}"
-                                                    trueValue="Ya" falseValue="Tidak" :disabled="isset($dataDaftarUGD['telaahObat']['penanggungJawab'])">
+                                                    wire:model.live="telaahObat.{{ $key }}.{{ $key }}"
+                                                    trueValue="Ya" falseValue="Tidak" :disabled="isset($telaahObat['penanggungJawab'])">
                                                     {{ ($field[$key] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak' }}
                                                 </x-toggle>
                                             </div>
                                         </div>
                                         <div class="mt-2">
-                                            <x-text-input wire:model="dataDaftarUGD.telaahObat.{{ $key }}.desc"
+                                            <x-text-input wire:model="telaahObat.{{ $key }}.desc"
                                                 class="w-full text-xs py-1.5" placeholder="Catatan (opsional)..."
-                                                :disabled="isset($dataDaftarUGD['telaahObat']['penanggungJawab'])" />
+                                                :disabled="isset($telaahObat['penanggungJawab'])" />
                                         </div>
                                     </div>
                                 @endforeach
                             </div>
 
-                            @if (isset($dataDaftarUGD['telaahObat']['penanggungJawab']))
+                            @if (isset($telaahObat['penanggungJawab']))
                                 <div
                                     class="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-100 dark:bg-blue-900/10 dark:border-blue-800">
                                     <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-2">Ringkasan
                                         Telaah Obat</p>
                                     <div class="grid grid-cols-2 gap-1.5">
-                                        @foreach ($dataDaftarUGD['telaahObat'] as $key => $field)
+                                        @foreach ($telaahObat as $key => $field)
                                             @if ($key === 'penanggungJawab')
                                                 @continue
                                             @endif
@@ -704,8 +730,8 @@ new class extends Component {
             {{-- FOOTER TUNGGAL — meniru EMR RJ (SOAP satu tampilan, satu Simpan): Simpan menulis telaah
                  resep & obat sekaligus; TTD-E tetap per bagian karena penanggung jawabnya dicatat terpisah. --}}
             @php
-                $ttdResep = $dataDaftarUGD['telaahResep']['penanggungJawab'] ?? null;
-                $ttdObat = $dataDaftarUGD['telaahObat']['penanggungJawab'] ?? null;
+                $ttdResep = $telaahResep['penanggungJawab'] ?? null;
+                $ttdObat = $telaahObat['penanggungJawab'] ?? null;
             @endphp
             <div
                 class="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-t border-hairline bg-surface-soft rounded-b-xl dark:border-gray-700 dark:bg-gray-900">
@@ -782,11 +808,11 @@ new class extends Component {
                 {{-- REKAM MEDIS — riwayat kunjungan pasien. rjNoRefCopyTo sengaja TIDAK
                      dikirim: apoteker menelaah, bukan menulis resep, jadi tombol salin
                      resep ke kunjungan aktif tidak boleh aktif di sini. --}}
-                @if (filled($dataDaftarUGD['regNo'] ?? ''))
+                @if (filled($regNoPasien))
                     <div class="px-6 py-4">
                         <livewire:pages::components.rekam-medis.rekam-medis-display.rekam-medis-display
-                            :regNo="$dataDaftarUGD['regNo']"
-                            wire:key="telaah-apotek-ugd-rekam-medis-{{ $dataDaftarUGD['regNo'] }}-{{ $rjNo ?? 'none' }}" />
+                            :regNo="$regNoPasien"
+                            wire:key="telaah-apotek-ugd-rekam-medis-{{ $regNoPasien }}-{{ $rjNo ?? 'none' }}" />
                     </div>
                 @else
                     <div class="px-6 py-12 text-center text-muted-soft">Data pasien belum dimuat.</div>
