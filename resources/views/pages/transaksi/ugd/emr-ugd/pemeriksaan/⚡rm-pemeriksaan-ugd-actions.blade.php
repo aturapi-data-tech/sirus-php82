@@ -21,6 +21,9 @@ new class extends Component {
      */
     public array $pemeriksaan = [];
 
+    /** No. RM pasien — dipakai partial tab untuk display lab/radiologi (pengganti $dataDaftarUGD['regNo']). */
+    public string $regNoPasien = '';
+
     /** Penanda kunjungan sudah dimuat lewat open(). */
     public bool $dokumenTermuat = false;
 
@@ -37,6 +40,7 @@ new class extends Component {
     private function muatDariDokumen(array $data): void
     {
         $this->pemeriksaan = $data['pemeriksaan'] ?? $this->getDefaultPemeriksaan();
+        $this->regNoPasien = (string) ($data['regNo'] ?? '');
     }
     protected array $renderAreas = ['modal-pemeriksaan-ugd'];
 
